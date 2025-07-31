@@ -8,6 +8,21 @@ Printyx is a unified SaaS platform designed to consolidate the fragmented techno
 
 Preferred communication style: Simple, everyday language.
 
+## Project Status & Development Phases
+
+### Current Phase: Phase 2 - Core Functionality Enhancement (Week 3-4)
+**Priority Focus**: Meter billing system implementation (highest ROI feature)
+
+### Phase Progress
+- **Phase 1 Complete**: Foundation architecture, basic CRUD operations, multi-tenant setup
+- **Phase 2 In Progress**: Meter billing, enhanced service dispatch, CRM improvements
+- **Phase 3 Planned**: Mobile app, advanced reporting, workflow automation
+- **Phase 4 Planned**: Third-party integrations, go-live preparation
+
+### Reference Documents
+- **PRD.md**: Complete Product Requirements Document with market analysis and technical specifications
+- **DEVELOPMENT_PROGRESS.md**: Detailed development progress tracker with task status and metrics
+
 ## System Architecture
 
 ### Frontend Architecture
