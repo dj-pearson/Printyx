@@ -38,7 +38,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Only secure in production
       maxAge: sessionTtl,
     },
   });
@@ -57,12 +57,39 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  // For now, use a single default tenant for all users
+  // In production, you'd implement proper tenant assignment logic
+  const defaultTenantName = "Default Copier Dealer";
+  
+  // Try to find existing default tenant or create one
+  let tenant;
+  try {
+    // For simplicity, we'll use a hardcoded tenant ID for the default tenant
+    const defaultTenantId = "550e8400-e29b-41d4-a716-446655440000"; // UUID for default tenant
+    tenant = await storage.getTenant(defaultTenantId);
+    
+    if (!tenant) {
+      tenant = await storage.createTenant({
+        name: defaultTenantName,
+        domain: "default",
+      });
+    }
+  } catch (error) {
+    // If tenant operations fail, create a new one
+    tenant = await storage.createTenant({
+      name: defaultTenantName,
+      domain: "default",
+    });
+  }
+
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    tenantId: tenant.id,
+    role: "user",
   });
 }
 

@@ -232,7 +232,6 @@ export const techniciansRelations = relations(technicians, ({ one }) => ({
 
 // Insert schemas
 export const insertTenantSchema = createInsertSchema(tenants).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 });
