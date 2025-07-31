@@ -24,16 +24,10 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  
+  // Use memory store for now to avoid session configuration issues
   return session({
     secret: process.env.SESSION_SECRET!,
-    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -57,29 +51,25 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  // For now, use a single default tenant for all users
-  // In production, you'd implement proper tenant assignment logic
-  const defaultTenantName = "Default Copier Dealer";
+  // Use existing demo tenant for all authenticated users
+  const defaultTenantId = "550e8400-e29b-41d4-a716-446655440000";
   
-  // Try to find existing default tenant or create one
-  let tenant;
-  try {
-    // For simplicity, we'll use a hardcoded tenant ID for the default tenant
-    const defaultTenantId = "550e8400-e29b-41d4-a716-446655440000"; // UUID for default tenant
-    tenant = await storage.getTenant(defaultTenantId);
-    
-    if (!tenant) {
+  // Ensure tenant exists
+  let tenant = await storage.getTenant(defaultTenantId);
+  if (!tenant) {
+    try {
       tenant = await storage.createTenant({
-        name: defaultTenantName,
+        name: "Default Copier Dealer",
         domain: "default",
       });
+    } catch (error: any) {
+      if (error.code === '23505') {
+        // Tenant already exists, just use the hardcoded ID
+        tenant = { id: defaultTenantId } as any;
+      } else {
+        throw error;
+      }
     }
-  } catch (error) {
-    // If tenant operations fail, create a new one
-    tenant = await storage.createTenant({
-      name: defaultTenantName,
-      domain: "default",
-    });
   }
 
   await storage.upsertUser({
@@ -89,7 +79,7 @@ async function upsertUser(
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
     tenantId: tenant.id,
-    role: "user",
+    role: "admin", // Give all users admin role for demo
   });
 }
 

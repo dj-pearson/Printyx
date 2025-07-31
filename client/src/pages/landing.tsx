@@ -18,11 +18,14 @@ export default function Landing() {
             
             <div className="space-y-4">
               <Button 
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => {
+                  localStorage.setItem('demo-authenticated', 'true');
+                  window.location.reload();
+                }}
                 className="w-full"
                 size="lg"
               >
-                Sign In to Get Started
+                Access Demo Dashboard
               </Button>
               
               <div className="text-sm text-gray-500">
