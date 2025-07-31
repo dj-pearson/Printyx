@@ -9,6 +9,8 @@ import {
   insertServiceTicketSchema,
   insertInventoryItemSchema,
   insertTechnicianSchema,
+  insertMeterReadingSchema,
+  insertInvoiceSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -206,6 +208,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching technicians:", error);
       res.status(500).json({ message: "Failed to fetch technicians" });
+    }
+  });
+
+  // Meter Billing Routes
+  
+  // Get all meter readings
+  app.get("/api/meter-readings", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const readings = await storage.getMeterReadings(tenantId);
+      res.json(readings);
+    } catch (error) {
+      console.error("Failed to get meter readings:", error);
+      res.status(500).json({ error: "Failed to get meter readings" });
+    }
+  });
+
+  // Get meter readings for specific equipment
+  app.get("/api/meter-readings/equipment/:equipmentId", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { equipmentId } = req.params;
+      const readings = await storage.getMeterReadingsByEquipment(equipmentId, tenantId);
+      res.json(readings);
+    } catch (error) {
+      console.error("Failed to get equipment meter readings:", error);
+      res.status(500).json({ error: "Failed to get equipment meter readings" });
+    }
+  });
+
+  // Create new meter reading
+  app.post("/api/meter-readings", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const userId = "demo-user-123"; // Demo user
+
+      const validatedData = insertMeterReadingSchema.parse({
+        ...req.body,
+        tenantId,
+        createdBy: userId,
+      });
+
+      const reading = await storage.createMeterReading(validatedData);
+      res.json(reading);
+    } catch (error) {
+      console.error("Failed to create meter reading:", error);
+      res.status(500).json({ error: "Failed to create meter reading" });
+    }
+  });
+
+  // Calculate billing for a meter reading
+  app.post("/api/meter-readings/:readingId/calculate-billing", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { readingId } = req.params;
+      const { contractId } = req.body;
+
+      const calculation = await storage.calculateMeterBilling(contractId, readingId, tenantId);
+      res.json(calculation);
+    } catch (error) {
+      console.error("Failed to calculate billing:", error);
+      res.status(500).json({ error: "Failed to calculate billing" });
+    }
+  });
+
+  // Invoice Routes
+  
+  // Get all invoices
+  app.get("/api/invoices", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const invoices = await storage.getInvoices(tenantId);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Failed to get invoices:", error);
+      res.status(500).json({ error: "Failed to get invoices" });
+    }
+  });
+
+  // Get specific invoice with line items
+  app.get("/api/invoices/:id", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { id } = req.params;
+      const invoice = await storage.getInvoice(id, tenantId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      const lineItems = await storage.getInvoiceLineItems(id, tenantId);
+      res.json({ ...invoice, lineItems });
+    } catch (error) {
+      console.error("Failed to get invoice:", error);
+      res.status(500).json({ error: "Failed to get invoice" });
+    }
+  });
+
+  // Create invoice from meter readings
+  app.post("/api/invoices/generate", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { contractId, billingPeriodStart, billingPeriodEnd } = req.body;
+
+      const invoice = await storage.generateInvoiceFromMeterReadings(
+        contractId,
+        new Date(billingPeriodStart),
+        new Date(billingPeriodEnd),
+        tenantId
+      );
+
+      res.json(invoice);
+    } catch (error) {
+      console.error("Failed to generate invoice:", error);
+      res.status(500).json({ error: "Failed to generate invoice" });
+    }
+  });
+
+  // Update invoice status
+  app.patch("/api/invoices/:id", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { id } = req.params;
+      const updateData = req.body;
+
+      // Handle paid status updates
+      if (updateData.status === 'paid' && !updateData.paidDate) {
+        updateData.paidDate = new Date();
+      }
+
+      const invoice = await storage.updateInvoice(id, updateData, tenantId);
+      res.json(invoice);
+    } catch (error) {
+      console.error("Failed to update invoice:", error);
+      res.status(500).json({ error: "Failed to update invoice" });
     }
   });
 

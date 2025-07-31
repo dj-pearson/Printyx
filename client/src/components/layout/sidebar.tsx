@@ -17,9 +17,10 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Customers', href: '/customers', icon: Users },
   { name: 'Contracts', href: '/contracts', icon: FileText },
+  { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
+  { name: 'Invoices', href: '/invoices', icon: FileText },
   { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
   { name: 'Inventory', href: '/inventory', icon: Package },
-  { name: 'Billing', href: '/billing', icon: Calculator },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
 ];
 

@@ -138,6 +138,65 @@ export const technicians = pgTable("technicians", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Meter readings table for billing
+export const meterReadings = pgTable("meter_readings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  equipmentId: varchar("equipment_id").notNull(),
+  contractId: varchar("contract_id").notNull(),
+  readingDate: timestamp("reading_date").notNull(),
+  blackMeter: integer("black_meter").notNull().default(0),
+  colorMeter: integer("color_meter").notNull().default(0),
+  previousBlackMeter: integer("previous_black_meter").default(0),
+  previousColorMeter: integer("previous_color_meter").default(0),
+  blackCopies: integer("black_copies").default(0),
+  colorCopies: integer("color_copies").default(0),
+  collectionMethod: varchar("collection_method").notNull().default('manual'), // manual, email, dca
+  notes: text("notes"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Invoices table for billing
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  customerId: varchar("customer_id").notNull(),
+  contractId: varchar("contract_id").notNull(),
+  invoiceNumber: varchar("invoice_number").notNull(),
+  billingPeriodStart: timestamp("billing_period_start").notNull(),
+  billingPeriodEnd: timestamp("billing_period_end").notNull(),
+  monthlyBase: decimal("monthly_base", { precision: 10, scale: 2 }).default('0'),
+  blackCopiesTotal: integer("black_copies_total").default(0),
+  colorCopiesTotal: integer("color_copies_total").default(0),
+  blackAmount: decimal("black_amount", { precision: 10, scale: 2 }).default('0'),
+  colorAmount: decimal("color_amount", { precision: 10, scale: 2 }).default('0'),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status").notNull().default('draft'), // draft, sent, paid, overdue
+  dueDate: timestamp("due_date").notNull(),
+  paidDate: timestamp("paid_date"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Invoice line items for detailed billing
+export const invoiceLineItems = pgTable("invoice_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  invoiceId: varchar("invoice_id").notNull(),
+  equipmentId: varchar("equipment_id").notNull(),
+  meterReadingId: varchar("meter_reading_id"),
+  description: varchar("description").notNull(),
+  quantity: integer("quantity").default(0),
+  rate: decimal("rate", { precision: 10, scale: 4 }).default('0'),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  lineType: varchar("line_type").notNull().default('meter'), // meter, base, service, supply
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   tenant: one(tenants, {
@@ -154,6 +213,9 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   serviceTickets: many(serviceTickets),
   inventoryItems: many(inventoryItems),
   technicians: many(technicians),
+  meterReadings: many(meterReadings),
+  invoices: many(invoices),
+  invoiceLineItems: many(invoiceLineItems),
 }));
 
 export const customersRelations = relations(customers, ({ one, many }) => ({
@@ -176,9 +238,11 @@ export const equipmentRelations = relations(equipment, ({ one, many }) => ({
     references: [customers.id],
   }),
   serviceTickets: many(serviceTickets),
+  meterReadings: many(meterReadings),
+  invoiceLineItems: many(invoiceLineItems),
 }));
 
-export const contractsRelations = relations(contracts, ({ one }) => ({
+export const contractsRelations = relations(contracts, ({ one, many }) => ({
   tenant: one(tenants, {
     fields: [contracts.tenantId],
     references: [tenants.id],
@@ -187,6 +251,8 @@ export const contractsRelations = relations(contracts, ({ one }) => ({
     fields: [contracts.customerId],
     references: [customers.id],
   }),
+  meterReadings: many(meterReadings),
+  invoices: many(invoices),
 }));
 
 export const serviceTicketsRelations = relations(serviceTickets, ({ one }) => ({
@@ -227,6 +293,67 @@ export const techniciansRelations = relations(technicians, ({ one }) => ({
   user: one(users, {
     fields: [technicians.userId],
     references: [users.id],
+  }),
+}));
+
+// Meter readings relations
+export const meterReadingsRelations = relations(meterReadings, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [meterReadings.tenantId],
+    references: [tenants.id],
+  }),
+  equipment: one(equipment, {
+    fields: [meterReadings.equipmentId],
+    references: [equipment.id],
+  }),
+  contract: one(contracts, {
+    fields: [meterReadings.contractId],
+    references: [contracts.id],
+  }),
+  createdByUser: one(users, {
+    fields: [meterReadings.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// Invoices relations
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [invoices.tenantId],
+    references: [tenants.id],
+  }),
+  customer: one(customers, {
+    fields: [invoices.customerId],
+    references: [customers.id],
+  }),
+  contract: one(contracts, {
+    fields: [invoices.contractId],
+    references: [contracts.id],
+  }),
+  createdByUser: one(users, {
+    fields: [invoices.createdBy],
+    references: [users.id],
+  }),
+  lineItems: many(invoiceLineItems),
+}));
+
+// Invoice line items relations
+export const invoiceLineItemsRelations = relations(invoiceLineItems, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [invoiceLineItems.tenantId],
+    references: [tenants.id],
+  }),
+  invoice: one(invoices, {
+    fields: [invoiceLineItems.invoiceId],
+    references: [invoices.id],
+  }),
+  equipment: one(equipment, {
+    fields: [invoiceLineItems.equipmentId],
+    references: [equipment.id],
+  }),
+  meterReading: one(meterReadings, {
+    fields: [invoiceLineItems.meterReadingId],
+    references: [meterReadings.id],
   }),
 }));
 
@@ -272,6 +399,24 @@ export const insertTechnicianSchema = createInsertSchema(technicians).omit({
   updatedAt: true,
 });
 
+export const insertMeterReadingSchema = createInsertSchema(meterReadings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -289,3 +434,9 @@ export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type InsertTechnician = z.infer<typeof insertTechnicianSchema>;
 export type Technician = typeof technicians.$inferSelect;
+export type InsertMeterReading = z.infer<typeof insertMeterReadingSchema>;
+export type MeterReading = typeof meterReadings.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
+export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;

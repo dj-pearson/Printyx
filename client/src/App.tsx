@@ -13,6 +13,8 @@ import ServiceDispatch from "@/pages/service-dispatch";
 import Inventory from "@/pages/inventory";
 import Billing from "@/pages/billing";
 import Reports from "@/pages/reports";
+import MeterReadings from "@/pages/MeterReadings";
+import Invoices from "@/pages/Invoices";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,6 +35,8 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/contracts" component={Contracts} />
+          <Route path="/meter-readings" component={MeterReadings} />
+          <Route path="/invoices" component={Invoices} />
           <Route path="/service-dispatch" component={ServiceDispatch} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/billing" component={Billing} />

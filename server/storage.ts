@@ -7,6 +7,9 @@ import {
   serviceTickets,
   inventoryItems,
   technicians,
+  meterReadings,
+  invoices,
+  invoiceLineItems,
   type User,
   type UpsertUser,
   type Tenant,
@@ -23,6 +26,12 @@ import {
   type InsertInventoryItem,
   type Technician,
   type InsertTechnician,
+  type MeterReading,
+  type InsertMeterReading,
+  type Invoice,
+  type InsertInvoice,
+  type InvoiceLineItem,
+  type InsertInvoiceLineItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, count, sum, sql } from "drizzle-orm";
@@ -71,6 +80,30 @@ export interface IStorage {
   getTechnician(id: string, tenantId: string): Promise<Technician | undefined>;
   createTechnician(technician: InsertTechnician): Promise<Technician>;
   updateTechnician(id: string, technician: Partial<InsertTechnician>, tenantId: string): Promise<Technician>;
+  
+  // Meter billing operations
+  getMeterReadings(tenantId: string): Promise<MeterReading[]>;
+  getMeterReadingsByEquipment(equipmentId: string, tenantId: string): Promise<MeterReading[]>;
+  createMeterReading(reading: InsertMeterReading): Promise<MeterReading>;
+  getLatestMeterReading(equipmentId: string, tenantId: string): Promise<MeterReading | undefined>;
+  
+  // Invoice operations
+  getInvoices(tenantId: string): Promise<Invoice[]>;
+  getInvoice(id: string, tenantId: string): Promise<Invoice | undefined>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: string, invoice: Partial<InsertInvoice>, tenantId: string): Promise<Invoice>;
+  getInvoiceLineItems(invoiceId: string, tenantId: string): Promise<InvoiceLineItem[]>;
+  createInvoiceLineItem(lineItem: InsertInvoiceLineItem): Promise<InvoiceLineItem>;
+  
+  // Billing calculations
+  calculateMeterBilling(contractId: string, meterReadingId: string, tenantId: string): Promise<{
+    blackCopies: number;
+    colorCopies: number;
+    blackAmount: number;
+    colorAmount: number;
+    totalAmount: number;
+  }>;
+  generateInvoiceFromMeterReadings(contractId: string, billingPeriodStart: Date, billingPeriodEnd: Date, tenantId: string): Promise<Invoice>;
   
   // Dashboard analytics
   getDashboardMetrics(tenantId: string): Promise<{
@@ -259,6 +292,248 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(technicians.id, id), eq(technicians.tenantId, tenantId)))
       .returning();
     return technician;
+  }
+
+  // Meter billing operations
+  async getMeterReadings(tenantId: string): Promise<MeterReading[]> {
+    return await db.select().from(meterReadings)
+      .where(eq(meterReadings.tenantId, tenantId))
+      .orderBy(desc(meterReadings.readingDate));
+  }
+
+  async getMeterReadingsByEquipment(equipmentId: string, tenantId: string): Promise<MeterReading[]> {
+    return await db.select().from(meterReadings)
+      .where(and(eq(meterReadings.equipmentId, equipmentId), eq(meterReadings.tenantId, tenantId)))
+      .orderBy(desc(meterReadings.readingDate));
+  }
+
+  async createMeterReading(readingData: InsertMeterReading): Promise<MeterReading> {
+    // Get the latest reading for this equipment to calculate copies
+    const latestReading = await this.getLatestMeterReading(readingData.equipmentId, readingData.tenantId);
+    
+    const blackCopies = latestReading 
+      ? Math.max(0, readingData.blackMeter - latestReading.blackMeter)
+      : readingData.blackMeter;
+    
+    const colorCopies = latestReading 
+      ? Math.max(0, readingData.colorMeter - latestReading.colorMeter)
+      : readingData.colorMeter;
+
+    const [reading] = await db.insert(meterReadings).values({
+      ...readingData,
+      previousBlackMeter: latestReading?.blackMeter || 0,
+      previousColorMeter: latestReading?.colorMeter || 0,
+      blackCopies,
+      colorCopies,
+    }).returning();
+
+    // Update equipment's current meter readings
+    await db.update(equipment)
+      .set({
+        blackMeter: readingData.blackMeter,
+        colorMeter: readingData.colorMeter,
+        lastMeterReading: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(equipment.id, readingData.equipmentId), eq(equipment.tenantId, readingData.tenantId)));
+
+    return reading;
+  }
+
+  async getLatestMeterReading(equipmentId: string, tenantId: string): Promise<MeterReading | undefined> {
+    const [reading] = await db.select().from(meterReadings)
+      .where(and(eq(meterReadings.equipmentId, equipmentId), eq(meterReadings.tenantId, tenantId)))
+      .orderBy(desc(meterReadings.readingDate))
+      .limit(1);
+    return reading;
+  }
+
+  // Invoice operations
+  async getInvoices(tenantId: string): Promise<Invoice[]> {
+    return await db.select().from(invoices)
+      .where(eq(invoices.tenantId, tenantId))
+      .orderBy(desc(invoices.createdAt));
+  }
+
+  async getInvoice(id: string, tenantId: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices)
+      .where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)));
+    return invoice;
+  }
+
+  async createInvoice(invoiceData: InsertInvoice): Promise<Invoice> {
+    const [invoice] = await db.insert(invoices).values(invoiceData).returning();
+    return invoice;
+  }
+
+  async updateInvoice(id: string, invoiceData: Partial<InsertInvoice>, tenantId: string): Promise<Invoice> {
+    const [invoice] = await db
+      .update(invoices)
+      .set({ ...invoiceData, updatedAt: new Date() })
+      .where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)))
+      .returning();
+    return invoice;
+  }
+
+  async getInvoiceLineItems(invoiceId: string, tenantId: string): Promise<InvoiceLineItem[]> {
+    return await db.select().from(invoiceLineItems)
+      .where(and(eq(invoiceLineItems.invoiceId, invoiceId), eq(invoiceLineItems.tenantId, tenantId)))
+      .orderBy(asc(invoiceLineItems.createdAt));
+  }
+
+  async createInvoiceLineItem(lineItemData: InsertInvoiceLineItem): Promise<InvoiceLineItem> {
+    const [lineItem] = await db.insert(invoiceLineItems).values(lineItemData).returning();
+    return lineItem;
+  }
+
+  // Billing calculations
+  async calculateMeterBilling(contractId: string, meterReadingId: string, tenantId: string): Promise<{
+    blackCopies: number;
+    colorCopies: number;
+    blackAmount: number;
+    colorAmount: number;
+    totalAmount: number;
+  }> {
+    // Get contract details
+    const contract = await this.getContract(contractId, tenantId);
+    if (!contract) {
+      throw new Error('Contract not found');
+    }
+
+    // Get meter reading
+    const [reading] = await db.select().from(meterReadings)
+      .where(and(eq(meterReadings.id, meterReadingId), eq(meterReadings.tenantId, tenantId)));
+    
+    if (!reading) {
+      throw new Error('Meter reading not found');
+    }
+
+    const blackRate = parseFloat(contract.blackRate || '0');
+    const colorRate = parseFloat(contract.colorRate || '0');
+    
+    const blackAmount = reading.blackCopies * blackRate;
+    const colorAmount = reading.colorCopies * colorRate;
+    const totalAmount = blackAmount + colorAmount + parseFloat(contract.monthlyBase || '0');
+
+    return {
+      blackCopies: reading.blackCopies,
+      colorCopies: reading.colorCopies,
+      blackAmount: Math.round(blackAmount * 100) / 100,
+      colorAmount: Math.round(colorAmount * 100) / 100,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+    };
+  }
+
+  async generateInvoiceFromMeterReadings(
+    contractId: string, 
+    billingPeriodStart: Date, 
+    billingPeriodEnd: Date, 
+    tenantId: string
+  ): Promise<Invoice> {
+    // Get contract details
+    const contract = await this.getContract(contractId, tenantId);
+    if (!contract) {
+      throw new Error('Contract not found');
+    }
+
+    // Get all meter readings for this contract in the billing period
+    const readings = await db.select({
+      meterReading: meterReadings,
+      equipment: equipment,
+    })
+    .from(meterReadings)
+    .innerJoin(equipment, eq(meterReadings.equipmentId, equipment.id))
+    .where(and(
+      eq(meterReadings.contractId, contractId),
+      eq(meterReadings.tenantId, tenantId),
+      sql`${meterReadings.readingDate} >= ${billingPeriodStart}`,
+      sql`${meterReadings.readingDate} <= ${billingPeriodEnd}`
+    ));
+
+    // Calculate totals
+    let totalBlackCopies = 0;
+    let totalColorCopies = 0;
+    let totalBlackAmount = 0;
+    let totalColorAmount = 0;
+
+    const blackRate = parseFloat(contract.blackRate || '0');
+    const colorRate = parseFloat(contract.colorRate || '0');
+    const monthlyBase = parseFloat(contract.monthlyBase || '0');
+
+    readings.forEach(({ meterReading }) => {
+      totalBlackCopies += meterReading.blackCopies;
+      totalColorCopies += meterReading.colorCopies;
+      totalBlackAmount += meterReading.blackCopies * blackRate;
+      totalColorAmount += meterReading.colorCopies * colorRate;
+    });
+
+    const totalAmount = totalBlackAmount + totalColorAmount + monthlyBase;
+
+    // Generate invoice number
+    const invoiceNumber = `INV-${Date.now()}`;
+    const dueDate = new Date(billingPeriodEnd);
+    dueDate.setDate(dueDate.getDate() + 30); // 30 days from billing period end
+
+    // Create invoice
+    const invoice = await this.createInvoice({
+      tenantId,
+      customerId: contract.customerId,
+      contractId,
+      invoiceNumber,
+      billingPeriodStart,
+      billingPeriodEnd,
+      monthlyBase: monthlyBase.toString(),
+      blackCopiesTotal: totalBlackCopies,
+      colorCopiesTotal: totalColorCopies,
+      blackAmount: totalBlackAmount.toString(),
+      colorAmount: totalColorAmount.toString(),
+      totalAmount: totalAmount.toString(),
+      status: 'draft',
+      dueDate,
+      createdBy: 'system', // TODO: Get from authenticated user
+    });
+
+    // Create line items
+    if (monthlyBase > 0) {
+      await this.createInvoiceLineItem({
+        tenantId,
+        invoiceId: invoice.id,
+        equipmentId: readings[0]?.equipment.id || '', // Use first equipment as reference
+        description: 'Monthly Base Fee',
+        quantity: 1,
+        rate: monthlyBase.toString(),
+        amount: monthlyBase.toString(),
+        lineType: 'base',
+      });
+    }
+
+    if (totalBlackCopies > 0) {
+      await this.createInvoiceLineItem({
+        tenantId,
+        invoiceId: invoice.id,
+        equipmentId: readings[0]?.equipment.id || '',
+        description: `Black & White Copies (${totalBlackCopies} @ $${blackRate})`,
+        quantity: totalBlackCopies,
+        rate: blackRate.toString(),
+        amount: totalBlackAmount.toString(),
+        lineType: 'meter',
+      });
+    }
+
+    if (totalColorCopies > 0) {
+      await this.createInvoiceLineItem({
+        tenantId,
+        invoiceId: invoice.id,
+        equipmentId: readings[0]?.equipment.id || '',
+        description: `Color Copies (${totalColorCopies} @ $${colorRate})`,
+        quantity: totalColorCopies,
+        rate: colorRate.toString(),
+        amount: totalColorAmount.toString(),
+        lineType: 'meter',
+      });
+    }
+
+    return invoice;
   }
   
   // Dashboard analytics
