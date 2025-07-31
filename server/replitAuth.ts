@@ -78,7 +78,7 @@ async function upsertUser(
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
-    tenantId: tenant.id,
+    tenantId: tenant?.id || defaultTenantId,
     role: "admin", // Give all users admin role for demo
   });
 }

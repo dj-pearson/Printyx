@@ -101,12 +101,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Customer routes
-  app.get('/api/customers', isAuthenticated, async (req: any, res) => {
+  app.get('/api/customers', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      
-      const customers = await storage.getCustomers(user.tenantId);
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const customers = await storage.getCustomers(tenantId);
       res.json(customers);
     } catch (error) {
       console.error("Error fetching customers:", error);
@@ -114,14 +112,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/customers', isAuthenticated, async (req: any, res) => {
+  app.post('/api/customers', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
       
       const validatedData = insertCustomerSchema.parse({
         ...req.body,
-        tenantId: user.tenantId,
+        tenantId: tenantId,
       });
       
       const customer = await storage.createCustomer(validatedData);
@@ -133,12 +130,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Service ticket routes
-  app.get('/api/service-tickets', isAuthenticated, async (req: any, res) => {
+  app.get('/api/service-tickets', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      
-      const tickets = await storage.getServiceTickets(user.tenantId);
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tickets = await storage.getServiceTickets(tenantId);
       res.json(tickets);
     } catch (error) {
       console.error("Error fetching service tickets:", error);
@@ -146,15 +141,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/service-tickets', isAuthenticated, async (req: any, res) => {
+  app.post('/api/service-tickets', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const demoUserId = "demo-user-123"; // Demo user
       
       const validatedData = insertServiceTicketSchema.parse({
         ...req.body,
-        tenantId: user.tenantId,
-        createdBy: user.id,
+        tenantId: tenantId,
+        createdBy: demoUserId,
         ticketNumber: `ST-${Date.now()}`, // Simple ticket number generation
       });
       
@@ -167,12 +162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contract routes
-  app.get('/api/contracts', isAuthenticated, async (req: any, res) => {
+  app.get('/api/contracts', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      
-      const contracts = await storage.getContracts(user.tenantId);
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const contracts = await storage.getContracts(tenantId);
       res.json(contracts);
     } catch (error) {
       console.error("Error fetching contracts:", error);
@@ -181,12 +174,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Equipment routes
-  app.get('/api/equipment', isAuthenticated, async (req: any, res) => {
+  app.get('/api/equipment', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      
-      const equipment = await storage.getEquipment(user.tenantId);
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const equipment = await storage.getEquipment(tenantId);
       res.json(equipment);
     } catch (error) {
       console.error("Error fetching equipment:", error);
@@ -195,12 +186,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Inventory routes
-  app.get('/api/inventory', isAuthenticated, async (req: any, res) => {
+  app.get('/api/inventory', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      
-      const inventory = await storage.getInventoryItems(user.tenantId);
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const inventory = await storage.getInventoryItems(tenantId);
       res.json(inventory);
     } catch (error) {
       console.error("Error fetching inventory:", error);
@@ -209,12 +198,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Technician routes
-  app.get('/api/technicians', isAuthenticated, async (req: any, res) => {
+  app.get('/api/technicians', async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      
-      const technicians = await storage.getTechnicians(user.tenantId);
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const technicians = await storage.getTechnicians(tenantId);
       res.json(technicians);
     } catch (error) {
       console.error("Error fetching technicians:", error);

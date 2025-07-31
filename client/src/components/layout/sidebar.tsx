@@ -45,9 +45,9 @@ export default function Sidebar() {
           
           return (
             <Link key={item.name} href={item.href}>
-              <a
+              <div
                 className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                   isActive
                     ? "text-primary bg-primary/10"
                     : "text-gray-700 hover:bg-gray-100"
@@ -55,7 +55,7 @@ export default function Sidebar() {
               >
                 <Icon className="w-5 h-5 mr-3" />
                 {item.name}
-              </a>
+              </div>
             </Link>
           );
         })}
@@ -64,17 +64,17 @@ export default function Sidebar() {
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center space-x-3">
           <img 
-            src={user?.profileImageUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=64&h=64"} 
+            src={(user as any)?.profileImageUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=64&h=64"} 
             alt="User profile" 
             className="w-8 h-8 rounded-full object-cover" 
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.firstName && user?.lastName 
-                ? `${user.firstName} ${user.lastName}` 
-                : user?.email || 'User'}
+              {(user as any)?.firstName && (user as any)?.lastName 
+                ? `${(user as any).firstName} ${(user as any).lastName}` 
+                : (user as any)?.email || 'User'}
             </p>
-            <p className="text-xs text-gray-500 truncate">{user?.role || 'Manager'}</p>
+            <p className="text-xs text-gray-500 truncate">{(user as any)?.role || 'Manager'}</p>
           </div>
           <button 
             className="text-gray-400 hover:text-gray-600"
