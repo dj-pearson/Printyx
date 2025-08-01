@@ -333,39 +333,96 @@ export default function Settings() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 px-4 sm:px-6 lg:px-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Manage your account settings and preferences.
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6">
+          {/* Mobile Tab Selection Dropdown */}
+          <div className="md:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  <div className="flex items-center gap-2">
+                    {activeTab === "profile" && <><User className="h-4 w-4" />Profile</>}
+                    {activeTab === "security" && <><Lock className="h-4 w-4" />Security</>}
+                    {activeTab === "preferences" && <><Palette className="h-4 w-4" />Preferences</>}
+                    {activeTab === "notifications" && <><Bell className="h-4 w-4" />Notifications</>}
+                    {activeTab === "accessibility" && <><Eye className="h-4 w-4" />Accessibility</>}
+                    {activeTab === "data" && <><Shield className="h-4 w-4" />Data & Privacy</>}
+                  </div>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="profile">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Profile
+                  </div>
+                </SelectItem>
+                <SelectItem value="security">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Security
+                  </div>
+                </SelectItem>
+                <SelectItem value="preferences">
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    Preferences
+                  </div>
+                </SelectItem>
+                <SelectItem value="notifications">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4" />
+                    Notifications
+                  </div>
+                </SelectItem>
+                <SelectItem value="accessibility">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Accessibility
+                  </div>
+                </SelectItem>
+                <SelectItem value="data">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Data & Privacy
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop Tab List */}
+          <TabsList className="hidden md:grid w-full grid-cols-6">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              Profile
+              <span className="hidden lg:inline">Profile</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Lock className="h-4 w-4" />
-              Security
+              <span className="hidden lg:inline">Security</span>
             </TabsTrigger>
             <TabsTrigger value="preferences" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
-              Preferences
+              <span className="hidden lg:inline">Preferences</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
-              Notifications
+              <span className="hidden lg:inline">Notifications</span>
             </TabsTrigger>
             <TabsTrigger value="accessibility" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
-              Accessibility
+              <span className="hidden lg:inline">Accessibility</span>
             </TabsTrigger>
             <TabsTrigger value="data" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
-              Data & Privacy
+              <span className="hidden lg:inline">Data & Privacy</span>
             </TabsTrigger>
           </TabsList>
 
@@ -398,7 +455,7 @@ export default function Settings() {
                 </div>
 
                 <form onSubmit={handleProfileSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="firstName">First name</Label>
                       <Input
@@ -430,7 +487,7 @@ export default function Settings() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="phone">Phone</Label>
                       <Input
@@ -573,7 +630,7 @@ export default function Settings() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePreferencesSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="theme">Theme</Label>
                       <Select
@@ -609,7 +666,7 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="timezone">Timezone</Label>
                       <Select
@@ -647,7 +704,7 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="dateFormat">Date Format</Label>
                       <Select
