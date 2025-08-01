@@ -604,12 +604,12 @@ export default function LeadDetail() {
                       <div className="space-y-4">
                         <div>
                           <Label className="text-sm text-gray-600">About Contact (Optional)</Label>
-                          <Select value={activityForms.note.contactId || ''} onValueChange={(value) => updateActivityForm('note', 'contactId', value)}>
+                          <Select value={activityForms.note.contactId || 'no-contact'} onValueChange={(value) => updateActivityForm('note', 'contactId', value === 'no-contact' ? '' : value)}>
                             <SelectTrigger className="mt-1">
                               <SelectValue placeholder="Select contact (optional)" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">{contacts.length} contacts - None selected</SelectItem>
+                              <SelectItem value="no-contact">{contacts.length} contacts - None selected</SelectItem>
                               {contacts.map((contact: any) => (
                                 <SelectItem key={contact.id} value={contact.id}>
                                   {contact.firstName} {contact.lastName}
@@ -879,7 +879,7 @@ export default function LeadDetail() {
                                 <SelectValue placeholder="Select contact" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">{contacts.length} contacts</SelectItem>
+                                <SelectItem value="no-contact">{contacts.length} contacts</SelectItem>
                                 {contacts.map((contact: any) => (
                                   <SelectItem key={contact.id} value={contact.id}>
                                     {contact.firstName} {contact.lastName}
@@ -1028,12 +1028,12 @@ export default function LeadDetail() {
                         </div>
                         <div>
                           <Label className="text-sm text-gray-600">Related Contact (Optional)</Label>
-                          <Select value={activityForms.task.contactId || ''} onValueChange={(value) => updateActivityForm('task', 'contactId', value)}>
+                          <Select value={activityForms.task.contactId || 'no-contact'} onValueChange={(value) => updateActivityForm('task', 'contactId', value === 'no-contact' ? '' : value)}>
                             <SelectTrigger className="mt-1">
                               <SelectValue placeholder="Select contact (optional)" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">{contacts.length} contacts - None selected</SelectItem>
+                              <SelectItem value="no-contact">{contacts.length} contacts - None selected</SelectItem>
                               {contacts.map((contact: any) => (
                                 <SelectItem key={contact.id} value={contact.id}>
                                   {contact.firstName} {contact.lastName}
@@ -1319,54 +1319,116 @@ export default function LeadDetail() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle>Activity Timeline</CardTitle>
-                      <Button size="sm" variant="outline">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Log Activity
-                      </Button>
+                      <div className="text-sm text-gray-500">
+                        {activities.length} {activities.length === 1 ? 'activity' : 'activities'}
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {activities.length > 0 ? (
-                      <div className="space-y-4">
-                        {activities.map((activity: any) => (
-                          <div key={activity.id} className="flex space-x-3 p-3 border rounded-lg">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-blue-100">
-                                {getActivityIcon(activity.activityType)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {activity.subject}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {formatDate(activity.createdAt)}
-                                </p>
-                              </div>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {activity.description}
-                              </p>
-                              {activity.outcome && (
-                                <Badge variant="outline" className="mt-2 text-xs">
-                                  {activity.outcome}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No activities yet</h3>
-                        <p className="text-gray-600 mb-4">Start tracking interactions with this lead.</p>
-                        <Button size="sm">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Log First Activity
-                        </Button>
-                      </div>
-                    )}
+                  <CardContent>
+                    <div className="space-y-4">
+                      {activities.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No activities yet</h3>
+                          <p className="text-gray-500 mb-4">
+                            Start tracking interactions with this lead by logging calls, emails, meetings, and notes.
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            Use the activity buttons above to log your first interaction.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          {/* Timeline line */}
+                          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                          
+                          {activities
+                            .sort((a: any, b: any) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
+                            .map((activity: any, index: number) => {
+                              const activityDate = new Date(activity.createdAt || activity.date);
+                              const isToday = activityDate.toDateString() === new Date().toDateString();
+                              const isRecent = (new Date().getTime() - activityDate.getTime()) < 24 * 60 * 60 * 1000;
+                              
+                              return (
+                                <div key={activity.id} className="relative flex items-start space-x-4 pb-6">
+                                  {/* Timeline dot */}
+                                  <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-4 border-white shadow-sm ${
+                                    activity.activityType === 'call' ? 'bg-blue-500' :
+                                    activity.activityType === 'email' ? 'bg-green-500' :
+                                    activity.activityType === 'meeting' ? 'bg-purple-500' :
+                                    activity.activityType === 'note' ? 'bg-yellow-500' :
+                                    'bg-gray-500'
+                                  }`}>
+                                    <div className="text-white">
+                                      {getActivityIcon(activity.activityType)}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Activity content */}
+                                  <div className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-2">
+                                        <p className="text-sm font-medium text-gray-900 capitalize">
+                                          {activity.activityType} Activity
+                                        </p>
+                                        {isRecent && (
+                                          <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                                            {isToday ? 'Today' : 'Recent'}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-xs text-gray-500">
+                                          {formatDate(activity.createdAt || activity.date)}
+                                        </p>
+                                        <p className="text-xs text-gray-400">
+                                          {activityDate.toLocaleTimeString('en-US', { 
+                                            hour: '2-digit', 
+                                            minute: '2-digit',
+                                            hour12: true 
+                                          })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="mt-2">
+                                      <p className="text-sm text-gray-900 font-medium">
+                                        {activity.subject || `${activity.activityType.charAt(0).toUpperCase() + activity.activityType.slice(1)} logged`}
+                                      </p>
+                                      {activity.notes && (
+                                        <p className="text-sm text-gray-600 mt-1">{activity.notes}</p>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Contact association */}
+                                    {activity.contactId && contacts.find((c: any) => c.id === activity.contactId) && (
+                                      <div className="mt-3 pt-3 border-t border-gray-100">
+                                        <div className="flex items-center space-x-2">
+                                          <User className="h-3 w-3 text-gray-400" />
+                                          <span className="text-xs text-gray-500">
+                                            Contact: {(() => {
+                                              const contact = contacts.find((c: any) => c.id === activity.contactId);
+                                              return contact ? `${contact.firstName} ${contact.lastName}` : 'Unknown Contact';
+                                            })()}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Activity metadata */}
+                                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                                      <span>By {activity.createdBy || 'System'}</span>
+                                      {activity.activityType === 'meeting' && activity.scheduledDate && (
+                                        <span>Scheduled: {formatDate(activity.scheduledDate)}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
