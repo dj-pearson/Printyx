@@ -57,7 +57,8 @@ export default function LeadDetail() {
     email: false,
     call: false,
     meeting: false,
-    task: false
+    task: false,
+    contact: false
   });
   
   // Fetch lead details first
@@ -104,6 +105,14 @@ export default function LeadDetail() {
       priority: 'Medium',
       assignedTo: 'Me',
       content: ''
+    },
+    contact: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      jobTitle: '',
+      isPrimary: false
     }
   });
 
@@ -174,6 +183,52 @@ export default function LeadDetail() {
     },
   });
 
+  // Lead update mutation
+  const updateLeadMutation = useMutation({
+    mutationFn: async (updateData: any) => {
+      return await apiRequest(`/api/leads/${id}`, 'PUT', updateData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/leads', id] });
+      setIsEditing(false);
+      setEditForm({});
+      toast({
+        title: "Success",
+        description: "Lead updated successfully!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update lead",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Add contact mutation
+  const addContactMutation = useMutation({
+    mutationFn: async (contactData: any) => {
+      return await apiRequest(`/api/leads/${id}/contacts`, 'POST', contactData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/leads', id, 'contacts'] });
+      closeDialog('contact');
+      setActivityForms(prev => ({ ...prev, contact: { firstName: '', lastName: '', email: '', phone: '', jobTitle: '', isPrimary: false } }));
+      toast({
+        title: "Success",
+        description: "Contact added successfully!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add contact",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Dialog handlers
   const openDialog = (type: keyof typeof dialogs) => {
     // Initialize form with lead data when opening dialog
@@ -202,6 +257,19 @@ export default function LeadDetail() {
   };
 
   const handleActivitySubmit = (type: string) => {
+    if (type === 'contact') {
+      const contactForm = activityForms.contact;
+      addContactMutation.mutate({
+        firstName: contactForm.firstName,
+        lastName: contactForm.lastName,
+        email: contactForm.email,
+        phone: contactForm.phone,
+        jobTitle: contactForm.jobTitle,
+        isPrimary: contactForm.isPrimary
+      });
+      return;
+    }
+
     const form = activityForms[type as keyof typeof activityForms];
     let activityData: any = {
       type,
@@ -215,6 +283,15 @@ export default function LeadDetail() {
 
     logActivityMutation.mutate(activityData);
     closeDialog(type as keyof typeof dialogs);
+  };
+
+  const handleSaveEdit = () => {
+    updateLeadMutation.mutate(editForm);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditForm({});
   };
 
   const getStatusColor = (status: string) => {
@@ -329,10 +406,28 @@ export default function LeadDetail() {
             <Badge className={`${getStatusColor(lead.leadStatus || 'new')} px-3 py-1 text-sm font-medium`}>
               {(lead.leadStatus || 'new').replace('_', ' ').toUpperCase()}
             </Badge>
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
+{isEditing ? (
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleSaveEdit}
+                  disabled={updateLeadMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
             {lead.leadStatus !== 'closed_won' && (
               <Button 
                 size="sm"
@@ -367,36 +462,111 @@ export default function LeadDetail() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-500">Company Name</Label>
-                        <p className="text-gray-900 mt-1">Lead #{lead.id}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-gray-500">Source</Label>
-                        <p className="text-gray-900 mt-1">{lead.leadSource || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-gray-500">Status</Label>
-                        <div className="mt-1">
-                          <Badge className={getStatusColor(lead.leadStatus || 'new')}>
-                            {(lead.leadStatus || 'new').replace('_', ' ').toUpperCase()}
-                          </Badge>
+                    {isEditing ? (
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Company Name</Label>
+                          <Input
+                            value={editForm.companyName || `Lead #${lead.id}`}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, companyName: e.target.value }))}
+                            className="mt-1"
+                            placeholder="Company name"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Source</Label>
+                          <Select 
+                            value={editForm.leadSource || lead.leadSource || 'website'}
+                            onValueChange={(value) => setEditForm(prev => ({ ...prev, leadSource: value }))}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="website">Website</SelectItem>
+                              <SelectItem value="referral">Referral</SelectItem>
+                              <SelectItem value="cold_call">Cold Call</SelectItem>
+                              <SelectItem value="trade_show">Trade Show</SelectItem>
+                              <SelectItem value="advertising">Advertising</SelectItem>
+                              <SelectItem value="social_media">Social Media</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Status</Label>
+                          <Select 
+                            value={editForm.leadStatus || lead.leadStatus || 'new'}
+                            onValueChange={(value) => setEditForm(prev => ({ ...prev, leadStatus: value }))}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="new">New</SelectItem>
+                              <SelectItem value="qualified">Qualified</SelectItem>
+                              <SelectItem value="proposal">Proposal</SelectItem>
+                              <SelectItem value="negotiation">Negotiation</SelectItem>
+                              <SelectItem value="closed_won">Closed Won</SelectItem>
+                              <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Estimated Value</Label>
+                          <Input
+                            type="number"
+                            value={editForm.estimatedAmount || lead.estimatedAmount || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, estimatedAmount: parseFloat(e.target.value) || null }))}
+                            className="mt-1"
+                            placeholder="0"
+                          />
                         </div>
                       </div>
-                      <div>
-                        <Label className="text-sm font-medium text-gray-500">Estimated Value</Label>
-                        <p className="text-gray-900 mt-1 font-semibold">
-                          {lead.estimatedAmount ? `$${Number(lead.estimatedAmount).toLocaleString()}` : 'Not specified'}
-                        </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Company Name</Label>
+                          <p className="text-gray-900 mt-1">Lead #{lead.id}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Source</Label>
+                          <p className="text-gray-900 mt-1">{lead.leadSource || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Status</Label>
+                          <div className="mt-1">
+                            <Badge className={getStatusColor(lead.leadStatus || 'new')}>
+                              {(lead.leadStatus || 'new').replace('_', ' ').toUpperCase()}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Estimated Value</Label>
+                          <p className="text-gray-900 mt-1 font-semibold">
+                            {lead.estimatedAmount ? `$${Number(lead.estimatedAmount).toLocaleString()}` : 'Not specified'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     
-                    {lead.notes && (
+                    {isEditing ? (
                       <div>
                         <Label className="text-sm font-medium text-gray-500">Notes</Label>
-                        <p className="text-gray-900 mt-1 bg-gray-50 p-3 rounded-md">{lead.notes}</p>
+                        <Textarea
+                          value={editForm.notes || lead.notes || ''}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                          className="mt-1"
+                          placeholder="Lead notes..."
+                          rows={3}
+                        />
                       </div>
+                    ) : (
+                      lead.notes && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Notes</Label>
+                          <p className="text-gray-900 mt-1 bg-gray-50 p-3 rounded-md">{lead.notes}</p>
+                        </div>
+                      )
                     )}
                   </CardContent>
                 </Card>
@@ -838,45 +1008,179 @@ export default function LeadDetail() {
                   </Button>
                 </div>
 
+                {/* Add Contact Dialog */}
+                <Dialog open={dialogs.contact} onOpenChange={(open) => setDialogs(prev => ({ ...prev, contact: open }))}>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center space-x-2">
+                        <UserPlus className="w-5 h-5" />
+                        <span>Add Contact</span>
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm text-gray-600">First Name</Label>
+                          <Input
+                            value={activityForms.contact.firstName}
+                            onChange={(e) => updateActivityForm('contact', 'firstName', e.target.value)}
+                            className="mt-1"
+                            placeholder="First name"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-gray-600">Last Name</Label>
+                          <Input
+                            value={activityForms.contact.lastName}
+                            onChange={(e) => updateActivityForm('contact', 'lastName', e.target.value)}
+                            className="mt-1"
+                            placeholder="Last name"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-gray-600">Email</Label>
+                        <Input
+                          type="email"
+                          value={activityForms.contact.email}
+                          onChange={(e) => updateActivityForm('contact', 'email', e.target.value)}
+                          className="mt-1"
+                          placeholder="email@company.com"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm text-gray-600">Phone</Label>
+                        <Input
+                          value={activityForms.contact.phone}
+                          onChange={(e) => updateActivityForm('contact', 'phone', e.target.value)}
+                          className="mt-1"
+                          placeholder="Phone number"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm text-gray-600">Job Title</Label>
+                        <Input
+                          value={activityForms.contact.jobTitle}
+                          onChange={(e) => updateActivityForm('contact', 'jobTitle', e.target.value)}
+                          className="mt-1"
+                          placeholder="Job title"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          checked={activityForms.contact.isPrimary}
+                          onCheckedChange={(checked) => updateActivityForm('contact', 'isPrimary', checked)}
+                        />
+                        <span className="text-sm text-gray-600">Set as primary contact</span>
+                      </div>
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button variant="outline" onClick={() => closeDialog('contact')}>
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={() => handleActivitySubmit('contact')}
+                          disabled={!activityForms.contact.firstName.trim() || !activityForms.contact.lastName.trim()}
+                          className="bg-blue-500 hover:bg-blue-600"
+                        >
+                          Add Contact
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
                 {/* Primary Contact */}
                 <Card>
                   <CardHeader className="pb-4">
-                    <div className="flex items-center">
-                      <User className="h-5 w-5 mr-2 text-gray-600" />
-                      <CardTitle>Primary Contact</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <User className="h-5 w-5 mr-2 text-gray-600" />
+                        <CardTitle>Primary Contact</CardTitle>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => openDialog('contact')}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add Contact
+                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="flex items-center space-x-3">
-                        <User className="h-4 w-4 text-gray-400" />
+                    {isEditing ? (
+                      <div className="grid grid-cols-2 gap-6">
                         <div>
                           <Label className="text-sm font-medium text-gray-500">Primary Contact</Label>
-                          <p className="text-gray-900">{lead.contactName || 'Not provided'}</p>
+                          <Input
+                            value={editForm.contactName || lead.contactName || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, contactName: e.target.value }))}
+                            className="mt-1"
+                            placeholder="Contact name"
+                          />
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Phone className="h-4 w-4 text-gray-400" />
                         <div>
                           <Label className="text-sm font-medium text-gray-500">Phone</Label>
-                          <p className="text-gray-900">{lead.phone || 'Not provided'}</p>
+                          <Input
+                            value={editForm.phone || lead.phone || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                            className="mt-1"
+                            placeholder="Phone number"
+                          />
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Mail className="h-4 w-4 text-gray-400" />
                         <div>
                           <Label className="text-sm font-medium text-gray-500">Email</Label>
-                          <p className="text-gray-900">{lead.email || 'Not provided'}</p>
+                          <Input
+                            type="email"
+                            value={editForm.email || lead.email || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                            className="mt-1"
+                            placeholder="Email address"
+                          />
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <MapPin className="h-4 w-4 text-gray-400" />
                         <div>
                           <Label className="text-sm font-medium text-gray-500">Location</Label>
-                          <p className="text-gray-900">{lead.address || 'Not provided'}</p>
+                          <Input
+                            value={editForm.address || lead.address || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
+                            className="mt-1"
+                            placeholder="Address"
+                          />
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="flex items-center space-x-3">
+                          <User className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <Label className="text-sm font-medium text-gray-500">Primary Contact</Label>
+                            <p className="text-gray-900">{lead.contactName || 'Not provided'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <Label className="text-sm font-medium text-gray-500">Phone</Label>
+                            <p className="text-gray-900">{lead.phone || 'Not provided'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <Label className="text-sm font-medium text-gray-500">Email</Label>
+                            <p className="text-gray-900">{lead.email || 'Not provided'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <Label className="text-sm font-medium text-gray-500">Location</Label>
+                            <p className="text-gray-900">{lead.address || 'Not provided'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
