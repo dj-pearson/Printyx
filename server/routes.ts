@@ -23,7 +23,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(session({
     store: new pgStore({
       conString: process.env.DATABASE_URL,
-      createTableIfMissing: true,
+      createTableIfMissing: false, // Don't recreate tables - use existing schema
+      tableName: 'sessions'
     }),
     secret: process.env.SESSION_SECRET || 'demo-secret-key-change-in-production',
     resave: false,
