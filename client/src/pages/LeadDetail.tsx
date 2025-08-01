@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { 
   ArrowLeft, 
@@ -47,6 +50,56 @@ export default function LeadDetail() {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
+  
+  // Dialog states
+  const [dialogs, setDialogs] = useState({
+    note: false,
+    email: false,
+    call: false,
+    meeting: false,
+    task: false
+  });
+  
+  // Form states for each activity type
+  const [activityForms, setActivityForms] = useState({
+    note: { content: '' },
+    email: { 
+      contacted: lead?.contactName || '',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      content: '',
+      createFollowUp: true,
+      followUpDays: 3
+    },
+    call: {
+      contacted: '0 contacts',
+      outcome: 'Connected',
+      direction: 'Outbound',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      content: '',
+      createFollowUp: true,
+      followUpDays: 3
+    },
+    meeting: {
+      attendees: lead?.contactName || '',
+      outcome: 'Scheduled',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      duration: '15 Minutes',
+      content: '',
+      createFollowUp: true,
+      followUpDays: 3
+    },
+    task: {
+      taskType: 'To-do',
+      title: '',
+      dueDate: new Date().toISOString().split('T')[0],
+      priority: 'Medium',
+      assignedTo: 'Me',
+      content: ''
+    }
+  });
 
   // Fetch lead details
   const { data: lead, isLoading } = useQuery({
@@ -119,29 +172,36 @@ export default function LeadDetail() {
     },
   });
 
-  // Quick action handlers
-  const handleQuickAction = (type: string, subject: string, promptUser = false) => {
-    if (promptUser) {
-      const notes = window.prompt(`Enter ${type} details:`, '');
-      if (notes !== null) {
-        logActivityMutation.mutate({ type, subject, notes });
-      }
-    } else {
-      logActivityMutation.mutate({ type, subject });
-    }
+  // Dialog handlers
+  const openDialog = (type: keyof typeof dialogs) => {
+    setDialogs(prev => ({ ...prev, [type]: true }));
   };
 
-  const handleScheduleMeeting = () => {
-    const subject = window.prompt('Meeting subject:', 'Follow-up meeting');
-    const dateStr = window.prompt('Meeting date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-    
-    if (subject && dateStr) {
-      logActivityMutation.mutate({ 
-        type: 'meeting', 
-        subject, 
-        scheduledDate: new Date(dateStr).toISOString() 
-      });
+  const closeDialog = (type: keyof typeof dialogs) => {
+    setDialogs(prev => ({ ...prev, [type]: false }));
+  };
+
+  const updateActivityForm = (type: keyof typeof activityForms, field: string, value: any) => {
+    setActivityForms(prev => ({
+      ...prev,
+      [type]: { ...prev[type], [field]: value }
+    }));
+  };
+
+  const handleActivitySubmit = (type: string) => {
+    const form = activityForms[type as keyof typeof activityForms];
+    let activityData: any = {
+      type,
+      subject: `${type.charAt(0).toUpperCase() + type.slice(1)} logged`,
+      notes: form.content || `${type} activity completed`
+    };
+
+    if (type === 'meeting' && form.date) {
+      activityData.scheduledDate = new Date(`${form.date}T${form.time || '09:00'}`).toISOString();
     }
+
+    logActivityMutation.mutate(activityData);
+    closeDialog(type as keyof typeof dialogs);
   };
 
   const getStatusColor = (status: string) => {
@@ -330,67 +390,435 @@ export default function LeadDetail() {
 
                 {/* HubSpot-style Activity Buttons */}
                 <div className="flex items-center justify-center space-x-4 py-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
-                    onClick={() => handleQuickAction('note', 'Added note', true)}
-                    disabled={logActivityMutation.isPending}
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Note</span>
-                  </Button>
+                  <Dialog open={dialogs.note} onOpenChange={(open) => setDialogs(prev => ({ ...prev, note: open }))}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Note</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px]">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center space-x-2">
+                          <FileText className="w-5 h-5" />
+                          <span>Add Note</span>
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Textarea
+                          placeholder="Start typing to add a note..."
+                          value={activityForms.note.content}
+                          onChange={(e) => updateActivityForm('note', 'content', e.target.value)}
+                          className="min-h-[120px] resize-none"
+                        />
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button variant="outline" onClick={() => closeDialog('note')}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={() => handleActivitySubmit('note')}
+                            disabled={!activityForms.note.content.trim()}
+                            className="bg-orange-500 hover:bg-orange-600"
+                          >
+                            Add note
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={dialogs.email} onOpenChange={(open) => setDialogs(prev => ({ ...prev, email: open }))}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>Email</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px]">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center space-x-2">
+                          <Mail className="w-5 h-5" />
+                          <span>Log Email</span>
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label className="text-sm text-gray-600">Contacted</Label>
+                            <Input
+                              value={activityForms.email.contacted}
+                              onChange={(e) => updateActivityForm('email', 'contacted', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Date</Label>
+                            <Input
+                              type="date"
+                              value={activityForms.email.date}
+                              onChange={(e) => updateActivityForm('email', 'date', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Time</Label>
+                            <Input
+                              type="time"
+                              value={activityForms.email.time}
+                              onChange={(e) => updateActivityForm('email', 'time', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        <Textarea
+                          placeholder="Start typing to log an email..."
+                          value={activityForms.email.content}
+                          onChange={(e) => updateActivityForm('email', 'content', e.target.value)}
+                          className="min-h-[120px] resize-none"
+                        />
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            checked={activityForms.email.createFollowUp}
+                            onCheckedChange={(checked) => updateActivityForm('email', 'createFollowUp', checked)}
+                          />
+                          <span className="text-sm text-gray-600">Create a To-do task to follow up</span>
+                          <Select value={`In ${activityForms.email.followUpDays} business days`}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="In 1 business day">In 1 business day</SelectItem>
+                              <SelectItem value="In 3 business days">In 3 business days</SelectItem>
+                              <SelectItem value="In 1 week">In 1 week</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button variant="outline" onClick={() => closeDialog('email')}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={() => handleActivitySubmit('email')}
+                            className="bg-blue-500 hover:bg-blue-600"
+                          >
+                            Log email
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={dialogs.call} onOpenChange={(open) => setDialogs(prev => ({ ...prev, call: open }))}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                      >
+                        <PhoneCall className="w-4 h-4" />
+                        <span>Call</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px]">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center space-x-2">
+                          <PhoneCall className="w-5 h-5" />
+                          <span>Log Call</span>
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-5 gap-4">
+                          <div>
+                            <Label className="text-sm text-gray-600">Contacted</Label>
+                            <Input
+                              value={activityForms.call.contacted}
+                              onChange={(e) => updateActivityForm('call', 'contacted', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Call outcome</Label>
+                            <Select value={activityForms.call.outcome} onValueChange={(value) => updateActivityForm('call', 'outcome', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Connected">Connected</SelectItem>
+                                <SelectItem value="No answer">No answer</SelectItem>
+                                <SelectItem value="Busy">Busy</SelectItem>
+                                <SelectItem value="Left voicemail">Left voicemail</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Direction</Label>
+                            <Select value={activityForms.call.direction} onValueChange={(value) => updateActivityForm('call', 'direction', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Outbound">Outbound</SelectItem>
+                                <SelectItem value="Inbound">Inbound</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Date</Label>
+                            <Input
+                              type="date"
+                              value={activityForms.call.date}
+                              onChange={(e) => updateActivityForm('call', 'date', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Time</Label>
+                            <Input
+                              type="time"
+                              value={activityForms.call.time}
+                              onChange={(e) => updateActivityForm('call', 'time', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        <Textarea
+                          placeholder="Start typing to log a call..."
+                          value={activityForms.call.content}
+                          onChange={(e) => updateActivityForm('call', 'content', e.target.value)}
+                          className="min-h-[120px] resize-none"
+                        />
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            checked={activityForms.call.createFollowUp}
+                            onCheckedChange={(checked) => updateActivityForm('call', 'createFollowUp', checked)}
+                          />
+                          <span className="text-sm text-gray-600">Create a To-do task to follow up</span>
+                          <Select value={`In ${activityForms.call.followUpDays} business days`}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="In 1 business day">In 1 business day</SelectItem>
+                              <SelectItem value="In 3 business days">In 3 business days</SelectItem>
+                              <SelectItem value="In 1 week">In 1 week</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button variant="outline" onClick={() => closeDialog('call')}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={() => handleActivitySubmit('call')}
+                            className="bg-orange-500 hover:bg-orange-600"
+                          >
+                            Log call
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={dialogs.meeting} onOpenChange={(open) => setDialogs(prev => ({ ...prev, meeting: open }))}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                      >
+                        <Calendar className="w-4 h-4" />
+                        <span>Meeting</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px]">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center space-x-2">
+                          <Calendar className="w-5 h-5" />
+                          <span>Log Meeting</span>
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-5 gap-4">
+                          <div>
+                            <Label className="text-sm text-gray-600">Attendees</Label>
+                            <Input
+                              value={activityForms.meeting.attendees}
+                              onChange={(e) => updateActivityForm('meeting', 'attendees', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Outcome</Label>
+                            <Select value={activityForms.meeting.outcome} onValueChange={(value) => updateActivityForm('meeting', 'outcome', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Scheduled">Scheduled</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                                <SelectItem value="Rescheduled">Rescheduled</SelectItem>
+                                <SelectItem value="No show">No show</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Date</Label>
+                            <Input
+                              type="date"
+                              value={activityForms.meeting.date}
+                              onChange={(e) => updateActivityForm('meeting', 'date', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Time</Label>
+                            <Input
+                              type="time"
+                              value={activityForms.meeting.time}
+                              onChange={(e) => updateActivityForm('meeting', 'time', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Duration</Label>
+                            <Select value={activityForms.meeting.duration} onValueChange={(value) => updateActivityForm('meeting', 'duration', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="15 Minutes">15 Minutes</SelectItem>
+                                <SelectItem value="30 Minutes">30 Minutes</SelectItem>
+                                <SelectItem value="1 Hour">1 Hour</SelectItem>
+                                <SelectItem value="2 Hours">2 Hours</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <Textarea
+                          placeholder="Start typing to log a meeting..."
+                          value={activityForms.meeting.content}
+                          onChange={(e) => updateActivityForm('meeting', 'content', e.target.value)}
+                          className="min-h-[120px] resize-none"
+                        />
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            checked={activityForms.meeting.createFollowUp}
+                            onCheckedChange={(checked) => updateActivityForm('meeting', 'createFollowUp', checked)}
+                          />
+                          <span className="text-sm text-gray-600">Create a To-do task to follow up</span>
+                          <Select value={`In ${activityForms.meeting.followUpDays} business days`}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="In 1 business day">In 1 business day</SelectItem>
+                              <SelectItem value="In 3 business days">In 3 business days</SelectItem>
+                              <SelectItem value="In 1 week">In 1 week</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button variant="outline" onClick={() => closeDialog('meeting')}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={() => handleActivitySubmit('meeting')}
+                            className="bg-orange-500 hover:bg-orange-600"
+                          >
+                            Log meeting
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={dialogs.task} onOpenChange={(open) => setDialogs(prev => ({ ...prev, task: open }))}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Task</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px]">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center space-x-2">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span>Create Task</span>
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm text-gray-600">Task type</Label>
+                            <Select value={activityForms.task.taskType} onValueChange={(value) => updateActivityForm('task', 'taskType', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="To-do">To-do</SelectItem>
+                                <SelectItem value="Call">Call</SelectItem>
+                                <SelectItem value="Email">Email</SelectItem>
+                                <SelectItem value="Meeting">Meeting</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-sm text-gray-600">Due date</Label>
+                            <Input
+                              type="date"
+                              value={activityForms.task.dueDate}
+                              onChange={(e) => updateActivityForm('task', 'dueDate', e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm text-gray-600">Title</Label>
+                          <Input
+                            placeholder="Task title"
+                            value={activityForms.task.title}
+                            onChange={(e) => updateActivityForm('task', 'title', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <Textarea
+                          placeholder="Task description..."
+                          value={activityForms.task.content}
+                          onChange={(e) => updateActivityForm('task', 'content', e.target.value)}
+                          className="min-h-[120px] resize-none"
+                        />
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button variant="outline" onClick={() => closeDialog('task')}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={() => handleActivitySubmit('task')}
+                            disabled={!activityForms.task.title.trim()}
+                            className="bg-orange-500 hover:bg-orange-600"
+                          >
+                            Create task
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   
                   <Button
                     variant="outline"
                     size="sm"
                     className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
-                    onClick={() => handleQuickAction('email', 'Email sent', true)}
-                    disabled={logActivityMutation.isPending}
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Email</span>
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
-                    onClick={() => handleQuickAction('call', 'Phone call completed', true)}
-                    disabled={logActivityMutation.isPending}
-                  >
-                    <PhoneCall className="w-4 h-4" />
-                    <span>Call</span>
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
-                    onClick={() => handleQuickAction('task', 'Task created', true)}
-                    disabled={logActivityMutation.isPending}
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Task</span>
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
-                    onClick={handleScheduleMeeting}
-                    disabled={logActivityMutation.isPending}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    <span>Meeting</span>
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
-                    onClick={() => handleQuickAction('more', 'Activity logged', true)}
-                    disabled={logActivityMutation.isPending}
                   >
                     <Plus className="w-4 h-4" />
                     <span>More</span>
