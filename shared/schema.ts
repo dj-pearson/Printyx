@@ -1425,20 +1425,18 @@ export const insertDealActivitySchema = createInsertSchema(dealActivities).omit(
   createdAt: true,
 });
 
-// Type exports
+// Additional Type exports
 export type UpsertUser = typeof users.$inferInsert;
 export type InsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Role = typeof roles.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type UserCustomerAssignment = typeof userCustomerAssignments.$inferSelect;
-export type Lead = typeof leads.$inferSelect;
 export type LeadActivity = typeof leadActivities.$inferSelect;
 export type LeadContact = typeof leadContacts.$inferSelect;
 export type LeadRelatedRecord = typeof leadRelatedRecords.$inferSelect;
 export type Quote = typeof quotes.$inferSelect;
 export type QuoteLineItem = typeof quoteLineItems.$inferSelect;
-export type Customer = typeof customers.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
 export type Contract = typeof contracts.$inferSelect;
 export type ContractTieredRate = typeof contractTieredRates.$inferSelect;
@@ -1890,7 +1888,7 @@ export type InsertPerformanceMetric = z.infer<typeof insertPerformanceMetricSche
 export type SystemIntegration = typeof systemIntegrations.$inferSelect;
 export type InsertSystemIntegration = z.infer<typeof insertSystemIntegrationSchema>;
 
-// Product Management Types
+// Product Management Types (consolidated)
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;
 export type CpcRate = typeof cpcRates.$inferSelect;
@@ -1900,7 +1898,7 @@ export type SoftwareProduct = typeof softwareProducts.$inferSelect;
 export type Supply = typeof supplies.$inferSelect;
 export type ManagedService = typeof managedServices.$inferSelect;
 
-// Product Management Insert Types
+// Product Management Insert Types (consolidated)
 export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
 export type InsertProductAccessory = z.infer<typeof insertProductAccessorySchema>;
 export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;

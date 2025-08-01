@@ -260,6 +260,26 @@ export interface IStorage {
   // Deal activities operations
   getDealActivities(dealId: string, tenantId: string): Promise<any[]>;
   createDealActivity(activity: any): Promise<any>;
+
+  // Purchase Order operations
+  getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]>;
+  getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined>;
+  createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
+  updatePurchaseOrder(id: string, po: Partial<PurchaseOrder>, tenantId: string): Promise<PurchaseOrder | undefined>;
+  deletePurchaseOrder(id: string, tenantId: string): Promise<boolean>;
+  
+  // Purchase Order Items operations
+  getPurchaseOrderItems(purchaseOrderId: string, tenantId: string): Promise<PurchaseOrderItem[]>;
+  createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem>;
+  updatePurchaseOrderItem(id: string, item: Partial<PurchaseOrderItem>, tenantId: string): Promise<PurchaseOrderItem | undefined>;
+  deletePurchaseOrderItem(id: string, tenantId: string): Promise<boolean>;
+  
+  // Vendor operations
+  getVendors(tenantId: string): Promise<Vendor[]>;
+  getVendor(id: string, tenantId: string): Promise<Vendor | undefined>;
+  createVendor(vendor: InsertVendor): Promise<Vendor>;
+  updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined>;
+  deleteVendor(id: string, tenantId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1399,6 +1419,76 @@ export class DatabaseStorage implements IStorage {
   async createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem> {
     const [newItem] = await db.insert(purchaseOrderItems).values(item).returning();
     return newItem;
+  }
+
+  async updatePurchaseOrderItem(id: string, item: Partial<PurchaseOrderItem>, tenantId: string): Promise<PurchaseOrderItem | undefined> {
+    const [updatedItem] = await db
+      .update(purchaseOrderItems)
+      .set(item)
+      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenantId, tenantId)))
+      .returning();
+    return updatedItem;
+  }
+
+  async deletePurchaseOrder(id: string, tenantId: string): Promise<boolean> {
+    // First delete all line items
+    await db
+      .delete(purchaseOrderItems)
+      .where(and(eq(purchaseOrderItems.purchaseOrderId, id), eq(purchaseOrderItems.tenantId, tenantId)));
+    
+    // Then delete the purchase order
+    const result = await db
+      .delete(purchaseOrders)
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)));
+    
+    return result.rowCount > 0;
+  }
+
+  async deletePurchaseOrderItem(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(purchaseOrderItems)
+      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenantId, tenantId)));
+    
+    return result.rowCount > 0;
+  }
+
+  // Vendor operations
+  async getVendors(tenantId: string): Promise<Vendor[]> {
+    return await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.tenantId, tenantId))
+      .orderBy(vendors.companyName);
+  }
+
+  async getVendor(id: string, tenantId: string): Promise<Vendor | undefined> {
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
+    return vendor;
+  }
+
+  async createVendor(vendor: InsertVendor): Promise<Vendor> {
+    const [newVendor] = await db.insert(vendors).values(vendor).returning();
+    return newVendor;
+  }
+
+  async updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined> {
+    const [updatedVendor] = await db
+      .update(vendors)
+      .set({ ...vendor, updatedAt: new Date() })
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)))
+      .returning();
+    return updatedVendor;
+  }
+
+  async deleteVendor(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(vendors)
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
+    
+    return result.rowCount > 0;
   }
 
   // Deal management operations

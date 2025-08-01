@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import { registerMobileRoutes } from "./routes-mobile";
 import { registerIntegrationRoutes } from "./routes-integrations";
 import { registerTaskRoutes } from "./routes-tasks";
+import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -1942,6 +1943,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register task management routes
   registerTaskRoutes(app);
+
+  // Register purchase order routes
+  registerPurchaseOrderRoutes(app);
 
   // Performance monitoring routes
   app.get('/api/performance/metrics', requireAuth, async (req: any, res) => {

@@ -91,7 +91,7 @@ function getNavigationSections(userRole: any) {
           icon: Package,
           isExpandable: true,
           subItems: [
-            { name: 'Purchase Orders', href: '/equipment/procurement', icon: ShoppingCart },
+            { name: 'Purchase Orders', href: '/purchase-orders', icon: ShoppingCart },
             { name: 'Warehouse Operations', href: '/equipment/warehouse', icon: Warehouse },
             { name: 'Delivery Logistics', href: '/equipment/delivery', icon: Truck },
             { name: 'Installation Management', href: '/equipment/installation', icon: Wrench },

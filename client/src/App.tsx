@@ -45,6 +45,7 @@ import TaskManagement from "@/pages/TaskManagement";
 import DealsManagement from "@/pages/DealsManagement";
 import ProductHub from "@/pages/ProductHub";
 import EquipmentLifecycle from "@/pages/EquipmentLifecycle";
+import PurchaseOrders from "@/pages/PurchaseOrders";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -72,6 +73,7 @@ function Router() {
           <Route path="/deals" component={DealsManagement} />
           <Route path="/product-hub" component={ProductHub} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycle} />
+          <Route path="/purchase-orders" component={PurchaseOrders} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
           <Route path="/sales-reports" component={SalesReports} />
