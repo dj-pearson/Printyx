@@ -1,9 +1,9 @@
 import { useEffect, ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import Sidebar from "@/components/layout/sidebar";
+import RoleBasedSidebar from "@/components/layout/role-based-sidebar";
 import Header from "@/components/layout/header";
-// import MobileNav from "@/components/ui/mobile-nav";
+import MobileBottomNav from "@/components/ui/mobile-bottom-nav";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -42,17 +42,21 @@ export default function MainLayout({ children, title, description }: MainLayoutP
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <div className="hidden md:block">
+        <RoleBasedSidebar />
+      </div>
       
       <main className="flex-1 overflow-auto">
         <Header title={title} description={description} />
         
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6">
           {children}
         </div>
       </main>
       
-      {/* <MobileNav /> */}
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 }

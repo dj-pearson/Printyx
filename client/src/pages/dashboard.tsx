@@ -1,15 +1,13 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
+import MainLayout from "@/components/layout/main-layout";
 import MetricsCards from "@/components/dashboard/metrics-cards";
 import ServiceTickets from "@/components/dashboard/service-tickets";
 import QuickActions from "@/components/dashboard/quick-actions";
 import Alerts from "@/components/dashboard/alerts";
 import RevenueChart from "@/components/dashboard/revenue-chart";
 import TopCustomers from "@/components/dashboard/top-customers";
-import MobileNav from "@/components/ui/mobile-nav";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -41,34 +39,24 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+    <MainLayout title="Dashboard" description="Overview of your business metrics and activities">
+      <MetricsCards />
       
-      <main className="flex-1 overflow-auto">
-        <Header />
-        
-        <div className="p-6 space-y-6">
-          <MetricsCards />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <ServiceTickets />
-            </div>
-            
-            <div className="space-y-6">
-              <QuickActions />
-              <Alerts />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RevenueChart />
-            <TopCustomers />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2">
+          <ServiceTickets />
         </div>
-      </main>
+        
+        <div className="space-y-4 sm:space-y-6">
+          <QuickActions />
+          <Alerts />
+        </div>
+      </div>
       
-      <MobileNav />
-    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <RevenueChart />
+        <TopCustomers />
+      </div>
+    </MainLayout>
   );
 }
