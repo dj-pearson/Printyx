@@ -34,7 +34,9 @@ import { Button } from "@/components/ui/button";
 
 // Get navigation sections based on user role
 function getNavigationSections(userRole: any) {
-  if (!userRole) return [];
+  if (!userRole) {
+    return [];
+  }
 
   const roleCode = userRole.code;
   const department = userRole.department;
@@ -42,7 +44,7 @@ function getNavigationSections(userRole: any) {
   const permissions = userRole.permissions || {};
   
   // Platform roles get full access
-  const isPlatformRole = roleCode === 'ROOT_ADMIN' || roleCode === 'PRINTYX_SUPPORT' || roleCode === 'PRINTYX_TECHNICAL';
+  const isPlatformRole = userRole.canAccessAllTenants === true;
   const isCompanyAdmin = roleCode === 'COMPANY_ADMIN';
   
   // Build navigation sections based on permissions
@@ -136,13 +138,15 @@ export default function Sidebar() {
   const isPlatformRole = user?.role?.canAccessAllTenants === true;
   
   // Fetch available tenants for platform users
-  const { data: tenants } = useQuery({
+  const { data: tenants, error: tenantsError } = useQuery({
     queryKey: ['/api/tenants'],
     enabled: isPlatformRole,
   });
 
   // Get navigation sections based on user role
   const navigationSections = getNavigationSections(user?.role);
+  
+
 
   // Handle tenant selection for platform users
   const handleTenantChange = (tenantId: string) => {

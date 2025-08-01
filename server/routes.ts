@@ -245,7 +245,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tenants route for platform users
   app.get("/api/tenants", requireAuth, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUserWithRole(req.session.userId);
+      
+
       
       // Only platform admin roles can access all tenants
       if (!user?.role?.canAccessAllTenants) {
