@@ -741,6 +741,9 @@ export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).
   updatedAt: true,
 });
 
+// Backward compatibility alias for existing client code
+export const insertCustomerInteractionSchema = insertLeadInteractionSchema;
+
 // Type exports
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -760,3 +763,6 @@ export type Technician = typeof technicians.$inferSelect;
 export type MeterReading = typeof meterReadings.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+
+// Backward compatibility type alias
+export type CustomerInteraction = LeadInteraction;

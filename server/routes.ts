@@ -2,8 +2,21 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { 
+  requireRole, 
+  requireSalesAccess, 
+  requireServiceAccess, 
+  requireFinanceAccess,
+  requirePurchasingAccess,
+  requireAdminAccess,
+  applyScopeFilter,
+  getDataFilter,
+  type AuthenticatedRequest 
+} from "./rbac-middleware";
 import {
   insertCustomerSchema,
+  insertLeadSchema,
+  insertQuoteSchema,
   insertEquipmentSchema,
   insertContractSchema,
   insertServiceTicketSchema,
@@ -26,7 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   */
 
-  // Auth routes - check for demo authentication
+  // Auth routes - return demo user with role information
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       // Check for demo authentication header or session
@@ -38,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Return mock authenticated user for demo
+      // Return mock authenticated user for demo with role structure
       const mockUser = {
         id: "demo-user-123",
         email: "demo@printyx.com",
@@ -46,7 +59,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: "User",
         profileImageUrl: null,  
         tenantId: "550e8400-e29b-41d4-a716-446655440000",
-        role: "admin",
+        roleId: "sales-manager-role",
+        teamId: "sales-team-1",
+        isActive: true,
+        role: {
+          id: "sales-manager-role",
+          name: "Sales Manager",
+          code: "SALES_MANAGER",
+          department: "sales",
+          level: 3,
+          description: "Manages sales team and operations",
+          permissions: {
+            sales: ["*"],
+            service: ["view-tickets", "create-tickets"],
+            reports: ["team-sales-reports", "team-performance"]
+          }
+        },
+        team: {
+          id: "sales-team-1",
+          name: "West Coast Sales",
+          department: "sales",
+          managerId: "demo-user-123"
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -102,11 +136,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Customer routes
+  // Customer routes with RBAC (demo mode)
   app.get('/api/customers', async (req: any, res) => {
     try {
       const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      // Demo mode - show all customers
       const customers = await storage.getCustomers(tenantId);
+      
       res.json(customers);
     } catch (error) {
       console.error("Error fetching customers:", error);
@@ -131,11 +167,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Service ticket routes
+  // Lead routes (demo mode)
+  app.get('/api/leads', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      // Demo mode - show all leads
+      const leads = await storage.getLeads(tenantId);
+      
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+
+  app.post('/api/leads', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const userId = "demo-user-123";
+      
+      const validatedData = insertLeadSchema.parse({
+        ...req.body,
+        tenantId: tenantId,
+        createdBy: userId,
+        assignedSalespersonId: req.body.assignedSalespersonId || userId, // Default to creator if not specified
+      });
+      
+      const lead = await storage.createLead(validatedData);
+      res.status(201).json(lead);
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  // Quote routes (demo mode)
+  app.get('/api/quotes', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const quotes = await storage.getQuotes(tenantId); // TODO: Add role-based filtering
+      res.json(quotes);
+    } catch (error) {
+      console.error("Error fetching quotes:", error);
+      res.status(500).json({ message: "Failed to fetch quotes" });
+    }
+  });
+
+  app.post('/api/quotes', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const userId = "demo-user-123";
+      
+      const validatedData = insertQuoteSchema.parse({
+        ...req.body,
+        tenantId: tenantId,
+        createdBy: userId,
+        quoteNumber: `QT-${Date.now()}`, // Simple quote number generation
+      });
+      
+      const quote = await storage.createQuote(validatedData);
+      res.status(201).json(quote);
+    } catch (error) {
+      console.error("Error creating quote:", error);
+      res.status(500).json({ message: "Failed to create quote" });
+    }
+  });
+
+  // Service ticket routes (demo mode)
   app.get('/api/service-tickets', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      // Demo mode - show all tickets
       const tickets = await storage.getServiceTickets(tenantId);
+      
       res.json(tickets);
     } catch (error) {
       console.error("Error fetching service tickets:", error);
@@ -145,13 +249,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/service-tickets', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
-      const demoUserId = "demo-user-123"; // Demo user
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const userId = "demo-user-123";
       
       const validatedData = insertServiceTicketSchema.parse({
         ...req.body,
         tenantId: tenantId,
-        createdBy: demoUserId,
+        createdBy: userId,
         ticketNumber: `ST-${Date.now()}`, // Simple ticket number generation
       });
       
@@ -160,6 +264,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating service ticket:", error);
       res.status(500).json({ message: "Failed to create service ticket" });
+    }
+  });
+
+  // Contract routes (demo mode)
+  app.get('/api/contracts', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      // Demo mode - show all contracts
+      const contracts = await storage.getContracts(tenantId);
+      
+      res.json(contracts);
+    } catch (error) {
+      console.error("Error fetching contracts:", error);
+      res.status(500).json({ message: "Failed to fetch contracts" });
+    }
+  });
+
+  // Inventory routes (demo mode)
+  app.get('/api/inventory', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      // Demo mode - allow management
+      const canManage = true;
+      const items = await storage.getInventoryItems(tenantId);
+      
+      res.json({ items, canManage });
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      res.status(500).json({ message: "Failed to fetch inventory" });
+    }
+  });
+
+  // Billing routes (demo mode)
+  app.get('/api/invoices', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const invoices = await storage.getInvoices(tenantId);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
     }
   });
 
