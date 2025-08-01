@@ -371,6 +371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const tenantId = req.tenantId || user.tenantId;
       
+      console.log(`[CONTACTS DEBUG] User: ${user?.id}, TenantId: ${tenantId}, req.tenantId: ${req.tenantId}, user.tenantId: ${user?.tenantId}`);
+      
       // Get query parameters
       const {
         search = '',
@@ -391,6 +393,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build filters based on role and view
       let filters: any = { tenantId };
+      
+      console.log(`[CONTACTS DEBUG] Filters before role logic: ${JSON.stringify(filters)}`);
       
       // Role-based access control
       if (user.role === 'salesperson') {
@@ -473,6 +477,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      console.log(`[CONTACTS DEBUG] Final filters: ${JSON.stringify(filters)}, search: '${search}', sortBy: ${sortBy}, offset: ${offset}, limit: ${limitNum}`);
+      
       const contacts = await storage.getContacts({
         filters,
         search: search as string,
@@ -483,6 +489,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const total = await storage.getContactsCount({ filters, search: search as string });
+      
+      console.log(`[CONTACTS DEBUG] Results: contacts.length=${contacts.length}, total=${total}`);
 
       res.json({
         contacts,
