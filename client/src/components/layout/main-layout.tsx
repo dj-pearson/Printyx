@@ -1,7 +1,8 @@
 import { useEffect, ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import Sidebar from "@/components/layout/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import RoleBasedSidebar from "@/components/layout/role-based-sidebar";
 import Header from "@/components/layout/header";
 import MobileBottomNav from "@/components/ui/mobile-bottom-nav";
 
@@ -41,22 +42,26 @@ export default function MainLayout({ children, title, description }: MainLayoutP
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Desktop Sidebar - Hidden on mobile */}
-      <div className="hidden md:block">
-        <Sidebar />
-      </div>
-      
-      <main className="flex-1 overflow-auto">
-        <Header title={title} description={description} />
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-gray-50">
+        {/* Unified Responsive Sidebar */}
+        <RoleBasedSidebar />
         
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6 min-h-0">
-          {children}
+        <SidebarInset className="flex-1">
+          <Header title={title} description={description} />
+          
+          <main className="flex-1 overflow-auto">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6 min-h-0">
+              {children}
+            </div>
+          </main>
+        </SidebarInset>
+        
+        {/* Mobile Bottom Navigation - Only show on small screens */}
+        <div className="md:hidden">
+          <MobileBottomNav />
         </div>
-      </main>
-      
-      {/* Mobile Bottom Navigation */}
-      <MobileBottomNav />
-    </div>
+      </div>
+    </SidebarProvider>
   );
 }

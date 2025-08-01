@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import MobileNav from "@/components/ui/mobile-nav";
 
 interface HeaderProps {
   title?: string;
@@ -26,17 +26,12 @@ export default function Header({ title, description }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="flex h-16 items-center px-4 lg:px-6">
-        {/* Mobile Navigation */}
-        <MobileNav className="mr-2" />
+        {/* Sidebar Trigger - Shows hamburger menu on mobile, desktop toggle */}
+        <SidebarTrigger className="mr-2" />
         
-        {/* Desktop Logo */}
-        <div className="mr-4 hidden md:flex">
-          <h1 className="text-xl font-bold text-blue-600">Printyx</h1>
-        </div>
-
-        {/* Mobile Logo */}
-        <div className="flex-1 md:hidden">
-          <h1 className="text-lg font-bold text-blue-600">Printyx</h1>
+        {/* Logo */}
+        <div className="mr-4 flex">
+          <h1 className="text-xl font-bold text-blue-600 md:text-xl text-lg">Printyx</h1>
         </div>
 
         {/* Search - Responsive design */}
