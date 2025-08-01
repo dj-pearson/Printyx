@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { authRoutes } from "./auth-routes";
 import { 
   requireRole, 
   requireSalesAccess, 
@@ -27,17 +29,25 @@ import {
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware - skip for now due to session issues
-  console.log("Skipping auth setup temporarily");
-  /*
-  try {
-    await setupAuth(app);
-    console.log("Auth setup completed successfully");
-  } catch (error) {
-    console.error("Auth setup failed:", error);
-    // Continue without auth for now to get the app running
-  }
-  */
+  // Setup session management
+  const pgStore = connectPg(session);
+  app.use(session({
+    store: new pgStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || 'demo-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+
+  // Auth routes
+  app.use('/api/auth', authRoutes);
 
   // Auth routes - return demo user with role information
   app.get('/api/auth/user', async (req: any, res) => {

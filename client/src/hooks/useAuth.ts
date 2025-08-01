@@ -1,18 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 
 export function useAuth() {
-  // Check for demo authentication flag
-  const isDemoAuth = typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true';
-  
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading, error } = useQuery({
     queryKey: ["/api/auth/user"],
     retry: false,
-    enabled: isDemoAuth, // Only fetch if demo authenticated
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   return {
     user,
-    isLoading: isDemoAuth ? isLoading : false,
-    isAuthenticated: isDemoAuth && (isLoading || !!user),
+    isLoading,
+    isAuthenticated: !!user && !error,
   };
 }

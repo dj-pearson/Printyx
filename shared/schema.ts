@@ -66,6 +66,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  passwordHash: varchar("password_hash"), // bcrypt hashed password
   roleId: varchar("role_id"), // references roles.id
   teamId: varchar("team_id"), // references teams.id
   managerId: varchar("manager_id"), // direct manager - references users.id
@@ -687,6 +688,13 @@ export const insertTenantSchema = createInsertSchema(tenants).omit({
   updatedAt: true,
 });
 
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+});
+
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,
   createdAt: true,
@@ -746,6 +754,7 @@ export const insertCustomerInteractionSchema = insertLeadInteractionSchema;
 
 // Type exports
 export type UpsertUser = typeof users.$inferInsert;
+export type InsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Role = typeof roles.$inferSelect;
 export type Team = typeof teams.$inferSelect;

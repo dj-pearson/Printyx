@@ -2,6 +2,7 @@ import {
   users,
   roles,
   teams,
+  tenants,
   userCustomerAssignments,
   leads,
   leadInteractions,
@@ -18,6 +19,7 @@ import {
   invoiceLineItems,
   type User,
   type UpsertUser,
+  type InsertUser,
   type Role,
   type Team,
   type UserCustomerAssignment,
@@ -34,12 +36,18 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 // Interface for storage operations with role-based access control
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Authentication operations
+  authenticateUser(email: string, password: string): Promise<User | null>;
+  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   
   // Role-based data access operations
   getUserWithRole(id: string): Promise<(User & { role?: Role; team?: Team }) | undefined>;
@@ -117,6 +125,39 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
+    return user;
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .returning();
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async authenticateUser(email: string, password: string): Promise<User | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user || !user.passwordHash) {
+      return null;
+    }
+
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+      return null;
+    }
+
+    // Update last login time
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(users.id, user.id));
+
     return user;
   }
 

@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
-import Landing from "@/pages/landing";
+import Login from "@/pages/Login";
 import Dashboard from "@/pages/dashboard";
 import Customers from "@/pages/customers";
 import CRMEnhanced from "@/pages/CRMEnhanced";
@@ -30,7 +30,7 @@ function Router() {
           </div>
         </div>
       ) : !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <Route path="/" component={Login} />
       ) : (
         <>
           <Route path="/" component={Dashboard} />
