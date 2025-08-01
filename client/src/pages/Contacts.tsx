@@ -104,8 +104,10 @@ export default function Contacts() {
         ...filters
       });
       const response = await apiRequest('GET', `/api/contacts?${params}`);
+      const data = await response.json();
       console.log('[CONTACTS UI DEBUG] Raw API response:', response);
-      return response;
+      console.log('[CONTACTS UI DEBUG] Parsed JSON data:', data);
+      return data;
     }
   });
 
