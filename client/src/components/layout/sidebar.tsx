@@ -146,6 +146,15 @@ export default function Sidebar() {
   // Get navigation sections based on user role
   const navigationSections = getNavigationSections(user?.role);
   
+  // Debug logging  
+  console.log("=== SIDEBAR DEBUG ===");
+  console.log("User role data:", user?.role);
+  console.log("isPlatformRole:", isPlatformRole);
+  console.log("Navigation sections count:", navigationSections?.length);
+  console.log("Navigation sections:", navigationSections);
+  console.log("Tenants data:", tenants);
+  console.log("Tenants error:", tenantsError);
+  
 
 
   // Handle tenant selection for platform users
