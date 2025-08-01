@@ -5,11 +5,16 @@ import {
   equipment,
   contracts,
   serviceTickets,
+  serviceTicketUpdates,
   inventoryItems,
   technicians,
   meterReadings,
   invoices,
   invoiceLineItems,
+  leads,
+  quotes,
+  customerInteractions,
+  customerContacts,
   type User,
   type UpsertUser,
   type Tenant,
@@ -32,6 +37,14 @@ import {
   type InsertInvoice,
   type InvoiceLineItem,
   type InsertInvoiceLineItem,
+  type Lead,
+  type InsertLead,
+  type Quote,
+  type InsertQuote,
+  type CustomerInteraction,
+  type InsertCustomerInteraction,
+  type CustomerContact,
+  type InsertCustomerContact,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, count, sum, sql } from "drizzle-orm";
@@ -657,6 +670,96 @@ export class DatabaseStorage implements IStorage {
     );
 
     return matchingTechnicians.length > 0 ? matchingTechnicians[0] : null;
+  }
+
+  // Enhanced CRM Methods
+  async getLeads(tenantId: string): Promise<Lead[]> {
+    return await db.select().from(leads).where(eq(leads.tenantId, tenantId)).orderBy(desc(leads.createdAt));
+  }
+
+  async getLead(id: string, tenantId: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(and(eq(leads.id, id), eq(leads.tenantId, tenantId)));
+    return lead;
+  }
+
+  async createLead(leadData: InsertLead): Promise<Lead> {
+    const [lead] = await db.insert(leads).values(leadData).returning();
+    return lead;
+  }
+
+  async updateLead(id: string, leadData: Partial<InsertLead>, tenantId: string): Promise<Lead> {
+    const [lead] = await db
+      .update(leads)
+      .set({ ...leadData, updatedAt: new Date() })
+      .where(and(eq(leads.id, id), eq(leads.tenantId, tenantId)))
+      .returning();
+    return lead;
+  }
+
+  async getQuotes(tenantId: string): Promise<Quote[]> {
+    return await db.select().from(quotes).where(eq(quotes.tenantId, tenantId)).orderBy(desc(quotes.createdAt));
+  }
+
+  async getQuote(id: string, tenantId: string): Promise<Quote | undefined> {
+    const [quote] = await db.select().from(quotes).where(and(eq(quotes.id, id), eq(quotes.tenantId, tenantId)));
+    return quote;
+  }
+
+  async createQuote(quoteData: InsertQuote): Promise<Quote> {
+    // Generate quote number
+    const count = await db.$count(quotes, eq(quotes.tenantId, quoteData.tenantId));
+    const quoteNumber = `QUO-${Date.now()}-${String(count + 1).padStart(3, '0')}`;
+    
+    const [quote] = await db.insert(quotes).values({
+      ...quoteData,
+      quoteNumber,
+    }).returning();
+    return quote;
+  }
+
+  async updateQuote(id: string, quoteData: Partial<InsertQuote>, tenantId: string): Promise<Quote> {
+    const [quote] = await db
+      .update(quotes)
+      .set({ ...quoteData, updatedAt: new Date() })
+      .where(and(eq(quotes.id, id), eq(quotes.tenantId, tenantId)))
+      .returning();
+    return quote;
+  }
+
+  async getCustomerInteractions(tenantId: string): Promise<CustomerInteraction[]> {
+    return await db.select().from(customerInteractions).where(eq(customerInteractions.tenantId, tenantId)).orderBy(desc(customerInteractions.createdAt));
+  }
+
+  async getCustomerInteraction(id: string, tenantId: string): Promise<CustomerInteraction | undefined> {
+    const [interaction] = await db.select().from(customerInteractions).where(and(eq(customerInteractions.id, id), eq(customerInteractions.tenantId, tenantId)));
+    return interaction;
+  }
+
+  async createCustomerInteraction(interactionData: InsertCustomerInteraction): Promise<CustomerInteraction> {
+    const [interaction] = await db.insert(customerInteractions).values(interactionData).returning();
+    return interaction;
+  }
+
+  async updateCustomerInteraction(id: string, interactionData: Partial<InsertCustomerInteraction>, tenantId: string): Promise<CustomerInteraction> {
+    const [interaction] = await db
+      .update(customerInteractions)
+      .set({ ...interactionData, updatedAt: new Date() })
+      .where(and(eq(customerInteractions.id, id), eq(customerInteractions.tenantId, tenantId)))
+      .returning();
+    return interaction;
+  }
+
+  async getCustomerContacts(tenantId: string, customerId?: string): Promise<CustomerContact[]> {
+    const whereCondition = customerId 
+      ? and(eq(customerContacts.tenantId, tenantId), eq(customerContacts.customerId, customerId))
+      : eq(customerContacts.tenantId, tenantId);
+    
+    return await db.select().from(customerContacts).where(whereCondition).orderBy(asc(customerContacts.firstName));
+  }
+
+  async createCustomerContact(contactData: InsertCustomerContact): Promise<CustomerContact> {
+    const [contact] = await db.insert(customerContacts).values(contactData).returning();
+    return contact;
   }
 }
 

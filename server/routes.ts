@@ -399,6 +399,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced CRM Routes
+
+  // Leads management
+  app.get("/api/leads", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const leads = await storage.getLeads(tenantId);
+      res.json(leads);
+    } catch (error) {
+      console.error("Failed to get leads:", error);
+      res.status(500).json({ error: "Failed to get leads" });
+    }
+  });
+
+  app.get("/api/leads/:id", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { id } = req.params;
+      const lead = await storage.getLead(id, tenantId);
+      if (!lead) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+      res.json(lead);
+    } catch (error) {
+      console.error("Failed to get lead:", error);
+      res.status(500).json({ error: "Failed to get lead" });
+    }
+  });
+
+  app.post("/api/leads", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const leadData = { ...req.body, tenantId, createdBy: "demo-user-123" };
+      const lead = await storage.createLead(leadData);
+      res.status(201).json(lead);
+    } catch (error) {
+      console.error("Failed to create lead:", error);
+      res.status(500).json({ error: "Failed to create lead" });
+    }
+  });
+
+  app.patch("/api/leads/:id", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { id } = req.params;
+      const updateData = req.body;
+      const lead = await storage.updateLead(id, updateData, tenantId);
+      res.json(lead);
+    } catch (error) {
+      console.error("Failed to update lead:", error);
+      res.status(500).json({ error: "Failed to update lead" });
+    }
+  });
+
+  // Quotes management
+  app.get("/api/quotes", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const quotes = await storage.getQuotes(tenantId);
+      res.json(quotes);
+    } catch (error) {
+      console.error("Failed to get quotes:", error);
+      res.status(500).json({ error: "Failed to get quotes" });
+    }
+  });
+
+  app.post("/api/quotes", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const quoteData = { ...req.body, tenantId, createdBy: "demo-user-123" };
+      const quote = await storage.createQuote(quoteData);
+      res.status(201).json(quote);
+    } catch (error) {
+      console.error("Failed to create quote:", error);
+      res.status(500).json({ error: "Failed to create quote" });
+    }
+  });
+
+  // Customer interactions management
+  app.get("/api/customer-interactions", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const interactions = await storage.getCustomerInteractions(tenantId);
+      res.json(interactions);
+    } catch (error) {
+      console.error("Failed to get customer interactions:", error);
+      res.status(500).json({ error: "Failed to get customer interactions" });
+    }
+  });
+
+  app.post("/api/customer-interactions", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const interactionData = { ...req.body, tenantId, createdBy: "demo-user-123" };
+      const interaction = await storage.createCustomerInteraction(interactionData);
+      res.status(201).json(interaction);
+    } catch (error) {
+      console.error("Failed to create customer interaction:", error);
+      res.status(500).json({ error: "Failed to create customer interaction" });
+    }
+  });
+
+  // Customer contacts management
+  app.get("/api/customer-contacts", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { customerId } = req.query;
+      const contacts = await storage.getCustomerContacts(tenantId, customerId as string);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Failed to get customer contacts:", error);
+      res.status(500).json({ error: "Failed to get customer contacts" });
+    }
+  });
+
+  app.post("/api/customer-contacts", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const contactData = { ...req.body, tenantId };
+      const contact = await storage.createCustomerContact(contactData);
+      res.status(201).json(contact);
+    } catch (error) {
+      console.error("Failed to create customer contact:", error);
+      res.status(500).json({ error: "Failed to create customer contact" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

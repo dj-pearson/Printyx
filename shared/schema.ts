@@ -486,3 +486,112 @@ export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoiceLineItem = z.infer<typeof insertInvoiceLineItemSchema>;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+
+// Enhanced CRM tables for sales pipeline and customer management
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  companyName: varchar("company_name").notNull(),
+  contactName: varchar("contact_name").notNull(),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  address: text("address"),
+  source: varchar("source").notNull().default('website'), // website, referral, cold_call, trade_show
+  status: varchar("status").notNull().default('new'), // new, qualified, proposal, negotiation, closed_won, closed_lost
+  assignedSalesRepId: varchar("assigned_sales_rep_id"),
+  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }).default('0'),
+  estimatedCloseDate: timestamp("estimated_close_date"),
+  notes: text("notes"),
+  lastContactDate: timestamp("last_contact_date"),
+  nextFollowUpDate: timestamp("next_follow_up_date"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const quotes = pgTable("quotes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  leadId: varchar("lead_id"),
+  customerId: varchar("customer_id"),
+  quoteNumber: varchar("quote_number").notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull().default('0'),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default('0'),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status").notNull().default('draft'), // draft, sent, accepted, declined, expired
+  validUntil: timestamp("valid_until").notNull(),
+  sentDate: timestamp("sent_date"),
+  acceptedDate: timestamp("accepted_date"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const quoteLineItems = pgTable("quote_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  quoteId: varchar("quote_id").notNull(),
+  description: varchar("description").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 4 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  itemType: varchar("item_type").notNull().default('service'), // equipment, service, supply, maintenance
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const customerInteractions = pgTable("customer_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  customerId: varchar("customer_id"),
+  leadId: varchar("lead_id"),
+  interactionType: varchar("interaction_type").notNull(), // call, email, meeting, note, demo
+  subject: varchar("subject").notNull(),
+  description: text("description"),
+  outcome: varchar("outcome"), // positive, neutral, negative, follow_up_required
+  nextAction: text("next_action"),
+  scheduledDate: timestamp("scheduled_date"),
+  completedDate: timestamp("completed_date"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const customerContacts = pgTable("customer_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  customerId: varchar("customer_id").notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  title: varchar("title"),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  mobile: varchar("mobile"),
+  isPrimary: boolean("is_primary").default(false),
+  department: varchar("department"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CRM Type exports
+export type Lead = typeof leads.$inferSelect;
+export type Quote = typeof quotes.$inferSelect;
+export type QuoteLineItem = typeof quoteLineItems.$inferSelect;
+export type CustomerInteraction = typeof customerInteractions.$inferSelect;
+export type CustomerContact = typeof customerContacts.$inferSelect;
+
+// CRM Insert schemas
+export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertQuoteSchema = createInsertSchema(quotes).omit({ id: true, quoteNumber: true, createdAt: true, updatedAt: true });
+export const insertQuoteLineItemSchema = createInsertSchema(quoteLineItems).omit({ id: true, createdAt: true });
+export const insertCustomerInteractionSchema = createInsertSchema(customerInteractions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCustomerContactSchema = createInsertSchema(customerContacts).omit({ id: true, createdAt: true, updatedAt: true });
+
+// CRM Insert types
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;
+export type InsertQuoteLineItem = z.infer<typeof insertQuoteLineItemSchema>;
+export type InsertCustomerInteraction = z.infer<typeof insertCustomerInteractionSchema>;
+export type InsertCustomerContact = z.infer<typeof insertCustomerContactSchema>;

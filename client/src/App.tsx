@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Customers from "@/pages/customers";
+import CRMEnhanced from "@/pages/CRMEnhanced";
 import Contracts from "@/pages/contracts";
 import ServiceDispatchEnhanced from "@/pages/ServiceDispatchEnhanced";
 import Inventory from "@/pages/inventory";
@@ -34,6 +35,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
+          <Route path="/crm" component={CRMEnhanced} />
           <Route path="/contracts" component={Contracts} />
           <Route path="/meter-readings" component={MeterReadings} />
           <Route path="/invoices" component={Invoices} />
