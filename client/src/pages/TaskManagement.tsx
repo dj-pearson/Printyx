@@ -80,6 +80,27 @@ export default function TaskManagement() {
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const { toast } = useToast();
+  
+  // Form state for creating tasks
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    assignedTo: '',
+    dueDate: '',
+    estimatedHours: ''
+  });
+  
+  // Form state for creating projects
+  const [projectForm, setProjectForm] = useState({
+    name: '',
+    description: '',
+    projectManager: '',
+    customerId: '',
+    startDate: '',
+    endDate: '',
+    estimatedBudget: ''
+  });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks", selectedView, selectedPriority, selectedStatus],
@@ -95,10 +116,7 @@ export default function TaskManagement() {
 
   const createTask = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/tasks", {
-        method: "POST",
-        body: data,
-      });
+      return apiRequest("/api/tasks", "POST", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -113,10 +131,7 @@ export default function TaskManagement() {
 
   const createProject = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/projects", {
-        method: "POST",
-        body: data,
-      });
+      return apiRequest("/api/projects", "POST", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -130,10 +145,7 @@ export default function TaskManagement() {
 
   const updateTaskStatus = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
-      return apiRequest(`/api/tasks/${taskId}`, {
-        method: "PATCH",
-        body: { status },
-      });
+      return apiRequest(`/api/tasks/${taskId}`, "PATCH", { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -290,7 +302,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">My Tasks</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{mockStats.myTasks}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{taskStats?.totalTasks || 0}</p>
                   <p className="text-xs text-blue-600">Active assignments</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -305,7 +317,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">In Progress</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{mockStats.inProgressTasks}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{taskStats?.inProgressTasks || 0}</p>
                   <p className="text-xs text-orange-600">Active tasks</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -320,7 +332,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{mockStats.completedTasks}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{taskStats?.completedTasks || 0}</p>
                   <p className="text-xs text-green-600">This period</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -335,7 +347,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Overdue</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-red-600">{mockStats.overdueTasks}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-red-600">{taskStats?.overdueTasks || 0}</p>
                   <p className="text-xs text-red-600">Need attention</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -371,16 +383,26 @@ export default function TaskManagement() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="task-title">Title</Label>
-                      <Input id="task-title" placeholder="Enter task title" />
+                      <Input 
+                        id="task-title" 
+                        placeholder="Enter task title" 
+                        value={taskForm.title}
+                        onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="task-description">Description</Label>
-                      <Textarea id="task-description" placeholder="Enter task description" />
+                      <Textarea 
+                        id="task-description" 
+                        placeholder="Enter task description" 
+                        value={taskForm.description}
+                        onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Priority</Label>
-                        <Select defaultValue="medium">
+                        <Select value={taskForm.priority} onValueChange={(value) => setTaskForm({...taskForm, priority: value})}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -394,7 +416,7 @@ export default function TaskManagement() {
                       </div>
                       <div className="space-y-2">
                         <Label>Assign To</Label>
-                        <Select>
+                        <Select value={taskForm.assignedTo} onValueChange={(value) => setTaskForm({...taskForm, assignedTo: value})}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select assignee" />
                           </SelectTrigger>
@@ -409,17 +431,54 @@ export default function TaskManagement() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Due Date</Label>
-                        <Input type="datetime-local" />
+                        <Input 
+                          type="datetime-local" 
+                          value={taskForm.dueDate}
+                          onChange={(e) => setTaskForm({...taskForm, dueDate: e.target.value})}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Estimated Hours</Label>
-                        <Input type="number" placeholder="0" min="0" step="0.5" />
+                        <Input 
+                          type="number" 
+                          placeholder="0" 
+                          min="0" 
+                          step="0.5" 
+                          value={taskForm.estimatedHours}
+                          onChange={(e) => setTaskForm({...taskForm, estimatedHours: e.target.value})}
+                        />
                       </div>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setIsCreateTaskOpen(false)}>Cancel</Button>
-                    <Button onClick={() => createTask.mutate({})}>Create Task</Button>
+                    <Button onClick={() => {
+                      if (!taskForm.title.trim()) {
+                        toast({
+                          title: "Error",
+                          description: "Please enter a task title.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      createTask.mutate({
+                        title: taskForm.title,
+                        description: taskForm.description,
+                        priority: taskForm.priority,
+                        assignedTo: taskForm.assignedTo,
+                        dueDate: taskForm.dueDate,
+                        estimatedHours: taskForm.estimatedHours ? parseFloat(taskForm.estimatedHours) : undefined
+                      });
+                      // Reset form
+                      setTaskForm({
+                        title: '',
+                        description: '',
+                        priority: 'medium',
+                        assignedTo: '',
+                        dueDate: '',
+                        estimatedHours: ''
+                      });
+                    }}>Create Task</Button>
                   </div>
                 </DialogContent>
               </Dialog>
