@@ -4,6 +4,8 @@ import {
   teams,
   tenants,
   userCustomerAssignments,
+  companies,
+  companyContacts,
   leads,
   leadActivities,
   leadContacts,
@@ -33,7 +35,12 @@ import {
   type Role,
   type Team,
   type UserCustomerAssignment,
+  type Company,
+  type InsertCompany,
+  type CompanyContact,
+  type InsertCompanyContact,
   type Lead,
+  type InsertLead,
   type LeadActivity,
   type LeadContact,
   type LeadRelatedRecord,
@@ -92,7 +99,21 @@ export interface IStorage {
   updateCustomer(id: string, customer: Partial<Customer>, tenantId: string): Promise<Customer | undefined>;
   deleteCustomer(id: string, tenantId: string): Promise<boolean>;
   
-  // Lead operations with RBAC
+  // Company operations (new primary business entity)
+  getCompanies(tenantId: string): Promise<Company[]>;
+  getCompany(id: string, tenantId: string): Promise<Company | undefined>;
+  createCompany(company: Omit<Company, "id" | "createdAt" | "updatedAt">): Promise<Company>;
+  updateCompany(id: string, company: Partial<Company>, tenantId: string): Promise<Company | undefined>;
+  deleteCompany(id: string, tenantId: string): Promise<boolean>;
+
+  // Company contact operations
+  getCompanyContacts(companyId: string, tenantId: string): Promise<CompanyContact[]>;
+  getCompanyContact(id: string, tenantId: string): Promise<CompanyContact | undefined>;
+  createCompanyContact(contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact>;
+  updateCompanyContact(id: string, contact: Partial<CompanyContact>, tenantId: string): Promise<CompanyContact | undefined>;
+  deleteCompanyContact(id: string, tenantId: string): Promise<boolean>;
+
+  // Lead operations (simplified pipeline tracking)
   getLeads(tenantId: string): Promise<Lead[]>;
   getLead(id: string, tenantId: string): Promise<Lead | undefined>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
@@ -378,7 +399,78 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  // Lead operations
+  // Company operations (new primary business entity)
+  async getCompanies(tenantId: string): Promise<Company[]> {
+    return await db.select().from(companies).where(eq(companies.tenantId, tenantId));
+  }
+
+  async getCompany(id: string, tenantId: string): Promise<Company | undefined> {
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
+    return company;
+  }
+
+  async createCompany(company: Omit<Company, "id" | "createdAt" | "updatedAt">): Promise<Company> {
+    const [newCompany] = await db.insert(companies).values(company).returning();
+    return newCompany;
+  }
+
+  async updateCompany(id: string, company: Partial<Company>, tenantId: string): Promise<Company | undefined> {
+    const [updatedCompany] = await db
+      .update(companies)
+      .set({ ...company, updatedAt: new Date() })
+      .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)))
+      .returning();
+    return updatedCompany;
+  }
+
+  async deleteCompany(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(companies)
+      .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
+    return result.rowCount > 0;
+  }
+
+  // Company contact operations
+  async getCompanyContacts(companyId: string, tenantId: string): Promise<CompanyContact[]> {
+    return await db
+      .select()
+      .from(companyContacts)
+      .where(and(eq(companyContacts.companyId, companyId), eq(companyContacts.tenantId, tenantId)));
+  }
+
+  async getCompanyContact(id: string, tenantId: string): Promise<CompanyContact | undefined> {
+    const [contact] = await db
+      .select()
+      .from(companyContacts)
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
+    return contact;
+  }
+
+  async createCompanyContact(contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact> {
+    const [newContact] = await db.insert(companyContacts).values(contact).returning();
+    return newContact;
+  }
+
+  async updateCompanyContact(id: string, contact: Partial<CompanyContact>, tenantId: string): Promise<CompanyContact | undefined> {
+    const [updatedContact] = await db
+      .update(companyContacts)
+      .set({ ...contact, updatedAt: new Date() })
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)))
+      .returning();
+    return updatedContact;
+  }
+
+  async deleteCompanyContact(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(companyContacts)
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
+    return result.rowCount > 0;
+  }
+
+  // Lead operations (simplified pipeline tracking)
   async getLeads(tenantId: string): Promise<Lead[]> {
     return await db.select().from(leads).where(eq(leads.tenantId, tenantId));
   }

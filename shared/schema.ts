@@ -87,61 +87,122 @@ export const userCustomerAssignments = pgTable("user_customer_assignments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// CRM - Enhanced Leads table for comprehensive company/lead management
-export const leads = pgTable("leads", {
+// Companies - Core business entity that replaces the customer concept
+export const companies = pgTable("companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   
-  // Company Information (matching your CRM screenshots)
-  businessName: varchar("business_name").notNull(),
+  // Business Record Information (based on your CRM screenshots)
+  businessRecordType: varchar("business_record_type").notNull().default("Customer"),
+  customerNumber: varchar("customer_number").unique(), // e.g., "10243"
+  businessName: varchar("business_name").notNull(), // e.g., "DES MOINES PUBLIC SCHOOLS"
   businessSite: varchar("business_site"), // e.g., "MAURY BLDG 1"
-  parentCompany: varchar("parent_company"),
+  parentBusiness: varchar("parent_business"),
   industry: varchar("industry"),
+  activity: varchar("activity"),
   description: text("description"),
   
-  // Primary Contact
-  contactName: varchar("contact_name").notNull(),
-  contactTitle: varchar("contact_title"),
-  phone: varchar("phone"),
-  fax: varchar("fax"),
-  email: varchar("email"),
+  // Contact Information
+  phone: varchar("phone"), // e.g., "515-242-7911"
+  fax: varchar("fax"), // e.g., "515-242-8295" 
   website: varchar("website"),
+  nextCallBack: timestamp("next_call_back"),
+  
+  // Address Information (matching your screenshots)
+  billingAddress: text("billing_address"), // "2100 FLEUR DR"
+  billingCity: varchar("billing_city"), // "DES MOINES"
+  billingState: varchar("billing_state"), // "IA"
+  billingZip: varchar("billing_zip"), // "50321"
+  shippingAddress: text("shipping_address"),
+  shippingCity: varchar("shipping_city"),
+  shippingState: varchar("shipping_state"), 
+  shippingZip: varchar("shipping_zip"),
   
   // Business Details
-  customerNumber: varchar("customer_number"), // For converted customers
-  customerSince: timestamp("customer_since"),
+  customerSince: timestamp("customer_since"), // "11/15/2002"
   employees: integer("employees"),
   annualRevenue: decimal("annual_revenue", { precision: 12, scale: 2 }),
   numberOfLocations: integer("number_of_locations"),
   sicCode: varchar("sic_code"),
   productServicesInterest: text("product_services_interest"),
+  numberOfStepsRights: integer("number_of_steps_rights"),
+  specialDeliveryInstructions: text("special_delivery_instructions"),
+  taxState: varchar("tax_state"),
+  elevator: varchar("elevator"),
+  
+  // System Information  
+  createdBy: varchar("created_by"), // "Informix Office Systems Administrator"
+  businessOwner: varchar("business_owner"), // "Nate Olivennus"  
+  lastModifiedBy: varchar("last_modified_by"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Company Contacts - All contacts at a company (replaces separate contact/lead concept)
+export const companyContacts = pgTable("company_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  companyId: varchar("company_id").notNull(),
+  
+  // Contact Information (matching your CRM screenshots)
+  salutation: varchar("salutation"), // "--None--"
+  firstName: varchar("first_name"), // Required field
+  lastName: varchar("last_name").notNull(), // Required field
+  title: varchar("title"), 
+  department: varchar("department"),
+  phone: varchar("phone"), // "515-242-7911"
+  mobile: varchar("mobile"),
+  email: varchar("email"),
+  reportsTo: varchar("reports_to"), // Search contacts field
+  contactRoles: text("contact_roles"), // JSON array
+  isPrimaryContact: boolean("is_primary_contact").default(false),
+  
+  // Additional Information
+  assistant: varchar("assistant"),
+  assistantPhone: varchar("assistant_phone"),
+  otherPhone: varchar("other_phone"),
+  homePhone: varchar("home_phone"),
+  fax: varchar("fax"),
+  birthdate: timestamp("birthdate"),
   
   // Address Information
-  billingAddress: text("billing_address"),
-  billingCity: varchar("billing_city"),
-  billingState: varchar("billing_state"),
-  billingZip: varchar("billing_zip"),
-  shippingAddress: text("shipping_address"),
-  shippingCity: varchar("shipping_city"),
-  shippingState: varchar("shipping_state"),
-  shippingZip: varchar("shipping_zip"),
+  mailingAddress: text("mailing_address"),
+  mailingCity: varchar("mailing_city"),
+  mailingState: varchar("mailing_state"), 
+  mailingZip: varchar("mailing_zip"),
+  otherAddress: text("other_address"),
+  otherCity: varchar("other_city"),
+  otherState: varchar("other_state"),
+  otherZip: varchar("other_zip"),
   
-  // CRM Status & Pipeline
-  recordType: varchar("record_type").notNull().default('lead'), // lead, customer, inactive
-  status: varchar("status").notNull().default('new'), // new, contacted, qualified, proposal, closed_won, closed_lost
-  priority: varchar("priority").notNull().default('medium'), // low, medium, high
-  source: varchar("source"), // website, referral, cold_call, trade_show, etc.
-  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
-  estimatedCloseDate: timestamp("estimated_close_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CRM - Simplified Leads table for sales pipeline tracking
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  companyId: varchar("company_id").notNull(), // Always tied to a company
+  contactId: varchar("contact_id").notNull(), // Always tied to a specific contact
   
-  // Contact Management
-  assignedSalespersonId: varchar("assigned_salesperson_id"),
-  nextCallBack: timestamp("next_call_back"),
+  // Lead Pipeline Information
+  leadSource: varchar("lead_source").notNull().default("website"), // website, referral, cold_call, trade_show, etc.
+  leadStatus: varchar("lead_status").notNull().default("new"), // new, qualified, proposal, negotiation, closed_won, closed_lost
+  estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }),
+  probability: integer("probability").default(50), // 0-100%
+  closeDate: timestamp("close_date"),
+  
+  // Assignment & Ownership
+  ownerId: varchar("owner_id"), // User who owns this lead
+  leadScore: integer("lead_score").default(0), // 0-100 scoring system
+  priority: varchar("priority").default("medium"), // high, medium, low
+  
+  // Tracking & Notes
+  notes: text("notes"),
   lastContactDate: timestamp("last_contact_date"),
   nextFollowUpDate: timestamp("next_follow_up_date"),
-  
-  // Notes & Tracking
-  notes: text("notes"),
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -596,7 +657,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   directReports: many(users),
   customerAssignments: many(userCustomerAssignments),
-  assignedLeads: many(leads),
+  ownedLeads: many(leads),
   createdLeads: many(leads),
   createdQuotes: many(quotes),
 }));
@@ -616,13 +677,42 @@ export const userCustomerAssignmentsRelations = relations(userCustomerAssignment
   }),
 }));
 
+// Company Relations - New primary business entity
+export const companiesRelations = relations(companies, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [companies.tenantId],
+    references: [tenants.id],
+  }),
+  contacts: many(companyContacts),
+  leads: many(leads),
+}));
+
+export const companyContactsRelations = relations(companyContacts, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [companyContacts.tenantId],
+    references: [tenants.id],
+  }),
+  company: one(companies, {
+    fields: [companyContacts.companyId],
+    references: [companies.id],
+  }),
+}));
+
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   tenant: one(tenants, {
     fields: [leads.tenantId],
     references: [tenants.id],
   }),
-  assignedSalesperson: one(users, {
-    fields: [leads.assignedSalespersonId],
+  company: one(companies, {
+    fields: [leads.companyId],
+    references: [companies.id],
+  }),
+  contact: one(companyContacts, {
+    fields: [leads.contactId],
+    references: [companyContacts.id],
+  }),
+  owner: one(users, {
+    fields: [leads.ownerId],
     references: [users.id],
   }),
   createdByUser: one(users, {
@@ -746,6 +836,8 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   invoices: many(invoices),
   invoiceLineItems: many(invoiceLineItems),
   leads: many(leads),
+  companies: many(companies),
+  companyContacts: many(companyContacts),
   quotes: many(quotes),
   userCustomerAssignments: many(userCustomerAssignments),
   productModels: many(productModels),
@@ -895,6 +987,18 @@ export const invoiceLineItemsRelations = relations(invoiceLineItems, ({ one }) =
   }),
 }));
 
+// Type exports
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = typeof companies.$inferInsert;
+export type CompanyContact = typeof companyContacts.$inferSelect;
+export type InsertCompanyContact = typeof companyContacts.$inferInsert;
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert;
+
+// Legacy types for backward compatibility
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;
+
 // Insert schemas for forms
 export const insertRoleSchema = createInsertSchema(roles).omit({
   id: true,
@@ -910,6 +1014,18 @@ export const insertTeamSchema = createInsertSchema(teams).omit({
 export const insertUserCustomerAssignmentSchema = createInsertSchema(userCustomerAssignments).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertCompanySchema = createInsertSchema(companies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCompanyContactSchema = createInsertSchema(companyContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertLeadSchema = createInsertSchema(leads).omit({

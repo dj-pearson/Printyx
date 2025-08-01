@@ -6,6 +6,8 @@ import { storage } from "./storage";
 import { authRoutes } from "./auth-routes";
 import {
   insertCustomerSchema,
+  insertCompanySchema,
+  insertCompanyContactSchema,
   insertLeadSchema,
   insertLeadActivitySchema,
   insertLeadContactSchema,
@@ -291,6 +293,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating customer:", error);
       res.status(500).json({ message: "Failed to create customer" });
+    }
+  });
+
+  // Company management routes (new primary business entity)
+  app.get('/api/companies', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const companies = await storage.getCompanies(tenantId);
+      res.json(companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  });
+
+  app.get('/api/companies/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const company = await storage.getCompany(id, tenantId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company:", error);
+      res.status(500).json({ message: "Failed to fetch company" });
+    }
+  });
+
+  app.post('/api/companies', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertCompanySchema.parse({
+        ...req.body,
+        tenantId: tenantId,
+      });
+      const company = await storage.createCompany(validatedData);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error("Error creating company:", error);
+      res.status(500).json({ message: "Failed to create company" });
+    }
+  });
+
+  app.put('/api/companies/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const updatedCompany = await storage.updateCompany(id, req.body, tenantId);
+      if (!updatedCompany) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error("Error updating company:", error);
+      res.status(500).json({ message: "Failed to update company" });
+    }
+  });
+
+  // Company contact routes
+  app.get('/api/companies/:companyId/contacts', async (req: any, res) => {
+    try {
+      const { companyId } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const contacts = await storage.getCompanyContacts(companyId, tenantId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching company contacts:", error);
+      res.status(500).json({ message: "Failed to fetch company contacts" });
+    }
+  });
+
+  app.post('/api/companies/:companyId/contacts', async (req: any, res) => {
+    try {
+      const { companyId } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertCompanyContactSchema.parse({
+        ...req.body,
+        tenantId: tenantId,
+        companyId: companyId,
+      });
+      const contact = await storage.createCompanyContact(validatedData);
+      res.status(201).json(contact);
+    } catch (error) {
+      console.error("Error creating company contact:", error);
+      res.status(500).json({ message: "Failed to create company contact" });
     }
   });
 
