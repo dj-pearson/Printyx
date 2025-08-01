@@ -98,11 +98,10 @@ export default function Login() {
         title: "Login successful",
         description: `Welcome back, ${data.user.firstName || data.user.email}!`,
       });
-      // Invalidate auth query and reload
+      // Invalidate auth query and redirect immediately
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 500);
+      // Use location.replace to avoid 404 flash
+      window.location.replace("/");
     },
     onError: (error: any) => {
       toast({

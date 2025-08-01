@@ -40,6 +40,8 @@ import { insertLeadSchema, insertQuoteSchema, insertCustomerInteractionSchema } 
 import type { Lead, Quote, CustomerInteraction, Customer } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 // New company-centric lead creation schema
 const createLeadSchema = z.object({
@@ -74,6 +76,7 @@ export default function CRMEnhanced() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const { data: leads, isLoading: isLoadingLeads } = useQuery<Lead[]>({
@@ -185,10 +188,21 @@ export default function CRMEnhanced() {
       return leadResponse.json();
     },
     onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Lead created successfully!",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       setIsCreateLeadOpen(false);
       leadForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create lead",
+        variant: "destructive",
+      });
     },
   });
 
