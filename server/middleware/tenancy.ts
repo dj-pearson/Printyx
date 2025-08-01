@@ -31,34 +31,55 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
     const host = req.get('host') || '';
     const path = req.path;
 
-    // Method 1: Subdomain detection (Primary - always enabled)
-    if (TENANT_CONFIG.enableSubdomainRouting) {
-      if (host.includes('.printyx.') || host.includes('.replit.')) {
-        const subdomain = host.split('.')[0];
-        if (subdomain !== 'www' && subdomain !== 'api' && subdomain.length > 0) {
-          tenantSlug = subdomain;
-        }
+    console.log(`[TENANT DEBUG] Host: ${host}, Path: ${path}`);
+
+    // Method 1: Subdomain detection (Primary - only for production domains)
+    if (TENANT_CONFIG.enableSubdomainRouting && (host.includes('.printyx.') || host.includes('.replit.'))) {
+      const subdomain = host.split('.')[0];
+      if (subdomain !== 'www' && subdomain !== 'api' && subdomain.length > 0) {
+        tenantSlug = subdomain;
+        console.log(`[TENANT DEBUG] Found subdomain slug: ${tenantSlug}`);
       }
     }
 
-    // Method 2: Path prefix detection (Secondary - configurable)
+    // Method 2: Path prefix detection (Secondary - only if enabled)
     if (!tenantSlug && TENANT_CONFIG.enablePathRouting) {
       const pathSegments = path.split('/').filter(segment => segment.length > 0);
       if (pathSegments.length > 0 && !pathSegments[0].startsWith('api')) {
-        // Check if first segment is a tenant slug
         const potentialSlug = pathSegments[0];
         if (potentialSlug !== 'login' && potentialSlug !== 'signup' && potentialSlug !== 'auth') {
           tenantSlug = potentialSlug;
+          console.log(`[TENANT DEBUG] Found path slug: ${tenantSlug}`);
         }
       }
     }
 
-    // Resolve tenant from database
+    // For development (localhost/replit.dev), skip tenant slug resolution and use defaults
+    if (!tenantSlug && (host.includes('localhost') || host.includes('replit.dev'))) {
+      console.log(`[TENANT DEBUG] Development environment detected, using user tenant or default`);
+      
+      if (req.user?.tenantId) {
+        req.tenantId = req.user.tenantId;
+        console.log(`[TENANT DEBUG] Using user tenant: ${req.tenantId}`);
+      } else if ((req.session as any)?.tenantId) {
+        req.tenantId = (req.session as any).tenantId;
+        console.log(`[TENANT DEBUG] Using session tenant: ${req.tenantId}`);
+      } else {
+        // Default to demo tenant for development
+        req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+        console.log(`[TENANT DEBUG] Using default demo tenant: ${req.tenantId}`);
+      }
+      
+      return next(); // Skip database lookup for development
+    }
+
+    // Resolve tenant from database (only for production subdomains/paths)
     if (tenantSlug) {
       const tenant = await storage.getTenantBySlug(tenantSlug);
       if (tenant && tenant.isActive) {
         req.tenant = tenant;
         req.tenantId = tenant.id;
+        console.log(`[TENANT DEBUG] Found tenant in DB: ${tenant.id}`);
         
         // Store tenant context in session if available
         if (req.session) {
@@ -66,21 +87,11 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
           (req.session as any).tenantSlug = tenant.slug;
         }
       } else {
-        // Invalid tenant slug - return 404
+        console.log(`[TENANT DEBUG] Tenant slug '${tenantSlug}' not found or inactive`);
         return res.status(404).json({ 
           error: 'Tenant not found',
           message: `The organization "${tenantSlug}" was not found or is inactive.`
         });
-      }
-    } else {
-      // For development/localhost: ALWAYS set tenant context (no conditional check)
-      if (req.user?.tenantId) {
-        req.tenantId = req.user.tenantId;
-      } else if ((req.session as any)?.tenantId) {
-        req.tenantId = (req.session as any).tenantId;
-      } else {
-        // Default to demo tenant for development - this ensures we never return 404
-        req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
       }
     }
 
