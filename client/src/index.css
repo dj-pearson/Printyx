@@ -73,6 +73,14 @@
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(60, 9.1%, 97.8%);
   --ring: hsl(20, 14.3%, 4.1%);
+  --sidebar-background: hsl(0, 0%, 100%);
+  --sidebar-foreground: hsl(20, 14.3%, 4.1%);
+  --sidebar-primary: hsl(207, 90%, 54%);
+  --sidebar-primary-foreground: hsl(211, 100%, 99%);
+  --sidebar-accent: hsl(60, 4.8%, 95.9%);
+  --sidebar-accent-foreground: hsl(24, 9.8%, 10%);
+  --sidebar-border: hsl(20, 5.9%, 90%);
+  --sidebar-ring: hsl(20, 14.3%, 4.1%);
   --radius: 0.5rem;
 }
 
@@ -106,5 +114,29 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Sidebar-specific styling to ensure solid background */
+[data-sidebar="sidebar"] {
+  background-color: var(--sidebar-background) !important;
+  border-right: 1px solid var(--sidebar-border) !important;
+}
+
+[data-sidebar="sidebar"] * {
+  background-color: transparent;
+}
+
+[data-sidebar="sidebar"] [data-sidebar="header"],
+[data-sidebar="sidebar"] [data-sidebar="content"],
+[data-sidebar="sidebar"] [data-sidebar="footer"] {
+  background-color: var(--sidebar-background) !important;
+}
+
+/* Ensure mobile sidebar overlay has proper background */
+@media (max-width: 768px) {
+  [data-sidebar="sidebar"][data-mobile="true"] {
+    background-color: var(--sidebar-background) !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 }

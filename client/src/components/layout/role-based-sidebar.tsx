@@ -29,8 +29,19 @@ import {
 } from "lucide-react";
 
 // Navigation structure based on role permissions
-function getNavigationSections(userRole: any) {
-  const sections = [];
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: any;
+}
+
+interface NavigationSection {
+  name: string;
+  items: NavigationItem[];
+}
+
+function getNavigationSections(userRole: any): NavigationSection[] {
+  const sections: NavigationSection[] = [];
   
   if (!userRole) return sections;
 
@@ -136,36 +147,39 @@ export default function RoleBasedSidebar() {
   const navigationSections = getNavigationSections(user?.role);
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2">
+    <Sidebar collapsible="icon" className="bg-white border-r border-gray-200">
+      <SidebarHeader className="bg-white border-b border-gray-100">
+        <div className="flex items-center gap-2 px-4 py-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <span className="text-sm font-bold">P</span>
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold">Printyx</span>
-            <span className="truncate text-xs text-muted-foreground">
+            <span className="truncate font-semibold text-gray-900">Printyx</span>
+            <span className="truncate text-xs text-gray-500">
               {user?.role?.name || 'User'}
             </span>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="bg-white">
         {navigationSections.map((section, index) => (
           <SidebarGroup key={section.name}>
-            <SidebarGroupLabel>{section.name}</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-gray-600 font-medium text-xs uppercase tracking-wide px-4 py-2">
+              {section.name}
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {section.items.map((item) => (
+                {section.items.map((item: NavigationItem) => (
                   <SidebarMenuItem key={item.name}>
                     <SidebarMenuButton
                       asChild
                       isActive={location === item.href}
+                      className="mx-2 mb-1 rounded-md hover:bg-gray-50 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 data-[active=true]:border-blue-200"
                     >
-                      <a href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.name}</span>
+                      <a href={item.href} className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:text-gray-900">
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{item.name}</span>
                       </a>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -176,19 +190,19 @@ export default function RoleBasedSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
-        <div className="flex items-center gap-2 px-2 py-2">
+      <SidebarFooter className="bg-white border-t border-gray-100">
+        <div className="flex items-center gap-3 px-4 py-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.profileImageUrl || ""} alt={user?.firstName || ""} />
-            <AvatarFallback className="text-xs">
+            <AvatarFallback className="text-xs bg-gray-100 text-gray-600">
               {user?.firstName?.[0]}{user?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-medium">
+            <span className="truncate font-medium text-gray-900">
               {user?.firstName} {user?.lastName}
             </span>
-            <span className="truncate text-xs text-muted-foreground">
+            <span className="truncate text-xs text-gray-500">
               {user?.role?.name}
             </span>
           </div>
