@@ -2117,10 +2117,14 @@ export class DatabaseStorage implements IStorage {
     
     // If no settings exist, create default settings
     if (!settings) {
+      // Get user's tenant info
+      const user = await this.getUserById(userId);
+      const tenantId = user?.tenantId || '550e8400-e29b-41d4-a716-446655440000'; // default tenant ID
+      
       const defaultSettings = {
         id: `settings-${userId}`,
         userId: userId,
-        tenantId: 'default',
+        tenantId: tenantId,
         firstName: '',
         lastName: '',
         email: '',

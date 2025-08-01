@@ -40,12 +40,17 @@ export async function getUserSettings(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const settings = await storage.getUserSettings(user.id);
+    let settings = await storage.getUserSettings(user.id);
     
-    // If no settings exist, create default settings
+    // Return settings or fallback to defaults for UI
     if (!settings) {
-      const defaultSettings = {
+      settings = {
+        id: `settings-${user.id}`,
         userId: user.id,
+        tenantId: user.tenantId || '550e8400-e29b-41d4-a716-446655440000',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
         theme: "system",
         language: "en",
         timezone: "America/New_York",
@@ -70,13 +75,9 @@ export async function getUserSettings(req: Request, res: Response) {
         },
         twoFactorEnabled: false,
       };
-      
-      const created = await storage.createUserSettings(defaultSettings);
-      return res.json({ ...user, ...created });
     }
     
-    // Merge user data with settings
-    res.json({ ...user, ...settings });
+    res.json(settings);
   } catch (error) {
     console.error("Error fetching user settings:", error);
     res.status(500).json({ message: "Failed to fetch user settings" });
