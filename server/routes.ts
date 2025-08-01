@@ -242,6 +242,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.use('/api/auth', authRoutes);
 
+  // Tenants route for platform users
+  app.get("/api/tenants", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId);
+      
+      // Only platform admin roles can access all tenants
+      if (!user?.role?.canAccessAllTenants) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const tenants = await storage.getAllTenants();
+      res.json(tenants);
+    } catch (error) {
+      console.error("Error fetching tenants:", error);
+      res.status(500).json({ message: "Failed to fetch tenants" });
+    }
+  });
+
   // Dashboard routes - using demo tenant
   app.get('/api/dashboard/metrics', async (req: any, res) => {
     try {

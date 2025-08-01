@@ -106,6 +106,9 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
   
+  // Tenant operations for platform users
+  getAllTenants(): Promise<{ id: string; name: string; domain?: string }[]>;
+  
   // Role-based data access operations
   getUserWithRole(id: string): Promise<(User & { role?: Role; team?: Team }) | undefined>;
   getAccessibleCustomers(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<Customer[]>;
@@ -272,6 +275,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, user.id));
 
     return user;
+  }
+
+  // Tenant operations for platform users
+  async getAllTenants(): Promise<{ id: string; name: string; domain?: string }[]> {
+    const result = await db
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        domain: tenants.domain,
+      })
+      .from(tenants)
+      .orderBy(tenants.name);
+    
+    return result;
   }
 
   // Enhanced user operations with role information
