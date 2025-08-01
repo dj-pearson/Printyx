@@ -160,9 +160,10 @@ export default function LeadDetail() {
 
   // Activity logging mutations
   const logActivityMutation = useMutation({
-    mutationFn: async (activityData: { type: string; subject: string; notes?: string; scheduledDate?: string }) => {
+    mutationFn: async (activityData: { type: string; subject: string; notes?: string; scheduledDate?: string; contactId?: string }) => {
       return await apiRequest('POST', `/api/leads/${id}/activities`, {
         ...activityData,
+        activityType: activityData.type, // Map 'type' to 'activityType' for database
         leadId: id,
         date: new Date().toISOString(),
       });
@@ -276,6 +277,15 @@ export default function LeadDetail() {
       subject: `${type.charAt(0).toUpperCase() + type.slice(1)} logged`,
       notes: form.content || `${type} activity completed`
     };
+
+    // Add contact information if selected
+    if (form.contacted && form.contacted !== '0 contacts' && form.contacted !== '') {
+      activityData.contactId = form.contacted;
+    } else if (form.attendees && form.attendees !== '') {
+      activityData.contactId = form.attendees;
+    } else if (form.contactId && form.contactId !== '') {
+      activityData.contactId = form.contactId;
+    }
 
     if (type === 'meeting' && form.date) {
       activityData.scheduledDate = new Date(`${form.date}T${form.time || '09:00'}`).toISOString();
@@ -592,6 +602,22 @@ export default function LeadDetail() {
                         </DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm text-gray-600">About Contact (Optional)</Label>
+                          <Select value={activityForms.note.contactId || ''} onValueChange={(value) => updateActivityForm('note', 'contactId', value)}>
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select contact (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">{contacts.length} contacts - None selected</SelectItem>
+                              {contacts.map((contact: any) => (
+                                <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.firstName} {contact.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <Textarea
                           placeholder="Start typing to add a note..."
                           value={activityForms.note.content}
@@ -636,11 +662,19 @@ export default function LeadDetail() {
                         <div className="grid grid-cols-3 gap-4">
                           <div>
                             <Label className="text-sm text-gray-600">Contacted</Label>
-                            <Input
-                              value={activityForms.email.contacted}
-                              onChange={(e) => updateActivityForm('email', 'contacted', e.target.value)}
-                              className="mt-1"
-                            />
+                            <Select value={activityForms.email.contacted} onValueChange={(value) => updateActivityForm('email', 'contacted', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select contact" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0 contacts">{contacts.length} contacts</SelectItem>
+                                {contacts.map((contact: any) => (
+                                  <SelectItem key={contact.id} value={contact.id}>
+                                    {contact.firstName} {contact.lastName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
                             <Label className="text-sm text-gray-600">Date</Label>
@@ -721,11 +755,19 @@ export default function LeadDetail() {
                         <div className="grid grid-cols-5 gap-4">
                           <div>
                             <Label className="text-sm text-gray-600">Contacted</Label>
-                            <Input
-                              value={activityForms.call.contacted}
-                              onChange={(e) => updateActivityForm('call', 'contacted', e.target.value)}
-                              className="mt-1"
-                            />
+                            <Select value={activityForms.call.contacted} onValueChange={(value) => updateActivityForm('call', 'contacted', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select contact" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0 contacts">{contacts.length} contacts</SelectItem>
+                                {contacts.map((contact: any) => (
+                                  <SelectItem key={contact.id} value={contact.id}>
+                                    {contact.firstName} {contact.lastName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
                             <Label className="text-sm text-gray-600">Call outcome</Label>
@@ -832,11 +874,19 @@ export default function LeadDetail() {
                         <div className="grid grid-cols-5 gap-4">
                           <div>
                             <Label className="text-sm text-gray-600">Attendees</Label>
-                            <Input
-                              value={activityForms.meeting.attendees}
-                              onChange={(e) => updateActivityForm('meeting', 'attendees', e.target.value)}
-                              className="mt-1"
-                            />
+                            <Select value={activityForms.meeting.attendees} onValueChange={(value) => updateActivityForm('meeting', 'attendees', value)}>
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select contact" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">{contacts.length} contacts</SelectItem>
+                                {contacts.map((contact: any) => (
+                                  <SelectItem key={contact.id} value={contact.id}>
+                                    {contact.firstName} {contact.lastName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
                             <Label className="text-sm text-gray-600">Outcome</Label>
@@ -975,6 +1025,22 @@ export default function LeadDetail() {
                             onChange={(e) => updateActivityForm('task', 'title', e.target.value)}
                             className="mt-1"
                           />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-gray-600">Related Contact (Optional)</Label>
+                          <Select value={activityForms.task.contactId || ''} onValueChange={(value) => updateActivityForm('task', 'contactId', value)}>
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select contact (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">{contacts.length} contacts - None selected</SelectItem>
+                              {contacts.map((contact: any) => (
+                                <SelectItem key={contact.id} value={contact.id}>
+                                  {contact.firstName} {contact.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <Textarea
                           placeholder="Task description..."
