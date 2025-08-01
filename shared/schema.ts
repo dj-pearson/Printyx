@@ -542,46 +542,28 @@ export const productModels = pgTable("product_models", {
   tenantId: varchar("tenant_id").notNull(),
   
   // Basic Product Information
-  productCode: varchar("product_code").notNull().unique(), // e.g., "CN-IPCV1000"
-  productName: varchar("product_name").notNull(), // e.g., "iP V1000"
-  category: varchar("category").notNull(), // e.g., "MFP"
-  recordTypeName: varchar("record_type_name").notNull().default("Model"),
-  isActive: boolean("is_active").default(true),
-  
-  // Product Details
-  summary: text("summary"),
+  productCode: varchar("product_code").notNull(),
+  productName: varchar("product_name").notNull(),
+  category: varchar("category").default("MFP"),
+  manufacturer: varchar("manufacturer"),
   description: text("description"),
-  manufacturer: varchar("manufacturer"), // e.g., "Canon"
-  manufacturerProductCode: varchar("manufacturer_product_code"), // e.g., "5211C005AA"
+  msrp: decimal("msrp", { precision: 10, scale: 2 }),
   
-  // Product Tags (from your screenshots)
-  model: varchar("model"), // e.g., "Model"
-  units: varchar("units"), // e.g., "Each"
-  environment: varchar("environment"), // e.g., "Production"
-  printingSegment: varchar("printing_segment"), // e.g., "6"
-  colorMode: varchar("color_mode"), // e.g., "Color"
+  // Product specifications
+  colorMode: varchar("color_mode"),
   colorSpeed: varchar("color_speed"),
   bwSpeed: varchar("bw_speed"),
-  eaItemNumber: varchar("ea_item_number"), // e.g., "IPCV1000"
+  productFamily: varchar("product_family"),
   
-  // Pricing Information (multiple pricing levels from your screenshots)
-  msrp: decimal("msrp", { precision: 10, scale: 2 }), // e.g., $171,930.00
-  dealDependency: varchar("deal_dependency").default("All"),
-  isLease: boolean("is_lease").default(false),
-  paymentType: varchar("payment_type").default("Monthly"),
-  salesRepCredit: boolean("sales_rep_credit").default(false),
-  funding: boolean("funding").default(false),
-  
-  // New/Upgrade/Lexmark pricing tiers
+  // Pricing tiers
   newActive: boolean("new_active").default(false),
   newRepPrice: decimal("new_rep_price", { precision: 10, scale: 2 }),
-  upgradeActive: boolean("upgrade_active").default(false), 
+  upgradeActive: boolean("upgrade_active").default(false),
   upgradeRepPrice: decimal("upgrade_rep_price", { precision: 10, scale: 2 }),
   lexmarkActive: boolean("lexmark_active").default(false),
   lexmarkRepPrice: decimal("lexmark_rep_price", { precision: 10, scale: 2 }),
-  graphicActive: boolean("graphic_active").default(false),
-  graphicRepPrice: decimal("graphic_rep_price", { precision: 10, scale: 2 }),
   
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
