@@ -1752,6 +1752,9 @@ export const insertManagedServiceSchema = createInsertSchema(managedServices).om
   updatedAt: true,
 });
 
+// Re-export equipment lifecycle types
+export * from "./equipment-schema";
+
 // Product Management Types
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;

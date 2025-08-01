@@ -79,6 +79,7 @@ function getNavigationSections(userRole: any) {
       name: 'Service',
       items: [
         { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
+        { name: 'Equipment Lifecycle', href: '/equipment-lifecycle', icon: Package },
         { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
         { name: 'Service Reports', href: '/service-reports', icon: ClipboardList },
       ]
