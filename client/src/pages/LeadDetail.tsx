@@ -94,6 +94,56 @@ export default function LeadDetail() {
     },
   });
 
+  // Activity logging mutations
+  const logActivityMutation = useMutation({
+    mutationFn: async (activityData: { type: string; subject: string; notes?: string; scheduledDate?: string }) => {
+      return await apiRequest(`/api/leads/${id}/activities`, 'POST', {
+        ...activityData,
+        leadId: id,
+        date: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/leads', id, 'activities'] });
+      toast({
+        title: "Success",
+        description: "Activity logged successfully!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to log activity",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Quick action handlers
+  const handleQuickAction = (type: string, subject: string, promptUser = false) => {
+    if (promptUser) {
+      const notes = window.prompt(`Enter ${type} details:`, '');
+      if (notes !== null) {
+        logActivityMutation.mutate({ type, subject, notes });
+      }
+    } else {
+      logActivityMutation.mutate({ type, subject });
+    }
+  };
+
+  const handleScheduleMeeting = () => {
+    const subject = window.prompt('Meeting subject:', 'Follow-up meeting');
+    const dateStr = window.prompt('Meeting date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+    
+    if (subject && dateStr) {
+      logActivityMutation.mutate({ 
+        type: 'meeting', 
+        subject, 
+        scheduledDate: new Date(dateStr).toISOString() 
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new': return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -277,6 +327,75 @@ export default function LeadDetail() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* HubSpot-style Activity Buttons */}
+                <div className="flex items-center justify-center space-x-4 py-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                    onClick={() => handleQuickAction('note', 'Added note', true)}
+                    disabled={logActivityMutation.isPending}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Note</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                    onClick={() => handleQuickAction('email', 'Email sent', true)}
+                    disabled={logActivityMutation.isPending}
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Email</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                    onClick={() => handleQuickAction('call', 'Phone call completed', true)}
+                    disabled={logActivityMutation.isPending}
+                  >
+                    <PhoneCall className="w-4 h-4" />
+                    <span>Call</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                    onClick={() => handleQuickAction('task', 'Task created', true)}
+                    disabled={logActivityMutation.isPending}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Task</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                    onClick={handleScheduleMeeting}
+                    disabled={logActivityMutation.isPending}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>Meeting</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full hover:bg-gray-50"
+                    onClick={() => handleQuickAction('more', 'Activity logged', true)}
+                    disabled={logActivityMutation.isPending}
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>More</span>
+                  </Button>
+                </div>
 
                 {/* Primary Contact */}
                 <Card>
