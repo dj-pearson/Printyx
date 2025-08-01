@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProfessionalServiceSchema, type ProfessionalService, type InsertProfessionalService } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 
 export default function ProfessionalServices() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -196,7 +196,7 @@ export default function ProfessionalServices() {
   };
 
   return (
-    <Layout>
+    <MainLayout title="Professional Services" description="Manage professional service offerings and pricing">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -946,6 +946,6 @@ export default function ProfessionalServices() {
           </span>
         </div>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }

@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSupplySchema, type Supply, type InsertSupply } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 import ProductImport from "@/components/product-import/ProductImport";
 
 export default function Supplies() {
@@ -208,7 +208,7 @@ export default function Supplies() {
   };
 
   return (
-    <Layout>
+    <MainLayout title="Supplies" description="Manage supply inventory and pricing">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -816,6 +816,6 @@ export default function Supplies() {
           </span>
         </div>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }

@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductModelSchema, type ProductModel, type InsertProductModel } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 import ProductImport from "@/components/product-import/ProductImport";
 
 export default function ProductModels() {
@@ -242,7 +242,7 @@ export default function ProductModels() {
   );
 
   return (
-    <Layout>
+    <MainLayout title="Product Models" description="Manage product models and specifications">
       <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -968,6 +968,6 @@ export default function ProductModels() {
         </DialogContent>
       </Dialog>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }

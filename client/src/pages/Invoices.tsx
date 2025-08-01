@@ -11,7 +11,7 @@ import { Plus, Receipt, Calendar, DollarSign, Eye } from "lucide-react";
 import type { Invoice, Contract, Customer } from "@shared/schema";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 
 export default function Invoices() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -172,7 +172,7 @@ export default function Invoices() {
   }
 
   return (
-    <Layout>
+    <MainLayout title="Invoices" description="Manage billing and invoice generation">
       <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -337,6 +337,6 @@ export default function Invoices() {
         )}
       </div>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }

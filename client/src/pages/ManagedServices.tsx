@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertManagedServiceSchema, type ManagedService, type InsertManagedService } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 import ProductImport from "@/components/product-import/ProductImport";
 
 export default function ManagedServices() {
@@ -236,7 +236,7 @@ export default function ManagedServices() {
   };
 
   return (
-    <Layout>
+    <MainLayout title="IT & Managed Services" description="Manage IT and managed service offerings">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -957,6 +957,6 @@ export default function ManagedServices() {
           </span>
         </div>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }

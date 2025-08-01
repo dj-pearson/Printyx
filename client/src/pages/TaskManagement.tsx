@@ -600,7 +600,7 @@ export default function TaskManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockTasks.map((task) => (
+                  {(tasks || []).map((task: Task) => (
                     <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                       <div className="flex items-center gap-4">
                         <Button variant="ghost" size="sm">
@@ -654,7 +654,7 @@ export default function TaskManagement() {
 
           <TabsContent value="projects" className="space-y-4">
             <div className="grid gap-6">
-              {mockProjects.map((project) => (
+              {(projects || []).map((project: Project) => (
                 <Card key={project.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">

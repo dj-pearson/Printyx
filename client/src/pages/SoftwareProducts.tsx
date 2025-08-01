@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSoftwareProductSchema, type SoftwareProduct, type InsertSoftwareProduct } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 
 export default function SoftwareProducts() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -196,7 +196,7 @@ export default function SoftwareProducts() {
   };
 
   return (
-    <Layout>
+    <MainLayout title="Software Products" description="Manage software products and licensing">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -875,6 +875,6 @@ export default function SoftwareProducts() {
           </span>
         </div>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }

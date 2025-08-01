@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductAccessorySchema, type ProductAccessory, type InsertProductAccessory, type ProductModel } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 
 export default function ProductAccessories() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -238,7 +238,7 @@ export default function ProductAccessories() {
   };
 
   return (
-    <Layout>
+    <MainLayout title="Product Accessories" description="Manage accessory products and configurations">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -786,6 +786,6 @@ export default function ProductAccessories() {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }

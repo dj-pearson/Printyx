@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertServiceProductSchema, type ServiceProduct, type InsertServiceProduct } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Layout from "@/components/layout/layout";
+import MainLayout from "@/components/layout/main-layout";
 
 export default function ServiceProducts() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -189,7 +189,7 @@ export default function ServiceProducts() {
   };
 
   return (
-    <Layout>
+    <MainLayout title="Service Products" description="Manage service products and offerings">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -771,6 +771,6 @@ export default function ServiceProducts() {
           </span>
         </div>
       </div>
-    </Layout>
+    </MainLayout>
   );
 }
