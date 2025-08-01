@@ -46,6 +46,7 @@ import DealsManagement from "@/pages/DealsManagement";
 import ProductHub from "@/pages/ProductHub";
 import EquipmentLifecycle from "@/pages/EquipmentLifecycle";
 import PurchaseOrders from "@/pages/PurchaseOrders";
+import PricingManagement from "@/pages/PricingManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -105,6 +106,7 @@ function Router() {
           <Route path="/system-integrations" component={SystemIntegrations} />
           <Route path="/deployment-readiness" component={DeploymentReadiness} />
           <Route path="/task-management" component={TaskManagement} />
+          <Route path="/pricing-management" component={PricingManagement} />
         </>
       )}
       <Route component={NotFound} />

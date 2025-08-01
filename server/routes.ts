@@ -40,6 +40,22 @@ import { registerMobileRoutes } from "./routes-mobile";
 import { registerIntegrationRoutes } from "./routes-integrations";
 import { registerTaskRoutes } from "./routes-tasks";
 import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
+import {
+  getCompanyPricingSettings,
+  updateCompanyPricingSettings,
+  getProductPricing,
+  createProductPricing,
+  updateProductPricing,
+  deleteProductPricing,
+  getQuotePricing,
+  createQuotePricing,
+  updateQuotePricing,
+  getQuoteLineItems,
+  createQuoteLineItem,
+  updateQuoteLineItem,
+  deleteQuoteLineItem,
+  calculatePricingForProduct
+} from "./routes-pricing";
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -1969,6 +1985,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch system alerts" });
     }
   });
+
+  // Pricing Management Routes
+  app.get('/api/pricing/company-settings', requireAuth, getCompanyPricingSettings);
+  app.post('/api/pricing/company-settings', requireAuth, updateCompanyPricingSettings);
+  
+  app.get('/api/pricing/products', requireAuth, getProductPricing);
+  app.post('/api/pricing/products', requireAuth, createProductPricing);
+  app.put('/api/pricing/products/:id', requireAuth, updateProductPricing);
+  app.delete('/api/pricing/products/:id', requireAuth, deleteProductPricing);
+  
+  app.get('/api/pricing/quotes/:quoteId', requireAuth, getQuotePricing);
+  app.post('/api/pricing/quotes', requireAuth, createQuotePricing);
+  app.put('/api/pricing/quotes/:id', requireAuth, updateQuotePricing);
+  
+  app.get('/api/pricing/quotes/:quotePricingId/line-items', requireAuth, getQuoteLineItems);
+  app.post('/api/pricing/line-items', requireAuth, createQuoteLineItem);
+  app.put('/api/pricing/line-items/:id', requireAuth, updateQuoteLineItem);
+  app.delete('/api/pricing/line-items/:id', requireAuth, deleteQuoteLineItem);
+  
+  app.post('/api/pricing/calculate', requireAuth, calculatePricingForProduct);
 
   const httpServer = createServer(app);
   return httpServer;

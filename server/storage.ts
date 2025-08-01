@@ -114,6 +114,18 @@ import {
   type InsertDealStage,
   type DealActivity,
   type InsertDealActivity,
+  companyPricingSettings,
+  productPricing,
+  quotePricing,
+  quotePricingLineItems,
+  type CompanyPricingSetting,
+  type InsertCompanyPricingSetting,
+  type ProductPricing,
+  type InsertProductPricing,
+  type QuotePricing,
+  type InsertQuotePricing,
+  type QuotePricingLineItem,
+  type InsertQuotePricingLineItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, count, isNull, isNotNull } from "drizzle-orm";
@@ -280,6 +292,25 @@ export interface IStorage {
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined>;
   deleteVendor(id: string, tenantId: string): Promise<boolean>;
+
+  // Pricing System
+  getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSetting | undefined>;
+  updateCompanyPricingSettings(tenantId: string, settings: InsertCompanyPricingSetting): Promise<CompanyPricingSetting>;
+  
+  getProductPricing(tenantId: string): Promise<ProductPricing[]>;
+  getProductPricingByProductId(productId: string, productType: string, tenantId: string): Promise<ProductPricing | undefined>;
+  createProductPricing(pricing: InsertProductPricing): Promise<ProductPricing>;
+  updateProductPricing(id: string, tenantId: string, pricing: Partial<InsertProductPricing>): Promise<ProductPricing | undefined>;
+  deleteProductPricing(id: string, tenantId: string): Promise<boolean>;
+  
+  getQuotePricing(quoteId: string, tenantId: string): Promise<QuotePricing | undefined>;
+  createQuotePricing(pricing: InsertQuotePricing): Promise<QuotePricing>;
+  updateQuotePricing(id: string, tenantId: string, pricing: Partial<InsertQuotePricing>): Promise<QuotePricing | undefined>;
+  
+  getQuotePricingLineItems(quotePricingId: string, tenantId: string): Promise<QuotePricingLineItem[]>;
+  createQuotePricingLineItem(lineItem: InsertQuotePricingLineItem): Promise<QuotePricingLineItem>;
+  updateQuotePricingLineItem(id: string, tenantId: string, lineItem: Partial<InsertQuotePricingLineItem>): Promise<QuotePricingLineItem | undefined>;
+  deleteQuotePricingLineItem(id: string, tenantId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1703,6 +1734,166 @@ export class DatabaseStorage implements IStorage {
   async createDealActivity(activity: any): Promise<any> {
     const [newActivity] = await db.insert(dealActivities).values(activity).returning();
     return newActivity;
+  }
+
+  // Pricing System Implementation
+  async getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSetting | undefined> {
+    const [settings] = await db
+      .select()
+      .from(companyPricingSettings)
+      .where(and(
+        eq(companyPricingSettings.tenantId, tenantId),
+        eq(companyPricingSettings.isActive, true)
+      ));
+    return settings;
+  }
+
+  async updateCompanyPricingSettings(tenantId: string, settingsData: InsertCompanyPricingSetting): Promise<CompanyPricingSetting> {
+    // Try to update existing settings first
+    const existing = await this.getCompanyPricingSettings(tenantId);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(companyPricingSettings)
+        .set({ ...settingsData, updatedAt: new Date() })
+        .where(eq(companyPricingSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new settings
+      const [created] = await db
+        .insert(companyPricingSettings)
+        .values({ ...settingsData, tenantId })
+        .returning();
+      return created;
+    }
+  }
+
+  async getProductPricing(tenantId: string): Promise<ProductPricing[]> {
+    return await db
+      .select()
+      .from(productPricing)
+      .where(eq(productPricing.tenantId, tenantId))
+      .orderBy(desc(productPricing.createdAt));
+  }
+
+  async getProductPricingByProductId(productId: string, productType: string, tenantId: string): Promise<ProductPricing | undefined> {
+    const [pricing] = await db
+      .select()
+      .from(productPricing)
+      .where(and(
+        eq(productPricing.productId, productId),
+        eq(productPricing.productType, productType),
+        eq(productPricing.tenantId, tenantId),
+        eq(productPricing.isActive, true)
+      ));
+    return pricing;
+  }
+
+  async createProductPricing(pricingData: InsertProductPricing): Promise<ProductPricing> {
+    const [created] = await db
+      .insert(productPricing)
+      .values(pricingData)
+      .returning();
+    return created;
+  }
+
+  async updateProductPricing(id: string, tenantId: string, pricingData: Partial<InsertProductPricing>): Promise<ProductPricing | undefined> {
+    const [updated] = await db
+      .update(productPricing)
+      .set({ ...pricingData, updatedAt: new Date() })
+      .where(and(
+        eq(productPricing.id, id),
+        eq(productPricing.tenantId, tenantId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductPricing(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(productPricing)
+      .where(and(
+        eq(productPricing.id, id),
+        eq(productPricing.tenantId, tenantId)
+      ));
+    return result.rowCount > 0;
+  }
+
+  async getQuotePricing(quoteId: string, tenantId: string): Promise<QuotePricing | undefined> {
+    const [pricing] = await db
+      .select()
+      .from(quotePricing)
+      .where(and(
+        or(
+          eq(quotePricing.leadId, quoteId),
+          eq(quotePricing.customerId, quoteId),
+          eq(quotePricing.quoteNumber, quoteId)
+        ),
+        eq(quotePricing.tenantId, tenantId)
+      ));
+    return pricing;
+  }
+
+  async createQuotePricing(pricingData: InsertQuotePricing): Promise<QuotePricing> {
+    const [created] = await db
+      .insert(quotePricing)
+      .values(pricingData)
+      .returning();
+    return created;
+  }
+
+  async updateQuotePricing(id: string, tenantId: string, pricingData: Partial<InsertQuotePricing>): Promise<QuotePricing | undefined> {
+    const [updated] = await db
+      .update(quotePricing)
+      .set({ ...pricingData, updatedAt: new Date() })
+      .where(and(
+        eq(quotePricing.id, id),
+        eq(quotePricing.tenantId, tenantId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async getQuotePricingLineItems(quotePricingId: string, tenantId: string): Promise<QuotePricingLineItem[]> {
+    return await db
+      .select()
+      .from(quotePricingLineItems)
+      .where(and(
+        eq(quotePricingLineItems.quotePricingId, quotePricingId),
+        eq(quotePricingLineItems.tenantId, tenantId)
+      ))
+      .orderBy(asc(quotePricingLineItems.lineNumber));
+  }
+
+  async createQuotePricingLineItem(lineItemData: InsertQuotePricingLineItem): Promise<QuotePricingLineItem> {
+    const [created] = await db
+      .insert(quotePricingLineItems)
+      .values(lineItemData)
+      .returning();
+    return created;
+  }
+
+  async updateQuotePricingLineItem(id: string, tenantId: string, lineItemData: Partial<InsertQuotePricingLineItem>): Promise<QuotePricingLineItem | undefined> {
+    const [updated] = await db
+      .update(quotePricingLineItems)
+      .set({ ...lineItemData, updatedAt: new Date() })
+      .where(and(
+        eq(quotePricingLineItems.id, id),
+        eq(quotePricingLineItems.tenantId, tenantId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async deleteQuotePricingLineItem(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(quotePricingLineItems)
+      .where(and(
+        eq(quotePricingLineItems.id, id),
+        eq(quotePricingLineItems.tenantId, tenantId)
+      ));
+    return result.rowCount > 0;
   }
 }
 

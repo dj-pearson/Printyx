@@ -1908,6 +1908,131 @@ export type InsertSoftwareProduct = z.infer<typeof insertSoftwareProductSchema>;
 export type InsertSupply = z.infer<typeof insertSupplySchema>;
 export type InsertManagedService = z.infer<typeof insertManagedServiceSchema>;
 
+// ============= PRICING SYSTEM =============
+
+// Company Pricing Settings - Global markup rules
+export const companyPricingSettings = pgTable("company_pricing_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Global Settings
+  defaultMarkupPercentage: decimal("default_markup_percentage", { precision: 5, scale: 2 }).notNull().default("20.00"),
+  allowSalespersonOverride: boolean("allow_salesperson_override").default(true),
+  minimumGrossProfitPercentage: decimal("minimum_gross_profit_percentage", { precision: 5, scale: 2 }).default("5.00"),
+  
+  // Settings
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Product Pricing - Individual product pricing overrides
+export const productPricing = pgTable("product_pricing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Product Reference (flexible for any product type)
+  productId: varchar("product_id").notNull(),
+  productType: varchar("product_type").notNull(), // "model", "accessory", "service", "software", etc.
+  
+  // Pricing Layers
+  dealerCost: decimal("dealer_cost", { precision: 12, scale: 2 }).notNull(),
+  companyMarkupPercentage: decimal("company_markup_percentage", { precision: 5, scale: 2 }), // Override global setting
+  companyPrice: decimal("company_price", { precision: 12, scale: 2 }).notNull(), // Calculated: dealer_cost * (1 + markup%)
+  
+  // Pricing Rules
+  minimumSalePrice: decimal("minimum_sale_price", { precision: 12, scale: 2 }), // Minimum price salespeople can sell at
+  suggestedRetailPrice: decimal("suggested_retail_price", { precision: 12, scale: 2 }), // MSRP
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  effectiveDate: timestamp("effective_date").defaultNow(),
+  expirationDate: timestamp("expiration_date"),
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Quote Pricing - Salesperson pricing at quote level
+export const quotePricing = pgTable("quote_pricing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Quote Reference
+  leadId: varchar("lead_id"), // If quote is for a lead
+  customerId: varchar("customer_id"), // If quote is for existing customer
+  quoteNumber: varchar("quote_number").notNull(),
+  
+  // Blanket Pricing Settings
+  blanketGrossProfitPercentage: decimal("blanket_gross_profit_percentage", { precision: 5, scale: 2 }).default("10.00"),
+  applyBlanketToAllItems: boolean("apply_blanket_to_all_items").default(true),
+  
+  // Quote Totals
+  totalDealerCost: decimal("total_dealer_cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  totalCompanyPrice: decimal("total_company_price", { precision: 12, scale: 2 }).notNull().default("0"),
+  totalSalePrice: decimal("total_sale_price", { precision: 12, scale: 2 }).notNull().default("0"),
+  totalGrossProfit: decimal("total_gross_profit", { precision: 12, scale: 2 }).notNull().default("0"),
+  totalGrossProfitPercentage: decimal("total_gross_profit_percentage", { precision: 5, scale: 2 }).default("0"),
+  
+  // Status
+  status: varchar("status").notNull().default("draft"), // draft, pending, approved, sent, closed
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(), // Salesperson
+  approvedBy: varchar("approved_by"),
+  approvedDate: timestamp("approved_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Quote Line Items With Pricing - Individual product pricing in quotes
+export const quotePricingLineItems = pgTable("quote_pricing_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // References
+  quotePricingId: varchar("quote_pricing_id").notNull(),
+  productId: varchar("product_id").notNull(),
+  productType: varchar("product_type").notNull(),
+  lineNumber: integer("line_number").notNull(),
+  
+  // Product Details
+  productName: varchar("product_name").notNull(),
+  productDescription: text("product_description"),
+  productSku: varchar("product_sku"),
+  
+  // Quantity
+  quantity: integer("quantity").notNull().default(1),
+  
+  // Pricing Breakdown (per unit)
+  dealerCost: decimal("dealer_cost", { precision: 12, scale: 2 }).notNull(),
+  companyPrice: decimal("company_price", { precision: 12, scale: 2 }).notNull(),
+  salePrice: decimal("sale_price", { precision: 12, scale: 2 }).notNull(),
+  
+  // Line Item Totals
+  totalDealerCost: decimal("total_dealer_cost", { precision: 12, scale: 2 }).notNull(),
+  totalCompanyPrice: decimal("total_company_price", { precision: 12, scale: 2 }).notNull(),
+  totalSalePrice: decimal("total_sale_price", { precision: 12, scale: 2 }).notNull(),
+  
+  // Profit Calculations
+  unitGrossProfit: decimal("unit_gross_profit", { precision: 12, scale: 2 }).notNull(),
+  totalGrossProfit: decimal("total_gross_profit", { precision: 12, scale: 2 }).notNull(),
+  grossProfitPercentage: decimal("gross_profit_percentage", { precision: 5, scale: 2 }).notNull(),
+  
+  // Override Settings
+  useCustomGrossProfit: boolean("use_custom_gross_profit").default(false),
+  customGrossProfitPercentage: decimal("custom_gross_profit_percentage", { precision: 5, scale: 2 }),
+  
+  // Notes
+  notes: text("notes"),
+  
+  // Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ============= ACCOUNTING MODULES =============
 
 // Vendors (Suppliers)
@@ -2159,6 +2284,44 @@ export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
 
 export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
+
+// Pricing System Types
+export type CompanyPricingSetting = typeof companyPricingSettings.$inferSelect;
+export type InsertCompanyPricingSetting = typeof companyPricingSettings.$inferInsert;
+
+export type ProductPricing = typeof productPricing.$inferSelect;
+export type InsertProductPricing = typeof productPricing.$inferInsert;
+
+export type QuotePricing = typeof quotePricing.$inferSelect;
+export type InsertQuotePricing = typeof quotePricing.$inferInsert;
+
+export type QuotePricingLineItem = typeof quotePricingLineItems.$inferSelect;
+export type InsertQuotePricingLineItem = typeof quotePricingLineItems.$inferInsert;
+
+// Pricing Schema Validations
+export const insertCompanyPricingSettingSchema = createInsertSchema(companyPricingSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProductPricingSchema = createInsertSchema(productPricing).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotePricingSchema = createInsertSchema(quotePricing).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotePricingLineItemSchema = createInsertSchema(quotePricingLineItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 // Accounting Schema Validations
 export const insertVendorSchema = createInsertSchema(vendors).omit({
