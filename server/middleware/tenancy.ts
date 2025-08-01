@@ -63,6 +63,16 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
           message: `The organization "${tenantSlug}" was not found or is inactive.`
         });
       }
+    } else {
+      // For development: use session tenant or default demo tenant
+      if (req.session?.tenantId) {
+        req.tenantId = req.session.tenantId;
+      } else if (req.user?.tenantId) {
+        req.tenantId = req.user.tenantId;
+      } else {
+        // Default to demo tenant for development
+        req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+      }
     }
 
     next();

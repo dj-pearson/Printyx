@@ -140,6 +140,7 @@ function getNavigationSections(userRole: any) {
         { name: 'Inventory', href: '/inventory', icon: Package },
         { name: 'Contracts', href: '/contracts', icon: FileText },
         { name: 'User Management', href: '/user-management', icon: UserCog },
+        { name: 'Multi-Tenant Setup', href: '/tenant-setup', icon: Building2 },
         { name: 'System Settings', href: '/settings', icon: Shield },
       ]
     });
