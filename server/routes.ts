@@ -21,6 +21,7 @@ import {
   insertProductAccessorySchema,
   insertCpcRateSchema,
   insertProfessionalServiceSchema,
+  insertServiceProductSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -434,6 +435,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating professional service:", error);
       res.status(500).json({ message: "Failed to create professional service" });
+    }
+  });
+
+  // Service Products
+  app.get('/api/service-products', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const services = await storage.getAllServiceProducts(tenantId);
+      res.json(services);
+    } catch (error) {
+      console.error("Error fetching service products:", error);
+      res.status(500).json({ message: "Failed to fetch service products" });
+    }
+  });
+
+  app.post('/api/service-products', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertServiceProductSchema.parse({ 
+        ...req.body, 
+        tenantId 
+      });
+      const service = await storage.createServiceProduct(validatedData);
+      res.json(service);
+    } catch (error) {
+      console.error("Error creating service product:", error);
+      res.status(500).json({ message: "Failed to create service product" });
     }
   });
 

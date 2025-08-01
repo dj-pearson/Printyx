@@ -1119,14 +1119,65 @@ export const insertProfessionalServiceSchema = createInsertSchema(professionalSe
   updatedAt: true,
 });
 
+// Service Products
+export const serviceProducts = pgTable("service_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  productCode: varchar("product_code").notNull(),
+  productName: varchar("product_name").notNull(),
+  category: varchar("category").default("Service"),
+  serviceType: varchar("service_type"),
+  pricingLevel: varchar("pricing_level"),
+  description: text("description"),
+  summary: text("summary"),
+  note: text("note"),
+  eaNotes: text("ea_notes"),
+  relatedProducts: text("related_products"),
+  
+  // Flags
+  isActive: boolean("is_active").default(true),
+  availableForAll: boolean("available_for_all").default(false),
+  repostEdit: boolean("repost_edit").default(false),
+  salesRepCredit: boolean("sales_rep_credit").default(true),
+  funding: boolean("funding").default(true),
+  
+  // Pricing Information
+  lease: boolean("lease").default(false),
+  paymentType: varchar("payment_type"),
+  
+  // Pricing Tiers
+  newActive: boolean("new_active").default(false),
+  newRepPrice: decimal("new_rep_price"),
+  upgradeActive: boolean("upgrade_active").default(false),
+  upgradeRepPrice: decimal("upgrade_rep_price"),
+  lexmarkActive: boolean("lexmark_active").default(false),
+  lexmarkRepPrice: decimal("lexmark_rep_price"),
+  graphicActive: boolean("graphic_active").default(false),
+  graphicRepPrice: decimal("graphic_rep_price"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ServiceProduct = typeof serviceProducts.$inferSelect;
+export type InsertServiceProduct = typeof serviceProducts.$inferInsert;
+
+export const insertServiceProductSchema = createInsertSchema(serviceProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Product Management Types
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;
 export type CpcRate = typeof cpcRates.$inferSelect;
 export type ProfessionalService = typeof professionalServices.$inferSelect;
+export type ServiceProduct = typeof serviceProducts.$inferSelect;
 
 // Product Management Insert Types
 export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
 export type InsertProductAccessory = z.infer<typeof insertProductAccessorySchema>;
 export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;
 export type InsertProfessionalService = z.infer<typeof insertProfessionalServiceSchema>;
+export type InsertServiceProduct = z.infer<typeof insertServiceProductSchema>;
