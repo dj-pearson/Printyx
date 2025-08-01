@@ -27,7 +27,7 @@ export default function Header({ title, description }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="flex h-16 items-center px-4 lg:px-6">
         {/* Sidebar Trigger - Shows hamburger menu on mobile, desktop toggle */}
-        <SidebarTrigger className="mr-2" />
+        <SidebarTrigger className="mr-2 md:mr-4" />
         
         {/* Logo */}
         <div className="mr-4 flex">

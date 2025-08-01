@@ -47,15 +47,15 @@ export default function MainLayout({ children, title, description }: MainLayoutP
         {/* Unified Responsive Sidebar */}
         <RoleBasedSidebar />
         
-        <SidebarInset className="flex-1">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <Header title={title} description={description} />
           
           <main className="flex-1 overflow-auto">
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6 min-h-0">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6">
               {children}
             </div>
           </main>
-        </SidebarInset>
+        </div>
         
         {/* Mobile Bottom Navigation - Only show on small screens */}
         <div className="md:hidden">
