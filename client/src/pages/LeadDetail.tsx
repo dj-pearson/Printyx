@@ -139,7 +139,7 @@ export default function LeadDetail() {
   // Convert to customer mutation
   const convertMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/leads/${id}/convert`, 'POST');
+      return await apiRequest('POST', `/api/leads/${id}/convert`);
     },
     onSuccess: () => {
       toast({
@@ -161,7 +161,7 @@ export default function LeadDetail() {
   // Activity logging mutations
   const logActivityMutation = useMutation({
     mutationFn: async (activityData: { type: string; subject: string; notes?: string; scheduledDate?: string }) => {
-      return await apiRequest(`/api/leads/${id}/activities`, 'POST', {
+      return await apiRequest('POST', `/api/leads/${id}/activities`, {
         ...activityData,
         leadId: id,
         date: new Date().toISOString(),
@@ -186,7 +186,7 @@ export default function LeadDetail() {
   // Lead update mutation
   const updateLeadMutation = useMutation({
     mutationFn: async (updateData: any) => {
-      return await apiRequest(`/api/leads/${id}`, 'PUT', updateData);
+      return await apiRequest('PUT', `/api/leads/${id}`, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/leads', id] });
@@ -209,7 +209,7 @@ export default function LeadDetail() {
   // Add contact mutation
   const addContactMutation = useMutation({
     mutationFn: async (contactData: any) => {
-      return await apiRequest(`/api/leads/${id}/contacts`, 'POST', contactData);
+      return await apiRequest('POST', `/api/leads/${id}/contacts`, contactData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/leads', id, 'contacts'] });
