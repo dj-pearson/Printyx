@@ -41,6 +41,7 @@ import MobileOptimization from "@/pages/MobileOptimization";
 import PerformanceMonitoring from "@/pages/PerformanceMonitoring";
 import SystemIntegrations from "@/pages/SystemIntegrations";
 import DeploymentReadiness from "@/pages/DeploymentReadiness";
+import TaskManagement from "@/pages/TaskManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -95,6 +96,7 @@ function Router() {
           <Route path="/performance-monitoring" component={PerformanceMonitoring} />
           <Route path="/system-integrations" component={SystemIntegrations} />
           <Route path="/deployment-readiness" component={DeploymentReadiness} />
+          <Route path="/task-management" component={TaskManagement} />
         </>
       )}
       <Route component={NotFound} />

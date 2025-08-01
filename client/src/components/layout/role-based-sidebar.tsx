@@ -26,6 +26,7 @@ import {
   Activity,
   Plug,
   Rocket,
+  CheckSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -208,6 +209,7 @@ const navigationStructure = {
       { key: 'performance-monitoring', label: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
       { key: 'system-integrations', label: 'System Integrations', path: '/system-integrations', icon: Plug },
       { key: 'deployment-readiness', label: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
+      { key: 'task-management', label: 'Task Management', path: '/task-management', icon: CheckSquare },
     ]
   }
 };

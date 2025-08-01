@@ -12,7 +12,7 @@ import {
   Target, FileText, Building2, ClipboardList, Wrench, Calendar, 
   Calculator, UserPlus, Package, ShoppingCart, DollarSign, 
   TrendingUp, Settings, UserCheck, Users, Zap, Smartphone, Activity,
-  Plug, Rocket 
+  Plug, Rocket, CheckSquare 
 } from "lucide-react";
 
 // Navigation structure (same as desktop)
@@ -102,6 +102,7 @@ const navigationStructure = {
       { key: 'performance-monitoring', label: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
       { key: 'system-integrations', label: 'System Integrations', path: '/system-integrations', icon: Plug },
       { key: 'deployment-readiness', label: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
+      { key: 'task-management', label: 'Task Management', path: '/task-management', icon: CheckSquare },
     ]
   }
 };

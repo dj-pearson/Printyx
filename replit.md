@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 - **Phase 2 Current Work**: RBAC implementation with department-specific navigation
 - **Phase 3 Planned**: Mobile app, advanced reporting, workflow automation
 - **Phase 4 Planned**: Third-party integrations, go-live preparation
+- **Current Enhancement**: Comprehensive task management system with personal and project workflows
 
 ### Recent Architectural Changes (January 2025)
 - **Phase 4 Third-Party Integrations Complete**: System integrations and deployment readiness features successfully implemented (January 1, 2025)
@@ -53,6 +54,13 @@ Preferred communication style: Simple, everyday language.
   - Software Products (digital solutions with licensing structures)
   - Supplies (consumables, toner, paper, maintenance kits with inventory tracking)
   - IT & Managed Services (network management, cloud services, security, and IT support offerings)
+- **Task Management System**: Comprehensive task and project management capabilities (January 1, 2025)
+  - Personal task tracking with priority, status, and assignment management
+  - Multi-step project management with progress tracking and resource allocation
+  - Project templates for common workflows (equipment installation, service campaigns)
+  - Time tracking and task commenting for collaboration
+  - Integration with customer and contract data for project context
+  - Dashboard analytics showing task completion metrics and performance insights
 - **CSV Import System**: Comprehensive bulk import system with tenant data segmentation
   - Example CSV templates for all seven product categories with proper field mapping
   - Secure file upload with 10MB limit and CSV validation
@@ -91,6 +99,7 @@ Preferred communication style: Simple, everyday language.
   - **Business**: Tenants, Customers, Equipment, Contracts, Service Tickets
   - **CRM**: Leads, LeadInteractions, Quotes, QuoteLineItems
   - **Operations**: Inventory Items, Technicians, Meter Readings, Invoices
+  - **Task Management**: Tasks, Projects, TaskComments, TimeEntries, ProjectTemplates
 
 ### Multi-Tenancy & Role-Based Access Control
 - **Tenant Isolation**: Row-level security with tenantId filtering across all business entities
@@ -109,7 +118,7 @@ Preferred communication style: Simple, everyday language.
 ### API Structure
 - **Authentication Routes**: `/api/auth/*` for user authentication and session management
 - **Dashboard Routes**: `/api/dashboard/*` for metrics, recent tickets, and top customers
-- **Entity Routes**: RESTful endpoints for customers, contracts, service tickets, inventory, and technicians
+- **Entity Routes**: RESTful endpoints for customers, contracts, service tickets, inventory, technicians, tasks, and projects
 - **Tenant-Aware**: All business logic routes automatically scope data by tenant
 
 ### Development & Deployment

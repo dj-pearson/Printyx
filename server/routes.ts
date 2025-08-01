@@ -35,6 +35,7 @@ import { Readable } from "stream";
 import { format } from "date-fns";
 import { registerMobileRoutes } from "./routes-mobile";
 import { registerIntegrationRoutes } from "./routes-integrations";
+import { registerTaskRoutes } from "./routes-tasks";
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -1713,6 +1714,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register integration and deployment routes
   registerIntegrationRoutes(app);
+
+  // Register task management routes
+  registerTaskRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
