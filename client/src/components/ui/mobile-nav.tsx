@@ -239,8 +239,8 @@ export default function MobileNav({ className }: MobileNavProps) {
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-80 p-0">
-        <SheetHeader className="p-6 border-b border-gray-200">
+      <SheetContent side="left" className="w-80 p-0 flex flex-col h-full">
+        <SheetHeader className="p-6 border-b border-gray-200 flex-shrink-0">
           <SheetTitle className="text-left">
             <div className="flex items-center">
               <h1 className="text-xl font-bold text-gray-900">Printyx</h1>
@@ -258,30 +258,32 @@ export default function MobileNav({ className }: MobileNavProps) {
           </SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 p-4">
-          <nav className="space-y-2">
-            {/* Dashboard - always visible */}
-            <Link href="/">
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start mb-4 h-12",
-                  location === "/"
-                    ? "bg-blue-100 text-blue-900 font-medium"
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                )}
-                onClick={() => setIsOpen(false)}
-              >
-                <BarChart3 className="h-5 w-5 mr-3" />
-                <span className="font-medium">Dashboard</span>
-              </Button>
-            </Link>
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <nav className="space-y-2 pb-6">
+              {/* Dashboard - always visible */}
+              <Link href="/">
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start mb-4 h-12",
+                    location === "/"
+                      ? "bg-blue-100 text-blue-900 font-medium"
+                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <BarChart3 className="h-5 w-5 mr-3" />
+                  <span className="font-medium">Dashboard</span>
+                </Button>
+              </Link>
 
-            {/* Role-based navigation sections */}
-            {Object.entries(navigationStructure).map(([sectionKey, section]) =>
-              renderNavSection(sectionKey, section)
-            )}
-          </nav>
+              {/* Role-based navigation sections */}
+              {Object.entries(navigationStructure).map(([sectionKey, section]) =>
+                renderNavSection(sectionKey, section)
+              )}
+            </nav>
+          </div>
         </ScrollArea>
       </SheetContent>
     </Sheet>

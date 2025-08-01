@@ -33,7 +33,7 @@ export default function MobileSearch({ className }: MobileSearchProps) {
           <Search className="h-5 w-5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Search</DialogTitle>
         </DialogHeader>
@@ -50,15 +50,20 @@ export default function MobileSearch({ className }: MobileSearchProps) {
             />
           </div>
           
-          <div className="flex justify-end space-x-2">
+          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
             <Button 
               type="button" 
               variant="ghost" 
               onClick={() => setIsOpen(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!searchQuery.trim()}>
+            <Button 
+              type="submit" 
+              disabled={!searchQuery.trim()}
+              className="w-full sm:w-auto"
+            >
               Search
             </Button>
           </div>

@@ -240,64 +240,64 @@ export default function MeterBilling() {
     >
       <div className="space-y-6">
         {/* Billing Metrics Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Monthly Revenue</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                     ${monthlyRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pending Readings</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{pendingReadings}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Pending Readings</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{pendingReadings}</p>
                 </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-orange-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Avg B&W Rate</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Avg B&W Rate</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                     ${averageBlackRate.toFixed(4)}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Calculator className="h-6 w-6 text-blue-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calculator className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Avg Color Rate</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Avg Color Rate</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                     ${averageColorRate.toFixed(4)}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-purple-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                 </div>
               </div>
             </CardContent>
@@ -305,15 +305,15 @@ export default function MeterBilling() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Dialog open={isCreateReadingDialogOpen} onOpenChange={setIsCreateReadingDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Meter Reading
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create Meter Reading</DialogTitle>
                 <DialogDescription>
@@ -322,7 +322,7 @@ export default function MeterBilling() {
               </DialogHeader>
               <Form {...meterForm}>
                 <form onSubmit={meterForm.handleSubmit(handleCreateMeterReading)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={meterForm.control}
                       name="equipmentId"
@@ -387,7 +387,7 @@ export default function MeterBilling() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={meterForm.control}
                       name="blackMeter"
@@ -455,8 +455,20 @@ export default function MeterBilling() {
                     )}
                   />
 
-                  <DialogFooter>
-                    <Button type="submit" disabled={createMeterReadingMutation.isPending}>
+                  <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCreateReadingDialogOpen(false)}
+                      className="w-full sm:w-auto"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={createMeterReadingMutation.isPending}
+                      className="w-full sm:w-auto"
+                    >
                       {createMeterReadingMutation.isPending ? 'Creating...' : 'Create Reading'}
                     </Button>
                   </DialogFooter>
@@ -465,18 +477,23 @@ export default function MeterBilling() {
             </DialogContent>
           </Dialog>
 
-          <Button variant="outline" onClick={() => generateInvoicesMutation.mutate()}>
+          <Button 
+            variant="outline" 
+            onClick={() => generateInvoicesMutation.mutate()}
+            className="w-full sm:w-auto"
+            disabled={generateInvoicesMutation.isPending}
+          >
             <RefreshCw className="w-4 h-4 mr-2" />
-            Generate Invoices
+            {generateInvoicesMutation.isPending ? 'Generating...' : 'Generate Invoices'}
           </Button>
         </div>
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="readings" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="readings">Meter Readings</TabsTrigger>
-            <TabsTrigger value="contracts">Contract Management</TabsTrigger>
-            <TabsTrigger value="profitability">Profitability Analysis</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
+            <TabsTrigger value="readings" className="text-xs sm:text-sm">Meter Readings</TabsTrigger>
+            <TabsTrigger value="contracts" className="text-xs sm:text-sm">Contract Management</TabsTrigger>
+            <TabsTrigger value="profitability" className="text-xs sm:text-sm">Profitability Analysis</TabsTrigger>
           </TabsList>
 
           <TabsContent value="readings" className="space-y-4">

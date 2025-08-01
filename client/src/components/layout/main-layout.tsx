@@ -50,7 +50,7 @@ export default function MainLayout({ children, title, description }: MainLayoutP
       <main className="flex-1 overflow-auto">
         <Header title={title} description={description} />
         
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6 min-h-0">
           {children}
         </div>
       </main>
