@@ -598,12 +598,20 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async getAllProductAccessories(tenantId: string): Promise<ProductAccessory[]> {
+    return await db
+      .select()
+      .from(productAccessories)
+      .where(eq(productAccessories.tenantId, tenantId))
+      .orderBy(productAccessories.accessoryName);
+  }
+
   async getProductAccessories(modelId: string, tenantId: string): Promise<ProductAccessory[]> {
     return await db
       .select()
       .from(productAccessories)
       .where(and(eq(productAccessories.modelId, modelId), eq(productAccessories.tenantId, tenantId)))
-      .orderBy(productAccessories.productName);
+      .orderBy(productAccessories.accessoryName);
   }
 
   async createProductAccessory(accessory: InsertProductAccessory): Promise<ProductAccessory> {
@@ -619,7 +627,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(cpcRates)
       .where(and(eq(cpcRates.modelId, modelId), eq(cpcRates.tenantId, tenantId)))
-      .orderBy(cpcRates.serviceName);
+      .orderBy(cpcRates.colorType);
   }
 
   async createCpcRate(rate: InsertCpcRate): Promise<CpcRate> {

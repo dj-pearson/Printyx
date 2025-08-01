@@ -56,6 +56,7 @@ const navigationSections = [
     name: 'Admin',
     items: [
       { name: 'Product Models', href: '/product-models', icon: Printer },
+      { name: 'Product Accessories', href: '/product-accessories', icon: Package },
       { name: 'Inventory', href: '/inventory', icon: Package },
       { name: 'Contracts', href: '/contracts', icon: FileText },
       { name: 'User Management', href: '/user-management', icon: UserCog },

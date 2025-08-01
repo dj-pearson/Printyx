@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductModelSchema, type ProductModel, type InsertProductModel } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import Layout from "@/components/layout/layout";
 
 export default function ProductModels() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -183,7 +184,8 @@ export default function ProductModels() {
   );
 
   return (
-    <div className="space-y-6">
+    <Layout>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Product Models</h1>
@@ -573,5 +575,6 @@ export default function ProductModels() {
         </span>
       </div>
     </div>
+    </Layout>
   );
 }

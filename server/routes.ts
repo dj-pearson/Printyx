@@ -354,6 +354,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Product Accessories
+  app.get('/api/product-accessories', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const accessories = await storage.getAllProductAccessories(tenantId);
+      res.json(accessories);
+    } catch (error) {
+      console.error("Error fetching product accessories:", error);
+      res.status(500).json({ message: "Failed to fetch product accessories" });
+    }
+  });
+
   app.get('/api/product-models/:modelId/accessories', async (req: any, res) => {
     try {
       const { modelId } = req.params;
@@ -363,6 +374,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching product accessories:", error);
       res.status(500).json({ message: "Failed to fetch product accessories" });
+    }
+  });
+
+  app.post('/api/product-accessories', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertProductAccessorySchema.parse({ 
+        ...req.body, 
+        tenantId 
+      });
+      const accessory = await storage.createProductAccessory(validatedData);
+      res.json(accessory);
+    } catch (error) {
+      console.error("Error creating product accessory:", error);
+      res.status(500).json({ message: "Failed to create product accessory" });
     }
   });
 
