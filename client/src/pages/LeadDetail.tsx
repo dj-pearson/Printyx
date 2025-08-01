@@ -37,7 +37,8 @@ import {
   AlertCircle,
   Target,
   Activity,
-  UserPlus
+  UserPlus,
+  StickyNote
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -58,7 +59,11 @@ export default function LeadDetail() {
     call: false,
     meeting: false,
     task: false,
-    contact: false
+    contact: false,
+    viewDeals: false,
+    viewAgreements: false,
+    viewContacts: false,
+    viewNotes: false
   });
   
   // Fetch lead details first
@@ -1482,22 +1487,167 @@ export default function LeadDetail() {
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send Email
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <PhoneCall className="w-4 h-4 mr-2" />
-                  Log Call
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Schedule Meeting
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Add Note
-                </Button>
+                <Dialog open={dialogs.viewDeals} onOpenChange={(open) => setDialogs(prev => ({ ...prev, viewDeals: open }))}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <Target className="w-4 h-4 mr-2" />
+                      View Deals
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px]">
+                    <DialogHeader>
+                      <DialogTitle>Deals for {lead.companyName}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="text-center py-8">
+                        <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No deals found</h3>
+                        <p className="text-gray-500 mb-4">This company doesn't have any deals yet.</p>
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create First Deal
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={dialogs.viewAgreements} onOpenChange={(open) => setDialogs(prev => ({ ...prev, viewAgreements: open }))}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <FileText className="w-4 h-4 mr-2" />
+                      View Agreements
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px]">
+                    <DialogHeader>
+                      <DialogTitle>Agreements for {lead.companyName}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No agreements found</h3>
+                        <p className="text-gray-500 mb-4">This company doesn't have any agreements yet.</p>
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Agreement
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={dialogs.viewContacts} onOpenChange={(open) => setDialogs(prev => ({ ...prev, viewContacts: open }))}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <Users className="w-4 h-4 mr-2" />
+                      View Contacts
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px]">
+                    <DialogHeader>
+                      <DialogTitle>Contacts for {lead.companyName}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {contacts.length > 0 ? (
+                        <div className="space-y-3">
+                          {contacts.map((contact: any) => (
+                            <div key={contact.id} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarFallback className="bg-blue-100 text-blue-600">
+                                    {contact.firstName?.charAt(0)}{contact.lastName?.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {contact.firstName} {contact.lastName}
+                                  </p>
+                                  <p className="text-sm text-gray-500">{contact.title || 'No title'}</p>
+                                  <p className="text-sm text-gray-500">{contact.email || 'No email'}</p>
+                                </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button variant="outline" size="sm">
+                                  <Mail className="w-4 h-4" />
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                  <Phone className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found</h3>
+                          <p className="text-gray-500 mb-4">This company doesn't have any contacts yet.</p>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Contact
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={dialogs.viewNotes} onOpenChange={(open) => setDialogs(prev => ({ ...prev, viewNotes: open }))}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <StickyNote className="w-4 h-4 mr-2" />
+                      View Notes
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px]">
+                    <DialogHeader>
+                      <DialogTitle>Notes for {lead.companyName}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {activities.filter((activity: any) => activity.activityType === 'note').length > 0 ? (
+                        <div className="space-y-3">
+                          {activities
+                            .filter((activity: any) => activity.activityType === 'note')
+                            .sort((a: any, b: any) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
+                            .map((note: any) => (
+                              <div key={note.id} className="p-4 border rounded-lg bg-yellow-50">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center space-x-2">
+                                    <StickyNote className="w-4 h-4 text-yellow-600" />
+                                    <span className="font-medium text-gray-900">
+                                      {note.subject || 'Note'}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {formatDate(note.createdAt || note.date)}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-700">{note.notes}</p>
+                                {note.contactId && contacts.find((c: any) => c.id === note.contactId) && (
+                                  <div className="mt-2 pt-2 border-t border-yellow-200">
+                                    <span className="text-xs text-gray-500">
+                                      About: {(() => {
+                                        const contact = contacts.find((c: any) => c.id === note.contactId);
+                                        return contact ? `${contact.firstName} ${contact.lastName}` : 'Unknown Contact';
+                                      })()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <StickyNote className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No notes found</h3>
+                          <p className="text-gray-500 mb-4">This company doesn't have any notes yet.</p>
+                          <p className="text-sm text-gray-400">Use the activity buttons above to add your first note.</p>
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
 
