@@ -17,6 +17,9 @@ import {
   insertTechnicianSchema,
   insertMeterReadingSchema,
   insertInvoiceSchema,
+  insertProductModelSchema,
+  insertProductAccessorySchema,
+  insertCpcRateSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -291,6 +294,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching lead related records:", error);
       res.status(500).json({ message: "Failed to fetch lead related records" });
+    }
+  });
+
+  // Product Management Routes
+  
+  // Product Models
+  app.get('/api/product-models', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const models = await storage.getProductModels(tenantId);
+      res.json(models);
+    } catch (error) {
+      console.error("Error fetching product models:", error);
+      res.status(500).json({ message: "Failed to fetch product models" });
+    }
+  });
+
+  app.get('/api/product-models/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const model = await storage.getProductModel(id, tenantId);
+      if (!model) {
+        return res.status(404).json({ message: "Product model not found" });
+      }
+      res.json(model);
+    } catch (error) {
+      console.error("Error fetching product model:", error);
+      res.status(500).json({ message: "Failed to fetch product model" });
+    }
+  });
+
+  app.post('/api/product-models', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertProductModelSchema.parse({ ...req.body, tenantId });
+      const model = await storage.createProductModel(validatedData);
+      res.json(model);
+    } catch (error) {
+      console.error("Error creating product model:", error);
+      res.status(500).json({ message: "Failed to create product model" });
+    }
+  });
+
+  app.patch('/api/product-models/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const model = await storage.updateProductModel(id, req.body, tenantId);
+      if (!model) {
+        return res.status(404).json({ message: "Product model not found" });
+      }
+      res.json(model);
+    } catch (error) {
+      console.error("Error updating product model:", error);
+      res.status(500).json({ message: "Failed to update product model" });
+    }
+  });
+
+  // Product Accessories
+  app.get('/api/product-models/:modelId/accessories', async (req: any, res) => {
+    try {
+      const { modelId } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const accessories = await storage.getProductAccessories(modelId, tenantId);
+      res.json(accessories);
+    } catch (error) {
+      console.error("Error fetching product accessories:", error);
+      res.status(500).json({ message: "Failed to fetch product accessories" });
+    }
+  });
+
+  app.post('/api/product-models/:modelId/accessories', async (req: any, res) => {
+    try {
+      const { modelId } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertProductAccessorySchema.parse({ 
+        ...req.body, 
+        modelId, 
+        tenantId 
+      });
+      const accessory = await storage.createProductAccessory(validatedData);
+      res.json(accessory);
+    } catch (error) {
+      console.error("Error creating product accessory:", error);
+      res.status(500).json({ message: "Failed to create product accessory" });
+    }
+  });
+
+  // CPC Rates
+  app.get('/api/product-models/:modelId/cpc-rates', async (req: any, res) => {
+    try {
+      const { modelId } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const rates = await storage.getCpcRates(modelId, tenantId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching CPC rates:", error);
+      res.status(500).json({ message: "Failed to fetch CPC rates" });
+    }
+  });
+
+  app.post('/api/product-models/:modelId/cpc-rates', async (req: any, res) => {
+    try {
+      const { modelId } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertCpcRateSchema.parse({ 
+        ...req.body, 
+        modelId, 
+        tenantId 
+      });
+      const rate = await storage.createCpcRate(validatedData);
+      res.json(rate);
+    } catch (error) {
+      console.error("Error creating CPC rate:", error);
+      res.status(500).json({ message: "Failed to create CPC rate" });
     }
   });
 

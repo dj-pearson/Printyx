@@ -307,6 +307,104 @@ export const contracts = pgTable("contracts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Product Management System - Models (Top-level products like copiers)
+export const productModels = pgTable("product_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Basic Product Information
+  productCode: varchar("product_code").notNull().unique(), // e.g., "CN-IPCV1000"
+  productName: varchar("product_name").notNull(), // e.g., "iP V1000"
+  category: varchar("category").notNull(), // e.g., "MFP"
+  recordTypeName: varchar("record_type_name").notNull().default("Model"),
+  isActive: boolean("is_active").default(true),
+  
+  // Product Details
+  summary: text("summary"),
+  description: text("description"),
+  manufacturer: varchar("manufacturer"), // e.g., "Canon"
+  manufacturerProductCode: varchar("manufacturer_product_code"), // e.g., "5211C005AA"
+  
+  // Product Tags (from your screenshots)
+  model: varchar("model"), // e.g., "Model"
+  units: varchar("units"), // e.g., "Each"
+  environment: varchar("environment"), // e.g., "Production"
+  printingSegment: varchar("printing_segment"), // e.g., "6"
+  colorMode: varchar("color_mode"), // e.g., "Color"
+  colorSpeed: varchar("color_speed"),
+  bwSpeed: varchar("bw_speed"),
+  eaItemNumber: varchar("ea_item_number"), // e.g., "IPCV1000"
+  
+  // Pricing Information (multiple pricing levels from your screenshots)
+  msrp: decimal("msrp", { precision: 10, scale: 2 }), // e.g., $171,930.00
+  dealDependency: varchar("deal_dependency").default("All"),
+  isLease: boolean("is_lease").default(false),
+  paymentType: varchar("payment_type").default("Monthly"),
+  salesRepCredit: boolean("sales_rep_credit").default(false),
+  funding: boolean("funding").default(false),
+  
+  // New/Upgrade/Lexmark pricing tiers
+  newActive: boolean("new_active").default(false),
+  newRepPrice: decimal("new_rep_price", { precision: 10, scale: 2 }),
+  upgradeActive: boolean("upgrade_active").default(false), 
+  upgradeRepPrice: decimal("upgrade_rep_price", { precision: 10, scale: 2 }),
+  lexmarkActive: boolean("lexmark_active").default(false),
+  lexmarkRepPrice: decimal("lexmark_rep_price", { precision: 10, scale: 2 }),
+  graphicActive: boolean("graphic_active").default(false),
+  graphicRepPrice: decimal("graphic_rep_price", { precision: 10, scale: 2 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Product Accessories (Associated with Models)
+export const productAccessories = pgTable("product_accessories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  modelId: varchar("model_id").notNull(), // references productModels.id
+  
+  // Basic Information
+  productCode: varchar("product_code").notNull(),
+  productName: varchar("product_name").notNull(),
+  category: varchar("category").notNull().default("Accessory"),
+  isActive: boolean("is_active").default(true),
+  
+  // Details
+  description: text("description"),
+  manufacturer: varchar("manufacturer"),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
+  msrp: decimal("msrp", { precision: 10, scale: 2 }),
+  
+  // Compatibility and Requirements
+  isRequired: boolean("is_required").default(false),
+  isOptional: boolean("is_optional").default(true),
+  maxQuantity: integer("max_quantity"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CPC Rates (Copy Per Click rates for service/supplies)
+export const cpcRates = pgTable("cpc_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  modelId: varchar("model_id").notNull(), // references productModels.id
+  
+  // Service & Supply rates from your CPC screenshot
+  serviceName: varchar("service_name").notNull(), // e.g., "imagePRESS V1000 - Net New - B/W - 0 to 5999"
+  pricingLevel: varchar("pricing_level").notNull(), // e.g., "Net New"
+  colorMode: varchar("color_mode").notNull(), // "B/W" or "Color"
+  type: varchar("type").notNull(), // "Base Minimum", "Upgrade", etc.
+  minVolume: integer("min_volume").default(0),
+  maxVolume: integer("max_volume"),
+  baseRate: decimal("base_rate", { precision: 10, scale: 5 }), // e.g., 0.00700
+  cpc: decimal("cpc", { precision: 10, scale: 5 }), // Cost per copy
+  cpcOverage: decimal("cpc_overage", { precision: 10, scale: 5 }),
+  includes: text("includes"), // What's included in the rate
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Service tickets table
 export const serviceTickets = pgTable("service_tickets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -603,6 +701,38 @@ export const quoteLineItemsRelations = relations(quoteLineItems, ({ one }) => ({
   }),
 }));
 
+// Product Management Relations
+export const productModelsRelations = relations(productModels, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [productModels.tenantId],
+    references: [tenants.id],
+  }),
+  accessories: many(productAccessories),
+  cpcRates: many(cpcRates),
+}));
+
+export const productAccessoriesRelations = relations(productAccessories, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [productAccessories.tenantId],
+    references: [tenants.id],
+  }),
+  model: one(productModels, {
+    fields: [productAccessories.modelId],
+    references: [productModels.id],
+  }),
+}));
+
+export const cpcRatesRelations = relations(cpcRates, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [cpcRates.tenantId],
+    references: [tenants.id],
+  }),
+  model: one(productModels, {
+    fields: [cpcRates.modelId],
+    references: [productModels.id],
+  }),
+}));
+
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
   teams: many(teams),
@@ -618,6 +748,9 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   leads: many(leads),
   quotes: many(quotes),
   userCustomerAssignments: many(userCustomerAssignments),
+  productModels: many(productModels),
+  productAccessories: many(productAccessories),
+  cpcRates: many(cpcRates),
 }));
 
 export const customersRelations = relations(customers, ({ one, many }) => ({
@@ -908,3 +1041,31 @@ export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 // Backward compatibility type aliases
 export type LeadInteraction = LeadActivity;
 export type CustomerInteraction = LeadActivity;
+
+// Product Management Insert Schemas
+export const insertProductModelSchema = createInsertSchema(productModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProductAccessorySchema = createInsertSchema(productAccessories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCpcRateSchema = createInsertSchema(cpcRates).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Product Management Types
+export type ProductModel = typeof productModels.$inferSelect;
+export type ProductAccessory = typeof productAccessories.$inferSelect;
+export type CpcRate = typeof cpcRates.$inferSelect;
+
+// Product Management Insert Types
+export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
+export type InsertProductAccessory = z.infer<typeof insertProductAccessorySchema>;
+export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;

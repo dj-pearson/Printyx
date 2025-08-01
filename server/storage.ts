@@ -19,6 +19,9 @@ import {
   meterReadings,
   invoices,
   invoiceLineItems,
+  productModels,
+  productAccessories,
+  cpcRates,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -38,6 +41,12 @@ import {
   type Technician,
   type MeterReading,
   type Invoice,
+  type ProductModel,
+  type ProductAccessory,
+  type CpcRate,
+  type InsertProductModel,
+  type InsertProductAccessory,
+  type InsertCpcRate,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
@@ -123,6 +132,18 @@ export interface IStorage {
   // User-Customer assignments for territory management
   getUserCustomerAssignments(userId: string, tenantId: string): Promise<UserCustomerAssignment[]>;
   createUserCustomerAssignment(assignment: Omit<UserCustomerAssignment, "id" | "createdAt">): Promise<UserCustomerAssignment>;
+  
+  // Product Management operations
+  getProductModels(tenantId: string): Promise<ProductModel[]>;
+  getProductModel(id: string, tenantId: string): Promise<ProductModel | undefined>;
+  createProductModel(model: InsertProductModel): Promise<ProductModel>;
+  updateProductModel(id: string, model: Partial<ProductModel>, tenantId: string): Promise<ProductModel | undefined>;
+  
+  getProductAccessories(modelId: string, tenantId: string): Promise<ProductAccessory[]>;
+  createProductAccessory(accessory: InsertProductAccessory): Promise<ProductAccessory>;
+  
+  getCpcRates(modelId: string, tenantId: string): Promise<CpcRate[]>;
+  createCpcRate(rate: InsertCpcRate): Promise<CpcRate>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -541,6 +562,72 @@ export class DatabaseStorage implements IStorage {
   async createLeadRelatedRecord(record: Omit<LeadRelatedRecord, "id" | "createdAt">): Promise<LeadRelatedRecord> {
     const [newRecord] = await db.insert(leadRelatedRecords).values(record).returning();
     return newRecord;
+  }
+
+  // Product Management Implementation
+  async getProductModels(tenantId: string): Promise<ProductModel[]> {
+    return await db
+      .select()
+      .from(productModels)
+      .where(eq(productModels.tenantId, tenantId))
+      .orderBy(productModels.productName);
+  }
+
+  async getProductModel(id: string, tenantId: string): Promise<ProductModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(productModels)
+      .where(and(eq(productModels.id, id), eq(productModels.tenantId, tenantId)));
+    return model;
+  }
+
+  async createProductModel(model: InsertProductModel): Promise<ProductModel> {
+    const [result] = await db
+      .insert(productModels)
+      .values(model)
+      .returning();
+    return result;
+  }
+
+  async updateProductModel(id: string, model: Partial<ProductModel>, tenantId: string): Promise<ProductModel | undefined> {
+    const [result] = await db
+      .update(productModels)
+      .set({ ...model, updatedAt: new Date() })
+      .where(and(eq(productModels.id, id), eq(productModels.tenantId, tenantId)))
+      .returning();
+    return result;
+  }
+
+  async getProductAccessories(modelId: string, tenantId: string): Promise<ProductAccessory[]> {
+    return await db
+      .select()
+      .from(productAccessories)
+      .where(and(eq(productAccessories.modelId, modelId), eq(productAccessories.tenantId, tenantId)))
+      .orderBy(productAccessories.productName);
+  }
+
+  async createProductAccessory(accessory: InsertProductAccessory): Promise<ProductAccessory> {
+    const [result] = await db
+      .insert(productAccessories)
+      .values(accessory)
+      .returning();
+    return result;
+  }
+
+  async getCpcRates(modelId: string, tenantId: string): Promise<CpcRate[]> {
+    return await db
+      .select()
+      .from(cpcRates)
+      .where(and(eq(cpcRates.modelId, modelId), eq(cpcRates.tenantId, tenantId)))
+      .orderBy(cpcRates.serviceName);
+  }
+
+  async createCpcRate(rate: InsertCpcRate): Promise<CpcRate> {
+    const [result] = await db
+      .insert(cpcRates)
+      .values(rate)
+      .returning();
+    return result;
   }
 }
 

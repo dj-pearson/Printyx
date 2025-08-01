@@ -20,6 +20,7 @@ import Inventory from "@/pages/inventory";
 import Billing from "@/pages/billing";
 import Reports from "@/pages/reports";
 import MeterReadings from "@/pages/MeterReadings";
+import ProductModels from "@/pages/ProductModels";
 import Invoices from "@/pages/Invoices";
 
 function Router() {
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/invoices" component={Invoices} />
           <Route path="/service-dispatch" component={ServiceDispatchEnhanced} />
           <Route path="/inventory" component={Inventory} />
+          <Route path="/product-models" component={ProductModels} />
           <Route path="/billing" component={Billing} />
           <Route path="/reports" component={Reports} />
         </>
