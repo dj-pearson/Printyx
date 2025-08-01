@@ -133,6 +133,41 @@ export default function Settings() {
     currency: "USD",
   });
 
+  // Update preferences immediately when changed
+  const updatePreference = (key: string, value: string) => {
+    const newPreferences = { ...preferencesForm, [key]: value };
+    setPreferencesForm(newPreferences);
+    
+    // Auto-save preferences immediately
+    preferencesMutation.mutate({
+      ...newPreferences,
+      notifications,
+    });
+  };
+
+  // Update notifications with auto-save
+  const updateNotification = (key: string, value: boolean) => {
+    const newNotifications = { ...notifications, [key]: value };
+    setNotifications(newNotifications);
+    
+    // Auto-save notifications immediately
+    preferencesMutation.mutate({
+      ...preferencesForm,
+      notifications: newNotifications,
+    });
+  };
+
+  // Update accessibility with auto-save
+  const updateAccessibility = (key: string, value: any) => {
+    const newAccessibility = { ...accessibility, [key]: value };
+    setAccessibility(newAccessibility);
+    
+    // Auto-save accessibility immediately
+    accessibilityMutation.mutate({
+      accessibility: newAccessibility,
+    });
+  };
+
   // Notifications state
   const [notifications, setNotifications] = useState({
     email: true,
@@ -297,8 +332,16 @@ export default function Settings() {
     });
   };
 
-  const handlePreferencesSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePreferencesSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    preferencesMutation.mutate({
+      ...preferencesForm,
+      notifications,
+    });
+  };
+
+  const handleNotificationsSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     preferencesMutation.mutate({
       ...preferencesForm,
       notifications,
@@ -635,7 +678,7 @@ export default function Settings() {
                       <Label htmlFor="theme">Theme</Label>
                       <Select
                         value={preferencesForm.theme}
-                        onValueChange={(value) => setPreferencesForm({ ...preferencesForm, theme: value })}
+                        onValueChange={(value) => updatePreference('theme', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -652,7 +695,7 @@ export default function Settings() {
                       <Label htmlFor="language">Language</Label>
                       <Select
                         value={preferencesForm.language}
-                        onValueChange={(value) => setPreferencesForm({ ...preferencesForm, language: value })}
+                        onValueChange={(value) => updatePreference('language', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -671,7 +714,7 @@ export default function Settings() {
                       <Label htmlFor="timezone">Timezone</Label>
                       <Select
                         value={preferencesForm.timezone}
-                        onValueChange={(value) => setPreferencesForm({ ...preferencesForm, timezone: value })}
+                        onValueChange={(value) => updatePreference('timezone', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -689,7 +732,7 @@ export default function Settings() {
                       <Label htmlFor="currency">Currency</Label>
                       <Select
                         value={preferencesForm.currency}
-                        onValueChange={(value) => setPreferencesForm({ ...preferencesForm, currency: value })}
+                        onValueChange={(value) => updatePreference('currency', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -709,7 +752,7 @@ export default function Settings() {
                       <Label htmlFor="dateFormat">Date Format</Label>
                       <Select
                         value={preferencesForm.dateFormat}
-                        onValueChange={(value) => setPreferencesForm({ ...preferencesForm, dateFormat: value })}
+                        onValueChange={(value) => updatePreference('dateFormat', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -726,7 +769,7 @@ export default function Settings() {
                       <Label htmlFor="timeFormat">Time Format</Label>
                       <Select
                         value={preferencesForm.timeFormat}
-                        onValueChange={(value) => setPreferencesForm({ ...preferencesForm, timeFormat: value })}
+                        onValueChange={(value) => updatePreference('timeFormat', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -768,7 +811,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={notifications.email}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, email: checked })}
+                      onCheckedChange={(checked) => updateNotification('email', checked)}
                     />
                   </div>
 
@@ -781,7 +824,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={notifications.push}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, push: checked })}
+                      onCheckedChange={(checked) => updateNotification('push', checked)}
                     />
                   </div>
 
@@ -794,7 +837,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={notifications.sms}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, sms: checked })}
+                      onCheckedChange={(checked) => updateNotification('sms', checked)}
                     />
                   </div>
 
@@ -807,12 +850,12 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={notifications.marketing}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, marketing: checked })}
+                      onCheckedChange={(checked) => updateNotification('marketing', checked)}
                     />
                   </div>
                 </div>
 
-                <Button onClick={handlePreferencesSubmit} disabled={preferencesMutation.isPending}>
+                <Button onClick={handleNotificationsSubmit} disabled={preferencesMutation.isPending}>
                   {preferencesMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Save Notification Settings
                 </Button>
@@ -840,7 +883,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={accessibility.highContrast}
-                      onCheckedChange={(checked) => setAccessibility({ ...accessibility, highContrast: checked })}
+                      onCheckedChange={(checked) => updateAccessibility('highContrast', checked)}
                     />
                   </div>
 
@@ -853,7 +896,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={accessibility.reducedMotion}
-                      onCheckedChange={(checked) => setAccessibility({ ...accessibility, reducedMotion: checked })}
+                      onCheckedChange={(checked) => updateAccessibility('reducedMotion', checked)}
                     />
                   </div>
 
@@ -861,7 +904,7 @@ export default function Settings() {
                     <Label htmlFor="fontSize">Font Size</Label>
                     <Select
                       value={accessibility.fontSize}
-                      onValueChange={(value) => setAccessibility({ ...accessibility, fontSize: value })}
+                      onValueChange={(value) => updateAccessibility('fontSize', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -879,7 +922,7 @@ export default function Settings() {
                     <Label htmlFor="colorBlind">Color Blind Support</Label>
                     <Select
                       value={accessibility.colorBlind}
-                      onValueChange={(value) => setAccessibility({ ...accessibility, colorBlind: value })}
+                      onValueChange={(value) => updateAccessibility('colorBlind', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -902,7 +945,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={accessibility.screenReader}
-                      onCheckedChange={(checked) => setAccessibility({ ...accessibility, screenReader: checked })}
+                      onCheckedChange={(checked) => updateAccessibility('screenReader', checked)}
                     />
                   </div>
 
@@ -915,7 +958,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={accessibility.keyboardNavigation}
-                      onCheckedChange={(checked) => setAccessibility({ ...accessibility, keyboardNavigation: checked })}
+                      onCheckedChange={(checked) => updateAccessibility('keyboardNavigation', checked)}
                     />
                   </div>
 
@@ -928,7 +971,7 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={accessibility.soundEnabled}
-                      onCheckedChange={(checked) => setAccessibility({ ...accessibility, soundEnabled: checked })}
+                      onCheckedChange={(checked) => updateAccessibility('soundEnabled', checked)}
                     />
                   </div>
                 </div>

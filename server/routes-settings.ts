@@ -162,15 +162,16 @@ export async function updateUserPreferences(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const validated = insertUserSettingsSchema.pick({
-      theme: true,
-      language: true,
-      timezone: true,
-      dateFormat: true,
-      timeFormat: true,
-      currency: true,
-      notifications: true,
-    }).parse(req.body);
+    const requestData = req.body;
+  const validated = {
+    theme: requestData.theme,
+    language: requestData.language,
+    timezone: requestData.timezone,
+    dateFormat: requestData.dateFormat,
+    timeFormat: requestData.timeFormat,
+    currency: requestData.currency,
+    notifications: requestData.notifications,
+  };
 
     await storage.updateUserSettings(user.id, validated);
 
@@ -189,9 +190,9 @@ export async function updateAccessibilitySettings(req: Request, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const validated = insertUserSettingsSchema.pick({
-      accessibility: true,
-    }).parse(req.body);
+    const validated = {
+      accessibility: req.body.accessibility,
+    };
 
     await storage.updateUserSettings(user.id, validated);
 
