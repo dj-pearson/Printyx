@@ -22,6 +22,8 @@ import {
   ChevronDown,
   ChevronRight,
   Zap,
+  Smartphone,
+  Activity,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -200,6 +202,8 @@ const navigationStructure = {
       { key: 'sales-settings', label: 'Sales Settings', path: '/admin/sales-settings', icon: Settings },
       { key: 'billing-settings', label: 'Billing Settings', path: '/admin/billing-settings', icon: Settings },
       { key: 'workflow-automation', label: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
+      { key: 'mobile-optimization', label: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
+      { key: 'performance-monitoring', label: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
     ]
   }
 };

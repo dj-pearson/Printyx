@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { 
   TrendingUp, 
@@ -191,9 +191,8 @@ export default function AdvancedReporting() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Date Range</label>
-                <DatePickerWithRange
-                  value={dateRange}
-                  onChange={setDateRange}
+                <DateRangePicker
+                  onDateRangeChange={handleDateRangeChange}
                 />
               </div>
               <div className="w-full sm:w-48">

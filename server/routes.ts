@@ -33,6 +33,7 @@ import multer from "multer";
 import csv from "csv-parser";
 import { Readable } from "stream";
 import { format } from "date-fns";
+import { registerMobileRoutes } from "./routes-mobile";
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -1507,6 +1508,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple health check
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // Register mobile and performance monitoring routes
+  registerMobileRoutes(app);
+
+  // Workflow Automation Routes
+  app.get("/api/workflow-rules", async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.sub;
+      
+      // Mock workflow rules data for now - would come from database
+      const workflowRules = [
+        {
+          id: "1",
+          name: "Auto-Assign High Priority Tickets",
+          description: "Automatically assign high priority service tickets to available senior technicians",
+          trigger: {
+            type: 'service_ticket_created',
+            conditions: { priority: 'high' }
+          },
+          actions: [{
+            type: 'assign_technician',
+            parameters: { skillLevel: 'senior', available: true }
+          }],
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          lastTriggered: new Date(Date.now() - 86400000).toISOString(),
+          triggerCount: 15
+        },
+        {
+          id: "2", 
+          name: "Contract Expiration Alerts",
+          description: "Send email notifications 30 days before contract expiration",
+          trigger: {
+            type: 'contract_expiring',
+            conditions: { daysUntilExpiration: 30 }
+          },
+          actions: [{
+            type: 'send_email',
+            parameters: { recipients: ['account_manager', 'customer'] }
+          }],
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          lastTriggered: new Date(Date.now() - 432000000).toISOString(),
+          triggerCount: 8
+        },
+        {
+          id: "3",
+          name: "Overdue Payment Reminders", 
+          description: "Automatically send payment reminders for overdue invoices",
+          trigger: {
+            type: 'customer_payment_overdue',
+            conditions: { overdueDays: 15 }
+          },
+          actions: [{
+            type: 'send_email',
+            parameters: { template: 'payment_reminder' }
+          }, {
+            type: 'create_task',
+            parameters: { assignee: 'account_manager', priority: 'high' }
+          }],
+          isActive: false,
+          createdAt: new Date().toISOString(),
+          triggerCount: 0
+        }
+      ];
+      
+      res.json(workflowRules);
+    } catch (error) {
+      console.error("Error fetching workflow rules:", error);
+      res.status(500).json({ message: "Failed to fetch workflow rules" });
+    }
+  });
+
+  app.post("/api/workflow-rules", async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.sub;
+      const ruleData = {
+        id: Date.now().toString(),
+        ...req.body,
+        tenantId,
+        createdAt: new Date().toISOString(),
+        triggerCount: 0
+      };
+      
+      // Would save to database in real implementation
+      res.status(201).json(ruleData);
+    } catch (error) {
+      console.error("Error creating workflow rule:", error);
+      res.status(500).json({ message: "Failed to create workflow rule" });
+    }
+  });
+
+  app.patch("/api/workflow-rules/:id", async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // Would update in database in real implementation
+      res.json({ id, ...updates });
+    } catch (error) {
+      console.error("Error updating workflow rule:", error);
+      res.status(500).json({ message: "Failed to update workflow rule" });
+    }
+  });
+
+  app.delete("/api/workflow-rules/:id", async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Would delete from database in real implementation
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting workflow rule:", error);
+      res.status(500).json({ message: "Failed to delete workflow rule" });
+    }
+  });
+
+  // Advanced Reporting Routes
+  app.get("/api/advanced-reports/revenue-analytics", async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.sub;
+      const { startDate, endDate } = req.query;
+      
+      // Mock revenue analytics data
+      const revenueData = {
+        totalRevenue: 1248500,
+        monthlyGrowth: 12.5,
+        revenueByMonth: Array.from({ length: 12 }, (_, i) => ({
+          month: new Date(2024, i).toLocaleDateString('en-US', { month: 'short' }),
+          revenue: Math.floor(Math.random() * 150000) + 80000,
+          contracts: Math.floor(Math.random() * 50) + 30
+        })),
+        revenueByService: [
+          { service: 'Meter Billing', revenue: 450000, percentage: 36 },
+          { service: 'Service Contracts', revenue: 380000, percentage: 30 },
+          { service: 'Equipment Sales', revenue: 280000, percentage: 22 },
+          { service: 'Supplies', revenue: 138500, percentage: 12 }
+        ]
+      };
+      
+      res.json(revenueData);
+    } catch (error) {
+      console.error("Error fetching revenue analytics:", error);
+      res.status(500).json({ message: "Failed to fetch revenue analytics" });
+    }
+  });
+
+  app.get("/api/advanced-reports/customer-profitability", async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.sub;
+      
+      // Mock customer profitability data
+      const profitabilityData = {
+        averageMargin: 28.5,
+        topCustomers: Array.from({ length: 10 }, (_, i) => ({
+          id: `cust-${i + 1}`,
+          name: `Customer ${i + 1}`,
+          revenue: Math.floor(Math.random() * 80000) + 20000,
+          margin: Math.floor(Math.random() * 40) + 15,
+          contracts: Math.floor(Math.random() * 8) + 2
+        }))
+      };
+      
+      res.json(profitabilityData);
+    } catch (error) {
+      console.error("Error fetching customer profitability:", error);
+      res.status(500).json({ message: "Failed to fetch customer profitability" });
+    }
+  });
+
+  app.get("/api/advanced-reports/service-performance", async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.sub;
+      
+      // Mock service performance data
+      const serviceData = {
+        averageResponseTime: 2.4,
+        firstCallResolution: 78,
+        customerSatisfaction: 4.2,
+        monthlyMetrics: Array.from({ length: 6 }, (_, i) => ({
+          month: new Date(2024, 6 + i).toLocaleDateString('en-US', { month: 'short' }),
+          tickets: Math.floor(Math.random() * 100) + 50,
+          resolved: Math.floor(Math.random() * 80) + 40,
+          avgTime: Math.random() * 4 + 1
+        })),
+        technicianPerformance: Array.from({ length: 8 }, (_, i) => ({
+          id: `tech-${i + 1}`,
+          name: `Technician ${i + 1}`,
+          ticketsResolved: Math.floor(Math.random() * 50) + 20,
+          avgTime: Math.random() * 3 + 1.5,
+          rating: Math.random() * 1.5 + 3.5
+        }))
+      };
+      
+      res.json(serviceData);
+    } catch (error) {
+      console.error("Error fetching service performance:", error);
+      res.status(500).json({ message: "Failed to fetch service performance" });
+    }
   });
 
   const httpServer = createServer(app);

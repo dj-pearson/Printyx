@@ -37,6 +37,8 @@ import JournalEntries from "@/pages/JournalEntries";
 import MeterBilling from "@/pages/MeterBilling";
 import AdvancedReporting from "@/pages/AdvancedReporting";
 import WorkflowAutomation from "@/pages/WorkflowAutomation";
+import MobileOptimization from "@/pages/MobileOptimization";
+import PerformanceMonitoring from "@/pages/PerformanceMonitoring";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -87,6 +89,8 @@ function Router() {
           <Route path="/reports" component={Reports} />
           <Route path="/advanced-reporting" component={AdvancedReporting} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
+          <Route path="/mobile-optimization" component={MobileOptimization} />
+          <Route path="/performance-monitoring" component={PerformanceMonitoring} />
         </>
       )}
       <Route component={NotFound} />
