@@ -36,13 +36,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const rolePermissions = {
   // Sales Team Permissions
   SALES_REP: {
-    sales: ['crm', 'leads', 'quotes', 'my-customers', 'my-contracts'],
-    service: ['view-tickets'], // view only for customer context
+    sales: ['crm', 'leads', 'quotes', 'my-customers', 'my-contracts', 'task-management'],
+    service: ['view-tickets', 'task-management'], // view only for customer context
     reports: ['my-sales-reports'],
   },
   SALES_TEAM_LEAD: {
-    sales: ['crm', 'leads', 'quotes', 'team-customers', 'team-contracts', 'team-management'],
-    service: ['view-tickets'],
+    sales: ['crm', 'leads', 'quotes', 'team-customers', 'team-contracts', 'team-management', 'task-management'],
+    service: ['view-tickets', 'task-management'],
     reports: ['team-sales-reports', 'my-sales-reports'],
   },
   SALES_MANAGER: {
@@ -60,12 +60,12 @@ const rolePermissions = {
 
   // Service Team Permissions
   SERVICE_TECH: {
-    service: ['my-tickets', 'dispatch', 'meter-readings', 'inventory-view'],
+    service: ['my-tickets', 'dispatch', 'meter-readings', 'inventory-view', 'task-management'],
     customers: ['view-assigned'],
     reports: ['my-service-reports'],
   },
   SERVICE_SUPERVISOR: {
-    service: ['team-tickets', 'dispatch', 'meter-readings', 'inventory-management', 'technician-management'],
+    service: ['team-tickets', 'dispatch', 'meter-readings', 'inventory-management', 'technician-management', 'task-management'],
     customers: ['view-all'],
     reports: ['team-service-reports'],
   },
@@ -136,6 +136,7 @@ const navigationStructure = {
       { key: 'my-contracts', label: 'My Contracts', path: '/my-contracts', icon: ClipboardList },
       { key: 'team-contracts', label: 'Team Contracts', path: '/team-contracts', icon: ClipboardList },
       { key: 'all-contracts', label: 'All Contracts', path: '/contracts', icon: ClipboardList },
+      { key: 'task-management', label: 'Task Management', path: '/task-management', icon: CheckSquare },
     ]
   },
   service: {
@@ -148,6 +149,7 @@ const navigationStructure = {
       { key: 'meter-readings', label: 'Meter Readings', path: '/meter-readings', icon: Calculator },
       { key: 'view-tickets', label: 'Service Tickets', path: '/service-tickets', icon: Wrench },
       { key: 'create-tickets', label: 'Create Ticket', path: '/create-ticket', icon: UserPlus },
+      { key: 'task-management', label: 'Task Management', path: '/task-management', icon: CheckSquare },
     ]
   },
   inventory: {

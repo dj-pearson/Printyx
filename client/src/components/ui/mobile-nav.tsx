@@ -29,6 +29,7 @@ const navigationStructure = {
       { key: 'my-contracts', label: 'My Contracts', path: '/my-contracts', icon: ClipboardList },
       { key: 'team-contracts', label: 'Team Contracts', path: '/team-contracts', icon: ClipboardList },
       { key: 'all-contracts', label: 'All Contracts', path: '/contracts', icon: ClipboardList },
+      { key: 'task-management', label: 'Task Management', path: '/task-management', icon: CheckSquare },
     ]
   },
   service: {
@@ -41,6 +42,7 @@ const navigationStructure = {
       { key: 'meter-readings', label: 'Meter Readings', path: '/meter-readings', icon: Calculator },
       { key: 'view-tickets', label: 'Service Tickets', path: '/service-tickets', icon: Wrench },
       { key: 'create-tickets', label: 'Create Ticket', path: '/create-ticket', icon: UserPlus },
+      { key: 'task-management', label: 'Task Management', path: '/task-management', icon: CheckSquare },
     ]
   },
   inventory: {
