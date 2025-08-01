@@ -10,13 +10,20 @@ export interface TenantRequest extends Request {
     pathPrefix?: string;
   };
   tenantId?: string;
+  user?: any;
 }
 
+// Configuration for tenant routing
+const TENANT_CONFIG = {
+  enableSubdomainRouting: true,    // Primary method: xyz-company.printyx.net
+  enablePathRouting: false,        // Secondary method: printyx.net/xyz-company (disabled by default)
+  isDevelopment: process.env.NODE_ENV === 'development'
+};
+
 /**
- * Middleware to resolve tenant from subdomain or path
- * Supports:
- * - xyz-company.printyx.net (subdomain)
- * - printyx.net/xyz-company/... (path-based)
+ * Middleware to resolve tenant primarily from subdomain
+ * Primary: xyz-company.printyx.net (subdomain)
+ * Fallback: printyx.net/xyz-company/... (path-based, if enabled)
  */
 export const resolveTenant = async (req: TenantRequest, res: Response, next: NextFunction) => {
   try {
@@ -24,16 +31,18 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
     const host = req.get('host') || '';
     const path = req.path;
 
-    // Method 1: Subdomain detection (xyz-company.printyx.net)
-    if (host.includes('.printyx.') || host.includes('.replit.')) {
-      const subdomain = host.split('.')[0];
-      if (subdomain !== 'www' && subdomain !== 'api' && subdomain.length > 0) {
-        tenantSlug = subdomain;
+    // Method 1: Subdomain detection (Primary - always enabled)
+    if (TENANT_CONFIG.enableSubdomainRouting) {
+      if (host.includes('.printyx.') || host.includes('.replit.')) {
+        const subdomain = host.split('.')[0];
+        if (subdomain !== 'www' && subdomain !== 'api' && subdomain.length > 0) {
+          tenantSlug = subdomain;
+        }
       }
     }
 
-    // Method 2: Path prefix detection (/xyz-company/...)
-    if (!tenantSlug) {
+    // Method 2: Path prefix detection (Secondary - configurable)
+    if (!tenantSlug && TENANT_CONFIG.enablePathRouting) {
       const pathSegments = path.split('/').filter(segment => segment.length > 0);
       if (pathSegments.length > 0 && !pathSegments[0].startsWith('api')) {
         // Check if first segment is a tenant slug
@@ -53,8 +62,8 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         
         // Store tenant context in session if available
         if (req.session) {
-          req.session.tenantId = tenant.id;
-          req.session.tenantSlug = tenant.slug;
+          (req.session as any).tenantId = tenant.id;
+          (req.session as any).tenantSlug = tenant.slug;
         }
       } else {
         // Invalid tenant slug - return 404
@@ -64,14 +73,16 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         });
       }
     } else {
-      // For development: use session tenant or default demo tenant
-      if (req.session?.tenantId) {
-        req.tenantId = req.session.tenantId;
-      } else if (req.user?.tenantId) {
-        req.tenantId = req.user.tenantId;
-      } else {
-        // Default to demo tenant for development
-        req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+      // For development/localhost: use user's tenant or default demo tenant
+      if (TENANT_CONFIG.isDevelopment && (host === 'localhost:5000' || host.includes('replit.dev'))) {
+        if (req.user?.tenantId) {
+          req.tenantId = req.user.tenantId;
+        } else if ((req.session as any)?.tenantId) {
+          req.tenantId = (req.session as any).tenantId;
+        } else {
+          // Default to demo tenant for development
+          req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+        }
       }
     }
 
@@ -96,16 +107,29 @@ export const requireTenant = (req: TenantRequest, res: Response, next: NextFunct
 };
 
 /**
- * Generate tenant URLs for different routing methods
+ * Generate tenant URLs prioritizing subdomain method
  */
 export const generateTenantUrls = (tenantSlug: string, baseDomain: string = 'printyx.net') => {
-  return {
-    subdomain: `https://${tenantSlug}.${baseDomain}`,
-    pathBased: `https://${baseDomain}/${tenantSlug}`,
+  const urls: any = {
+    primary: `https://${tenantSlug}.${baseDomain}`, // Subdomain is primary
     // For development
-    subdomainDev: `https://${tenantSlug}.replit.dev`,
-    pathBasedDev: `https://replit.dev/${tenantSlug}`
+    primaryDev: `https://${tenantSlug}.replit.dev`,
   };
+  
+  // Only include path-based if enabled
+  if (TENANT_CONFIG.enablePathRouting) {
+    urls.secondary = `https://${baseDomain}/${tenantSlug}`;
+    urls.secondaryDev = `https://replit.dev/${tenantSlug}`;
+  }
+  
+  return urls;
+};
+
+/**
+ * Toggle tenant routing methods (for admin configuration)
+ */
+export const updateTenantConfig = (config: Partial<typeof TENANT_CONFIG>) => {
+  Object.assign(TENANT_CONFIG, config);
 };
 
 /**

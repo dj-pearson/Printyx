@@ -41,10 +41,9 @@ export default function TenantSetup() {
   };
 
   const tenantUrls = {
-    subdomain: `https://${slug}.printyx.net`,
-    pathBased: `https://printyx.net/${slug}`,
-    subdomainDev: `https://${slug}.replit.dev`,
-    pathBasedDev: `https://replit.dev/${slug}`
+    primary: `https://${slug}.printyx.net`, // Subdomain (Primary)
+    primaryDev: `https://${slug}.replit.dev`, // Development subdomain
+    current: `http://localhost:5000`, // Current development
   };
 
   return (
@@ -123,67 +122,69 @@ export default function TenantSetup() {
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <div>
-                <Label className="text-sm font-medium">Subdomain (Production)</Label>
+                <Label className="text-sm font-medium">Primary URL (Subdomain)</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <Input 
-                    value={tenantUrls.subdomain} 
+                    value={tenantUrls.primary} 
                     readOnly 
                     className="text-sm"
                   />
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard(tenantUrls.subdomain, 'Subdomain URL')}
+                    onClick={() => copyToClipboard(tenantUrls.primary, 'Primary URL')}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => openUrl(tenantUrls.subdomain)}
+                    onClick={() => openUrl(tenantUrls.primary)}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Recommended for production use</p>
               </div>
 
               <div>
-                <Label className="text-sm font-medium">Path-based (Production)</Label>
+                <Label className="text-sm font-medium">Development URL (Replit)</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <Input 
-                    value={tenantUrls.pathBased} 
+                    value={tenantUrls.primaryDev} 
                     readOnly 
                     className="text-sm"
                   />
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard(tenantUrls.pathBased, 'Path-based URL')}
+                    onClick={() => copyToClipboard(tenantUrls.primaryDev, 'Development URL')}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => openUrl(tenantUrls.pathBased)}
+                    onClick={() => openUrl(tenantUrls.primaryDev)}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">For testing and development</p>
               </div>
 
               <div>
-                <Label className="text-sm font-medium">Development (Current)</Label>
+                <Label className="text-sm font-medium">Local Development (Current)</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <Input 
-                    value="http://localhost:5000" 
+                    value={tenantUrls.current} 
                     readOnly 
                     className="text-sm"
                   />
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => copyToClipboard('http://localhost:5000', 'Development URL')}
+                    onClick={() => copyToClipboard(tenantUrls.current, 'Development URL')}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -195,6 +196,7 @@ export default function TenantSetup() {
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Currently active environment</p>
               </div>
             </div>
           </CardContent>
@@ -222,14 +224,14 @@ export default function TenantSetup() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Globe className="h-5 w-5" />
-              Custom Domains
+              Subdomain Routing
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Support for both subdomain and path-based routing patterns
+              Clean, professional subdomain URLs for each company tenant
             </p>
-            <Badge variant="secondary" className="mt-2">Flexible</Badge>
+            <Badge variant="secondary" className="mt-2">Primary Method</Badge>
           </CardContent>
         </Card>
 
