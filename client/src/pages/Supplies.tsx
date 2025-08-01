@@ -17,6 +17,7 @@ import { insertSupplySchema, type Supply, type InsertSupply } from "@shared/sche
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/layout/layout";
+import ProductImport from "@/components/product-import/ProductImport";
 
 export default function Supplies() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -216,14 +217,16 @@ export default function Supplies() {
               Manage supply products, consumables, and inventory items for your customers
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Supply
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="flex gap-2">
+            <ProductImport />
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Supply
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>New Price Book List: Supply</DialogTitle>
                 <DialogDescription>
@@ -733,9 +736,10 @@ export default function Supplies() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
-        {/* Search and Filter Bar */}
-        <div className="flex items-center gap-4">
+      {/* Search and Filter Bar */}
+      <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input

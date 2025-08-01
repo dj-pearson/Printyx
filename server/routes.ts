@@ -26,6 +26,143 @@ import {
   insertSupplySchema,
   insertManagedServiceSchema,
 } from "@shared/schema";
+import multer from "multer";
+import csv from "csv-parser";
+import { Readable } from "stream";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'));
+    }
+  },
+});
+
+// Helper function to parse CSV from buffer
+function parseCSV(buffer: Buffer): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const results: any[] = [];
+    const stream = Readable.from(buffer.toString());
+    
+    stream
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', () => resolve(results))
+      .on('error', (error) => reject(error));
+  });
+}
+
+// Helper function to validate and transform product model data
+function validateProductModelData(row: any): any {
+  const errors: string[] = [];
+  
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    data: {
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      manufacturer: row['Manufacturer']?.trim() || null,
+      model: row['Model']?.trim() || null,
+      description: row['Description']?.trim() || null,
+      category: row['Category']?.trim() || null,
+      colorPrint: row['Color Print']?.toLowerCase() === 'yes',
+      bwPrint: row['BW Print']?.toLowerCase() === 'yes',
+      colorCopy: row['Color Copy']?.toLowerCase() === 'yes',
+      bwCopy: row['BW Copy']?.toLowerCase() === 'yes',
+      standardCost: row['Standard Cost'] ? parseFloat(row['Standard Cost']) : null,
+      standardRepPrice: row['Standard Rep Price'] ? parseFloat(row['Standard Rep Price']) : null,
+      newCost: row['New Cost'] ? parseFloat(row['New Cost']) : null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeCost: row['Upgrade Cost'] ? parseFloat(row['Upgrade Cost']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
+      isActive: true,
+      availableForAll: false,
+      salesRepCredit: true,
+      funding: true,
+    }
+  };
+}
+
+// Helper function to validate and transform supply data
+function validateSupplyData(row: any): any {
+  const errors: string[] = [];
+  
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    data: {
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      productType: row['Product Type']?.trim() || 'Supplies',
+      dealerComp: row['Dealer Comp']?.trim() || null,
+      inventory: row['Inventory']?.trim() || null,
+      inStock: row['In Stock']?.trim() || null,
+      description: row['Description']?.trim() || null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
+      lexmarkRepPrice: row['Lexmark Rep Price'] ? parseFloat(row['Lexmark Rep Price']) : null,
+      graphicRepPrice: row['Graphic Rep Price'] ? parseFloat(row['Graphic Rep Price']) : null,
+      newActive: !!row['New Rep Price'],
+      upgradeActive: !!row['Upgrade Rep Price'],
+      lexmarkActive: !!row['Lexmark Rep Price'],
+      graphicActive: !!row['Graphic Rep Price'],
+      isActive: true,
+      salesRepCredit: true,
+      funding: true,
+    }
+  };
+}
+
+// Helper function to validate and transform managed service data
+function validateManagedServiceData(row: any): any {
+  const errors: string[] = [];
+  
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    data: {
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      category: 'IT Services',
+      serviceType: row['Service Type']?.trim() || null,
+      serviceLevel: row['Service Level']?.trim() || null,
+      supportHours: row['Support Hours']?.trim() || null,
+      responseTime: row['Response Time']?.trim() || null,
+      remoteMgmt: row['Remote Management']?.toLowerCase() === 'yes',
+      onsiteSupport: row['Onsite Support']?.toLowerCase() === 'yes',
+      includesHardware: false,
+      description: row['Description']?.trim() || null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
+      lexmarkRepPrice: row['Lexmark Rep Price'] ? parseFloat(row['Lexmark Rep Price']) : null,
+      graphicRepPrice: row['Graphic Rep Price'] ? parseFloat(row['Graphic Rep Price']) : null,
+      newActive: !!row['New Rep Price'],
+      upgradeActive: !!row['Upgrade Rep Price'],
+      lexmarkActive: !!row['Lexmark Rep Price'],
+      graphicActive: !!row['Graphic Rep Price'],
+      isActive: true,
+      salesRepCredit: true,
+      funding: true,
+    }
+  };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session management
@@ -547,6 +684,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating managed service:", error);
       res.status(500).json({ message: "Failed to create managed service" });
     }
+  });
+
+  // CSV Import Endpoints
+  
+  // Product Models Import
+  app.post('/api/product-models/import', upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const csvData = await parseCSV(req.file.buffer);
+      
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < csvData.length; i++) {
+        const row = csvData[i];
+        const validation = validateProductModelData(row);
+        
+        if (!validation.isValid) {
+          errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
+          skipped++;
+          continue;
+        }
+
+        try {
+          const productData = { ...validation.data, tenantId };
+          await storage.createProductModel(productData);
+          imported++;
+        } catch (error) {
+          errors.push(`Row ${i + 2}: Failed to import - ${error instanceof Error ? error.message : 'Unknown error'}`);
+          skipped++;
+        }
+      }
+
+      res.json({
+        success: errors.length === 0,
+        imported,
+        skipped,
+        errors,
+      });
+    } catch (error) {
+      console.error("Error importing product models:", error);
+      res.status(500).json({ message: "Failed to import product models" });
+    }
+  });
+
+  // Supplies Import
+  app.post('/api/supplies/import', upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const csvData = await parseCSV(req.file.buffer);
+      
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < csvData.length; i++) {
+        const row = csvData[i];
+        const validation = validateSupplyData(row);
+        
+        if (!validation.isValid) {
+          errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
+          skipped++;
+          continue;
+        }
+
+        try {
+          const supplyData = { ...validation.data, tenantId };
+          await storage.createSupply(supplyData);
+          imported++;
+        } catch (error) {
+          errors.push(`Row ${i + 2}: Failed to import - ${error instanceof Error ? error.message : 'Unknown error'}`);
+          skipped++;
+        }
+      }
+
+      res.json({
+        success: errors.length === 0,
+        imported,
+        skipped,
+        errors,
+      });
+    } catch (error) {
+      console.error("Error importing supplies:", error);
+      res.status(500).json({ message: "Failed to import supplies" });
+    }
+  });
+
+  // Managed Services Import
+  app.post('/api/managed-services/import', upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const csvData = await parseCSV(req.file.buffer);
+      
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < csvData.length; i++) {
+        const row = csvData[i];
+        const validation = validateManagedServiceData(row);
+        
+        if (!validation.isValid) {
+          errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
+          skipped++;
+          continue;
+        }
+
+        try {
+          const serviceData = { ...validation.data, tenantId };
+          await storage.createManagedService(serviceData);
+          imported++;
+        } catch (error) {
+          errors.push(`Row ${i + 2}: Failed to import - ${error instanceof Error ? error.message : 'Unknown error'}`);
+          skipped++;
+        }
+      }
+
+      res.json({
+        success: errors.length === 0,
+        imported,
+        skipped,
+        errors,
+      });
+    } catch (error) {
+      console.error("Error importing managed services:", error);
+      res.status(500).json({ message: "Failed to import managed services" });
+    }
+  });
+
+  // Placeholder endpoints for other product types
+  app.post('/api/product-accessories/import', upload.single('file'), async (req: any, res) => {
+    res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Product Accessories not yet implemented'] });
+  });
+
+  app.post('/api/professional-services/import', upload.single('file'), async (req: any, res) => {
+    res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Professional Services not yet implemented'] });
+  });
+
+  app.post('/api/service-products/import', upload.single('file'), async (req: any, res) => {
+    res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Service Products not yet implemented'] });
+  });
+
+  app.post('/api/software-products/import', upload.single('file'), async (req: any, res) => {
+    res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Software Products not yet implemented'] });
   });
 
   // CPC Rates

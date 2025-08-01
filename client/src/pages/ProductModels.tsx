@@ -17,6 +17,7 @@ import { insertProductModelSchema, type ProductModel, type InsertProductModel } 
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/layout/layout";
+import ProductImport from "@/components/product-import/ProductImport";
 
 export default function ProductModels() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -193,14 +194,16 @@ export default function ProductModels() {
             Manage your copier and MFP product catalog with pricing tiers
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Model
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex gap-2">
+          <ProductImport />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Model
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Product Model</DialogTitle>
               <DialogDescription>
@@ -494,8 +497,9 @@ export default function ProductModels() {
                 </div>
               </form>
             </Form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search and Filter Bar */}
@@ -574,7 +578,7 @@ export default function ProductModels() {
           {models.filter(m => m.isActive).length} active models
         </span>
       </div>
-    </div>
+      </div>
     </Layout>
   );
 }
