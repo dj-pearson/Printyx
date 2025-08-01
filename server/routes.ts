@@ -20,6 +20,7 @@ import {
   insertProductModelSchema,
   insertProductAccessorySchema,
   insertCpcRateSchema,
+  insertProfessionalServiceSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -406,6 +407,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating product accessory:", error);
       res.status(500).json({ message: "Failed to create product accessory" });
+    }
+  });
+
+  // Professional Services
+  app.get('/api/professional-services', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const services = await storage.getAllProfessionalServices(tenantId);
+      res.json(services);
+    } catch (error) {
+      console.error("Error fetching professional services:", error);
+      res.status(500).json({ message: "Failed to fetch professional services" });
+    }
+  });
+
+  app.post('/api/professional-services', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertProfessionalServiceSchema.parse({ 
+        ...req.body, 
+        tenantId 
+      });
+      const service = await storage.createProfessionalService(validatedData);
+      res.json(service);
+    } catch (error) {
+      console.error("Error creating professional service:", error);
+      res.status(500).json({ message: "Failed to create professional service" });
     }
   });
 

@@ -1060,12 +1060,73 @@ export const insertCpcRateSchema = createInsertSchema(cpcRates).omit({
   createdAt: true,
 });
 
+// Professional Services
+export const professionalServices = pgTable("professional_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  productCode: varchar("product_code").notNull(),
+  productName: varchar("product_name").notNull(),
+  category: varchar("category").default("Professional Services"),
+  accessoryType: varchar("accessory_type"),
+  description: text("description"),
+  summary: text("summary"),
+  note: text("note"),
+  eaNotes: text("ea_notes"),
+  relatedProducts: text("related_products"),
+  
+  // Flags
+  isActive: boolean("is_active").default(true),
+  availableForAll: boolean("available_for_all").default(false),
+  repostEdit: boolean("repost_edit").default(false),
+  salesRepCredit: boolean("sales_rep_credit").default(true),
+  funding: boolean("funding").default(true),
+  
+  // Pricing Information
+  lease: boolean("lease").default(false),
+  paymentType: varchar("payment_type"),
+  msrp: decimal("msrp"),
+  
+  // Pricing Tiers
+  newActive: boolean("new_active").default(false),
+  newRepPrice: decimal("new_rep_price"),
+  upgradeActive: boolean("upgrade_active").default(false),
+  upgradeRepPrice: decimal("upgrade_rep_price"),
+  lexmarkActive: boolean("lexmark_active").default(false),
+  lexmarkRepPrice: decimal("lexmark_rep_price"),
+  graphicActive: boolean("graphic_active").default(false),
+  graphicRepPrice: decimal("graphic_rep_price"),
+  
+  // Product Tags
+  manufacturer: varchar("manufacturer"),
+  manufacturerProductCode: varchar("manufacturer_product_code"),
+  model: varchar("model"),
+  units: varchar("units"),
+  environment: varchar("environment"),
+  colorMode: varchar("color_mode"),
+  eaItemNumber: varchar("ea_item_number"),
+  
+  // System Information
+  priceBookId: varchar("price_book_id"),
+  tempKey: varchar("temp_key"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProfessionalServiceSchema = createInsertSchema(professionalServices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Product Management Types
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;
 export type CpcRate = typeof cpcRates.$inferSelect;
+export type ProfessionalService = typeof professionalServices.$inferSelect;
 
 // Product Management Insert Types
 export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
 export type InsertProductAccessory = z.infer<typeof insertProductAccessorySchema>;
 export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;
+export type InsertProfessionalService = z.infer<typeof insertProfessionalServiceSchema>;
