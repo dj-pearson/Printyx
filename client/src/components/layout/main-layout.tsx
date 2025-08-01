@@ -1,7 +1,7 @@
 import { useEffect, ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import RoleBasedSidebar from "@/components/layout/role-based-sidebar";
+import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import MobileBottomNav from "@/components/ui/mobile-bottom-nav";
 
@@ -44,7 +44,7 @@ export default function MainLayout({ children, title, description }: MainLayoutP
     <div className="flex h-screen bg-gray-50">
       {/* Desktop Sidebar - Hidden on mobile */}
       <div className="hidden md:block">
-        <RoleBasedSidebar />
+        <Sidebar />
       </div>
       
       <main className="flex-1 overflow-auto">
