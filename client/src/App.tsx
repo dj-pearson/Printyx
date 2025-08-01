@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
-import Login from "@/pages/Login";
+import Login from "@/pages/login";
 import Homepage from "@/pages/marketing/Homepage";
 import Dashboard from "@/pages/dashboard";
 import Customers from "@/pages/customers";
@@ -35,6 +35,8 @@ import AccountsReceivable from "@/pages/AccountsReceivable";
 import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import JournalEntries from "@/pages/JournalEntries";
 import MeterBilling from "@/pages/MeterBilling";
+import AdvancedReporting from "@/pages/AdvancedReporting";
+import WorkflowAutomation from "@/pages/WorkflowAutomation";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -83,6 +85,8 @@ function Router() {
           <Route path="/chart-of-accounts" component={ChartOfAccounts} />
           <Route path="/journal-entries" component={JournalEntries} />
           <Route path="/reports" component={Reports} />
+          <Route path="/advanced-reporting" component={AdvancedReporting} />
+          <Route path="/workflow-automation" component={WorkflowAutomation} />
         </>
       )}
       <Route component={NotFound} />

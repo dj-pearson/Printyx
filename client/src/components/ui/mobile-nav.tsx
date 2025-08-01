@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
   Target, FileText, Building2, ClipboardList, Wrench, Calendar, 
   Calculator, UserPlus, Package, ShoppingCart, DollarSign, 
-  TrendingUp, Settings, UserCheck, Users 
+  TrendingUp, Settings, UserCheck, Users, Zap 
 } from "lucide-react";
 
 // Navigation structure (same as desktop)
@@ -81,6 +81,7 @@ const navigationStructure = {
       { key: 'all-financial-reports', label: 'Financial Reports', path: '/financial-reports', icon: BarChart3 },
       { key: 'inventory-reports', label: 'Inventory Reports', path: '/inventory-reports', icon: BarChart3 },
       { key: 'team-performance', label: 'Performance Analytics', path: '/performance', icon: TrendingUp },
+      { key: 'advanced-reporting', label: 'Advanced Analytics', path: '/advanced-reporting', icon: TrendingUp },
     ]
   },
   admin: {
@@ -95,6 +96,7 @@ const navigationStructure = {
       { key: 'supplier-management', label: 'Supplier Management', path: '/admin/suppliers', icon: Building2 },
       { key: 'sales-settings', label: 'Sales Settings', path: '/admin/sales-settings', icon: Settings },
       { key: 'billing-settings', label: 'Billing Settings', path: '/admin/billing-settings', icon: Settings },
+      { key: 'workflow-automation', label: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
     ]
   }
 };

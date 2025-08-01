@@ -21,6 +21,7 @@ import {
   Target,
   ChevronDown,
   ChevronRight,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -183,6 +184,7 @@ const navigationStructure = {
       { key: 'all-financial-reports', label: 'Financial Reports', path: '/financial-reports', icon: BarChart3 },
       { key: 'inventory-reports', label: 'Inventory Reports', path: '/inventory-reports', icon: BarChart3 },
       { key: 'team-performance', label: 'Performance Analytics', path: '/performance', icon: TrendingUp },
+      { key: 'advanced-reporting', label: 'Advanced Analytics', path: '/advanced-reporting', icon: TrendingUp },
     ]
   },
   admin: {
@@ -197,6 +199,7 @@ const navigationStructure = {
       { key: 'supplier-management', label: 'Supplier Management', path: '/admin/suppliers', icon: Building2 },
       { key: 'sales-settings', label: 'Sales Settings', path: '/admin/sales-settings', icon: Settings },
       { key: 'billing-settings', label: 'Billing Settings', path: '/admin/billing-settings', icon: Settings },
+      { key: 'workflow-automation', label: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
     ]
   }
 };
