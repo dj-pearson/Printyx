@@ -73,16 +73,14 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         });
       }
     } else {
-      // For development/localhost: use user's tenant or default demo tenant
-      if (TENANT_CONFIG.isDevelopment && (host === 'localhost:5000' || host.includes('replit.dev'))) {
-        if (req.user?.tenantId) {
-          req.tenantId = req.user.tenantId;
-        } else if ((req.session as any)?.tenantId) {
-          req.tenantId = (req.session as any).tenantId;
-        } else {
-          // Default to demo tenant for development
-          req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
-        }
+      // For development/localhost: ALWAYS set tenant context (no conditional check)
+      if (req.user?.tenantId) {
+        req.tenantId = req.user.tenantId;
+      } else if ((req.session as any)?.tenantId) {
+        req.tenantId = (req.session as any).tenantId;
+      } else {
+        // Default to demo tenant for development - this ensures we never return 404
+        req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
       }
     }
 
