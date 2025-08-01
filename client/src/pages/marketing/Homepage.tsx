@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { 
   ArrowRight, 
   CheckCircle, 
@@ -18,11 +19,14 @@ import {
   Printer,
   Building2,
   Clock,
-  Target
+  Target,
+  Menu,
+  X
 } from "lucide-react";
 
 const Homepage = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -219,6 +223,7 @@ const Homepage = () => {
               </span>
             </div>
             
+            {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</a>
               <a href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</a>
@@ -238,6 +243,85 @@ const Homepage = () => {
                 Get Started
               </Button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild className="md:hidden">
+                <Button variant="ghost" size="sm" className="p-2">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-between pb-6 border-b">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+                        <Printer className="text-white h-5 w-5" />
+                      </div>
+                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                        Printyx
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <nav className="flex-1 py-6">
+                    <div className="space-y-6">
+                      <a 
+                        href="#features" 
+                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Features
+                      </a>
+                      <a 
+                        href="#pricing" 
+                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Pricing
+                      </a>
+                      <a 
+                        href="#tools" 
+                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Tools
+                      </a>
+                      <a 
+                        href="#resources" 
+                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Resources
+                      </a>
+                    </div>
+                  </nav>
+                  
+                  <div className="border-t pt-6 space-y-4">
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        window.location.href = '/login';
+                      }}
+                    >
+                      Login
+                    </Button>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        window.location.href = '/login';
+                      }}
+                    >
+                      Get Started
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </nav>
