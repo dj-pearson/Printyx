@@ -1755,6 +1755,141 @@ export const insertManagedServiceSchema = createInsertSchema(managedServices).om
 // Re-export equipment lifecycle types
 export * from "./equipment-schema";
 
+// ============= TASK MANAGEMENT SYSTEM =============
+
+// Tasks table
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  status: varchar("status").notNull().default("todo"), // todo, in_progress, completed, cancelled
+  priority: varchar("priority").notNull().default("medium"), // low, medium, high, urgent
+  assignedTo: varchar("assigned_to"), // user id
+  projectId: varchar("project_id"),
+  customerId: varchar("customer_id"),
+  dueDate: timestamp("due_date"),
+  estimatedHours: integer("estimated_hours"),
+  actualHours: integer("actual_hours"),
+  completionPercentage: integer("completion_percentage").default(0),
+  tags: text("tags").array(),
+  createdBy: varchar("created_by").notNull(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Projects table
+export const projects = pgTable("projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  status: varchar("status").notNull().default("active"), // active, completed, on_hold, cancelled
+  customerId: varchar("customer_id"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  estimatedHours: integer("estimated_hours"),
+  actualHours: integer("actual_hours"),
+  budget: decimal("budget", { precision: 10, scale: 2 }),
+  completionPercentage: integer("completion_percentage").default(0),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// System Alerts table
+export const systemAlerts = pgTable("system_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  type: varchar("type").notNull(), // info, warning, error, success
+  category: varchar("category").notNull(), // system, security, performance, business
+  message: text("message").notNull(),
+  details: jsonb("details"),
+  severity: varchar("severity").default("medium"), // low, medium, high, critical
+  source: varchar("source"), // which system component generated the alert
+  resolved: boolean("resolved").default(false),
+  resolvedBy: varchar("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  acknowledgedBy: varchar("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Performance Metrics table
+export const performanceMetrics = pgTable("performance_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  metricType: varchar("metric_type").notNull(), // response_time, cpu_usage, memory_usage, disk_usage, throughput
+  value: decimal("value", { precision: 10, scale: 4 }).notNull(),
+  unit: varchar("unit").notNull(), // ms, %, GB, requests/min
+  endpoint: varchar("endpoint"), // for API response times
+  timestamp: timestamp("timestamp").defaultNow(),
+  metadata: jsonb("metadata"),
+});
+
+// System Integrations table
+export const systemIntegrations = pgTable("system_integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id"),
+  name: varchar("name").notNull(),
+  category: varchar("category").notNull(), // Device Management, Accounting, CRM, etc.
+  provider: varchar("provider").notNull(),
+  description: text("description"),
+  status: varchar("status").notNull().default("disconnected"), // connected, disconnected, error, pending
+  config: jsonb("config"), // API keys, endpoints, etc.
+  lastSync: timestamp("last_sync"),
+  syncFrequency: varchar("sync_frequency"), // hourly, daily, weekly
+  isActive: boolean("is_active").default(true),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas and types for new tables
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSystemAlertSchema = createInsertSchema(systemAlerts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPerformanceMetricSchema = createInsertSchema(performanceMetrics).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertSystemIntegrationSchema = createInsertSchema(systemIntegrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type SystemAlert = typeof systemAlerts.$inferSelect;
+export type InsertSystemAlert = z.infer<typeof insertSystemAlertSchema>;
+export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
+export type InsertPerformanceMetric = z.infer<typeof insertPerformanceMetricSchema>;
+export type SystemIntegration = typeof systemIntegrations.$inferSelect;
+export type InsertSystemIntegration = z.infer<typeof insertSystemIntegrationSchema>;
+
 // Product Management Types
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;

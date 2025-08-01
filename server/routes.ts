@@ -1943,6 +1943,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register task management routes
   registerTaskRoutes(app);
 
+  // Performance monitoring routes
+  app.get('/api/performance/metrics', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId;
+      const metrics = await storage.getPerformanceMetrics(tenantId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching performance metrics:", error);
+      res.status(500).json({ error: "Failed to fetch performance metrics" });
+    }
+  });
+
+  app.get('/api/performance/alerts', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.session?.tenantId;
+      const alerts = await storage.getSystemAlerts(tenantId);
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching system alerts:", error);
+      res.status(500).json({ error: "Failed to fetch system alerts" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

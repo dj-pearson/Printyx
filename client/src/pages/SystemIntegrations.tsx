@@ -128,79 +128,11 @@ export default function SystemIntegrations() {
     },
   });
 
-  const mockIntegrations: Integration[] = integrations || [
-    {
-      id: "1",
-      name: "Xerox ConnectKey",
-      category: "Device Management",
-      description: "Connect to Xerox multifunction devices for meter readings and supply monitoring",
-      status: "connected",
-      provider: "Xerox",
-      lastSync: "2025-01-01T10:30:00Z",
-      config: {
-        apiKey: "xerox_api_key_***",
-        endpoint: "https://api.xerox.com/v1",
-        syncFrequency: "hourly"
-      }
-    },
-    {
-      id: "2", 
-      name: "Canon imageRUNNER ADVANCE",
-      category: "Device Management",
-      description: "Integration with Canon devices for remote monitoring and management",
-      status: "disconnected",
-      provider: "Canon",
-      lastSync: "Never",
-    },
-    {
-      id: "3",
-      name: "HP PrintOS",
-      category: "Device Management", 
-      description: "HP Smart Device Services for fleet monitoring and predictive analytics",
-      status: "error",
-      provider: "HP",
-      lastSync: "2025-01-01T08:15:00Z",
-    },
-    {
-      id: "4",
-      name: "QuickBooks Online",
-      category: "Accounting",
-      description: "Sync invoices, payments, and customer data with QuickBooks",
-      status: "connected",
-      provider: "Intuit",
-      lastSync: "2025-01-01T11:00:00Z",
-    },
-    {
-      id: "5",
-      name: "Salesforce CRM",
-      category: "CRM",
-      description: "Two-way sync of customer data, opportunities, and service cases",
-      status: "pending",
-      provider: "Salesforce",
-      lastSync: "Never",
-    }
-  ];
+  // Use real database integrations data
+  const displayIntegrations = integrations || [];
 
-  const mockWebhooks: WebhookEndpoint[] = webhooks || [
-    {
-      id: "1",
-      name: "Service Ticket Created",
-      url: "https://example.com/webhooks/ticket-created",
-      events: ["service_ticket.created", "service_ticket.updated"],
-      status: "active",
-      lastTriggered: "2025-01-01T10:45:00Z",
-      successRate: 98.5
-    },
-    {
-      id: "2",
-      name: "Invoice Generated",
-      url: "https://accounting.company.com/api/invoices",
-      events: ["invoice.created", "invoice.paid"],
-      status: "active", 
-      lastTriggered: "2025-01-01T09:30:00Z",
-      successRate: 100
-    }
-  ];
+  // Use real database webhooks data
+  const displayWebhooks = webhooks || [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -246,7 +178,7 @@ export default function SystemIntegrations() {
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Active Integrations</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {mockIntegrations.filter(i => i.status === 'connected').length}
+                    {displayIntegrations.filter(i => i.status === 'connected').length}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -261,7 +193,9 @@ export default function SystemIntegrations() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">API Endpoints</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">12</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {displayIntegrations.filter(i => i.status === 'pending' || i.status === 'error').length}
+                  </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Database className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
@@ -275,7 +209,7 @@ export default function SystemIntegrations() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Webhooks</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{mockWebhooks.length}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{displayWebhooks.length}</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Webhook className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
@@ -322,7 +256,7 @@ export default function SystemIntegrations() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid gap-4">
-                      {mockIntegrations
+                      {displayIntegrations
                         .filter(integration => integration.category === category)
                         .map((integration) => (
                           <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">

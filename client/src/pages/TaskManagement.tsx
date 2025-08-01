@@ -153,100 +153,20 @@ export default function TaskManagement() {
     },
   });
 
-  // Mock data
-  const mockTasks: Task[] = tasks || [
-    {
-      id: "1",
-      title: "Install Canon imageRUNNER at TechCorp",
-      description: "Complete installation and setup of new multifunction device",
-      status: "in_progress",
-      priority: "high",
-      assignedTo: "tech1",
-      assignedToName: "John Smith",
-      projectId: "proj1",
-      projectName: "TechCorp Equipment Upgrade",
-      dueDate: "2025-01-05T17:00:00Z",
-      estimatedHours: 6,
-      actualHours: 4,
-      completionPercentage: 75,
-      tags: ["installation", "canon", "urgent"],
-      createdAt: "2025-01-01T09:00:00Z"
-    },
-    {
-      id: "2",
-      title: "Update service contract pricing",
-      description: "Review and update pricing for all service contracts due for renewal",
-      status: "todo",
-      priority: "medium",
-      assignedTo: "admin1",
-      assignedToName: "Sarah Johnson",
-      dueDate: "2025-01-10T17:00:00Z",
-      estimatedHours: 3,
-      completionPercentage: 0,
-      tags: ["contracts", "pricing"],
-      createdAt: "2024-12-30T14:00:00Z"
-    },
-    {
-      id: "3",
-      title: "Quarterly inventory audit",
-      description: "Conduct full inventory count and reconciliation",
-      status: "completed",
-      priority: "medium",
-      assignedTo: "admin2",
-      assignedToName: "Mike Wilson",
-      completedAt: "2024-12-28T16:30:00Z",
-      estimatedHours: 8,
-      actualHours: 7,
-      completionPercentage: 100,
-      tags: ["inventory", "audit"],
-      createdAt: "2024-12-20T10:00:00Z"
-    }
-  ];
+  // Use real database tasks
+  const displayTasks = tasks || [];
 
-  const mockProjects: Project[] = projects || [
-    {
-      id: "proj1",
-      name: "TechCorp Equipment Upgrade",
-      description: "Complete fleet upgrade with 5 new devices and training",
-      status: "active",
-      projectManager: "pm1",
-      projectManagerName: "Lisa Davis",
-      customerId: "1",
-      customerName: "TechCorp Solutions",
-      startDate: "2024-12-01T00:00:00Z",
-      endDate: "2025-01-15T00:00:00Z",
-      estimatedBudget: 2500000, // $25,000
-      completionPercentage: 65,
-      taskCount: 8,
-      completedTaskCount: 5,
-      tags: ["equipment", "training", "large-account"],
-      createdAt: "2024-11-25T00:00:00Z"
-    },
-    {
-      id: "proj2", 
-      name: "Q1 Service Campaign",
-      description: "Preventive maintenance for all devices across major accounts",
-      status: "planning",
-      projectManager: "pm2",
-      projectManagerName: "Tom Anderson",
-      startDate: "2025-01-15T00:00:00Z",
-      endDate: "2025-03-31T00:00:00Z",
-      estimatedBudget: 1200000, // $12,000
-      completionPercentage: 10,
-      taskCount: 25,
-      completedTaskCount: 2,
-      tags: ["maintenance", "campaign"],
-      createdAt: "2024-12-15T00:00:00Z"
-    }
-  ];
+  // Use real database projects
+  const displayProjects = projects || [];
 
-  const mockStats = taskStats || {
-    totalTasks: 24,
-    completedTasks: 18,
-    inProgressTasks: 4,
-    overdueTasks: 2,
-    myTasks: 8,
-    avgCompletionTime: 4.2
+  // Use real database task statistics
+  const displayStats = taskStats || {
+    totalTasks: 0,
+    completedTasks: 0,
+    inProgressTasks: 0,
+    overdueTasks: 0,
+    myTasks: 0,
+    avgCompletionTime: 0
   };
 
   const getPriorityColor = (priority: string) => {
@@ -279,7 +199,7 @@ export default function TaskManagement() {
     }
   };
 
-  const filteredTasks = mockTasks.filter(task => {
+  const filteredTasks = displayTasks.filter(task => {
     if (selectedPriority !== 'all' && task.priority !== selectedPriority) return false;
     if (selectedStatus !== 'all' && task.status !== selectedStatus) return false;
     if (selectedView === 'my-tasks') {
@@ -302,7 +222,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">My Tasks</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{taskStats?.totalTasks || 0}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{displayStats.totalTasks}</p>
                   <p className="text-xs text-blue-600">Active assignments</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -317,7 +237,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">In Progress</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{taskStats?.inProgressTasks || 0}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{displayStats.inProgressTasks}</p>
                   <p className="text-xs text-orange-600">Active tasks</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -332,7 +252,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{taskStats?.completedTasks || 0}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{displayStats.completedTasks}</p>
                   <p className="text-xs text-green-600">This period</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -347,7 +267,7 @@ export default function TaskManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Overdue</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-red-600">{taskStats?.overdueTasks || 0}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-red-600">{displayStats.overdueTasks}</p>
                   <p className="text-xs text-red-600">Need attention</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">

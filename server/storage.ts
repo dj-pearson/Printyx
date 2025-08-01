@@ -73,6 +73,21 @@ import {
   type ManagedService,
   type ContractTieredRate,
   type InsertContractTieredRate,
+  tasks,
+  projects,
+  systemAlerts,
+  performanceMetrics,
+  systemIntegrations,
+  type Task,
+  type InsertTask,
+  type Project,
+  type InsertProject,
+  type SystemAlert,
+  type InsertSystemAlert,
+  type PerformanceMetric,
+  type InsertPerformanceMetric,
+  type SystemIntegration,
+  type InsertSystemIntegration,
   type InsertProductModel,
   type InsertProductAccessory,
   type InsertCpcRate,
@@ -872,6 +887,229 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .insert(contractTieredRates)
       .values(rate)
+      .returning();
+    return result;
+  }
+
+  // ============= TASK MANAGEMENT OPERATIONS =============
+  
+  async getTasks(tenantId: string, userId?: string): Promise<Task[]> {
+    let query = db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.tenantId, tenantId));
+    
+    if (userId) {
+      query = query.where(eq(tasks.assignedTo, userId));
+    }
+    
+    return await query
+      .orderBy(desc(tasks.createdAt))
+      .limit(50);
+  }
+
+  async getTask(id: string, tenantId: string): Promise<Task | undefined> {
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)));
+    return task;
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [result] = await db
+      .insert(tasks)
+      .values(task)
+      .returning();
+    return result;
+  }
+
+  async updateTask(id: string, task: Partial<Task>, tenantId: string): Promise<Task | undefined> {
+    const [result] = await db
+      .update(tasks)
+      .set({ ...task, updatedAt: new Date() })
+      .where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)))
+      .returning();
+    return result;
+  }
+
+  async getTaskStats(tenantId: string, userId?: string): Promise<any> {
+    let baseQuery = db
+      .select({
+        status: tasks.status,
+        count: sql<number>`COUNT(*)`,
+        avgHours: sql<number>`AVG(${tasks.actualHours})`
+      })
+      .from(tasks)
+      .where(eq(tasks.tenantId, tenantId));
+    
+    if (userId) {
+      baseQuery = baseQuery.where(eq(tasks.assignedTo, userId));
+    }
+    
+    const results = await baseQuery.groupBy(tasks.status);
+    
+    const stats = {
+      totalTasks: 0,
+      completedTasks: 0,
+      inProgressTasks: 0,
+      overdueTasks: 0,
+      myTasks: userId ? results.reduce((sum, r) => sum + r.count, 0) : 0,
+      avgCompletionTime: 0
+    };
+    
+    results.forEach(result => {
+      stats.totalTasks += result.count;
+      if (result.status === 'completed') {
+        stats.completedTasks = result.count;
+        stats.avgCompletionTime = result.avgHours || 0;
+      } else if (result.status === 'in_progress') {
+        stats.inProgressTasks = result.count;
+      }
+    });
+    
+    // Get overdue tasks
+    const overdueCount = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(tasks)
+      .where(and(
+        eq(tasks.tenantId, tenantId),
+        lt(tasks.dueDate, new Date()),
+        ne(tasks.status, 'completed')
+      ));
+    
+    stats.overdueTasks = overdueCount[0]?.count || 0;
+    
+    return stats;
+  }
+
+  async getProjects(tenantId: string): Promise<Project[]> {
+    return await db
+      .select()
+      .from(projects)
+      .where(eq(projects.tenantId, tenantId))
+      .orderBy(desc(projects.createdAt));
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    const [result] = await db
+      .insert(projects)
+      .values(project)
+      .returning();
+    return result;
+  }
+
+  // ============= PERFORMANCE MONITORING OPERATIONS =============
+  
+  async getPerformanceMetrics(tenantId?: string): Promise<any> {
+    // Get latest metrics grouped by type
+    const metrics = await db
+      .select({
+        metricType: performanceMetrics.metricType,
+        value: sql<number>`AVG(${performanceMetrics.value})`,
+        unit: performanceMetrics.unit
+      })
+      .from(performanceMetrics)
+      .where(tenantId ? eq(performanceMetrics.tenantId, tenantId) : sql`TRUE`)
+      .where(gte(performanceMetrics.timestamp, new Date(Date.now() - 60 * 60 * 1000))) // Last hour
+      .groupBy(performanceMetrics.metricType, performanceMetrics.unit);
+
+    const result = {
+      avg_response_time: 0,
+      total_requests: 0,
+      cpu_usage: 0,
+      memory_usage: 0,
+      disk_usage: 0,
+      active_issues: 0
+    };
+
+    metrics.forEach(metric => {
+      switch (metric.metricType) {
+        case 'response_time':
+          result.avg_response_time = metric.value;
+          break;
+        case 'cpu_usage':
+          result.cpu_usage = metric.value;
+          break;
+        case 'memory_usage':
+          result.memory_usage = metric.value;
+          break;
+        case 'disk_usage':
+          result.disk_usage = metric.value;
+          break;
+        case 'throughput':
+          result.total_requests = metric.value;
+          break;
+      }
+    });
+
+    // Get active issues count
+    const [activeIssues] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(systemAlerts)
+      .where(and(
+        tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
+        eq(systemAlerts.resolved, false),
+        ne(systemAlerts.type, 'info')
+      ));
+
+    result.active_issues = activeIssues?.count || 0;
+
+    return result;
+  }
+
+  async getSystemAlerts(tenantId?: string): Promise<SystemAlert[]> {
+    return await db
+      .select()
+      .from(systemAlerts)
+      .where(tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`)
+      .where(gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))) // Last 24 hours
+      .orderBy(desc(systemAlerts.createdAt))
+      .limit(10);
+  }
+
+  async createSystemAlert(alert: InsertSystemAlert): Promise<SystemAlert> {
+    const [result] = await db
+      .insert(systemAlerts)
+      .values(alert)
+      .returning();
+    return result;
+  }
+
+  async recordPerformanceMetric(metric: InsertPerformanceMetric): Promise<PerformanceMetric> {
+    const [result] = await db
+      .insert(performanceMetrics)
+      .values(metric)
+      .returning();
+    return result;
+  }
+
+  // ============= SYSTEM INTEGRATIONS OPERATIONS =============
+  
+  async getSystemIntegrations(tenantId?: string): Promise<SystemIntegration[]> {
+    return await db
+      .select()
+      .from(systemIntegrations)
+      .where(tenantId ? eq(systemIntegrations.tenantId, tenantId) : sql`TRUE`)
+      .orderBy(systemIntegrations.name);
+  }
+
+  async createSystemIntegration(integration: InsertSystemIntegration): Promise<SystemIntegration> {
+    const [result] = await db
+      .insert(systemIntegrations)
+      .values(integration)
+      .returning();
+    return result;
+  }
+
+  async updateSystemIntegration(id: string, integration: Partial<SystemIntegration>, tenantId?: string): Promise<SystemIntegration | undefined> {
+    const [result] = await db
+      .update(systemIntegrations)
+      .set({ ...integration, updatedAt: new Date() })
+      .where(and(
+        eq(systemIntegrations.id, id),
+        tenantId ? eq(systemIntegrations.tenantId, tenantId) : sql`TRUE`
+      ))
       .returning();
     return result;
   }
