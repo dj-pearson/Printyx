@@ -345,6 +345,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced Service Dispatch Routes
+  
+  // Auto-assign technician based on skills and availability
+  app.post("/api/service-tickets/:id/assign", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { id } = req.params;
+      const { technicianId, scheduledDate } = req.body;
+
+      const ticket = await storage.assignTicketToTechnician(
+        id, 
+        technicianId, 
+        new Date(scheduledDate), 
+        tenantId
+      );
+      res.json(ticket);
+    } catch (error) {
+      console.error("Failed to assign technician:", error);
+      res.status(500).json({ error: "Failed to assign technician" });
+    }
+  });
+
+  // Find optimal technician for a ticket
+  app.post("/api/service-tickets/:id/find-technician", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { requiredSkills, scheduledDate } = req.body;
+
+      const technician = await storage.findOptimalTechnician(
+        requiredSkills,
+        new Date(scheduledDate),
+        tenantId
+      );
+      res.json(technician);
+    } catch (error) {
+      console.error("Failed to find optimal technician:", error);
+      res.status(500).json({ error: "Failed to find optimal technician" });
+    }
+  });
+
+  // Get service ticket timeline/updates
+  app.get("/api/service-tickets/:id/updates", async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const { id } = req.params;
+
+      const updates = await storage.getServiceTicketUpdates(id, tenantId);
+      res.json(updates);
+    } catch (error) {
+      console.error("Failed to get ticket updates:", error);
+      res.status(500).json({ error: "Failed to get ticket updates" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

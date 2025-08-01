@@ -102,13 +102,37 @@ export const serviceTickets = pgTable("service_tickets", {
   ticketNumber: varchar("ticket_number").notNull(),
   title: varchar("title").notNull(),
   description: text("description"),
-  priority: varchar("priority").notNull().default('medium'),
-  status: varchar("status").notNull().default('open'),
+  priority: varchar("priority").notNull().default('medium'), // low, medium, high, urgent
+  status: varchar("status").notNull().default('open'), // open, assigned, in-progress, completed, cancelled
   assignedTechnicianId: varchar("assigned_technician_id"),
+  scheduledDate: timestamp("scheduled_date"),
+  estimatedDuration: integer("estimated_duration"), // minutes
+  customerAddress: text("customer_address"),
+  customerPhone: varchar("customer_phone"),
+  requiredSkills: text("required_skills").array(),
+  requiredParts: text("required_parts").array(), // JSON array of part IDs and quantities
+  workOrderNotes: text("work_order_notes"),
+  resolutionNotes: text("resolution_notes"),
+  customerSignature: text("customer_signature"), // base64 encoded signature
+  partsUsed: text("parts_used").array(), // JSON array of actual parts used
+  laborHours: decimal("labor_hours", { precision: 4, scale: 2 }),
   createdBy: varchar("created_by").notNull(),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Service ticket updates/timeline table
+export const serviceTicketUpdates = pgTable("service_ticket_updates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  ticketId: varchar("ticket_id").notNull(),
+  updateType: varchar("update_type").notNull(), // status_change, assignment, note, customer_communication
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  notes: text("notes"),
+  updatedBy: varchar("updated_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Inventory items table
@@ -132,10 +156,32 @@ export const technicians = pgTable("technicians", {
   tenantId: varchar("tenant_id").notNull(),
   userId: varchar("user_id").notNull(),
   employeeId: varchar("employee_id"),
-  skills: text("skills").array(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email").notNull(),
+  phone: varchar("phone"),
+  skills: text("skills").array(), // e.g., ['printer_repair', 'network_setup', 'maintenance']
+  certifications: text("certifications").array(),
+  currentLocation: text("current_location"), // JSON with lat/lng
   isActive: boolean("is_active").default(true),
+  isAvailable: boolean("is_available").default(true),
+  workingHours: text("working_hours"), // JSON with schedule
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Technician availability table for scheduling
+export const technicianAvailability = pgTable("technician_availability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  technicianId: varchar("technician_id").notNull(),
+  date: timestamp("date").notNull(),
+  startTime: varchar("start_time").notNull(), // HH:MM format
+  endTime: varchar("end_time").notNull(), // HH:MM format
+  isBooked: boolean("is_booked").default(false),
+  ticketId: varchar("ticket_id"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Meter readings table for billing

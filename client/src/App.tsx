@@ -9,7 +9,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Customers from "@/pages/customers";
 import Contracts from "@/pages/contracts";
-import ServiceDispatch from "@/pages/service-dispatch";
+import ServiceDispatchEnhanced from "@/pages/ServiceDispatchEnhanced";
 import Inventory from "@/pages/inventory";
 import Billing from "@/pages/billing";
 import Reports from "@/pages/reports";
@@ -37,7 +37,7 @@ function Router() {
           <Route path="/contracts" component={Contracts} />
           <Route path="/meter-readings" component={MeterReadings} />
           <Route path="/invoices" component={Invoices} />
-          <Route path="/service-dispatch" component={ServiceDispatch} />
+          <Route path="/service-dispatch" component={ServiceDispatchEnhanced} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/billing" component={Billing} />
           <Route path="/reports" component={Reports} />

@@ -233,7 +233,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createServiceTicket(ticketData: InsertServiceTicket): Promise<ServiceTicket> {
-    const [ticket] = await db.insert(serviceTickets).values(ticketData).returning();
+    // Generate ticket number
+    const count = await db.$count(serviceTickets, eq(serviceTickets.tenantId, ticketData.tenantId));
+    const ticketNumber = `T${String(count + 1).padStart(5, '0')}`;
+    
+    const [ticket] = await db.insert(serviceTickets).values({
+      ...ticketData,
+      ticketNumber,
+    }).returning();
     return ticket;
   }
 
@@ -613,6 +620,43 @@ export class DatabaseStorage implements IStorage {
         eq(inventoryItems.tenantId, tenantId),
         sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`
       ));
+  }
+
+  // Enhanced Service Dispatch Methods
+  async assignTicketToTechnician(ticketId: string, technicianId: string, scheduledDate: Date, tenantId: string): Promise<ServiceTicket> {
+    const [ticket] = await db
+      .update(serviceTickets)
+      .set({ 
+        assignedTechnicianId: technicianId,
+        scheduledDate,
+        status: 'assigned',
+        updatedAt: new Date()
+      })
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
+      .returning();
+
+    return ticket;
+  }
+
+  async findOptimalTechnician(requiredSkills: string[], scheduledDate: Date, tenantId: string): Promise<Technician | null> {
+    // Find technicians with matching skills who are available
+    const availableTechnicians = await db
+      .select()
+      .from(technicians)
+      .where(
+        and(
+          eq(technicians.tenantId, tenantId),
+          eq(technicians.isActive, true),
+          eq(technicians.isAvailable, true)
+        )
+      );
+
+    // Filter by skills (simple matching for demo)
+    const matchingTechnicians = availableTechnicians.filter(tech => 
+      requiredSkills.every(skill => tech.skills?.includes(skill))
+    );
+
+    return matchingTechnicians.length > 0 ? matchingTechnicians[0] : null;
   }
 }
 
