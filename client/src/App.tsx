@@ -73,8 +73,11 @@ function Router() {
           <Route path="/crm" component={CRMEnhanced} />
           <Route path="/deals" component={DealsManagement} />
           <Route path="/product-hub" component={ProductHub} />
+          <Route path="/admin/product-hub" component={ProductHub} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycle} />
+          <Route path="/admin/equipment-lifecycle" component={EquipmentLifecycle} />
           <Route path="/purchase-orders" component={PurchaseOrders} />
+          <Route path="/admin/purchase-orders" component={PurchaseOrders} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
           <Route path="/sales-reports" component={SalesReports} />
@@ -90,10 +93,15 @@ function Router() {
           <Route path="/product-accessories" component={ProductAccessories} />
           <Route path="/admin/product-accessories" component={ProductAccessories} />
           <Route path="/professional-services" component={ProfessionalServices} />
+          <Route path="/admin/professional-services" component={ProfessionalServices} />
           <Route path="/service-products" component={ServiceProducts} />
+          <Route path="/admin/service-products" component={ServiceProducts} />
           <Route path="/software-products" component={SoftwareProducts} />
+          <Route path="/admin/software-products" component={SoftwareProducts} />
           <Route path="/supplies" component={Supplies} />
+          <Route path="/admin/supplies" component={Supplies} />
           <Route path="/managed-services" component={ManagedServices} />
+          <Route path="/admin/managed-services" component={ManagedServices} />
           <Route path="/billing" component={MeterBilling} />
           <Route path="/vendors" component={Vendors} />
           <Route path="/accounts-payable" component={AccountsPayable} />
