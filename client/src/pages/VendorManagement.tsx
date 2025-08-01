@@ -55,10 +55,7 @@ export default function VendorManagement() {
   // Create vendor mutation
   const createVendorMutation = useMutation({
     mutationFn: async (data: VendorFormData) => {
-      return apiRequest("/api/vendors", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("/api/vendors", "POST", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
@@ -81,10 +78,7 @@ export default function VendorManagement() {
   // Update vendor mutation
   const updateVendorMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Vendor> }) => {
-      return apiRequest(`/api/vendors/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest(`/api/vendors/${id}`, "PUT", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
@@ -98,9 +92,7 @@ export default function VendorManagement() {
   // Delete vendor mutation
   const deleteVendorMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/vendors/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest(`/api/vendors/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
@@ -115,16 +107,17 @@ export default function VendorManagement() {
   const form = useForm<VendorFormData>({
     resolver: zodResolver(insertVendorSchema.omit({ tenantId: true, createdAt: true, updatedAt: true })),
     defaultValues: {
+      vendorNumber: "",
       companyName: "",
+      vendorType: "supplier",
       contactPerson: "",
       email: "",
       phone: "",
       address: "",
       website: "",
       taxId: "",
-      paymentTerms: "",
-      notes: "",
-      isPreferred: false,
+      paymentTerms: "Net 30",
+      preferred: false,
       status: "active",
     },
   });
@@ -147,7 +140,7 @@ export default function VendorManagement() {
   const togglePreferred = (vendor: Vendor) => {
     updateVendorMutation.mutate({
       id: vendor.id,
-      data: { isPreferred: !vendor.isPreferred }
+      data: { preferred: !vendor.preferred }
     });
   };
 
@@ -155,7 +148,7 @@ export default function VendorManagement() {
   const vendorStats = {
     total: vendors.length,
     active: vendors.filter(v => v.status === "active").length,
-    preferred: vendors.filter(v => v.isPreferred).length,
+    preferred: vendors.filter(v => v.preferred).length,
     inactive: vendors.filter(v => v.status === "inactive").length,
   };
 
