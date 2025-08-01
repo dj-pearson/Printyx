@@ -32,7 +32,8 @@ import {
   AlertCircle,
   UserPlus,
   PhoneCall,
-  Send
+  Send,
+  UserCheck
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -792,13 +793,23 @@ export default function CRMEnhanced() {
                           Email
                         </Button>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setLocation(`/leads/${lead.id}`)}
-                      >
-                        View Details
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setLocation(`/companies/${lead.companyId}/contacts`)}
+                        >
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          Add Contacts
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setLocation(`/leads/${lead.id}`)}
+                        >
+                          View Details
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

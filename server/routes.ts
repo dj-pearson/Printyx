@@ -775,6 +775,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company contacts endpoints
+  app.post("/api/companies/:companyId/contacts", async (req: any, res) => {
+    try {
+      const { companyId } = req.params;
+      const { contacts } = req.body;
+      
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!Array.isArray(contacts) || contacts.length === 0) {
+        return res.status(400).json({ message: "Contacts array is required" });
+      }
+
+      // Create contacts for the company
+      const createdContacts = [];
+      for (const contactData of contacts) {
+        const contact = await storage.createContact({
+          ...contactData,
+          leadId: companyId, // Using leadId to store companyId for now
+          tenantId: user.tenantId,
+        });
+        createdContacts.push(contact);
+      }
+
+      res.json({ 
+        message: `${createdContacts.length} contact(s) created successfully`,
+        contacts: createdContacts 
+      });
+    } catch (error) {
+      console.error("Error creating company contacts:", error);
+      res.status(500).json({ message: "Failed to create contacts" });
+    }
+  });
+
+  app.get("/api/companies/:companyId/contacts", async (req: any, res) => {
+    try {
+      const { companyId } = req.params;
+      
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const contacts = await storage.getContactsByCompany(companyId, user.tenantId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching company contacts:", error);
+      res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  app.put("/api/contacts/:contactId", async (req: any, res) => {
+    try {
+      const { contactId } = req.params;
+      const contactData = req.body;
+      
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedContact = await storage.updateContact(contactId, {
+        ...contactData,
+        tenantId: user.tenantId,
+        updatedAt: new Date(),
+      });
+
+      res.json(updatedContact);
+    } catch (error) {
+      console.error("Error updating contact:", error);
+      res.status(500).json({ message: "Failed to update contact" });
+    }
+  });
+
+  app.delete("/api/contacts/:contactId", async (req: any, res) => {
+    try {
+      const { contactId } = req.params;
+      
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await storage.deleteContact(contactId, user.tenantId);
+      res.json({ message: "Contact deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contact:", error);
+      res.status(500).json({ message: "Failed to delete contact" });
+    }
+  });
+
   // CSV Import Endpoints
   
   // Product Models Import

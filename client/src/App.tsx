@@ -28,6 +28,7 @@ import SoftwareProducts from "@/pages/SoftwareProducts";
 import Supplies from "@/pages/Supplies";
 import ManagedServices from "@/pages/ManagedServices";
 import Invoices from "@/pages/Invoices";
+import CompanyContacts from "@/pages/CompanyContacts";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -53,6 +54,7 @@ function Router() {
           <Route path="/customers" component={Customers} />
           <Route path="/crm" component={CRMEnhanced} />
           <Route path="/leads/:id" component={LeadDetail} />
+          <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/service-reports" component={ServiceReports} />
           <Route path="/revenue-reports" component={RevenueReports} />

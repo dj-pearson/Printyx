@@ -123,6 +123,12 @@ export interface IStorage {
   // Lead activity/interaction operations
   getLeadActivities(leadId: string, tenantId: string): Promise<LeadActivity[]>;
   createLeadActivity(activity: Omit<LeadActivity, "id" | "createdAt" | "updatedAt">): Promise<LeadActivity>;
+
+  // Contact operations (used for company contacts)
+  createContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact>;
+  getContactsByCompany(companyId: string, tenantId: string): Promise<LeadContact[]>;
+  updateContact(contactId: string, contact: Partial<LeadContact>): Promise<LeadContact>;
+  deleteContact(contactId: string, tenantId: string): Promise<boolean>;
   
   // Lead contact operations
   getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]>;
@@ -828,6 +834,52 @@ export class DatabaseStorage implements IStorage {
       .values(service)
       .returning();
     return result;
+  }
+
+  // Contact operations (used for company contacts)
+  async createContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact> {
+    const [result] = await db
+      .insert(leadContacts)
+      .values({
+        ...contact,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result;
+  }
+
+  async getContactsByCompany(companyId: string, tenantId: string): Promise<LeadContact[]> {
+    return await db
+      .select()
+      .from(leadContacts)
+      .where(and(
+        eq(leadContacts.leadId, companyId), // Using leadId as companyId for now
+        eq(leadContacts.tenantId, tenantId)
+      ))
+      .orderBy(leadContacts.firstName, leadContacts.lastName);
+  }
+
+  async updateContact(contactId: string, contact: Partial<LeadContact>): Promise<LeadContact> {
+    const [result] = await db
+      .update(leadContacts)
+      .set({
+        ...contact,
+        updatedAt: new Date(),
+      })
+      .where(eq(leadContacts.id, contactId))
+      .returning();
+    return result;
+  }
+
+  async deleteContact(contactId: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(leadContacts)
+      .where(and(
+        eq(leadContacts.id, contactId),
+        eq(leadContacts.tenantId, tenantId)
+      ));
+    return result.rowCount > 0;
   }
 }
 
