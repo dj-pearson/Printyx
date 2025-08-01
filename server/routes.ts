@@ -23,6 +23,7 @@ import {
   insertProfessionalServiceSchema,
   insertServiceProductSchema,
   insertSoftwareProductSchema,
+  insertSupplySchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -490,6 +491,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating software product:", error);
       res.status(500).json({ message: "Failed to create software product" });
+    }
+  });
+
+  // Supplies
+  app.get('/api/supplies', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const supplies = await storage.getAllSupplies(tenantId);
+      res.json(supplies);
+    } catch (error) {
+      console.error("Error fetching supplies:", error);
+      res.status(500).json({ message: "Failed to fetch supplies" });
+    }
+  });
+
+  app.post('/api/supplies', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertSupplySchema.parse({ 
+        ...req.body, 
+        tenantId 
+      });
+      const supply = await storage.createSupply(validatedData);
+      res.json(supply);
+    } catch (error) {
+      console.error("Error creating supply:", error);
+      res.status(500).json({ message: "Failed to create supply" });
     }
   });
 

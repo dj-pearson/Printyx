@@ -25,6 +25,7 @@ import {
   professionalServices,
   serviceProducts,
   softwareProducts,
+  supplies,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -50,12 +51,14 @@ import {
   type ProfessionalService,
   type ServiceProduct,
   type SoftwareProduct,
+  type Supply,
   type InsertProductModel,
   type InsertProductAccessory,
   type InsertCpcRate,
   type InsertProfessionalService,
   type InsertServiceProduct,
   type InsertSoftwareProduct,
+  type InsertSupply,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
@@ -694,6 +697,23 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .insert(softwareProducts)
       .values(product)
+      .returning();
+    return result;
+  }
+
+  // Supplies
+  async getAllSupplies(tenantId: string): Promise<Supply[]> {
+    return await db
+      .select()
+      .from(supplies)
+      .where(eq(supplies.tenantId, tenantId))
+      .orderBy(supplies.productName);
+  }
+
+  async createSupply(supply: InsertSupply): Promise<Supply> {
+    const [result] = await db
+      .insert(supplies)
+      .values(supply)
       .returning();
     return result;
   }
