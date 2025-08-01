@@ -1,5 +1,11 @@
 import type { Express } from "express";
-import { isAuthenticated } from "./replitAuth";
+// Use custom auth middleware instead of Replit Auth
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  next();
+};
 
 // Mock data for integrations and deployment readiness
 const mockIntegrations = [
@@ -263,11 +269,11 @@ const mockDeploymentMetrics = {
 
 export function registerIntegrationRoutes(app: Express) {
   // Integration endpoints
-  app.get("/api/integrations", isAuthenticated, async (req, res) => {
+  app.get("/api/integrations", requireAuth, async (req, res) => {
     res.json(mockIntegrations);
   });
 
-  app.post("/api/integrations/connect", isAuthenticated, async (req, res) => {
+  app.post("/api/integrations/connect", requireAuth, async (req, res) => {
     const { integrationId, config } = req.body;
     
     // Simulate connection process
@@ -281,7 +287,7 @@ export function registerIntegrationRoutes(app: Express) {
     res.json({ success: true, integration });
   });
 
-  app.post("/api/integrations/:id/disconnect", isAuthenticated, async (req, res) => {
+  app.post("/api/integrations/:id/disconnect", requireAuth, async (req, res) => {
     const integrationId = req.params.id;
     
     const integration = mockIntegrations.find(i => i.id === integrationId);
@@ -294,7 +300,7 @@ export function registerIntegrationRoutes(app: Express) {
     res.json({ success: true, integration });
   });
 
-  app.post("/api/integrations/:id/test", isAuthenticated, async (req, res) => {
+  app.post("/api/integrations/:id/test", requireAuth, async (req, res) => {
     const integrationId = req.params.id;
     
     const integration = mockIntegrations.find(i => i.id === integrationId);
@@ -313,11 +319,11 @@ export function registerIntegrationRoutes(app: Express) {
   });
 
   // Webhook endpoints
-  app.get("/api/webhooks", isAuthenticated, async (req, res) => {
+  app.get("/api/webhooks", requireAuth, async (req, res) => {
     res.json(mockWebhooks);
   });
 
-  app.post("/api/webhooks", isAuthenticated, async (req, res) => {
+  app.post("/api/webhooks", requireAuth, async (req, res) => {
     const newWebhook = {
       id: (mockWebhooks.length + 1).toString(),
       ...req.body,
@@ -331,15 +337,15 @@ export function registerIntegrationRoutes(app: Express) {
   });
 
   // Deployment readiness endpoints
-  app.get("/api/deployment/readiness", isAuthenticated, async (req, res) => {
+  app.get("/api/deployment/readiness", requireAuth, async (req, res) => {
     res.json(mockReadinessChecks);
   });
 
-  app.get("/api/deployment/metrics", isAuthenticated, async (req, res) => {
+  app.get("/api/deployment/metrics", requireAuth, async (req, res) => {
     res.json(mockDeploymentMetrics);
   });
 
-  app.post("/api/deployment/check/:id", isAuthenticated, async (req, res) => {
+  app.post("/api/deployment/check/:id", requireAuth, async (req, res) => {
     const checkId = req.params.id;
     
     const check = mockReadinessChecks.find(c => c.id === checkId);
