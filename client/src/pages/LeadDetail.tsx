@@ -60,11 +60,17 @@ export default function LeadDetail() {
     task: false
   });
   
+  // Fetch lead details first
+  const { data: lead, isLoading } = useQuery({
+    queryKey: ['/api/leads', id],
+    enabled: !!id,
+  });
+
   // Form states for each activity type
   const [activityForms, setActivityForms] = useState({
     note: { content: '' },
     email: { 
-      contacted: lead?.contactName || '',
+      contacted: '',
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
       content: '',
@@ -82,7 +88,7 @@ export default function LeadDetail() {
       followUpDays: 3
     },
     meeting: {
-      attendees: lead?.contactName || '',
+      attendees: '',
       outcome: 'Scheduled',
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
@@ -101,11 +107,7 @@ export default function LeadDetail() {
     }
   });
 
-  // Fetch lead details
-  const { data: lead, isLoading } = useQuery({
-    queryKey: ['/api/leads', id],
-    enabled: !!id,
-  });
+
 
   // Fetch lead activities
   const { data: activities = [] } = useQuery({
@@ -174,6 +176,17 @@ export default function LeadDetail() {
 
   // Dialog handlers
   const openDialog = (type: keyof typeof dialogs) => {
+    // Initialize form with lead data when opening dialog
+    if (lead && (type === 'email' || type === 'meeting')) {
+      setActivityForms(prev => ({
+        ...prev,
+        [type]: {
+          ...prev[type],
+          contacted: lead.contactName || '',
+          attendees: lead.contactName || ''
+        }
+      }));
+    }
     setDialogs(prev => ({ ...prev, [type]: true }));
   };
 
