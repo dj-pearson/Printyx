@@ -351,19 +351,76 @@ export const equipment = pgTable("equipment", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Contracts table
+// Contracts table - Enhanced for comprehensive meter billing
 export const contracts = pgTable("contracts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   customerId: varchar("customer_id").notNull(),
   contractNumber: varchar("contract_number").notNull(),
+  contractType: varchar("contract_type").notNull().default('cost_per_click'), // cost_per_click, flat_rate, hybrid
+  
+  // Contract Dates
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
+  autoRenewal: boolean("auto_renewal").default(false),
+  renewalTerms: integer("renewal_terms").default(12), // months
+  
+  // Base Rates (simple contracts)
   blackRate: decimal("black_rate", { precision: 10, scale: 4 }),
   colorRate: decimal("color_rate", { precision: 10, scale: 4 }),
   monthlyBase: decimal("monthly_base", { precision: 10, scale: 2 }),
-  status: varchar("status").notNull().default('active'),
-  assignedSalespersonId: varchar("assigned_salesperson_id"), // who manages this contract
+  
+  // Tiered Billing Support
+  hasTieredRates: boolean("has_tiered_rates").default(false),
+  
+  // Minimum Volume Commitments
+  minimumBlackVolume: integer("minimum_black_volume").default(0),
+  minimumColorVolume: integer("minimum_color_volume").default(0),
+  
+  // Billing Settings
+  billingFrequency: varchar("billing_frequency").notNull().default('monthly'), // monthly, quarterly, annual
+  billingDate: integer("billing_date").default(1), // day of month
+  invoiceTerms: varchar("invoice_terms").notNull().default('net_30'), // net_15, net_30, net_60
+  
+  // Contract Profitability Tracking
+  equipmentCost: decimal("equipment_cost", { precision: 10, scale: 2 }),
+  installationCost: decimal("installation_cost", { precision: 10, scale: 2 }),
+  estimatedMargin: decimal("estimated_margin", { precision: 5, scale: 2 }), // percentage
+  
+  // Status and Management
+  status: varchar("status").notNull().default('active'), // active, inactive, expired, cancelled
+  assignedSalespersonId: varchar("assigned_salesperson_id"),
+  serviceLevel: varchar("service_level").notNull().default('standard'), // standard, premium, basic
+  
+  // Notes and Special Terms
+  notes: text("notes"),
+  specialTerms: text("special_terms"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Contract Tiered Rates - For complex billing structures
+export const contractTieredRates = pgTable("contract_tiered_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  contractId: varchar("contract_id").notNull(),
+  
+  // Tier Configuration
+  tierName: varchar("tier_name").notNull(), // e.g., "0-1000", "1001-5000", "5000+"
+  colorType: varchar("color_type").notNull(), // 'black', 'color'
+  
+  // Volume Ranges
+  minimumVolume: integer("minimum_volume").notNull().default(0),
+  maximumVolume: integer("maximum_volume"), // null for unlimited
+  
+  // Rates
+  rate: decimal("rate", { precision: 10, scale: 4 }).notNull(), // cost per copy
+  minimumCharge: decimal("minimum_charge", { precision: 10, scale: 2 }), // minimum monthly charge for this tier
+  
+  // Tier Order for Processing
+  sortOrder: integer("sort_order").notNull().default(0),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -557,12 +614,14 @@ export const technicianAvailability = pgTable("technician_availability", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Meter readings table for billing
+// Meter readings table for billing - Enhanced for comprehensive collection methods
 export const meterReadings = pgTable("meter_readings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   equipmentId: varchar("equipment_id").notNull(),
   contractId: varchar("contract_id").notNull(),
+  
+  // Reading Information
   readingDate: timestamp("reading_date").notNull(),
   blackMeter: integer("black_meter").notNull().default(0),
   colorMeter: integer("color_meter").notNull().default(0),
@@ -570,7 +629,41 @@ export const meterReadings = pgTable("meter_readings", {
   previousColorMeter: integer("previous_color_meter").default(0),
   blackCopies: integer("black_copies").default(0),
   colorCopies: integer("color_copies").default(0),
-  collectionMethod: varchar("collection_method").notNull().default('manual'),
+  
+  // Collection Method (PRD requirement)
+  collectionMethod: varchar("collection_method").notNull().default('manual'), // manual, dca, email, api, remote_monitoring
+  
+  // DCA Integration Fields
+  dcaDeviceId: varchar("dca_device_id"), // Device ID for DCA integration
+  dcaLastSync: timestamp("dca_last_sync"), // Last successful DCA sync
+  dcaError: text("dca_error"), // Any DCA collection errors
+  
+  // Email Collection Fields  
+  emailSource: varchar("email_source"), // Email address readings came from
+  emailSubject: varchar("email_subject"), // Original email subject
+  emailTimestamp: timestamp("email_timestamp"), // When email was received
+  
+  // API Collection Fields
+  apiSource: varchar("api_source"), // Which API endpoint provided the data
+  apiResponseId: varchar("api_response_id"), // Reference to API response
+  
+  // Quality Control
+  isVerified: boolean("is_verified").default(false), // Has reading been verified?
+  verifiedBy: varchar("verified_by"), // Who verified the reading
+  verifiedAt: timestamp("verified_at"), // When was it verified
+  
+  // Exceptions and Adjustments
+  hasException: boolean("has_exception").default(false),
+  exceptionReason: varchar("exception_reason"), // manual_override, billing_dispute, equipment_error
+  exceptionNotes: text("exception_notes"),
+  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }).default('0'),
+  
+  // Billing Processing Status
+  billingStatus: varchar("billing_status").notNull().default('pending'), // pending, processed, billed, disputed
+  invoiceId: varchar("invoice_id"), // Reference to generated invoice
+  billingAmount: decimal("billing_amount", { precision: 10, scale: 2 }),
+  
+  // Tracking
   notes: text("notes"),
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -829,6 +922,7 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   customers: many(customers),
   equipment: many(equipment),
   contracts: many(contracts),
+  contractTieredRates: many(contractTieredRates),
   serviceTickets: many(serviceTickets),
   inventoryItems: many(inventoryItems),
   technicians: many(technicians),
@@ -884,8 +978,20 @@ export const contractsRelations = relations(contracts, ({ one, many }) => ({
     fields: [contracts.assignedSalespersonId],
     references: [users.id],
   }),
+  tieredRates: many(contractTieredRates),
   meterReadings: many(meterReadings),
   invoices: many(invoices),
+}));
+
+export const contractTieredRatesRelations = relations(contractTieredRates, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [contractTieredRates.tenantId],
+    references: [tenants.id],
+  }),
+  contract: one(contracts, {
+    fields: [contractTieredRates.contractId],
+    references: [contracts.id],
+  }),
 }));
 
 export const serviceTicketsRelations = relations(serviceTickets, ({ one }) => ({
@@ -1092,6 +1198,12 @@ export const insertContractSchema = createInsertSchema(contracts).omit({
   updatedAt: true,
 });
 
+export const insertContractTieredRateSchema = createInsertSchema(contractTieredRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertServiceTicketSchema = createInsertSchema(serviceTickets).omit({
   id: true,
   createdAt: true,
@@ -1147,6 +1259,7 @@ export type QuoteLineItem = typeof quoteLineItems.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
 export type Contract = typeof contracts.$inferSelect;
+export type ContractTieredRate = typeof contractTieredRates.$inferSelect;
 export type ServiceTicket = typeof serviceTickets.$inferSelect;
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type Technician = typeof technicians.$inferSelect;

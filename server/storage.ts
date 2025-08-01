@@ -29,6 +29,7 @@ import {
   softwareProducts,
   supplies,
   managedServices,
+  contractTieredRates,
   vendors,
   accountsPayable,
   accountsReceivable,
@@ -67,6 +68,8 @@ import {
   type SoftwareProduct,
   type Supply,
   type ManagedService,
+  type ContractTieredRate,
+  type InsertContractTieredRate,
   type InsertProductModel,
   type InsertProductAccessory,
   type InsertCpcRate,
@@ -204,6 +207,16 @@ export interface IStorage {
   
   getCpcRates(modelId: string, tenantId: string): Promise<CpcRate[]>;
   createCpcRate(rate: InsertCpcRate): Promise<CpcRate>;
+  
+  // Contract Tiered Rates operations (for meter billing)
+  getContractTieredRates(tenantId: string): Promise<ContractTieredRate[]>;
+  getContractTieredRatesByContract(contractId: string): Promise<ContractTieredRate[]>;
+  createContractTieredRate(rate: InsertContractTieredRate): Promise<ContractTieredRate>;
+  
+  // Enhanced meter reading operations
+  getMeterReadingsByStatus(tenantId: string, status: string): Promise<MeterReading[]>;
+  updateMeterReading(id: string, reading: Partial<MeterReading>, tenantId: string): Promise<MeterReading | undefined>;
+  getContract(id: string, tenantId: string): Promise<Contract | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -592,6 +605,33 @@ export class DatabaseStorage implements IStorage {
     return newReading;
   }
 
+  async getMeterReadingsByStatus(tenantId: string, status: string): Promise<MeterReading[]> {
+    return await db
+      .select()
+      .from(meterReadings)
+      .where(and(
+        eq(meterReadings.tenantId, tenantId),
+        eq(meterReadings.billingStatus, status)
+      ));
+  }
+
+  async updateMeterReading(id: string, reading: Partial<MeterReading>, tenantId: string): Promise<MeterReading | undefined> {
+    const [updatedReading] = await db
+      .update(meterReadings)
+      .set({ ...reading, updatedAt: new Date() })
+      .where(and(eq(meterReadings.id, id), eq(meterReadings.tenantId, tenantId)))
+      .returning();
+    return updatedReading;
+  }
+
+  async getContract(id: string, tenantId: string): Promise<Contract | undefined> {
+    const [contract] = await db
+      .select()
+      .from(contracts)
+      .where(and(eq(contracts.id, id), eq(contracts.tenantId, tenantId)));
+    return contract;
+  }
+
   // Invoice operations
   async getInvoices(tenantId: string): Promise<Invoice[]> {
     return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId));
@@ -764,6 +804,31 @@ export class DatabaseStorage implements IStorage {
   async createCpcRate(rate: InsertCpcRate): Promise<CpcRate> {
     const [result] = await db
       .insert(cpcRates)
+      .values(rate)
+      .returning();
+    return result;
+  }
+
+  // Contract Tiered Rates operations (for meter billing)
+  async getContractTieredRates(tenantId: string): Promise<ContractTieredRate[]> {
+    return await db
+      .select()
+      .from(contractTieredRates)
+      .where(eq(contractTieredRates.tenantId, tenantId))
+      .orderBy(contractTieredRates.sortOrder);
+  }
+
+  async getContractTieredRatesByContract(contractId: string): Promise<ContractTieredRate[]> {
+    return await db
+      .select()
+      .from(contractTieredRates)
+      .where(eq(contractTieredRates.contractId, contractId))
+      .orderBy(contractTieredRates.sortOrder);
+  }
+
+  async createContractTieredRate(rate: InsertContractTieredRate): Promise<ContractTieredRate> {
+    const [result] = await db
+      .insert(contractTieredRates)
       .values(rate)
       .returning();
     return result;

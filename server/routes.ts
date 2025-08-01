@@ -27,10 +27,12 @@ import {
   insertSoftwareProductSchema,
   insertSupplySchema,
   insertManagedServiceSchema,
+  insertContractTieredRateSchema,
 } from "@shared/schema";
 import multer from "multer";
 import csv from "csv-parser";
 import { Readable } from "stream";
+import { format } from "date-fns";
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -74,6 +76,40 @@ function parseCSV(buffer: Buffer): Promise<any[]> {
       .on('end', () => resolve(results))
       .on('error', (error) => reject(error));
   });
+}
+
+// Helper function to calculate tiered billing amounts
+function calculateTieredAmount(totalCopies: number, tieredRates: any[], baseRate: number): number {
+  if (!tieredRates || tieredRates.length === 0) {
+    return totalCopies * baseRate;
+  }
+
+  let remainingCopies = totalCopies;
+  let totalAmount = 0;
+
+  for (let i = 0; i < tieredRates.length; i++) {
+    const currentTier = tieredRates[i];
+    const nextTier = tieredRates[i + 1];
+    
+    const tierMin = currentTier.minimumVolume;
+    const tierMax = nextTier ? nextTier.minimumVolume : Infinity;
+    const tierRate = parseFloat(currentTier.rate.toString());
+    
+    if (totalCopies > tierMin) {
+      const copiesInTier = Math.min(remainingCopies, tierMax - tierMin);
+      totalAmount += copiesInTier * tierRate;
+      remainingCopies -= copiesInTier;
+      
+      if (remainingCopies <= 0) break;
+    }
+  }
+
+  // If there are remaining copies not covered by tiers, use base rate
+  if (remainingCopies > 0) {
+    totalAmount += remainingCopies * baseRate;
+  }
+
+  return totalAmount;
 }
 
 // Helper function to validate and transform product model data
@@ -1066,6 +1102,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating company contacts:", error);
       res.status(500).json({ message: "Failed to create contacts" });
+    }
+  });
+
+  // ============= METER BILLING API ROUTES =============
+  
+  // Contract Tiered Rates Management
+  app.get('/api/contract-tiered-rates', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      const rates = await storage.getContractTieredRates(tenantId);
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching contract tiered rates:", error);
+      res.status(500).json({ message: "Failed to fetch contract tiered rates" });
+    }
+  });
+
+  app.post('/api/contract-tiered-rates', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertContractTieredRateSchema.parse({ 
+        ...req.body, 
+        tenantId 
+      });
+      const rate = await storage.createContractTieredRate(validatedData);
+      res.json(rate);
+    } catch (error) {
+      console.error("Error creating contract tiered rate:", error);
+      res.status(500).json({ message: "Failed to create contract tiered rate" });
+    }
+  });
+
+  // Automated Invoice Generation
+  app.post('/api/billing/generate-invoices', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      
+      // Get all pending meter readings
+      const pendingReadings = await storage.getMeterReadingsByStatus(tenantId, 'pending');
+      
+      const generatedInvoices = [];
+      for (const reading of pendingReadings) {
+        try {
+          // Calculate billing amounts using tiered rates
+          const contract = await storage.getContract(reading.contractId, tenantId);
+          if (!contract) continue;
+
+          // Get tiered rates for this contract
+          const tieredRates = await storage.getContractTieredRatesByContract(reading.contractId);
+          
+          let blackAmount = 0;
+          let colorAmount = 0;
+          
+          // Calculate tiered billing for black & white copies
+          if (reading.blackCopies && reading.blackCopies > 0) {
+            const blackRates = tieredRates.filter(rate => rate.colorType === 'black').sort((a, b) => a.minimumVolume - b.minimumVolume);
+            blackAmount = calculateTieredAmount(reading.blackCopies, blackRates, parseFloat(contract.blackRate?.toString() || '0'));
+          }
+          
+          // Calculate tiered billing for color copies
+          if (reading.colorCopies && reading.colorCopies > 0) {
+            const colorRates = tieredRates.filter(rate => rate.colorType === 'color').sort((a, b) => a.minimumVolume - b.minimumVolume);
+            colorAmount = calculateTieredAmount(reading.colorCopies, colorRates, parseFloat(contract.colorRate?.toString() || '0'));
+          }
+          
+          const totalAmount = blackAmount + colorAmount + parseFloat(contract.monthlyBase?.toString() || '0');
+          
+          // Create invoice
+          const invoice = await storage.createInvoice({
+            tenantId,
+            customerId: contract.customerId,
+            contractId: contract.id,
+            invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            issueDate: new Date(),
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+            totalAmount: totalAmount.toString(),
+            paidAmount: '0',
+            status: 'pending',
+            description: `Meter billing for ${format(new Date(reading.readingDate), 'MMMM yyyy')}`,
+          });
+          
+          // Update meter reading billing status
+          await storage.updateMeterReading(reading.id, {
+            billingStatus: 'processed',
+            billingAmount: totalAmount.toString(),
+            invoiceId: invoice.id,
+          }, tenantId);
+          
+          generatedInvoices.push(invoice);
+        } catch (readingError) {
+          console.error(`Error processing reading ${reading.id}:`, readingError);
+        }
+      }
+      
+      res.json({ 
+        message: `Generated ${generatedInvoices.length} invoices`,
+        invoices: generatedInvoices 
+      });
+    } catch (error) {
+      console.error("Error generating invoices:", error);
+      res.status(500).json({ message: "Failed to generate invoices" });
+    }
+  });
+
+  // Contract Profitability Analysis
+  app.get('/api/billing/contract-profitability', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      
+      const contracts = await storage.getContracts(tenantId);
+      const invoices = await storage.getInvoices(tenantId);
+      
+      const profitabilityData = contracts.map(contract => {
+        const contractInvoices = invoices.filter(inv => inv.contractId === contract.id);
+        const totalRevenue = contractInvoices.reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+        const totalPaid = contractInvoices.reduce((sum, inv) => sum + parseFloat(inv.paidAmount?.toString() || '0'), 0);
+        const equipmentCost = parseFloat(contract.equipmentCost?.toString() || '0');
+        const monthlyCosts = parseFloat(contract.monthlyBase?.toString() || '0') * 12; // Assume yearly cost
+        
+        const totalCosts = equipmentCost + monthlyCosts;
+        const grossProfit = totalRevenue - totalCosts;
+        const marginPercent = totalRevenue > 0 ? (grossProfit / totalRevenue * 100) : 0;
+        
+        return {
+          contractId: contract.id,
+          contractNumber: contract.contractNumber,
+          totalRevenue,
+          totalPaid,
+          totalCosts,
+          grossProfit,
+          marginPercent,
+          invoiceCount: contractInvoices.length,
+          averageInvoiceAmount: contractInvoices.length > 0 ? totalRevenue / contractInvoices.length : 0,
+        };
+      });
+      
+      res.json(profitabilityData);
+    } catch (error) {
+      console.error("Error calculating contract profitability:", error);
+      res.status(500).json({ message: "Failed to calculate contract profitability" });
     }
   });
 

@@ -34,6 +34,7 @@ import AccountsPayable from "@/pages/AccountsPayable";
 import AccountsReceivable from "@/pages/AccountsReceivable";
 import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import JournalEntries from "@/pages/JournalEntries";
+import MeterBilling from "@/pages/MeterBilling";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -75,7 +76,7 @@ function Router() {
           <Route path="/software-products" component={SoftwareProducts} />
           <Route path="/supplies" component={Supplies} />
           <Route path="/managed-services" component={ManagedServices} />
-          <Route path="/billing" component={Billing} />
+          <Route path="/billing" component={MeterBilling} />
           <Route path="/vendors" component={Vendors} />
           <Route path="/accounts-payable" component={AccountsPayable} />
           <Route path="/accounts-receivable" component={AccountsReceivable} />
