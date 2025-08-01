@@ -153,6 +153,14 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     });
   }
 
+  // User Settings - always available
+  sections.push({
+    name: 'Account',
+    items: [
+      { name: 'Settings', href: '/settings', icon: Settings },
+    ]
+  });
+
   return sections;
 }
 

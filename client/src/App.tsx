@@ -49,6 +49,7 @@ import PurchaseOrders from "@/pages/PurchaseOrders";
 import PricingManagement from "@/pages/PricingManagement";
 import Contacts from "@/pages/Contacts";
 import TenantSetup from "@/pages/TenantSetup";
+import Settings from "@/pages/Settings";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -122,6 +123,7 @@ function Router() {
           <Route path="/pricing-management" component={PricingManagement} />
           <Route path="/admin/pricing-management" component={PricingManagement} />
           <Route path="/tenant-setup" component={TenantSetup} />
+          <Route path="/settings" component={Settings} />
         </>
       )}
       <Route component={NotFound} />

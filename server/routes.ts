@@ -2336,6 +2336,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post('/api/pricing/calculate', requireAuth, calculatePricingForProduct);
 
+  // User Settings Routes
+  const {
+    getUserSettings,
+    updateUserProfile,
+    updateUserPassword,
+    updateUserPreferences,
+    updateAccessibilitySettings,
+    uploadAvatar,
+    exportUserData,
+    deleteUserAccount,
+    upload: avatarUpload
+  } = await import('./routes-settings');
+
+  app.get('/api/user/settings', requireAuth, getUserSettings);
+  app.put('/api/user/profile', requireAuth, updateUserProfile);
+  app.put('/api/user/password', requireAuth, updateUserPassword);
+  app.put('/api/user/preferences', requireAuth, updateUserPreferences);
+  app.put('/api/user/accessibility', requireAuth, updateAccessibilitySettings);
+  app.post('/api/user/avatar', requireAuth, avatarUpload.single('avatar'), uploadAvatar);
+  app.get('/api/user/export', requireAuth, exportUserData);
+  app.delete('/api/user/delete', requireAuth, deleteUserAccount);
+
   const httpServer = createServer(app);
   return httpServer;
 }

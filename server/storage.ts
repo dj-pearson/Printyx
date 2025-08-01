@@ -118,11 +118,14 @@ import {
   productPricing,
   quotePricing,
   quotePricingLineItems,
+  userSettings,
   type CompanyPricingSetting,
   type InsertCompanyPricingSetting,
   type ProductPricing,
   type InsertProductPricing,
   type QuotePricing,
+  type UserSettings,
+  type InsertUserSettings,
   type InsertQuotePricing,
   type QuotePricingLineItem,
   type InsertQuotePricingLineItem,
@@ -2103,6 +2106,84 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tenants.id, id))
       .returning();
     return tenant;
+  }
+
+  // User Settings Methods
+  async getUserSettings(userId: string): Promise<UserSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
+    return settings;
+  }
+
+  async createUserSettings(settingsData: InsertUserSettings): Promise<UserSettings> {
+    const [created] = await db
+      .insert(userSettings)
+      .values(settingsData)
+      .returning();
+    return created;
+  }
+
+  async updateUserSettings(userId: string, settingsData: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
+    // First, try to update existing settings
+    const [updated] = await db
+      .update(userSettings)
+      .set({ ...settingsData, updatedAt: new Date() })
+      .where(eq(userSettings.userId, userId))
+      .returning();
+    
+    // If no settings exist, create them
+    if (!updated) {
+      return await this.createUserSettings({ userId, ...settingsData });
+    }
+    
+    return updated;
+  }
+
+  async deleteUserSettings(userId: string): Promise<boolean> {
+    const result = await db
+      .delete(userSettings)
+      .where(eq(userSettings.userId, userId));
+    return result.rowCount > 0;
+  }
+
+  async getUserById(userId: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId));
+    return user;
+  }
+
+  async updateUser(userId: string, userData: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...userData, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async getUserCustomerAssignments(userId: string): Promise<UserCustomerAssignment[]> {
+    return await db
+      .select()
+      .from(userCustomerAssignments)
+      .where(eq(userCustomerAssignments.userId, userId));
+  }
+
+  async deleteUserCustomerAssignments(userId: string): Promise<boolean> {
+    const result = await db
+      .delete(userCustomerAssignments)
+      .where(eq(userCustomerAssignments.userId, userId));
+    return result.rowCount > 0;
+  }
+
+  async deleteUser(userId: string): Promise<boolean> {
+    const result = await db
+      .delete(users)
+      .where(eq(users.id, userId));
+    return result.rowCount > 0;
   }
 }
 

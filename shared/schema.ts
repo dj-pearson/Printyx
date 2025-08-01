@@ -95,6 +95,40 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User Settings - Store user preferences, accessibility settings, and profile data
+export const userSettings = pgTable("user_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(), // references users.id
+  
+  // Profile Information
+  phone: varchar("phone"),
+  jobTitle: varchar("job_title"),
+  department: varchar("department"),
+  bio: text("bio"),
+  avatar: varchar("avatar"),
+  
+  // Preferences
+  theme: varchar("theme", { length: 20 }).default("system"), // light, dark, system
+  language: varchar("language", { length: 10 }).default("en"),
+  timezone: varchar("timezone").default("America/New_York"),
+  dateFormat: varchar("date_format").default("MM/dd/yyyy"),
+  timeFormat: varchar("time_format", { length: 2 }).default("12"), // 12, 24
+  currency: varchar("currency", { length: 3 }).default("USD"),
+  
+  // Notifications
+  notifications: jsonb("notifications").default('{"email": true, "push": true, "sms": false, "marketing": false}'),
+  
+  // Accessibility Settings
+  accessibility: jsonb("accessibility").default('{"highContrast": false, "reducedMotion": false, "fontSize": "medium", "screenReader": false, "keyboardNavigation": false, "colorBlind": "none", "soundEnabled": true, "voiceCommands": false}'),
+  
+  // Security Settings
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  twoFactorSecret: varchar("two_factor_secret"), // encrypted
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // User-Customer assignments for sales territory management
 export const userCustomerAssignments = pgTable("user_customer_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2348,3 +2382,13 @@ export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderIte
   id: true,
   createdAt: true,
 });
+
+// User Settings Schema Validations
+export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type UserSettings = typeof userSettings.$inferSelect;
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
