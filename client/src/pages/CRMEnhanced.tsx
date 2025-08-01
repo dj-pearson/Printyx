@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import MainLayout from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -268,32 +269,35 @@ export default function CRMEnhanced() {
 
   if (isLoadingLeads || isLoadingQuotes || isLoadingInteractions) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">CRM & Sales Pipeline</h1>
+      <MainLayout 
+        title="Enhanced CRM & Sales Pipeline" 
+        description="Lead management, quote generation, and customer relationship tracking"
+      >
+        <div className="space-y-6">
+          <div className="grid gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-        <div className="grid gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Enhanced CRM & Sales Pipeline</h1>
-          <p className="text-gray-600">Lead management, quote generation, and customer relationship tracking</p>
-        </div>
-        <div className="flex gap-2">
+    <MainLayout 
+      title="Enhanced CRM & Sales Pipeline" 
+      description="Lead management, quote generation, and customer relationship tracking"
+    >
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div />
+          <div className="flex gap-2">
           <Dialog open={isCreateLeadOpen} onOpenChange={setIsCreateLeadOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -802,6 +806,7 @@ export default function CRMEnhanced() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

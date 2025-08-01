@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import MainLayout from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -209,10 +210,10 @@ export default function ServiceDispatchEnhanced() {
 
   if (isLoadingTickets) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Service Dispatch</h1>
-        </div>
+      <MainLayout 
+        title="Enhanced Service Dispatch" 
+        description="Smart technician assignment with skills matching and automated routing"
+      >
         <div className="grid gap-4">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
@@ -223,17 +224,18 @@ export default function ServiceDispatchEnhanced() {
             </Card>
           ))}
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Enhanced Service Dispatch</h1>
-          <p className="text-gray-600">Smart technician assignment with skills matching and automated routing</p>
-        </div>
+    <MainLayout 
+      title="Enhanced Service Dispatch" 
+      description="Smart technician assignment with skills matching and automated routing"
+    >
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div />
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -519,7 +521,8 @@ export default function ServiceDispatchEnhanced() {
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }

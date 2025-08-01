@@ -1,10 +1,5 @@
-import { useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
-import MobileNav from "@/components/ui/mobile-nav";
+import MainLayout from "@/components/layout/main-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,38 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, FileText } from "lucide-react";
 
 export default function Contracts() {
-  const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
-
   const { data: contracts, isLoading: contractsLoading } = useQuery({
     queryKey: ['/api/contracts'],
-    enabled: isAuthenticated,
   });
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading contracts...</p>
-        </div>
-      </div>
-    );
-  }
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -54,14 +20,32 @@ export default function Contracts() {
     }
   };
 
+  if (contractsLoading) {
+    return (
+      <MainLayout 
+        title="Contracts" 
+        description="Manage service contracts and billing agreements"
+      >
+        <div className="grid gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      
-      <main className="flex-1 overflow-auto">
-        <Header title="Contracts" description="Manage service contracts and billing agreements" />
-        
-        <div className="p-6 space-y-6">
+    <MainLayout 
+      title="Contracts" 
+      description="Manage service contracts and billing agreements"
+    >
+      <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -93,9 +77,9 @@ export default function Contracts() {
                 </Card>
               ))}
             </div>
-          ) : contracts && contracts.length > 0 ? (
+          ) : contracts && Array.isArray(contracts) && contracts.length > 0 ? (
             <div className="space-y-4">
-              {contracts.map((contract: any) => (
+              {Array.isArray(contracts) && contracts.map((contract: any) => (
                 <Card key={contract.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
@@ -166,9 +150,6 @@ export default function Contracts() {
             </Card>
           )}
         </div>
-      </main>
-      
-      <MobileNav />
-    </div>
+    </MainLayout>
   );
 }
