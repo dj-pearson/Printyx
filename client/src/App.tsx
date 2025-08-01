@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
+import Homepage from "@/pages/marketing/Homepage";
 import Dashboard from "@/pages/dashboard";
 import Customers from "@/pages/customers";
 import CRMEnhanced from "@/pages/CRMEnhanced";
@@ -30,7 +31,10 @@ function Router() {
           </div>
         </div>
       ) : !isAuthenticated ? (
-        <Route path="/" component={Login} />
+        <Switch>
+          <Route path="/login" component={Login} />
+          <Route path="/" component={Homepage} />
+        </Switch>
       ) : (
         <>
           <Route path="/" component={Dashboard} />
