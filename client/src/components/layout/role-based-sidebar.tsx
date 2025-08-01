@@ -54,7 +54,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   sections.push({
     name: 'Overview',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     ]
   });
 
@@ -66,8 +66,6 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         { name: 'CRM & Pipeline', href: '/crm', icon: Target },
         { name: 'Contacts', href: '/contacts', icon: Users },
         { name: 'Deals Pipeline', href: '/deals', icon: Target },
-        { name: 'Quotes & Proposals', href: '/quotes', icon: FileText },
-        { name: 'Companies', href: '/companies', icon: Building2 },
         { name: 'Customers', href: '/customers', icon: Building2 },
         { name: 'Contracts', href: '/contracts', icon: ClipboardList },
         { name: 'Task Management', href: '/task-management', icon: CheckSquare },
@@ -81,23 +79,21 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       name: 'Service',
       items: [
         { name: 'Service Dispatch', href: '/service-dispatch', icon: Calendar },
-        { name: 'Service Tickets', href: '/service-tickets', icon: Wrench },
         { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
-        { name: 'Create Ticket', href: '/create-ticket', icon: UserPlus },
       ]
     });
   }
 
-  // Inventory section
+  // Product Management section
   if (permissions.inventory || isPlatformRole || isCompanyAdmin) {
     sections.push({
-      name: 'Inventory',
+      name: 'Product Management',
       items: [
-        { name: 'View Inventory', href: '/inventory', icon: Package },
-        { name: 'Manage Inventory', href: '/inventory-manage', icon: Package },
-        { name: 'Parts & Supplies', href: '/parts', icon: Package },
-        { name: 'Suppliers', href: '/suppliers', icon: Building2 },
+        { name: 'Product Hub', href: '/product-hub', icon: Package },
+        { name: 'Equipment Lifecycle', href: '/equipment-lifecycle', icon: Settings },
         { name: 'Purchase Orders', href: '/purchase-orders', icon: ShoppingCart },
+        { name: 'Inventory', href: '/inventory', icon: Package },
+        { name: 'Supplies', href: '/supplies', icon: Package },
       ]
     });
   }
@@ -108,9 +104,10 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       name: 'Billing & Finance',
       items: [
         { name: 'Invoices', href: '/invoices', icon: FileText },
-        { name: 'Payments', href: '/payments', icon: DollarSign },
         { name: 'Meter Billing', href: '/billing', icon: Calculator },
         { name: 'Vendors', href: '/vendors', icon: Building2 },
+        { name: 'Accounts Payable', href: '/accounts-payable', icon: DollarSign },
+        { name: 'Accounts Receivable', href: '/accounts-receivable', icon: DollarSign },
       ]
     });
   }
@@ -120,8 +117,32 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     sections.push({
       name: 'Reports',
       items: [
-        { name: 'All Reports', href: '/reports', icon: BarChart3 },
-        { name: 'Custom Reports', href: '/custom-reports', icon: ClipboardList },
+        { name: 'Reports', href: '/reports', icon: BarChart3 },
+        { name: 'Advanced Reporting', href: '/advanced-reporting', icon: TrendingUp },
+      ]
+    });
+  }
+
+  // System Administration section (for platform roles and high-level admins)
+  if (isPlatformRole || (isCompanyAdmin && level >= 4)) {
+    sections.push({
+      name: 'System Administration',
+      items: [
+        { name: 'Workflow Automation', href: '/workflow-automation', icon: Zap },
+        { name: 'System Integrations', href: '/system-integrations', icon: Plug },
+        { name: 'Deployment Readiness', href: '/deployment-readiness', icon: Rocket },
+        { name: 'Performance Monitoring', href: '/performance-monitoring', icon: Activity },
+      ]
+    });
+  }
+
+  // Platform-only section
+  if (isPlatformRole) {
+    sections.push({
+      name: 'Platform Management',
+      items: [
+        { name: 'Tenant Setup', href: '/tenant-setup', icon: Settings },
+        { name: 'Pricing Management', href: '/pricing-management', icon: DollarSign },
       ]
     });
   }
