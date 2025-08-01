@@ -574,22 +574,17 @@ export const productAccessories = pgTable("product_accessories", {
   tenantId: varchar("tenant_id").notNull(),
   modelId: varchar("model_id").notNull(), // references productModels.id
   
-  // Basic Information
-  productCode: varchar("product_code").notNull(),
-  productName: varchar("product_name").notNull(),
-  category: varchar("category").notNull().default("Accessory"),
-  isActive: boolean("is_active").default(true),
-  
-  // Details
+  // Basic Information  
+  accessoryCode: varchar("accessory_code").notNull(),
+  accessoryName: varchar("accessory_name").notNull(),
+  category: varchar("category"),
   description: text("description"),
-  manufacturer: varchar("manufacturer"),
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
   msrp: decimal("msrp", { precision: 10, scale: 2 }),
+  repPrice: decimal("rep_price", { precision: 10, scale: 2 }),
   
   // Compatibility and Requirements
   isRequired: boolean("is_required").default(false),
-  isOptional: boolean("is_optional").default(true),
-  maxQuantity: integer("max_quantity"),
+  isActive: boolean("is_active").default(true),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

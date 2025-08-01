@@ -901,6 +901,15 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updateProductAccessory(id: string, accessory: Partial<ProductAccessory>, tenantId: string): Promise<ProductAccessory | undefined> {
+    const [result] = await db
+      .update(productAccessories)
+      .set({ ...accessory, updatedAt: new Date() })
+      .where(and(eq(productAccessories.id, id), eq(productAccessories.tenantId, tenantId)))
+      .returning();
+    return result;
+  }
+
   async getCpcRates(modelId: string, tenantId: string): Promise<CpcRate[]> {
     return await db
       .select()

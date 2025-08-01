@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Package, Edit3, Tag, DollarSign, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,27 @@ export default function ProductAccessories() {
     },
   });
 
+  const updateAccessoryMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<ProductAccessory> }) => {
+      return await apiRequest(`/api/product-accessories/${id}`, 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
+      setSelectedAccessory(null);
+      toast({
+        title: "Success",
+        description: "Product accessory updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update product accessory",
+        variant: "destructive",
+      });
+    },
+  });
+
   const form = useForm<InsertProductAccessory>({
     resolver: zodResolver(insertProductAccessorySchema),
     defaultValues: {
@@ -75,6 +96,11 @@ export default function ProductAccessories() {
     },
   });
 
+  const editForm = useForm<Partial<ProductAccessory>>({
+    resolver: zodResolver(insertProductAccessorySchema.partial()),
+    defaultValues: {},
+  });
+
   const onSubmit = (data: InsertProductAccessory) => {
     // Create accessories for all selected models
     selectedModels.forEach(modelId => {
@@ -84,6 +110,28 @@ export default function ProductAccessories() {
       });
     });
   };
+
+  const onEditSubmit = (data: Partial<ProductAccessory>) => {
+    if (selectedAccessory) {
+      updateAccessoryMutation.mutate({ id: selectedAccessory.id, data });
+    }
+  };
+
+  // Populate edit form when selectedAccessory changes
+  useEffect(() => {
+    if (selectedAccessory) {
+      editForm.reset({
+        accessoryCode: selectedAccessory.accessoryCode,
+        accessoryName: selectedAccessory.accessoryName,
+        category: selectedAccessory.category,
+        description: selectedAccessory.description,
+        msrp: selectedAccessory.msrp,
+        repPrice: selectedAccessory.repPrice,
+        isRequired: selectedAccessory.isRequired,
+        isActive: selectedAccessory.isActive,
+      });
+    }
+  }, [selectedAccessory, editForm]);
 
   // Get unique manufacturers from models
   const manufacturers = Array.from(new Set(models.map(m => m.manufacturer).filter(Boolean)));
@@ -577,6 +625,166 @@ export default function ProductAccessories() {
             {accessories.filter(a => a.isActive).length} active accessories
           </span>
         </div>
+
+        {/* Edit Accessory Dialog */}
+        <Dialog open={!!selectedAccessory} onOpenChange={() => setSelectedAccessory(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Product Accessory</DialogTitle>
+              <DialogDescription>
+                Update {selectedAccessory?.accessoryName} details and pricing information
+              </DialogDescription>
+            </DialogHeader>
+            {selectedAccessory && (
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="accessoryCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Accessory Code</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="accessoryName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Accessory Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={editForm.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Finishing">Finishing</SelectItem>
+                            <SelectItem value="Paper Handling">Paper Handling</SelectItem>
+                            <SelectItem value="Connectivity">Connectivity</SelectItem>
+                            <SelectItem value="Security">Security</SelectItem>
+                            <SelectItem value="Storage">Storage</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            rows={3}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="msrp"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>MSRP ($)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="repPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rep Price ($)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <FormField
+                      control={editForm.control}
+                      name="isRequired"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <Switch
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-medium">Required Accessory</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <Switch
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-medium">Active</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setSelectedAccessory(null)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={updateAccessoryMutation.isPending}>
+                      {updateAccessoryMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

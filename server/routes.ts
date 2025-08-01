@@ -734,6 +734,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/product-accessories/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const accessory = await storage.updateProductAccessory(id, req.body, tenantId);
+      if (!accessory) {
+        return res.status(404).json({ message: "Product accessory not found" });
+      }
+      res.json(accessory);
+    } catch (error) {
+      console.error("Error updating product accessory:", error);
+      res.status(500).json({ message: "Failed to update product accessory" });
+    }
+  });
+
   // Professional Services
   app.get('/api/professional-services', async (req: any, res) => {
     try {
