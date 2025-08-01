@@ -198,11 +198,11 @@ export default function Sidebar() {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {tenants.map((tenant: any) => (
+                {(tenants as any[])?.map((tenant: any) => (
                   <SelectItem key={tenant.id} value={tenant.id}>
                     {tenant.name}
                   </SelectItem>
-                ))}
+                )) || []}
               </SelectContent>
             </Select>
             {selectedTenantId && (
