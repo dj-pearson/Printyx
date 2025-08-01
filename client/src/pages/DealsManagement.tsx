@@ -81,21 +81,21 @@ export default function DealsManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedStageId, setSelectedStageId] = useState<string>("");
+  const [selectedStageId, setSelectedStageId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Fetch deal stages
-  const { data: stages = [], isLoading: stagesLoading } = useQuery({
+  const { data: stages = [], isLoading: stagesLoading } = useQuery<DealStage[]>({
     queryKey: ["/api/deal-stages"],
   });
 
   // Fetch deals with optional stage filtering
-  const { data: deals = [], isLoading: dealsLoading, refetch: refetchDeals } = useQuery({
+  const { data: deals = [], isLoading: dealsLoading, refetch: refetchDeals } = useQuery<Deal[]>({
     queryKey: ["/api/deals", selectedStageId, searchTerm],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedStageId) params.append("stageId", selectedStageId);
+      if (selectedStageId && selectedStageId !== "all") params.append("stageId", selectedStageId);
       if (searchTerm) params.append("search", searchTerm);
       
       const response = await fetch(`/api/deals?${params}`);
@@ -200,8 +200,8 @@ export default function DealsManagement() {
   }
 
   // Group deals by stage for kanban view
-  const dealsByStage = stages.reduce((acc: Record<string, Deal[]>, stage: DealStage) => {
-    acc[stage.id] = deals.filter((deal: Deal) => deal.stageId === stage.id);
+  const dealsByStage = (stages as DealStage[]).reduce((acc: Record<string, Deal[]>, stage: DealStage) => {
+    acc[stage.id] = (deals as Deal[]).filter((deal: Deal) => deal.stageId === stage.id);
     return acc;
   }, {});
 
@@ -226,7 +226,7 @@ export default function DealsManagement() {
                 <SelectValue placeholder="Filter by stage" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Stages</SelectItem>
+                <SelectItem value="all">All Stages</SelectItem>
                 {stages.map((stage: DealStage) => (
                   <SelectItem key={stage.id} value={stage.id}>
                     <div className="flex items-center gap-2">

@@ -1320,7 +1320,19 @@ export class DatabaseStorage implements IStorage {
   // Deal stages operations
   async getDealStages(tenantId: string): Promise<any[]> {
     return await db
-      .select()
+      .select({
+        id: dealStages.id,
+        tenantId: dealStages.tenantId,
+        name: dealStages.name,
+        description: dealStages.description,
+        color: dealStages.color,
+        sortOrder: dealStages.sortOrder,
+        isActive: dealStages.isActive,
+        isClosingStage: dealStages.isClosingStage,
+        isWonStage: dealStages.isWonStage,
+        createdAt: dealStages.createdAt,
+        updatedAt: dealStages.updatedAt,
+      })
       .from(dealStages)
       .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.isActive, true)))
       .orderBy(dealStages.sortOrder);
