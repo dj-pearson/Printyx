@@ -86,7 +86,9 @@ function Router() {
           <Route path="/service-dispatch" component={ServiceDispatchEnhanced} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
+          <Route path="/admin/product-models" component={ProductModels} />
           <Route path="/product-accessories" component={ProductAccessories} />
+          <Route path="/admin/product-accessories" component={ProductAccessories} />
           <Route path="/professional-services" component={ProfessionalServices} />
           <Route path="/service-products" component={ServiceProducts} />
           <Route path="/software-products" component={SoftwareProducts} />
@@ -107,6 +109,7 @@ function Router() {
           <Route path="/deployment-readiness" component={DeploymentReadiness} />
           <Route path="/task-management" component={TaskManagement} />
           <Route path="/pricing-management" component={PricingManagement} />
+          <Route path="/admin/pricing-management" component={PricingManagement} />
         </>
       )}
       <Route component={NotFound} />
