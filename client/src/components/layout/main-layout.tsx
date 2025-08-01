@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
-import MobileNav from "@/components/ui/mobile-nav";
+// import MobileNav from "@/components/ui/mobile-nav";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -52,7 +52,7 @@ export default function MainLayout({ children, title, description }: MainLayoutP
         </div>
       </main>
       
-      <MobileNav />
+      {/* <MobileNav /> */}
     </div>
   );
 }

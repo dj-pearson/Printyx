@@ -11,6 +11,9 @@ import Dashboard from "@/pages/dashboard";
 import Customers from "@/pages/customers";
 import CRMEnhanced from "@/pages/CRMEnhanced";
 import LeadDetail from "@/pages/LeadDetail";
+import SalesReports from "@/pages/placeholder/SalesReports";
+import ServiceReports from "@/pages/placeholder/ServiceReports";
+import RevenueReports from "@/pages/placeholder/RevenueReports";
 import Contracts from "@/pages/contracts";
 import ServiceDispatchEnhanced from "@/pages/ServiceDispatchEnhanced";
 import Inventory from "@/pages/inventory";
@@ -43,6 +46,9 @@ function Router() {
           <Route path="/customers" component={Customers} />
           <Route path="/crm" component={CRMEnhanced} />
           <Route path="/leads/:id" component={LeadDetail} />
+          <Route path="/sales-reports" component={SalesReports} />
+          <Route path="/service-reports" component={ServiceReports} />
+          <Route path="/revenue-reports" component={RevenueReports} />
           <Route path="/contracts" component={Contracts} />
           <Route path="/meter-readings" component={MeterReadings} />
           <Route path="/invoices" component={Invoices} />

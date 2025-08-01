@@ -10,19 +10,64 @@ import {
   Calculator, 
   BarChart3,
   Settings,
-  Printer
+  Printer,
+  TrendingUp,
+  Target,
+  DollarSign,
+  ClipboardList,
+  Shield,
+  UserCog,
+  PieChart
 } from "lucide-react";
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Customers', href: '/customers', icon: Users },
-  { name: 'CRM & Sales', href: '/crm', icon: Users },
-  { name: 'Contracts', href: '/contracts', icon: FileText },
-  { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
-  { name: 'Invoices', href: '/invoices', icon: FileText },
-  { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
-  { name: 'Inventory', href: '/inventory', icon: Package },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
+const navigationSections = [
+  {
+    name: 'Overview',
+    items: [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { name: 'Customers', href: '/customers', icon: Users },
+    ]
+  },
+  {
+    name: 'Sales',
+    items: [
+      { name: 'CRM & Pipeline', href: '/crm', icon: Target },
+      { name: 'Quotes & Proposals', href: '/quotes', icon: FileText },
+      { name: 'Sales Reports', href: '/sales-reports', icon: TrendingUp },
+    ]
+  },
+  {
+    name: 'Service',
+    items: [
+      { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
+      { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
+      { name: 'Service Reports', href: '/service-reports', icon: ClipboardList },
+    ]
+  },
+  {
+    name: 'Financial',
+    items: [
+      { name: 'Invoices', href: '/invoices', icon: FileText },
+      { name: 'Revenue Reports', href: '/revenue-reports', icon: DollarSign },
+      { name: 'Financial Analytics', href: '/financial-analytics', icon: PieChart },
+    ]
+  },
+  {
+    name: 'Admin',
+    items: [
+      { name: 'Inventory', href: '/inventory', icon: Package },
+      { name: 'Contracts', href: '/contracts', icon: FileText },
+      { name: 'User Management', href: '/user-management', icon: UserCog },
+      { name: 'System Settings', href: '/settings', icon: Shield },
+    ]
+  },
+  {
+    name: 'Reports',
+    items: [
+      { name: 'All Reports', href: '/reports', icon: BarChart3 },
+      { name: 'Custom Reports', href: '/custom-reports', icon: ClipboardList },
+    ]
+  }
 ];
 
 export default function Sidebar() {
@@ -40,27 +85,36 @@ export default function Sidebar() {
         </div>
       </div>
       
-      <nav className="flex-1 px-4 py-6 space-y-1">
-        {navigation.map((item) => {
-          const isActive = location === item.href;
-          const Icon = item.icon;
-          
-          return (
-            <Link key={item.name} href={item.href}>
-              <div
-                className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
-                  isActive
-                    ? "text-primary bg-primary/10"
-                    : "text-gray-700 hover:bg-gray-100"
-                )}
-              >
-                <Icon className="w-5 h-5 mr-3" />
-                {item.name}
-              </div>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
+        {navigationSections.map((section) => (
+          <div key={section.name}>
+            <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              {section.name}
+            </h3>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const isActive = location === item.href;
+                const Icon = item.icon;
+                
+                return (
+                  <Link key={item.name} href={item.href}>
+                    <div
+                      className={cn(
+                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                        isActive
+                          ? "text-primary bg-primary/10"
+                          : "text-gray-700 hover:bg-gray-100"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 mr-3" />
+                      {item.name}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
       
       <div className="p-4 border-t border-gray-200">
