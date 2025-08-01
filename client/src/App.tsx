@@ -39,6 +39,8 @@ import AdvancedReporting from "@/pages/AdvancedReporting";
 import WorkflowAutomation from "@/pages/WorkflowAutomation";
 import MobileOptimization from "@/pages/MobileOptimization";
 import PerformanceMonitoring from "@/pages/PerformanceMonitoring";
+import SystemIntegrations from "@/pages/SystemIntegrations";
+import DeploymentReadiness from "@/pages/DeploymentReadiness";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -91,6 +93,8 @@ function Router() {
           <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route path="/mobile-optimization" component={MobileOptimization} />
           <Route path="/performance-monitoring" component={PerformanceMonitoring} />
+          <Route path="/system-integrations" component={SystemIntegrations} />
+          <Route path="/deployment-readiness" component={DeploymentReadiness} />
         </>
       )}
       <Route component={NotFound} />

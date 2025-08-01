@@ -34,6 +34,7 @@ import csv from "csv-parser";
 import { Readable } from "stream";
 import { format } from "date-fns";
 import { registerMobileRoutes } from "./routes-mobile";
+import { registerIntegrationRoutes } from "./routes-integrations";
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -1709,6 +1710,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch service performance" });
     }
   });
+
+  // Register integration and deployment routes
+  registerIntegrationRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

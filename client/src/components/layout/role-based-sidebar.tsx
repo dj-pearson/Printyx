@@ -24,6 +24,8 @@ import {
   Zap,
   Smartphone,
   Activity,
+  Plug,
+  Rocket,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -204,6 +206,8 @@ const navigationStructure = {
       { key: 'workflow-automation', label: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
       { key: 'mobile-optimization', label: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
       { key: 'performance-monitoring', label: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
+      { key: 'system-integrations', label: 'System Integrations', path: '/system-integrations', icon: Plug },
+      { key: 'deployment-readiness', label: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
     ]
   }
 };
