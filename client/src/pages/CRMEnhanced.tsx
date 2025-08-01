@@ -315,17 +315,17 @@ export default function CRMEnhanced() {
   };
 
   const filteredLeads = leads?.filter(lead => {
-    return filterStatus === "all" || lead.status === filterStatus;
+    return filterStatus === "all" || lead.leadStatus === filterStatus;
   });
 
   const getSalesPipelineMetrics = () => {
     if (!leads) return { totalValue: 0, conversionRate: 0, activeLeads: 0 };
     
-    const totalValue = leads.reduce((sum, lead) => sum + parseFloat(lead.estimated_value || '0'), 0);
+    const totalValue = leads.reduce((sum, lead) => sum + parseFloat(lead.estimatedAmount?.toString() || '0'), 0);
     const totalLeads = leads.length;
-    const closedWon = leads.filter(lead => lead.status === 'closed_won').length;
+    const closedWon = leads.filter(lead => lead.leadStatus === 'closed_won').length;
     const conversionRate = totalLeads > 0 ? (closedWon / totalLeads) * 100 : 0;
-    const activeLeads = leads.filter(lead => !['closed_won', 'closed_lost'].includes(lead.status)).length;
+    const activeLeads = leads.filter(lead => !['closed_won', 'closed_lost'].includes(lead.leadStatus || '')).length;
 
     return { totalValue, conversionRate, activeLeads };
   };
@@ -706,23 +706,23 @@ export default function CRMEnhanced() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-lg">{lead.company_name}</CardTitle>
-                        <Badge className={`${getStatusColor(lead.status)} border-0`}>
+                        <CardTitle className="text-lg">Lead #{lead.id}</CardTitle>
+                        <Badge className={`${getStatusColor(lead.leadStatus || 'new')} border-0`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(lead.status)}
-                            {lead.status.replace('_', ' ')}
+                            {getStatusIcon(lead.leadStatus || 'new')}
+                            {(lead.leadStatus || 'new').replace('_', ' ')}
                           </span>
                         </Badge>
                       </div>
                       <CardDescription>
-                        {lead.contact_name} • {lead.source}
+                        {lead.leadSource}
                       </CardDescription>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-semibold">${parseFloat(lead.estimated_value || '0').toLocaleString()}</div>
-                      {lead.estimated_close_date && (
+                      <div className="text-lg font-semibold">${parseFloat(lead.estimatedAmount?.toString() || '0').toLocaleString()}</div>
+                      {lead.closeDate && (
                         <div className="text-sm text-gray-500">
-                          Close: {format(new Date(lead.estimated_close_date), 'MMM dd')}
+                          Close: {format(new Date(lead.closeDate), 'MMM dd')}
                         </div>
                       )}
                     </div>
@@ -743,16 +743,16 @@ export default function CRMEnhanced() {
                           <span>{lead.phone}</span>
                         </div>
                       )}
-                      {lead.last_contact_date && (
+                      {lead.lastContactDate && (
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-gray-400" />
-                          <span>Last contact: {format(new Date(lead.last_contact_date), 'MMM dd')}</span>
+                          <span>Last contact: {format(new Date(lead.lastContactDate), 'MMM dd')}</span>
                         </div>
                       )}
-                      {lead.next_follow_up_date && (
+                      {lead.nextFollowUpDate && (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>Follow up: {format(new Date(lead.next_follow_up_date), 'MMM dd')}</span>
+                          <span>Follow up: {format(new Date(lead.nextFollowUpDate), 'MMM dd')}</span>
                         </div>
                       )}
                     </div>
@@ -763,7 +763,7 @@ export default function CRMEnhanced() {
 
                     <div className="flex justify-between items-center pt-2 border-t">
                       <div className="flex gap-2">
-                        {lead.status === 'new' && (
+                        {lead.leadStatus === 'new' && (
                           <Button 
                             size="sm" 
                             onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'qualified' })}
@@ -773,7 +773,7 @@ export default function CRMEnhanced() {
                             Qualify
                           </Button>
                         )}
-                        {lead.status === 'qualified' && (
+                        {lead.leadStatus === 'qualified' && (
                           <Button 
                             size="sm" 
                             onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'proposal' })}
@@ -840,9 +840,9 @@ export default function CRMEnhanced() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
-                      {getInteractionIcon(interaction.interactionType)}
+                      {getInteractionIcon(interaction.activityType)}
                       <CardTitle className="text-base">{interaction.subject}</CardTitle>
-                      <Badge variant="outline">{interaction.interactionType}</Badge>
+                      <Badge variant="outline">{interaction.activityType}</Badge>
                     </div>
                     <div className="text-sm text-gray-500">
                       {format(new Date(interaction.createdAt || new Date()), 'MMM dd, HH:mm')}
@@ -854,7 +854,7 @@ export default function CRMEnhanced() {
                   {interaction.outcome && (
                     <Badge className={`${interaction.outcome === 'positive' ? 'bg-green-50 text-green-700' : 
                       interaction.outcome === 'negative' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}`}>
-                      {interaction.outcome.replace('_', ' ')}
+                      {(interaction.outcome || '').replace('_', ' ')}
                     </Badge>
                   )}
                 </CardContent>

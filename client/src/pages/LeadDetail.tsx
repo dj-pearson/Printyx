@@ -168,19 +168,19 @@ export default function LeadDetail() {
             Back to CRM
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{lead.company_name}</h1>
-            <p className="text-gray-600">{lead.contact_name}</p>
+            <h1 className="text-2xl font-bold text-gray-900">Lead #{lead.id}</h1>
+            <p className="text-gray-600">{lead.leadSource}</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge className={getStatusColor(lead.status)}>
-            {lead.status.replace('_', ' ').toUpperCase()}
+          <Badge className={getStatusColor(lead.leadStatus)}>
+            {(lead.leadStatus || 'new').replace('_', ' ').toUpperCase()}
           </Badge>
           <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
-          {lead.status !== 'closed_won' && (
+          {lead.leadStatus !== 'closed_won' && (
             <Button 
               size="sm"
               onClick={() => convertMutation.mutate()}
@@ -216,22 +216,22 @@ export default function LeadDetail() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-500">Company Name</label>
-                      <p className="text-gray-900">{lead.company_name}</p>
+                      <p className="text-gray-900">Lead #{lead.id}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Source</label>
-                      <p className="text-gray-900">{lead.source || 'Not specified'}</p>
+                      <p className="text-gray-900">{lead.leadSource || 'Not specified'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Status</label>
-                      <Badge className={getStatusColor(lead.status)}>
-                        {lead.status.replace('_', ' ').toUpperCase()}
+                      <Badge className={getStatusColor(lead.leadStatus)}>
+                        {(lead.leadStatus || 'new').replace('_', ' ').toUpperCase()}
                       </Badge>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Estimated Value</label>
                       <p className="text-gray-900">
-                        {lead.estimated_value ? `$${Number(lead.estimated_value).toLocaleString()}` : 'Not specified'}
+                        {lead.estimatedAmount ? `$${Number(lead.estimatedAmount).toLocaleString()}` : 'Not specified'}
                       </p>
                     </div>
                   </div>
