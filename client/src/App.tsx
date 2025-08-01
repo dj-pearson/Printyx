@@ -48,6 +48,7 @@ import EquipmentLifecycle from "@/pages/EquipmentLifecycle";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import PricingManagement from "@/pages/PricingManagement";
 import Contacts from "@/pages/Contacts";
+import TenantSetup from "@/pages/TenantSetup";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -120,6 +121,7 @@ function Router() {
           <Route path="/task-management" component={TaskManagement} />
           <Route path="/pricing-management" component={PricingManagement} />
           <Route path="/admin/pricing-management" component={PricingManagement} />
+          <Route path="/tenant-setup" component={TenantSetup} />
         </>
       )}
       <Route component={NotFound} />

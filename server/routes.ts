@@ -56,6 +56,7 @@ import {
   deleteQuoteLineItem,
   calculatePricingForProduct
 } from "./routes-pricing";
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -361,11 +362,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply tenant resolution middleware to all API routes
+  app.use('/api', resolveTenant);
+  
   // Contacts routes
-  app.get('/api/contacts', requireAuth, async (req, res) => {
+  app.get('/api/contacts', requireAuth, async (req: TenantRequest, res) => {
     try {
-      const user = req.user as User;
-      const tenantId = user.tenantId;
+      const user = req.user as any;
+      const tenantId = req.tenantId || user.tenantId;
       
       // Get query parameters
       const {

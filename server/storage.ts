@@ -2073,6 +2073,37 @@ export class DatabaseStorage implements IStorage {
         eq(companyContacts.tenantId, tenantId)
       ));
   }
+
+  // Tenant management methods
+  async getTenantBySlug(slug: string): Promise<any> {
+    const [tenant] = await db
+      .select()
+      .from(tenants)
+      .where(or(
+        eq(tenants.slug, slug),
+        eq(tenants.subdomainPrefix, slug),
+        eq(tenants.pathPrefix, slug)
+      ))
+      .limit(1);
+    return tenant;
+  }
+
+  async createTenant(tenantData: any): Promise<any> {
+    const [tenant] = await db
+      .insert(tenants)
+      .values(tenantData)
+      .returning();
+    return tenant;
+  }
+
+  async updateTenant(id: string, updates: any): Promise<any> {
+    const [tenant] = await db
+      .update(tenants)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tenants.id, id))
+      .returning();
+    return tenant;
+  }
 }
 
 export const storage = new DatabaseStorage();

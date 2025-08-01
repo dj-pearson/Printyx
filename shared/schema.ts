@@ -61,11 +61,16 @@ export const teams = pgTable("teams", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Tenants table for multi-tenancy
+// Tenants table for multi-tenancy with subdomain support
 export const tenants = pgTable("tenants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
+  slug: varchar("slug").unique().notNull(), // URL-friendly name (e.g., "xyz-company")
   domain: varchar("domain").unique(),
+  subdomainPrefix: varchar("subdomain_prefix").unique(), // For xyz-company.printyx.net
+  pathPrefix: varchar("path_prefix").unique(), // For printyx.net/xyz-company
+  isActive: boolean("is_active").default(true),
+  plan: varchar("plan", { length: 20 }).default("basic"), // basic, professional, enterprise
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
