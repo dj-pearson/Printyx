@@ -646,10 +646,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company management routes (new primary business entity)
-  app.get('/api/companies', async (req: any, res) => {
+  app.get('/api/companies', requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
-      const companies = await storage.getCompanies(tenantId);
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { search } = req.query;
+      
+      const companies = await storage.getCompanies(tenantId, search);
       res.json(companies);
     } catch (error) {
       console.error("Error fetching companies:", error);

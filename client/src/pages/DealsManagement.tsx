@@ -15,16 +15,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, DollarSign, Calendar, User, Building2, Phone, Mail, TrendingUp, Filter, Search } from "lucide-react";
+import { Plus, DollarSign, Calendar, User, Building2, Phone, Mail, TrendingUp, Filter, Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Zod schemas for form validation
 const dealFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   amount: z.string().optional(),
+  companyId: z.string().min(1, "Company is required"),
   companyName: z.string().min(1, "Company name is required"),
+  contactId: z.string().optional(),
   primaryContactName: z.string().optional(),
   primaryContactEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   primaryContactPhone: z.string().optional(),
@@ -38,6 +42,24 @@ const dealFormSchema = z.object({
 });
 
 type DealFormData = z.infer<typeof dealFormSchema>;
+
+interface Company {
+  id: string;
+  businessName: string;
+  customerNumber?: string;
+  phone?: string;
+  billingCity?: string;
+  billingState?: string;
+}
+
+interface Contact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  title?: string;
+}
 
 interface Deal {
   id: string;
@@ -84,10 +106,38 @@ export default function DealsManagement() {
   const [selectedStageId, setSelectedStageId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [companySearchTerm, setCompanySearchTerm] = useState("");
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [isCompanySearchOpen, setIsCompanySearchOpen] = useState(false);
 
   // Fetch deal stages
   const { data: stages = [], isLoading: stagesLoading } = useQuery<DealStage[]>({
     queryKey: ["/api/deal-stages"],
+  });
+
+  // Fetch companies for dropdown search
+  const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
+    queryKey: ["/api/companies", companySearchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (companySearchTerm) params.append("search", companySearchTerm);
+      
+      const response = await apiRequest('GET', `/api/companies?${params}`);
+      const data = await response.json();
+      return data;
+    },
+  });
+
+  // Fetch contacts for selected company
+  const { data: companyContacts = [], isLoading: contactsLoading } = useQuery<Contact[]>({
+    queryKey: ["/api/companies", selectedCompanyId, "contacts"],
+    queryFn: async () => {
+      if (!selectedCompanyId) return [];
+      const response = await apiRequest('GET', `/api/companies/${selectedCompanyId}/contacts`);
+      const data = await response.json();
+      return data;
+    },
+    enabled: !!selectedCompanyId,
   });
 
   // Fetch deals with optional stage filtering
@@ -108,6 +158,21 @@ export default function DealsManagement() {
     resolver: zodResolver(dealFormSchema),
     defaultValues: {
       priority: "medium",
+      title: "",
+      description: "",
+      amount: "",
+      companyId: "",
+      companyName: "",
+      contactId: "",
+      primaryContactName: "",
+      primaryContactEmail: "",
+      primaryContactPhone: "",
+      source: "",
+      dealType: "",
+      expectedCloseDate: "",
+      productsInterested: "",
+      estimatedMonthlyValue: "",
+      notes: "",
     },
   });
 
@@ -120,7 +185,7 @@ export default function DealsManagement() {
         estimatedMonthlyValue: data.estimatedMonthlyValue ? parseFloat(data.estimatedMonthlyValue) : undefined,
         expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate).toISOString() : undefined,
       };
-      return apiRequest("/api/deals", "POST", dealData);
+      return apiRequest("POST", "/api/deals", dealData);
     },
     onSuccess: () => {
       toast({
@@ -143,7 +208,7 @@ export default function DealsManagement() {
   // Update deal stage mutation
   const updateDealStageMutation = useMutation({
     mutationFn: async ({ dealId, stageId }: { dealId: string; stageId: string }) => {
-      return apiRequest(`/api/deals/${dealId}/stage`, "PUT", { stageId });
+      return apiRequest("PUT", `/api/deals/${dealId}/stage`, { stageId });
     },
     onSuccess: () => {
       toast({
@@ -271,13 +336,83 @@ export default function DealsManagement() {
                     />
                     <FormField
                       control={form.control}
-                      name="companyName"
+                      name="companyId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Company Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter company name" {...field} />
-                          </FormControl>
+                          <FormLabel>Company <span className="text-red-500">*</span></FormLabel>
+                          <Popover open={isCompanySearchOpen} onOpenChange={setIsCompanySearchOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className={cn(
+                                    "w-full justify-between",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value
+                                    ? companies.find((company) => company.id === field.value)?.businessName || "Company not found"
+                                    : "Select company..."}
+                                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0">
+                              <Command>
+                                <CommandInput
+                                  placeholder="Search companies..."
+                                  value={companySearchTerm}
+                                  onValueChange={setCompanySearchTerm}
+                                />
+                                <CommandEmpty>
+                                  <div className="text-center p-4">
+                                    <p className="text-sm text-muted-foreground mb-2">No company found.</p>
+                                    <Button 
+                                      type="button" 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => {
+                                        setIsCompanySearchOpen(false);
+                                        toast({
+                                          title: "Create Company First",
+                                          description: "You need to create a company before creating deals. Please go to the Companies section to add a new company.",
+                                        });
+                                      }}
+                                    >
+                                      Create Company First
+                                    </Button>
+                                  </div>
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {companies.map((company) => (
+                                    <CommandItem
+                                      key={company.id}
+                                      value={company.id}
+                                      onSelect={(currentValue) => {
+                                        const selectedCompany = companies.find(c => c.id === currentValue);
+                                        if (selectedCompany) {
+                                          field.onChange(currentValue);
+                                          form.setValue("companyName", selectedCompany.businessName);
+                                          setSelectedCompanyId(currentValue);
+                                          setIsCompanySearchOpen(false);
+                                        }
+                                      }}
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{company.businessName}</span>
+                                        <span className="text-sm text-muted-foreground">
+                                          {company.customerNumber && `#${company.customerNumber} • `}
+                                          {company.phone && `${company.phone} • `}
+                                          {company.billingCity && company.billingState && `${company.billingCity}, ${company.billingState}`}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -327,47 +462,51 @@ export default function DealsManagement() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Contact Selection - only show if company is selected */}
+                  {selectedCompanyId && (
                     <FormField
                       control={form.control}
-                      name="primaryContactName"
+                      name="contactId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Contact Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Contact name" {...field} />
-                          </FormControl>
+                          <FormLabel>Primary Contact</FormLabel>
+                          <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            const selectedContact = companyContacts.find(c => c.id === value);
+                            if (selectedContact) {
+                              form.setValue("primaryContactName", `${selectedContact.firstName} ${selectedContact.lastName}`);
+                              form.setValue("primaryContactEmail", selectedContact.email || "");
+                              form.setValue("primaryContactPhone", selectedContact.phone || "");
+                            }
+                          }} value={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder={contactsLoading ? "Loading contacts..." : "Select contact..."} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {companyContacts.length === 0 && !contactsLoading ? (
+                                <div className="p-2 text-center text-muted-foreground text-sm">
+                                  No contacts found for this company
+                                </div>
+                              ) : (
+                                companyContacts.map((contact) => (
+                                  <SelectItem key={contact.id} value={contact.id}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{contact.firstName} {contact.lastName}</span>
+                                      <span className="text-sm text-muted-foreground">
+                                        {contact.title && `${contact.title} • `}
+                                        {contact.email && contact.email}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="primaryContactEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="email@company.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="primaryContactPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Phone</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(555) 123-4567" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
