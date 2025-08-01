@@ -2114,6 +2114,48 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(userSettings)
       .where(eq(userSettings.userId, userId));
+    
+    // If no settings exist, create default settings
+    if (!settings) {
+      const defaultSettings = {
+        id: `settings-${userId}`,
+        userId: userId,
+        tenantId: 'default',
+        firstName: '',
+        lastName: '',
+        email: '',
+        theme: 'system',
+        language: 'en',
+        timezone: 'America/New_York',
+        dateFormat: 'MM/dd/yyyy',
+        timeFormat: '12',
+        currency: 'USD',
+        notifications: {
+          email: true,
+          push: true,
+          sms: false,
+          marketing: false
+        },
+        accessibility: {
+          highContrast: false,
+          reducedMotion: false,
+          fontSize: 'medium',
+          screenReader: false,
+          keyboardNavigation: false,
+          colorBlind: 'none',
+          soundEnabled: true,
+          voiceCommands: false
+        },
+        twoFactorEnabled: false
+      };
+      
+      const [created] = await db
+        .insert(userSettings)
+        .values(defaultSettings)
+        .returning();
+      return created;
+    }
+    
     return settings;
   }
 
@@ -2126,17 +2168,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserSettings(userId: string, settingsData: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
-    // First, try to update existing settings
+    // Ensure user settings exist first
+    await this.getUserSettings(userId);
+    
+    // Now update the existing settings
     const [updated] = await db
       .update(userSettings)
       .set({ ...settingsData, updatedAt: new Date() })
       .where(eq(userSettings.userId, userId))
       .returning();
-    
-    // If no settings exist, create them
-    if (!updated) {
-      return await this.createUserSettings({ userId, ...settingsData });
-    }
     
     return updated;
   }
