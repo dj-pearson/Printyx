@@ -24,6 +24,7 @@ import {
   cpcRates,
   professionalServices,
   serviceProducts,
+  softwareProducts,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -48,11 +49,13 @@ import {
   type CpcRate,
   type ProfessionalService,
   type ServiceProduct,
+  type SoftwareProduct,
   type InsertProductModel,
   type InsertProductAccessory,
   type InsertCpcRate,
   type InsertProfessionalService,
   type InsertServiceProduct,
+  type InsertSoftwareProduct,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
@@ -674,6 +677,23 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .insert(serviceProducts)
       .values(service)
+      .returning();
+    return result;
+  }
+
+  // Software Products
+  async getAllSoftwareProducts(tenantId: string): Promise<SoftwareProduct[]> {
+    return await db
+      .select()
+      .from(softwareProducts)
+      .where(eq(softwareProducts.tenantId, tenantId))
+      .orderBy(softwareProducts.productName);
+  }
+
+  async createSoftwareProduct(product: InsertSoftwareProduct): Promise<SoftwareProduct> {
+    const [result] = await db
+      .insert(softwareProducts)
+      .values(product)
       .returning();
     return result;
   }

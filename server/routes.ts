@@ -22,6 +22,7 @@ import {
   insertCpcRateSchema,
   insertProfessionalServiceSchema,
   insertServiceProductSchema,
+  insertSoftwareProductSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -462,6 +463,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating service product:", error);
       res.status(500).json({ message: "Failed to create service product" });
+    }
+  });
+
+  // Software Products
+  app.get('/api/software-products', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const products = await storage.getAllSoftwareProducts(tenantId);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching software products:", error);
+      res.status(500).json({ message: "Failed to fetch software products" });
+    }
+  });
+
+  app.post('/api/software-products', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertSoftwareProductSchema.parse({ 
+        ...req.body, 
+        tenantId 
+      });
+      const product = await storage.createSoftwareProduct(validatedData);
+      res.json(product);
+    } catch (error) {
+      console.error("Error creating software product:", error);
+      res.status(500).json({ message: "Failed to create software product" });
     }
   });
 

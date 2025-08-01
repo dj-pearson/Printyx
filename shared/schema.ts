@@ -1168,12 +1168,72 @@ export const insertServiceProductSchema = createInsertSchema(serviceProducts).om
   updatedAt: true,
 });
 
+// Software Products
+export const softwareProducts = pgTable("software_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  productCode: varchar("product_code").notNull(),
+  productName: varchar("product_name").notNull(),
+  productType: varchar("product_type"),
+  category: varchar("category"),
+  accessoryType: varchar("accessory_type"),
+  description: text("description"),
+  summary: text("summary"),
+  note: text("note"),
+  eaNotes: text("ea_notes"),
+  configNote: text("config_note"),
+  relatedProducts: text("related_products"),
+  
+  // Flags
+  isActive: boolean("is_active").default(true),
+  availableForAll: boolean("available_for_all").default(false),
+  repostEdit: boolean("repost_edit").default(false),
+  salesRepCredit: boolean("sales_rep_credit").default(true),
+  funding: boolean("funding").default(true),
+  
+  // Pricing Information
+  lease: boolean("lease").default(false),
+  paymentType: varchar("payment_type"),
+  
+  // Standard Pricing
+  standardActive: boolean("standard_active").default(false),
+  standardCost: decimal("standard_cost"),
+  standardRepPrice: decimal("standard_rep_price"),
+  
+  // New Pricing
+  newActive: boolean("new_active").default(false),
+  newCost: decimal("new_cost"),
+  newRepPrice: decimal("new_rep_price"),
+  
+  // Upgrade Pricing
+  upgradeActive: boolean("upgrade_active").default(false),
+  upgradeCost: decimal("upgrade_cost"),
+  upgradeRepPrice: decimal("upgrade_rep_price"),
+  
+  // System Information
+  priceBookId: varchar("price_book_id"),
+  tempKey: varchar("temp_key"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type SoftwareProduct = typeof softwareProducts.$inferSelect;
+export type InsertSoftwareProduct = typeof softwareProducts.$inferInsert;
+
+export const insertSoftwareProductSchema = createInsertSchema(softwareProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Product Management Types
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;
 export type CpcRate = typeof cpcRates.$inferSelect;
 export type ProfessionalService = typeof professionalServices.$inferSelect;
 export type ServiceProduct = typeof serviceProducts.$inferSelect;
+export type SoftwareProduct = typeof softwareProducts.$inferSelect;
 
 // Product Management Insert Types
 export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
@@ -1181,3 +1241,4 @@ export type InsertProductAccessory = z.infer<typeof insertProductAccessorySchema
 export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;
 export type InsertProfessionalService = z.infer<typeof insertProfessionalServiceSchema>;
 export type InsertServiceProduct = z.infer<typeof insertServiceProductSchema>;
+export type InsertSoftwareProduct = z.infer<typeof insertSoftwareProductSchema>;
