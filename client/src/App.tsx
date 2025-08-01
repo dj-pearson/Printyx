@@ -42,6 +42,7 @@ import PerformanceMonitoring from "@/pages/PerformanceMonitoring";
 import SystemIntegrations from "@/pages/SystemIntegrations";
 import DeploymentReadiness from "@/pages/DeploymentReadiness";
 import TaskManagement from "@/pages/TaskManagement";
+import DealsManagement from "@/pages/DealsManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -66,6 +67,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/crm" component={CRMEnhanced} />
+          <Route path="/deals" component={DealsManagement} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
           <Route path="/sales-reports" component={SalesReports} />

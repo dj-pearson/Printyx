@@ -36,6 +36,9 @@ import {
   chartOfAccounts,
   purchaseOrders,
   purchaseOrderItems,
+  deals,
+  dealStages,
+  dealActivities,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -90,9 +93,15 @@ import {
   type InsertChartOfAccount,
   type InsertPurchaseOrder,
   type InsertPurchaseOrderItem,
+  type Deal,
+  type InsertDeal,
+  type DealStage,
+  type InsertDealStage,
+  type DealActivity,
+  type InsertDealActivity,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, inArray, sql } from "drizzle-orm";
+import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 // Interface for storage operations with role-based access control
@@ -220,6 +229,22 @@ export interface IStorage {
   getMeterReadingsByStatus(tenantId: string, status: string): Promise<MeterReading[]>;
   updateMeterReading(id: string, reading: Partial<MeterReading>, tenantId: string): Promise<MeterReading | undefined>;
   getContract(id: string, tenantId: string): Promise<Contract | undefined>;
+  
+  // Deal management operations
+  getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]>;
+  getDeal(id: string, tenantId: string): Promise<any>;
+  createDeal(deal: any): Promise<any>;
+  updateDeal(id: string, deal: Partial<any>, tenantId: string): Promise<any>;
+  updateDealStage(id: string, stageId: string, tenantId: string): Promise<any>;
+  
+  // Deal stages operations
+  getDealStages(tenantId: string): Promise<any[]>;
+  createDealStage(stage: any): Promise<any>;
+  updateDealStageById(id: string, stage: Partial<any>, tenantId: string): Promise<any>;
+  
+  // Deal activities operations
+  getDealActivities(dealId: string, tenantId: string): Promise<any[]>;
+  createDealActivity(activity: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1136,6 +1161,208 @@ export class DatabaseStorage implements IStorage {
   async createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem> {
     const [newItem] = await db.insert(purchaseOrderItems).values(item).returning();
     return newItem;
+  }
+
+  // Deal management operations
+  async getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]> {
+    let query = db
+      .select({
+        id: deals.id,
+        title: deals.title,
+        description: deals.description,
+        amount: deals.amount,
+        companyName: deals.companyName,
+        primaryContactName: deals.primaryContactName,
+        primaryContactEmail: deals.primaryContactEmail,
+        primaryContactPhone: deals.primaryContactPhone,
+        source: deals.source,
+        dealType: deals.dealType,
+        priority: deals.priority,
+        expectedCloseDate: deals.expectedCloseDate,
+        productsInterested: deals.productsInterested,
+        estimatedMonthlyValue: deals.estimatedMonthlyValue,
+        notes: deals.notes,
+        status: deals.status,
+        probability: deals.probability,
+        stageId: deals.stageId,
+        stageName: dealStages.name,
+        stageColor: dealStages.color,
+        ownerId: deals.ownerId,
+        ownerName: users.firstName,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+      })
+      .from(deals)
+      .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
+      .leftJoin(users, eq(deals.ownerId, users.id))
+      .where(eq(deals.tenantId, tenantId));
+
+    if (stageId) {
+      query = query.where(eq(deals.stageId, stageId));
+    }
+
+    if (search) {
+      query = query.where(
+        or(
+          like(deals.title, `%${search}%`),
+          like(deals.companyName, `%${search}%`),
+          like(deals.primaryContactName, `%${search}%`)
+        )
+      );
+    }
+
+    return await query.orderBy(desc(deals.createdAt));
+  }
+
+  async getDeal(id: string, tenantId: string): Promise<any> {
+    const [deal] = await db
+      .select({
+        id: deals.id,
+        title: deals.title,
+        description: deals.description,
+        amount: deals.amount,
+        companyName: deals.companyName,
+        primaryContactName: deals.primaryContactName,
+        primaryContactEmail: deals.primaryContactEmail,
+        primaryContactPhone: deals.primaryContactPhone,
+        source: deals.source,
+        dealType: deals.dealType,
+        priority: deals.priority,
+        expectedCloseDate: deals.expectedCloseDate,
+        productsInterested: deals.productsInterested,
+        estimatedMonthlyValue: deals.estimatedMonthlyValue,
+        notes: deals.notes,
+        status: deals.status,
+        probability: deals.probability,
+        stageId: deals.stageId,
+        stageName: dealStages.name,
+        stageColor: dealStages.color,
+        ownerId: deals.ownerId,
+        ownerName: users.firstName,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+      })
+      .from(deals)
+      .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
+      .leftJoin(users, eq(deals.ownerId, users.id))
+      .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)));
+    return deal;
+  }
+
+  async createDeal(deal: any): Promise<any> {
+    // Get the first stage for this tenant as default
+    const [defaultStage] = await db
+      .select()
+      .from(dealStages)
+      .where(eq(dealStages.tenantId, deal.tenantId))
+      .orderBy(dealStages.sortOrder)
+      .limit(1);
+
+    const dealData = {
+      ...deal,
+      stageId: deal.stageId || defaultStage?.id,
+      status: "open",
+      probability: 50,
+    };
+
+    const [newDeal] = await db.insert(deals).values(dealData).returning();
+    return newDeal;
+  }
+
+  async updateDeal(id: string, deal: Partial<any>, tenantId: string): Promise<any> {
+    const [updatedDeal] = await db
+      .update(deals)
+      .set({ ...deal, updatedAt: new Date() })
+      .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)))
+      .returning();
+    return updatedDeal;
+  }
+
+  async updateDealStage(id: string, stageId: string, tenantId: string): Promise<any> {
+    // Check if the new stage is a closing stage
+    const [stage] = await db
+      .select()
+      .from(dealStages)
+      .where(eq(dealStages.id, stageId));
+
+    const updateData: any = {
+      stageId,
+      updatedAt: new Date(),
+    };
+
+    if (stage?.isClosingStage) {
+      updateData.status = stage.isWonStage ? "won" : "lost";
+      updateData.actualCloseDate = new Date();
+      updateData.probability = stage.isWonStage ? 100 : 0;
+    }
+
+    const [updatedDeal] = await db
+      .update(deals)
+      .set(updateData)
+      .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)))
+      .returning();
+
+    // Create activity record for stage change
+    await this.createDealActivity({
+      tenantId,
+      dealId: id,
+      type: "stage_change",
+      subject: `Deal moved to ${stage?.name}`,
+      description: `Deal stage changed to ${stage?.name}`,
+      userId: updatedDeal?.ownerId || "", // In real app, get from request context
+      previousValue: JSON.stringify({ stageId: updatedDeal?.stageId }),
+      newValue: JSON.stringify({ stageId }),
+    });
+
+    return updatedDeal;
+  }
+
+  // Deal stages operations
+  async getDealStages(tenantId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(dealStages)
+      .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.isActive, true)))
+      .orderBy(dealStages.sortOrder);
+  }
+
+  async createDealStage(stage: any): Promise<any> {
+    const [newStage] = await db.insert(dealStages).values(stage).returning();
+    return newStage;
+  }
+
+  async updateDealStageById(id: string, stage: Partial<any>, tenantId: string): Promise<any> {
+    const [updatedStage] = await db
+      .update(dealStages)
+      .set({ ...stage, updatedAt: new Date() })
+      .where(and(eq(dealStages.id, id), eq(dealStages.tenantId, tenantId)))
+      .returning();
+    return updatedStage;
+  }
+
+  // Deal activities operations
+  async getDealActivities(dealId: string, tenantId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: dealActivities.id,
+        type: dealActivities.type,
+        subject: dealActivities.subject,
+        description: dealActivities.description,
+        duration: dealActivities.duration,
+        outcome: dealActivities.outcome,
+        userId: dealActivities.userId,
+        userName: users.firstName,
+        createdAt: dealActivities.createdAt,
+      })
+      .from(dealActivities)
+      .leftJoin(users, eq(dealActivities.userId, users.id))
+      .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenantId, tenantId)))
+      .orderBy(desc(dealActivities.createdAt));
+  }
+
+  async createDealActivity(activity: any): Promise<any> {
+    const [newActivity] = await db.insert(dealActivities).values(activity).returning();
+    return newActivity;
   }
 }
 

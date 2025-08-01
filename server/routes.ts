@@ -28,6 +28,9 @@ import {
   insertSupplySchema,
   insertManagedServiceSchema,
   insertContractTieredRateSchema,
+  insertDealSchema,
+  insertDealStageSchema,
+  insertDealActivitySchema,
 } from "@shared/schema";
 import multer from "multer";
 import csv from "csv-parser";
@@ -1729,6 +1732,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching service performance:", error);
       res.status(500).json({ message: "Failed to fetch service performance" });
+    }
+  });
+
+  // Deal Management Routes
+  
+  // Get all deals with optional filtering
+  app.get("/api/deals", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const { stageId, search } = req.query;
+      
+      const deals = await storage.getDeals(tenantId, stageId, search);
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching deals:", error);
+      res.status(500).json({ message: "Failed to fetch deals" });
+    }
+  });
+
+  // Get single deal
+  app.get("/api/deals/:id", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const dealId = req.params.id;
+      
+      const deal = await storage.getDeal(dealId, tenantId);
+      if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      
+      res.json(deal);
+    } catch (error) {
+      console.error("Error fetching deal:", error);
+      res.status(500).json({ message: "Failed to fetch deal" });
+    }
+  });
+
+  // Create new deal
+  app.post("/api/deals", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const dealData = insertDealSchema.parse({
+        ...req.body,
+        tenantId,
+        ownerId: userId,
+      });
+      
+      const deal = await storage.createDeal(dealData);
+      res.status(201).json(deal);
+    } catch (error) {
+      console.error("Error creating deal:", error);
+      res.status(500).json({ message: "Failed to create deal" });
+    }
+  });
+
+  // Update deal
+  app.put("/api/deals/:id", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const dealId = req.params.id;
+      
+      const deal = await storage.updateDeal(dealId, req.body, tenantId);
+      if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      
+      res.json(deal);
+    } catch (error) {
+      console.error("Error updating deal:", error);
+      res.status(500).json({ message: "Failed to update deal" });
+    }
+  });
+
+  // Update deal stage (for drag and drop)
+  app.put("/api/deals/:id/stage", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const dealId = req.params.id;
+      const { stageId } = req.body;
+      
+      const deal = await storage.updateDealStage(dealId, stageId, tenantId);
+      if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      
+      res.json(deal);
+    } catch (error) {
+      console.error("Error updating deal stage:", error);
+      res.status(500).json({ message: "Failed to update deal stage" });
+    }
+  });
+
+  // Deal Stages Routes
+  
+  // Get all deal stages for tenant
+  app.get("/api/deal-stages", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const stages = await storage.getDealStages(tenantId);
+      res.json(stages);
+    } catch (error) {
+      console.error("Error fetching deal stages:", error);
+      res.status(500).json({ message: "Failed to fetch deal stages" });
+    }
+  });
+
+  // Create deal stage
+  app.post("/api/deal-stages", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const stageData = insertDealStageSchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      
+      const stage = await storage.createDealStage(stageData);
+      res.status(201).json(stage);
+    } catch (error) {
+      console.error("Error creating deal stage:", error);
+      res.status(500).json({ message: "Failed to create deal stage" });
+    }
+  });
+
+  // Initialize default deal stages for a tenant (called on first access)
+  app.post("/api/deal-stages/initialize", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      // Check if stages already exist
+      const existingStages = await storage.getDealStages(tenantId);
+      if (existingStages.length > 0) {
+        return res.json({ message: "Deal stages already initialized", stages: existingStages });
+      }
+      
+      // Create default stages
+      const defaultStages = [
+        { name: "Appointment Scheduled", color: "#3B82F6", sortOrder: 1, isClosingStage: false, isWonStage: false },
+        { name: "Qualified to Buy", color: "#8B5CF6", sortOrder: 2, isClosingStage: false, isWonStage: false },
+        { name: "Presentation Scheduled", color: "#06B6D4", sortOrder: 3, isClosingStage: false, isWonStage: false },
+        { name: "Decision Maker Bought-In", color: "#F59E0B", sortOrder: 4, isClosingStage: false, isWonStage: false },
+        { name: "Contract Sent", color: "#EF4444", sortOrder: 5, isClosingStage: false, isWonStage: false },
+        { name: "Closed Won", color: "#10B981", sortOrder: 6, isClosingStage: true, isWonStage: true },
+        { name: "Closed Lost", color: "#6B7280", sortOrder: 7, isClosingStage: true, isWonStage: false },
+      ];
+      
+      const createdStages = [];
+      for (const stage of defaultStages) {
+        const stageData = insertDealStageSchema.parse({
+          ...stage,
+          tenantId,
+          isActive: true,
+        });
+        const newStage = await storage.createDealStage(stageData);
+        createdStages.push(newStage);
+      }
+      
+      res.status(201).json({ message: "Deal stages initialized", stages: createdStages });
+    } catch (error) {
+      console.error("Error initializing deal stages:", error);
+      res.status(500).json({ message: "Failed to initialize deal stages" });
+    }
+  });
+
+  // Deal Activities Routes
+  
+  // Get activities for a deal
+  app.get("/api/deals/:id/activities", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const dealId = req.params.id;
+      
+      const activities = await storage.getDealActivities(dealId, tenantId);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching deal activities:", error);
+      res.status(500).json({ message: "Failed to fetch deal activities" });
+    }
+  });
+
+  // Create deal activity
+  app.post("/api/deals/:id/activities", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const dealId = req.params.id;
+      const userId = req.user.id;
+      
+      const activityData = insertDealActivitySchema.parse({
+        ...req.body,
+        tenantId,
+        dealId,
+        userId,
+      });
+      
+      const activity = await storage.createDealActivity(activityData);
+      res.status(201).json(activity);
+    } catch (error) {
+      console.error("Error creating deal activity:", error);
+      res.status(500).json({ message: "Failed to create deal activity" });
     }
   });
 

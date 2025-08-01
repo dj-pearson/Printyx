@@ -329,6 +329,104 @@ export const quoteLineItems = pgTable("quote_line_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Deal Pipeline Stages Configuration - Customizable sales stages
+export const dealStages = pgTable("deal_stages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Stage Configuration
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "Appointment Scheduled"
+  description: text("description"),
+  color: varchar("color", { length: 7 }).default("#3B82F6"), // hex color for UI
+  
+  // Stage Properties
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").default(true),
+  isClosingStage: boolean("is_closing_stage").default(false), // for "Closed Won/Lost"
+  isWonStage: boolean("is_won_stage").default(false), // specifically for "Closed Won"
+  
+  // Stage Automation
+  requiresApproval: boolean("requires_approval").default(false),
+  autoMoveConditions: jsonb("auto_move_conditions"), // JSON rules for auto-advancement
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Deals - Sales opportunities with pipeline tracking
+export const deals = pgTable("deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Deal Basics
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  amount: decimal("amount", { precision: 12, scale: 2 }),
+  
+  // Deal Assignment
+  ownerId: varchar("owner_id").notNull(), // sales rep responsible
+  customerId: varchar("customer_id"), // references customers.id
+  companyName: varchar("company_name"), // for quick reference if no customer record
+  
+  // Pipeline Information
+  stageId: varchar("stage_id").notNull(), // references dealStages.id
+  probability: integer("probability").default(0), // 0-100 percentage
+  expectedCloseDate: timestamp("expected_close_date"),
+  actualCloseDate: timestamp("actual_close_date"),
+  
+  // Deal Source and Type
+  source: varchar("source"), // e.g., "Website", "Referral", "Cold Call"
+  dealType: varchar("deal_type"), // e.g., "New Business", "Upsell", "Renewal"
+  priority: varchar("priority").default("medium"), // low, medium, high
+  
+  // Contact Information
+  primaryContactName: varchar("primary_contact_name"),
+  primaryContactEmail: varchar("primary_contact_email"),
+  primaryContactPhone: varchar("primary_contact_phone"),
+  
+  // Products and Services
+  productsInterested: text("products_interested"),
+  estimatedMonthlyValue: decimal("estimated_monthly_value", { precision: 10, scale: 2 }),
+  
+  // Deal Status
+  status: varchar("status").notNull().default("open"), // open, won, lost, on_hold
+  lostReason: varchar("lost_reason"), // reason if status is "lost"
+  
+  // Tracking
+  lastActivityDate: timestamp("last_activity_date"),
+  nextFollowUpDate: timestamp("next_follow_up_date"),
+  createdById: varchar("created_by_id").notNull(),
+  
+  // Notes and History
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Deal Activities - Track all interactions and updates
+export const dealActivities = pgTable("deal_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  dealId: varchar("deal_id").notNull(),
+  
+  // Activity Details
+  type: varchar("type").notNull(), // e.g., "call", "email", "meeting", "note", "stage_change"
+  subject: varchar("subject", { length: 200 }),
+  description: text("description"),
+  
+  // Activity Metadata
+  userId: varchar("user_id").notNull(), // who performed the activity
+  duration: integer("duration"), // in minutes
+  outcome: varchar("outcome"), // e.g., "positive", "neutral", "negative"
+  
+  // Related Data
+  previousValue: text("previous_value"), // for tracking changes (JSON)
+  newValue: text("new_value"), // for tracking changes (JSON)
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Customers table
 export const customers = pgTable("customers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1106,6 +1204,54 @@ export const invoiceLineItemsRelations = relations(invoiceLineItems, ({ one }) =
   }),
 }));
 
+// Deal relations
+export const dealStagesRelations = relations(dealStages, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [dealStages.tenantId],
+    references: [tenants.id],
+  }),
+  deals: many(deals),
+}));
+
+export const dealsRelations = relations(deals, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [deals.tenantId],
+    references: [tenants.id],
+  }),
+  stage: one(dealStages, {
+    fields: [deals.stageId],
+    references: [dealStages.id],
+  }),
+  owner: one(users, {
+    fields: [deals.ownerId],
+    references: [users.id],
+  }),
+  customer: one(customers, {
+    fields: [deals.customerId],
+    references: [customers.id],
+  }),
+  createdBy: one(users, {
+    fields: [deals.createdById],
+    references: [users.id],
+  }),
+  activities: many(dealActivities),
+}));
+
+export const dealActivitiesRelations = relations(dealActivities, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [dealActivities.tenantId],
+    references: [tenants.id],
+  }),
+  deal: one(deals, {
+    fields: [dealActivities.dealId],
+    references: [deals.id],
+  }),
+  user: one(users, {
+    fields: [dealActivities.userId],
+    references: [users.id],
+  }),
+}));
+
 // Type exports
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -1113,6 +1259,12 @@ export type CompanyContact = typeof companyContacts.$inferSelect;
 export type InsertCompanyContact = typeof companyContacts.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = typeof leads.$inferInsert;
+export type Deal = typeof deals.$inferSelect;
+export type InsertDeal = typeof deals.$inferInsert;
+export type DealStage = typeof dealStages.$inferSelect;
+export type InsertDealStage = typeof dealStages.$inferInsert;
+export type DealActivity = typeof dealActivities.$inferSelect;
+export type InsertDealActivity = typeof dealActivities.$inferInsert;
 
 // Legacy types for backward compatibility
 export type Customer = typeof customers.$inferSelect;
@@ -1255,6 +1407,23 @@ export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).
 
 // Backward compatibility alias for existing client code
 export const insertCustomerInteractionSchema = insertLeadActivitySchema;
+
+export const insertDealSchema = createInsertSchema(deals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDealStageSchema = createInsertSchema(dealStages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDealActivitySchema = createInsertSchema(dealActivities).omit({
+  id: true,
+  createdAt: true,
+});
 
 // Type exports
 export type UpsertUser = typeof users.$inferInsert;

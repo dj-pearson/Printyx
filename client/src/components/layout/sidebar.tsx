@@ -21,7 +21,8 @@ import {
   UserCog,
   PieChart,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Zap
 } from "lucide-react";
 import {
   Select,
@@ -65,6 +66,7 @@ function getNavigationSections(userRole: any) {
       name: 'Sales',
       items: [
         { name: 'CRM & Pipeline', href: '/crm', icon: Target },
+        { name: 'Deals Pipeline', href: '/deals', icon: Zap },
         { name: 'Quotes & Proposals', href: '/quotes', icon: FileText },
         { name: 'Sales Reports', href: '/sales-reports', icon: TrendingUp },
       ]
