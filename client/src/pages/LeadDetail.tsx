@@ -399,7 +399,7 @@ export default function LeadDetail() {
       title={`Lead #${lead.id}`} 
       description="View and manage lead information"
     >
-      <div className="space-y-6 min-h-0 overflow-hidden">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -452,9 +452,9 @@ export default function LeadDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-3 min-h-0">
+          <div className="lg:col-span-3">
             <Tabs defaultValue="details" className="space-y-6">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details">Details</TabsTrigger>
@@ -1324,7 +1324,7 @@ export default function LeadDetail() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="max-h-96 overflow-y-auto">
+                  <CardContent>
                     <div className="space-y-4">
                       {activities.length === 0 ? (
                         <div className="text-center py-8">
