@@ -111,6 +111,11 @@ export default function Contacts() {
   const contacts = contactsData?.contacts || [];
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
+  
+  // Debug logging
+  console.log('[CONTACTS UI DEBUG] contactsData:', contactsData);
+  console.log('[CONTACTS UI DEBUG] contacts array:', contacts);
+  console.log('[CONTACTS UI DEBUG] totalContacts:', totalContacts);
 
   // Get unique values for filters
   const uniqueOwners = [...new Set(contacts.map((c: Contact) => c.ownerName))];
