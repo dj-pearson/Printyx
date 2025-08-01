@@ -41,9 +41,16 @@ import type { Lead, Quote, CustomerInteraction, Customer } from "@shared/schema"
 import { z } from "zod";
 import { format } from "date-fns";
 
-const createLeadSchema = insertLeadSchema.extend({
-  estimatedCloseDate: z.string().optional(),
-  nextFollowUpDate: z.string().optional(),
+// New company-centric lead creation schema
+const createLeadSchema = z.object({
+  companyName: z.string().min(1, "Company name is required"),
+  contactName: z.string().min(1, "Contact name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  leadSource: z.string().min(1, "Lead source is required"),
+  estimatedValue: z.string().min(1, "Estimated value is required"),
+  estimatedCloseDate: z.string().min(1, "Estimated close date is required"),
+  notes: z.string().optional(),
 });
 
 const createQuoteSchema = insertQuoteSchema.extend({
@@ -92,9 +99,10 @@ export default function CRMEnhanced() {
       contactName: "",
       email: "",
       phone: "",
-      source: "website",
-      status: "new",
-      estimatedValue: "0",
+      leadSource: "",
+      estimatedValue: "",
+      estimatedCloseDate: "",
+      notes: "",
     },
   });
 
@@ -122,22 +130,63 @@ export default function CRMEnhanced() {
 
   const createLeadMutation = useMutation({
     mutationFn: async (data: CreateLeadInput) => {
-      const response = await fetch('/api/leads', {
+      // First create or find the company
+      const companyResponse = await fetch('/api/companies', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...data,
-          estimatedCloseDate: data.estimatedCloseDate ? new Date(data.estimatedCloseDate) : null,
-          nextFollowUpDate: data.nextFollowUpDate ? new Date(data.nextFollowUpDate) : null,
+          businessName: data.companyName,
+          phone: data.phone,
+          email: data.email,
         }),
       });
-      if (!response.ok) throw new Error('Failed to create lead');
-      return response.json();
+      
+      if (!companyResponse.ok) throw new Error('Failed to create company');
+      const company = await companyResponse.json();
+
+      // Create contact for the company
+      const contactResponse = await fetch(`/api/companies/${company.id}/contacts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: data.contactName.split(' ')[0] || data.contactName,
+          lastName: data.contactName.split(' ').slice(1).join(' ') || '',
+          email: data.email,
+          phone: data.phone,
+          isPrimary: true,
+        }),
+      });
+      
+      if (!contactResponse.ok) throw new Error('Failed to create contact');
+      const contact = await contactResponse.json();
+
+      // Create the lead
+      const leadResponse = await fetch('/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyId: company.id,
+          contactId: contact.id,
+          leadSource: data.leadSource,
+          estimatedValue: parseFloat(data.estimatedValue),
+          estimatedCloseDate: new Date(data.estimatedCloseDate),
+          notes: data.notes,
+          status: 'new',
+        }),
+      });
+      
+      if (!leadResponse.ok) throw new Error('Failed to create lead');
+      return leadResponse.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       setIsCreateLeadOpen(false);
       leadForm.reset();
     },
@@ -377,14 +426,14 @@ export default function CRMEnhanced() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={leadForm.control}
-                      name="source"
+                      name="leadSource"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Lead Source</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue />
+                                <SelectValue placeholder="Select lead source" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -392,6 +441,8 @@ export default function CRMEnhanced() {
                               <SelectItem value="referral">Referral</SelectItem>
                               <SelectItem value="cold_call">Cold Call</SelectItem>
                               <SelectItem value="trade_show">Trade Show</SelectItem>
+                              <SelectItem value="email">Email Campaign</SelectItem>
+                              <SelectItem value="social_media">Social Media</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
