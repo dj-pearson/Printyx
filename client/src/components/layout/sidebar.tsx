@@ -168,7 +168,7 @@ export default function Sidebar() {
   }, [isPlatformRole]);
 
   return (
-    <aside className="hidden lg:flex w-64 bg-white shadow-sm border-r border-gray-200 flex-col">
+    <aside className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col">
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3 mb-4">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
