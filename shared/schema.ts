@@ -171,6 +171,14 @@ export const companyContacts = pgTable("company_contacts", {
   contactRoles: text("contact_roles"), // JSON array
   isPrimaryContact: boolean("is_primary_contact").default(false),
   
+  // Lead/Contact Status Information
+  leadStatus: varchar("lead_status").default('new'), // new, contacted, qualified, unqualified, customer
+  lastContactDate: timestamp("last_contact_date"),
+  nextFollowUpDate: timestamp("next_follow_up_date"),
+  ownerId: varchar("owner_id"), // Assigned salesperson/owner
+  favoriteContentType: varchar("favorite_content_type"), // blog, ebook, video, etc.
+  preferredChannels: text("preferred_channels"), // JSON array of communication preferences
+  
   // Additional Information
   assistant: varchar("assistant"),
   assistantPhone: varchar("assistant_phone"),

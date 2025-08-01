@@ -361,6 +361,249 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Contacts routes
+  app.get('/api/contacts', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      
+      // Get query parameters
+      const {
+        search = '',
+        contactOwner = '',
+        createDate = '',
+        lastActivityDate = '',
+        leadStatus = '',
+        view = 'all',
+        sortBy = 'lastActivityDate',
+        sortOrder = 'desc',
+        page = '1',
+        limit = '25'
+      } = req.query;
+
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const offset = (pageNum - 1) * limitNum;
+
+      // Build filters based on role and view
+      let filters: any = { tenantId };
+      
+      // Role-based access control
+      if (user.role === 'salesperson') {
+        filters.ownerId = user.id; // Salespeople only see their own contacts
+      }
+      
+      // Apply view filter
+      if (view === 'my') {
+        filters.ownerId = user.id;
+      } else if (view === 'unassigned') {
+        filters.ownerId = null;
+      }
+      
+      // Apply other filters
+      if (contactOwner) {
+        const ownerUser = await storage.getUserByName(contactOwner);
+        if (ownerUser) {
+          filters.ownerId = ownerUser.id;
+        }
+      }
+      
+      if (leadStatus) {
+        filters.leadStatus = leadStatus;
+      }
+      
+      // Date filters
+      const now = new Date();
+      if (createDate) {
+        switch (createDate) {
+          case 'today':
+            filters.createdAt = { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) };
+            break;
+          case 'yesterday':
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            filters.createdAt = {
+              gte: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()),
+              lt: new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            };
+            break;
+          case 'last7days':
+            const last7Days = new Date(now);
+            last7Days.setDate(last7Days.getDate() - 7);
+            filters.createdAt = { gte: last7Days };
+            break;
+          case 'last30days':
+            const last30Days = new Date(now);
+            last30Days.setDate(last30Days.getDate() - 30);
+            filters.createdAt = { gte: last30Days };
+            break;
+        }
+      }
+      
+      if (lastActivityDate) {
+        switch (lastActivityDate) {
+          case 'today':
+            filters.lastContactDate = { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) };
+            break;
+          case 'yesterday':
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            filters.lastContactDate = {
+              gte: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()),
+              lt: new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            };
+            break;
+          case 'last7days':
+            const last7Days = new Date(now);
+            last7Days.setDate(last7Days.getDate() - 7);
+            filters.lastContactDate = { gte: last7Days };
+            break;
+          case 'last30days':
+            const last30Days = new Date(now);
+            last30Days.setDate(last30Days.getDate() - 30);
+            filters.lastContactDate = { gte: last30Days };
+            break;
+          case 'never':
+            filters.lastContactDate = null;
+            break;
+        }
+      }
+
+      const contacts = await storage.getContacts({
+        filters,
+        search: search as string,
+        sortBy: sortBy as string,
+        sortOrder: sortOrder as 'asc' | 'desc',
+        offset,
+        limit: limitNum
+      });
+
+      const total = await storage.getContactsCount({ filters, search: search as string });
+
+      res.json({
+        contacts,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        pages: Math.ceil(total / limitNum)
+      });
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
+  });
+
+  app.post('/api/contacts', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      
+      const contactData = {
+        ...req.body,
+        tenantId,
+        ownerId: req.body.ownerId || user.id, // Default to current user if not specified
+        createdAt: new Date().toISOString(),
+        lastContactDate: null,
+        nextFollowUpDate: null
+      };
+
+      const contact = await storage.createContact(contactData);
+      res.status(201).json(contact);
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      res.status(500).json({ error: 'Failed to create contact' });
+    }
+  });
+
+  app.get('/api/contacts/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { id } = req.params;
+
+      const contact = await storage.getContactById(id);
+      
+      if (!contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+      
+      // Check tenant access
+      if (contact.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Role-based access control
+      if (user.role === 'salesperson' && contact.ownerId !== user.id) {
+        return res.status(403).json({ error: 'Access denied - you can only view your own contacts' });
+      }
+
+      res.json(contact);
+    } catch (error) {
+      console.error('Error fetching contact:', error);
+      res.status(500).json({ error: 'Failed to fetch contact' });
+    }
+  });
+
+  app.put('/api/contacts/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { id } = req.params;
+
+      const contact = await storage.getContactById(id);
+      
+      if (!contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+      
+      // Check tenant access
+      if (contact.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Role-based access control
+      if (user.role === 'salesperson' && contact.ownerId !== user.id) {
+        return res.status(403).json({ error: 'Access denied - you can only edit your own contacts' });
+      }
+
+      const updatedContact = await storage.updateContact(id, req.body);
+      res.json(updatedContact);
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      res.status(500).json({ error: 'Failed to update contact' });
+    }
+  });
+
+  app.delete('/api/contacts/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { id } = req.params;
+
+      const contact = await storage.getContactById(id);
+      
+      if (!contact) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+      
+      // Check tenant access
+      if (contact.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      // Role-based access control
+      if (user.role === 'salesperson' && contact.ownerId !== user.id) {
+        return res.status(403).json({ error: 'Access denied - you can only delete your own contacts' });
+      }
+
+      await storage.deleteContact(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      res.status(500).json({ error: 'Failed to delete contact' });
+    }
+  });
+
   // Customer routes
   app.get('/api/customers', async (req: any, res) => {
     try {

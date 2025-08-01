@@ -47,6 +47,7 @@ import ProductHub from "@/pages/ProductHub";
 import EquipmentLifecycle from "@/pages/EquipmentLifecycle";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import PricingManagement from "@/pages/PricingManagement";
+import Contacts from "@/pages/Contacts";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,6 +72,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/crm" component={CRMEnhanced} />
+          <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
           <Route path="/product-hub" component={ProductHub} />
           <Route path="/admin/product-hub" component={ProductHub} />

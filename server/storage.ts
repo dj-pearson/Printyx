@@ -184,11 +184,22 @@ export interface IStorage {
   getLeadActivities(leadId: string, tenantId: string): Promise<LeadActivity[]>;
   createLeadActivity(activity: Omit<LeadActivity, "id" | "createdAt" | "updatedAt">): Promise<LeadActivity>;
 
-  // Contact operations (used for company contacts)
-  createContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact>;
-  getContactsByCompany(companyId: string, tenantId: string): Promise<LeadContact[]>;
-  updateContact(contactId: string, contact: Partial<LeadContact>): Promise<LeadContact>;
-  deleteContact(contactId: string, tenantId: string): Promise<boolean>;
+  // Contact operations (comprehensive contact management)
+  getContacts(options: {
+    filters: any;
+    search: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    offset: number;
+    limit: number;
+  }): Promise<CompanyContact[]>;
+  getContactsCount(options: { filters: any; search: string; }): Promise<number>;
+  getContactById(id: string): Promise<CompanyContact | undefined>;
+  createContact(contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact>;
+  updateContact(id: string, contact: Partial<CompanyContact>): Promise<CompanyContact>;
+  deleteContact(id: string): Promise<boolean>;
+  getUserByName(name: string): Promise<User | undefined>;
+  getContactsByCompany(companyId: string, tenantId: string): Promise<CompanyContact[]>;
   
   // Lead contact operations
   getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]>;
@@ -1903,6 +1914,158 @@ export class DatabaseStorage implements IStorage {
         eq(quotePricingLineItems.tenantId, tenantId)
       ));
     return result.rowCount > 0;
+  }
+
+  // Comprehensive contact management methods
+  async getContacts(options: {
+    filters: any;
+    search: string;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+    offset: number;
+    limit: number;
+  }): Promise<CompanyContact[]> {
+    let query = db
+      .select({
+        id: companyContacts.id,
+        firstName: companyContacts.firstName,
+        lastName: companyContacts.lastName,
+        email: companyContacts.email,
+        phone: companyContacts.phone,
+        title: companyContacts.title,
+        companyId: companyContacts.companyId,
+        companyName: companies.name,
+        leadStatus: companyContacts.leadStatus,
+        lastContactDate: companyContacts.lastContactDate,
+        nextFollowUpDate: companyContacts.nextFollowUpDate,
+        createdAt: companyContacts.createdAt,
+        ownerId: companyContacts.ownerId,
+        ownerName: users.firstName,
+        favoriteContentType: companyContacts.favoriteContentType,
+        preferredChannels: companyContacts.preferredChannels,
+        tenantId: companyContacts.tenantId
+      })
+      .from(companyContacts)
+      .leftJoin(companies, eq(companyContacts.companyId, companies.id))
+      .leftJoin(users, eq(companyContacts.ownerId, users.id))
+      .where(eq(companyContacts.tenantId, options.filters.tenantId));
+
+    // Apply additional filters
+    if (options.filters.ownerId) {
+      query = query.where(eq(companyContacts.ownerId, options.filters.ownerId));
+    }
+    
+    if (options.filters.leadStatus) {
+      query = query.where(eq(companyContacts.leadStatus, options.filters.leadStatus));
+    }
+
+    // Apply search
+    if (options.search) {
+      query = query.where(or(
+        like(companyContacts.firstName, `%${options.search}%`),
+        like(companyContacts.lastName, `%${options.search}%`),
+        like(companyContacts.email, `%${options.search}%`),
+        like(companyContacts.phone, `%${options.search}%`)
+      ));
+    }
+
+    // Apply sorting
+    const sortColumn = options.sortBy === 'lastActivityDate' ? companyContacts.lastContactDate : companyContacts[options.sortBy as keyof typeof companyContacts];
+    if (sortColumn) {
+      query = options.sortOrder === 'asc' ? query.orderBy(asc(sortColumn)) : query.orderBy(desc(sortColumn));
+    }
+
+    // Apply pagination
+    query = query.limit(options.limit).offset(options.offset);
+
+    return await query;
+  }
+
+  async getContactsCount(options: { filters: any; search: string; }): Promise<number> {
+    let query = db
+      .select({ count: count() })
+      .from(companyContacts)
+      .where(eq(companyContacts.tenantId, options.filters.tenantId));
+
+    // Apply additional filters
+    if (options.filters.ownerId) {
+      query = query.where(eq(companyContacts.ownerId, options.filters.ownerId));
+    }
+    
+    if (options.filters.leadStatus) {
+      query = query.where(eq(companyContacts.leadStatus, options.filters.leadStatus));
+    }
+
+    // Apply search
+    if (options.search) {
+      query = query.where(or(
+        like(companyContacts.firstName, `%${options.search}%`),
+        like(companyContacts.lastName, `%${options.search}%`),
+        like(companyContacts.email, `%${options.search}%`),
+        like(companyContacts.phone, `%${options.search}%`)
+      ));
+    }
+
+    const result = await query;
+    return result[0]?.count ?? 0;
+  }
+
+  async getContactById(id: string): Promise<CompanyContact | undefined> {
+    const [contact] = await db
+      .select()
+      .from(companyContacts)
+      .where(eq(companyContacts.id, id));
+    return contact;
+  }
+
+  async createContact(contactData: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact> {
+    const [created] = await db
+      .insert(companyContacts)
+      .values({
+        ...contactData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return created;
+  }
+
+  async updateContact(id: string, contactData: Partial<CompanyContact>): Promise<CompanyContact> {
+    const [updated] = await db
+      .update(companyContacts)
+      .set({ ...contactData, updatedAt: new Date() })
+      .where(eq(companyContacts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteContact(id: string): Promise<boolean> {
+    const result = await db
+      .delete(companyContacts)
+      .where(eq(companyContacts.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getUserByName(name: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(or(
+        eq(users.firstName, name),
+        eq(users.lastName, name),
+        like(sql`${users.firstName} || ' ' || ${users.lastName}`, `%${name}%`)
+      ));
+    return user;
+  }
+
+  async getContactsByCompany(companyId: string, tenantId: string): Promise<CompanyContact[]> {
+    return await db
+      .select()
+      .from(companyContacts)
+      .where(and(
+        eq(companyContacts.companyId, companyId),
+        eq(companyContacts.tenantId, tenantId)
+      ));
   }
 }
 
