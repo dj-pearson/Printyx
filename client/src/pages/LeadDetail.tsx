@@ -399,7 +399,7 @@ export default function LeadDetail() {
       title={`Lead #${lead.id}`} 
       description="View and manage lead information"
     >
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -452,9 +452,9 @@ export default function LeadDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full min-h-0">
           {/* Main Content */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 min-h-0">
             <Tabs defaultValue="details" className="space-y-6">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details">Details</TabsTrigger>
@@ -1324,7 +1324,7 @@ export default function LeadDetail() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="max-h-96 overflow-y-auto">
                     <div className="space-y-4">
                       {activities.length === 0 ? (
                         <div className="text-center py-8">
@@ -1338,9 +1338,9 @@ export default function LeadDetail() {
                           </p>
                         </div>
                       ) : (
-                        <div className="relative">
+                        <div className="relative pb-4">
                           {/* Timeline line */}
-                          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                          <div className="absolute left-6 top-0 w-0.5 bg-gray-200" style={{ height: 'calc(100% - 2rem)' }}></div>
                           
                           {activities
                             .sort((a: any, b: any) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
@@ -1350,7 +1350,7 @@ export default function LeadDetail() {
                               const isRecent = (new Date().getTime() - activityDate.getTime()) < 24 * 60 * 60 * 1000;
                               
                               return (
-                                <div key={activity.id} className="relative flex items-start space-x-4 pb-6">
+                                <div key={activity.id} className="relative flex items-start space-x-4 mb-6 last:mb-0">
                                   {/* Timeline dot */}
                                   <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-4 border-white shadow-sm ${
                                     activity.activityType === 'call' ? 'bg-blue-500' :
