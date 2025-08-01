@@ -73,7 +73,7 @@ const rolePermissions = {
 
   // Finance Team Permissions
   FINANCE_CLERK: {
-    billing: ['invoices', 'payments', 'meter-billing'],
+    billing: ['invoices', 'payments', 'meter-billing', 'vendors', 'accounts-payable', 'accounts-receivable'],
     customers: ['view-billing-info'],
     reports: ['billing-reports'],
   },
@@ -87,6 +87,7 @@ const rolePermissions = {
   // Purchasing Team Permissions
   PURCHASING_CLERK: {
     inventory: ['parts-management', 'suppliers', 'purchase-orders'],
+    billing: ['vendors'],
     reports: ['inventory-reports'],
   },
   PURCHASING_MANAGER: {
@@ -161,6 +162,11 @@ const navigationStructure = {
       { key: 'invoices', label: 'Invoices', path: '/invoices', icon: FileText },
       { key: 'payments', label: 'Payments', path: '/payments', icon: DollarSign },
       { key: 'meter-billing', label: 'Meter Billing', path: '/billing', icon: Calculator },
+      { key: 'vendors', label: 'Vendors', path: '/vendors', icon: Building2 },
+      { key: 'accounts-payable', label: 'Accounts Payable', path: '/accounts-payable', icon: FileText },
+      { key: 'accounts-receivable', label: 'Accounts Receivable', path: '/accounts-receivable', icon: DollarSign },
+      { key: 'chart-of-accounts', label: 'Chart of Accounts', path: '/chart-of-accounts', icon: Calculator },
+      { key: 'journal-entries', label: 'Journal Entries', path: '/journal-entries', icon: FileText },
     ]
   },
   reports: {

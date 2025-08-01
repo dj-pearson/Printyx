@@ -29,6 +29,12 @@ import {
   softwareProducts,
   supplies,
   managedServices,
+  vendors,
+  accountsPayable,
+  accountsReceivable,
+  chartOfAccounts,
+  purchaseOrders,
+  purchaseOrderItems,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -69,6 +75,18 @@ import {
   type InsertSoftwareProduct,
   type InsertSupply,
   type InsertManagedService,
+  type Vendor,
+  type AccountsPayable,
+  type AccountsReceivable,  
+  type ChartOfAccount,
+  type PurchaseOrder,
+  type PurchaseOrderItem,
+  type InsertVendor,
+  type InsertAccountsPayable,
+  type InsertAccountsReceivable,
+  type InsertChartOfAccount,
+  type InsertPurchaseOrder,
+  type InsertPurchaseOrderItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
@@ -880,6 +898,162 @@ export class DatabaseStorage implements IStorage {
         eq(leadContacts.tenantId, tenantId)
       ));
     return result.rowCount > 0;
+  }
+
+  // ============= ACCOUNTING OPERATIONS =============
+  
+  // Vendor operations
+  async getVendors(tenantId: string): Promise<Vendor[]> {
+    return await db.select().from(vendors).where(eq(vendors.tenantId, tenantId));
+  }
+
+  async getVendor(id: string, tenantId: string): Promise<Vendor | undefined> {
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
+    return vendor;
+  }
+
+  async createVendor(vendor: InsertVendor): Promise<Vendor> {
+    const [newVendor] = await db.insert(vendors).values(vendor).returning();
+    return newVendor;
+  }
+
+  async updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined> {
+    const [updatedVendor] = await db
+      .update(vendors)
+      .set({ ...vendor, updatedAt: new Date() })
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)))
+      .returning();
+    return updatedVendor;
+  }
+
+  async deleteVendor(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(vendors)
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
+    return result.rowCount > 0;
+  }
+
+  // Accounts Payable operations
+  async getAccountsPayable(tenantId: string): Promise<AccountsPayable[]> {
+    return await db.select().from(accountsPayable).where(eq(accountsPayable.tenantId, tenantId));
+  }
+
+  async getAccountPayable(id: string, tenantId: string): Promise<AccountsPayable | undefined> {
+    const [ap] = await db
+      .select()
+      .from(accountsPayable)
+      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId)));
+    return ap;
+  }
+
+  async createAccountsPayable(ap: InsertAccountsPayable): Promise<AccountsPayable> {
+    const [newAP] = await db.insert(accountsPayable).values(ap).returning();
+    return newAP;
+  }
+
+  async updateAccountsPayable(id: string, ap: Partial<AccountsPayable>, tenantId: string): Promise<AccountsPayable | undefined> {
+    const [updatedAP] = await db
+      .update(accountsPayable)
+      .set({ ...ap, updatedAt: new Date() })
+      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId)))
+      .returning();
+    return updatedAP;
+  }
+
+  // Accounts Receivable operations
+  async getAccountsReceivable(tenantId: string): Promise<AccountsReceivable[]> {
+    return await db.select().from(accountsReceivable).where(eq(accountsReceivable.tenantId, tenantId));
+  }
+
+  async getAccountReceivable(id: string, tenantId: string): Promise<AccountsReceivable | undefined> {
+    const [ar] = await db
+      .select()
+      .from(accountsReceivable)
+      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenantId, tenantId)));
+    return ar;
+  }
+
+  async createAccountsReceivable(ar: InsertAccountsReceivable): Promise<AccountsReceivable> {
+    const [newAR] = await db.insert(accountsReceivable).values(ar).returning();
+    return newAR;
+  }
+
+  async updateAccountsReceivable(id: string, ar: Partial<AccountsReceivable>, tenantId: string): Promise<AccountsReceivable | undefined> {
+    const [updatedAR] = await db
+      .update(accountsReceivable)
+      .set({ ...ar, updatedAt: new Date() })
+      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenantId, tenantId)))
+      .returning();
+    return updatedAR;
+  }
+
+  // Chart of Accounts operations
+  async getChartOfAccounts(tenantId: string): Promise<ChartOfAccount[]> {
+    return await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.tenantId, tenantId));
+  }
+
+  async getChartOfAccount(id: string, tenantId: string): Promise<ChartOfAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(chartOfAccounts)
+      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId)));
+    return account;
+  }
+
+  async createChartOfAccount(account: InsertChartOfAccount): Promise<ChartOfAccount> {
+    const [newAccount] = await db.insert(chartOfAccounts).values(account).returning();
+    return newAccount;
+  }
+
+  async updateChartOfAccount(id: string, account: Partial<ChartOfAccount>, tenantId: string): Promise<ChartOfAccount | undefined> {
+    const [updatedAccount] = await db
+      .update(chartOfAccounts)
+      .set({ ...account, updatedAt: new Date() })
+      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId)))
+      .returning();
+    return updatedAccount;
+  }
+
+  // Purchase Order operations
+  async getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]> {
+    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenantId, tenantId));
+  }
+
+  async getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined> {
+    const [po] = await db
+      .select()
+      .from(purchaseOrders)
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)));
+    return po;
+  }
+
+  async createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder> {
+    const [newPO] = await db.insert(purchaseOrders).values(po).returning();
+    return newPO;
+  }
+
+  async updatePurchaseOrder(id: string, po: Partial<PurchaseOrder>, tenantId: string): Promise<PurchaseOrder | undefined> {
+    const [updatedPO] = await db
+      .update(purchaseOrders)
+      .set({ ...po, updatedAt: new Date() })
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)))
+      .returning();
+    return updatedPO;
+  }
+
+  async getPurchaseOrderItems(purchaseOrderId: string, tenantId: string): Promise<PurchaseOrderItem[]> {
+    return await db
+      .select()
+      .from(purchaseOrderItems)
+      .where(and(eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId), eq(purchaseOrderItems.tenantId, tenantId)));
+  }
+
+  async createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem> {
+    const [newItem] = await db.insert(purchaseOrderItems).values(item).returning();
+    return newItem;
   }
 }
 

@@ -29,6 +29,11 @@ import Supplies from "@/pages/Supplies";
 import ManagedServices from "@/pages/ManagedServices";
 import Invoices from "@/pages/Invoices";
 import CompanyContacts from "@/pages/CompanyContacts";
+import Vendors from "@/pages/Vendors";
+import AccountsPayable from "@/pages/AccountsPayable";
+import AccountsReceivable from "@/pages/AccountsReceivable";
+import ChartOfAccounts from "@/pages/ChartOfAccounts";
+import JournalEntries from "@/pages/JournalEntries";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,6 +76,11 @@ function Router() {
           <Route path="/supplies" component={Supplies} />
           <Route path="/managed-services" component={ManagedServices} />
           <Route path="/billing" component={Billing} />
+          <Route path="/vendors" component={Vendors} />
+          <Route path="/accounts-payable" component={AccountsPayable} />
+          <Route path="/accounts-receivable" component={AccountsReceivable} />
+          <Route path="/chart-of-accounts" component={ChartOfAccounts} />
+          <Route path="/journal-entries" component={JournalEntries} />
           <Route path="/reports" component={Reports} />
         </>
       )}

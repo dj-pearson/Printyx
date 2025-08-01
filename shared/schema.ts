@@ -1476,3 +1476,291 @@ export type InsertServiceProduct = z.infer<typeof insertServiceProductSchema>;
 export type InsertSoftwareProduct = z.infer<typeof insertSoftwareProductSchema>;
 export type InsertSupply = z.infer<typeof insertSupplySchema>;
 export type InsertManagedService = z.infer<typeof insertManagedServiceSchema>;
+
+// ============= ACCOUNTING MODULES =============
+
+// Vendors (Suppliers)
+export const vendors = pgTable("vendors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Basic Information
+  vendorNumber: varchar("vendor_number").notNull(),
+  companyName: varchar("company_name").notNull(),
+  displayName: varchar("display_name"),
+  
+  // Contact Information
+  contactPerson: varchar("contact_person"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  website: varchar("website"),
+  
+  // Address Information
+  address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  zipCode: varchar("zip_code"),
+  country: varchar("country").default("US"),
+  
+  // Business Details
+  taxId: varchar("tax_id"),
+  paymentTerms: varchar("payment_terms").default("Net 30"),
+  currency: varchar("currency").default("USD"),
+  creditLimit: decimal("credit_limit", { precision: 12, scale: 2 }),
+  
+  // Categories & Classification
+  vendorType: varchar("vendor_type").notNull(),
+  category: varchar("category"),
+  accountNumber: varchar("account_number"),
+  
+  // Status & Settings
+  status: varchar("status").notNull().default("active"),
+  preferred: boolean("preferred").default(false),
+  
+  // Banking Information
+  bankName: varchar("bank_name"),
+  accountHolder: varchar("account_holder"),
+  routingNumber: varchar("routing_number"),
+  bankAccountNumber: varchar("bank_account_number"),
+  
+  // Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Accounts Payable
+export const accountsPayable = pgTable("accounts_payable", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Reference Information
+  vendorId: varchar("vendor_id").notNull(),
+  billNumber: varchar("bill_number").notNull(),
+  purchaseOrderNumber: varchar("purchase_order_number"),
+  referenceNumber: varchar("reference_number"),
+  
+  // Bill Details
+  billDate: timestamp("bill_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  description: text("description"),
+  
+  // Financial Information
+  subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  paidAmount: decimal("paid_amount", { precision: 12, scale: 2 }).default("0"),
+  balanceAmount: decimal("balance_amount", { precision: 12, scale: 2 }).notNull(),
+  
+  // Status & Classification
+  status: varchar("status").notNull().default("pending"),
+  priority: varchar("priority").default("normal"),
+  category: varchar("category"),
+  department: varchar("department"),
+  
+  // Payment Information
+  paymentMethod: varchar("payment_method"),
+  paymentDate: timestamp("payment_date"),
+  checkNumber: varchar("check_number"),
+  
+  // Approval Workflow
+  approvedBy: varchar("approved_by"),
+  approvedDate: timestamp("approved_date"),
+  approvalNotes: text("approval_notes"),
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Accounts Receivable
+export const accountsReceivable = pgTable("accounts_receivable", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Reference Information
+  customerId: varchar("customer_id").notNull(),
+  invoiceNumber: varchar("invoice_number").notNull(),
+  contractId: varchar("contract_id"),
+  salesOrderNumber: varchar("sales_order_number"),
+  
+  // Invoice Details
+  invoiceDate: timestamp("invoice_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  description: text("description"),
+  
+  // Financial Information
+  subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  paidAmount: decimal("paid_amount", { precision: 12, scale: 2 }).default("0"),
+  balanceAmount: decimal("balance_amount", { precision: 12, scale: 2 }).notNull(),
+  
+  // Status & Classification
+  status: varchar("status").notNull().default("outstanding"),
+  invoiceType: varchar("invoice_type").notNull(),
+  category: varchar("category"),
+  
+  // Payment Information
+  paymentTerms: varchar("payment_terms").default("Net 30"),
+  paymentMethod: varchar("payment_method"),
+  lastPaymentDate: timestamp("last_payment_date"),
+  
+  // Collections & Follow-up
+  followUpDate: timestamp("follow_up_date"),
+  collectionNotes: text("collection_notes"),
+  daysOverdue: integer("days_overdue").default(0),
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Chart of Accounts
+export const chartOfAccounts = pgTable("chart_of_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Account Information
+  accountCode: varchar("account_code").notNull(),
+  accountName: varchar("account_name").notNull(),
+  accountType: varchar("account_type").notNull(),
+  accountSubtype: varchar("account_subtype"),
+  
+  // Hierarchy
+  parentAccountId: varchar("parent_account_id"),
+  level: integer("level").default(1),
+  
+  // Settings
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  isSystem: boolean("is_system").default(false),
+  
+  // Balance Information
+  currentBalance: decimal("current_balance", { precision: 12, scale: 2 }).default("0"),
+  debitBalance: decimal("debit_balance", { precision: 12, scale: 2 }).default("0"),
+  creditBalance: decimal("credit_balance", { precision: 12, scale: 2 }).default("0"),
+  
+  // Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Purchase Orders
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Reference Information
+  poNumber: varchar("po_number").notNull(),
+  vendorId: varchar("vendor_id").notNull(),
+  requestedBy: varchar("requested_by").notNull(),
+  
+  // Order Details
+  orderDate: timestamp("order_date").notNull(),
+  expectedDate: timestamp("expected_date"),
+  description: text("description"),
+  
+  // Financial Information
+  subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).default("0"),
+  shippingAmount: decimal("shipping_amount", { precision: 12, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  
+  // Status
+  status: varchar("status").notNull().default("draft"),
+  
+  // Delivery Information
+  deliveryAddress: text("delivery_address"),
+  specialInstructions: text("special_instructions"),
+  
+  // Approval
+  approvedBy: varchar("approved_by"),
+  approvedDate: timestamp("approved_date"),
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Purchase Order Line Items
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Reference
+  purchaseOrderId: varchar("purchase_order_id").notNull(),
+  lineNumber: integer("line_number").notNull(),
+  
+  // Product Information
+  itemDescription: text("item_description").notNull(),
+  itemCode: varchar("item_code"),
+  
+  // Quantity & Pricing
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  
+  // Status
+  receivedQuantity: integer("received_quantity").default(0),
+  
+  // Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Accounting Types
+export type Vendor = typeof vendors.$inferSelect;
+export type InsertVendor = typeof vendors.$inferInsert;
+
+export type AccountsPayable = typeof accountsPayable.$inferSelect;
+export type InsertAccountsPayable = typeof accountsPayable.$inferInsert;
+
+export type AccountsReceivable = typeof accountsReceivable.$inferSelect;
+export type InsertAccountsReceivable = typeof accountsReceivable.$inferInsert;
+
+export type ChartOfAccount = typeof chartOfAccounts.$inferSelect;
+export type InsertChartOfAccount = typeof chartOfAccounts.$inferInsert;
+
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
+
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
+export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
+
+// Accounting Schema Validations
+export const insertVendorSchema = createInsertSchema(vendors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAccountsPayableSchema = createInsertSchema(accountsPayable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAccountsReceivableSchema = createInsertSchema(accountsReceivable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChartOfAccountSchema = createInsertSchema(chartOfAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
+  id: true,
+  createdAt: true,
+});

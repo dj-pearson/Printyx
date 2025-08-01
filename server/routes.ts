@@ -32,6 +32,21 @@ import multer from "multer";
 import csv from "csv-parser";
 import { Readable } from "stream";
 
+// Basic authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  
+  // Add user context for backwards compatibility
+  req.user = {
+    id: req.session.userId,
+    tenantId: req.session.tenantId || "550e8400-e29b-41d4-a716-446655440000" // Default tenant for now
+  };
+  
+  next();
+};
+
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -772,6 +787,244 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating managed service:", error);
       res.status(500).json({ message: "Failed to create managed service" });
+    }
+  });
+
+  // ============= ACCOUNTING API ROUTES =============
+  
+  // Vendors Management
+  app.get("/api/vendors", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const vendors = await storage.getVendors(tenantId);
+      res.json(vendors);
+    } catch (error) {
+      console.error("Error fetching vendors:", error);
+      res.status(500).json({ message: "Failed to fetch vendors" });
+    }
+  });
+
+  app.get("/api/vendors/:id", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { id } = req.params;
+      const vendor = await storage.getVendor(id, tenantId);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      res.json(vendor);
+    } catch (error) {
+      console.error("Error fetching vendor:", error);
+      res.status(500).json({ message: "Failed to fetch vendor" });
+    }
+  });
+
+  app.post("/api/vendors", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const vendorData = { ...req.body, tenantId };
+      const newVendor = await storage.createVendor(vendorData);
+      res.status(201).json(newVendor);
+    } catch (error) {
+      console.error("Error creating vendor:", error);
+      res.status(500).json({ message: "Failed to create vendor" });
+    }
+  });
+
+  app.patch("/api/vendors/:id", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { id } = req.params;
+      const updatedVendor = await storage.updateVendor(id, req.body, tenantId);
+      if (!updatedVendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      res.json(updatedVendor);
+    } catch (error) {
+      console.error("Error updating vendor:", error);
+      res.status(500).json({ message: "Failed to update vendor" });
+    }
+  });
+
+  app.delete("/api/vendors/:id", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { id } = req.params;
+      const success = await storage.deleteVendor(id, tenantId);
+      if (success) {
+        res.json({ message: "Vendor deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Vendor not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting vendor:", error);
+      res.status(500).json({ message: "Failed to delete vendor" });
+    }
+  });
+
+  // Accounts Payable Management
+  app.get("/api/accounts-payable", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const accountsPayable = await storage.getAccountsPayable(tenantId);
+      res.json(accountsPayable);
+    } catch (error) {
+      console.error("Error fetching accounts payable:", error);
+      res.status(500).json({ message: "Failed to fetch accounts payable" });
+    }
+  });
+
+  app.post("/api/accounts-payable", requireAuth, async (req, res) => {
+    try {
+      const { tenantId, id: userId } = req.user;
+      const apData = { ...req.body, tenantId, createdBy: userId };
+      const newAP = await storage.createAccountsPayable(apData);
+      res.status(201).json(newAP);
+    } catch (error) {
+      console.error("Error creating account payable:", error);
+      res.status(500).json({ message: "Failed to create account payable" });
+    }
+  });
+
+  // Accounts Receivable Management
+  app.get("/api/accounts-receivable", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const accountsReceivable = await storage.getAccountsReceivable(tenantId);
+      res.json(accountsReceivable);
+    } catch (error) {
+      console.error("Error fetching accounts receivable:", error);
+      res.status(500).json({ message: "Failed to fetch accounts receivable" });
+    }
+  });
+
+  app.post("/api/accounts-receivable", requireAuth, async (req, res) => {
+    try {
+      const { tenantId, id: userId } = req.user;
+      const arData = { ...req.body, tenantId, createdBy: userId };
+      const newAR = await storage.createAccountsReceivable(arData);
+      res.status(201).json(newAR);
+    } catch (error) {
+      console.error("Error creating account receivable:", error);
+      res.status(500).json({ message: "Failed to create account receivable" });
+    }
+  });
+
+  // Chart of Accounts Management
+  app.get("/api/chart-of-accounts", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const accounts = await storage.getChartOfAccounts(tenantId);
+      res.json(accounts);
+    } catch (error) {
+      console.error("Error fetching chart of accounts:", error);
+      res.status(500).json({ message: "Failed to fetch chart of accounts" });
+    }
+  });
+
+  app.post("/api/chart-of-accounts", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const accountData = { ...req.body, tenantId };
+      const newAccount = await storage.createChartOfAccount(accountData);
+      res.status(201).json(newAccount);
+    } catch (error) {
+      console.error("Error creating account:", error);
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  // Journal Entries Management
+  app.get("/api/journal-entries", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const entries = await storage.getJournalEntries(tenantId);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching journal entries:", error);
+      res.status(500).json({ message: "Failed to fetch journal entries" });
+    }
+  });
+
+  app.get("/api/journal-entries/:id", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { id } = req.params;
+      const entry = await storage.getJournalEntry(id, tenantId);
+      if (!entry) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      res.json(entry);
+    } catch (error) {
+      console.error("Error fetching journal entry:", error);
+      res.status(500).json({ message: "Failed to fetch journal entry" });
+    }
+  });
+
+  app.post("/api/journal-entries", requireAuth, async (req, res) => {
+    try {
+      const { tenantId, id: userId } = req.user;
+      const entryData = { ...req.body, tenantId, createdBy: userId };
+      const newEntry = await storage.createJournalEntry(entryData);
+      res.status(201).json(newEntry);
+    } catch (error) {
+      console.error("Error creating journal entry:", error);
+      res.status(500).json({ message: "Failed to create journal entry" });
+    }
+  });
+
+  app.patch("/api/journal-entries/:id", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { id } = req.params;
+      const updateData = { ...req.body, updatedAt: new Date() };
+      const updatedEntry = await storage.updateJournalEntry(id, updateData, tenantId);
+      if (!updatedEntry) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      res.json(updatedEntry);
+    } catch (error) {
+      console.error("Error updating journal entry:", error);
+      res.status(500).json({ message: "Failed to update journal entry" });
+    }
+  });
+
+  app.delete("/api/journal-entries/:id", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { id } = req.params;
+      const success = await storage.deleteJournalEntry(id, tenantId);
+      if (!success) {
+        return res.status(404).json({ message: "Journal entry not found" });
+      }
+      res.json({ message: "Journal entry deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting journal entry:", error);
+      res.status(500).json({ message: "Failed to delete journal entry" });
+    }
+  });
+
+  // Purchase Orders Management
+  app.get("/api/purchase-orders", requireAuth, async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const purchaseOrders = await storage.getPurchaseOrders(tenantId);
+      res.json(purchaseOrders);
+    } catch (error) {
+      console.error("Error fetching purchase orders:", error);
+      res.status(500).json({ message: "Failed to fetch purchase orders" });
+    }
+  });
+
+  app.post("/api/purchase-orders", requireAuth, async (req, res) => {
+    try {
+      const { tenantId, id: userId } = req.user;
+      const poData = { ...req.body, tenantId, createdBy: userId };
+      const newPO = await storage.createPurchaseOrder(poData);
+      res.status(201).json(newPO);
+    } catch (error) {
+      console.error("Error creating purchase order:", error);
+      res.status(500).json({ message: "Failed to create purchase order" });
     }
   });
 
