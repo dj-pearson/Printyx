@@ -336,7 +336,7 @@ export default function Contacts() {
                   <SelectValue placeholder="Contact owner" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All owners</SelectItem>
+                  <SelectItem value="all">All owners</SelectItem>
                   {uniqueOwners.map(owner => (
                     <SelectItem key={owner} value={owner}>{owner}</SelectItem>
                   ))}
@@ -348,7 +348,7 @@ export default function Contacts() {
                   <SelectValue placeholder="Lead status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   {uniqueStatuses.map(status => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
                   ))}
@@ -380,7 +380,7 @@ export default function Contacts() {
                         <SelectValue placeholder="Any time" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Any time</SelectItem>
+                        <SelectItem value="anytime">Any time</SelectItem>
                         <SelectItem value="today">Today</SelectItem>
                         <SelectItem value="yesterday">Yesterday</SelectItem>
                         <SelectItem value="last7days">Last 7 days</SelectItem>
@@ -395,7 +395,7 @@ export default function Contacts() {
                         <SelectValue placeholder="Any time" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Any time</SelectItem>
+                        <SelectItem value="anytime">Any time</SelectItem>
                         <SelectItem value="today">Today</SelectItem>
                         <SelectItem value="yesterday">Yesterday</SelectItem>
                         <SelectItem value="last7days">Last 7 days</SelectItem>
@@ -411,7 +411,7 @@ export default function Contacts() {
                         <SelectValue placeholder="Any time" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Any time</SelectItem>
+                        <SelectItem value="anytime">Any time</SelectItem>
                         <SelectItem value="overdue">Overdue</SelectItem>
                         <SelectItem value="today">Today</SelectItem>
                         <SelectItem value="tomorrow">Tomorrow</SelectItem>

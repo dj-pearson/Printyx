@@ -1934,7 +1934,7 @@ export class DatabaseStorage implements IStorage {
         phone: companyContacts.phone,
         title: companyContacts.title,
         companyId: companyContacts.companyId,
-        companyName: companies.name,
+        companyName: companies.businessName,
         leadStatus: companyContacts.leadStatus,
         lastContactDate: companyContacts.lastContactDate,
         nextFollowUpDate: companyContacts.nextFollowUpDate,
@@ -1969,10 +1969,16 @@ export class DatabaseStorage implements IStorage {
       ));
     }
 
-    // Apply sorting
-    const sortColumn = options.sortBy === 'lastActivityDate' ? companyContacts.lastContactDate : companyContacts[options.sortBy as keyof typeof companyContacts];
-    if (sortColumn) {
-      query = options.sortOrder === 'asc' ? query.orderBy(asc(sortColumn)) : query.orderBy(desc(sortColumn));
+    // Apply sorting - simplified to avoid dynamic column access issues
+    if (options.sortBy === 'lastActivityDate' || options.sortBy === 'lastContactDate') {
+      query = options.sortOrder === 'asc' ? query.orderBy(asc(companyContacts.lastContactDate)) : query.orderBy(desc(companyContacts.lastContactDate));
+    } else if (options.sortBy === 'firstName') {
+      query = options.sortOrder === 'asc' ? query.orderBy(asc(companyContacts.firstName)) : query.orderBy(desc(companyContacts.firstName));
+    } else if (options.sortBy === 'lastName') {
+      query = options.sortOrder === 'asc' ? query.orderBy(asc(companyContacts.lastName)) : query.orderBy(desc(companyContacts.lastName));
+    } else {
+      // Default sort by created date
+      query = query.orderBy(desc(companyContacts.createdAt));
     }
 
     // Apply pagination
