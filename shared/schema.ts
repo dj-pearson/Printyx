@@ -25,15 +25,27 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Role-based access control tables
+// Role types enum for organizational hierarchy
+export const roleTypeEnum = pgEnum('role_type', [
+  'platform_admin',    // Printyx system-level roles (Root Admin, Support Staff)
+  'company_admin',     // Company tenant admin roles
+  'department_role'    // Standard department-based roles within companies
+]);
+
+// Role-based access control tables with expanded hierarchy
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 50 }).notNull(), // e.g., "Sales Rep", "Sales Manager", "Service Tech"
-  code: varchar("code", { length: 30 }).notNull().unique(), // e.g., "SALES_REP", "SALES_MGR"
-  department: varchar("department", { length: 30 }).notNull(), // e.g., "sales", "service", "admin", "finance"
-  level: integer("level").notNull().default(1), // 1=individual, 2=team_lead, 3=manager, 4=director, 5=admin
+  name: varchar("name", { length: 50 }).notNull(), // e.g., "Root Admin", "Printyx Support", "Company Admin", "Sales Rep"
+  code: varchar("code", { length: 30 }).notNull().unique(), // e.g., "ROOT_ADMIN", "PRINTYX_SUPPORT", "COMPANY_ADMIN"
+  roleType: roleTypeEnum("role_type").notNull().default('department_role'),
+  department: varchar("department", { length: 30 }).notNull(), // e.g., "platform", "sales", "service", "admin", "finance"
+  level: integer("level").notNull().default(1), // 1=individual, 2=team_lead, 3=manager, 4=director, 5=admin, 6=platform_admin
   description: varchar("description", { length: 255 }),
   permissions: jsonb("permissions").notNull().default('{}'), // JSON object with module permissions
+  canAccessAllTenants: boolean("can_access_all_tenants").default(false), // For Printyx platform roles
+  canManageUsers: boolean("can_manage_users").default(false), // For admin-level roles
+  canViewSystemMetrics: boolean("can_view_system_metrics").default(false), // For platform monitoring
+  isSystemRole: boolean("is_system_role").default(false), // For built-in roles that cannot be deleted
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -58,10 +70,10 @@ export const tenants = pgTable("tenants", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User storage table with enhanced role-based fields - required for Replit Auth
+// User storage table with enhanced role-based fields and platform access
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id"),
+  tenantId: varchar("tenant_id"), // null for Printyx platform users
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -71,6 +83,7 @@ export const users = pgTable("users", {
   teamId: varchar("team_id"), // references teams.id
   managerId: varchar("manager_id"), // direct manager - references users.id
   employeeId: varchar("employee_id"), // company employee ID
+  isPlatformUser: boolean("is_platform_user").default(false), // True for Printyx staff
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
