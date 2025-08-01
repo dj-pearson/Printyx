@@ -10,17 +10,27 @@ Preferred communication style: Simple, everyday language.
 
 ## Project Status & Development Phases
 
-### Current Phase: Phase 2 - Core Functionality Enhancement (Week 3-4)
-**Priority Focus**: Enhanced service dispatch with smart technician assignment (second highest ROI feature)
+### Current Phase: Phase 2 - Role-Based Access Control Implementation (Week 3-4)
+**Priority Focus**: Implementing comprehensive role-based access control with hierarchical team structures
 
 ### Phase Progress
 - **Phase 1 Complete**: Foundation architecture, basic CRUD operations, multi-tenant setup
 - **Phase 2 Major Features Complete**: 
   - ✅ Meter billing system with automated invoice generation
   - ✅ Enhanced service dispatch with smart technician assignment and scheduling
-- **Phase 2 Remaining**: CRM improvements
+  - ✅ CRM improvements with lead pipeline and quote management
+  - ✅ Consistent navigation layout across all modules
+  - 🔄 **IN PROGRESS**: Role-based access control with hierarchical permissions
+- **Phase 2 Current Work**: RBAC implementation with department-specific navigation
 - **Phase 3 Planned**: Mobile app, advanced reporting, workflow automation
 - **Phase 4 Planned**: Third-party integrations, go-live preparation
+
+### Recent Architectural Changes (January 2025)
+- **Role-Based Schema**: Complete RBAC implementation with roles, teams, and hierarchical permissions
+- **Department-Based Navigation**: Sales, Service, Finance, Purchasing, and Admin modules with role-specific access
+- **Hierarchical Team Structure**: Support for nested teams with manager relationships
+- **Territory Management**: User-customer assignments for sales territory control
+- **Enhanced CRM**: Lead pipeline, interaction tracking, and quote management
 
 ### Reference Documents
 - **PRD.md**: Complete Product Requirements Document with market analysis and technical specifications
@@ -46,13 +56,21 @@ Preferred communication style: Simple, everyday language.
 ### Database Layer
 - **Database**: PostgreSQL with Neon serverless hosting
 - **ORM**: Drizzle ORM for type-safe database operations and migrations
-- **Schema Design**: Multi-tenant architecture with tenant isolation at the data level
-- **Key Entities**: Users, Tenants, Customers, Equipment, Contracts, Service Tickets, Inventory Items, Technicians
+- **Schema Design**: Multi-tenant architecture with tenant isolation and role-based access control
+- **RBAC Implementation**: Comprehensive role hierarchy with department-based permissions
+- **Key Entities**: 
+  - **Identity**: Users, Roles, Teams, UserCustomerAssignments
+  - **Business**: Tenants, Customers, Equipment, Contracts, Service Tickets
+  - **CRM**: Leads, LeadInteractions, Quotes, QuoteLineItems
+  - **Operations**: Inventory Items, Technicians, Meter Readings, Invoices
 
-### Multi-Tenancy Implementation
+### Multi-Tenancy & Role-Based Access Control
 - **Tenant Isolation**: Row-level security with tenantId filtering across all business entities
-- **User Management**: Users are scoped to specific tenants with role-based access control
-- **Data Segregation**: All queries automatically filter by tenant context to ensure data isolation
+- **Role Hierarchy**: 5-level system (Individual → Team Lead → Manager → Director → Admin)
+- **Department Segmentation**: Sales, Service, Finance, Purchasing, Administration modules
+- **Hierarchical Teams**: Nested team structures with manager relationships and territory assignments
+- **Permission System**: Granular module permissions with department-specific access controls
+- **Data Segregation**: Multi-layered filtering by tenant, role, team, and individual assignments
 
 ### Authentication & Authorization
 - **Provider**: Replit Auth with OpenID Connect for seamless integration
