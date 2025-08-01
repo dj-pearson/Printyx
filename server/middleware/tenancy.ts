@@ -34,7 +34,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
     console.log(`[TENANT DEBUG] Host: ${host}, Path: ${path}`);
 
     // Method 1: Subdomain detection (Primary - only for production domains)
-    if (TENANT_CONFIG.enableSubdomainRouting && (host.includes('.printyx.') || host.includes('.replit.'))) {
+    if (TENANT_CONFIG.enableSubdomainRouting && host.includes('.printyx.')) {
       const subdomain = host.split('.')[0];
       if (subdomain !== 'www' && subdomain !== 'api' && subdomain.length > 0) {
         tenantSlug = subdomain;
@@ -54,8 +54,8 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       }
     }
 
-    // For development (localhost/replit.dev), skip tenant slug resolution and use defaults
-    if (!tenantSlug && (host.includes('localhost') || host.includes('replit.dev'))) {
+    // For development (localhost/replit.dev/kirk.replit.dev), skip tenant slug resolution and use defaults
+    if (!tenantSlug && (host.includes('localhost') || host.includes('replit.dev') || host.includes('kirk.replit.dev'))) {
       console.log(`[TENANT DEBUG] Development environment detected, using user tenant or default`);
       
       if (req.user?.tenantId) {
