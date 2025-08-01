@@ -49,6 +49,10 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   const isPlatformRole = userRole.canAccessAllTenants === true;
   const isCompanyAdmin = userRole.name?.includes('Admin');
   const level = userRole.level || 1;
+  
+  // Determine URL prefix based on role level and permissions
+  const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
+  const adminPrefix = useAdminRoutes ? '/admin' : '';
 
   // Dashboard - always available
   sections.push({
@@ -89,11 +93,13 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     sections.push({
       name: 'Product Management',
       items: [
-        { name: 'Product Hub', href: '/product-hub', icon: Package },
-        { name: 'Equipment Lifecycle', href: '/equipment-lifecycle', icon: Settings },
-        { name: 'Purchase Orders', href: '/purchase-orders', icon: ShoppingCart },
+        { name: 'Product Hub', href: `${adminPrefix}/product-hub`, icon: Package },
+        { name: 'Equipment Lifecycle', href: `${adminPrefix}/equipment-lifecycle`, icon: Settings },
+        { name: 'Purchase Orders', href: `${adminPrefix}/purchase-orders`, icon: ShoppingCart },
         { name: 'Inventory', href: '/inventory', icon: Package },
-        { name: 'Supplies', href: '/supplies', icon: Package },
+        { name: 'Supplies', href: `${adminPrefix}/supplies`, icon: Package },
+        { name: 'Product Models', href: `${adminPrefix}/product-models`, icon: Package },
+        { name: 'Product Accessories', href: `${adminPrefix}/product-accessories`, icon: Package },
       ]
     });
   }
@@ -142,7 +148,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       name: 'Platform Management',
       items: [
         { name: 'Tenant Setup', href: '/tenant-setup', icon: Settings },
-        { name: 'Pricing Management', href: '/pricing-management', icon: DollarSign },
+        { name: 'Pricing Management', href: `${adminPrefix}/pricing-management`, icon: DollarSign },
       ]
     });
   }
