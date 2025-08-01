@@ -104,6 +104,7 @@ export default function Contacts() {
         ...filters
       });
       const response = await apiRequest('GET', `/api/contacts?${params}`);
+      console.log('[CONTACTS UI DEBUG] Raw API response:', response);
       return response;
     }
   });
@@ -116,6 +117,7 @@ export default function Contacts() {
   console.log('[CONTACTS UI DEBUG] contactsData:', contactsData);
   console.log('[CONTACTS UI DEBUG] contacts array:', contacts);
   console.log('[CONTACTS UI DEBUG] totalContacts:', totalContacts);
+  console.log('[CONTACTS UI DEBUG] API Response keys:', contactsData ? Object.keys(contactsData) : 'null');
 
   // Get unique values for filters
   const uniqueOwners = [...new Set(contacts.map((c: Contact) => c.ownerName))];
