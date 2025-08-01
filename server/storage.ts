@@ -26,6 +26,7 @@ import {
   serviceProducts,
   softwareProducts,
   supplies,
+  managedServices,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -52,6 +53,7 @@ import {
   type ServiceProduct,
   type SoftwareProduct,
   type Supply,
+  type ManagedService,
   type InsertProductModel,
   type InsertProductAccessory,
   type InsertCpcRate,
@@ -59,6 +61,7 @@ import {
   type InsertServiceProduct,
   type InsertSoftwareProduct,
   type InsertSupply,
+  type InsertManagedService,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
@@ -714,6 +717,23 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .insert(supplies)
       .values(supply)
+      .returning();
+    return result;
+  }
+
+  // Managed Services
+  async getAllManagedServices(tenantId: string): Promise<ManagedService[]> {
+    return await db
+      .select()
+      .from(managedServices)
+      .where(eq(managedServices.tenantId, tenantId))
+      .orderBy(managedServices.productName);
+  }
+
+  async createManagedService(service: InsertManagedService): Promise<ManagedService> {
+    const [result] = await db
+      .insert(managedServices)
+      .values(service)
       .returning();
     return result;
   }

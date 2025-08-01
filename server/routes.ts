@@ -24,6 +24,7 @@ import {
   insertServiceProductSchema,
   insertSoftwareProductSchema,
   insertSupplySchema,
+  insertManagedServiceSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -518,6 +519,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating supply:", error);
       res.status(500).json({ message: "Failed to create supply" });
+    }
+  });
+
+  // Managed Services
+  app.get('/api/managed-services', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const services = await storage.getAllManagedServices(tenantId);
+      res.json(services);
+    } catch (error) {
+      console.error("Error fetching managed services:", error);
+      res.status(500).json({ message: "Failed to fetch managed services" });
+    }
+  });
+
+  app.post('/api/managed-services', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertManagedServiceSchema.parse({ 
+        ...req.body, 
+        tenantId 
+      });
+      const service = await storage.createManagedService(validatedData);
+      res.json(service);
+    } catch (error) {
+      console.error("Error creating managed service:", error);
+      res.status(500).json({ message: "Failed to create managed service" });
     }
   });
 

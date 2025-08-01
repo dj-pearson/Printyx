@@ -61,6 +61,7 @@ const navigationSections = [
       { name: 'Service Products', href: '/service-products', icon: Package },
       { name: 'Software Products', href: '/software-products', icon: Package },
       { name: 'Supplies', href: '/supplies', icon: Package },
+      { name: 'IT & Managed Services', href: '/managed-services', icon: Package },
       { name: 'Inventory', href: '/inventory', icon: Package },
       { name: 'Contracts', href: '/contracts', icon: FileText },
       { name: 'User Management', href: '/user-management', icon: UserCog },

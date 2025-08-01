@@ -26,6 +26,7 @@ import ProfessionalServices from "@/pages/ProfessionalServices";
 import ServiceProducts from "@/pages/ServiceProducts";
 import SoftwareProducts from "@/pages/SoftwareProducts";
 import Supplies from "@/pages/Supplies";
+import ManagedServices from "@/pages/ManagedServices";
 import Invoices from "@/pages/Invoices";
 
 function Router() {
@@ -66,6 +67,7 @@ function Router() {
           <Route path="/service-products" component={ServiceProducts} />
           <Route path="/software-products" component={SoftwareProducts} />
           <Route path="/supplies" component={Supplies} />
+          <Route path="/managed-services" component={ManagedServices} />
           <Route path="/billing" component={Billing} />
           <Route path="/reports" component={Reports} />
         </>

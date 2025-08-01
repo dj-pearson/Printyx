@@ -1280,6 +1280,67 @@ export const insertSupplySchema = createInsertSchema(supplies).omit({
   updatedAt: true,
 });
 
+// IT/Managed Services
+export const managedServices = pgTable("managed_services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  productCode: varchar("product_code").notNull(),
+  productName: varchar("product_name").notNull(),
+  category: varchar("category").default("IT Services"),
+  serviceType: varchar("service_type"),
+  serviceLevel: varchar("service_level"),
+  description: text("description"),
+  summary: text("summary"),
+  note: text("note"),
+  eaNotes: text("ea_notes"),
+  configNote: text("config_note"),
+  relatedProducts: text("related_products"),
+  
+  // IT-specific fields
+  supportHours: varchar("support_hours"),
+  responseTime: varchar("response_time"),
+  includesHardware: boolean("includes_hardware").default(false),
+  remoteMgmt: boolean("remote_mgmt").default(false),
+  onsiteSupport: boolean("onsite_support").default(false),
+  
+  // Flags
+  isActive: boolean("is_active").default(true),
+  availableForAll: boolean("available_for_all").default(false),
+  repostEdit: boolean("repost_edit").default(false),
+  salesRepCredit: boolean("sales_rep_credit").default(true),
+  funding: boolean("funding").default(true),
+  
+  // Pricing Information
+  lease: boolean("lease").default(false),
+  paymentType: varchar("payment_type"),
+  
+  // Pricing Tiers
+  newActive: boolean("new_active").default(false),
+  newRepPrice: decimal("new_rep_price"),
+  upgradeActive: boolean("upgrade_active").default(false),
+  upgradeRepPrice: decimal("upgrade_rep_price"),
+  lexmarkActive: boolean("lexmark_active").default(false),
+  lexmarkRepPrice: decimal("lexmark_rep_price"),
+  graphicActive: boolean("graphic_active").default(false),
+  graphicRepPrice: decimal("graphic_rep_price"),
+  
+  // System Information
+  priceBookId: varchar("price_book_id"),
+  tempKey: varchar("temp_key"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ManagedService = typeof managedServices.$inferSelect;
+export type InsertManagedService = typeof managedServices.$inferInsert;
+
+export const insertManagedServiceSchema = createInsertSchema(managedServices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Product Management Types
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;
@@ -1288,6 +1349,7 @@ export type ProfessionalService = typeof professionalServices.$inferSelect;
 export type ServiceProduct = typeof serviceProducts.$inferSelect;
 export type SoftwareProduct = typeof softwareProducts.$inferSelect;
 export type Supply = typeof supplies.$inferSelect;
+export type ManagedService = typeof managedServices.$inferSelect;
 
 // Product Management Insert Types
 export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
@@ -1297,3 +1359,4 @@ export type InsertProfessionalService = z.infer<typeof insertProfessionalService
 export type InsertServiceProduct = z.infer<typeof insertServiceProductSchema>;
 export type InsertSoftwareProduct = z.infer<typeof insertSoftwareProductSchema>;
 export type InsertSupply = z.infer<typeof insertSupplySchema>;
+export type InsertManagedService = z.infer<typeof insertManagedServiceSchema>;
