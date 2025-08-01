@@ -68,15 +68,15 @@ export default function TopCustomers() {
                 <div>
                   <p className="font-medium text-gray-900">{customer.name}</p>
                   <p className="text-sm text-gray-600">
-                    {customer.contractCount} active contract{customer.contractCount !== 1 ? 's' : ''}
+                    {customer.contractsCount || customer.contractCount || 0} active contract{(customer.contractsCount || customer.contractCount || 0) !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="font-semibold text-gray-900">
-                  ${customer.monthlyRevenue.toLocaleString()}
+                  ${(customer.accountValue || customer.monthlyRevenue || 0).toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-600">monthly</p>
+                <p className="text-sm text-gray-600">total value</p>
               </div>
             </div>
           ))
