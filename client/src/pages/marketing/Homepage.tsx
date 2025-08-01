@@ -32,26 +32,144 @@ const Homepage = () => {
     {
       icon: BarChart3,
       title: "Automated Meter Billing",
-      description: "Eliminate manual billing processes with automated meter reading and invoice generation",
-      color: "bg-blue-500"
+      description: "Eliminate manual billing processes with automated meter reading and invoice generation. Save 15+ hours per week on billing operations.",
+      color: "bg-blue-500",
+      benefits: ["95% billing accuracy", "Automatic invoice generation", "Real-time meter tracking"]
     },
     {
       icon: Calendar,
       title: "Smart Service Dispatch",
-      description: "Optimize technician scheduling with intelligent routing and availability management",
-      color: "bg-green-500"
+      description: "Optimize technician scheduling with intelligent routing and availability management. Reduce travel time by 40%.",
+      color: "bg-green-500",
+      benefits: ["GPS-based routing", "Real-time scheduling", "Mobile technician app"]
     },
     {
       icon: Users,
-      title: "Unified CRM",
-      description: "Manage customer relationships, leads, and sales pipeline in one integrated platform",
-      color: "bg-purple-500"
+      title: "Unified CRM System",
+      description: "Manage customer relationships, leads, and sales pipeline in one integrated platform. Increase sales conversion by 35%.",
+      color: "bg-purple-500",
+      benefits: ["Lead scoring", "Pipeline tracking", "Customer history"]
     },
     {
       icon: FileText,
       title: "Contract Management",
-      description: "Track service agreements, lease terms, and billing cycles with automated renewals",
-      color: "bg-orange-500"
+      description: "Track service agreements, lease terms, and billing cycles with automated renewals. Never miss a renewal again.",
+      color: "bg-orange-500",
+      benefits: ["Automated renewals", "Contract analytics", "E-signature integration"]
+    },
+    {
+      icon: Shield,
+      title: "Inventory Control",
+      description: "Real-time parts tracking with automatic reorder points and supplier management. Reduce inventory costs by 25%.",
+      color: "bg-red-500",
+      benefits: ["Low stock alerts", "Automated ordering", "Cost tracking"]
+    },
+    {
+      icon: TrendingUp,
+      title: "Business Analytics",
+      description: "Comprehensive reporting and analytics to make data-driven decisions. Access 50+ pre-built reports.",
+      color: "bg-indigo-500",
+      benefits: ["Custom dashboards", "Financial reports", "Performance metrics"]
+    }
+  ];
+
+  const pricingPlans = [
+    {
+      name: "Starter",
+      price: "$99",
+      period: "per month",
+      description: "Perfect for small copier dealers getting started",
+      features: [
+        "Up to 100 customers",
+        "Basic CRM & invoicing",
+        "Email support",
+        "Mobile app access",
+        "Standard reporting"
+      ],
+      popular: false,
+      cta: "Start Free Trial"
+    },
+    {
+      name: "Professional",
+      price: "$199",
+      period: "per month",
+      description: "Ideal for growing businesses with advanced needs",
+      features: [
+        "Up to 500 customers",
+        "Advanced meter billing",
+        "Service dispatch optimization",
+        "Priority phone support",
+        "Custom reports & analytics",
+        "API access"
+      ],
+      popular: true,
+      cta: "Start Free Trial"
+    },
+    {
+      name: "Enterprise",
+      price: "$399",
+      period: "per month",
+      description: "Full-featured solution for large operations",
+      features: [
+        "Unlimited customers",
+        "Multi-location support",
+        "Advanced RBAC & teams",
+        "Dedicated account manager",
+        "Custom integrations",
+        "White-label options"
+      ],
+      popular: false,
+      cta: "Contact Sales"
+    }
+  ];
+
+  const tools = [
+    {
+      icon: Printer,
+      title: "Equipment Database",
+      description: "Comprehensive database of copier models, specifications, and service procedures"
+    },
+    {
+      icon: Wrench,
+      title: "Service Tools",
+      description: "Digital service manuals, troubleshooting guides, and diagnostic tools"
+    },
+    {
+      icon: BarChart3,
+      title: "Business Intelligence",
+      description: "Advanced analytics, forecasting, and performance optimization tools"
+    },
+    {
+      icon: Users,
+      title: "Team Collaboration",
+      description: "Communication tools, task management, and knowledge sharing platforms"
+    }
+  ];
+
+  const resources = [
+    {
+      category: "Documentation",
+      items: [
+        { title: "Getting Started Guide", description: "Complete setup and onboarding documentation" },
+        { title: "API Reference", description: "Comprehensive API documentation for developers" },
+        { title: "User Manual", description: "Detailed user guides for all platform features" }
+      ]
+    },
+    {
+      category: "Training",
+      items: [
+        { title: "Video Tutorials", description: "Step-by-step video guides for common tasks" },
+        { title: "Webinar Series", description: "Monthly training sessions and product updates" },
+        { title: "Certification Program", description: "Professional certification for platform expertise" }
+      ]
+    },
+    {
+      category: "Support",
+      items: [
+        { title: "Help Center", description: "Searchable knowledge base with instant answers" },
+        { title: "Community Forum", description: "Connect with other dealers and share best practices" },
+        { title: "Technical Support", description: "24/7 technical support for all plan levels" }
+      ]
     }
   ];
 
@@ -102,8 +220,9 @@ const Homepage = () => {
             </div>
             
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Tools</a>
+              <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</a>
               <a href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</a>
+              <a href="#tools" className="text-gray-600 hover:text-blue-600 transition-colors">Tools</a>
               <a href="#resources" className="text-gray-600 hover:text-blue-600 transition-colors">Resources</a>
               <Button 
                 variant="outline" 
@@ -263,7 +382,7 @@ const Homepage = () => {
             </p>
           </div>
           
-          <div className="grid lg:grid-cols-2 gap-12">
+          <div className="grid lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <Card 
                 key={index} 
@@ -276,11 +395,157 @@ const Homepage = () => {
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-base">
+                  <CardDescription className="text-base mb-4">
                     {feature.description}
                   </CardDescription>
+                  <ul className="space-y-2">
+                    {feature.benefits.map((benefit, i) => (
+                      <li key={i} className="flex items-center text-sm text-gray-600">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                        {benefit}
+                      </li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Simple, Transparent Pricing
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Choose the plan that fits your business size and needs. All plans include a 30-day free trial.
+            </p>
+          </div>
+          
+          <div className="grid lg:grid-cols-3 gap-8">
+            {pricingPlans.map((plan, index) => (
+              <Card 
+                key={index} 
+                className={`relative transform transition-all duration-700 delay-${index * 100} hover:scale-105 hover:shadow-lg ${plan.popular ? 'ring-2 ring-blue-500 shadow-xl' : ''} ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}
+              >
+                {plan.popular && (
+                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white">
+                    Most Popular
+                  </Badge>
+                )}
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
+                    <span className="text-gray-600">/{plan.period}</span>
+                  </div>
+                  <CardDescription className="mt-2">{plan.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ul className="space-y-3">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-center">
+                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button 
+                    className={`w-full mt-6 ${plan.popular ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-700'}`}
+                    onClick={() => window.location.href = '/login'}
+                  >
+                    {plan.cta}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          <div className="text-center mt-12">
+            <p className="text-gray-600 mb-4">All plans include:</p>
+            <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600">
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                30-day free trial
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                No setup fees
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                Cancel anytime
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                Data migration included
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Tools Section */}
+      <section id="tools" className="py-24 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Powerful Tools for Every Task
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Access industry-specific tools and resources designed to streamline your operations
+            </p>
+          </div>
+          
+          <div className="grid lg:grid-cols-2 gap-12">
+            {tools.map((tool, index) => (
+              <div 
+                key={index} 
+                className={`flex items-start space-x-4 transform transition-all duration-700 delay-${index * 100} ${isVisible ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}
+              >
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <tool.icon className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{tool.title}</h3>
+                  <p className="text-gray-600">{tool.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Resources Section */}
+      <section id="resources" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Resources & Support
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Get the help and resources you need to succeed with comprehensive documentation and support
+            </p>
+          </div>
+          
+          <div className="grid lg:grid-cols-3 gap-8">
+            {resources.map((category, index) => (
+              <div key={index} className={`transform transition-all duration-700 delay-${index * 200} ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">{category.category}</h3>
+                <div className="space-y-4">
+                  {category.items.map((item, i) => (
+                    <div key={i} className="border-l-4 border-blue-500 pl-4">
+                      <h4 className="font-semibold text-gray-900 mb-1">{item.title}</h4>
+                      <p className="text-gray-600 text-sm">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -371,20 +636,20 @@ const Homepage = () => {
             <div>
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Demo</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">API</a></li>
+                <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+                <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><a href="#tools" className="hover:text-white transition-colors">Tools</a></li>
+                <li><a href="/login" className="hover:text-white transition-colors">Demo</a></li>
               </ul>
             </div>
             
             <div>
               <h3 className="font-semibold mb-4">Resources</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Case Studies</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Webinars</a></li>
+                <li><a href="#resources" className="hover:text-white transition-colors">Documentation</a></li>
+                <li><a href="#resources" className="hover:text-white transition-colors">Training</a></li>
+                <li><a href="#resources" className="hover:text-white transition-colors">Support</a></li>
+                <li><a href="#resources" className="hover:text-white transition-colors">Community</a></li>
               </ul>
             </div>
             
