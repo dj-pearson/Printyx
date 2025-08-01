@@ -76,7 +76,7 @@ export default function Sidebar() {
                 ? `${(user as any).firstName} ${(user as any).lastName}` 
                 : (user as any)?.email || 'User'}
             </p>
-            <p className="text-xs text-gray-500 truncate">{(user as any)?.role || 'Manager'}</p>
+            <p className="text-xs text-gray-500 truncate">{(user as any)?.role?.name || (user as any)?.role || 'Manager'}</p>
           </div>
           <button 
             className="text-gray-400 hover:text-gray-600"
