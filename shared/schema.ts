@@ -87,43 +87,139 @@ export const userCustomerAssignments = pgTable("user_customer_assignments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// CRM - Leads table for sales pipeline
+// CRM - Enhanced Leads table for comprehensive company/lead management
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
-  companyName: varchar("company_name").notNull(),
+  
+  // Company Information (matching your CRM screenshots)
+  businessName: varchar("business_name").notNull(),
+  businessSite: varchar("business_site"), // e.g., "MAURY BLDG 1"
+  parentCompany: varchar("parent_company"),
+  industry: varchar("industry"),
+  description: text("description"),
+  
+  // Primary Contact
   contactName: varchar("contact_name").notNull(),
-  email: varchar("email"),
+  contactTitle: varchar("contact_title"),
   phone: varchar("phone"),
-  title: varchar("title"), // job title
-  address: text("address"),
-  source: varchar("source"), // website, referral, cold_call, etc.
+  fax: varchar("fax"),
+  email: varchar("email"),
+  website: varchar("website"),
+  
+  // Business Details
+  customerNumber: varchar("customer_number"), // For converted customers
+  customerSince: timestamp("customer_since"),
+  employees: integer("employees"),
+  annualRevenue: decimal("annual_revenue", { precision: 12, scale: 2 }),
+  numberOfLocations: integer("number_of_locations"),
+  sicCode: varchar("sic_code"),
+  productServicesInterest: text("product_services_interest"),
+  
+  // Address Information
+  billingAddress: text("billing_address"),
+  billingCity: varchar("billing_city"),
+  billingState: varchar("billing_state"),
+  billingZip: varchar("billing_zip"),
+  shippingAddress: text("shipping_address"),
+  shippingCity: varchar("shipping_city"),
+  shippingState: varchar("shipping_state"),
+  shippingZip: varchar("shipping_zip"),
+  
+  // CRM Status & Pipeline
+  recordType: varchar("record_type").notNull().default('lead'), // lead, customer, inactive
   status: varchar("status").notNull().default('new'), // new, contacted, qualified, proposal, closed_won, closed_lost
   priority: varchar("priority").notNull().default('medium'), // low, medium, high
+  source: varchar("source"), // website, referral, cold_call, trade_show, etc.
   estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
   estimatedCloseDate: timestamp("estimated_close_date"),
-  assignedSalespersonId: varchar("assigned_salesperson_id"), // references users.id
-  notes: text("notes"),
+  
+  // Contact Management
+  assignedSalespersonId: varchar("assigned_salesperson_id"),
+  nextCallBack: timestamp("next_call_back"),
   lastContactDate: timestamp("last_contact_date"),
   nextFollowUpDate: timestamp("next_follow_up_date"),
+  
+  // Notes & Tracking
+  notes: text("notes"),
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// CRM - Lead interactions/activities
-export const leadInteractions = pgTable("lead_interactions", {
+// CRM - Lead Activities (matching the activity timeline from your screenshots)
+export const leadActivities = pgTable("lead_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   leadId: varchar("lead_id").notNull(),
-  interactionType: varchar("interaction_type").notNull(), // call, email, meeting, demo, proposal
+  
+  // Activity Details
+  activityType: varchar("activity_type").notNull(), // email, call, meeting, demo, proposal, task, note, external
   subject: varchar("subject").notNull(),
   description: text("description"),
-  outcome: varchar("outcome"), // positive, neutral, negative, no_response
-  nextAction: text("next_action"),
+  direction: varchar("direction"), // inbound, outbound
+  
+  // Email Information (when activityType = 'email')
+  emailFrom: varchar("email_from"),
+  emailTo: text("email_to"), // JSON array for multiple recipients
+  emailCc: text("email_cc"),
+  emailSubject: varchar("email_subject"),
+  emailBody: text("email_body"),
+  isShared: boolean("is_shared").default(false), // "Emails are not shared with you..."
+  
+  // Call Information
+  callDuration: integer("call_duration"), // in minutes
+  callOutcome: varchar("call_outcome"), // answered, no_answer, busy, voicemail
+  
+  // Scheduling
   scheduledDate: timestamp("scheduled_date"),
   completedDate: timestamp("completed_date"),
+  dueDate: timestamp("due_date"),
+  
+  // Outcomes & Follow-up
+  outcome: varchar("outcome"), // completed, no_response, rescheduled, cancelled, replied
+  nextAction: text("next_action"),
+  followUpDate: timestamp("follow_up_date"),
+  
+  // Related Records & Attachments
+  relatedRecords: jsonb("related_records"), // Links to deals, agreements, etc.
+  attachments: jsonb("attachments"), // File references
+  
+  // Tracking
   createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Additional contacts at a company (beyond primary contact)
+export const leadContacts = pgTable("lead_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  leadId: varchar("lead_id").notNull(),
+  
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  title: varchar("title"),
+  department: varchar("department"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  isPrimary: boolean("is_primary").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Related records tracking (deals, equipment, service requests, etc.)
+export const leadRelatedRecords = pgTable("lead_related_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  leadId: varchar("lead_id").notNull(),
+  
+  recordType: varchar("record_type").notNull(), // deals, equipment, agreements, service_requests, credit_applications, tco_mps, files, business_history, site_surveys
+  recordId: varchar("record_id").notNull(),
+  recordTitle: varchar("record_title"),
+  recordCount: integer("record_count").default(1),
+  
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -435,22 +531,44 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
     fields: [leads.createdBy],
     references: [users.id],
   }),
-  interactions: many(leadInteractions),
+  activities: many(leadActivities),
   quotes: many(quotes),
 }));
 
-export const leadInteractionsRelations = relations(leadInteractions, ({ one }) => ({
+export const leadActivitiesRelations = relations(leadActivities, ({ one }) => ({
   tenant: one(tenants, {
-    fields: [leadInteractions.tenantId],
+    fields: [leadActivities.tenantId],
     references: [tenants.id],
   }),
   lead: one(leads, {
-    fields: [leadInteractions.leadId],
+    fields: [leadActivities.leadId],
     references: [leads.id],
   }),
   createdByUser: one(users, {
-    fields: [leadInteractions.createdBy],
+    fields: [leadActivities.createdBy],
     references: [users.id],
+  }),
+}));
+
+export const leadContactsRelations = relations(leadContacts, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [leadContacts.tenantId],
+    references: [tenants.id],
+  }),
+  lead: one(leads, {
+    fields: [leadContacts.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const leadRelatedRecordsRelations = relations(leadRelatedRecords, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [leadRelatedRecords.tenantId],
+    references: [tenants.id],
+  }),
+  lead: one(leads, {
+    fields: [leadRelatedRecords.leadId],
+    references: [leads.id],
   }),
 }));
 
@@ -667,7 +785,19 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
   updatedAt: true,
 });
 
-export const insertLeadInteractionSchema = createInsertSchema(leadInteractions).omit({
+export const insertLeadActivitySchema = createInsertSchema(leadActivities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeadContactSchema = createInsertSchema(leadContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeadRelatedRecordSchema = createInsertSchema(leadRelatedRecords).omit({
   id: true,
   createdAt: true,
 });
@@ -750,7 +880,7 @@ export const insertInvoiceLineItemSchema = createInsertSchema(invoiceLineItems).
 });
 
 // Backward compatibility alias for existing client code
-export const insertCustomerInteractionSchema = insertLeadInteractionSchema;
+export const insertCustomerInteractionSchema = insertLeadActivitySchema;
 
 // Type exports
 export type UpsertUser = typeof users.$inferInsert;
@@ -760,7 +890,9 @@ export type Role = typeof roles.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type UserCustomerAssignment = typeof userCustomerAssignments.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
-export type LeadInteraction = typeof leadInteractions.$inferSelect;
+export type LeadActivity = typeof leadActivities.$inferSelect;
+export type LeadContact = typeof leadContacts.$inferSelect;
+export type LeadRelatedRecord = typeof leadRelatedRecords.$inferSelect;
 export type Quote = typeof quotes.$inferSelect;
 export type QuoteLineItem = typeof quoteLineItems.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
@@ -773,5 +905,6 @@ export type MeterReading = typeof meterReadings.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 
-// Backward compatibility type alias
-export type CustomerInteraction = LeadInteraction;
+// Backward compatibility type aliases
+export type LeadInteraction = LeadActivity;
+export type CustomerInteraction = LeadActivity;

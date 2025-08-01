@@ -5,7 +5,9 @@ import {
   tenants,
   userCustomerAssignments,
   leads,
-  leadInteractions,
+  leadActivities,
+  leadContacts,
+  leadRelatedRecords,
   quotes,
   quoteLineItems,
   customers,
@@ -24,6 +26,9 @@ import {
   type Team,
   type UserCustomerAssignment,
   type Lead,
+  type LeadActivity,
+  type LeadContact,
+  type LeadRelatedRecord,
   type Quote,
   type Customer,
   type Equipment,
@@ -65,8 +70,22 @@ export interface IStorage {
   
   // Lead operations with RBAC
   getLeads(tenantId: string): Promise<Lead[]>;
+  getLead(id: string, tenantId: string): Promise<Lead | undefined>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
   updateLead(id: string, lead: Partial<Lead>, tenantId: string): Promise<Lead | undefined>;
+  convertLeadToCustomer(leadId: string, tenantId: string): Promise<Customer>;
+  
+  // Lead activity/interaction operations
+  getLeadActivities(leadId: string, tenantId: string): Promise<LeadActivity[]>;
+  createLeadActivity(activity: Omit<LeadActivity, "id" | "createdAt" | "updatedAt">): Promise<LeadActivity>;
+  
+  // Lead contact operations
+  getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]>;
+  createLeadContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact>;
+  
+  // Lead related records operations
+  getLeadRelatedRecords(leadId: string, tenantId: string): Promise<LeadRelatedRecord[]>;
+  createLeadRelatedRecord(record: Omit<LeadRelatedRecord, "id" | "createdAt">): Promise<LeadRelatedRecord>;
   
   // Quote operations with RBAC
   getQuotes(tenantId: string): Promise<Quote[]>;
@@ -445,6 +464,83 @@ export class DatabaseStorage implements IStorage {
   async createUserCustomerAssignment(assignment: Omit<UserCustomerAssignment, "id" | "createdAt">): Promise<UserCustomerAssignment> {
     const [newAssignment] = await db.insert(userCustomerAssignments).values(assignment).returning();
     return newAssignment;
+  }
+
+  // Enhanced Lead CRM operations
+  async getLead(id: string, tenantId: string): Promise<Lead | undefined> {
+    const [lead] = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.id, id), eq(leads.tenantId, tenantId)));
+    return lead;
+  }
+
+  async convertLeadToCustomer(leadId: string, tenantId: string): Promise<Customer> {
+    const lead = await this.getLead(leadId, tenantId);
+    if (!lead) throw new Error('Lead not found');
+
+    // Create customer from lead data
+    const customerData = {
+      tenantId,
+      name: lead.businessName,
+      email: lead.email,
+      phone: lead.phone,
+      address: `${lead.billingAddress}, ${lead.billingCity}, ${lead.billingState} ${lead.billingZip}`,
+      contactPerson: lead.contactName,
+      accountValue: lead.estimatedValue || null,
+    };
+
+    const [newCustomer] = await db.insert(customers).values(customerData).returning();
+
+    // Update lead status to converted and set customer details
+    await this.updateLead(leadId, {
+      recordType: 'customer',
+      status: 'closed_won',
+      customerNumber: newCustomer.id,
+      customerSince: new Date(),
+    }, tenantId);
+
+    return newCustomer;
+  }
+
+  // Lead activity operations
+  async getLeadActivities(leadId: string, tenantId: string): Promise<LeadActivity[]> {
+    return await db
+      .select()
+      .from(leadActivities)
+      .where(and(eq(leadActivities.leadId, leadId), eq(leadActivities.tenantId, tenantId)))
+      .orderBy(sql`${leadActivities.createdAt} DESC`);
+  }
+
+  async createLeadActivity(activity: Omit<LeadActivity, "id" | "createdAt" | "updatedAt">): Promise<LeadActivity> {
+    const [newActivity] = await db.insert(leadActivities).values(activity).returning();
+    return newActivity;
+  }
+
+  // Lead contact operations
+  async getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]> {
+    return await db
+      .select()
+      .from(leadContacts)
+      .where(and(eq(leadContacts.leadId, leadId), eq(leadContacts.tenantId, tenantId)));
+  }
+
+  async createLeadContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact> {
+    const [newContact] = await db.insert(leadContacts).values(contact).returning();
+    return newContact;
+  }
+
+  // Lead related records operations
+  async getLeadRelatedRecords(leadId: string, tenantId: string): Promise<LeadRelatedRecord[]> {
+    return await db
+      .select()
+      .from(leadRelatedRecords)
+      .where(and(eq(leadRelatedRecords.leadId, leadId), eq(leadRelatedRecords.tenantId, tenantId)));
+  }
+
+  async createLeadRelatedRecord(record: Omit<LeadRelatedRecord, "id" | "createdAt">): Promise<LeadRelatedRecord> {
+    const [newRecord] = await db.insert(leadRelatedRecords).values(record).returning();
+    return newRecord;
   }
 }
 

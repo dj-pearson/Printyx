@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +67,7 @@ export default function CRMEnhanced() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data: leads, isLoading: isLoadingLeads } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
@@ -256,7 +258,7 @@ export default function CRMEnhanced() {
   const getSalesPipelineMetrics = () => {
     if (!leads) return { totalValue: 0, conversionRate: 0, activeLeads: 0 };
     
-    const totalValue = leads.reduce((sum, lead) => sum + parseFloat(lead.estimatedValue || '0'), 0);
+    const totalValue = leads.reduce((sum, lead) => sum + parseFloat(lead.estimated_value || '0'), 0);
     const totalLeads = leads.length;
     const closedWon = leads.filter(lead => lead.status === 'closed_won').length;
     const conversionRate = totalLeads > 0 ? (closedWon / totalLeads) * 100 : 0;
@@ -639,7 +641,7 @@ export default function CRMEnhanced() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-lg">{lead.companyName}</CardTitle>
+                        <CardTitle className="text-lg">{lead.company_name}</CardTitle>
                         <Badge className={`${getStatusColor(lead.status)} border-0`}>
                           <span className="flex items-center gap-1">
                             {getStatusIcon(lead.status)}
@@ -648,14 +650,14 @@ export default function CRMEnhanced() {
                         </Badge>
                       </div>
                       <CardDescription>
-                        {lead.contactName} • {lead.source}
+                        {lead.contact_name} • {lead.source}
                       </CardDescription>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-semibold">${parseFloat(lead.estimatedValue || '0').toLocaleString()}</div>
-                      {lead.estimatedCloseDate && (
+                      <div className="text-lg font-semibold">${parseFloat(lead.estimated_value || '0').toLocaleString()}</div>
+                      {lead.estimated_close_date && (
                         <div className="text-sm text-gray-500">
-                          Close: {format(new Date(lead.estimatedCloseDate), 'MMM dd')}
+                          Close: {format(new Date(lead.estimated_close_date), 'MMM dd')}
                         </div>
                       )}
                     </div>
@@ -676,16 +678,16 @@ export default function CRMEnhanced() {
                           <span>{lead.phone}</span>
                         </div>
                       )}
-                      {lead.lastContactDate && (
+                      {lead.last_contact_date && (
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-gray-400" />
-                          <span>Last contact: {format(new Date(lead.lastContactDate), 'MMM dd')}</span>
+                          <span>Last contact: {format(new Date(lead.last_contact_date), 'MMM dd')}</span>
                         </div>
                       )}
-                      {lead.nextFollowUpDate && (
+                      {lead.next_follow_up_date && (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>Follow up: {format(new Date(lead.nextFollowUpDate), 'MMM dd')}</span>
+                          <span>Follow up: {format(new Date(lead.next_follow_up_date), 'MMM dd')}</span>
                         </div>
                       )}
                     </div>
@@ -725,7 +727,11 @@ export default function CRMEnhanced() {
                           Email
                         </Button>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setLocation(`/leads/${lead.id}`)}
+                      >
                         View Details
                       </Button>
                     </div>

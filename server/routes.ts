@@ -7,6 +7,8 @@ import { authRoutes } from "./auth-routes";
 import {
   insertCustomerSchema,
   insertLeadSchema,
+  insertLeadActivitySchema,
+  insertLeadContactSchema,
   insertQuoteSchema,
   insertEquipmentSchema,
   insertContractSchema,
@@ -144,6 +146,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating customer:", error);
       res.status(500).json({ message: "Failed to create customer" });
+    }
+  });
+
+  // Enhanced Lead management routes
+  app.get('/api/leads', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const leads = await storage.getLeads(tenantId);
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+
+  app.get('/api/leads/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const lead = await storage.getLead(id, tenantId);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      res.json(lead);
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+      res.status(500).json({ message: "Failed to fetch lead" });
+    }
+  });
+
+  app.post('/api/leads', async (req: any, res) => {
+    try {
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const validatedData = insertLeadSchema.parse({
+        ...req.body,
+        tenantId: tenantId,
+        createdBy: "demo-user"
+      });
+      const lead = await storage.createLead(validatedData);
+      res.json(lead);
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  app.put('/api/leads/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const updatedLead = await storage.updateLead(id, req.body, tenantId);
+      if (!updatedLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      res.json(updatedLead);
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      res.status(500).json({ message: "Failed to update lead" });
+    }
+  });
+
+  // Convert lead to customer
+  app.post('/api/leads/:id/convert', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const customer = await storage.convertLeadToCustomer(id, tenantId);
+      res.json(customer);
+    } catch (error) {
+      console.error("Error converting lead:", error);
+      res.status(500).json({ message: "Failed to convert lead to customer" });
+    }
+  });
+
+  // Lead activities
+  app.get('/api/leads/:id/activities', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const activities = await storage.getLeadActivities(id, tenantId);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching lead activities:", error);
+      res.status(500).json({ message: "Failed to fetch lead activities" });
+    }
+  });
+
+  app.post('/api/leads/:id/activities', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const activityData = { 
+        ...req.body, 
+        leadId: id, 
+        tenantId, 
+        createdBy: "demo-user"
+      };
+      const activity = await storage.createLeadActivity(activityData);
+      res.json(activity);
+    } catch (error) {
+      console.error("Error creating lead activity:", error);
+      res.status(500).json({ message: "Failed to create lead activity" });
+    }
+  });
+
+  // Lead contacts
+  app.get('/api/leads/:id/contacts', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const contacts = await storage.getLeadContacts(id, tenantId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching lead contacts:", error);
+      res.status(500).json({ message: "Failed to fetch lead contacts" });
+    }
+  });
+
+  app.post('/api/leads/:id/contacts', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const contactData = { 
+        ...req.body, 
+        leadId: id, 
+        tenantId
+      };
+      const contact = await storage.createLeadContact(contactData);
+      res.json(contact);
+    } catch (error) {
+      console.error("Error creating lead contact:", error);
+      res.status(500).json({ message: "Failed to create lead contact" });
+    }
+  });
+
+  // Lead related records
+  app.get('/api/leads/:id/related-records', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const records = await storage.getLeadRelatedRecords(id, tenantId);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching lead related records:", error);
+      res.status(500).json({ message: "Failed to fetch lead related records" });
     }
   });
 
