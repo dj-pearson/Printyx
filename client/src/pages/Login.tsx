@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Printer } from "lucide-react";
 
 const loginSchema = z.object({
@@ -87,8 +87,11 @@ export default function Login() {
         title: "Login successful",
         description: `Welcome back, ${data.user.firstName || data.user.email}!`,
       });
-      // Reload to trigger auth state update
-      window.location.href = "/";
+      // Invalidate auth query and reload
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
     },
     onError: (error: any) => {
       toast({
