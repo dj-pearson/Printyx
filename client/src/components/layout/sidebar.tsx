@@ -22,7 +22,13 @@ import {
   PieChart,
   Building2,
   ChevronDown,
-  Zap
+  ChevronRight,
+  Zap,
+  ShoppingCart,
+  Warehouse,
+  Truck,
+  Camera,
+  MapPin
 } from "lucide-react";
 import {
   Select,
@@ -79,7 +85,20 @@ function getNavigationSections(userRole: any) {
       name: 'Service',
       items: [
         { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
-        { name: 'Equipment Lifecycle', href: '/equipment-lifecycle', icon: Package },
+        { 
+          name: 'Equipment Lifecycle', 
+          href: '/equipment-lifecycle', 
+          icon: Package,
+          isExpandable: true,
+          subItems: [
+            { name: 'Purchase Orders', href: '/equipment/procurement', icon: ShoppingCart },
+            { name: 'Warehouse Operations', href: '/equipment/warehouse', icon: Warehouse },
+            { name: 'Delivery Logistics', href: '/equipment/delivery', icon: Truck },
+            { name: 'Installation Management', href: '/equipment/installation', icon: Wrench },
+            { name: 'Documentation & Compliance', href: '/equipment/documentation', icon: Camera },
+            { name: 'Asset Tracking', href: '/equipment/tracking', icon: MapPin },
+          ]
+        },
         { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
         { name: 'Service Reports', href: '/service-reports', icon: ClipboardList },
       ]
@@ -103,7 +122,20 @@ function getNavigationSections(userRole: any) {
     sections.push({
       name: 'Admin',
       items: [
-        { name: 'Product Management', href: '/product-hub', icon: Package },
+        { 
+          name: 'Product Management', 
+          href: '/product-hub', 
+          icon: Package,
+          isExpandable: true,
+          subItems: [
+            { name: 'Product Models', href: '/admin/product-models', icon: Printer },
+            { name: 'Product Accessories', href: '/admin/product-accessories', icon: Package },
+            { name: 'Professional Services', href: '/admin/professional-services', icon: Users },
+            { name: 'Service Products', href: '/admin/service-products', icon: Settings },
+            { name: 'Supplies', href: '/admin/supplies', icon: Package },
+            { name: 'IT & Managed Services', href: '/admin/it-services', icon: Shield },
+          ]
+        },
         { name: 'Inventory', href: '/inventory', icon: Package },
         { name: 'Contracts', href: '/contracts', icon: FileText },
         { name: 'User Management', href: '/user-management', icon: UserCog },
@@ -130,6 +162,7 @@ export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   // Check if user is a platform role
   const isPlatformRole = user?.role?.canAccessAllTenants === true;
@@ -152,6 +185,17 @@ export default function Sidebar() {
     setSelectedTenantId(tenantId);
     // Store selected tenant in localStorage for persistence
     localStorage.setItem('selectedTenantId', tenantId);
+  };
+
+  // Handle section expansion
+  const toggleSection = (sectionName: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(sectionName)) {
+      newExpanded.delete(sectionName);
+    } else {
+      newExpanded.add(sectionName);
+    }
+    setExpandedSections(newExpanded);
   };
 
   // Load saved tenant selection on mount
@@ -221,7 +265,71 @@ export default function Sidebar() {
             <div className="space-y-1">
               {section.items.map((item) => {
                 const isActive = location === item.href;
+                const isExpanded = expandedSections.has(item.name);
                 const Icon = item.icon;
+                
+                if (item.isExpandable) {
+                  return (
+                    <div key={item.name}>
+                      <button
+                        onClick={() => toggleSection(item.name)}
+                        className={cn(
+                          "flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                          isActive || (item.subItems && item.subItems.some(sub => location === sub.href))
+                            ? "text-primary bg-primary/10"
+                            : "text-gray-700 hover:bg-gray-100"
+                        )}
+                      >
+                        <div className="flex items-center">
+                          <Icon className="w-4 h-4 mr-3" />
+                          {item.name}
+                        </div>
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </button>
+                      
+                      {isExpanded && item.subItems && (
+                        <div className="ml-4 mt-1 space-y-1">
+                          <Link href={item.href}>
+                            <div
+                              className={cn(
+                                "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                                isActive
+                                  ? "text-primary bg-primary/10"
+                                  : "text-gray-700 hover:bg-gray-100"
+                              )}
+                            >
+                              <Icon className="w-4 h-4 mr-3" />
+                              Overview
+                            </div>
+                          </Link>
+                          {item.subItems.map((subItem) => {
+                            const isSubActive = location === subItem.href;
+                            const SubIcon = subItem.icon;
+                            return (
+                              <Link key={subItem.name} href={subItem.href}>
+                                <div
+                                  className={cn(
+                                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                                    isSubActive
+                                      ? "text-primary bg-primary/10"
+                                      : "text-gray-700 hover:bg-gray-100"
+                                  )}
+                                >
+                                  <SubIcon className="w-4 h-4 mr-3" />
+                                  {subItem.name}
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
                 
                 return (
                   <Link key={item.name} href={item.href}>
