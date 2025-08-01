@@ -78,7 +78,20 @@ export default function Header() {
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => window.location.href = '/api/auth/logout'}>
+              <DropdownMenuItem onClick={async () => {
+                try {
+                  const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                  });
+                  if (response.ok) {
+                    window.location.href = '/';
+                  }
+                } catch (error) {
+                  console.error('Logout error:', error);
+                  window.location.href = '/';
+                }
+              }}>
                 <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
