@@ -61,17 +61,28 @@ import {
 } from "./routes-pricing";
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 
-// Basic authentication middleware
+// Basic authentication middleware - Updated to work with current auth system
 const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.session?.userId) {
+  // Check for session-based auth (legacy) or user object (current)
+  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  
+  if (!isAuthenticated) {
     return res.status(401).json({ message: "Authentication required" });
   }
   
   // Add user context for backwards compatibility
-  req.user = {
-    id: req.session.userId,
-    tenantId: req.session.tenantId || "550e8400-e29b-41d4-a716-446655440000" // Default tenant for now
-  };
+  if (!req.user) {
+    req.user = {
+      id: req.session.userId,
+      tenantId: req.session.tenantId || "550e8400-e29b-41d4-a716-446655440000"
+    };
+  } else if (!req.user.tenantId && !req.user.id) {
+    // If we have user claims but no structured user object, build it
+    req.user = {
+      id: req.user.claims?.sub || req.user.id,
+      tenantId: req.user.tenantId || req.session?.tenantId || "550e8400-e29b-41d4-a716-446655440000"
+    };
+  }
   
   next();
 };
@@ -2031,9 +2042,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal Management Routes
   
   // Get all deals with optional filtering
-  app.get("/api/deals", requireAuth, async (req: any, res) => {
+  app.get("/api/deals", async (req: any, res) => {
+    // Simple session-based authentication check
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user?.tenantId) {
+      return res.status(403).json({ message: "Access denied" });
+    }
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = user.tenantId;
       const { stageId, search } = req.query;
       
       const deals = await storage.getDeals(tenantId, stageId, search);
@@ -2045,9 +2065,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single deal
-  app.get("/api/deals/:id", requireAuth, async (req: any, res) => {
+  app.get("/api/deals/:id", async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const tenantId = user.tenantId;
       const dealId = req.params.id;
       
       const deal = await storage.getDeal(dealId, tenantId);
@@ -2063,10 +2093,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new deal
-  app.post("/api/deals", requireAuth, async (req: any, res) => {
+  app.post("/api/deals", async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
-      const userId = req.user.id;
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const tenantId = user.tenantId;
+      const userId = user.id;
       
       // Get the first available stage as default
       const stages = await storage.getDealStages(tenantId);
