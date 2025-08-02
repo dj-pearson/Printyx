@@ -2493,6 +2493,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/user/export', requireAuth, exportUserData);
   app.delete('/api/user/delete', requireAuth, deleteUserAccount);
 
+  // Customer detail routes - for comprehensive customer information
+  app.get("/api/customers/:id/equipment", requireAuth, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const equipment = await storage.getCustomerEquipment(req.params.id, req.tenantId);
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error fetching customer equipment:", error);
+      res.status(500).json({ message: "Failed to fetch customer equipment" });
+    }
+  });
+
+  app.get("/api/customers/:id/meter-readings", requireAuth, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const meterReadings = await storage.getCustomerMeterReadings(req.params.id, req.tenantId);
+      res.json(meterReadings);
+    } catch (error) {
+      console.error("Error fetching customer meter readings:", error);
+      res.status(500).json({ message: "Failed to fetch customer meter readings" });
+    }
+  });
+
+  app.get("/api/customers/:id/invoices", requireAuth, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const invoices = await storage.getCustomerInvoices(req.params.id, req.tenantId);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching customer invoices:", error);
+      res.status(500).json({ message: "Failed to fetch customer invoices" });
+    }
+  });
+
+  app.get("/api/customers/:id/service-tickets", requireAuth, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const serviceTickets = await storage.getCustomerServiceTickets(req.params.id, req.tenantId);
+      res.json(serviceTickets);
+    } catch (error) {
+      console.error("Error fetching customer service tickets:", error);
+      res.status(500).json({ message: "Failed to fetch customer service tickets" });
+    }
+  });
+
+  app.get("/api/customers/:id/contracts", requireAuth, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const contracts = await storage.getCustomerContracts(req.params.id, req.tenantId);
+      res.json(contracts);
+    } catch (error) {
+      console.error("Error fetching customer contracts:", error);
+      res.status(500).json({ message: "Failed to fetch customer contracts" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

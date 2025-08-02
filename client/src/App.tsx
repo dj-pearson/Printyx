@@ -51,6 +51,7 @@ import MobileFieldService from "@/pages/MobileFieldService";
 import ProductManagementHub from "@/pages/ProductManagementHub";
 import PricingManagement from "@/pages/PricingManagement";
 import Contacts from "@/pages/Contacts";
+import CustomerDetail from "@/pages/CustomerDetail";
 import TenantSetup from "@/pages/TenantSetup";
 import Settings from "@/pages/Settings";
 
@@ -76,6 +77,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
+          <Route path="/customers/:id" component={CustomerDetail} />
           <Route path="/crm" component={CRMEnhanced} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
