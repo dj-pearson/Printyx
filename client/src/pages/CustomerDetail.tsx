@@ -1,17 +1,141 @@
+import { useState } from "react";
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ArrowLeft, Edit, Plus, Phone, Mail, MapPin, Building2, User, Eye, FileText, Users, StickyNote,
-  PhoneCall, Video, Clock, MoreHorizontal, Calendar
+  PhoneCall, Video, Clock, MoreHorizontal, Calendar, Save, X, MessageSquare
 } from "lucide-react";
 import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CustomerDetail() {
   const { id } = useParams();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Dialog states - copied from Lead record
+  const [dialogs, setDialogs] = useState({
+    note: false,
+    email: false,
+    call: false,
+    meeting: false,
+    task: false,
+    contact: false,
+    viewServiceTickets: false,
+    viewInvoices: false,
+    viewContacts: false,
+    viewNotes: false
+  });
+  
+  // Form states for each activity type - copied from Lead record
+  const [activityForms, setActivityForms] = useState({
+    note: { content: '' },
+    email: { 
+      contacted: '',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      content: '',
+      createFollowUp: true,
+      followUpDays: 3
+    },
+    call: {
+      contacted: '0 contacts',
+      outcome: 'Connected',
+      direction: 'Outbound',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      content: '',
+      createFollowUp: true,
+      followUpDays: 3
+    },
+    meeting: {
+      attendees: '',
+      outcome: 'Scheduled',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      duration: '15 Minutes',
+      content: '',
+      createFollowUp: true,
+      followUpDays: 3
+    },
+    task: {
+      taskType: 'To-do',
+      title: '',
+      dueDate: new Date().toISOString().split('T')[0],
+      priority: 'Medium',
+      assignedTo: 'Me',
+      content: ''
+    },
+    contact: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      jobTitle: '',
+      isPrimary: false
+    }
+  });
+
+  // Activity mutation handlers - adapted from Lead record
+  const activityMutation = useMutation({
+    mutationFn: async ({ type, data }: { type: string, data: any }) => {
+      return await apiRequest('POST', `/api/customers/${id}/activities`, { type, ...data });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Activity logged successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${id}/activities`] });
+      // Reset form and close dialog
+      setDialogs(prev => ({ ...prev, [activityForms]: false }));
+    },
+    onError: (error) => {
+      console.error('Activity error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log activity. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle activity form submission
+  const handleActivitySubmit = (type: string) => {
+    const formData = activityForms[type as keyof typeof activityForms];
+    activityMutation.mutate({ type, data: formData });
+  };
+
+  // Handle form field changes
+  const handleFormChange = (type: string, field: string, value: any) => {
+    setActivityForms(prev => ({
+      ...prev,
+      [type]: {
+        ...prev[type as keyof typeof prev],
+        [field]: value
+      }
+    }));
+  };
+
+  // Dialog helper functions
+  const openDialog = (type: string) => {
+    setDialogs(prev => ({ ...prev, [type]: true }));
+  };
+
+  const closeDialog = (type: string) => {
+    setDialogs(prev => ({ ...prev, [type]: false }));
+  };
 
   // Fetch customer data
   const { data: customer, isLoading: customerLoading } = useQuery({
@@ -124,33 +248,6 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      {/* Action Buttons Row - matches Lead layout exactly */}
-      <div className="flex items-center justify-center gap-2 bg-gray-50 py-4 rounded-lg mb-6">
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <StickyNote className="h-4 w-4" />
-          Note
-        </Button>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <Mail className="h-4 w-4" />
-          Email
-        </Button>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <PhoneCall className="h-4 w-4" />
-          Call
-        </Button>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <Video className="h-4 w-4" />
-          Meeting
-        </Button>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          Task
-        </Button>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <MoreHorizontal className="h-4 w-4" />
-          More
-        </Button>
-      </div>
 
       <div className="grid grid-cols-4 gap-6">
         {/* Main Content - Left Side (3 columns on large screens) */}
@@ -213,27 +310,27 @@ export default function CustomerDetail() {
 
               {/* Action Buttons - matches Lead layout */}
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => openDialog('note')}>
                   <StickyNote className="h-4 w-4 mr-2" />
                   Note
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => openDialog('email')}>
                   <Mail className="h-4 w-4 mr-2" />
                   Email
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => openDialog('call')}>
                   <Phone className="h-4 w-4 mr-2" />
                   Call
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={() => openDialog('meeting')}>
+                  <Video className="h-4 w-4 mr-2" />
                   Meeting
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={() => openDialog('task')}>
+                  <Clock className="h-4 w-4 mr-2" />
                   Task
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => openDialog('contact')}>
                   <Plus className="h-4 w-4 mr-2" />
                   More
                 </Button>
@@ -450,6 +547,404 @@ export default function CustomerDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Note Dialog */}
+      <Dialog open={dialogs.note} onOpenChange={(open) => setDialogs(prev => ({ ...prev, note: open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Note</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="note-content">Note</Label>
+              <Textarea
+                id="note-content"
+                placeholder="Add your note here..."
+                value={activityForms.note.content}
+                onChange={(e) => handleFormChange('note', 'content', e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => closeDialog('note')}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleActivitySubmit('note')}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Note
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Dialog */}
+      <Dialog open={dialogs.email} onOpenChange={(open) => setDialogs(prev => ({ ...prev, email: open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Log Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="email-contacted">Contacted</Label>
+              <Input
+                id="email-contacted"
+                value={activityForms.email.contacted}
+                onChange={(e) => handleFormChange('email', 'contacted', e.target.value)}
+                placeholder="Who was contacted?"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="email-date">Date</Label>
+                <Input
+                  id="email-date"
+                  type="date"
+                  value={activityForms.email.date}
+                  onChange={(e) => handleFormChange('email', 'date', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="email-time">Time</Label>
+                <Input
+                  id="email-time"
+                  type="time"
+                  value={activityForms.email.time}
+                  onChange={(e) => handleFormChange('email', 'time', e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="email-content">Email Content</Label>
+              <Textarea
+                id="email-content"
+                placeholder="What was discussed?"
+                value={activityForms.email.content}
+                onChange={(e) => handleFormChange('email', 'content', e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="email-followup"
+                checked={activityForms.email.createFollowUp}
+                onCheckedChange={(checked) => handleFormChange('email', 'createFollowUp', checked)}
+              />
+              <Label htmlFor="email-followup">Create follow-up task</Label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => closeDialog('email')}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleActivitySubmit('email')}>
+                <Save className="h-4 w-4 mr-2" />
+                Log Email
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Call Dialog */}
+      <Dialog open={dialogs.call} onOpenChange={(open) => setDialogs(prev => ({ ...prev, call: open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Log Call</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="call-contacted">Contacted</Label>
+              <Input
+                id="call-contacted"
+                value={activityForms.call.contacted}
+                onChange={(e) => handleFormChange('call', 'contacted', e.target.value)}
+                placeholder="Who was contacted?"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Outcome</Label>
+                <Select
+                  value={activityForms.call.outcome}
+                  onValueChange={(value) => handleFormChange('call', 'outcome', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Connected">Connected</SelectItem>
+                    <SelectItem value="Left voicemail">Left voicemail</SelectItem>
+                    <SelectItem value="No answer">No answer</SelectItem>
+                    <SelectItem value="Busy">Busy</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Direction</Label>
+                <Select
+                  value={activityForms.call.direction}
+                  onValueChange={(value) => handleFormChange('call', 'direction', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Outbound">Outbound</SelectItem>
+                    <SelectItem value="Inbound">Inbound</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="call-date">Date</Label>
+                <Input
+                  id="call-date"
+                  type="date"
+                  value={activityForms.call.date}
+                  onChange={(e) => handleFormChange('call', 'date', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="call-time">Time</Label>
+                <Input
+                  id="call-time"
+                  type="time"
+                  value={activityForms.call.time}
+                  onChange={(e) => handleFormChange('call', 'time', e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="call-content">Call Notes</Label>
+              <Textarea
+                id="call-content"
+                placeholder="What was discussed?"
+                value={activityForms.call.content}
+                onChange={(e) => handleFormChange('call', 'content', e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="call-followup"
+                checked={activityForms.call.createFollowUp}
+                onCheckedChange={(checked) => handleFormChange('call', 'createFollowUp', checked)}
+              />
+              <Label htmlFor="call-followup">Create follow-up task</Label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => closeDialog('call')}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleActivitySubmit('call')}>
+                <Save className="h-4 w-4 mr-2" />
+                Log Call
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meeting Dialog */}
+      <Dialog open={dialogs.meeting} onOpenChange={(open) => setDialogs(prev => ({ ...prev, meeting: open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Log Meeting</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="meeting-attendees">Attendees</Label>
+              <Input
+                id="meeting-attendees"
+                value={activityForms.meeting.attendees}
+                onChange={(e) => handleFormChange('meeting', 'attendees', e.target.value)}
+                placeholder="Who attended the meeting?"
+              />
+            </div>
+            <div>
+              <Label>Outcome</Label>
+              <Select
+                value={activityForms.meeting.outcome}
+                onValueChange={(value) => handleFormChange('meeting', 'outcome', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Scheduled">Scheduled</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Rescheduled">Rescheduled</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="meeting-date">Date</Label>
+                <Input
+                  id="meeting-date"
+                  type="date"
+                  value={activityForms.meeting.date}
+                  onChange={(e) => handleFormChange('meeting', 'date', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="meeting-time">Time</Label>
+                <Input
+                  id="meeting-time"
+                  type="time"
+                  value={activityForms.meeting.time}
+                  onChange={(e) => handleFormChange('meeting', 'time', e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Duration</Label>
+              <Select
+                value={activityForms.meeting.duration}
+                onValueChange={(value) => handleFormChange('meeting', 'duration', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15 Minutes">15 Minutes</SelectItem>
+                  <SelectItem value="30 Minutes">30 Minutes</SelectItem>
+                  <SelectItem value="1 Hour">1 Hour</SelectItem>
+                  <SelectItem value="2 Hours">2 Hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="meeting-content">Meeting Notes</Label>
+              <Textarea
+                id="meeting-content"
+                placeholder="What was discussed?"
+                value={activityForms.meeting.content}
+                onChange={(e) => handleFormChange('meeting', 'content', e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="meeting-followup"
+                checked={activityForms.meeting.createFollowUp}
+                onCheckedChange={(checked) => handleFormChange('meeting', 'createFollowUp', checked)}
+              />
+              <Label htmlFor="meeting-followup">Create follow-up task</Label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => closeDialog('meeting')}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleActivitySubmit('meeting')}>
+                <Save className="h-4 w-4 mr-2" />
+                Log Meeting
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Dialog */}
+      <Dialog open={dialogs.task} onOpenChange={(open) => setDialogs(prev => ({ ...prev, task: open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Task Type</Label>
+              <Select
+                value={activityForms.task.taskType}
+                onValueChange={(value) => handleFormChange('task', 'taskType', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="To-do">To-do</SelectItem>
+                  <SelectItem value="Follow-up">Follow-up</SelectItem>
+                  <SelectItem value="Call">Call</SelectItem>
+                  <SelectItem value="Email">Email</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="task-title">Title</Label>
+              <Input
+                id="task-title"
+                value={activityForms.task.title}
+                onChange={(e) => handleFormChange('task', 'title', e.target.value)}
+                placeholder="Task title"
+              />
+            </div>
+            <div>
+              <Label htmlFor="task-due-date">Due Date</Label>
+              <Input
+                id="task-due-date"
+                type="date"
+                value={activityForms.task.dueDate}
+                onChange={(e) => handleFormChange('task', 'dueDate', e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Priority</Label>
+                <Select
+                  value={activityForms.task.priority}
+                  onValueChange={(value) => handleFormChange('task', 'priority', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Assigned To</Label>
+                <Select
+                  value={activityForms.task.assignedTo}
+                  onValueChange={(value) => handleFormChange('task', 'assignedTo', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Me">Me</SelectItem>
+                    <SelectItem value="Manager">Manager</SelectItem>
+                    <SelectItem value="Team">Team</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="task-content">Description</Label>
+              <Textarea
+                id="task-content"
+                placeholder="Task description..."
+                value={activityForms.task.content}
+                onChange={(e) => handleFormChange('task', 'content', e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => closeDialog('task')}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleActivitySubmit('task')}>
+                <Save className="h-4 w-4 mr-2" />
+                Create Task
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
