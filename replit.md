@@ -28,7 +28,7 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM for type-safe database operations and migrations.
 - **Schema Design**: Multi-tenant architecture with tenant isolation and comprehensive role-based access control.
 - **RBAC Implementation**: Comprehensive role hierarchy with department-based permissions.
-- **Key Entities**: Users, Roles, Tenants, Customers, Equipment, Contracts, Service Tickets, Leads, Inventory Items, Technicians, Meter Readings, Invoices, Tasks, Projects.
+- **Key Entities**: Users, Roles, Tenants, Customers, Equipment, Contracts, Service Tickets, Leads, Inventory Items, Technicians, Meter Readings, Invoices, Tasks, Projects, Service Call Analysis, Parts Orders, Warehouse Operations.
 
 ### Multi-Tenancy & Role-Based Access Control
 - **Tenant Isolation**: Row-level security with `tenantId` filtering across all business entities.
@@ -62,6 +62,7 @@ Preferred communication style: Simple, everyday language.
 - **Workflow Automation System**: Automated workflow rule engine with trigger-based actions and template creation.
 - **System Integrations Dashboard**: Management for third-party integrations with device manufacturers, accounting systems, and CRM platforms.
 - **Deployment Readiness System**: Monitoring for go-live preparation across infrastructure, security, testing, documentation, and business readiness.
+- **Enhanced Service Dispatch System**: Comprehensive service call analysis with outcome assessment, detailed ticket analysis, customer satisfaction tracking, labor cost calculation, and integrated parts ordering workflow with vendor management and delivery tracking.
 
 ### UI/UX Decisions
 - Consistent navigation layout across all modules.

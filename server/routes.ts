@@ -41,6 +41,7 @@ import { registerIntegrationRoutes } from "./routes-integrations";
 import { registerTaskRoutes } from "./routes-tasks";
 import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
 import { registerWarehouseRoutes } from "./routes-warehouse";
+import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -2296,6 +2297,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register warehouse routes
   registerWarehouseRoutes(app);
+
+  // Register service analysis routes
+  registerServiceAnalysisRoutes(app);
 
   // Performance monitoring routes
   app.get('/api/performance/metrics', requireAuth, async (req: any, res) => {

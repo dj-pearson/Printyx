@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
+import ServiceTicketAnalysis from "@/components/service/ServiceTicketAnalysis";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,10 @@ import {
   Phone,
   Settings,
   TrendingUp,
-  UserCheck
+  UserCheck,
+  Clipboard,
+  Package,
+  FileText
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +48,8 @@ export default function ServiceDispatchEnhanced() {
   const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
+  const [analysisTicket, setAnalysisTicket] = useState<ServiceTicket | null>(null);
   const queryClient = useQueryClient();
 
   const { data: tickets, isLoading: isLoadingTickets } = useQuery<ServiceTicket[]>({
@@ -498,10 +504,23 @@ export default function ServiceDispatchEnhanced() {
                       </Button>
                     )}
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Settings className="w-4 h-4 mr-1" />
-                    Details
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setAnalysisTicket(ticket);
+                        setShowAnalysisDialog(true);
+                      }}
+                    >
+                      <Clipboard className="w-4 h-4 mr-1" />
+                      Analysis
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Settings className="w-4 h-4 mr-1" />
+                      Details
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -522,6 +541,18 @@ export default function ServiceDispatchEnhanced() {
           </Card>
         )}
         </div>
+
+        {/* Service Ticket Analysis Dialog */}
+        {analysisTicket && (
+          <ServiceTicketAnalysis
+            ticket={analysisTicket}
+            isOpen={showAnalysisDialog}
+            onClose={() => {
+              setShowAnalysisDialog(false);
+              setAnalysisTicket(null);
+            }}
+          />
+        )}
       </div>
     </MainLayout>
   );

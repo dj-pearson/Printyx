@@ -31,6 +31,32 @@ export {
   insertTechnicianCertificationSchema,
 } from "./equipment-schema";
 
+// Re-export service analysis schemas
+export {
+  serviceCallAnalysis,
+  servicePartsUsed,
+  partsOrders,
+  partsOrderItems,
+  serviceOutcomeEnum,
+  partsOrderStatusEnum,
+  analysisTypeEnum,
+  insertServiceCallAnalysisSchema,
+  insertServicePartsUsedSchema,
+  insertPartsOrderSchema,
+  insertPartsOrderItemSchema,
+} from "./service-analysis-schema";
+
+export type {
+  ServiceCallAnalysis,
+  ServicePartsUsed,
+  PartsOrder,
+  PartsOrderItem,
+  InsertServiceCallAnalysis,
+  InsertServicePartsUsed,
+  InsertPartsOrder,
+  InsertPartsOrderItem,
+} from "./service-analysis-schema";
+
 // Session storage table - required for Replit Auth
 export const sessions = pgTable(
   "sessions",
