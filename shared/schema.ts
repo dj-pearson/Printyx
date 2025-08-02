@@ -105,10 +105,10 @@ export const roleTypeEnum = pgEnum('role_type', [
 // Role-based access control tables with multi-location hierarchy
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 50 }).notNull(), // e.g., "Root Admin", "CEO", "Regional Manager", "Location Manager", "Sales Rep"
-  code: varchar("code", { length: 30 }).notNull().unique(), // e.g., "ROOT_ADMIN", "CEO", "REGIONAL_MGR", "LOC_MGR"
+  name: varchar("name", { length: 50 }).notNull(), // e.g., "Root Admin", "CEO", "Regional Manager", "Business Analyst", "Sales Rep"
+  code: varchar("code", { length: 30 }).notNull().unique(), // e.g., "ROOT_ADMIN", "CEO", "REGIONAL_MGR", "BUSINESS_ANALYST", "SALES_REP"
   roleType: roleTypeEnum("role_type").notNull().default('department_role'),
-  department: varchar("department", { length: 30 }).notNull(), // e.g., "platform", "sales", "service", "admin", "finance"
+  department: varchar("department", { length: 30 }).notNull(), // e.g., "platform", "sales", "service", "admin", "finance", "hr", "it", "training", "compliance", "quality"
   level: integer("level").notNull().default(1), // 1=individual, 2=team_lead, 3=supervisor, 4=manager, 5=director, 6=regional_manager, 7=company_admin, 8=platform_admin
   description: varchar("description", { length: 255 }),
   permissions: jsonb("permissions").notNull().default('{}'), // JSON object with module permissions
@@ -132,6 +132,16 @@ export const roles = pgTable("roles", {
   canManageLocationUsers: boolean("can_manage_location_users").default(false), // For location managers
   canViewLocationReports: boolean("can_view_location_reports").default(false), // For location managers
   canApproveLocationDeals: boolean("can_approve_location_deals").default(false), // For location managers
+  
+  // Specialized function permissions
+  canManageCompliance: boolean("can_manage_compliance").default(false), // For compliance officers
+  canManageTraining: boolean("can_manage_training").default(false), // For training managers
+  canManageHR: boolean("can_manage_hr").default(false), // For HR roles
+  canManageIT: boolean("can_manage_it").default(false), // For IT administrators
+  canViewAnalytics: boolean("can_view_analytics").default(false), // For business analysts
+  canManageQuality: boolean("can_manage_quality").default(false), // For QA managers
+  canAccessAuditLogs: boolean("can_access_audit_logs").default(false), // For compliance and security roles
+  canManageIntegrations: boolean("can_manage_integrations").default(false), // For IT and system integration roles
   
   // General permissions
   canManageUsers: boolean("can_manage_users").default(false), // For admin-level roles (deprecated in favor of specific scope)
