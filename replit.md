@@ -65,6 +65,7 @@ Preferred communication style: Simple, everyday language.
 - **Service Dispatch**: Smart technician assignment, skills-based routing, work order optimization.
 - **CRM System**: Lead pipeline management, quote generation, customer interaction and equipment tracking.
 - **Unified Business Records System**: Revolutionary zero-data-loss lead-to-customer conversion with unified businessRecords table supporting complete lifecycle management (new → contacted → qualified → active → inactive/churned/competitor_switch/non_payment) eliminating data duplication and ensuring seamless conversion workflow.
+- **Dual-Platform Integration System**: Complete E-Automate compatibility (90% of dealers) with comprehensive Salesforce integration capability, featuring 140+ field mappings across accounts, contacts, opportunities, and activities with isolated field mapping architecture preventing data conflicts.
 - **Product Management System**: Seven-category product catalog including Models, Accessories, Services, Supplies, and IT/Managed Services, consolidated into a unified Product Management Hub.
 - **Task Management System**: Personal and multi-step project tracking with time tracking and collaboration features.
 - **Equipment Lifecycle Management**: Comprehensive workflow for purchase orders, warehouse operations, delivery, installation, documentation, and asset tracking.

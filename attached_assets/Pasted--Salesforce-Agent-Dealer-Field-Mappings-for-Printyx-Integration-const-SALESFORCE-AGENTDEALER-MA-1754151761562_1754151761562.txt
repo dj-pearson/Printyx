@@ -1,0 +1,583 @@
+// Salesforce Agent Dealer Field Mappings for Printyx Integration
+
+const SALESFORCE_AGENTDEALER_MAPPINGS = {
+ // Account (Customer/Company) Object
+ 'Account': {
+   table_name: 'customers',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_customer_id',
+     'Name': 'company_name',
+     'AccountNumber': 'customer_number',
+     'Type': 'account_type', // Customer, Prospect, Partner
+     'Industry': 'industry',
+     'NumberOfEmployees': 'employee_count',
+     'AnnualRevenue': 'annual_revenue',
+     'Rating': 'customer_rating', // Hot, Warm, Cold
+     'BillingStreet': 'billing_address_line_1',
+     'BillingCity': 'billing_city',
+     'BillingState': 'billing_state',
+     'BillingPostalCode': 'billing_zip_code',
+     'BillingCountry': 'billing_country',
+     'ShippingStreet': 'shipping_address_line_1',
+     'ShippingCity': 'shipping_city',
+     'ShippingState': 'shipping_state',
+     'ShippingPostalCode': 'shipping_zip_code',
+     'ShippingCountry': 'shipping_country',
+     'Phone': 'main_phone',
+     'Fax': 'fax',
+     'Website': 'website',
+     'OwnerId': 'assigned_sales_rep_id',
+     'ParentId': 'parent_account_id',
+     'CustomerPriority__c': 'customer_priority', // High, Medium, Low
+     'SLA__c': 'sla_level',
+     'Active__c': 'is_active',
+     'UpsellOpportunity__c': 'upsell_opportunity',
+     'Description': 'account_notes',
+     'Territory__c': 'territory',
+     'PaymentTerms__c': 'payment_terms',
+     'CreditLimit__c': 'credit_limit',
+     'TaxExempt__c': 'tax_exempt',
+     'TaxID__c': 'tax_id',
+     'PreferredContactMethod__c': 'preferred_contact_method',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified',
+     'LastActivityDate': 'last_activity_date'
+   }
+ },
+
+ // Contact (Person) Object
+ 'Contact': {
+   table_name: 'contacts',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_contact_id',
+     'AccountId': 'external_customer_id',
+     'FirstName': 'first_name',
+     'LastName': 'last_name',
+     'Name': 'full_name',
+     'Title': 'job_title',
+     'Department': 'department',
+     'Email': 'email',
+     'Phone': 'work_phone',
+     'MobilePhone': 'mobile_phone',
+     'HomePhone': 'home_phone',
+     'OtherPhone': 'other_phone',
+     'Fax': 'fax',
+     'MailingStreet': 'mailing_address_line_1',
+     'MailingCity': 'mailing_city',
+     'MailingState': 'mailing_state',
+     'MailingPostalCode': 'mailing_zip_code',
+     'MailingCountry': 'mailing_country',
+     'OwnerId': 'assigned_rep_id',
+     'ReportsToId': 'reports_to_contact_id',
+     'Level__c': 'contact_level', // Primary, Secondary, Decision Maker
+     'Languages__c': 'languages',
+     'LeadSource': 'lead_source',
+     'HasOptedOutOfEmail': 'email_opt_out',
+     'DoNotCall': 'do_not_call',
+     'Birthdate': 'birth_date',
+     'AssistantName': 'assistant_name',
+     'AssistantPhone': 'assistant_phone',
+     'Description': 'contact_notes',
+     'IsPersonAccount': 'is_person_account',
+     'Salutation': 'salutation',
+     'Suffix': 'suffix',
+     'PreferredContactMethod__c': 'preferred_contact_method',
+     'ContactRole__c': 'contact_role', // IT Manager, CFO, CEO, etc.
+     'DecisionMaker__c': 'is_decision_maker',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified',
+     'LastActivityDate': 'last_activity_date'
+   }
+ },
+
+ // Lead Object
+ 'Lead': {
+   table_name: 'leads',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_lead_id',
+     'FirstName': 'first_name',
+     'LastName': 'last_name',
+     'Name': 'full_name',
+     'Company': 'company_name',
+     'Title': 'job_title',
+     'Email': 'email',
+     'Phone': 'phone',
+     'MobilePhone': 'mobile_phone',
+     'Website': 'website',
+     'Street': 'address_line_1',
+     'City': 'city',
+     'State': 'state',
+     'PostalCode': 'zip_code',
+     'Country': 'country',
+     'Status': 'lead_status', // Open, Qualified, Unqualified, Converted
+     'Rating': 'lead_rating', // Hot, Warm, Cold
+     'LeadSource': 'lead_source',
+     'Industry': 'industry',
+     'AnnualRevenue': 'annual_revenue',
+     'NumberOfEmployees': 'employee_count',
+     'OwnerId': 'assigned_rep_id',
+     'ConvertedDate': 'converted_date',
+     'ConvertedAccountId': 'converted_account_id',
+     'ConvertedContactId': 'converted_contact_id',
+     'ConvertedOpportunityId': 'converted_opportunity_id',
+     'IsConverted': 'is_converted',
+     'IsUnreadByOwner': 'is_unread',
+     'HasOptedOutOfEmail': 'email_opt_out',
+     'DoNotCall': 'do_not_call',
+     'Description': 'lead_notes',
+     'CurrentGenerators__c': 'current_equipment',
+     'ProductInterest__c': 'product_interest',
+     'SICCode__c': 'sic_code',
+     'PrimaryInterest__c': 'primary_interest',
+     'Budget__c': 'estimated_budget',
+     'Timeline__c': 'purchase_timeline',
+     'Authority__c': 'decision_authority',
+     'Need__c': 'business_need',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified',
+     'LastActivityDate': 'last_activity_date'
+   }
+ },
+
+ // Opportunity (Deal) Object
+ 'Opportunity': {
+   table_name: 'opportunities',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_opportunity_id',
+     'AccountId': 'external_customer_id',
+     'Name': 'opportunity_name',
+     'StageName': 'stage_name',
+     'Amount': 'opportunity_amount',
+     'Probability': 'probability_percent',
+     'CloseDate': 'close_date',
+     'Type': 'opportunity_type', // New Business, Existing Business, Renewal
+     'LeadSource': 'lead_source',
+     'OwnerId': 'assigned_rep_id',
+     'CampaignId': 'campaign_id',
+     'IsWon': 'is_won',
+     'IsClosed': 'is_closed',
+     'IsPrivate': 'is_private',
+     'Description': 'opportunity_description',
+     'NextStep': 'next_step',
+     'ForecastCategoryName': 'forecast_category',
+     'HasOpportunityLineItem': 'has_line_items',
+     'Pricebook2Id': 'price_book_id',
+     'TotalOpportunityQuantity': 'total_quantity',
+     'ExpectedRevenue': 'expected_revenue',
+     'MainCompetitors__c': 'main_competitors',
+     'DeliveryInstallationStatus__c': 'delivery_status',
+     'TrackingNumber__c': 'tracking_number',
+     'OrderNumber__c': 'order_number',
+     'CurrentSituation__c': 'current_situation',
+     'ProductType__c': 'product_type', // Copier, Production, IT Services, Software
+     'Financing__c': 'financing_type', // Purchase, Lease, Rental
+     'MonthlyPayment__c': 'monthly_payment',
+     'LeaseTerm__c': 'lease_term_months',
+     'CommissionRate__c': 'commission_rate',
+     'GrossMargin__c': 'gross_margin_percent',
+     'Territory__c': 'territory',
+     'PartnerAccount__c': 'partner_account_id',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified',
+     'LastActivityDate': 'last_activity_date'
+   }
+ },
+
+ // OpportunityLineItem (Deal Products) Object
+ 'OpportunityLineItem': {
+   table_name: 'opportunity_line_items',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_line_item_id',
+     'OpportunityId': 'external_opportunity_id',
+     'Product2Id': 'external_product_id',
+     'PricebookEntryId': 'pricebook_entry_id',
+     'ProductCode': 'product_code',
+     'Name': 'product_name',
+     'Quantity': 'quantity',
+     'UnitPrice': 'unit_price',
+     'ListPrice': 'list_price',
+     'TotalPrice': 'total_price',
+     'Discount': 'discount_amount',
+     'Description': 'line_description',
+     'SortOrder': 'sort_order',
+     'ServiceDate': 'service_date',
+     'HasQuantitySchedule': 'has_quantity_schedule',
+     'HasRevenueSchedule': 'has_revenue_schedule',
+     'MonthlyPayment__c': 'monthly_payment',
+     'LeaseTerm__c': 'lease_term',
+     'SerialNumber__c': 'serial_number',
+     'ModelNumber__c': 'model_number',
+     'Manufacturer__c': 'manufacturer',
+     'ProductCategory__c': 'product_category',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified'
+   }
+ },
+
+ // Product2 (Equipment/Services Catalog) Object
+ 'Product2': {
+   table_name: 'products',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_product_id',
+     'Name': 'product_name',
+     'ProductCode': 'product_code',
+     'Description': 'product_description',
+     'Family': 'product_family', // Copiers, Printers, Software, Services
+     'IsActive': 'is_active',
+     'CanUseQuantitySchedule': 'can_use_quantity_schedule',
+     'CanUseRevenueSchedule': 'can_use_revenue_schedule',
+     'QuantityUnitOfMeasure': 'quantity_unit_of_measure',
+     'StockKeepingUnit': 'sku',
+     'DisplayUrl': 'display_url',
+     'ExternalDataSourceId': 'external_data_source_id',
+     'ExternalId': 'external_id',
+     'Manufacturer__c': 'manufacturer',
+     'ModelNumber__c': 'model_number',
+     'Category__c': 'category',
+     'Subcategory__c': 'subcategory',
+     'Type__c': 'product_type', // Hardware, Software, Service, Supplies
+     'Specifications__c': 'specifications',
+     'WarrantyPeriod__c': 'warranty_period_months',
+     'Weight__c': 'weight',
+     'Dimensions__c': 'dimensions',
+     'PowerRequirements__c': 'power_requirements',
+     'MonthlyDutyCycle__c': 'monthly_duty_cycle',
+     'PrintSpeed__c': 'print_speed_ppm',
+     'ColorCapable__c': 'is_color_capable',
+     'DuplexCapable__c': 'is_duplex_capable',
+     'NetworkCapable__c': 'is_network_capable',
+     'Cost__c': 'product_cost',
+     'MSRP__c': 'msrp',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified'
+   }
+ },
+
+ // Quote Object
+ 'Quote': {
+   table_name: 'quotes',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_quote_id',
+     'OpportunityId': 'external_opportunity_id',
+     'Pricebook2Id': 'price_book_id',
+     'ContactId': 'external_contact_id',
+     'Name': 'quote_name',
+     'QuoteNumber': 'quote_number',
+     'Status': 'quote_status', // Draft, In Review, Presented, Accepted, Rejected
+     'ExpirationDate': 'expiration_date',
+     'Description': 'quote_description',
+     'Subtotal': 'subtotal_amount',
+     'TotalPrice': 'total_amount',
+     'LineItemCount': 'line_item_count',
+     'IsSyncing': 'is_syncing',
+     'ShippingHandling': 'shipping_handling',
+     'Tax': 'tax_amount',
+     'GrandTotal': 'grand_total',
+     'BillingName': 'billing_name',
+     'BillingStreet': 'billing_street',
+     'BillingCity': 'billing_city',
+     'BillingState': 'billing_state',
+     'BillingPostalCode': 'billing_postal_code',
+     'BillingCountry': 'billing_country',
+     'ShippingName': 'shipping_name',
+     'ShippingStreet': 'shipping_street',
+     'ShippingCity': 'shipping_city',
+     'ShippingState': 'shipping_state',
+     'ShippingPostalCode': 'shipping_postal_code',
+     'ShippingCountry': 'shipping_country',
+     'Email': 'quote_email',
+     'Phone': 'quote_phone',
+     'Fax': 'quote_fax',
+     'AdditionalName': 'additional_name',
+     'AdditionalStreet': 'additional_street',
+     'AdditionalCity': 'additional_city',
+     'AdditionalState': 'additional_state',
+     'AdditionalPostalCode': 'additional_postal_code',
+     'AdditionalCountry': 'additional_country',
+     'PaymentTerms__c': 'payment_terms',
+     'ValidFor__c': 'valid_for_days',
+     'DeliveryTerms__c': 'delivery_terms',
+     'ShippingTerms__c': 'shipping_terms',
+     'FinancingOptions__c': 'financing_options',
+     'MonthlyPayment__c': 'monthly_payment',
+     'LeaseTerm__c': 'lease_term',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified'
+   }
+ },
+
+ // Task (Activity) Object
+ 'Task': {
+   table_name: 'activities',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_task_id',
+     'WhoId': 'related_contact_id', // Contact or Lead ID
+     'WhatId': 'related_record_id', // Account, Opportunity, etc.
+     'OwnerId': 'assigned_to_user_id',
+     'Subject': 'task_subject',
+     'ActivityDate': 'due_date',
+     'Status': 'task_status', // Not Started, In Progress, Completed, Waiting, Deferred
+     'Priority': 'priority', // High, Normal, Low
+     'IsHighPriority': 'is_high_priority',
+     'Type': 'task_type', // Call, Email, Meeting, Other
+     'Description': 'task_description',
+     'IsClosed': 'is_completed',
+     'IsArchived': 'is_archived',
+     'CallDurationInSeconds': 'call_duration_seconds',
+     'CallType': 'call_type', // Inbound, Outbound
+     'CallDisposition': 'call_disposition',
+     'CallObject': 'call_object',
+     'ReminderDateTime': 'reminder_date_time',
+     'IsReminderSet': 'is_reminder_set',
+     'RecurrenceType': 'recurrence_type',
+     'RecurrenceInterval': 'recurrence_interval',
+     'RecurrenceEndDateOnly': 'recurrence_end_date',
+     'IsRecurrence': 'is_recurring',
+     'CompletedDateTime': 'completed_date_time',
+     'TaskSubtype': 'task_subtype',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified'
+   }
+ },
+
+ // Event (Calendar) Object
+ 'Event': {
+   table_name: 'calendar_events',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_event_id',
+     'WhoId': 'related_contact_id',
+     'WhatId': 'related_record_id',
+     'OwnerId': 'assigned_to_user_id',
+     'Subject': 'event_subject',
+     'Location': 'event_location',
+     'ActivityDate': 'event_date',
+     'ActivityDateTime': 'start_date_time',
+     'EndDate': 'end_date',
+     'EndDateTime': 'end_date_time',
+     'DurationInMinutes': 'duration_minutes',
+     'StartDateTime': 'start_date_time',
+     'Type': 'event_type', // Meeting, Call, Demo, Training
+     'IsAllDayEvent': 'is_all_day',
+     'IsPrivate': 'is_private',
+     'ShowAs': 'show_as', // Busy, Free
+     'IsChild': 'is_child_event',
+     'IsGroupEvent': 'is_group_event',
+     'GroupEventType': 'group_event_type',
+     'EventSubtype': 'event_subtype',
+     'IsRecurrence': 'is_recurring',
+     'RecurrenceType': 'recurrence_type',
+     'RecurrenceInterval': 'recurrence_interval',
+     'RecurrenceEndDateOnly': 'recurrence_end_date',
+     'IsReminderSet': 'is_reminder_set',
+     'ReminderDateTime': 'reminder_date_time',
+     'Description': 'event_description',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified'
+   }
+ },
+
+ // Case (Service Request) Object - if used for service management
+ 'Case': {
+   table_name: 'service_cases',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_case_id',
+     'CaseNumber': 'case_number',
+     'AccountId': 'external_customer_id',
+     'ContactId': 'external_contact_id',
+     'ParentId': 'parent_case_id',
+     'SuppliedName': 'supplied_name',
+     'SuppliedEmail': 'supplied_email',
+     'SuppliedPhone': 'supplied_phone',
+     'SuppliedCompany': 'supplied_company',
+     'Type': 'case_type', // Problem, Feature Request, Question
+     'Status': 'case_status', // New, Working, Escalated, Closed
+     'Reason': 'case_reason',
+     'Origin': 'case_origin', // Phone, Email, Web, Chat
+     'Subject': 'case_subject',
+     'Priority': 'priority', // High, Medium, Low
+     'Description': 'case_description',
+     'IsClosed': 'is_closed',
+     'ClosedDate': 'closed_date',
+     'IsEscalated': 'is_escalated',
+     'OwnerId': 'assigned_to_user_id',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified'
+   }
+ },
+
+ // Campaign Object
+ 'Campaign': {
+   table_name: 'campaigns',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_campaign_id',
+     'Name': 'campaign_name',
+     'ParentId': 'parent_campaign_id',
+     'Type': 'campaign_type', // Conference, Webinar, Trade Show, Public Relations, Partners, Referral Program, Advertisement, Banner Ads, Direct Mail, Email, Telemarketing, Other
+     'Status': 'campaign_status', // Planned, In Progress, Completed, Aborted
+     'StartDate': 'start_date',
+     'EndDate': 'end_date',
+     'ExpectedRevenue': 'expected_revenue',
+     'BudgetedCost': 'budgeted_cost',
+     'ActualCost': 'actual_cost',
+     'ExpectedResponse': 'expected_response_percent',
+     'NumberSent': 'number_sent',
+     'IsActive': 'is_active',
+     'Description': 'campaign_description',
+     'NumberOfLeads': 'number_of_leads',
+     'NumberOfConvertedLeads': 'number_converted_leads',
+     'NumberOfContacts': 'number_of_contacts',
+     'NumberOfResponses': 'number_of_responses',
+     'NumberOfOpportunities': 'number_of_opportunities',
+     'NumberOfWonOpportunities': 'number_won_opportunities',
+     'AmountAllOpportunities': 'total_opportunity_amount',
+     'AmountWonOpportunities': 'won_opportunity_amount',
+     'OwnerId': 'campaign_owner_id',
+     'CreatedDate': 'created_date',
+     'LastModifiedDate': 'last_modified'
+   }
+ }
+};
+
+// Common SOQL queries for Salesforce Agent Dealer integration
+const SALESFORCE_AGENTDEALER_QUERIES = {
+ // Get accounts modified since last sync
+ accounts: `
+   SELECT Id, Name, AccountNumber, Type, Industry, NumberOfEmployees, AnnualRevenue,
+          Rating, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry,
+          ShippingStreet, ShippingCity, ShippingState, ShippingPostalCode, ShippingCountry,
+          Phone, Fax, Website, OwnerId, ParentId, CustomerPriority__c, SLA__c, Active__c,
+          UpsellOpportunity__c, Description, Territory__c, PaymentTerms__c, CreditLimit__c,
+          TaxExempt__c, TaxID__c, PreferredContactMethod__c, CreatedDate, LastModifiedDate, LastActivityDate
+   FROM Account 
+   WHERE LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get contacts with account information
+ contacts: `
+   SELECT Id, AccountId, FirstName, LastName, Name, Title, Department, Email, Phone,
+          MobilePhone, HomePhone, OtherPhone, Fax, MailingStreet, MailingCity, MailingState,
+          MailingPostalCode, MailingCountry, OwnerId, ReportsToId, Level__c, Languages__c,
+          LeadSource, HasOptedOutOfEmail, DoNotCall, Birthdate, AssistantName, AssistantPhone,
+          Description, IsPersonAccount, Salutation, Suffix, PreferredContactMethod__c,
+          ContactRole__c, DecisionMaker__c, CreatedDate, LastModifiedDate, LastActivityDate,
+          Account.Name, Account.Type
+   FROM Contact 
+   WHERE LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get opportunities with account and contact info
+ opportunities: `
+   SELECT Id, AccountId, Name, StageName, Amount, Probability, CloseDate, Type, LeadSource,
+          OwnerId, CampaignId, IsWon, IsClosed, IsPrivate, Description, NextStep,
+          ForecastCategoryName, HasOpportunityLineItem, Pricebook2Id, TotalOpportunityQuantity,
+          ExpectedRevenue, MainCompetitors__c, DeliveryInstallationStatus__c, TrackingNumber__c,
+          OrderNumber__c, CurrentSituation__c, ProductType__c, Financing__c, MonthlyPayment__c,
+          LeaseTerm__c, CommissionRate__c, GrossMargin__c, Territory__c, PartnerAccount__c,
+          CreatedDate, LastModifiedDate, LastActivityDate,
+          Account.Name, Account.Type, Owner.Name
+   FROM Opportunity 
+   WHERE LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get leads
+ leads: `
+   SELECT Id, FirstName, LastName, Name, Company, Title, Email, Phone, MobilePhone, Website,
+          Street, City, State, PostalCode, Country, Status, Rating, LeadSource, Industry,
+          AnnualRevenue, NumberOfEmployees, OwnerId, ConvertedDate, ConvertedAccountId,
+          ConvertedContactId, ConvertedOpportunityId, IsConverted, IsUnreadByOwner,
+          HasOptedOutOfEmail, DoNotCall, Description, CurrentGenerators__c, ProductInterest__c,
+          SICCode__c, PrimaryInterest__c, Budget__c, Timeline__c, Authority__c, Need__c,
+          CreatedDate, LastModifiedDate, LastActivityDate, Owner.Name
+   FROM Lead 
+   WHERE LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get opportunity line items with product details
+ opportunity_line_items: `
+   SELECT Id, OpportunityId, Product2Id, PricebookEntryId, ProductCode, Name, Quantity,
+          UnitPrice, ListPrice, TotalPrice, Discount, Description, SortOrder, ServiceDate,
+          HasQuantitySchedule, HasRevenueSchedule, MonthlyPayment__c, LeaseTerm__c,
+          SerialNumber__c, ModelNumber__c, Manufacturer__c, ProductCategory__c,
+          CreatedDate, LastModifiedDate,
+          Product2.Name, Product2.ProductCode, Product2.Family, Product2.Description,
+          Opportunity.Name, Opportunity.StageName, Opportunity.AccountId
+   FROM OpportunityLineItem 
+   WHERE LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get products
+ products: `
+   SELECT Id, Name, ProductCode, Description, Family, IsActive, CanUseQuantitySchedule,
+          CanUseRevenueSchedule, QuantityUnitOfMeasure, StockKeepingUnit, DisplayUrl,
+          ExternalDataSourceId, ExternalId, Manufacturer__c, ModelNumber__c, Category__c,
+          Subcategory__c, Type__c, Specifications__c, WarrantyPeriod__c, Weight__c,
+          Dimensions__c, PowerRequirements__c, MonthlyDutyCycle__c, PrintSpeed__c,
+          ColorCapable__c, DuplexCapable__c, NetworkCapable__c, Cost__c, MSRP__c,
+          CreatedDate, LastModifiedDate
+   FROM Product2 
+   WHERE IsActive = true AND LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get quotes
+ quotes: `
+   SELECT Id, OpportunityId, Pricebook2Id, ContactId, Name, QuoteNumber, Status, ExpirationDate,
+          Description, Subtotal, TotalPrice, LineItemCount, IsSyncing, ShippingHandling, Tax,
+          GrandTotal, BillingName, BillingStreet, BillingCity, BillingState, BillingPostalCode,
+          BillingCountry, ShippingName, ShippingStreet, ShippingCity, ShippingState,
+          ShippingPostalCode, ShippingCountry, Email, Phone, Fax, PaymentTerms__c,
+          ValidFor__c, DeliveryTerms__c, ShippingTerms__c, FinancingOptions__c,
+          MonthlyPayment__c, LeaseTerm__c, CreatedDate, LastModifiedDate,
+          Opportunity.Name, Opportunity.AccountId, Contact.Name
+   FROM Quote 
+   WHERE LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get tasks/activities
+ tasks: `
+   SELECT Id, WhoId, WhatId, OwnerId, Subject, ActivityDate, Status, Priority, IsHighPriority,
+          Type, Description, IsClosed, IsArchived, CallDurationInSeconds, CallType,
+          CallDisposition, CallObject, ReminderDateTime, IsReminderSet, RecurrenceType,
+          RecurrenceInterval, RecurrenceEndDateOnly, IsRecurrence, CompletedDateTime,
+          TaskSubtype, CreatedDate, LastModifiedDate,
+          Who.Name, What.Name, Owner.Name
+   FROM Task 
+   WHERE ActivityDate >= {startDate} OR LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `,
+
+ // Get events
+ events: `
+   SELECT Id, WhoId, WhatId, OwnerId, Subject, Location, ActivityDate, ActivityDateTime,
+          EndDate, EndDateTime, DurationInMinutes, StartDateTime, Type, IsAllDayEvent,
+          IsPrivate, ShowAs, IsChild, IsGroupEvent, GroupEventType, EventSubtype,
+          IsRecurrence, RecurrenceType, RecurrenceInterval, RecurrenceEndDateOnly,
+          IsReminderSet, ReminderDateTime, Description, CreatedDate, LastModifiedDate,
+          Who.Name, What.Name, Owner.Name
+   FROM Event 
+   WHERE ActivityDate >= {startDate} OR LastModifiedDate >= {lastSyncDate}
+   ORDER BY LastModifiedDate DESC
+ `
+};
+
+module.exports = {
+ SALESFORCE_AGENTDEALER_MAPPINGS,
+ SALESFORCE_AGENTDEALER_QUERIES
+};
