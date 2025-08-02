@@ -33,9 +33,7 @@ import {
   UserPlus,
   PhoneCall,
   Send,
-  UserCheck,
-  Eye,
-  Building2
+  UserCheck
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -703,147 +701,120 @@ export default function CRMEnhanced() {
 
           {/* Leads Grid */}
           <div className="grid gap-4">
-            {filteredLeads?.map((lead) => {
-              const leadSlug = lead.companyName?.toLowerCase()
-                .replace(/[^a-z0-9 -]/g, '')
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-')
-                .trim()
-                .replace(/^-+|-+$/g, '') || 'untitled-lead';
-              
-              return (
-                <Card key={lead.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <CardTitle className="text-lg">
-                            {lead.companyName || 'Untitled Lead'}
-                          </CardTitle>
-                          <Badge className={`${getStatusColor(lead.leadStatus || 'new')} border-0`}>
-                            <span className="flex items-center gap-1">
-                              {getStatusIcon(lead.leadStatus || 'new')}
-                              {(lead.leadStatus || 'new').replace('_', ' ')}
-                            </span>
-                          </Badge>
-                        </div>
-                        <CardDescription>
-                          Contact: {lead.contactName} | Source: {lead.leadSource}
-                        </CardDescription>
+            {filteredLeads?.map((lead) => (
+              <Card key={lead.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CardTitle className="text-lg">Lead #{lead.id}</CardTitle>
+                        <Badge className={`${getStatusColor(lead.leadStatus || 'new')} border-0`}>
+                          <span className="flex items-center gap-1">
+                            {getStatusIcon(lead.leadStatus || 'new')}
+                            {(lead.leadStatus || 'new').replace('_', ' ')}
+                          </span>
+                        </Badge>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold">${parseFloat(lead.estimatedAmount?.toString() || '0').toLocaleString()}</div>
-                        {lead.estimatedCloseDate && (
-                          <div className="text-sm text-gray-500">
-                            Close: {format(new Date(lead.estimatedCloseDate), 'MMM dd')}
-                          </div>
-                        )}
-                      </div>
+                      <CardDescription>
+                        {lead.leadSource}
+                      </CardDescription>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        {lead.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            <span>{lead.email}</span>
-                          </div>
-                        )}
-                        {lead.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span>{lead.phone}</span>
-                          </div>
-                        )}
-                        {lead.lastContactDate && (
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            <span>Last contact: {format(new Date(lead.lastContactDate), 'MMM dd')}</span>
-                          </div>
-                        )}
-                        {lead.nextFollowUpDate && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>Follow up: {format(new Date(lead.nextFollowUpDate), 'MMM dd')}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {lead.notes && (
-                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{lead.notes}</p>
+                    <div className="text-right">
+                      <div className="text-lg font-semibold">${parseFloat(lead.estimatedAmount?.toString() || '0').toLocaleString()}</div>
+                      {lead.closeDate && (
+                        <div className="text-sm text-gray-500">
+                          Close: {format(new Date(lead.closeDate), 'MMM dd')}
+                        </div>
                       )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      {lead.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span>{lead.email}</span>
+                        </div>
+                      )}
+                      {lead.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <span>{lead.phone}</span>
+                        </div>
+                      )}
+                      {lead.lastContactDate && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span>Last contact: {format(new Date(lead.lastContactDate), 'MMM dd')}</span>
+                        </div>
+                      )}
+                      {lead.nextFollowUpDate && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span>Follow up: {format(new Date(lead.nextFollowUpDate), 'MMM dd')}</span>
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <div className="flex gap-2">
-                          {lead.leadStatus === 'new' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'qualified' })}
-                              disabled={updateLeadStatusMutation.isPending}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Qualify
-                            </Button>
-                          )}
-                          {lead.leadStatus === 'qualified' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'proposal' })}
-                              disabled={updateLeadStatusMutation.isPending}
-                            >
-                              <FileText className="w-4 h-4 mr-1" />
-                              Create Proposal
-                            </Button>
-                          )}
+                    {lead.notes && (
+                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{lead.notes}</p>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <div className="flex gap-2">
+                        {lead.leadStatus === 'new' && (
                           <Button 
                             size="sm" 
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedLead(lead);
-                              setIsCreateInteractionOpen(true);
-                            }}
+                            onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'qualified' })}
+                            disabled={updateLeadStatusMutation.isPending}
                           >
-                            <PhoneCall className="w-4 h-4 mr-1" />
-                            Call
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Qualify
                           </Button>
+                        )}
+                        {lead.leadStatus === 'qualified' && (
                           <Button 
                             size="sm" 
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedLead(lead);
-                              setIsCreateQuoteOpen(true);
-                            }}
+                            onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'proposal' })}
+                            disabled={updateLeadStatusMutation.isPending}
                           >
-                            <Mail className="w-4 h-4 mr-1" />
-                            Quote
+                            <FileText className="w-4 h-4 mr-1" />
+                            Create Proposal
                           </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setLocation(`/companies/${lead.companyId}/contacts`)}
-                          >
-                            <UserCheck className="w-4 h-4 mr-1" />
-                            Add Contacts
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setLocation(`/leads/${leadSlug}`)}
-                          >
-                            View Details
-                          </Button>
-                        </div>
+                        )}
+                        <Button size="sm" variant="outline">
+                          <PhoneCall className="w-4 h-4 mr-1" />
+                          Call
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Mail className="w-4 h-4 mr-1" />
+                          Email
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setLocation(`/companies/${lead.companyId}/contacts`)}
+                        >
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          Add Contacts
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setLocation(`/leads/${lead.id}`)}
+                        >
+                          View Details
+                        </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
             
             {filteredLeads?.length === 0 && (
               <Card>

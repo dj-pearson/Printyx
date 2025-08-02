@@ -2,29 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  Plus, 
-  Users, 
-  Eye, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Building2, 
-  Calendar,
-  DollarSign,
-  Star,
-  Clock,
-  UserCheck,
-  CheckCircle,
-  Settings,
-  FileText
-} from "lucide-react";
-import { createSlug } from "@shared/utils";
+import { Search, Plus, Users, Eye, Phone, Mail, MapPin } from "lucide-react";
 
 export default function Customers() {
   const { isAuthenticated } = useAuth();
@@ -69,123 +50,59 @@ export default function Customers() {
             ))}
           </div>
         ) : customers && customers.length > 0 ? (
-          <div className="grid gap-4">
-            {customers.map((customer: any) => {
-              const customerSlug = createSlug(customer.businessName || 'untitled-customer');
-              return (
-                <Card key={customer.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <CardTitle className="text-lg">
-                            {customer.businessName || 'Untitled Customer'}
-                          </CardTitle>
-                          <Badge className="text-green-600 bg-green-50 border-green-200 border-0">
-                            <span className="flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" />
-                              Customer
-                            </span>
-                          </Badge>
-                        </div>
-                        <CardDescription>
-                          Industry: {customer.industry || customer.businessSite || 'Business'} | Location: {customer.billingCity || 'No location'}
-                        </CardDescription>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {customers.map((customer: any) => (
+              <Card key={customer.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                        <span className="text-primary-600 font-semibold text-sm">
+                          {customer.businessName?.charAt(0) || 'C'}
+                        </span>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold">${customer.monthlyRecurring || '0'}</div>
-                        {customer.customerSince && (
-                          <div className="text-sm text-gray-500">
-                            Since: {new Date(customer.customerSince).getFullYear()}
-                          </div>
-                        )}
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{customer.businessName}</h3>
+                        <p className="text-sm text-gray-600">{customer.businessSite || customer.industry || 'Customer'}</p>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        {customer.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span>{customer.phone}</span>
-                          </div>
-                        )}
-                        {customer.website && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            <span>{customer.website}</span>
-                          </div>
-                        )}
-                        {(customer.billingCity || customer.billingState) && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-gray-400" />
-                            <span>
-                              {customer.billingCity}{customer.billingCity && customer.billingState ? ', ' : ''}{customer.billingState}
-                            </span>
-                          </div>
-                        )}
-                        {customer.customerSince && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>Since: {new Date(customer.customerSince).getFullYear()}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {customer.description && (
-                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{customer.description}</p>
-                      )}
-
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm"
-                            onClick={() => console.log('Create service ticket for', customer.id)}
-                          >
-                            <Settings className="w-4 h-4 mr-1" />
-                            Service
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => console.log('Create invoice for', customer.id)}
-                          >
-                            <FileText className="w-4 h-4 mr-1" />
-                            Invoice
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => console.log('Schedule maintenance for', customer.id)}
-                          >
-                            <Calendar className="w-4 h-4 mr-1" />
-                            Schedule
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => navigate(`/companies/${customer.id}/contacts`)}
-                          >
-                            <UserCheck className="w-4 h-4 mr-1" />
-                            Contacts
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => navigate(`/customers/${customerSlug}`)}
-                          >
-                            View Details
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {customer.phone && (
+                      <p className="text-sm text-gray-600 flex items-center">
+                        <Phone className="w-4 h-4 mr-2" />
+                        {customer.phone}
+                      </p>
+                    )}
+                    {customer.website && (
+                      <p className="text-sm text-gray-600 flex items-center">
+                        <Mail className="w-4 h-4 mr-2" />
+                        {customer.website}
+                      </p>
+                    )}
+                    {customer.billingAddress && (
+                      <p className="text-sm text-gray-600 flex items-center">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {customer.billingCity}, {customer.billingState}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full flex items-center gap-2"
+                      onClick={() => navigate(`/customers/${customer.id}`)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
           <Card>
