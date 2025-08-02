@@ -760,22 +760,94 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Lead operations (simplified pipeline tracking)
-  async getLeads(tenantId: string): Promise<Lead[]> {
-    return await db.select().from(leads).where(eq(leads.tenantId, tenantId));
+  // Lead-specific operations (filtered views of business records)
+  async getLeads(tenantId: string): Promise<any[]> {
+    return await db.select().from(businessRecords).where(
+      and(
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'lead')
+      )
+    );
   }
 
-  async createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead> {
-    const [newLead] = await db.insert(leads).values(lead).returning();
-    return newLead;
+  // Customer-specific operations (filtered views of business records)
+  async getCustomers(tenantId: string, includeInactive: boolean = false): Promise<any[]> {
+    let query = db.select().from(businessRecords).where(
+      and(
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'customer')
+      )
+    );
+    
+    if (!includeInactive) {
+      query = query.where(eq(businessRecords.status, 'active'));
+    }
+    
+    return await query;
   }
 
-  async updateLead(id: string, lead: Partial<Lead>, tenantId: string): Promise<Lead | undefined> {
-    const [updatedLead] = await db
-      .update(leads)
-      .set({ ...lead, updatedAt: new Date() })
-      .where(and(eq(leads.id, id), eq(leads.tenantId, tenantId)))
+  async getCustomer(id: string, tenantId: string): Promise<any | undefined> {
+    const [customer] = await db.select().from(businessRecords).where(
+      and(
+        eq(businessRecords.id, id), 
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'customer')
+      )
+    );
+    return customer;
+  }
+
+  // Former customers for reporting and reactivation
+  async getFormerCustomers(tenantId: string): Promise<any[]> {
+    return await db.select().from(businessRecords).where(
+      and(
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'former_customer')
+      )
+    );
+  }
+
+  // Unified Business Records operations - handles entire lead-to-customer lifecycle
+  async getBusinessRecords(tenantId: string, recordType?: string, status?: string): Promise<any[]> {
+    let query = db.select().from(businessRecords).where(eq(businessRecords.tenantId, tenantId));
+    
+    if (recordType) {
+      query = query.where(eq(businessRecords.recordType, recordType));
+    }
+    if (status) {
+      query = query.where(eq(businessRecords.status, status));
+    }
+    
+    return await query;
+  }
+
+  async getBusinessRecord(id: string, tenantId: string): Promise<any | undefined> {
+    const [record] = await db.select().from(businessRecords).where(
+      and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId))
+    );
+    return record;
+  }
+
+  async createBusinessRecord(record: any): Promise<any> {
+    const [newRecord] = await db.insert(businessRecords).values(record).returning();
+    return newRecord;
+  }
+
+  async updateBusinessRecord(id: string, tenantId: string, updates: any): Promise<any | undefined> {
+    const [updatedRecord] = await db.update(businessRecords)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
       .returning();
-    return updatedLead;
+    return updatedRecord;
+  }
+
+  async createLead(lead: any): Promise<any> {
+    const leadData = { ...lead, recordType: 'lead' };
+    return await this.createBusinessRecord(leadData);
+  }
+
+  async updateLead(id: string, lead: any, tenantId: string): Promise<any | undefined> {
+    return await this.updateBusinessRecord(id, tenantId, lead);
   }
 
   // Quote operations
@@ -919,46 +991,180 @@ export class DatabaseStorage implements IStorage {
     return lead;
   }
 
-  async convertLeadToCustomer(leadId: string, tenantId: string): Promise<Customer> {
-    const lead = await this.getLead(leadId, tenantId);
-    if (!lead) throw new Error('Lead not found');
+  // Lead to Customer Conversion - ZERO data duplication
+  async convertLeadToCustomer(leadId: string, tenantId: string, userId: string): Promise<any | undefined> {
+    // Generate unique customer number
+    const customerNumber = await this.generateCustomerNumber(tenantId);
+    
+    const [convertedCustomer] = await db.update(businessRecords)
+      .set({
+        recordType: 'customer',
+        status: 'active',
+        customerNumber: customerNumber,
+        customerSince: new Date(),
+        convertedBy: userId,
+        probability: 100,
+        closeDate: new Date(),
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(businessRecords.id, leadId), 
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'lead')
+      ))
+      .returning();
 
-    // Create customer from lead data
-    const customerData = {
-      tenantId,
-      name: lead.businessName,
-      email: lead.email,
-      phone: lead.phone,
-      address: `${lead.billingAddress}, ${lead.billingCity}, ${lead.billingState} ${lead.billingZip}`,
-      contactPerson: lead.contactName,
-      accountValue: lead.estimatedValue || null,
-    };
+    // Create activity record for conversion
+    if (convertedCustomer) {
+      await this.createBusinessRecordActivity({
+        tenantId,
+        businessRecordId: leadId,
+        activityType: 'conversion',
+        subject: 'Lead Converted to Customer',
+        description: `Lead successfully converted to customer. Customer number: ${customerNumber}`,
+        completedDate: new Date(),
+        createdBy: userId
+      });
+    }
 
-    const [newCustomer] = await db.insert(customers).values(customerData).returning();
+    return convertedCustomer;
+  }
 
-    // Update lead status to converted and set customer details
-    await this.updateLead(leadId, {
-      recordType: 'customer',
-      status: 'closed_won',
-      customerNumber: newCustomer.id,
-      customerSince: new Date(),
-    }, tenantId);
+  // Customer Lifecycle Management
+  async deactivateCustomer(customerId: string, tenantId: string, userId: string, reason: string): Promise<any | undefined> {
+    const [deactivatedCustomer] = await db.update(businessRecords)
+      .set({
+        recordType: 'former_customer',
+        status: reason, // competitor_switch, churned, expired, etc.
+        customerUntil: new Date(),
+        churnReason: reason,
+        deactivatedBy: userId,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(businessRecords.id, customerId), 
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'customer')
+      ))
+      .returning();
 
-    return newCustomer;
+    // Create activity record for deactivation
+    if (deactivatedCustomer) {
+      await this.createBusinessRecordActivity({
+        tenantId,
+        businessRecordId: customerId,
+        activityType: 'churn_prevention',
+        subject: `Customer Deactivated - ${reason}`,
+        description: `Customer relationship ended due to: ${reason}`,
+        completedDate: new Date(),
+        createdBy: userId
+      });
+    }
+
+    return deactivatedCustomer;
+  }
+
+  async markCustomerNonPayment(customerId: string, tenantId: string, userId: string): Promise<any | undefined> {
+    return await db.update(businessRecords)
+      .set({
+        status: 'non_payment',
+        deactivatedBy: userId,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(businessRecords.id, customerId), 
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'customer')
+      ))
+      .returning();
+  }
+
+  async reactivateCustomer(customerId: string, tenantId: string, userId: string): Promise<any | undefined> {
+    return await db.update(businessRecords)
+      .set({
+        recordType: 'customer',
+        status: 'active',
+        customerUntil: null,
+        churnReason: null,
+        deactivatedBy: null,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(businessRecords.id, customerId), 
+        eq(businessRecords.tenantId, tenantId)
+      ))
+      .returning();
+  }
+
+  // Generate unique customer number
+  private async generateCustomerNumber(tenantId: string): Promise<string> {
+    const prefix = 'CUST';
+    const year = new Date().getFullYear().toString().slice(-2);
+    
+    // Get the next sequence number for this tenant and year
+    const existingCustomers = await db.select().from(businessRecords)
+      .where(and(
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'customer'),
+        isNotNull(businessRecords.customerNumber)
+      ));
+    
+    const currentYearCustomers = existingCustomers.filter(c => 
+      c.customerNumber?.startsWith(`${prefix}${year}`)
+    );
+    
+    const nextNumber = currentYearCustomers.length + 1;
+    const paddedNumber = nextNumber.toString().padStart(4, '0');
+    
+    return `${prefix}${year}${paddedNumber}`;
   }
 
   // Lead activity operations
-  async getLeadActivities(leadId: string, tenantId: string): Promise<LeadActivity[]> {
+  // Unified Business Record Activities
+  async getBusinessRecordActivities(businessRecordId: string, tenantId: string): Promise<any[]> {
     return await db
       .select()
-      .from(leadActivities)
-      .where(and(eq(leadActivities.leadId, leadId), eq(leadActivities.tenantId, tenantId)))
-      .orderBy(sql`${leadActivities.createdAt} DESC`);
+      .from(businessRecordActivities)
+      .where(and(
+        eq(businessRecordActivities.businessRecordId, businessRecordId), 
+        eq(businessRecordActivities.tenantId, tenantId)
+      ))
+      .orderBy(sql`${businessRecordActivities.createdAt} DESC`);
   }
 
-  async createLeadActivity(activity: Omit<LeadActivity, "id" | "createdAt" | "updatedAt">): Promise<LeadActivity> {
-    const [newActivity] = await db.insert(leadActivities).values(activity).returning();
+  async createBusinessRecordActivity(activity: any): Promise<any> {
+    const [newActivity] = await db.insert(businessRecordActivities).values(activity).returning();
     return newActivity;
+  }
+
+  // Backward compatible methods for leads
+  async getLeadActivities(leadId: string, tenantId: string): Promise<any[]> {
+    return await this.getBusinessRecordActivities(leadId, tenantId);
+  }
+
+  async createLeadActivity(activity: any): Promise<any> {
+    // Map old leadId field to businessRecordId
+    const businessRecordActivity = {
+      ...activity,
+      businessRecordId: activity.leadId,
+    };
+    delete businessRecordActivity.leadId;
+    return await this.createBusinessRecordActivity(businessRecordActivity);
+  }
+
+  // Customer activity methods (same as lead activities)
+  async getCustomerActivities(customerId: string, tenantId: string): Promise<any[]> {
+    return await this.getBusinessRecordActivities(customerId, tenantId);
+  }
+
+  async createCustomerActivity(activity: any): Promise<any> {
+    // Map old customerId field to businessRecordId
+    const businessRecordActivity = {
+      ...activity,
+      businessRecordId: activity.customerId,
+    };
+    delete businessRecordActivity.customerId;
+    return await this.createBusinessRecordActivity(businessRecordActivity);
   }
 
   // Lead contact operations
