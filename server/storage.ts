@@ -56,6 +56,13 @@ import {
   type LeadRelatedRecord,
   type Quote,
   type Customer,
+  type InsertCustomer,
+  type CustomerActivity,
+  type InsertCustomerActivity,
+  type CustomerContact,
+  type InsertCustomerContact,
+  type CustomerRelatedRecord,
+  type InsertCustomerRelatedRecord,
   type Equipment,
   type Contract,
   type ServiceTicket,
@@ -489,7 +496,7 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(leads).where(eq(leads.tenantId, tenantId));
 
     if (roleLevel === 1) { // Individual - only assigned leads
-      query = query.where(eq(leads.assignedSalespersonId, userId));
+      query = query.where(eq(leads.ownerId, userId));
     } else if (roleLevel === 2 && teamId) { // Team lead - team's leads
       const teamUserIds = await db
         .select({ userId: users.id })
@@ -499,7 +506,7 @@ export class DatabaseStorage implements IStorage {
           eq(users.tenantId, tenantId)
         ));
 
-      query = query.where(inArray(leads.assignedSalespersonId, teamUserIds.map(u => u.userId)));
+      query = query.where(inArray(leads.ownerId, teamUserIds.map(u => u.userId)));
     }
 
     return await query;
@@ -564,7 +571,7 @@ export class DatabaseStorage implements IStorage {
     return customer;
   }
 
-  async createCustomer(customer: Omit<Customer, "id" | "createdAt" | "updatedAt">): Promise<Customer> {
+  async createCustomer(customer: InsertCustomer): Promise<Customer> {
     const [newCustomer] = await db.insert(customers).values(customer).returning();
     return newCustomer;
   }
@@ -582,7 +589,86 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(customers)
       .where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Customer Detail Methods for comprehensive customer information
+  async getCustomerEquipment(customerId: string, tenantId: string): Promise<Equipment[]> {
+    try {
+      return await db
+        .select()
+        .from(equipment)
+        .where(and(
+          eq(equipment.customerId, customerId),
+          eq(equipment.tenantId, tenantId)
+        ));
+    } catch (error) {
+      console.log("No equipment table found, returning empty array");
+      return [];
+    }
+  }
+
+  async getCustomerMeterReadings(customerId: string, tenantId: string): Promise<MeterReading[]> {
+    try {
+      return await db
+        .select()
+        .from(meterReadings)
+        .where(and(
+          eq(meterReadings.customerId, customerId),
+          eq(meterReadings.tenantId, tenantId)
+        ))
+        .orderBy(desc(meterReadings.readingDate));
+    } catch (error) {
+      console.log("No meter readings table found, returning empty array");
+      return [];
+    }
+  }
+
+  async getCustomerInvoices(customerId: string, tenantId: string): Promise<Invoice[]> {
+    try {
+      return await db
+        .select()
+        .from(invoices)
+        .where(and(
+          eq(invoices.customerId, customerId),
+          eq(invoices.tenantId, tenantId)
+        ))
+        .orderBy(desc(invoices.invoiceDate));
+    } catch (error) {
+      console.log("No invoices table found, returning empty array");
+      return [];
+    }
+  }
+
+  async getCustomerServiceTickets(customerId: string, tenantId: string): Promise<ServiceTicket[]> {
+    try {
+      return await db
+        .select()
+        .from(serviceTickets)
+        .where(and(
+          eq(serviceTickets.customerId, customerId),
+          eq(serviceTickets.tenantId, tenantId)
+        ))
+        .orderBy(desc(serviceTickets.createdAt));
+    } catch (error) {
+      console.log("No service tickets table found, returning empty array");
+      return [];
+    }
+  }
+
+  async getCustomerContracts(customerId: string, tenantId: string): Promise<Contract[]> {
+    try {
+      return await db
+        .select()
+        .from(contracts)
+        .where(and(
+          eq(contracts.customerId, customerId),
+          eq(contracts.tenantId, tenantId)
+        ));
+    } catch (error) {
+      console.log("No contracts found, returning empty array");
+      return [];
+    }
   }
 
   // Company operations (new primary business entity)
