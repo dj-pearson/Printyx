@@ -230,9 +230,9 @@ export default function DealsManagement() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     owner: "",
-    source: "",
-    dealType: "",
-    priority: "",
+    source: "all",
+    dealType: "all",
+    priority: "all",
     amountMin: "",
     amountMax: "",
     closeDateFrom: "",
@@ -383,6 +383,10 @@ export default function DealsManagement() {
     const dealId = active.id as string;
     const newStageId = over.id as string;
 
+    // Check if we're dropping over a stage column (not another deal)
+    const isStageColumn = stages.some(stage => stage.id === newStageId);
+    if (!isStageColumn) return;
+
     // Find the deal and check if it's actually moving to a different stage
     const deal = deals.find(d => d.id === dealId);
     if (deal && deal.stageId !== newStageId) {
@@ -397,9 +401,9 @@ export default function DealsManagement() {
   // Filter deals based on current filters
   const filteredDeals = deals.filter(deal => {
     if (filters.owner && deal.ownerName && !deal.ownerName.toLowerCase().includes(filters.owner.toLowerCase())) return false;
-    if (filters.source && deal.source && !deal.source.toLowerCase().includes(filters.source.toLowerCase())) return false;
-    if (filters.dealType && deal.dealType && !deal.dealType.toLowerCase().includes(filters.dealType.toLowerCase())) return false;
-    if (filters.priority && deal.priority !== filters.priority) return false;
+    if (filters.source && filters.source !== "all" && deal.source && !deal.source.toLowerCase().includes(filters.source.toLowerCase())) return false;
+    if (filters.dealType && filters.dealType !== "all" && deal.dealType && !deal.dealType.toLowerCase().includes(filters.dealType.toLowerCase())) return false;
+    if (filters.priority && filters.priority !== "all" && deal.priority !== filters.priority) return false;
     if (filters.amountMin && deal.amount && deal.amount < parseFloat(filters.amountMin)) return false;
     if (filters.amountMax && deal.amount && deal.amount > parseFloat(filters.amountMax)) return false;
     if (filters.closeDateFrom && deal.expectedCloseDate && new Date(deal.expectedCloseDate) < new Date(filters.closeDateFrom)) return false;
@@ -791,7 +795,7 @@ export default function DealsManagement() {
                       <SelectValue placeholder="All sources" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All sources</SelectItem>
+                      <SelectItem value="all">All sources</SelectItem>
                       <SelectItem value="website">Website</SelectItem>
                       <SelectItem value="referral">Referral</SelectItem>
                       <SelectItem value="cold_call">Cold Call</SelectItem>
@@ -806,7 +810,7 @@ export default function DealsManagement() {
                       <SelectValue placeholder="All priorities" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All priorities</SelectItem>
+                      <SelectItem value="all">All priorities</SelectItem>
                       <SelectItem value="high">High</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="low">Low</SelectItem>
@@ -820,7 +824,7 @@ export default function DealsManagement() {
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
+                      <SelectItem value="all">All types</SelectItem>
                       <SelectItem value="new_business">New Business</SelectItem>
                       <SelectItem value="upsell">Upsell</SelectItem>
                       <SelectItem value="renewal">Renewal</SelectItem>
@@ -867,9 +871,9 @@ export default function DealsManagement() {
                   variant="outline"
                   onClick={() => setFilters({
                     owner: "",
-                    source: "",
-                    dealType: "",
-                    priority: "",
+                    source: "all",
+                    dealType: "all",
+                    priority: "all",
                     amountMin: "",
                     amountMax: "",
                     closeDateFrom: "",
@@ -895,8 +899,12 @@ export default function DealsManagement() {
             >
               <div className="flex gap-6 h-full overflow-x-auto pb-6">
                 {stages.map((stage) => (
-                  <div key={stage.id} className="flex-shrink-0 w-80">
-                    <div className="bg-gray-50 rounded-lg h-full flex flex-col">
+                  <div 
+                    key={stage.id} 
+                    id={stage.id}
+                    className="flex-shrink-0 w-80"
+                  >
+                    <div className="bg-gray-50 rounded-lg h-full flex flex-col min-h-96">
                       <div className="p-4 border-b border-gray-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -915,7 +923,6 @@ export default function DealsManagement() {
                       <SortableContext
                         items={dealsByStage[stage.id]?.map(deal => deal.id) || []}
                         strategy={verticalListSortingStrategy}
-                        id={stage.id}
                       >
                         <div className="flex-1 p-4 space-y-3 overflow-y-auto min-h-0">
                           {dealsByStage[stage.id]?.map((deal) => (
