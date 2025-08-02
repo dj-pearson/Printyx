@@ -563,6 +563,20 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(customers).where(eq(customers.tenantId, tenantId));
   }
 
+  async getCustomer(customerId: string, tenantId: string): Promise<Customer | undefined> {
+    try {
+      const result = await db
+        .select()
+        .from(customers)
+        .where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error('Error in getCustomer:', error);
+      return undefined;
+    }
+  }
+
   async getCustomer(id: string, tenantId: string): Promise<Customer | undefined> {
     const [customer] = await db
       .select()

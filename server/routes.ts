@@ -642,6 +642,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/customers/:id', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const customer = await storage.getCustomer(id, tenantId);
+      
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      
+      res.json(customer);
+    } catch (error) {
+      console.error("Error fetching customer:", error);
+      res.status(500).json({ message: "Failed to fetch customer" });
+    }
+  });
+
   app.post('/api/customers', async (req: any, res) => {
     try {
       const tenantId = "550e8400-e29b-41d4-a716-446655440000";
