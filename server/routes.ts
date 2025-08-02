@@ -45,6 +45,8 @@ import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
 import { registerCrmGoalRoutes } from "./routes-crm-goals";
 import { registerBusinessRecordRoutes } from "./routes-business-records";
 import { registerMobileRoutes } from "./routes-mobile";
+import { registerSalesforceRoutes } from "./routes-salesforce-integration";
+import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -2479,6 +2481,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register unified business records routes
   registerBusinessRecordRoutes(app);
+  
+  // Register Salesforce integration routes
+  registerSalesforceRoutes(app);
+  
+  // Register Salesforce test routes (development only)
+  if (process.env.NODE_ENV === 'development') {
+    registerSalesforceTestRoutes(app);
+  }
   
   // Register mobile routes
   registerMobileRoutes(app);

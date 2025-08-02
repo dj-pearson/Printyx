@@ -411,15 +411,19 @@ export const companyContacts = pgTable("company_contacts", {
 });
 
 // Unified Business Records - Single table for entire business relationship lifecycle
-// Enhanced with E-Automate compatibility fields for seamless migration
+// Enhanced with dual-platform compatibility: E-Automate (90% dealers) + Salesforce integration
 export const businessRecords = pgTable("business_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   
-  // E-Automate Compatibility - External System Integration
-  externalCustomerId: varchar("external_customer_id"), // E-Automate CustomerKey
-  externalSystemId: varchar("external_system_id"), // Track source system (e-automate, quickbooks, etc)
+  // Multi-Platform External System Integration
+  externalCustomerId: varchar("external_customer_id"), // E-Automate CustomerKey / Salesforce Account.Id
+  externalSystemId: varchar("external_system_id"), // Track source system (e-automate, salesforce, quickbooks, etc)
+  externalSalesforceId: varchar("external_salesforce_id"), // Salesforce Account.Id for dual mapping
+  externalLeadId: varchar("external_lead_id"), // Salesforce Lead.Id for lead conversion tracking
+  migrationStatus: varchar("migration_status"), // pending, in_progress, completed, failed
   lastSyncDate: timestamp("last_sync_date"), // For incremental syncing
+  externalData: jsonb("external_data"), // Store additional platform-specific fields as JSON
   
   // Record Type & Status - Controls entire business relationship lifecycle
   recordType: varchar("record_type").notNull().default("lead"), // lead, customer, former_customer
@@ -427,13 +431,24 @@ export const businessRecords = pgTable("business_records", {
   // Lead statuses: new, contacted, qualified, proposal, negotiation, closed_won, closed_lost
   // Customer statuses: active, inactive, on_hold, churned, competitor_switch, non_payment, expired
   
-  // Company Information (E-Automate compatible)
-  companyName: varchar("company_name").notNull(), // E-Automate CustomerName
-  customerType: varchar("customer_type"), // E-Automate CustomerType
-  website: varchar("website"),
-  industry: varchar("industry"),
+  // Company Information (E-Automate + Salesforce compatible)
+  companyName: varchar("company_name").notNull(), // E-Automate CustomerName / Salesforce Account.Name
+  accountNumber: varchar("account_number"), // Salesforce Account.AccountNumber
+  accountType: varchar("account_type"), // E-Automate CustomerType / Salesforce Account.Type (Customer, Prospect, Partner)
+  website: varchar("website"), // Salesforce Account.Website
+  industry: varchar("industry"), // Salesforce Account.Industry
   companySize: varchar("company_size"),
-  annualRevenue: decimal("annual_revenue", { precision: 15, scale: 2 }),
+  employeeCount: integer("employee_count"), // Salesforce Account.NumberOfEmployees
+  annualRevenue: decimal("annual_revenue", { precision: 15, scale: 2 }), // Salesforce Account.AnnualRevenue
+  
+  // Salesforce-specific Company Fields
+  customerRating: varchar("customer_rating"), // Salesforce Account.Rating (Hot, Warm, Cold)
+  parentAccountId: varchar("parent_account_id"), // Salesforce Account.ParentId
+  customerPriority: varchar("customer_priority"), // Salesforce Account.CustomerPriority__c (High, Medium, Low)
+  slaLevel: varchar("sla_level"), // Salesforce Account.SLA__c
+  isActive: boolean("is_active").default(true), // Salesforce Account.Active__c
+  upsellOpportunity: varchar("upsell_opportunity"), // Salesforce Account.UpsellOpportunity__c
+  accountNotes: text("account_notes"), // Salesforce Account.Description
   
   // Primary Contact Information
   primaryContactName: varchar("primary_contact_name"), // E-Automate ContactName
@@ -446,24 +461,36 @@ export const businessRecords = pgTable("business_records", {
   billingContactEmail: varchar("billing_contact_email"),
   billingContactPhone: varchar("billing_contact_phone"),
   
-  // Address Information (E-Automate compatible)
-  addressLine1: varchar("address_line1"), // E-Automate Address1
+  // Address Information (E-Automate + Salesforce compatible)
+  addressLine1: varchar("address_line1"), // E-Automate Address1 / Salesforce BillingStreet
   addressLine2: varchar("address_line2"), // E-Automate Address2
-  city: varchar("city"),
-  state: varchar("state"),
-  postalCode: varchar("postal_code"), // E-Automate ZipCode
-  country: varchar("country").default("US"),
+  city: varchar("city"), // Salesforce BillingCity
+  state: varchar("state"), // Salesforce BillingState
+  postalCode: varchar("postal_code"), // E-Automate ZipCode / Salesforce BillingPostalCode
+  country: varchar("country").default("US"), // Salesforce BillingCountry
   
-  // Billing Address (E-Automate compatible)
-  billingAddressLine1: varchar("billing_address_1"), // E-Automate BillingAddress1
+  // Billing Address (E-Automate + Salesforce compatible)
+  billingAddressLine1: varchar("billing_address_1"), // E-Automate BillingAddress1 / Salesforce BillingStreet
   billingAddressLine2: varchar("billing_address_2"), // E-Automate BillingAddress2
-  billingCity: varchar("billing_city"), // E-Automate BillingCity
-  billingState: varchar("billing_state"), // E-Automate BillingState
-  billingPostalCode: varchar("billing_zip_code"), // E-Automate BillingZip
+  billingCity: varchar("billing_city"), // E-Automate BillingCity / Salesforce BillingCity
+  billingState: varchar("billing_state"), // E-Automate BillingState / Salesforce BillingState
+  billingPostalCode: varchar("billing_zip_code"), // E-Automate BillingZip / Salesforce BillingPostalCode
+  billingCountry: varchar("billing_country"), // Salesforce BillingCountry
   
-  // Communication Details (E-Automate compatible)
-  phone: varchar("phone"), // E-Automate Phone
-  fax: varchar("fax"), // E-Automate Fax
+  // Shipping Address (Salesforce compatible)
+  shippingAddressLine1: varchar("shipping_address_1"), // Salesforce ShippingStreet
+  shippingAddressLine2: varchar("shipping_address_2"),
+  shippingCity: varchar("shipping_city"), // Salesforce ShippingCity
+  shippingState: varchar("shipping_state"), // Salesforce ShippingState
+  shippingPostalCode: varchar("shipping_zip_code"), // Salesforce ShippingPostalCode
+  shippingCountry: varchar("shipping_country"), // Salesforce ShippingCountry
+  
+  // Communication Details (E-Automate + Salesforce compatible)
+  phone: varchar("phone"), // E-Automate Phone / Salesforce Phone
+  fax: varchar("fax"), // E-Automate Fax / Salesforce Fax
+  
+  // Salesforce-specific Contact Preferences
+  preferredContactMethod: varchar("preferred_contact_method"), // Salesforce Account.PreferredContactMethod__c
   
   // Lead Pipeline Information
   leadSource: varchar("source").notNull().default("website"), // website, referral, cold_call, trade_show, etc.
@@ -522,14 +549,229 @@ export const businessRecords = pgTable("business_records", {
   convertedBy: varchar("converted_by"), // Who converted from lead to customer
   deactivatedBy: varchar("deactivated_by"), // Who deactivated the customer
   
-  // Timestamps (E-Automate compatible)
-  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
-  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+  // Timestamps (E-Automate + Salesforce compatible)
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated / Salesforce CreatedDate
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified / Salesforce LastModifiedDate
+  lastActivityDate: timestamp("last_activity_date"), // Salesforce LastActivityDate
 });
 
 // For backward compatibility during migration
 export const leads = businessRecords; // Alias for existing code
 export const customers = businessRecords; // Alias for existing code
+
+// Enhanced Contact Management (Salesforce-style individual contacts)
+export const enhancedContacts = pgTable("enhanced_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // External System Integration
+  externalContactId: varchar("external_contact_id"), // Salesforce Contact.Id
+  externalAccountId: varchar("external_account_id"), // Salesforce Contact.AccountId
+  externalLeadId: varchar("external_lead_id"), // Salesforce Lead.Id (if converted from lead)
+  migrationStatus: varchar("migration_status"),
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Basic Contact Information
+  firstName: varchar("first_name"), // Salesforce Contact.FirstName
+  lastName: varchar("last_name"), // Salesforce Contact.LastName
+  fullName: varchar("full_name"), // Salesforce Contact.Name (computed)
+  salutation: varchar("salutation"), // Salesforce Contact.Salutation (Mr., Ms., Dr., etc.)
+  suffix: varchar("suffix"), // Salesforce Contact.Suffix (Jr., Sr., III, etc.)
+  
+  // Business Information
+  title: varchar("title"), // Salesforce Contact.Title
+  department: varchar("department"), // Salesforce Contact.Department
+  companyId: varchar("company_id"), // References business_records.id
+  companyName: varchar("company_name"), // Denormalized for performance
+  
+  // Contact Details
+  email: varchar("email"), // Salesforce Contact.Email
+  workPhone: varchar("work_phone"), // Salesforce Contact.Phone
+  mobilePhone: varchar("mobile_phone"), // Salesforce Contact.MobilePhone
+  homePhone: varchar("home_phone"), // Salesforce Contact.HomePhone
+  otherPhone: varchar("other_phone"), // Salesforce Contact.OtherPhone
+  fax: varchar("fax"), // Salesforce Contact.Fax
+  
+  // Contact Hierarchy & Relationships
+  reportsToContactId: varchar("reports_to_contact_id"), // Salesforce Contact.ReportsToId
+  contactLevel: varchar("contact_level"), // Salesforce Contact.Level__c (Primary, Secondary, Decision Maker)
+  contactRole: varchar("contact_role"), // Salesforce Contact.ContactRole__c (IT Manager, CFO, CEO, etc.)
+  isDecisionMaker: boolean("is_decision_maker").default(false), // Salesforce Contact.DecisionMaker__c
+  isPrimaryContact: boolean("is_primary_contact").default(false),
+  
+  // Lead/Contact Management
+  leadStatus: varchar("lead_status"), // qualified, unqualified, contacted, converted
+  leadSource: varchar("lead_source"), // Salesforce Contact.LeadSource
+  ownerId: varchar("owner_id"), // Salesforce Contact.OwnerId - assigned rep
+  ownerName: varchar("owner_name"), // Denormalized for performance
+  
+  // Communication Preferences
+  hasOptedOutOfEmail: boolean("has_opted_out_of_email").default(false), // Salesforce Contact.HasOptedOutOfEmail
+  doNotCall: boolean("do_not_call").default(false), // Salesforce Contact.DoNotCall
+  preferredContactMethod: varchar("preferred_contact_method"), // Salesforce Contact.PreferredContactMethod__c
+  languages: varchar("languages"), // Salesforce Contact.Languages__c
+  
+  // Address Information
+  mailingAddressLine1: varchar("mailing_address_line_1"), // Salesforce Contact.MailingStreet
+  mailingCity: varchar("mailing_city"), // Salesforce Contact.MailingCity
+  mailingState: varchar("mailing_state"), // Salesforce Contact.MailingState
+  mailingPostalCode: varchar("mailing_zip_code"), // Salesforce Contact.MailingPostalCode
+  mailingCountry: varchar("mailing_country"), // Salesforce Contact.MailingCountry
+  
+  // Personal Information
+  birthdate: timestamp("birthdate"), // Salesforce Contact.Birthdate
+  assistantName: varchar("assistant_name"), // Salesforce Contact.AssistantName
+  assistantPhone: varchar("assistant_phone"), // Salesforce Contact.AssistantPhone
+  
+  // Additional Information
+  description: text("description"), // Salesforce Contact.Description
+  isPersonAccount: boolean("is_person_account").default(false), // Salesforce Contact.IsPersonAccount
+  
+  // Activity Tracking
+  lastContactDate: timestamp("last_contact_date"),
+  nextFollowUpDate: timestamp("next_follow_up_date"),
+  lastActivityDate: timestamp("last_activity_date"), // Salesforce Contact.LastActivityDate
+  
+  // Additional CRM Data
+  favoriteContentType: varchar("favorite_content_type"),
+  preferredChannels: text("preferred_channels"), // JSON array
+  
+  // System Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sales Opportunities (Salesforce-style deal management)
+export const opportunities = pgTable("opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // External System Integration
+  externalOpportunityId: varchar("external_opportunity_id"), // Salesforce Opportunity.Id
+  externalAccountId: varchar("external_account_id"), // Salesforce Opportunity.AccountId
+  migrationStatus: varchar("migration_status"),
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Basic Opportunity Information
+  opportunityName: varchar("opportunity_name").notNull(), // Salesforce Opportunity.Name
+  accountId: varchar("account_id"), // References business_records.id
+  accountName: varchar("account_name"), // Denormalized for performance
+  
+  // Sales Process
+  stageName: varchar("stage_name").notNull(), // Salesforce Opportunity.StageName
+  amount: decimal("amount", { precision: 15, scale: 2 }), // Salesforce Opportunity.Amount
+  probability: integer("probability").default(50), // Salesforce Opportunity.Probability (0-100%)
+  closeDate: timestamp("close_date"), // Salesforce Opportunity.CloseDate
+  
+  // Opportunity Classification
+  opportunityType: varchar("opportunity_type"), // Salesforce Opportunity.Type (New Business, Existing Business, Renewal)
+  leadSource: varchar("lead_source"), // Salesforce Opportunity.LeadSource
+  campaignId: varchar("campaign_id"), // Salesforce Opportunity.CampaignId
+  
+  // Status Tracking
+  isWon: boolean("is_won").default(false), // Salesforce Opportunity.IsWon
+  isClosed: boolean("is_closed").default(false), // Salesforce Opportunity.IsClosed
+  isPrivate: boolean("is_private").default(false), // Salesforce Opportunity.IsPrivate
+  
+  // Sales Information
+  ownerId: varchar("owner_id"), // Salesforce Opportunity.OwnerId - assigned rep
+  ownerName: varchar("owner_name"), // Denormalized for performance
+  description: text("description"), // Salesforce Opportunity.Description
+  nextStep: text("next_step"), // Salesforce Opportunity.NextStep
+  forecastCategory: varchar("forecast_category"), // Salesforce Opportunity.ForecastCategoryName
+  
+  // Financial Details
+  expectedRevenue: decimal("expected_revenue", { precision: 15, scale: 2 }), // Salesforce Opportunity.ExpectedRevenue
+  totalQuantity: decimal("total_quantity", { precision: 10, scale: 2 }), // Salesforce Opportunity.TotalOpportunityQuantity
+  hasLineItems: boolean("has_line_items").default(false), // Salesforce Opportunity.HasOpportunityLineItem
+  priceBookId: varchar("price_book_id"), // Salesforce Opportunity.Pricebook2Id
+  
+  // Industry-Specific Fields (Copier Dealer)
+  mainCompetitors: text("main_competitors"), // Salesforce Opportunity.MainCompetitors__c
+  deliveryStatus: varchar("delivery_status"), // Salesforce Opportunity.DeliveryInstallationStatus__c
+  trackingNumber: varchar("tracking_number"), // Salesforce Opportunity.TrackingNumber__c
+  orderNumber: varchar("order_number"), // Salesforce Opportunity.OrderNumber__c
+  currentSituation: text("current_situation"), // Salesforce Opportunity.CurrentSituation__c
+  
+  // Product & Financing
+  productType: varchar("product_type"), // Salesforce Opportunity.ProductType__c (Copier, Production, IT Services, Software)
+  financingType: varchar("financing_type"), // Salesforce Opportunity.Financing__c (Purchase, Lease, Rental)
+  monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }), // Salesforce Opportunity.MonthlyPayment__c
+  leaseTermMonths: integer("lease_term_months"), // Salesforce Opportunity.LeaseTerm__c
+  
+  // Sales Performance
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }), // Salesforce Opportunity.CommissionRate__c
+  grossMarginPercent: decimal("gross_margin_percent", { precision: 5, scale: 2 }), // Salesforce Opportunity.GrossMargin__c
+  territory: varchar("territory"), // Salesforce Opportunity.Territory__c
+  partnerAccountId: varchar("partner_account_id"), // Salesforce Opportunity.PartnerAccount__c
+  
+  // Activity Tracking
+  lastActivityDate: timestamp("last_activity_date"), // Salesforce Opportunity.LastActivityDate
+  
+  // System Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Enhanced Products Catalog (Salesforce-compatible)
+export const enhancedProducts = pgTable("enhanced_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // External System Integration
+  externalProductId: varchar("external_product_id"), // Salesforce Product2.Id
+  migrationStatus: varchar("migration_status"),
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Basic Product Information
+  productName: varchar("product_name").notNull(), // Salesforce Product2.Name
+  productCode: varchar("product_code"), // Salesforce Product2.ProductCode
+  description: text("description"), // Salesforce Product2.Description
+  productFamily: varchar("product_family"), // Salesforce Product2.Family (Copiers, Printers, Software, Services)
+  
+  // Product Classification
+  category: varchar("category"), // Salesforce Product2.Category__c
+  subcategory: varchar("subcategory"), // Salesforce Product2.Subcategory__c
+  productType: varchar("product_type"), // Salesforce Product2.Type__c (Hardware, Software, Service, Supplies)
+  
+  // Product Status & Availability
+  isActive: boolean("is_active").default(true), // Salesforce Product2.IsActive
+  canUseQuantitySchedule: boolean("can_use_quantity_schedule").default(false), // Salesforce Product2.CanUseQuantitySchedule
+  canUseRevenueSchedule: boolean("can_use_revenue_schedule").default(false), // Salesforce Product2.CanUseRevenueSchedule
+  quantityUnitOfMeasure: varchar("quantity_unit_of_measure"), // Salesforce Product2.QuantityUnitOfMeasure
+  
+  // Product Identification
+  sku: varchar("sku"), // Salesforce Product2.StockKeepingUnit
+  displayUrl: varchar("display_url"), // Salesforce Product2.DisplayUrl
+  externalDataSourceId: varchar("external_data_source_id"), // Salesforce Product2.ExternalDataSourceId
+  externalId: varchar("external_id"), // Salesforce Product2.ExternalId
+  
+  // Equipment-Specific Fields
+  manufacturer: varchar("manufacturer"), // Salesforce Product2.Manufacturer__c
+  modelNumber: varchar("model_number"), // Salesforce Product2.ModelNumber__c
+  specifications: text("specifications"), // Salesforce Product2.Specifications__c
+  warrantyPeriodMonths: integer("warranty_period_months"), // Salesforce Product2.WarrantyPeriod__c
+  
+  // Physical Characteristics
+  weight: decimal("weight", { precision: 10, scale: 2 }), // Salesforce Product2.Weight__c
+  dimensions: varchar("dimensions"), // Salesforce Product2.Dimensions__c
+  powerRequirements: varchar("power_requirements"), // Salesforce Product2.PowerRequirements__c
+  
+  // Copier/Printer Specific
+  monthlyDutyCycle: integer("monthly_duty_cycle"), // Salesforce Product2.MonthlyDutyCycle__c
+  printSpeedPpm: integer("print_speed_ppm"), // Salesforce Product2.PrintSpeed__c
+  isColorCapable: boolean("is_color_capable").default(false), // Salesforce Product2.ColorCapable__c
+  isDuplexCapable: boolean("is_duplex_capable").default(false), // Salesforce Product2.DuplexCapable__c
+  isNetworkCapable: boolean("is_network_capable").default(false), // Salesforce Product2.NetworkCapable__c
+  
+  // Pricing Information
+  productCost: decimal("product_cost", { precision: 10, scale: 2 }), // Salesforce Product2.Cost__c
+  msrp: decimal("msrp", { precision: 10, scale: 2 }), // Salesforce Product2.MSRP__c
+  
+  // System Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Equipment/Assets Table (E-Automate compatible)
 export const equipment = pgTable("equipment", {
@@ -1813,13 +2055,13 @@ export const companyContactsRelations = relations(companyContacts, ({ one }) => 
   }),
 }));
 
-// Business Records Relations - Unified for both leads and customers
+// Business Records Relations - Unified for both leads and customers (Enhanced for Salesforce)
 export const businessRecordsRelations = relations(businessRecords, ({ one, many }) => ({
   tenant: one(tenants, {
     fields: [businessRecords.tenantId],
     references: [tenants.id],
   }),
-  // Removed company and contact relations that reference non-existent fields
+  // User Relations
   owner: one(users, {
     fields: [businessRecords.ownerId],
     references: [users.id],
@@ -1836,6 +2078,14 @@ export const businessRecordsRelations = relations(businessRecords, ({ one, many 
     fields: [businessRecords.deactivatedBy],
     references: [users.id],
   }),
+  // Enhanced Salesforce Relations
+  enhancedContacts: many(enhancedContacts, {
+    relationName: "companyContacts"
+  }),
+  opportunities: many(opportunities, {
+    relationName: "accountOpportunities"
+  }),
+  // Legacy Relations
   activities: many(businessRecordActivities),
   quotes: many(quotes),
   contracts: many(contracts),
@@ -2865,6 +3115,99 @@ export type ManagedService = typeof managedServices.$inferSelect;
 export type InsertManagedService = typeof managedServices.$inferInsert;
 
 export const insertManagedServiceSchema = createInsertSchema(managedServices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// =====================================================================
+// ENHANCED SALESFORCE INTEGRATION RELATIONS
+// =====================================================================
+
+// Enhanced Contacts Relations (Salesforce-style)
+export const enhancedContactsRelations = relations(enhancedContacts, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [enhancedContacts.tenantId],
+    references: [tenants.id],
+  }),
+  company: one(businessRecords, {
+    fields: [enhancedContacts.companyId],
+    references: [businessRecords.id],
+    relationName: "companyContacts"
+  }),
+  reportsToContact: one(enhancedContacts, {
+    fields: [enhancedContacts.reportsToContactId],
+    references: [enhancedContacts.id],
+    relationName: "contactHierarchy"
+  }),
+  directReports: many(enhancedContacts, {
+    relationName: "contactHierarchy"
+  }),
+  owner: one(users, {
+    fields: [enhancedContacts.ownerId],
+    references: [users.id],
+  }),
+}));
+
+// Opportunities Relations (Salesforce-style)
+export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [opportunities.tenantId],
+    references: [tenants.id],
+  }),
+  account: one(businessRecords, {
+    fields: [opportunities.accountId],
+    references: [businessRecords.id],
+    relationName: "accountOpportunities"
+  }),
+  owner: one(users, {
+    fields: [opportunities.ownerId],
+    references: [users.id],
+  }),
+}));
+
+// Enhanced Products Relations (Salesforce-compatible)
+export const enhancedProductsRelations = relations(enhancedProducts, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [enhancedProducts.tenantId],
+    references: [tenants.id],
+  }),
+}));
+
+// =====================================================================
+// ENHANCED TYPE EXPORTS FOR SALESFORCE INTEGRATION
+// =====================================================================
+
+// Enhanced Salesforce-compatible types
+export type BusinessRecord = typeof businessRecords.$inferSelect;
+export type InsertBusinessRecord = typeof businessRecords.$inferInsert;
+export type EnhancedContact = typeof enhancedContacts.$inferSelect;
+export type InsertEnhancedContact = typeof enhancedContacts.$inferInsert;
+export type Opportunity = typeof opportunities.$inferSelect;
+export type InsertOpportunity = typeof opportunities.$inferInsert;
+export type EnhancedProduct = typeof enhancedProducts.$inferSelect;
+export type InsertEnhancedProduct = typeof enhancedProducts.$inferInsert;
+
+// Enhanced Salesforce-compatible insert schemas
+export const insertBusinessRecordSchema = createInsertSchema(businessRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEnhancedContactSchema = createInsertSchema(enhancedContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEnhancedProductSchema = createInsertSchema(enhancedProducts).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
