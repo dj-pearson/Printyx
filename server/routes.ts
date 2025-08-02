@@ -744,10 +744,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Customer routes
+  // Business Records routes (client's customers/leads)
   app.get('/api/customers', async (req: any, res) => {
     try {
       const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      // Get business records where recordType = 'customer' (copier buyers)
       const customers = await storage.getCustomers(tenantId);
       res.json(customers);
     } catch (error) {
@@ -880,10 +881,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced Lead management routes
+  // Lead management routes (potential copier buyers for Printyx clients)
   app.get('/api/leads', async (req: any, res) => {
     try {
       const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      // Get business records where recordType = 'lead' (potential copier buyers)
       const leads = await storage.getLeads(tenantId);
       res.json(leads);
     } catch (error) {

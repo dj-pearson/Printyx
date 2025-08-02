@@ -3,6 +3,11 @@
 ## Overview
 Printyx is a unified SaaS platform designed to consolidate fragmented technology stacks for small-to-medium copier dealers. It addresses a significant market need by replacing disconnected legacy systems (CRM, billing, service dispatch, inventory) with a single, integrated solution. The platform aims to eliminate data silos, reduce manual processes, and provide a comprehensive system for managing all aspects of a copier dealership.
 
+### Business Architecture Clarification
+- **Printyx Clients**: Copier dealers who sign up for Printyx service (managed via tenant system)
+- **Business Records**: The client's customers and leads (businesses that buy/might buy copiers from the dealer)
+- **E-Automate Integration**: External system data sync for migrating existing customer data into business records
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
@@ -28,7 +33,7 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM for type-safe database operations and migrations.
 - **Schema Design**: Multi-tenant architecture with tenant isolation and comprehensive role-based access control.
 - **RBAC Implementation**: Comprehensive role hierarchy with department-based permissions.
-- **Key Entities**: Users, Roles, Tenants, Customers, Equipment, Contracts, Service Tickets, Leads, Inventory Items, Technicians, Meter Readings, Invoices, Tasks, Projects, Service Call Analysis, Parts Orders, Warehouse Operations.
+- **Key Entities**: Users, Roles, Tenants, Business Records (unified leads/customers), Equipment, Contracts, Service Tickets, Inventory Items, Technicians, Meter Readings, Invoices, Tasks, Projects, Service Call Analysis, Parts Orders, Warehouse Operations.
 
 ### Multi-Tenancy & Multi-Location Role-Based Access Control
 - **Tenant Isolation**: Row-level security with `tenantId` filtering across all business entities.
