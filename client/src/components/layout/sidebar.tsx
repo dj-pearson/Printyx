@@ -72,6 +72,7 @@ function getNavigationSections(userRole: any) {
     sections.push({
       name: 'Sales',
       items: [
+        { name: 'Business Records', href: '/business-records', icon: Building2 },
         { name: 'CRM & Pipeline', href: '/crm', icon: Target },
         { name: 'CRM Goals & Reporting', href: '/crm-goals', icon: TrendingUp },
         { name: 'Contacts', href: '/contacts', icon: Users },

@@ -43,6 +43,7 @@ import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
 import { registerWarehouseRoutes } from "./routes-warehouse";
 import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
 import { registerCrmGoalRoutes } from "./routes-crm-goals";
+import { registerBusinessRecordRoutes } from "./routes-business-records";
 import { registerMobileRoutes } from "./routes-mobile";
 import {
   getCompanyPricingSettings,
@@ -2473,6 +2474,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register service analysis routes
   registerServiceAnalysisRoutes(app);
   registerCrmGoalRoutes(app);
+  
+  // Register unified business records routes
+  registerBusinessRecordRoutes(app);
   
   // Register mobile routes
   registerMobileRoutes(app);
