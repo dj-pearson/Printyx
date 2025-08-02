@@ -444,146 +444,95 @@ export const quoteLineItems = pgTable("quote_line_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Customer Management - Full Customer Records (modeled after Lead structure but expanded)
+// Customer Management - Customer Records (exact clone of Lead structure with additional fields)  
 export const customers = pgTable("customers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
-  companyId: varchar("company_id").notNull(), // Links to companies table
-  contactId: varchar("contact_id"), // Primary contact ID
+  companyId: varchar("company_id").notNull(), // Always tied to a company (same as leads)
+  contactId: varchar("contact_id").notNull(), // Always tied to a specific contact (same as leads)
   
-  // Customer Status & Pipeline Information (similar to leads)
-  customerStatus: varchar("customer_status").notNull().default("active"), // active, inactive, on_hold, terminated
-  leadSource: varchar("lead_source"), // Original lead source that converted
-  conversionDate: timestamp("conversion_date"), // When lead became customer
-  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
-  actualValue: decimal("actual_value", { precision: 10, scale: 2 }),
+  // Customer Pipeline Information (mirrors lead structure exactly)
+  leadSource: varchar("lead_source").notNull().default("website"), // website, referral, cold_call, trade_show, etc.
+  leadStatus: varchar("lead_status").notNull().default("customer"), // customer, active, inactive, on_hold, etc.
+  estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }),
+  probability: integer("probability").default(100), // 100% for converted customers
+  closeDate: timestamp("close_date"), // Date customer was converted/closed
   
-  // Assignment & Ownership
-  ownerId: varchar("owner_id"), // Sales rep/account manager
-  customerScore: integer("customer_score").default(0), // 0-100 scoring system
+  // Assignment & Ownership (same as leads)
+  ownerId: varchar("owner_id"), // User who owns this customer  
+  leadScore: integer("lead_score").default(0), // 0-100 scoring system
   priority: varchar("priority").default("medium"), // high, medium, low
   
-  // Customer Relationship Details
-  customerType: varchar("customer_type").default("standard"), // standard, vip, enterprise, small_business
-  accountTier: varchar("account_tier").default("standard"), // bronze, silver, gold, platinum
-  paymentTerms: varchar("payment_terms"), // net_30, net_60, cod, etc.
-  creditLimit: decimal("credit_limit", { precision: 10, scale: 2 }),
-  creditStatus: varchar("credit_status").default("approved"), // approved, pending, declined, on_hold
-  
-  // Service & Support Information
-  serviceLevel: varchar("service_level").default("standard"), // basic, standard, premium, enterprise
-  supportPlan: varchar("support_plan"), // basic, extended, comprehensive
-  preferredServiceWindow: varchar("preferred_service_window"), // business_hours, extended, 24_7
-  emergencyContact: varchar("emergency_contact"),
-  emergencyPhone: varchar("emergency_phone"),
-  
-  // Billing & Financial Information
-  billingFrequency: varchar("billing_frequency").default("monthly"), // monthly, quarterly, annually
-  invoiceDeliveryMethod: varchar("invoice_delivery_method").default("email"), // email, mail, portal
-  billingContact: varchar("billing_contact"),
-  billingEmail: varchar("billing_email"),
-  taxExempt: boolean("tax_exempt").default(false),
-  taxExemptNumber: varchar("tax_exempt_number"),
-  
-  // Contract & Agreement Information
-  contractStartDate: timestamp("contract_start_date"),
-  contractEndDate: timestamp("contract_end_date"),
-  contractType: varchar("contract_type"), // service, lease, purchase, rental
-  autoRenewal: boolean("auto_renewal").default(false),
-  renewalNoticeRequired: integer("renewal_notice_required"), // days notice required
-  
-  // Meter Reading & Billing Preferences
-  meterReadingFrequency: varchar("meter_reading_frequency").default("monthly"), // weekly, monthly, quarterly
-  meterReadingMethod: varchar("meter_reading_method").default("manual"), // manual, dca, email, api, remote
-  billingCycle: varchar("billing_cycle").default("calendar_month"), // calendar_month, contract_anniversary
-  includeColorCopies: boolean("include_color_copies").default(true),
-  includeBlackCopies: boolean("include_black_copies").default(true),
-  
-  // Service & Equipment Tracking
-  totalEquipmentCount: integer("total_equipment_count").default(0),
-  activeServiceTickets: integer("active_service_tickets").default(0),
-  lastServiceDate: timestamp("last_service_date"),
-  nextScheduledService: timestamp("next_scheduled_service"),
-  preferredTechnician: varchar("preferred_technician"),
-  
-  // Communication & Interaction Tracking
-  preferredContactMethod: varchar("preferred_contact_method").default("email"), // email, phone, text, portal
+  // Tracking & Notes (same as leads)
+  notes: text("notes"),
   lastContactDate: timestamp("last_contact_date"),
   nextFollowUpDate: timestamp("next_follow_up_date"),
-  communicationPreferences: jsonb("communication_preferences"), // JSON for detailed preferences
-  
-  // Financial Summary Fields
-  totalInvoiced: decimal("total_invoiced", { precision: 12, scale: 2 }).default('0'),
-  totalPaid: decimal("total_paid", { precision: 12, scale: 2 }).default('0'),
-  currentBalance: decimal("current_balance", { precision: 12, scale: 2 }).default('0'),
-  lastPaymentDate: timestamp("last_payment_date"),
-  lastPaymentAmount: decimal("last_payment_amount", { precision: 10, scale: 2 }),
-  
-  // Notes & Additional Information
-  notes: text("notes"),
-  internalNotes: text("internal_notes"), // Private notes not visible to customer
-  specialInstructions: text("special_instructions"),
-  tags: text("tags").array(), // Array of tags for categorization
-  
-  // Tracking & Audit Information
   createdBy: varchar("created_by").notNull(),
-  lastModifiedBy: varchar("last_modified_by"),
+  
+  // Additional Customer-Specific Fields for Meter Readings, Invoices, Service Tickets
+  // Service & Support Information
+  preferredTechnician: varchar("preferred_technician"),
+  lastServiceDate: timestamp("last_service_date"),
+  nextScheduledService: timestamp("next_scheduled_service"),
+  
+  // Billing Information
+  lastInvoiceDate: timestamp("last_invoice_date"),
+  lastPaymentDate: timestamp("last_payment_date"),
+  currentBalance: decimal("current_balance", { precision: 10, scale: 2 }).default('0'),
+  
+  // Meter Reading Information
+  lastMeterReadingDate: timestamp("last_meter_reading_date"),
+  nextMeterReadingDate: timestamp("next_meter_reading_date"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Customer Activities (similar to lead activities but for ongoing customer interactions)
+// Customer Activities (exact clone of lead activities structure)
 export const customerActivities = pgTable("customer_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   customerId: varchar("customer_id").notNull(),
   
-  // Activity Details
-  activityType: varchar("activity_type").notNull(), // email, call, meeting, service, billing, contract, note, task
+  // Activity Details (same as leadActivities)
+  activityType: varchar("activity_type").notNull(), // email, call, meeting, demo, proposal, task, note, external
   subject: varchar("subject").notNull(),
   description: text("description"),
   direction: varchar("direction"), // inbound, outbound
   
-  // Email Information
+  // Email Information (same as leadActivities)
   emailFrom: varchar("email_from"),
-  emailTo: text("email_to"),
+  emailTo: text("email_to"), // JSON array for multiple recipients
   emailCc: text("email_cc"),
   emailSubject: varchar("email_subject"),
   emailBody: text("email_body"),
+  isShared: boolean("is_shared").default(false), // "Emails are not shared with you..."
   
-  // Call Information
-  callDuration: integer("call_duration"),
-  callOutcome: varchar("call_outcome"),
+  // Call Information (same as leadActivities)
+  callDuration: integer("call_duration"), // in minutes
+  callOutcome: varchar("call_outcome"), // answered, no_answer, busy, voicemail
   
-  // Service Information
-  serviceTicketId: varchar("service_ticket_id"),
-  equipmentId: varchar("equipment_id"),
-  
-  // Billing Information
-  invoiceId: varchar("invoice_id"),
-  meterReadingId: varchar("meter_reading_id"),
-  
-  // Scheduling
+  // Scheduling (same as leadActivities)
   scheduledDate: timestamp("scheduled_date"),
   completedDate: timestamp("completed_date"),
   dueDate: timestamp("due_date"),
   
-  // Outcomes & Follow-up
-  outcome: varchar("outcome"),
+  // Outcomes & Follow-up (same as leadActivities)
+  outcome: varchar("outcome"), // completed, no_response, rescheduled, cancelled, replied
   nextAction: text("next_action"),
   followUpDate: timestamp("follow_up_date"),
   
-  // Related Records & Attachments
-  relatedRecords: jsonb("related_records"),
-  attachments: jsonb("attachments"),
+  // Related Records & Attachments (same as leadActivities)
+  relatedRecords: jsonb("related_records"), // Links to deals, agreements, etc.
+  attachments: jsonb("attachments"), // File references
   
-  // Tracking
+  // Tracking (same as leadActivities)
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Customer Contacts (additional contacts beyond primary)
+// Customer Contacts (exact clone of leadContacts structure)
 export const customerContacts = pgTable("customer_contacts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
@@ -596,23 +545,21 @@ export const customerContacts = pgTable("customer_contacts", {
   phone: varchar("phone"),
   email: varchar("email"),
   isPrimary: boolean("is_primary").default(false),
-  contactType: varchar("contact_type").default("general"), // general, billing, technical, emergency, decision_maker
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Customer Related Records (equipment, contracts, service history, etc.)
+// Customer Related Records (exact clone of leadRelatedRecords structure)
 export const customerRelatedRecords = pgTable("customer_related_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   customerId: varchar("customer_id").notNull(),
   
-  recordType: varchar("record_type").notNull(), // contracts, equipment, service_tickets, invoices, meter_readings, quotes, deals
+  recordType: varchar("record_type").notNull(), // deals, equipment, agreements, service_requests, credit_applications, tco_mps, files, business_history, site_surveys, invoices, meter_readings
   recordId: varchar("record_id").notNull(),
   recordTitle: varchar("record_title"),
   recordCount: integer("record_count").default(1),
-  recordStatus: varchar("record_status"),
   
   createdAt: timestamp("created_at").defaultNow(),
 });
