@@ -42,7 +42,20 @@ import {
 import { format } from "date-fns";
 
 // Enhanced form schema with line items
-const purchaseOrderFormSchema = insertPurchaseOrderSchema.extend({
+const purchaseOrderFormSchema = z.object({
+  poNumber: z.string().min(1, "PO number is required"),
+  vendorId: z.string().min(1, "Vendor is required"),
+  requestedBy: z.string().min(1, "Requested by is required"),
+  orderDate: z.date(),
+  expectedDate: z.date().optional(),
+  description: z.string().optional(),
+  subtotal: z.number().min(0, "Subtotal must be non-negative"),
+  taxAmount: z.number().min(0, "Tax amount must be non-negative").default(0),
+  shippingAmount: z.number().min(0, "Shipping amount must be non-negative").default(0),
+  totalAmount: z.number().min(0, "Total amount must be non-negative"),
+  status: z.string().default("draft"),
+  deliveryAddress: z.string().optional(),
+  specialInstructions: z.string().optional(),
   items: z.array(z.object({
     itemDescription: z.string().min(1, "Item description is required"),
     itemCode: z.string().optional(),
@@ -50,11 +63,6 @@ const purchaseOrderFormSchema = insertPurchaseOrderSchema.extend({
     unitPrice: z.number().min(0, "Unit price must be non-negative"),
     totalPrice: z.number().min(0, "Total price must be non-negative"),
   })).min(1, "At least one item is required"),
-}).omit({
-  tenantId: true,
-  createdBy: true,
-  createdAt: true,
-  updatedAt: true,
 });
 
 type PurchaseOrderFormData = z.infer<typeof purchaseOrderFormSchema>;
@@ -88,7 +96,7 @@ export default function PurchaseOrders() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   // Fetch purchase orders
-  const { data: purchaseOrders = [], isLoading } = useQuery({
+  const { data: purchaseOrders = [], isLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ["/api/purchase-orders"],
   });
 
@@ -98,17 +106,30 @@ export default function PurchaseOrders() {
   });
 
   // Fetch statistics
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<{
+    total: number;
+    pending: number;
+    approved: number;
+    received: number;
+    totalValue: number;
+  }>({
     queryKey: ["/api/purchase-orders/stats/summary"],
   });
 
   // Create purchase order mutation
   const createPOMutation = useMutation({
     mutationFn: async (data: PurchaseOrderFormData) => {
-      return apiRequest("/api/purchase-orders", {
+      const response = await fetch("/api/purchase-orders", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       });
+      if (!response.ok) {
+        throw new Error("Failed to create purchase order");
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
@@ -131,10 +152,17 @@ export default function PurchaseOrders() {
   // Update status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return apiRequest(`/api/purchase-orders/${id}/status`, {
+      const response = await fetch(`/api/purchase-orders/${id}/status`, {
         method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ status }),
       });
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });

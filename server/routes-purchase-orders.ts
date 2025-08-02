@@ -111,6 +111,32 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
+  // Update purchase order status
+  app.patch("/api/purchase-orders/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.tenantId;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const purchaseOrder = await storage.updatePurchaseOrder(id, { 
+        status,
+        updatedAt: new Date(),
+        ...(status === 'approved' && { approvedBy: req.user.claims.sub, approvedDate: new Date() })
+      }, tenantId);
+      
+      if (!purchaseOrder) {
+        return res.status(404).json({ error: "Purchase order not found" });
+      }
+
+      res.json(purchaseOrder);
+    } catch (error) {
+      console.error("Error updating purchase order status:", error);
+      res.status(500).json({ error: "Failed to update purchase order status" });
+    }
+  });
+
+
+
   // Purchase Order Items routes
   app.get("/api/purchase-orders/:id/items", isAuthenticated, async (req: any, res) => {
     try {
