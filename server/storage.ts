@@ -772,18 +772,16 @@ export class DatabaseStorage implements IStorage {
 
   // Customer-specific operations (filtered views of business records)
   async getCustomers(tenantId: string, includeInactive: boolean = false): Promise<any[]> {
-    let query = db.select().from(businessRecords).where(
-      and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'customer')
-      )
-    );
+    const conditions = [
+      eq(businessRecords.tenantId, tenantId),
+      eq(businessRecords.recordType, 'customer')
+    ];
     
     if (!includeInactive) {
-      query = query.where(eq(businessRecords.status, 'active'));
+      conditions.push(eq(businessRecords.status, 'active'));
     }
     
-    return await query;
+    return await db.select().from(businessRecords).where(and(...conditions));
   }
 
   async getCustomer(id: string, tenantId: string): Promise<any | undefined> {
