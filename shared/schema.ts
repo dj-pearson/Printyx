@@ -410,77 +410,67 @@ export const companyContacts = pgTable("company_contacts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// CRM - Simplified Leads table for sales pipeline tracking
-export const leads = pgTable("leads", {
+// Unified Business Records - Single table for entire business relationship lifecycle
+export const businessRecords = pgTable("business_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   companyId: varchar("company_id").notNull(), // Always tied to a company
   contactId: varchar("contact_id").notNull(), // Always tied to a specific contact
   
+  // Record Type & Status - Controls entire business relationship lifecycle
+  recordType: varchar("record_type").notNull().default("lead"), // lead, customer, former_customer
+  status: varchar("status").notNull().default("new"), 
+  // Lead statuses: new, contacted, qualified, proposal, negotiation, closed_won, closed_lost
+  // Customer statuses: active, inactive, on_hold, churned, competitor_switch, non_payment, expired
+  
   // Lead Pipeline Information
   leadSource: varchar("lead_source").notNull().default("website"), // website, referral, cold_call, trade_show, etc.
-  leadStatus: varchar("lead_status").notNull().default("new"), // new, qualified, proposal, negotiation, closed_won, closed_lost
   estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }),
   probability: integer("probability").default(50), // 0-100%
-  closeDate: timestamp("close_date"),
+  closeDate: timestamp("close_date"), // Date converted to customer or lost
   
   // Assignment & Ownership
-  ownerId: varchar("owner_id"), // User who owns this lead
+  ownerId: varchar("owner_id"), // User who owns this record
   leadScore: integer("lead_score").default(0), // 0-100 scoring system
   priority: varchar("priority").default("medium"), // high, medium, low
+  
+  // Customer-Specific Fields (populated when recordType changes to 'customer')
+  customerNumber: varchar("customer_number").unique(), // Generated when converted to customer
+  customerSince: timestamp("customer_since"), // Date of conversion to customer
+  customerUntil: timestamp("customer_until"), // Date when customer relationship ended (for former customers)
+  churnReason: varchar("churn_reason"), // competitor_switch, pricing, service_issues, business_closure, etc.
+  
+  // Service & Support Information (customer only)
+  preferredTechnician: varchar("preferred_technician"),
+  lastServiceDate: timestamp("last_service_date"),
+  nextScheduledService: timestamp("next_scheduled_service"),
+  
+  // Billing Information (customer only)
+  lastInvoiceDate: timestamp("last_invoice_date"),
+  lastPaymentDate: timestamp("last_payment_date"),
+  currentBalance: decimal("current_balance", { precision: 10, scale: 2 }).default('0'),
+  
+  // Meter Reading Information (customer only)
+  lastMeterReadingDate: timestamp("last_meter_reading_date"),
+  nextMeterReadingDate: timestamp("next_meter_reading_date"),
   
   // Tracking & Notes
   notes: text("notes"),
   lastContactDate: timestamp("last_contact_date"),
   nextFollowUpDate: timestamp("next_follow_up_date"),
   createdBy: varchar("created_by").notNull(),
+  convertedBy: varchar("converted_by"), // Who converted from lead to customer
+  deactivatedBy: varchar("deactivated_by"), // Who deactivated the customer
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// CRM - Lead Activities (matching the activity timeline from your screenshots)
-export const leadActivities = pgTable("lead_activities", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  leadId: varchar("lead_id").notNull(),
-  
-  // Activity Details
-  activityType: varchar("activity_type").notNull(), // email, call, meeting, demo, proposal, task, note, external
-  subject: varchar("subject").notNull(),
-  description: text("description"),
-  direction: varchar("direction"), // inbound, outbound
-  
-  // Email Information (when activityType = 'email')
-  emailFrom: varchar("email_from"),
-  emailTo: text("email_to"), // JSON array for multiple recipients
-  emailCc: text("email_cc"),
-  emailSubject: varchar("email_subject"),
-  emailBody: text("email_body"),
-  isShared: boolean("is_shared").default(false), // "Emails are not shared with you..."
-  
-  // Call Information
-  callDuration: integer("call_duration"), // in minutes
-  callOutcome: varchar("call_outcome"), // answered, no_answer, busy, voicemail
-  
-  // Scheduling
-  scheduledDate: timestamp("scheduled_date"),
-  completedDate: timestamp("completed_date"),
-  dueDate: timestamp("due_date"),
-  
-  // Outcomes & Follow-up
-  outcome: varchar("outcome"), // completed, no_response, rescheduled, cancelled, replied
-  nextAction: text("next_action"),
-  followUpDate: timestamp("follow_up_date"),
-  
-  // Related Records & Attachments
-  relatedRecords: jsonb("related_records"), // Links to deals, agreements, etc.
-  attachments: jsonb("attachments"), // File references
-  
-  // Tracking
-  createdBy: varchar("created_by").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// For backward compatibility during migration
+export const leads = businessRecords; // Alias for existing code
+export const customers = businessRecords; // Alias for existing code
+
+// REMOVED: Old leadActivities table - now using unified businessRecordActivities
 
 // Additional contacts at a company (beyond primary contact)
 export const leadContacts = pgTable("lead_contacts", {
@@ -546,93 +536,53 @@ export const quoteLineItems = pgTable("quote_line_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Customer Management - Customer Records (exact clone of Lead structure with additional fields)  
-export const customers = pgTable("customers", {
+// Unified Business Record Activities - Single activity table for entire lifecycle
+export const businessRecordActivities = pgTable("business_record_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
-  companyId: varchar("company_id").notNull(), // Always tied to a company (same as leads)
-  contactId: varchar("contact_id").notNull(), // Always tied to a specific contact (same as leads)
+  businessRecordId: varchar("business_record_id").notNull(), // References businessRecords.id
   
-  // Customer Pipeline Information (mirrors lead structure exactly)
-  leadSource: varchar("lead_source").notNull().default("website"), // website, referral, cold_call, trade_show, etc.
-  leadStatus: varchar("lead_status").notNull().default("customer"), // customer, active, inactive, on_hold, etc.
-  estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }),
-  probability: integer("probability").default(100), // 100% for converted customers
-  closeDate: timestamp("close_date"), // Date customer was converted/closed
-  
-  // Assignment & Ownership (same as leads)
-  ownerId: varchar("owner_id"), // User who owns this customer  
-  leadScore: integer("lead_score").default(0), // 0-100 scoring system
-  priority: varchar("priority").default("medium"), // high, medium, low
-  
-  // Tracking & Notes (same as leads)
-  notes: text("notes"),
-  lastContactDate: timestamp("last_contact_date"),
-  nextFollowUpDate: timestamp("next_follow_up_date"),
-  createdBy: varchar("created_by").notNull(),
-  
-  // Additional Customer-Specific Fields for Meter Readings, Invoices, Service Tickets
-  // Service & Support Information
-  preferredTechnician: varchar("preferred_technician"),
-  lastServiceDate: timestamp("last_service_date"),
-  nextScheduledService: timestamp("next_scheduled_service"),
-  
-  // Billing Information
-  lastInvoiceDate: timestamp("last_invoice_date"),
-  lastPaymentDate: timestamp("last_payment_date"),
-  currentBalance: decimal("current_balance", { precision: 10, scale: 2 }).default('0'),
-  
-  // Meter Reading Information
-  lastMeterReadingDate: timestamp("last_meter_reading_date"),
-  nextMeterReadingDate: timestamp("next_meter_reading_date"),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Customer Activities (exact clone of lead activities structure)
-export const customerActivities = pgTable("customer_activities", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  customerId: varchar("customer_id").notNull(),
-  
-  // Activity Details (same as leadActivities)
-  activityType: varchar("activity_type").notNull(), // email, call, meeting, demo, proposal, task, note, external
+  // Activity Details
+  activityType: varchar("activity_type").notNull(), // email, call, meeting, demo, proposal, task, note, external, service_call, billing, churn_prevention
   subject: varchar("subject").notNull(),
   description: text("description"),
   direction: varchar("direction"), // inbound, outbound
   
-  // Email Information (same as leadActivities)
+  // Email Information
   emailFrom: varchar("email_from"),
   emailTo: text("email_to"), // JSON array for multiple recipients
   emailCc: text("email_cc"),
   emailSubject: varchar("email_subject"),
   emailBody: text("email_body"),
-  isShared: boolean("is_shared").default(false), // "Emails are not shared with you..."
+  isShared: boolean("is_shared").default(false),
   
-  // Call Information (same as leadActivities)
+  // Call Information
   callDuration: integer("call_duration"), // in minutes
   callOutcome: varchar("call_outcome"), // answered, no_answer, busy, voicemail
   
-  // Scheduling (same as leadActivities)
+  // Scheduling
   scheduledDate: timestamp("scheduled_date"),
   completedDate: timestamp("completed_date"),
   dueDate: timestamp("due_date"),
   
-  // Outcomes & Follow-up (same as leadActivities)
+  // Outcomes & Follow-up
   outcome: varchar("outcome"), // completed, no_response, rescheduled, cancelled, replied
   nextAction: text("next_action"),
   followUpDate: timestamp("follow_up_date"),
   
-  // Related Records & Attachments (same as leadActivities)
+  // Related Records & Attachments
   relatedRecords: jsonb("related_records"), // Links to deals, agreements, etc.
   attachments: jsonb("attachments"), // File references
   
-  // Tracking (same as leadActivities)
+  // Tracking
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// For backward compatibility during migration
+export const leadActivities = businessRecordActivities; // Alias for existing code
+export const customerActivities = businessRecordActivities; // Alias for existing code
 
 // Customer Contacts (exact clone of leadContacts structure)
 export const customerContacts = pgTable("customer_contacts", {
@@ -1462,45 +1412,62 @@ export const companyContactsRelations = relations(companyContacts, ({ one }) => 
   }),
 }));
 
-export const leadsRelations = relations(leads, ({ one, many }) => ({
+// Business Records Relations - Unified for both leads and customers
+export const businessRecordsRelations = relations(businessRecords, ({ one, many }) => ({
   tenant: one(tenants, {
-    fields: [leads.tenantId],
+    fields: [businessRecords.tenantId],
     references: [tenants.id],
   }),
   company: one(companies, {
-    fields: [leads.companyId],
+    fields: [businessRecords.companyId],
     references: [companies.id],
   }),
   contact: one(companyContacts, {
-    fields: [leads.contactId],
+    fields: [businessRecords.contactId],
     references: [companyContacts.id],
   }),
   owner: one(users, {
-    fields: [leads.ownerId],
+    fields: [businessRecords.ownerId],
     references: [users.id],
   }),
   createdByUser: one(users, {
-    fields: [leads.createdBy],
+    fields: [businessRecords.createdBy],
     references: [users.id],
   }),
-  activities: many(leadActivities),
+  convertedByUser: one(users, {
+    fields: [businessRecords.convertedBy],
+    references: [users.id],
+  }),
+  deactivatedByUser: one(users, {
+    fields: [businessRecords.deactivatedBy],
+    references: [users.id],
+  }),
+  activities: many(businessRecordActivities),
   quotes: many(quotes),
+  contracts: many(contracts),
+  serviceTickets: many(serviceTickets),
+  meterReadings: many(meterReadings),
+  invoices: many(invoices),
 }));
 
-export const leadActivitiesRelations = relations(leadActivities, ({ one }) => ({
+export const businessRecordActivitiesRelations = relations(businessRecordActivities, ({ one }) => ({
   tenant: one(tenants, {
-    fields: [leadActivities.tenantId],
+    fields: [businessRecordActivities.tenantId],
     references: [tenants.id],
   }),
-  lead: one(leads, {
-    fields: [leadActivities.leadId],
-    references: [leads.id],
+  businessRecord: one(businessRecords, {
+    fields: [businessRecordActivities.businessRecordId],
+    references: [businessRecords.id],
   }),
   createdByUser: one(users, {
-    fields: [leadActivities.createdBy],
+    fields: [businessRecordActivities.createdBy],
     references: [users.id],
   }),
 }));
+
+// Backward compatibility aliases
+export const leadsRelations = businessRecordsRelations;
+export const leadActivitiesRelations = businessRecordActivitiesRelations;
 
 export const leadContactsRelations = relations(leadContacts, ({ one }) => ({
   tenant: one(tenants, {
