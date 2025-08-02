@@ -1715,6 +1715,7 @@ export class DatabaseStorage implements IStorage {
     await this.createDealActivity({
       tenantId,
       dealId: id,
+      activityType: "stage_change",
       type: "stage_change",
       subject: `Deal moved to ${stage?.name}`,
       description: `Deal stage changed to ${stage?.name}`,
