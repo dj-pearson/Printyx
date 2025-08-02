@@ -296,13 +296,28 @@ export default function WarehouseOperations() {
     >
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="receiving" className="text-xs sm:text-sm">Receiving</TabsTrigger>
-            <TabsTrigger value="inventory" className="text-xs sm:text-sm">Inventory</TabsTrigger>
-            <TabsTrigger value="build" className="text-xs sm:text-sm">Build</TabsTrigger>
-            <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery</TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
+          {/* Mobile scrollable tabs */}
+          <div className="md:hidden overflow-x-auto">
+            <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground">
+              <div className="flex space-x-1 min-w-max">
+                <TabsTrigger value="overview" className="whitespace-nowrap text-xs px-3">Overview</TabsTrigger>
+                <TabsTrigger value="receiving" className="whitespace-nowrap text-xs px-3">Receiving</TabsTrigger>
+                <TabsTrigger value="inventory" className="whitespace-nowrap text-xs px-3">Inventory</TabsTrigger>
+                <TabsTrigger value="build" className="whitespace-nowrap text-xs px-3">Build</TabsTrigger>
+                <TabsTrigger value="delivery" className="whitespace-nowrap text-xs px-3">Delivery</TabsTrigger>
+                <TabsTrigger value="analytics" className="whitespace-nowrap text-xs px-3">Analytics</TabsTrigger>
+              </div>
+            </TabsList>
+          </div>
+          
+          {/* Desktop grid tabs */}
+          <TabsList className="hidden md:grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
+            <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="receiving" className="text-sm">Receiving</TabsTrigger>
+            <TabsTrigger value="inventory" className="text-sm">Inventory</TabsTrigger>
+            <TabsTrigger value="build" className="text-sm">Build</TabsTrigger>
+            <TabsTrigger value="delivery" className="text-sm">Delivery</TabsTrigger>
+            <TabsTrigger value="analytics" className="text-sm">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
