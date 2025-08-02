@@ -186,27 +186,27 @@ export default function WarehouseOperations() {
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
 
   // Fetch warehouse operations
-  const { data: operations = [], isLoading } = useQuery({
+  const { data: operations = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/warehouse-operations"],
   });
 
   // Fetch equipment for dropdowns
-  const { data: equipment = [] } = useQuery({
+  const { data: equipment = [] } = useQuery<any[]>({
     queryKey: ["/api/equipment"],
   });
 
   // Fetch technicians
-  const { data: technicians = [] } = useQuery({
+  const { data: technicians = [] } = useQuery<any[]>({
     queryKey: ["/api/technicians"],
   });
 
   // Fetch customers
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [] } = useQuery<any[]>({
     queryKey: ["/api/customers"],
   });
 
   // Fetch statistics
-  const { data: stats } = useQuery({
+  const { data: stats = {} } = useQuery<any>({
     queryKey: ["/api/warehouse-operations/stats"],
   });
 
@@ -296,62 +296,62 @@ export default function WarehouseOperations() {
     >
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="receiving">Receiving</TabsTrigger>
-            <TabsTrigger value="inventory">Inventory</TabsTrigger>
-            <TabsTrigger value="build">Build Process</TabsTrigger>
-            <TabsTrigger value="delivery">Delivery</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="receiving" className="text-xs sm:text-sm">Receiving</TabsTrigger>
+            <TabsTrigger value="inventory" className="text-xs sm:text-sm">Inventory</TabsTrigger>
+            <TabsTrigger value="build" className="text-xs sm:text-sm">Build</TabsTrigger>
+            <TabsTrigger value="delivery" className="text-xs sm:text-sm">Delivery</TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
             {/* Statistics Dashboard */}
             {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center space-x-2">
-                      <Package className="h-8 w-8 text-blue-600" />
+                      <Package className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.totalOperations || 0}</p>
-                        <p className="text-sm text-muted-foreground">Total Operations</p>
+                        <p className="text-lg md:text-2xl font-bold">{stats.totalOperations || 0}</p>
+                        <p className="text-xs md:text-sm text-muted-foreground">Total Operations</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center space-x-2">
-                      <Clock className="h-8 w-8 text-yellow-600" />
+                      <Clock className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.pendingOperations || 0}</p>
-                        <p className="text-sm text-muted-foreground">Pending</p>
+                        <p className="text-lg md:text-2xl font-bold">{stats.pendingOperations || 0}</p>
+                        <p className="text-xs md:text-sm text-muted-foreground">Pending</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center space-x-2">
-                      <Activity className="h-8 w-8 text-orange-600" />
+                      <Activity className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.inProgressOperations || 0}</p>
-                        <p className="text-sm text-muted-foreground">In Progress</p>
+                        <p className="text-lg md:text-2xl font-bold">{stats.inProgressOperations || 0}</p>
+                        <p className="text-xs md:text-sm text-muted-foreground">In Progress</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-8 w-8 text-green-600" />
+                      <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       <div>
-                        <p className="text-2xl font-bold">{stats.completedOperations || 0}</p>
-                        <p className="text-sm text-muted-foreground">Completed</p>
+                        <p className="text-lg md:text-2xl font-bold">{stats.completedOperations || 0}</p>
+                        <p className="text-xs md:text-sm text-muted-foreground">Completed</p>
                       </div>
                     </div>
                   </CardContent>
@@ -390,12 +390,12 @@ export default function WarehouseOperations() {
           </TabsContent>
 
           <TabsContent value="receiving" className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-2xl font-bold">Receiving Operations</h2>
-                <p className="text-muted-foreground">Process incoming shipments and manage inventory</p>
+                <h2 className="text-xl md:text-2xl font-bold">Receiving Operations</h2>
+                <p className="text-sm md:text-base text-muted-foreground">Process incoming shipments and manage inventory</p>
               </div>
-              <Button onClick={() => setShowCreateDialog(true)}>
+              <Button onClick={() => setShowCreateDialog(true)} className="w-full md:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 New Operation
               </Button>
@@ -403,8 +403,8 @@ export default function WarehouseOperations() {
 
             {/* Filters */}
             <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row gap-4 items-center">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center">
                   <div className="flex-1">
                     <div className="relative">
                       <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -416,10 +416,10 @@ export default function WarehouseOperations() {
                       />
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 w-full md:w-auto">
                     <Filter className="h-4 w-4 text-gray-400" />
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-full md:w-[180px]">
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -435,105 +435,201 @@ export default function WarehouseOperations() {
               </CardContent>
             </Card>
 
-            {/* Operations Table */}
+            {/* Operations List - Mobile-Responsive */}
             <Card>
-              <CardContent>
+              <CardContent className="p-4 md:p-6">
                 {isLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Operation Type</TableHead>
-                        <TableHead>Equipment ID</TableHead>
-                        <TableHead>Assigned To</TableHead>
-                        <TableHead>Scheduled Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Operation Type</TableHead>
+                            <TableHead>Equipment ID</TableHead>
+                            <TableHead>Assigned To</TableHead>
+                            <TableHead>Scheduled Date</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredOperations.map((operation: any) => {
+                            const StatusIcon = statusIcons[operation.status as keyof typeof statusIcons] || Clock;
+                            
+                            return (
+                              <TableRow key={operation.id}>
+                                <TableCell className="font-medium">
+                                  {operation.operationType.replace('_', ' ').toUpperCase()}
+                                </TableCell>
+                                <TableCell>{operation.equipmentId}</TableCell>
+                                <TableCell>{operation.assignedTo || 'Unassigned'}</TableCell>
+                                <TableCell>
+                                  {operation.scheduledDate 
+                                    ? format(new Date(operation.scheduledDate), 'MMM dd, yyyy') 
+                                    : 'Not scheduled'
+                                  }
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={statusColors[operation.status as keyof typeof statusColors]}>
+                                    <StatusIcon className="h-3 w-3 mr-1" />
+                                    {operation.status.replace('_', ' ')}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center space-x-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedOperation(operation);
+                                        setShowDetailsDialog(true);
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    
+                                    {operation.status === 'pending' && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => updateStatusMutation.mutate({ 
+                                          id: operation.id, 
+                                          status: 'in_progress' 
+                                        })}
+                                      >
+                                        Start
+                                      </Button>
+                                    )}
+                                    
+                                    {operation.status === 'in_progress' && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => updateStatusMutation.mutate({ 
+                                          id: operation.id, 
+                                          status: 'completed' 
+                                        })}
+                                      >
+                                        Complete
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-4">
                       {filteredOperations.map((operation: any) => {
                         const StatusIcon = statusIcons[operation.status as keyof typeof statusIcons] || Clock;
+                        const OperationTypeIcon = statusIcons[operation.operationType as keyof typeof statusIcons] || Package;
                         
                         return (
-                          <TableRow key={operation.id}>
-                            <TableCell className="font-medium">
-                              {operation.operationType.replace('_', ' ').toUpperCase()}
-                            </TableCell>
-                            <TableCell>{operation.equipmentId}</TableCell>
-                            <TableCell>{operation.assignedTo || 'Unassigned'}</TableCell>
-                            <TableCell>
-                              {operation.scheduledDate 
-                                ? format(new Date(operation.scheduledDate), 'MMM dd, yyyy') 
-                                : 'Not scheduled'
-                              }
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={statusColors[operation.status as keyof typeof statusColors]}>
-                                <StatusIcon className="h-3 w-3 mr-1" />
-                                {operation.status.replace('_', ' ')}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
+                          <Card key={operation.id} className="border">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center space-x-2">
+                                  <OperationTypeIcon className="h-5 w-5 text-blue-600" />
+                                  <div>
+                                    <p className="font-semibold text-sm">
+                                      {operation.operationType.replace('_', ' ').toUpperCase()}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">ID: {operation.equipmentId}</p>
+                                  </div>
+                                </div>
+                                <Badge className={statusColors[operation.status as keyof typeof statusColors]}>
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {operation.status.replace('_', ' ')}
+                                </Badge>
+                              </div>
+                              
+                              <div className="space-y-2 mb-4">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Assigned To:</span>
+                                  <span>{operation.assignedTo || 'Unassigned'}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Scheduled:</span>
+                                  <span>
+                                    {operation.scheduledDate 
+                                      ? format(new Date(operation.scheduledDate), 'MMM dd, yyyy') 
+                                      : 'Not scheduled'
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex flex-col space-y-2">
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => {
                                     setSelectedOperation(operation);
                                     setShowDetailsDialog(true);
                                   }}
+                                  className="w-full"
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
                                 </Button>
                                 
                                 {operation.status === 'pending' && (
                                   <Button
-                                    variant="ghost"
+                                    variant="default"
                                     size="sm"
                                     onClick={() => updateStatusMutation.mutate({ 
                                       id: operation.id, 
                                       status: 'in_progress' 
                                     })}
+                                    className="w-full"
                                   >
-                                    Start
+                                    <Activity className="h-4 w-4 mr-2" />
+                                    Start Operation
                                   </Button>
                                 )}
                                 
                                 {operation.status === 'in_progress' && (
                                   <Button
-                                    variant="ghost"
+                                    variant="default"
                                     size="sm"
                                     onClick={() => updateStatusMutation.mutate({ 
                                       id: operation.id, 
                                       status: 'completed' 
                                     })}
+                                    className="w-full"
                                   >
-                                    Complete
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Complete Operation
                                   </Button>
                                 )}
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </CardContent>
+                          </Card>
                         );
                       })}
-                    </TableBody>
-                  </Table>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="inventory" className="space-y-6">
-            <div className="flex justify-between items-center">
+          <TabsContent value="inventory" className="space-y-4 md:space-y-6">
+            <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-2xl font-bold">Serial Number Management</h2>
-                <p className="text-muted-foreground">Track equipment serial numbers and accessories</p>
+                <h2 className="text-xl md:text-2xl font-bold">Serial Number Management</h2>
+                <p className="text-sm md:text-base text-muted-foreground">Track equipment serial numbers and accessories</p>
               </div>
-              <Button onClick={() => setShowSerialDialog(true)}>
+              <Button onClick={() => setShowSerialDialog(true)} className="w-full md:w-auto">
                 <QrCode className="h-4 w-4 mr-2" />
                 Add Serial Number
               </Button>
@@ -553,13 +649,13 @@ export default function WarehouseOperations() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="build" className="space-y-6">
-            <div className="flex justify-between items-center">
+          <TabsContent value="build" className="space-y-4 md:space-y-6">
+            <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-2xl font-bold">Build Process Management</h2>
-                <p className="text-muted-foreground">Manage equipment assembly and accessory matching</p>
+                <h2 className="text-xl md:text-2xl font-bold">Build Process Management</h2>
+                <p className="text-sm md:text-base text-muted-foreground">Manage equipment assembly and accessory matching</p>
               </div>
-              <Button onClick={() => setShowBuildDialog(true)}>
+              <Button onClick={() => setShowBuildDialog(true)} className="w-full md:w-auto">
                 <Wrench className="h-4 w-4 mr-2" />
                 New Build Process
               </Button>
@@ -579,13 +675,13 @@ export default function WarehouseOperations() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="delivery" className="space-y-6">
-            <div className="flex justify-between items-center">
+          <TabsContent value="delivery" className="space-y-4 md:space-y-6">
+            <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-2xl font-bold">Delivery Scheduling</h2>
-                <p className="text-muted-foreground">Schedule and track equipment deliveries to customers</p>
+                <h2 className="text-xl md:text-2xl font-bold">Delivery Scheduling</h2>
+                <p className="text-sm md:text-base text-muted-foreground">Schedule and track equipment deliveries to customers</p>
               </div>
-              <Button onClick={() => setShowDeliveryDialog(true)}>
+              <Button onClick={() => setShowDeliveryDialog(true)} className="w-full md:w-auto">
                 <Truck className="h-4 w-4 mr-2" />
                 Schedule Delivery
               </Button>
@@ -605,14 +701,14 @@ export default function WarehouseOperations() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
+          <TabsContent value="analytics" className="space-y-4 md:space-y-6">
             <div>
-              <h2 className="text-2xl font-bold">Warehouse Analytics</h2>
-              <p className="text-muted-foreground">Performance metrics and operational insights</p>
+              <h2 className="text-xl md:text-2xl font-bold">Warehouse Analytics</h2>
+              <p className="text-sm md:text-base text-muted-foreground">Performance metrics and operational insights</p>
             </div>
 
             {/* Analytics dashboard would go here */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Operations Efficiency</CardTitle>
@@ -640,7 +736,7 @@ export default function WarehouseOperations() {
 
         {/* Create Operation Dialog */}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Warehouse Operation</DialogTitle>
               <DialogDescription>
@@ -739,11 +835,11 @@ export default function WarehouseOperations() {
                   )}
                 />
 
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                <div className="flex flex-col space-y-2 md:flex-row md:justify-end md:space-y-0 md:space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="w-full md:w-auto">
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createOperationMutation.isPending}>
+                  <Button type="submit" disabled={createOperationMutation.isPending} className="w-full md:w-auto">
                     {createOperationMutation.isPending ? "Creating..." : "Create Operation"}
                   </Button>
                 </div>
@@ -754,13 +850,13 @@ export default function WarehouseOperations() {
 
         {/* Details Dialog */}
         <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Operation Details</DialogTitle>
             </DialogHeader>
             {selectedOperation && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium">Operation Type</label>
                     <p className="text-sm text-muted-foreground">
