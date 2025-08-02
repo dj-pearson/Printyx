@@ -30,12 +30,18 @@ Preferred communication style: Simple, everyday language.
 - **RBAC Implementation**: Comprehensive role hierarchy with department-based permissions.
 - **Key Entities**: Users, Roles, Tenants, Customers, Equipment, Contracts, Service Tickets, Leads, Inventory Items, Technicians, Meter Readings, Invoices, Tasks, Projects, Service Call Analysis, Parts Orders, Warehouse Operations.
 
-### Multi-Tenancy & Role-Based Access Control
+### Multi-Tenancy & Multi-Location Role-Based Access Control
 - **Tenant Isolation**: Row-level security with `tenantId` filtering across all business entities.
-- **Multi-Level Role Hierarchy**: 3-tier organizational structure with 7 permission levels, including Printyx Platform Roles, Company Tenant Roles, and Department Roles (Sales, Service, Finance).
-- **Department Segmentation**: Permissions and navigation segmented by Sales, Service, Finance, Purchasing, Administration modules.
-- **Permission System**: Granular module permissions with department-specific access controls.
-- **Data Segregation**: Multi-layered filtering by tenant, role, team, and individual assignments.
+- **Multi-Location Architecture**: Enhanced 4-tier organizational structure supporting 1000+ employees:
+  - **Platform Level**: Printyx system administrators and support staff
+  - **Company Level**: C-level executives with access to all locations within their tenant
+  - **Regional Level**: Regional managers overseeing multiple locations within assigned regions
+  - **Location Level**: Location-specific management and department roles
+- **8-Level Role Hierarchy**: From individual contributors (Level 1) to platform admins (Level 8)
+- **Access Scope Control**: Four access scopes (platform, company, regional, location) determine data visibility
+- **Location & Regional Management**: Comprehensive location and region tables with manager assignments
+- **Enhanced Data Segregation**: Multi-layered filtering by tenant, region, location, role, team, and individual assignments
+- **Permission System**: Granular module permissions with location-aware access controls
 
 ### Authentication & Authorization
 - **Provider**: Replit Auth with OpenID Connect.

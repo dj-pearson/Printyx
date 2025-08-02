@@ -93,33 +93,103 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Role types enum for organizational hierarchy
+// Role types enum for organizational hierarchy with multi-location support
 export const roleTypeEnum = pgEnum('role_type', [
   'platform_admin',    // Printyx system-level roles (Root Admin, Support Staff)
-  'company_admin',     // Company tenant admin roles
-  'department_role'    // Standard department-based roles within companies
+  'company_admin',     // Company tenant admin roles (C-level access to all locations)
+  'regional_manager',  // Regional managers overseeing multiple locations
+  'location_manager',  // Location-specific management roles
+  'department_role'    // Standard department-based roles within locations
 ]);
 
-// Role-based access control tables with expanded hierarchy
+// Role-based access control tables with multi-location hierarchy
 export const roles = pgTable("roles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 50 }).notNull(), // e.g., "Root Admin", "Printyx Support", "Company Admin", "Sales Rep"
-  code: varchar("code", { length: 30 }).notNull().unique(), // e.g., "ROOT_ADMIN", "PRINTYX_SUPPORT", "COMPANY_ADMIN"
+  name: varchar("name", { length: 50 }).notNull(), // e.g., "Root Admin", "CEO", "Regional Manager", "Location Manager", "Sales Rep"
+  code: varchar("code", { length: 30 }).notNull().unique(), // e.g., "ROOT_ADMIN", "CEO", "REGIONAL_MGR", "LOC_MGR"
   roleType: roleTypeEnum("role_type").notNull().default('department_role'),
   department: varchar("department", { length: 30 }).notNull(), // e.g., "platform", "sales", "service", "admin", "finance"
-  level: integer("level").notNull().default(1), // 1=individual, 2=team_lead, 3=manager, 4=director, 5=admin, 6=platform_admin
+  level: integer("level").notNull().default(1), // 1=individual, 2=team_lead, 3=supervisor, 4=manager, 5=director, 6=regional_manager, 7=company_admin, 8=platform_admin
   description: varchar("description", { length: 255 }),
   permissions: jsonb("permissions").notNull().default('{}'), // JSON object with module permissions
+  
+  // Platform-level permissions (Printyx roles)
   canAccessAllTenants: boolean("can_access_all_tenants").default(false), // For Printyx platform roles
-  canManageUsers: boolean("can_manage_users").default(false), // For admin-level roles
   canViewSystemMetrics: boolean("can_view_system_metrics").default(false), // For platform monitoring
+  
+  // Company-level permissions (applies to all locations within the company)
+  canAccessAllLocations: boolean("can_access_all_locations").default(false), // For company admins (C-level)
+  canManageCompanyUsers: boolean("can_manage_company_users").default(false), // For company admins
+  canCreateLocations: boolean("can_create_locations").default(false), // For company admins
+  canViewCompanyFinancials: boolean("can_view_company_financials").default(false), // For C-level roles
+  
+  // Regional-level permissions (applies to assigned regions/locations)
+  canManageRegionalUsers: boolean("can_manage_regional_users").default(false), // For regional managers
+  canViewRegionalReports: boolean("can_view_regional_reports").default(false), // For regional managers
+  canApproveRegionalDeals: boolean("can_approve_regional_deals").default(false), // For regional managers
+  
+  // Location-level permissions (applies only to specific locations)
+  canManageLocationUsers: boolean("can_manage_location_users").default(false), // For location managers
+  canViewLocationReports: boolean("can_view_location_reports").default(false), // For location managers
+  canApproveLocationDeals: boolean("can_approve_location_deals").default(false), // For location managers
+  
+  // General permissions
+  canManageUsers: boolean("can_manage_users").default(false), // For admin-level roles (deprecated in favor of specific scope)
   isSystemRole: boolean("is_system_role").default(false), // For built-in roles that cannot be deleted
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Locations table for multi-location support within individual companies
+export const locations = pgTable("locations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(), // references tenants.id
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "Downtown Branch", "North Location"
+  code: varchar("code", { length: 20 }).notNull(), // e.g., "DT", "NORTH" - unique within tenant
+  address: varchar("address"),
+  city: varchar("city"),
+  state: varchar("state", { length: 2 }),
+  zipCode: varchar("zip_code", { length: 10 }),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  
+  // Location type and status
+  locationType: varchar("location_type", { length: 30 }).default("branch"), // headquarters, branch, warehouse, service_center
+  isHeadquarters: boolean("is_headquarters").default(false), // Only one HQ per tenant
+  regionId: varchar("region_id"), // references regions.id for regional grouping
+  
+  // Location manager and settings
+  locationManagerId: varchar("location_manager_id"), // references users.id
+  isActive: boolean("is_active").default(true),
+  
+  // Metadata
+  settings: jsonb("settings").default('{}'), // Location-specific settings
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Regions table for grouping locations under regional managers
+export const regions = pgTable("regions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(), // references tenants.id
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "Northeast Region", "West Coast"
+  code: varchar("code", { length: 20 }).notNull(), // e.g., "NE", "WC" - unique within tenant
+  description: text("description"),
+  
+  // Regional manager
+  regionalManagerId: varchar("regional_manager_id"), // references users.id
+  
+  // Geographic boundaries (optional)
+  states: jsonb("states").default('[]'), // Array of state codes this region covers
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const teams = pgTable("teams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
+  locationId: varchar("location_id"), // references locations.id - teams are now location-specific
   name: varchar("name", { length: 100 }).notNull(),
   department: varchar("department", { length: 30 }).notNull(), // sales, service, admin, finance, purchasing
   managerId: varchar("manager_id"), // references users.id
@@ -143,7 +213,7 @@ export const tenants = pgTable("tenants", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User storage table with enhanced role-based fields and platform access
+// User storage table with multi-location support
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id"), // null for Printyx platform users
@@ -156,6 +226,15 @@ export const users = pgTable("users", {
   teamId: varchar("team_id"), // references teams.id
   managerId: varchar("manager_id"), // direct manager - references users.id
   employeeId: varchar("employee_id"), // company employee ID
+  
+  // Multi-location assignments
+  primaryLocationId: varchar("primary_location_id"), // references locations.id - user's home location
+  regionId: varchar("region_id"), // references regions.id - for regional managers
+  
+  // Access scope (determines what locations/regions user can access)
+  accessScope: varchar("access_scope", { length: 20 }).default("location"), // location, region, company, platform
+  
+  // Platform and account settings
   isPlatformUser: boolean("is_platform_user").default(false), // True for Printyx staff
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
@@ -197,10 +276,23 @@ export const userSettings = pgTable("user_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User-Customer assignments for sales territory management
+// User-Location assignments for multi-location access control
+export const userLocationAssignments = pgTable("user_location_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  userId: varchar("user_id").notNull(), // references users.id
+  locationId: varchar("location_id").notNull(), // references locations.id
+  accessType: varchar("access_type", { length: 20 }).notNull().default("full"), // full, read_only, specific_modules
+  assignedBy: varchar("assigned_by").notNull(), // references users.id - who granted this access
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User-Customer assignments for sales territory management (enhanced with location awareness)
 export const userCustomerAssignments = pgTable("user_customer_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
+  locationId: varchar("location_id"), // references locations.id - which location manages this assignment
   userId: varchar("user_id").notNull(), // references users.id
   customerId: varchar("customer_id").notNull(), // references customers.id
   assignmentType: varchar("assignment_type", { length: 20 }).notNull().default("primary"), // primary, secondary, support
