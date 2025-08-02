@@ -1717,6 +1717,7 @@ export class DatabaseStorage implements IStorage {
       dealId: id,
       activityType: "stage_change",
       type: "stage_change",
+      title: `Deal moved to ${stage?.name}`,
       subject: `Deal moved to ${stage?.name}`,
       description: `Deal stage changed to ${stage?.name}`,
       userId: updatedDeal?.ownerId || "", // In real app, get from request context

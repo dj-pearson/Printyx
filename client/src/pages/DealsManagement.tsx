@@ -394,15 +394,31 @@ export default function DealsManagement() {
     if (!over) return;
 
     const dealId = active.id as string;
-    const newStageId = over.id as string;
+    let newStageId = over.id as string;
 
-    console.log('Drag end:', { dealId, newStageId, overId: over.id });
+    // Check if we're dropping on another deal (should get the stage from that deal's container)
+    const isDeal = deals.some(d => d.id === newStageId);
+    if (isDeal) {
+      // Find the stage of the deal we're dropping on
+      const targetDeal = deals.find(d => d.id === newStageId);
+      if (targetDeal) {
+        newStageId = targetDeal.stageId;
+      }
+    }
+
+    // Verify it's a valid stage
+    const validStage = stages.find(s => s.id === newStageId);
+    if (!validStage) {
+      console.log('Invalid stage ID:', newStageId);
+      return;
+    }
+
+    console.log('Drag end:', { dealId, newStageId, overId: over.id, isDeal });
 
     // Find the deal and check if it's actually moving to a different stage
     const deal = deals.find(d => d.id === dealId);
-    const validStage = stages.find(s => s.id === newStageId);
     
-    if (deal && validStage && deal.stageId !== newStageId) {
+    if (deal && deal.stageId !== newStageId) {
       console.log('Moving deal from', deal.stageId, 'to', newStageId);
       
       // Optimistically update the UI first
