@@ -3213,6 +3213,473 @@ export const insertEnhancedProductSchema = createInsertSchema(enhancedProducts).
   updatedAt: true,
 });
 
+// =====================================================================
+// UNIFIED DATA ENRICHMENT TABLES
+// =====================================================================
+
+// Enriched Contacts - Unified table for ZoomInfo and Apollo.io contact data
+export const enrichedContacts = pgTable("enriched_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // External System IDs
+  zoominfo_contact_id: varchar("zoominfo_contact_id"),
+  apollo_contact_id: varchar("apollo_contact_id"),
+  
+  // Core Identity
+  first_name: varchar("first_name").notNull(),
+  last_name: varchar("last_name").notNull(),
+  full_name: varchar("full_name"),
+  email: varchar("email"),
+  direct_phone: varchar("direct_phone"),
+  mobile_phone: varchar("mobile_phone"),
+  
+  // Professional Information
+  job_title: varchar("job_title"),
+  management_level: varchar("management_level"), // C-Level, VP, Director, Manager, Individual Contributor
+  department: varchar("department"),
+  sub_department: varchar("sub_department"),
+  job_function: varchar("job_function"),
+  
+  // Company Context
+  company_external_id: varchar("company_external_id"),
+  company_name: varchar("company_name"),
+  company_domain: varchar("company_domain"),
+  
+  // Location Information
+  city: varchar("city"),
+  state: varchar("state"),
+  country: varchar("country"),
+  zip_code: varchar("zip_code"),
+  time_zone: varchar("time_zone"),
+  
+  // Social Media & Professional Networks
+  linkedin_url: varchar("linkedin_url"),
+  twitter_url: varchar("twitter_url"),
+  facebook_url: varchar("facebook_url"),
+  
+  // Enrichment Quality & Metadata
+  person_score: integer("person_score"),
+  is_verified: boolean("is_verified").default(false),
+  email_verification_status: varchar("email_verification_status"), // verified, unverified, bounced
+  
+  // Professional History (JSON fields)
+  work_history: jsonb("work_history"),
+  education_history: jsonb("education_history"),
+  skills: jsonb("skills"),
+  
+  // Prospecting Status
+  prospecting_status: varchar("prospecting_status").default('new'), // new, contacted, qualified, opportunity, closed
+  lead_score: integer("lead_score"),
+  priority_level: varchar("priority_level").default('medium'), // high, medium, low
+  
+  // Data Source Tracking
+  enrichment_source: varchar("enrichment_source"), // zoominfo, apollo, manual
+  last_enriched_date: timestamp("last_enriched_date"),
+  
+  // Audit Trail
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Enriched Companies - Unified table for ZoomInfo and Apollo.io company data
+export const enrichedCompanies = pgTable("enriched_companies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // External System IDs
+  zoominfo_company_id: varchar("zoominfo_company_id"),
+  apollo_company_id: varchar("apollo_company_id"),
+  
+  // Core Identity
+  company_name: varchar("company_name").notNull(),
+  website: varchar("website"),
+  primary_domain: varchar("primary_domain"),
+  main_phone: varchar("main_phone"),
+  
+  // Business Information
+  primary_industry: varchar("primary_industry"),
+  sub_industry: varchar("sub_industry"),
+  employee_count: integer("employee_count"),
+  employee_range: varchar("employee_range"),
+  annual_revenue: decimal("annual_revenue"),
+  revenue_range: varchar("revenue_range"),
+  founded_year: integer("founded_year"),
+  company_type: varchar("company_type"), // Public, Private, Non-Profit, Government
+  stock_ticker: varchar("stock_ticker"),
+  
+  // Location Information (Headquarters)
+  street_address: varchar("street_address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  zip_code: varchar("zip_code"),
+  country: varchar("country"),
+  
+  // Corporate Structure
+  parent_company_id: varchar("parent_company_id"),
+  parent_company_name: varchar("parent_company_name"),
+  
+  // Technology & Business Intelligence
+  technologies: jsonb("technologies"),
+  departments: jsonb("departments"),
+  key_executives: jsonb("key_executives"),
+  business_keywords: jsonb("business_keywords"),
+  
+  // Funding Information (Apollo)
+  total_funding: decimal("total_funding"),
+  funding_stage: varchar("funding_stage"),
+  last_funding_date: timestamp("last_funding_date"),
+  
+  // Account Intelligence
+  company_score: integer("company_score"),
+  target_account_tier: varchar("target_account_tier"), // enterprise, mid_market, smb
+  account_priority: varchar("account_priority").default('medium'), // high, medium, low
+  
+  // Data Source Tracking
+  enrichment_source: varchar("enrichment_source"), // zoominfo, apollo, manual
+  last_enriched_date: timestamp("last_enriched_date"),
+  
+  // Audit Trail
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Intent Data - Buying signals and research activity
+export const enrichedIntentData = pgTable("enriched_intent_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Company Association
+  company_external_id: varchar("company_external_id").notNull(),
+  company_name: varchar("company_name"),
+  
+  // Intent Intelligence
+  intent_topic: varchar("intent_topic"),
+  topic_category: varchar("topic_category"),
+  intent_score: integer("intent_score"),
+  intent_level: varchar("intent_level"), // High, Medium, Low
+  buying_stage: varchar("buying_stage"), // Awareness, Consideration, Decision, Purchase
+  decision_timeframe: varchar("decision_timeframe"), // Immediate, 1-3 months, 3-6 months, 6+ months
+  
+  // Activity Tracking
+  is_trending: boolean("is_trending").default(false),
+  first_seen_date: timestamp("first_seen_date"),
+  last_activity_date: timestamp("last_activity_date"),
+  days_active: integer("days_active"),
+  
+  // Research Context
+  intent_keywords: jsonb("intent_keywords"),
+  research_areas: jsonb("research_areas"),
+  competitor_activity: jsonb("competitor_activity"),
+  
+  // Sales Intelligence
+  sales_opportunity_score: integer("sales_opportunity_score"),
+  recommended_actions: jsonb("recommended_actions"),
+  optimal_timing_window: varchar("optimal_timing_window"),
+  
+  // Data Source
+  data_source: varchar("data_source").default('zoominfo'), // zoominfo, apollo, internal
+  
+  // Audit Trail
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Organizational Hierarchy - Decision maker mapping and influence analysis
+export const enrichedOrgHierarchy = pgTable("enriched_org_hierarchy", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Person & Company Association
+  company_external_id: varchar("company_external_id").notNull(),
+  person_external_id: varchar("person_external_id").notNull(),
+  
+  // Hierarchy Structure
+  manager_person_id: varchar("manager_person_id"),
+  department_name: varchar("department_name"),
+  organizational_level: integer("organizational_level"),
+  team_size: integer("team_size"),
+  direct_reports_count: integer("direct_reports_count"),
+  
+  // Decision Making Power
+  decision_making_power: varchar("decision_making_power"), // High, Medium, Low
+  has_budget_authority: boolean("has_budget_authority").default(false),
+  procurement_influence_level: varchar("procurement_influence_level"),
+  
+  // Influence Metrics
+  influence_score: integer("influence_score"),
+  accessibility_score: integer("accessibility_score"),
+  
+  // Relationship Mapping
+  hierarchy_path: jsonb("hierarchy_path"),
+  peer_contacts: jsonb("peer_contacts"),
+  subordinate_contacts: jsonb("subordinate_contacts"),
+  
+  // Data Source
+  data_source: varchar("data_source").default('zoominfo'),
+  
+  // Audit Trail
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Enrichment Activities - Track all enrichment activities and prospecting actions
+export const enrichmentActivities = pgTable("enrichment_activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Target Association
+  contact_id: varchar("contact_id"), // enriched_contacts.id
+  company_id: varchar("company_id"), // enriched_companies.id
+  
+  // Activity Details
+  activity_type: varchar("activity_type").notNull(), // enrichment, outreach, qualification, meeting
+  activity_subtype: varchar("activity_subtype"), // email, call, linkedin, research
+  activity_description: text("activity_description"),
+  
+  // Activity Outcome
+  outcome: varchar("outcome"), // successful, failed, no_response, interested, not_qualified
+  outcome_details: text("outcome_details"),
+  
+  // Prospecting Context
+  campaign_name: varchar("campaign_name"),
+  sequence_step: integer("sequence_step"),
+  follow_up_required: boolean("follow_up_required").default(false),
+  next_action_date: timestamp("next_action_date"),
+  next_action_type: varchar("next_action_type"),
+  
+  // Performance Tracking
+  response_time_hours: integer("response_time_hours"),
+  engagement_score: integer("engagement_score"),
+  lead_quality_score: integer("lead_quality_score"),
+  
+  // User & Assignment
+  assigned_user_id: varchar("assigned_user_id"),
+  completed_by_user_id: varchar("completed_by_user_id"),
+  
+  // Audit Trail
+  scheduled_date: timestamp("scheduled_date"),
+  completed_date: timestamp("completed_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Prospecting Campaigns - Organize outreach efforts and track performance
+export const prospectingCampaigns = pgTable("prospecting_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Campaign Details
+  campaign_name: varchar("campaign_name").notNull(),
+  campaign_description: text("campaign_description"),
+  campaign_type: varchar("campaign_type"), // email_sequence, call_campaign, linkedin_outreach, multi_channel
+  
+  // Targeting Criteria
+  target_industries: jsonb("target_industries"),
+  target_company_sizes: jsonb("target_company_sizes"),
+  target_job_titles: jsonb("target_job_titles"),
+  target_management_levels: jsonb("target_management_levels"),
+  target_technologies: jsonb("target_technologies"),
+  
+  // Campaign Configuration
+  sequence_steps: jsonb("sequence_steps"),
+  follow_up_cadence: jsonb("follow_up_cadence"),
+  personalization_rules: jsonb("personalization_rules"),
+  
+  // Performance Metrics
+  total_contacts: integer("total_contacts").default(0),
+  contacts_reached: integer("contacts_reached").default(0),
+  responses_received: integer("responses_received").default(0),
+  meetings_booked: integer("meetings_booked").default(0),
+  opportunities_created: integer("opportunities_created").default(0),
+  
+  // Calculated Rates
+  response_rate: decimal("response_rate"),
+  meeting_rate: decimal("meeting_rate"),
+  opportunity_rate: decimal("opportunity_rate"),
+  
+  // Campaign Status
+  status: varchar("status").default('draft'), // draft, active, paused, completed, archived
+  start_date: timestamp("start_date"),
+  end_date: timestamp("end_date"),
+  
+  // Team Assignment
+  campaign_owner_id: varchar("campaign_owner_id"),
+  team_members: jsonb("team_members"),
+  
+  // Audit Trail
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Type exports for enrichment tables
+export type EnrichedContact = typeof enrichedContacts.$inferSelect;
+export type InsertEnrichedContact = typeof enrichedContacts.$inferInsert;
+export type EnrichedCompany = typeof enrichedCompanies.$inferSelect;
+export type InsertEnrichedCompany = typeof enrichedCompanies.$inferInsert;
+export type EnrichedIntentData = typeof enrichedIntentData.$inferSelect;
+export type InsertEnrichedIntentData = typeof enrichedIntentData.$inferInsert;
+export type EnrichedOrgHierarchy = typeof enrichedOrgHierarchy.$inferSelect;
+export type InsertEnrichedOrgHierarchy = typeof enrichedOrgHierarchy.$inferInsert;
+export type EnrichmentActivity = typeof enrichmentActivities.$inferSelect;
+export type InsertEnrichmentActivity = typeof enrichmentActivities.$inferInsert;
+export type ProspectingCampaign = typeof prospectingCampaigns.$inferSelect;
+export type InsertProspectingCampaign = typeof prospectingCampaigns.$inferInsert;
+
+// Zod schemas for enrichment tables
+export const insertEnrichedContactSchema = createInsertSchema(enrichedContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEnrichedCompanySchema = createInsertSchema(enrichedCompanies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEnrichedIntentDataSchema = createInsertSchema(enrichedIntentData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEnrichedOrgHierarchySchema = createInsertSchema(enrichedOrgHierarchy).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEnrichmentActivitySchema = createInsertSchema(enrichmentActivities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProspectingCampaignSchema = createInsertSchema(prospectingCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// =====================================================================
+// ENRICHMENT RELATIONS
+// =====================================================================
+
+// Enriched Contacts Relations
+export const enrichedContactsRelations = relations(enrichedContacts, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [enrichedContacts.tenantId],
+    references: [tenants.id],
+  }),
+  company: one(enrichedCompanies, {
+    fields: [enrichedContacts.company_external_id],
+    references: [enrichedCompanies.id],
+    relationName: "contactCompany"
+  }),
+  activities: many(enrichmentActivities, {
+    relationName: "contactActivities"
+  }),
+  hierarchyData: one(enrichedOrgHierarchy, {
+    fields: [enrichedContacts.zoominfo_contact_id],
+    references: [enrichedOrgHierarchy.person_external_id],
+    relationName: "contactHierarchy"
+  }),
+}));
+
+// Enriched Companies Relations
+export const enrichedCompaniesRelations = relations(enrichedCompanies, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [enrichedCompanies.tenantId],
+    references: [tenants.id],
+  }),
+  contacts: many(enrichedContacts, {
+    relationName: "contactCompany"
+  }),
+  activities: many(enrichmentActivities, {
+    relationName: "companyActivities"
+  }),
+  intentData: many(enrichedIntentData, {
+    relationName: "companyIntent"
+  }),
+  orgHierarchy: many(enrichedOrgHierarchy, {
+    relationName: "companyHierarchy"
+  }),
+}));
+
+// Enriched Intent Data Relations
+export const enrichedIntentDataRelations = relations(enrichedIntentData, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [enrichedIntentData.tenantId],
+    references: [tenants.id],
+  }),
+  company: one(enrichedCompanies, {
+    fields: [enrichedIntentData.company_external_id],
+    references: [enrichedCompanies.id],
+    relationName: "companyIntent"
+  }),
+}));
+
+// Enriched Org Hierarchy Relations
+export const enrichedOrgHierarchyRelations = relations(enrichedOrgHierarchy, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [enrichedOrgHierarchy.tenantId],
+    references: [tenants.id],
+  }),
+  company: one(enrichedCompanies, {
+    fields: [enrichedOrgHierarchy.company_external_id],
+    references: [enrichedCompanies.id],
+    relationName: "companyHierarchy"
+  }),
+  contact: one(enrichedContacts, {
+    fields: [enrichedOrgHierarchy.person_external_id],
+    references: [enrichedContacts.zoominfo_contact_id],
+    relationName: "contactHierarchy"
+  }),
+}));
+
+// Enrichment Activities Relations
+export const enrichmentActivitiesRelations = relations(enrichmentActivities, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [enrichmentActivities.tenantId],
+    references: [tenants.id],
+  }),
+  contact: one(enrichedContacts, {
+    fields: [enrichmentActivities.contact_id],
+    references: [enrichedContacts.id],
+    relationName: "contactActivities"
+  }),
+  company: one(enrichedCompanies, {
+    fields: [enrichmentActivities.company_id],
+    references: [enrichedCompanies.id],
+    relationName: "companyActivities"
+  }),
+  assignedUser: one(users, {
+    fields: [enrichmentActivities.assigned_user_id],
+    references: [users.id],
+    relationName: "assignedActivities"
+  }),
+  completedByUser: one(users, {
+    fields: [enrichmentActivities.completed_by_user_id],
+    references: [users.id],
+    relationName: "completedActivities"
+  }),
+}));
+
+// Prospecting Campaigns Relations
+export const prospectingCampaignsRelations = relations(prospectingCampaigns, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [prospectingCampaigns.tenantId],
+    references: [tenants.id],
+  }),
+  owner: one(users, {
+    fields: [prospectingCampaigns.campaign_owner_id],
+    references: [users.id],
+    relationName: "ownedCampaigns"
+  }),
+}));
+
 // Re-export equipment lifecycle types
 export * from "./equipment-schema";
 
