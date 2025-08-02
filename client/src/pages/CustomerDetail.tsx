@@ -150,47 +150,54 @@ interface Contract {
 }
 
 export default function CustomerDetail() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Fetch customer details
-  const { data: customer, isLoading } = useQuery<Customer>({
-    queryKey: ["/api/companies", id],
-    enabled: !!id,
+  // Get all customers and find by slug
+  const { data: customers = [], isLoading: customersLoading } = useQuery({
+    queryKey: ['/api/companies'],
   });
+
+  const customer = customers.find((c: any) => {
+    const name = c.businessName || 'untitled-customer';
+    return name.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim().replace(/^-+|-+$/g, '') === slug;
+  });
+
+  const isLoading = customersLoading;
+  const customerId = customer?.id;
 
   // Fetch related data
   const { data: contacts = [] } = useQuery<Contact[]>({
-    queryKey: ["/api/companies", id, "contacts"],
-    enabled: !!id,
+    queryKey: ["/api/companies", customerId, "contacts"],
+    enabled: !!customerId,
   });
 
   const { data: equipment = [] } = useQuery<Equipment[]>({
-    queryKey: ["/api/customers", id, "equipment"],
-    enabled: !!id,
+    queryKey: ["/api/customers", customerId, "equipment"],
+    enabled: !!customerId,
   });
 
   const { data: meterReadings = [] } = useQuery<MeterReading[]>({
-    queryKey: ["/api/customers", id, "meter-readings"],
-    enabled: !!id,
+    queryKey: ["/api/customers", customerId, "meter-readings"],
+    enabled: !!customerId,
   });
 
   const { data: invoices = [] } = useQuery<Invoice[]>({
-    queryKey: ["/api/customers", id, "invoices"],
-    enabled: !!id,
+    queryKey: ["/api/customers", customerId, "invoices"],
+    enabled: !!customerId,
   });
 
   const { data: serviceTickets = [] } = useQuery<ServiceTicket[]>({
-    queryKey: ["/api/customers", id, "service-tickets"],
-    enabled: !!id,
+    queryKey: ["/api/customers", customerId, "service-tickets"],
+    enabled: !!customerId,
   });
 
   const { data: contracts = [] } = useQuery<Contract[]>({
-    queryKey: ["/api/customers", id, "contracts"],
-    enabled: !!id,
+    queryKey: ["/api/customers", customerId, "contracts"],
+    enabled: !!customerId,
   });
 
   if (isLoading) {

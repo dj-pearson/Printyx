@@ -77,7 +77,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
-          <Route path="/customers/:id" component={CustomerDetail} />
+          <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/crm" component={CRMEnhanced} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
@@ -89,7 +89,7 @@ function Router() {
           <Route path="/admin/purchase-orders" component={PurchaseOrders} />
           <Route path="/warehouse-operations" component={WarehouseOperations} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
-          <Route path="/leads/:id" component={LeadDetail} />
+          <Route path="/leads/:slug" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/service-reports" component={ServiceReports} />
