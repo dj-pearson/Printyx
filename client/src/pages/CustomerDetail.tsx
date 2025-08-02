@@ -121,9 +121,9 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-4 gap-6">
         {/* Main Content - Left Side (3 columns on large screens) */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="col-span-3 space-y-6">
           
           {/* Tabs - matches Lead layout */}
           <Tabs defaultValue="details" className="w-full">
@@ -146,7 +146,7 @@ export default function CustomerDetail() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                       <label className="text-sm font-medium text-gray-600">Company Name</label>
-                      <p className="text-base">{company?.name || `Customer ${customer.id.slice(0, 8)}`}</p>
+                      <p className="text-base">{company?.businessName || `Customer ${customer.id.slice(0, 8)}`}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Source</label>
@@ -361,7 +361,7 @@ export default function CustomerDetail() {
         </div>
 
         {/* Right Sidebar - matches Lead layout exactly */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="col-span-1 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Customer Summary</CardTitle>
