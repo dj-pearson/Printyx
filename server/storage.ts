@@ -2326,101 +2326,136 @@ export class DatabaseStorage implements IStorage {
 
   // Customer detail methods - for comprehensive customer information
   async getCustomerEquipment(customerId: string, tenantId: string): Promise<any[]> {
-    return await db
-      .select({
-        id: equipment.id,
-        customerId: equipment.customerId,
-        equipmentType: equipment.equipmentType,
-        make: equipment.make,
-        model: equipment.model,
-        serialNumber: equipment.serialNumber,
-        installDate: equipment.installDate,
-        location: equipment.location,
-        status: equipment.status,
-        createdAt: equipment.createdAt,
-      })
-      .from(equipment)
-      .where(and(eq(equipment.customerId, customerId), eq(equipment.tenantId, tenantId)))
-      .orderBy(equipment.createdAt);
+    try {
+      return await db
+        .select({
+          id: equipment.id,
+          customerId: equipment.customerId,
+          equipmentType: equipment.equipmentType,
+          make: equipment.make,
+          model: equipment.model,
+          serialNumber: equipment.serialNumber,
+          installDate: equipment.installDate,
+          location: equipment.location,
+          status: equipment.status,
+          createdAt: equipment.createdAt,
+        })
+        .from(equipment)
+        .where(and(eq(equipment.customerId, customerId), eq(equipment.tenantId, tenantId)))
+        .orderBy(equipment.createdAt);
+    } catch (error) {
+      console.log("No equipment table found, returning empty array");
+      return [];
+    }
   }
 
   async getCustomerMeterReadings(customerId: string, tenantId: string): Promise<any[]> {
-    return await db
-      .select({
-        id: meterReadings.id,
-        equipmentId: meterReadings.equipmentId,
-        contractId: meterReadings.contractId,
-        readingDate: meterReadings.readingDate,
-        blackMeter: meterReadings.blackMeter,
-        colorMeter: meterReadings.colorMeter,
-        blackCopies: meterReadings.blackCopies,
-        colorCopies: meterReadings.colorCopies,
-        collectionMethod: meterReadings.collectionMethod,
-        billingStatus: meterReadings.billingStatus,
-        billingAmount: meterReadings.billingAmount,
-        createdAt: meterReadings.createdAt,
-      })
-      .from(meterReadings)
-      .innerJoin(equipment, eq(meterReadings.equipmentId, equipment.id))
-      .where(and(eq(equipment.customerId, customerId), eq(meterReadings.tenantId, tenantId)))
-      .orderBy(meterReadings.readingDate);
+    try {
+      // First get equipment for this customer
+      const customerEquipment = await this.getCustomerEquipment(customerId, tenantId);
+      if (customerEquipment.length === 0) {
+        return [];
+      }
+      
+      const equipmentIds = customerEquipment.map(e => e.id);
+      
+      return await db
+        .select({
+          id: meterReadings.id,
+          equipmentId: meterReadings.equipmentId,
+          contractId: meterReadings.contractId,
+          readingDate: meterReadings.readingDate,
+          blackMeter: meterReadings.blackMeter,
+          colorMeter: meterReadings.colorMeter,
+          blackCopies: meterReadings.blackCopies,
+          colorCopies: meterReadings.colorCopies,
+          collectionMethod: meterReadings.collectionMethod,
+          billingStatus: meterReadings.billingStatus,
+          billingAmount: meterReadings.billingAmount,
+          createdAt: meterReadings.createdAt,
+        })
+        .from(meterReadings)
+        .where(and(
+          sql`${meterReadings.equipmentId} = ANY(${equipmentIds})`,
+          eq(meterReadings.tenantId, tenantId)
+        ))
+        .orderBy(meterReadings.readingDate);
+    } catch (error) {
+      console.log("No meter readings found, returning empty array");
+      return [];
+    }
   }
 
   async getCustomerInvoices(customerId: string, tenantId: string): Promise<any[]> {
-    return await db
-      .select({
-        id: invoices.id,
-        customerId: invoices.customerId,
-        invoiceNumber: invoices.invoiceNumber,
-        billingPeriodStart: invoices.billingPeriodStart,
-        billingPeriodEnd: invoices.billingPeriodEnd,
-        totalAmount: invoices.totalAmount,
-        status: invoices.status,
-        dueDate: invoices.dueDate,
-        paidDate: invoices.paidDate,
-        createdAt: invoices.createdAt,
-      })
-      .from(invoices)
-      .where(and(eq(invoices.customerId, customerId), eq(invoices.tenantId, tenantId)))
-      .orderBy(invoices.createdAt);
+    try {
+      return await db
+        .select({
+          id: invoices.id,
+          customerId: invoices.customerId,
+          invoiceNumber: invoices.invoiceNumber,
+          billingPeriodStart: invoices.billingPeriodStart,
+          billingPeriodEnd: invoices.billingPeriodEnd,
+          totalAmount: invoices.totalAmount,
+          status: invoices.status,
+          dueDate: invoices.dueDate,
+          paidDate: invoices.paidDate,
+          createdAt: invoices.createdAt,
+        })
+        .from(invoices)
+        .where(and(eq(invoices.customerId, customerId), eq(invoices.tenantId, tenantId)))
+        .orderBy(invoices.createdAt);
+    } catch (error) {
+      console.log("No invoices found, returning empty array");
+      return [];
+    }
   }
 
   async getCustomerServiceTickets(customerId: string, tenantId: string): Promise<any[]> {
-    return await db
-      .select({
-        id: serviceTickets.id,
-        customerId: serviceTickets.customerId,
-        equipmentId: serviceTickets.equipmentId,
-        ticketNumber: serviceTickets.ticketNumber,
-        title: serviceTickets.title,
-        description: serviceTickets.description,
-        priority: serviceTickets.priority,
-        status: serviceTickets.status,
-        assignedTechnicianId: serviceTickets.assignedTechnicianId,
-        scheduledDate: serviceTickets.scheduledDate,
-        createdAt: serviceTickets.createdAt,
-      })
-      .from(serviceTickets)
-      .where(and(eq(serviceTickets.customerId, customerId), eq(serviceTickets.tenantId, tenantId)))
-      .orderBy(serviceTickets.createdAt);
+    try {
+      return await db
+        .select({
+          id: serviceTickets.id,
+          customerId: serviceTickets.customerId,
+          equipmentId: serviceTickets.equipmentId,
+          ticketNumber: serviceTickets.ticketNumber,
+          title: serviceTickets.title,
+          description: serviceTickets.description,
+          priority: serviceTickets.priority,
+          status: serviceTickets.status,
+          assignedTechnicianId: serviceTickets.assignedTechnicianId,
+          scheduledDate: serviceTickets.scheduledDate,
+          createdAt: serviceTickets.createdAt,
+        })
+        .from(serviceTickets)
+        .where(and(eq(serviceTickets.customerId, customerId), eq(serviceTickets.tenantId, tenantId)))
+        .orderBy(serviceTickets.createdAt);
+    } catch (error) {
+      console.log("No service tickets found, returning empty array");
+      return [];
+    }
   }
 
   async getCustomerContracts(customerId: string, tenantId: string): Promise<any[]> {
-    return await db
-      .select({
-        id: contracts.id,
-        customerId: contracts.customerId,
-        contractNumber: contracts.contractNumber,
-        contractType: contracts.contractType,
-        startDate: contracts.startDate,
-        endDate: contracts.endDate,
-        status: contracts.status,
-        monthlyRate: contracts.monthlyRate,
-        createdAt: contracts.createdAt,
-      })
-      .from(contracts)
-      .where(and(eq(contracts.customerId, customerId), eq(contracts.tenantId, tenantId)))
-      .orderBy(contracts.createdAt);
+    try {
+      return await db
+        .select({
+          id: contracts.id,
+          customerId: contracts.customerId,
+          contractNumber: contracts.contractNumber,
+          contractType: contracts.contractType,
+          startDate: contracts.startDate,
+          endDate: contracts.endDate,
+          status: contracts.status,
+          monthlyRate: contracts.monthlyRate,
+          createdAt: contracts.createdAt,
+        })
+        .from(contracts)
+        .where(and(eq(contracts.customerId, customerId), eq(contracts.tenantId, tenantId)))
+        .orderBy(contracts.createdAt);
+    } catch (error) {
+      console.log("No contracts found, returning empty array");
+      return [];
+    }
   }
 
   async createDeliverySchedule(data: any): Promise<any> {

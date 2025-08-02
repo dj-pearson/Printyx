@@ -1,16 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import MainLayout from "@/components/layout/main-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Users } from "lucide-react";
+import { Search, Plus, Users, Eye, Phone, Mail, MapPin } from "lucide-react";
 
 export default function Customers() {
   const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
 
+  // Use companies endpoint since that's what we have customers stored as
   const { data: customers = [], isLoading: customersLoading } = useQuery({
-    queryKey: ['/api/customers'],
+    queryKey: ['/api/companies'],
     enabled: isAuthenticated,
   });
 
@@ -55,39 +58,45 @@ export default function Customers() {
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
                         <span className="text-primary-600 font-semibold text-sm">
-                          {customer.name?.charAt(0) || 'C'}
+                          {customer.businessName?.charAt(0) || 'C'}
                         </span>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{customer.name}</h3>
-                        <p className="text-sm text-gray-600">{customer.contactPerson}</p>
+                        <h3 className="font-semibold text-gray-900">{customer.businessName}</h3>
+                        <p className="text-sm text-gray-600">{customer.businessSite || customer.industry || 'Customer'}</p>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    {customer.email && (
-                      <p className="text-sm text-gray-600 flex items-center">
-                        <Search className="w-4 h-4 mr-2" />
-                        {customer.email}
-                      </p>
-                    )}
                     {customer.phone && (
                       <p className="text-sm text-gray-600 flex items-center">
-                        <Search className="w-4 h-4 mr-2" />
+                        <Phone className="w-4 h-4 mr-2" />
                         {customer.phone}
                       </p>
                     )}
-                    {customer.address && (
+                    {customer.website && (
                       <p className="text-sm text-gray-600 flex items-center">
-                        <Search className="w-4 h-4 mr-2" />
-                        {customer.address}
+                        <Mail className="w-4 h-4 mr-2" />
+                        {customer.website}
+                      </p>
+                    )}
+                    {customer.billingAddress && (
+                      <p className="text-sm text-gray-600 flex items-center">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {customer.billingCity}, {customer.billingState}
                       </p>
                     )}
                   </div>
                   
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <Button variant="outline" size="sm" className="w-full">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full flex items-center gap-2"
+                      onClick={() => navigate(`/customers/${customer.id}`)}
+                    >
+                      <Eye className="h-4 w-4" />
                       View Details
                     </Button>
                   </div>
