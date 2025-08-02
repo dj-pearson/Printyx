@@ -2152,6 +2152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dealData = {
         tenantId,
         ownerId: userId,
+        createdById: userId, // Add the required createdById field
         stageId: finalStageId,
         title: req.body.title,
         description: req.body.description || null,
