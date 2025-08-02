@@ -702,7 +702,7 @@ export default function CRMEnhanced() {
           </div>
 
           {/* Leads Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-4">
             {filteredLeads?.map((lead) => {
               const leadSlug = lead.companyName?.toLowerCase()
                 .replace(/[^a-z0-9 -]/g, '')
@@ -712,77 +712,133 @@ export default function CRMEnhanced() {
                 .replace(/^-+|-+$/g, '') || 'untitled-lead';
               
               return (
-                <Card key={lead.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="relative">
-                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <Building2 className="w-6 h-6 text-blue-600" />
-                          </div>
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                            {getStatusIcon(lead.leadStatus || 'new')}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 text-base">
-                              {lead.companyName || 'Untitled Lead'}
-                            </h3>
-                            <Badge 
-                              className={`flex items-center gap-1 px-2 py-1 text-xs font-medium ${getStatusColor(lead.leadStatus || 'new')}`}
-                            >
+                <Card key={lead.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <CardTitle className="text-lg">
+                            {lead.companyName || 'Untitled Lead'}
+                          </CardTitle>
+                          <Badge className={`${getStatusColor(lead.leadStatus || 'new')} border-0`}>
+                            <span className="flex items-center gap-1">
+                              {getStatusIcon(lead.leadStatus || 'new')}
                               {(lead.leadStatus || 'new').replace('_', ' ')}
-                            </Badge>
+                            </span>
+                          </Badge>
+                        </div>
+                        <CardDescription>
+                          Contact: {lead.contactName} | Source: {lead.leadSource}
+                        </CardDescription>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-semibold">${parseFloat(lead.estimatedAmount?.toString() || '0').toLocaleString()}</div>
+                        {lead.estimatedCloseDate && (
+                          <div className="text-sm text-gray-500">
+                            Close: {format(new Date(lead.estimatedCloseDate), 'MMM dd')}
                           </div>
-                          <p className="text-sm text-gray-600">
-                            {lead.contactName || 'No contact'}
-                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        {lead.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <span>{lead.email}</span>
+                          </div>
+                        )}
+                        {lead.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <span>{lead.phone}</span>
+                          </div>
+                        )}
+                        {lead.lastContactDate && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <span>Last contact: {format(new Date(lead.lastContactDate), 'MMM dd')}</span>
+                          </div>
+                        )}
+                        {lead.nextFollowUpDate && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400" />
+                            <span>Follow up: {format(new Date(lead.nextFollowUpDate), 'MMM dd')}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {lead.notes && (
+                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{lead.notes}</p>
+                      )}
+
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <div className="flex gap-2">
+                          {lead.leadStatus === 'new' && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'qualified' })}
+                              disabled={updateLeadStatusMutation.isPending}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Qualify
+                            </Button>
+                          )}
+                          {lead.leadStatus === 'qualified' && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'proposal' })}
+                              disabled={updateLeadStatusMutation.isPending}
+                            >
+                              <FileText className="w-4 h-4 mr-1" />
+                              Create Proposal
+                            </Button>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLead(lead);
+                              setIsCreateInteractionOpen(true);
+                            }}
+                          >
+                            <PhoneCall className="w-4 h-4 mr-1" />
+                            Call
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLead(lead);
+                              setIsCreateQuoteOpen(true);
+                            }}
+                          >
+                            <Mail className="w-4 h-4 mr-1" />
+                            Quote
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setLocation(`/companies/${lead.companyId}/contacts`)}
+                          >
+                            <UserCheck className="w-4 h-4 mr-1" />
+                            Add Contacts
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setLocation(`/leads/${leadSlug}`)}
+                          >
+                            View Details
+                          </Button>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Target className="w-4 h-4 mr-3 text-gray-400" />
-                        <span className="truncate">Source: {lead.leadSource || 'Unknown'}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm text-gray-600">
-                        <DollarSign className="w-4 h-4 mr-3 text-gray-400" />
-                        <span className="truncate">
-                          Est. Value: ${lead.estimatedAmount?.toLocaleString() || '0'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar className="w-4 h-4 mr-3 text-gray-400" />
-                        <span>
-                          Close: {lead.estimatedCloseDate ? new Date(lead.estimatedCloseDate).toLocaleDateString() : 'TBD'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Lead-specific progress indicator */}
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-blue-600">
-                          {lead.leadScore || 'N/A'}
-                        </div>
-                        <div className="text-xs text-gray-600">Lead Score</div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => setLocation(`/leads/${leadSlug}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
