@@ -1,0 +1,490 @@
+// ZoomInfo API Field Mappings for Printyx Integration
+
+const ZOOMINFO_FIELD_MAPPINGS = {
+ // Person/Contact Data from ZoomInfo
+ 'person': {
+   table_name: 'zoominfo_contacts',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_contact_id',
+     'firstName': 'first_name',
+     'lastName': 'last_name',
+     'middleName': 'middle_name',
+     'name': 'full_name',
+     'email': 'email',
+     'phone': 'direct_phone',
+     'mobile': 'mobile_phone',
+     'title': 'job_title',
+     'managementLevel': 'management_level', // C-Level, VP, Director, Manager, Individual Contributor
+     'department': 'department',
+     'subDepartment': 'sub_department',
+     'jobFunction': 'job_function',
+     'educationLevel': 'education_level',
+     'lastUpdatedDate': 'last_updated_date',
+     'emailDomain': 'email_domain',
+     'hasEmailAddress': 'has_email',
+     'hasDirectPhoneNumber': 'has_direct_phone',
+     'hasMobilePhoneNumber': 'has_mobile_phone',
+     'personScore': 'person_score',
+     'verified': 'is_verified',
+     'companyId': 'external_company_id',
+     'companyName': 'company_name',
+     'companyDomain': 'company_domain',
+     'picture': 'profile_picture_url',
+     'linkedInUrl': 'linkedin_url',
+     'twitterUrl': 'twitter_url',
+     'facebookUrl': 'facebook_url',
+     'personalEmail': 'personal_email',
+     'personalLinkedInUrl': 'personal_linkedin_url',
+     'zipDelay': 'zip_delay',
+     'timeZone': 'time_zone',
+     'localTime': 'local_time',
+     'city': 'city',
+     'state': 'state',
+     'country': 'country',
+     'zipCode': 'zip_code',
+     'metro': 'metro_area',
+     'locationAccuracy': 'location_accuracy',
+     'workHistory': 'work_history_json',
+     'educationHistory': 'education_history_json',
+     'skills': 'skills_json',
+     'interests': 'interests_json',
+     'publications': 'publications_json',
+     'patents': 'patents_json',
+     'awards': 'awards_json',
+     'certifications': 'certifications_json',
+     'languages': 'languages_json',
+     'socialMediaUrls': 'social_media_urls_json'
+   }
+ },
+
+ // Company Data from ZoomInfo
+ 'company': {
+   table_name: 'zoominfo_companies',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_company_id',
+     'name': 'company_name',
+     'website': 'website',
+     'domain': 'primary_domain',
+     'otherDomains': 'other_domains_json',
+     'phone': 'main_phone',
+     'fax': 'fax',
+     'ticker': 'stock_ticker',
+     'type': 'company_type', // Public, Private, Non-Profit, Government
+     'revenue': 'annual_revenue',
+     'revenueRange': 'revenue_range',
+     'employees': 'employee_count',
+     'employeesRange': 'employee_range',
+     'sicCodes': 'sic_codes_json',
+     'naicsCodes': 'naics_codes_json',
+     'industry': 'primary_industry',
+     'subIndustry': 'sub_industry',
+     'sicDescription': 'sic_description',
+     'naicsDescription': 'naics_description',
+     'founded': 'founded_year',
+     'ownership': 'ownership_type',
+     'businessModel': 'business_model',
+     'logo': 'logo_url',
+     'companyScore': 'company_score',
+     'parentCompanyId': 'parent_company_id',
+     'parentCompanyName': 'parent_company_name',
+     'ultimateParentCompanyId': 'ultimate_parent_company_id',
+     'ultimateParentCompanyName': 'ultimate_parent_company_name',
+     'isHeadquarters': 'is_headquarters',
+     'lastUpdatedDate': 'last_updated_date',
+     'street': 'street_address',
+     'city': 'city',
+     'state': 'state',
+     'zipCode': 'zip_code',
+     'country': 'country',
+     'metro': 'metro_area',
+     'locationAccuracy': 'location_accuracy',
+     'timeZone': 'time_zone',
+     'phone': 'headquarters_phone',
+     'alternateNames': 'alternate_names_json',
+     'dbaNames': 'dba_names_json',
+     'formerNames': 'former_names_json',
+     'aliases': 'aliases_json',
+     'description': 'company_description',
+     'longDescription': 'long_description',
+     'keyExecutives': 'key_executives_json',
+     'departments': 'departments_json',
+     'technologies': 'technologies_json',
+     'socialMediaUrls': 'social_media_urls_json',
+     'certifications': 'certifications_json',
+     'financialData': 'financial_data_json',
+     'newsArticles': 'news_articles_json',
+     'patents': 'patents_json',
+     'subsidiaries': 'subsidiaries_json',
+     'competitors': 'competitors_json',
+     'partnerships': 'partnerships_json',
+     'locations': 'locations_json'
+   }
+ },
+
+ // Intent Data from ZoomInfo
+ 'intent': {
+   table_name: 'zoominfo_intent_data',
+   primary_key: 'id',
+   fields: {
+     'companyId': 'external_company_id',
+     'companyName': 'company_name',
+     'domain': 'company_domain',
+     'topicId': 'topic_id',
+     'topicName': 'topic_name',
+     'topicCategory': 'topic_category',
+     'intentScore': 'intent_score',
+     'intentLevel': 'intent_level', // High, Medium, Low
+     'firstSeenDate': 'first_seen_date',
+     'lastSeenDate': 'last_seen_date',
+     'daysActive': 'days_active',
+     'surgeScore': 'surge_score',
+     'trending': 'is_trending',
+     'velocity': 'velocity',
+     'sources': 'data_sources_json',
+     'keywords': 'keywords_json',
+     'relatedTopics': 'related_topics_json',
+     'competitorActivity': 'competitor_activity_json',
+     'contentConsumed': 'content_consumed_json',
+     'researchAreas': 'research_areas_json',
+     'buyingStage': 'buying_stage', // Awareness, Consideration, Decision, Purchase
+     'decisionTimeframe': 'decision_timeframe', // Immediate, 1-3 months, 3-6 months, 6+ months
+     'budgetRange': 'budget_range',
+     'influencers': 'influencers_json',
+     'decisionMakers': 'decision_makers_json'
+   }
+ },
+
+ // Technology Data from ZoomInfo
+ 'technologies': {
+   table_name: 'zoominfo_technologies',
+   primary_key: 'id',
+   fields: {
+     'companyId': 'external_company_id',
+     'companyName': 'company_name',
+     'technologyId': 'technology_id',
+     'technologyName': 'technology_name',
+     'categoryId': 'category_id',
+     'categoryName': 'category_name',
+     'subCategoryId': 'sub_category_id',
+     'subCategoryName': 'sub_category_name',
+     'vendorId': 'vendor_id',
+     'vendorName': 'vendor_name',
+     'firstSeenDate': 'first_seen_date',
+     'lastSeenDate': 'last_seen_date',
+     'isActive': 'is_currently_using',
+     'confidence': 'confidence_score',
+     'sources': 'data_sources_json',
+     'usage': 'usage_details_json',
+     'contractDetails': 'contract_details_json',
+     'installBase': 'install_base_size',
+     'licenses': 'license_count',
+     'implementation': 'implementation_status',
+     'integrations': 'integrations_json',
+     'alternatives': 'alternative_solutions_json',
+     'migrationPlans': 'migration_plans_json',
+     'satisfactionScore': 'satisfaction_score',
+     'renewalDate': 'contract_renewal_date',
+     'spendRange': 'annual_spend_range'
+   }
+ },
+
+ // Organizational Charts/Hierarchy from ZoomInfo
+ 'org_chart': {
+   table_name: 'zoominfo_org_chart',
+   primary_key: 'id',
+   fields: {
+     'companyId': 'external_company_id',
+     'personId': 'external_person_id',
+     'managerId': 'manager_person_id',
+     'reportsToId': 'reports_to_person_id',
+     'departmentId': 'department_id',
+     'departmentName': 'department_name',
+     'level': 'organizational_level',
+     'span': 'span_of_control',
+     'teamSize': 'team_size',
+     'directReports': 'direct_reports_count',
+     'totalReports': 'total_reports_count',
+     'hierarchy': 'hierarchy_path_json',
+     'peers': 'peer_contacts_json',
+     'subordinates': 'subordinate_contacts_json',
+     'influenceScore': 'influence_score',
+     'accessibilityScore': 'accessibility_score',
+     'decisionMakingPower': 'decision_making_power',
+     'budgetAuthority': 'has_budget_authority',
+     'procurementInfluence': 'procurement_influence_level',
+     'lastUpdated': 'last_updated_date'
+   }
+ },
+
+ // News and Events from ZoomInfo
+ 'news_events': {
+   table_name: 'zoominfo_news_events',
+   primary_key: 'id',
+   fields: {
+     'companyId': 'external_company_id',
+     'companyName': 'company_name',
+     'eventId': 'event_id',
+     'eventType': 'event_type', // Funding, Acquisition, Leadership Change, Product Launch, Partnership
+     'title': 'event_title',
+     'description': 'event_description',
+     'publishDate': 'publish_date',
+     'source': 'news_source',
+     'sourceUrl': 'source_url',
+     'impact': 'business_impact', // High, Medium, Low
+     'sentiment': 'sentiment_score',
+     'relevanceScore': 'relevance_score',
+     'categories': 'categories_json',
+     'tags': 'tags_json',
+     'people': 'people_mentioned_json',
+     'companies': 'companies_mentioned_json',
+     'financialData': 'financial_data_json',
+     'geographicScope': 'geographic_scope',
+     'industryImpact': 'industry_impact_json',
+     'competitorMentions': 'competitor_mentions_json',
+     'technologyMentions': 'technology_mentions_json',
+     'marketTrends': 'market_trends_json'
+   }
+ },
+
+ // SCOOP Alerts from ZoomInfo (trigger events)
+ 'scoop_alerts': {
+   table_name: 'zoominfo_scoop_alerts',
+   primary_key: 'id',
+   fields: {
+     'companyId': 'external_company_id',
+     'companyName': 'company_name',
+     'personId': 'external_person_id',
+     'personName': 'person_name',
+     'alertType': 'alert_type', // Job Change, Promotion, New Hire, Company Move, Funding, etc.
+     'alertSubtype': 'alert_subtype',
+     'title': 'alert_title',
+     'description': 'alert_description',
+     'triggerDate': 'trigger_date',
+     'discoveredDate': 'discovered_date',
+     'confidence': 'confidence_score',
+     'priority': 'priority_level', // High, Medium, Low
+     'actionable': 'is_actionable',
+     'previousCompany': 'previous_company',
+     'previousTitle': 'previous_title',
+     'newCompany': 'new_company',
+     'newTitle': 'new_title',
+     'changeDetails': 'change_details_json',
+     'relatedContacts': 'related_contacts_json',
+     'salesOpportunity': 'sales_opportunity_score',
+     'accountImpact': 'account_impact_level',
+     'recommendedActions': 'recommended_actions_json',
+     'timingWindow': 'optimal_timing_window',
+     'competitorActivity': 'competitor_activity_json',
+     'marketContext': 'market_context_json'
+   }
+ }
+};
+
+// Common ZoomInfo API query structures
+const ZOOMINFO_API_QUERIES = {
+ // Search for persons with filters
+ person_search: {
+   endpoint: '/search/person',
+   method: 'POST',
+   body_structure: {
+     'query': {
+       'personName': 'string',
+       'companyName': 'string',
+       'jobTitle': 'string',
+       'companyRevenue': { 'min': 'number', 'max': 'number' },
+       'companyEmployees': { 'min': 'number', 'max': 'number' },
+       'managementLevel': ['C-Level', 'VP', 'Director', 'Manager'],
+       'departments': ['IT', 'Finance', 'Operations', 'Sales', 'Marketing'],
+       'locations': ['United States', 'Canada'],
+       'industries': ['Technology', 'Healthcare', 'Financial Services'],
+       'technographics': ['Microsoft Office', 'Salesforce', 'Oracle'],
+       'intentTopics': ['Copier Equipment', 'Office Technology', 'Managed Print Services']
+     },
+     'sort': { 'field': 'lastUpdatedDate', 'direction': 'desc' },
+     'page': 1,
+     'rpp': 100
+   }
+ },
+
+ // Search for companies with filters
+ company_search: {
+   endpoint: '/search/company',
+   method: 'POST',
+   body_structure: {
+     'query': {
+       'companyName': 'string',
+       'websiteDomain': 'string',
+       'revenue': { 'min': 'number', 'max': 'number' },
+       'employees': { 'min': 'number', 'max': 'number' },
+       'industries': ['Technology', 'Healthcare', 'Education'],
+       'locations': ['United States'],
+       'companyType': ['Public', 'Private'],
+       'founded': { 'min': 1990, 'max': 2023 },
+       'technologies': ['Microsoft Office', 'Cisco Systems'],
+       'intentTopics': ['Office Equipment', 'Print Management'],
+       'recentNews': true,
+       'recentFunding': true
+     },
+     'sort': { 'field': 'lastUpdatedDate', 'direction': 'desc' },
+     'page': 1,
+     'rpp': 100
+   }
+ },
+
+ // Get person details by ID
+ person_detail: {
+   endpoint: '/person/{personId}',
+   method: 'GET',
+   params: {
+     'personId': 'required',
+     'outputFields': [
+       'id', 'firstName', 'lastName', 'email', 'phone', 'title', 
+       'company', 'department', 'managementLevel', 'location',
+       'workHistory', 'education', 'skills', 'socialMedia'
+     ]
+   }
+ },
+
+ // Get company details by ID
+ company_detail: {
+   endpoint: '/company/{companyId}',
+   method: 'GET',
+   params: {
+     'companyId': 'required',
+     'outputFields': [
+       'id', 'name', 'website', 'domain', 'phone', 'revenue', 'employees',
+       'industry', 'description', 'technologies', 'locations', 'keyExecutives',
+       'departments', 'competitors', 'news', 'financials'
+     ]
+   }
+ },
+
+ // Get intent data for company
+ intent_data: {
+   endpoint: '/intent/{companyId}',
+   method: 'GET',
+   params: {
+     'companyId': 'required',
+     'topics': ['Office Equipment', 'Managed Print Services', 'IT Services'],
+     'timeframe': '90d', // 7d, 30d, 90d, 180d
+     'intentLevel': ['High', 'Medium'], // High, Medium, Low
+     'includeKeywords': true,
+     'includeCompetitors': true
+   }
+ },
+
+ // Get technology stack for company
+ technologies: {
+   endpoint: '/technographics/{companyId}',
+   method: 'GET',
+   params: {
+     'companyId': 'required',
+     'categories': ['Office Software', 'Collaboration', 'Security', 'Infrastructure'],
+     'includeUsage': true,
+     'includeContracts': true,
+     'activeOnly': false
+   }
+ },
+
+ // Get organizational chart
+ org_chart: {
+   endpoint: '/orgChart/{companyId}',
+   method: 'GET',
+   params: {
+     'companyId': 'required',
+     'departments': ['IT', 'Finance', 'Operations'],
+     'levels': ['C-Level', 'VP', 'Director'],
+     'includeContactInfo': true,
+     'includeReportingStructure': true
+   }
+ },
+
+ // Get SCOOP alerts
+ scoop_alerts: {
+   endpoint: '/scoops',
+   method: 'GET',
+   params: {
+     'companyIds': ['array_of_company_ids'],
+     'personIds': ['array_of_person_ids'],
+     'alertTypes': ['Job Change', 'Promotion', 'New Hire', 'Funding'],
+     'since': '2024-01-01', // ISO date format
+     'priority': ['High', 'Medium'],
+     'limit': 100
+   }
+ },
+
+ // Bulk person enrichment
+ bulk_person_enrich: {
+   endpoint: '/enrich/person/bulk',
+   method: 'POST',
+   body_structure: {
+     'matchCriteria': [
+       {
+         'email': 'john.doe@company.com',
+         'firstName': 'John',
+         'lastName': 'Doe',
+         'companyName': 'Company Inc'
+       }
+     ],
+     'outputFields': [
+       'id', 'firstName', 'lastName', 'email', 'phone', 'title',
+       'department', 'managementLevel', 'company', 'workHistory'
+     ],
+     'matchStrategy': 'comprehensive' // exact, comprehensive, fuzzy
+   }
+ },
+
+ // Bulk company enrichment
+ bulk_company_enrich: {
+   endpoint: '/enrich/company/bulk',
+   method: 'POST',
+   body_structure: {
+     'matchCriteria': [
+       {
+         'companyName': 'Company Inc',
+         'website': 'company.com',
+         'domain': 'company.com'
+       }
+     ],
+     'outputFields': [
+       'id', 'name', 'website', 'domain', 'revenue', 'employees',
+       'industry', 'technologies', 'locations', 'keyExecutives'
+     ],
+     'matchStrategy': 'comprehensive'
+   }
+ }
+};
+
+// Rate limiting and API configuration
+const ZOOMINFO_API_CONFIG = {
+ base_url: 'https://api.zoominfo.com',
+ api_version: 'v1',
+ rate_limits: {
+   search_queries: '100/hour',
+   detail_requests: '1000/hour',
+   bulk_enrichment: '10/minute',
+   intent_data: '500/hour'
+ },
+ authentication: {
+   type: 'Bearer Token',
+   header: 'Authorization',
+   token_endpoint: '/authenticate',
+   token_expiry: '3600 seconds'
+ },
+ pagination: {
+   max_page_size: 100,
+   default_page_size: 25
+ },
+ field_limits: {
+   max_output_fields: 50,
+   max_search_criteria: 20
+ }
+};
+
+module.exports = {
+ ZOOMINFO_FIELD_MAPPINGS,
+ ZOOMINFO_API_QUERIES,
+ ZOOMINFO_API_CONFIG
+};

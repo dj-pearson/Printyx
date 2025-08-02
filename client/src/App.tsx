@@ -56,6 +56,7 @@ import CustomerDetail from "@/pages/CustomerDetail";
 import BusinessRecords from "@/pages/BusinessRecords";
 import TenantSetup from "@/pages/TenantSetup";
 import Settings from "@/pages/Settings";
+import DataEnrichment from "@/pages/DataEnrichment";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -92,6 +93,7 @@ function Router() {
           <Route path="/admin/purchase-orders" component={PurchaseOrders} />
           <Route path="/warehouse-operations" component={WarehouseOperations} />
           <Route path="/crm-goals" component={CrmGoalsDashboard} />
+          <Route path="/data-enrichment" component={DataEnrichment} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
