@@ -13,6 +13,7 @@ import {
   quotes,
   quoteLineItems,
   customers,
+  customerActivities,
   equipment,
   contracts,
   serviceTickets,
