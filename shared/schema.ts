@@ -57,6 +57,31 @@ export type {
   InsertPartsOrderItem,
 } from "./service-analysis-schema";
 
+// Re-export mobile service schemas
+export {
+  mobileServiceSessions,
+  timeTrackingEntries,
+  servicePhotos,
+  locationHistory,
+  fieldServiceStatusEnum,
+  checkInTypeEnum,
+  insertMobileServiceSessionSchema,
+  insertTimeTrackingEntrySchema,
+  insertServicePhotoSchema,
+  insertLocationHistorySchema,
+} from "./mobile-service-schema";
+
+export type {
+  MobileServiceSession,
+  TimeTrackingEntry,
+  ServicePhoto,
+  LocationHistory,
+  InsertMobileServiceSession,
+  InsertTimeTrackingEntry,
+  InsertServicePhoto,
+  InsertLocationHistory,
+} from "./mobile-service-schema";
+
 // Session storage table - required for Replit Auth
 export const sessions = pgTable(
   "sessions",

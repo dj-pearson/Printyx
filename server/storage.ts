@@ -129,6 +129,19 @@ import {
   type InsertQuotePricing,
   type QuotePricingLineItem,
   type InsertQuotePricingLineItem,
+  // Mobile service schemas
+  mobileServiceSessions,
+  timeTrackingEntries,
+  servicePhotos,
+  locationHistory,
+  type MobileServiceSession,
+  type TimeTrackingEntry,
+  type ServicePhoto,
+  type LocationHistory,
+  type InsertMobileServiceSession,
+  type InsertTimeTrackingEntry,
+  type InsertServicePhoto,  
+  type InsertLocationHistory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, count, isNull, isNotNull } from "drizzle-orm";
@@ -325,6 +338,20 @@ export interface IStorage {
   createQuotePricingLineItem(lineItem: InsertQuotePricingLineItem): Promise<QuotePricingLineItem>;
   updateQuotePricingLineItem(id: string, tenantId: string, lineItem: Partial<InsertQuotePricingLineItem>): Promise<QuotePricingLineItem | undefined>;
   deleteQuotePricingLineItem(id: string, tenantId: string): Promise<boolean>;
+
+  // Mobile field service operations
+  getMobileServiceSessions(params: { tenantId: string; serviceTicketId?: string; technicianId?: string }): Promise<MobileServiceSession[]>;
+  createMobileServiceSession(session: InsertMobileServiceSession): Promise<MobileServiceSession>;
+  updateMobileServiceSession(id: string, tenantId: string, session: Partial<MobileServiceSession>): Promise<MobileServiceSession | undefined>;
+  
+  getTimeTrackingEntries(sessionId: string, tenantId: string): Promise<TimeTrackingEntry[]>;
+  createTimeTrackingEntry(entry: InsertTimeTrackingEntry): Promise<TimeTrackingEntry>;
+  
+  getServicePhotos(params: { tenantId: string; serviceTicketId?: string; sessionId?: string }): Promise<ServicePhoto[]>;
+  createServicePhoto(photo: InsertServicePhoto): Promise<ServicePhoto>;
+  
+  getLocationHistory(params: { tenantId: string; technicianId?: string; sessionId?: string; startDate?: Date; endDate?: Date }): Promise<LocationHistory[]>;
+  createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2305,6 +2332,94 @@ export class DatabaseStorage implements IStorage {
 
   async getDeliverySchedulesByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
     return [];
+  }
+
+  // Mobile field service operations
+  async getMobileServiceSessions(params: { tenantId: string; serviceTicketId?: string; technicianId?: string }): Promise<MobileServiceSession[]> {
+    let query = db.select().from(mobileServiceSessions).where(eq(mobileServiceSessions.tenantId, params.tenantId));
+
+    if (params.serviceTicketId) {
+      query = query.where(eq(mobileServiceSessions.serviceTicketId, params.serviceTicketId));
+    }
+
+    if (params.technicianId) {
+      query = query.where(eq(mobileServiceSessions.technicianId, params.technicianId));
+    }
+
+    return await query.orderBy(desc(mobileServiceSessions.createdAt));
+  }
+
+  async createMobileServiceSession(session: InsertMobileServiceSession): Promise<MobileServiceSession> {
+    const [newSession] = await db.insert(mobileServiceSessions).values(session).returning();
+    return newSession;
+  }
+
+  async updateMobileServiceSession(id: string, tenantId: string, session: Partial<MobileServiceSession>): Promise<MobileServiceSession | undefined> {
+    const [updatedSession] = await db
+      .update(mobileServiceSessions)
+      .set({ ...session, updatedAt: new Date() })
+      .where(and(eq(mobileServiceSessions.id, id), eq(mobileServiceSessions.tenantId, tenantId)))
+      .returning();
+    return updatedSession;
+  }
+
+  async getTimeTrackingEntries(sessionId: string, tenantId: string): Promise<TimeTrackingEntry[]> {
+    return await db
+      .select()
+      .from(timeTrackingEntries)
+      .where(and(eq(timeTrackingEntries.sessionId, sessionId), eq(timeTrackingEntries.tenantId, tenantId)))
+      .orderBy(desc(timeTrackingEntries.timestamp));
+  }
+
+  async createTimeTrackingEntry(entry: InsertTimeTrackingEntry): Promise<TimeTrackingEntry> {
+    const [newEntry] = await db.insert(timeTrackingEntries).values(entry).returning();
+    return newEntry;
+  }
+
+  async getServicePhotos(params: { tenantId: string; serviceTicketId?: string; sessionId?: string }): Promise<ServicePhoto[]> {
+    let query = db.select().from(servicePhotos).where(eq(servicePhotos.tenantId, params.tenantId));
+
+    if (params.serviceTicketId) {
+      query = query.where(eq(servicePhotos.serviceTicketId, params.serviceTicketId));
+    }
+
+    if (params.sessionId) {
+      query = query.where(eq(servicePhotos.sessionId, params.sessionId));
+    }
+
+    return await query.orderBy(desc(servicePhotos.takenAt));
+  }
+
+  async createServicePhoto(photo: InsertServicePhoto): Promise<ServicePhoto> {
+    const [newPhoto] = await db.insert(servicePhotos).values(photo).returning();
+    return newPhoto;
+  }
+
+  async getLocationHistory(params: { tenantId: string; technicianId?: string; sessionId?: string; startDate?: Date; endDate?: Date }): Promise<LocationHistory[]> {
+    let query = db.select().from(locationHistory).where(eq(locationHistory.tenantId, params.tenantId));
+
+    if (params.technicianId) {
+      query = query.where(eq(locationHistory.technicianId, params.technicianId));
+    }
+
+    if (params.sessionId) {
+      query = query.where(eq(locationHistory.sessionId, params.sessionId));
+    }
+
+    if (params.startDate) {
+      query = query.where(gte(locationHistory.timestamp, params.startDate));
+    }
+
+    if (params.endDate) {
+      query = query.where(lte(locationHistory.timestamp, params.endDate));
+    }
+
+    return await query.orderBy(desc(locationHistory.timestamp));
+  }
+
+  async createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory> {
+    const [newLocation] = await db.insert(locationHistory).values(location).returning();
+    return newLocation;
   }
 }
 

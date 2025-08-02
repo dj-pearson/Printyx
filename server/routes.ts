@@ -42,6 +42,7 @@ import { registerTaskRoutes } from "./routes-tasks";
 import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
 import { registerWarehouseRoutes } from "./routes-warehouse";
 import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
+import { registerMobileRoutes } from "./routes-mobile";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -2300,6 +2301,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register service analysis routes
   registerServiceAnalysisRoutes(app);
+  
+  // Register mobile routes
+  registerMobileRoutes(app);
 
   // Performance monitoring routes
   app.get('/api/performance/metrics', requireAuth, async (req: any, res) => {

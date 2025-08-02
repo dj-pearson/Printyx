@@ -28,7 +28,8 @@ import {
   Warehouse,
   Truck,
   Camera,
-  MapPin
+  MapPin,
+  Smartphone
 } from "lucide-react";
 import {
   Select,
@@ -86,6 +87,7 @@ function getNavigationSections(userRole: any) {
       name: 'Service',
       items: [
         { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
+        { name: 'Mobile Field Service', href: '/mobile-field-service', icon: Smartphone },
         { 
           name: 'Equipment Lifecycle', 
           href: '/equipment-lifecycle', 

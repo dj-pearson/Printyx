@@ -83,6 +83,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       name: 'Service',
       items: [
         { name: 'Service Dispatch', href: '/service-dispatch', icon: Calendar },
+        { name: 'Mobile Field Service', href: '/mobile-field-service', icon: Smartphone },
         { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
       ]
     });

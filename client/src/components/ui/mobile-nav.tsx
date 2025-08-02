@@ -39,6 +39,7 @@ const navigationStructure = {
       { key: 'my-tickets', label: 'My Tickets', path: '/my-tickets', icon: Wrench },
       { key: 'team-tickets', label: 'Team Tickets', path: '/team-tickets', icon: Wrench },
       { key: 'dispatch', label: 'Service Dispatch', path: '/service-dispatch', icon: Calendar },
+      { key: 'mobile-field-service', label: 'Mobile Field Service', path: '/mobile-field-service', icon: Smartphone },
       { key: 'meter-readings', label: 'Meter Readings', path: '/meter-readings', icon: Calculator },
       { key: 'view-tickets', label: 'Service Tickets', path: '/service-tickets', icon: Wrench },
       { key: 'create-tickets', label: 'Create Ticket', path: '/create-ticket', icon: UserPlus },
