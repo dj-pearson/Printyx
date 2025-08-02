@@ -46,6 +46,7 @@ import DealsManagement from "@/pages/DealsManagement";
 import ProductHub from "@/pages/ProductHub";
 import EquipmentLifecycle from "@/pages/EquipmentLifecycle";
 import PurchaseOrders from "@/pages/PurchaseOrders";
+import WarehouseOperations from "@/pages/WarehouseOperations";
 import PricingManagement from "@/pages/PricingManagement";
 import Contacts from "@/pages/Contacts";
 import TenantSetup from "@/pages/TenantSetup";
@@ -82,6 +83,8 @@ function Router() {
           <Route path="/admin/equipment-lifecycle" component={EquipmentLifecycle} />
           <Route path="/purchase-orders" component={PurchaseOrders} />
           <Route path="/admin/purchase-orders" component={PurchaseOrders} />
+          <Route path="/warehouse-operations" component={WarehouseOperations} />
+          <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
           <Route path="/sales-reports" component={SalesReports} />

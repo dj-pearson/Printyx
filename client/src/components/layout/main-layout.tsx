@@ -12,7 +12,7 @@ interface MainLayoutProps {
   description?: string;
 }
 
-export default function MainLayout({ children, title, description }: MainLayoutProps) {
+export function MainLayout({ children, title, description }: MainLayoutProps) {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -65,3 +65,5 @@ export default function MainLayout({ children, title, description }: MainLayoutP
     </SidebarProvider>
   );
 }
+
+export default MainLayout;

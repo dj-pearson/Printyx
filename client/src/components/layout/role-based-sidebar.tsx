@@ -25,7 +25,7 @@ import {
   LayoutDashboard, Target, FileText, Building2, ClipboardList, Wrench, 
   Calendar, Calculator, UserPlus, Package, ShoppingCart, DollarSign, 
   TrendingUp, Settings, UserCheck, Users, Zap, Smartphone, Activity,
-  Plug, Rocket, CheckSquare, ChevronRight, BarChart3
+  Plug, Rocket, CheckSquare, ChevronRight, BarChart3, Truck
 } from "lucide-react";
 
 // Navigation structure based on role permissions
@@ -96,6 +96,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         { name: 'Product Hub', href: `${adminPrefix}/product-hub`, icon: Package },
         { name: 'Equipment Lifecycle', href: `${adminPrefix}/equipment-lifecycle`, icon: Settings },
         { name: 'Purchase Orders', href: `${adminPrefix}/purchase-orders`, icon: ShoppingCart },
+        { name: 'Warehouse Operations', href: `${adminPrefix}/warehouse-operations`, icon: Truck },
         { name: 'Inventory', href: '/inventory', icon: Package },
         { name: 'Supplies', href: `${adminPrefix}/supplies`, icon: Package },
         { name: 'Product Models', href: `${adminPrefix}/product-models`, icon: Package },

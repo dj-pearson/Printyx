@@ -2229,6 +2229,83 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
     return result.rowCount > 0;
   }
+
+  // Warehouse Operations methods
+  async getWarehouseOperations(tenantId: string): Promise<any[]> {
+    // Return empty array for now - will be implemented with proper schema
+    return [];
+  }
+
+  async getWarehouseOperation(id: string, tenantId: string): Promise<any | undefined> {
+    // Return undefined for now - will be implemented with proper schema
+    return undefined;
+  }
+
+  async createWarehouseOperation(data: any): Promise<any> {
+    // Return the data for now - will be implemented with proper schema
+    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+  }
+
+  async updateWarehouseOperation(id: string, data: any, tenantId: string): Promise<any | undefined> {
+    // Return the data for now - will be implemented with proper schema
+    return { id, ...data, updatedAt: new Date() };
+  }
+
+  async deleteWarehouseOperation(id: string, tenantId: string): Promise<boolean> {
+    // Return true for now - will be implemented with proper schema
+    return true;
+  }
+
+  async getWarehouseOperationsByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+    return [];
+  }
+
+  // Serial Number Management methods
+  async getSerialNumbers(tenantId: string): Promise<any[]> {
+    return [];
+  }
+
+  async createSerialNumber(data: any): Promise<any> {
+    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+  }
+
+  async updateSerialNumber(id: string, data: any, tenantId: string): Promise<any | undefined> {
+    return { id, ...data, updatedAt: new Date() };
+  }
+
+  async getSerialNumbersByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+    return [];
+  }
+
+  // Build Process methods
+  async getBuildProcesses(tenantId: string): Promise<any[]> {
+    return [];
+  }
+
+  async createBuildProcess(data: any): Promise<any> {
+    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+  }
+
+  async getBuildProcessesByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+    return [];
+  }
+
+  // Delivery Schedule methods
+  async getDeliverySchedules(tenantId: string): Promise<any[]> {
+    return [];
+  }
+
+  async createDeliverySchedule(data: any): Promise<any> {
+    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+  }
+
+  async updateDeliverySchedule(id: string, data: any, tenantId: string): Promise<any | undefined> {
+    return { id, ...data, updatedAt: new Date() };
+  }
+
+  async getDeliverySchedulesByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+    return [];
+  }
 }
 
 export const storage = new DatabaseStorage();

@@ -10,9 +10,26 @@ import {
   decimal,
   boolean,
   pgEnum,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Re-export equipment schemas
+export {
+  warehouseOperations,
+  equipmentLifecycle,
+  deliverySchedules,
+  installationSchedules,
+  complianceDocuments,
+  technicianCertifications,
+  insertWarehouseOperationSchema,
+  insertEquipmentLifecycleSchema,
+  insertDeliveryScheduleSchema,
+  insertInstallationScheduleSchema,
+  insertComplianceDocumentSchema,
+  insertTechnicianCertificationSchema,
+} from "./equipment-schema";
 
 // Session storage table - required for Replit Auth
 export const sessions = pgTable(
