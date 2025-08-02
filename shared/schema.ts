@@ -1130,6 +1130,153 @@ export const invoiceLineItems = pgTable("invoice_line_items", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// CRM Activity Goal Types
+export const activityGoalTypeEnum = pgEnum("activity_goal_type", [
+  "calls",
+  "emails", 
+  "meetings",
+  "reachouts", // Combined calls + emails
+  "proposals",
+  "new_opportunities",
+  "demos",
+  "follow_ups"
+]);
+
+// CRM Goal Periods
+export const goalPeriodEnum = pgEnum("goal_period", [
+  "daily",
+  "weekly", 
+  "monthly",
+  "quarterly",
+  "yearly"
+]);
+
+// CRM Sales Goals - Manager sets goals for reps/teams
+export const salesGoals = pgTable("sales_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Goal Assignment
+  assignedToUserId: varchar("assigned_to_user_id"), // Individual rep
+  assignedToTeamId: varchar("assigned_to_team_id"), // Team goal
+  assignedBy: varchar("assigned_by").notNull(), // Manager who set the goal
+  
+  // Goal Details
+  goalType: activityGoalTypeEnum("goal_type").notNull(),
+  targetCount: integer("target_count").notNull(), // e.g., 50 calls per week
+  period: goalPeriodEnum("period").notNull(),
+  
+  // Time Period
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  
+  // Status & Notes
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CRM Sales Teams - Hierarchical team structure  
+export const salesTeams = pgTable("sales_teams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  name: varchar("name").notNull(), // e.g., "Enterprise Sales Team"
+  description: text("description"),
+  
+  // Hierarchy
+  parentTeamId: varchar("parent_team_id"), // For nested team structures
+  teamLevel: integer("team_level").default(1), // 1=top level, 2=sub-team, etc.
+  
+  // Leadership
+  managerId: varchar("manager_id").notNull(), // Team manager/lead
+  territory: varchar("territory"), // Geographic or vertical territory
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CRM Team Members - Many-to-many relationship
+export const salesTeamMembers = pgTable("sales_team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  teamId: varchar("team_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  
+  // Role within team
+  role: varchar("role").default("member"), // member, lead, manager
+  joinedDate: timestamp("joined_date").defaultNow(),
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// CRM Activity Reporting - Aggregated daily/weekly/monthly stats
+export const activityReports = pgTable("activity_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Report Scope
+  userId: varchar("user_id"), // Individual rep stats
+  teamId: varchar("team_id"), // Team stats
+  
+  // Time Period  
+  reportDate: timestamp("report_date").notNull(), // Date of the report
+  period: goalPeriodEnum("period").notNull(), // daily, weekly, monthly, etc.
+  
+  // Activity Counts
+  totalCalls: integer("total_calls").default(0),
+  totalEmails: integer("total_emails").default(0),
+  totalMeetings: integer("total_meetings").default(0),
+  totalReachouts: integer("total_reachouts").default(0), // calls + emails
+  totalProposals: integer("total_proposals").default(0),
+  totalNewOpportunities: integer("total_new_opportunities").default(0),
+  totalDemos: integer("total_demos").default(0),
+  totalFollowUps: integer("total_follow_ups").default(0),
+  
+  // Outcome Metrics
+  connectedCalls: integer("connected_calls").default(0), // calls that were answered
+  emailReplies: integer("email_replies").default(0),
+  meetingsScheduled: integer("meetings_scheduled").default(0),
+  proposalsAccepted: integer("proposals_accepted").default(0),
+  opportunitiesConverted: integer("opportunities_converted").default(0),
+  
+  // Performance Metrics
+  callConnectRate: decimal("call_connect_rate", { precision: 5, scale: 2 }), // %
+  emailReplyRate: decimal("email_reply_rate", { precision: 5, scale: 2 }), // %
+  meetingShowRate: decimal("meeting_show_rate", { precision: 5, scale: 2 }), // %
+  proposalWinRate: decimal("proposal_win_rate", { precision: 5, scale: 2 }), // %
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CRM Goal Progress Tracking - Real-time goal vs actual tracking
+export const goalProgress = pgTable("goal_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  goalId: varchar("goal_id").notNull(),
+  reportDate: timestamp("report_date").notNull(), // Date for progress snapshot
+  
+  currentCount: integer("current_count").default(0), // Current progress
+  targetCount: integer("target_count").notNull(), // Target from goal
+  progressPercentage: decimal("progress_percentage", { precision: 5, scale: 2 }), // %
+  
+  // Trend Analysis
+  dailyAverage: decimal("daily_average", { precision: 10, scale: 2 }),
+  projectedTotal: integer("projected_total"), // Projected end total based on current pace
+  onTrack: boolean("on_track").default(true), // Whether on track to meet goal
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const rolesRelations = relations(roles, ({ many }) => ({
   users: many(users),
@@ -1562,6 +1709,87 @@ export const dealActivitiesRelations = relations(dealActivities, ({ one }) => ({
   }),
 }));
 
+// CRM Goal Management Relations
+export const salesGoalsRelations = relations(salesGoals, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [salesGoals.tenantId],
+    references: [tenants.id],
+  }),
+  assignedToUser: one(users, {
+    fields: [salesGoals.assignedToUserId],
+    references: [users.id],
+  }),
+  assignedToTeam: one(salesTeams, {
+    fields: [salesGoals.assignedToTeamId],
+    references: [salesTeams.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [salesGoals.assignedBy],
+    references: [users.id],
+  }),
+  goalProgress: many(goalProgress),
+}));
+
+export const salesTeamsRelations = relations(salesTeams, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [salesTeams.tenantId],
+    references: [tenants.id],
+  }),
+  parentTeam: one(salesTeams, {
+    fields: [salesTeams.parentTeamId],
+    references: [salesTeams.id],
+  }),
+  childTeams: many(salesTeams),
+  manager: one(users, {
+    fields: [salesTeams.managerId],
+    references: [users.id],
+  }),
+  teamMembers: many(salesTeamMembers),
+  goals: many(salesGoals),
+  activityReports: many(activityReports),
+}));
+
+export const salesTeamMembersRelations = relations(salesTeamMembers, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [salesTeamMembers.tenantId],
+    references: [tenants.id],
+  }),
+  team: one(salesTeams, {
+    fields: [salesTeamMembers.teamId],
+    references: [salesTeams.id],
+  }),
+  user: one(users, {
+    fields: [salesTeamMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const activityReportsRelations = relations(activityReports, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [activityReports.tenantId],
+    references: [tenants.id],
+  }),
+  user: one(users, {
+    fields: [activityReports.userId],
+    references: [users.id],
+  }),
+  team: one(salesTeams, {
+    fields: [activityReports.teamId],
+    references: [salesTeams.id],
+  }),
+}));
+
+export const goalProgressRelations = relations(goalProgress, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [goalProgress.tenantId],
+    references: [tenants.id],
+  }),
+  goal: one(salesGoals, {
+    fields: [goalProgress.goalId],
+    references: [salesGoals.id],
+  }),
+}));
+
 // Type exports
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -1575,6 +1803,47 @@ export type DealStage = typeof dealStages.$inferSelect;
 export type InsertDealStage = typeof dealStages.$inferInsert;
 export type DealActivity = typeof dealActivities.$inferSelect;
 export type InsertDealActivity = typeof dealActivities.$inferInsert;
+
+// CRM Goal Management Types
+export type SalesGoal = typeof salesGoals.$inferSelect;
+export type InsertSalesGoal = typeof salesGoals.$inferInsert;
+export type SalesTeam = typeof salesTeams.$inferSelect;
+export type InsertSalesTeam = typeof salesTeams.$inferInsert;
+export type SalesTeamMember = typeof salesTeamMembers.$inferSelect;
+export type InsertSalesTeamMember = typeof salesTeamMembers.$inferInsert;
+export type ActivityReport = typeof activityReports.$inferSelect;
+export type InsertActivityReport = typeof activityReports.$inferInsert;
+export type GoalProgress = typeof goalProgress.$inferSelect;
+export type InsertGoalProgress = typeof goalProgress.$inferInsert;
+
+// CRM Goal Management Zod Schemas
+export const insertSalesGoalSchema = createInsertSchema(salesGoals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSalesTeamSchema = createInsertSchema(salesTeams).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSalesTeamMemberSchema = createInsertSchema(salesTeamMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertActivityReportSchema = createInsertSchema(activityReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGoalProgressSchema = createInsertSchema(goalProgress).omit({
+  id: true,
+  createdAt: true,
+});
 
 // Legacy types for backward compatibility
 export type Customer = typeof customers.$inferSelect;

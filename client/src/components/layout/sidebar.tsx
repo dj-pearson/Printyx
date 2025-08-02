@@ -73,6 +73,7 @@ function getNavigationSections(userRole: any) {
       name: 'Sales',
       items: [
         { name: 'CRM & Pipeline', href: '/crm', icon: Target },
+        { name: 'CRM Goals & Reporting', href: '/crm-goals', icon: TrendingUp },
         { name: 'Contacts', href: '/contacts', icon: Users },
         { name: 'Deals Pipeline', href: '/deals', icon: Zap },
         { name: 'Quotes & Proposals', href: '/quotes', icon: FileText },
