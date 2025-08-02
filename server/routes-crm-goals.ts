@@ -6,16 +6,25 @@ import {
   salesTeamMembers, 
   activityReports,
   goalProgress,
+  salesMetrics,
+  conversionFunnel,
+  managerInsights,
   leadActivities,
   customerActivities,
   users,
   insertSalesGoalSchema,
   insertSalesTeamSchema,
   insertSalesTeamMemberSchema,
+  insertSalesMetricsSchema,
+  insertConversionFunnelSchema,
+  insertManagerInsightsSchema,
   type SalesGoal,
   type SalesTeam,
   type ActivityReport,
   type GoalProgress,
+  type SalesMetrics,
+  type ConversionFunnel,
+  type ManagerInsight,
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, asc, sql, count } from "drizzle-orm";
 import { isAuthenticated } from "./replitAuth";
@@ -403,6 +412,412 @@ export function registerCrmGoalRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
       res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Sales Metrics & Analytics Routes
+  app.get("/api/crm/analytics/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const { period = 'monthly', userId, teamId } = req.query;
+      
+      const metrics = await db
+        .select()
+        .from(salesMetrics)
+        .where(
+          and(
+            eq(salesMetrics.tenantId, req.user.tenantId),
+            eq(salesMetrics.metricPeriod, period),
+            userId ? eq(salesMetrics.userId, userId) : undefined,
+            teamId ? eq(salesMetrics.teamId, teamId) : undefined
+          )
+        )
+        .orderBy(desc(salesMetrics.periodStartDate));
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching sales metrics:", error);
+      res.status(500).json({ error: "Failed to fetch sales metrics" });
+    }
+  });
+
+  app.post("/api/crm/analytics/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const metricsData = insertSalesMetricsSchema.parse({
+        ...req.body,
+        tenantId: req.user.tenantId,
+      });
+
+      const [metrics] = await db
+        .insert(salesMetrics)
+        .values(metricsData)
+        .returning();
+
+      res.status(201).json(metrics);
+    } catch (error) {
+      console.error("Error creating sales metrics:", error);
+      res.status(500).json({ error: "Failed to create sales metrics" });
+    }
+  });
+
+  // Conversion Funnel Analytics
+  app.get("/api/crm/analytics/conversion-funnel", isAuthenticated, async (req: any, res) => {
+    try {
+      const { period = 'monthly', userId, teamId } = req.query;
+      
+      const funnelData = await db
+        .select()
+        .from(conversionFunnel)
+        .where(
+          and(
+            eq(conversionFunnel.tenantId, req.user.tenantId),
+            eq(conversionFunnel.trackingPeriod, period),
+            userId ? eq(conversionFunnel.userId, userId) : undefined,
+            teamId ? eq(conversionFunnel.teamId, teamId) : undefined
+          )
+        )
+        .orderBy(desc(conversionFunnel.startDate));
+
+      res.json(funnelData);
+    } catch (error) {
+      console.error("Error fetching conversion funnel:", error);
+      res.status(500).json({ error: "Failed to fetch conversion funnel data" });
+    }
+  });
+
+  // Manager Insights - The key feature for advanced analytics
+  app.get("/api/crm/manager-insights", isAuthenticated, async (req: any, res) => {
+    try {
+      const { managerId, teamId, userId, category, priority } = req.query;
+      
+      const insights = await db
+        .select()
+        .from(managerInsights)
+        .where(
+          and(
+            eq(managerInsights.tenantId, req.user.tenantId),
+            managerId ? eq(managerInsights.managerId, managerId) : undefined,
+            teamId ? eq(managerInsights.teamId, teamId) : undefined,
+            userId ? eq(managerInsights.userId, userId) : undefined,
+            category ? eq(managerInsights.insightCategory, category) : undefined,
+            priority ? eq(managerInsights.priorityLevel, priority) : undefined,
+            eq(managerInsights.isActive, true)
+          )
+        )
+        .orderBy(desc(managerInsights.createdAt));
+
+      res.json(insights);
+    } catch (error) {
+      console.error("Error fetching manager insights:", error);
+      res.status(500).json({ error: "Failed to fetch manager insights" });
+    }
+  });
+
+  // Generate Manager Insights based on current performance
+  app.post("/api/crm/manager-insights/generate", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, teamId, goalId } = req.body;
+      const managerId = req.user.claims.sub;
+
+      // Get current metrics for the user/team
+      const currentMetrics = await db
+        .select()
+        .from(salesMetrics)
+        .where(
+          and(
+            eq(salesMetrics.tenantId, req.user.tenantId),
+            userId ? eq(salesMetrics.userId, userId) : undefined,
+            teamId ? eq(salesMetrics.teamId, teamId) : undefined,
+            eq(salesMetrics.metricPeriod, 'monthly')
+          )
+        )
+        .orderBy(desc(salesMetrics.periodStartDate))
+        .limit(1);
+
+      if (currentMetrics.length === 0) {
+        return res.status(404).json({ error: "No metrics found for analysis" });
+      }
+
+      const metrics = currentMetrics[0];
+      const insights: any[] = [];
+
+      // Analyze call answer rate
+      if (metrics.callAnswerRate && Number(metrics.callAnswerRate) < 25) {
+        insights.push({
+          tenantId: req.user.tenantId,
+          managerId,
+          userId: metrics.userId,
+          teamId: metrics.teamId,
+          insightType: 'performance_gap',
+          insightCategory: 'calls',
+          currentPerformance: metrics.callAnswerRate,
+          targetPerformance: 35.0,
+          performanceGap: 35.0 - Number(metrics.callAnswerRate),
+          priorityLevel: 'high',
+          expectedImpact: 'high',
+          timeframe: 'immediate',
+          insightTitle: 'Low Call Answer Rate Detected',
+          insightDescription: `Call answer rate of ${metrics.callAnswerRate}% is below optimal range. Industry benchmark is 25-35%. Recommend call timing optimization and script refinement.`,
+          recommendedActions: [
+            { action: 'Optimize call timing', impact: 'Increase answer rate by 8-12%' },
+            { action: 'Refine opening script', impact: 'Improve connection quality' },
+            { action: 'Use local numbers', impact: 'Increase trust and pickup rate' }
+          ],
+          supportingData: {
+            totalCalls: metrics.totalCalls,
+            answeredCalls: metrics.answeredCalls,
+            benchmark: '25-35%'
+          }
+        });
+      }
+
+      // Analyze email response rate
+      if (metrics.emailResponseRate && Number(metrics.emailResponseRate) < 15) {
+        insights.push({
+          tenantId: req.user.tenantId,
+          managerId,
+          userId: metrics.userId,
+          teamId: metrics.teamId,
+          insightType: 'performance_gap',
+          insightCategory: 'emails',
+          currentPerformance: metrics.emailResponseRate,
+          targetPerformance: 20.0,
+          performanceGap: 20.0 - Number(metrics.emailResponseRate),
+          priorityLevel: 'medium',
+          expectedImpact: 'medium',
+          timeframe: 'short_term',
+          insightTitle: 'Email Response Rate Below Average',
+          insightDescription: `Email response rate of ${metrics.emailResponseRate}% indicates need for message optimization. Target range is 15-25%.`,
+          recommendedActions: [
+            { action: 'A/B test subject lines', impact: 'Increase open rates by 15-20%' },
+            { action: 'Personalize email content', impact: 'Improve response rates' },
+            { action: 'Optimize send timing', impact: 'Better inbox visibility' }
+          ],
+          supportingData: {
+            totalEmails: metrics.totalEmails,
+            emailReplies: metrics.emailReplies,
+            benchmark: '15-25%'
+          }
+        });
+      }
+
+      // Calculate activities needed for goals
+      if (metrics.proposalClosingRate && Number(metrics.proposalClosingRate) > 0) {
+        const closingRate = Number(metrics.proposalClosingRate) / 100;
+        const avgDealSize = Number(metrics.averageDealSize) || 50000;
+        
+        // Calculate activities needed to hit $100k monthly goal
+        const monthlyGoal = 100000;
+        const dealsNeeded = Math.ceil(monthlyGoal / avgDealSize);
+        const proposalsNeeded = Math.ceil(dealsNeeded / closingRate);
+        const meetingsNeeded = Math.ceil(proposalsNeeded / (Number(metrics.meetingToProposalRate) / 100 || 0.3));
+        const activitiesNeeded = Math.ceil(meetingsNeeded / (Number(metrics.activityToMeetingRate) / 100 || 0.1));
+
+        insights.push({
+          tenantId: req.user.tenantId,
+          managerId,
+          userId: metrics.userId,
+          teamId: metrics.teamId,
+          insightType: 'activity_recommendation',
+          insightCategory: 'deals',
+          currentPerformance: metrics.activitiesPerDeal,
+          targetPerformance: activitiesNeeded,
+          performanceGap: activitiesNeeded - (Number(metrics.activitiesPerDeal) || 0),
+          priorityLevel: 'high',
+          expectedImpact: 'high',
+          timeframe: 'immediate',
+          insightTitle: 'Activities Required to Hit Revenue Goal',
+          insightDescription: `Based on current conversion rates, ${activitiesNeeded} activities needed monthly to achieve $${(monthlyGoal/1000).toFixed(0)}k goal.`,
+          recommendedActions: [
+            { action: `Increase daily activities to ${Math.ceil(activitiesNeeded/22)}`, impact: `Hit monthly goal of $${(monthlyGoal/1000).toFixed(0)}k` },
+            { action: 'Focus on conversion rate improvement', impact: 'Reduce activities needed' },
+            { action: 'Track daily progress', impact: 'Stay on target' }
+          ],
+          supportingData: {
+            monthlyGoal,
+            dealsNeeded,
+            proposalsNeeded,
+            meetingsNeeded,
+            activitiesNeeded,
+            currentClosingRate: metrics.proposalClosingRate,
+            avgDealSize
+          }
+        });
+      }
+
+      // Insert insights
+      if (insights.length > 0) {
+        const createdInsights = await db
+          .insert(managerInsights)
+          .values(insights)
+          .returning();
+
+        res.status(201).json(createdInsights);
+      } else {
+        res.json({ message: "No new insights generated - performance is on track" });
+      }
+    } catch (error) {
+      console.error("Error generating manager insights:", error);
+      res.status(500).json({ error: "Failed to generate insights" });
+    }
+  });
+
+  // Calculate Required Activities for Goal Achievement
+  app.post("/api/crm/analytics/calculate-activities", isAuthenticated, async (req: any, res) => {
+    try {
+      const { 
+        revenueGoal, 
+        averageDealSize, 
+        callAnswerRate, 
+        emailResponseRate, 
+        activityToMeetingRate, 
+        meetingToProposalRate, 
+        proposalClosingRate 
+      } = req.body;
+
+      // Convert percentages to decimals
+      const callRate = callAnswerRate / 100;
+      const emailRate = emailResponseRate / 100;
+      const meetingRate = activityToMeetingRate / 100;
+      const proposalRate = meetingToProposalRate / 100;
+      const closingRate = proposalClosingRate / 100;
+
+      // Calculate funnel backwards from revenue goal
+      const dealsNeeded = Math.ceil(revenueGoal / averageDealSize);
+      const proposalsNeeded = Math.ceil(dealsNeeded / closingRate);
+      const meetingsNeeded = Math.ceil(proposalsNeeded / proposalRate);
+      const connectionsNeeded = Math.ceil(meetingsNeeded / meetingRate);
+      
+      // Assume 50/50 split between calls and emails
+      const callsNeeded = Math.ceil(connectionsNeeded / callRate / 2);
+      const emailsNeeded = Math.ceil(connectionsNeeded / emailRate / 2);
+      const totalActivities = callsNeeded + emailsNeeded;
+
+      // Daily breakdown (22 working days per month)
+      const dailyActivities = Math.ceil(totalActivities / 22);
+      const dailyCalls = Math.ceil(callsNeeded / 22);
+      const dailyEmails = Math.ceil(emailsNeeded / 22);
+
+      const calculation = {
+        revenueGoal,
+        averageDealSize,
+        conversionRates: {
+          callAnswerRate,
+          emailResponseRate,
+          activityToMeetingRate,
+          meetingToProposalRate,
+          proposalClosingRate
+        },
+        requiredActivities: {
+          dealsNeeded,
+          proposalsNeeded,
+          meetingsNeeded,
+          connectionsNeeded,
+          totalCalls: callsNeeded,
+          totalEmails: emailsNeeded,
+          totalActivities
+        },
+        dailyBreakdown: {
+          totalDaily: dailyActivities,
+          callsDaily: dailyCalls,
+          emailsDaily: dailyEmails
+        },
+        recommendations: [
+          {
+            metric: 'Total Activities',
+            current: 0,
+            target: totalActivities,
+            improvement: `Need ${totalActivities} total activities monthly`
+          },
+          {
+            metric: 'Daily Activities',
+            current: 0,
+            target: dailyActivities,
+            improvement: `Maintain ${dailyActivities} activities per day`
+          }
+        ]
+      };
+
+      res.json(calculation);
+    } catch (error) {
+      console.error("Error calculating required activities:", error);
+      res.status(500).json({ error: "Failed to calculate activities" });
+    }
+  });
+
+  // Advanced Conversion Analysis
+  app.get("/api/crm/analytics/conversion-analysis", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, teamId, period = 'monthly' } = req.query;
+
+      const analysis = await db
+        .select({
+          userId: salesMetrics.userId,
+          teamId: salesMetrics.teamId,
+          periodStart: salesMetrics.periodStartDate,
+          
+          // Activity metrics
+          totalCalls: salesMetrics.totalCalls,
+          answeredCalls: salesMetrics.answeredCalls,
+          totalEmails: salesMetrics.totalEmails,
+          emailReplies: salesMetrics.emailReplies,
+          totalMeetings: salesMetrics.totalMeetings,
+          meetingsHeld: salesMetrics.meetingsHeld,
+          
+          // Conversion metrics
+          callAnswerRate: salesMetrics.callAnswerRate,
+          emailResponseRate: salesMetrics.emailResponseRate,
+          activityToMeetingRate: salesMetrics.activityToMeetingRate,
+          meetingToProposalRate: salesMetrics.meetingToProposalRate,
+          proposalClosingRate: salesMetrics.proposalClosingRate,
+          
+          // Performance metrics
+          totalProposals: salesMetrics.totalProposals,
+          closedDeals: salesMetrics.closedDeals,
+          totalRevenue: salesMetrics.totalRevenue,
+          averageDealSize: salesMetrics.averageDealSize,
+          activitiesPerDeal: salesMetrics.activitiesPerDeal,
+          
+          // User info
+          firstName: users.firstName,
+          lastName: users.lastName,
+          teamName: salesTeams.name
+        })
+        .from(salesMetrics)
+        .leftJoin(users, eq(salesMetrics.userId, users.id))
+        .leftJoin(salesTeams, eq(salesMetrics.teamId, salesTeams.id))
+        .where(
+          and(
+            eq(salesMetrics.tenantId, req.user.tenantId),
+            eq(salesMetrics.metricPeriod, period),
+            userId ? eq(salesMetrics.userId, userId) : undefined,
+            teamId ? eq(salesMetrics.teamId, teamId) : undefined
+          )
+        )
+        .orderBy(desc(salesMetrics.periodStartDate));
+
+      // Calculate industry benchmarks and gaps
+      const analysisWithBenchmarks = analysis.map(metric => ({
+        ...metric,
+        benchmarks: {
+          callAnswerRate: { target: 30, current: Number(metric.callAnswerRate) || 0 },
+          emailResponseRate: { target: 20, current: Number(metric.emailResponseRate) || 0 },
+          activityToMeetingRate: { target: 12, current: Number(metric.activityToMeetingRate) || 0 },
+          meetingToProposalRate: { target: 40, current: Number(metric.meetingToProposalRate) || 0 },
+          proposalClosingRate: { target: 25, current: Number(metric.proposalClosingRate) || 0 }
+        },
+        performanceGaps: {
+          callAnswerGap: 30 - (Number(metric.callAnswerRate) || 0),
+          emailResponseGap: 20 - (Number(metric.emailResponseRate) || 0),
+          meetingConversionGap: 12 - (Number(metric.activityToMeetingRate) || 0),
+          proposalConversionGap: 40 - (Number(metric.meetingToProposalRate) || 0),
+          closingGap: 25 - (Number(metric.proposalClosingRate) || 0)
+        }
+      }));
+
+      res.json(analysisWithBenchmarks);
+    } catch (error) {
+      console.error("Error fetching conversion analysis:", error);
+      res.status(500).json({ error: "Failed to fetch conversion analysis" });
     }
   });
 }

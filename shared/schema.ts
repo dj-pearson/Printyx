@@ -1277,6 +1277,109 @@ export const goalProgress = pgTable("goal_progress", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Sales Performance Analytics Tables
+export const salesMetrics = pgTable("sales_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id),
+  userId: varchar("user_id").references(() => users.id),
+  teamId: varchar("team_id").references(() => salesTeams.id),
+  metricPeriod: varchar("metric_period").notNull(), // daily, weekly, monthly, quarterly
+  periodStartDate: timestamp("period_start_date").notNull(),
+  periodEndDate: timestamp("period_end_date").notNull(),
+  
+  // Activity Metrics
+  totalCalls: integer("total_calls").default(0),
+  answeredCalls: integer("answered_calls").default(0),
+  totalEmails: integer("total_emails").default(0),
+  emailReplies: integer("email_replies").default(0),
+  totalMeetings: integer("total_meetings").default(0),
+  meetingsHeld: integer("meetings_held").default(0),
+  
+  // Conversion Metrics
+  callAnswerRate: decimal("call_answer_rate", { precision: 5, scale: 2 }).default("0"),
+  emailResponseRate: decimal("email_response_rate", { precision: 5, scale: 2 }).default("0"),
+  activityToMeetingRate: decimal("activity_to_meeting_rate", { precision: 5, scale: 2 }).default("0"),
+  meetingToProposalRate: decimal("meeting_to_proposal_rate", { precision: 5, scale: 2 }).default("0"),
+  proposalClosingRate: decimal("proposal_closing_rate", { precision: 5, scale: 2 }).default("0"),
+  
+  // Deal Metrics
+  totalProposals: integer("total_proposals").default(0),
+  closedDeals: integer("closed_deals").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0"),
+  averageDealSize: decimal("average_deal_size", { precision: 12, scale: 2 }).default("0"),
+  activitiesPerDeal: decimal("activities_per_deal", { precision: 8, scale: 2 }).default("0"),
+  
+  // Performance Insights
+  activitiesNeededForGoal: integer("activities_needed_for_goal").default(0),
+  projectedRevenue: decimal("projected_revenue", { precision: 12, scale: 2 }).default("0"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Conversion Funnel Tracking
+export const conversionFunnel = pgTable("conversion_funnel", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id),
+  userId: varchar("user_id").references(() => users.id),
+  teamId: varchar("team_id").references(() => salesTeams.id),
+  trackingPeriod: varchar("tracking_period").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  
+  // Funnel Stages
+  totalActivities: integer("total_activities").default(0), // calls + emails
+  connectionsEstablished: integer("connections_established").default(0), // answered calls + email replies
+  meetingsScheduled: integer("meetings_scheduled").default(0),
+  meetingsHeld: integer("meetings_held").default(0),
+  proposalsSent: integer("proposals_sent").default(0),
+  dealsWon: integer("deals_won").default(0),
+  
+  // Stage Conversion Rates
+  activityToConnectionRate: decimal("activity_to_connection_rate", { precision: 5, scale: 2 }).default("0"),
+  connectionToMeetingRate: decimal("connection_to_meeting_rate", { precision: 5, scale: 2 }).default("0"),
+  meetingToProposalRate: decimal("meeting_to_proposal_rate", { precision: 5, scale: 2 }).default("0"),
+  proposalToWinRate: decimal("proposal_to_win_rate", { precision: 5, scale: 2 }).default("0"),
+  overallConversionRate: decimal("overall_conversion_rate", { precision: 5, scale: 2 }).default("0"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Manager Insights and Recommendations
+export const managerInsights = pgTable("manager_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id),
+  managerId: varchar("manager_id").notNull().references(() => users.id),
+  teamId: varchar("team_id").references(() => salesTeams.id),
+  userId: varchar("user_id").references(() => users.id), // null for team-level insights
+  
+  insightType: varchar("insight_type").notNull(), // performance_gap, goal_projection, conversion_optimization, activity_recommendation
+  insightCategory: varchar("insight_category").notNull(), // calls, emails, meetings, proposals, deals, revenue
+  
+  // Key Metrics
+  currentPerformance: decimal("current_performance", { precision: 10, scale: 2 }),
+  targetPerformance: decimal("target_performance", { precision: 10, scale: 2 }),
+  performanceGap: decimal("performance_gap", { precision: 10, scale: 2 }),
+  
+  // Recommendations
+  recommendedActions: jsonb("recommended_actions"), // Array of action objects
+  priorityLevel: varchar("priority_level").notNull(), // high, medium, low
+  expectedImpact: varchar("expected_impact"), // high, medium, low
+  timeframe: varchar("timeframe"), // immediate, short_term, long_term
+  
+  // Insight Details
+  insightTitle: varchar("insight_title").notNull(),
+  insightDescription: text("insight_description"),
+  supportingData: jsonb("supporting_data"),
+  
+  isActive: boolean("is_active").default(true),
+  isRead: boolean("is_read").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const rolesRelations = relations(roles, ({ many }) => ({
   users: many(users),
@@ -1790,6 +1893,56 @@ export const goalProgressRelations = relations(goalProgress, ({ one }) => ({
   }),
 }));
 
+// Sales Analytics Relations
+export const salesMetricsRelations = relations(salesMetrics, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [salesMetrics.tenantId],
+    references: [tenants.id],
+  }),
+  user: one(users, {
+    fields: [salesMetrics.userId],
+    references: [users.id],
+  }),
+  team: one(salesTeams, {
+    fields: [salesMetrics.teamId],
+    references: [salesTeams.id],
+  }),
+}));
+
+export const conversionFunnelRelations = relations(conversionFunnel, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [conversionFunnel.tenantId],
+    references: [tenants.id],
+  }),
+  user: one(users, {
+    fields: [conversionFunnel.userId],
+    references: [users.id],
+  }),
+  team: one(salesTeams, {
+    fields: [conversionFunnel.teamId],
+    references: [salesTeams.id],
+  }),
+}));
+
+export const managerInsightsRelations = relations(managerInsights, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [managerInsights.tenantId],
+    references: [tenants.id],
+  }),
+  manager: one(users, {
+    fields: [managerInsights.managerId],
+    references: [users.id],
+  }),
+  user: one(users, {
+    fields: [managerInsights.userId],
+    references: [users.id],
+  }),
+  team: one(salesTeams, {
+    fields: [managerInsights.teamId],
+    references: [salesTeams.id],
+  }),
+}));
+
 // Type exports
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -1815,6 +1968,14 @@ export type ActivityReport = typeof activityReports.$inferSelect;
 export type InsertActivityReport = typeof activityReports.$inferInsert;
 export type GoalProgress = typeof goalProgress.$inferSelect;
 export type InsertGoalProgress = typeof goalProgress.$inferInsert;
+
+// Analytics Types
+export type SalesMetrics = typeof salesMetrics.$inferSelect;
+export type InsertSalesMetrics = typeof salesMetrics.$inferInsert;
+export type ConversionFunnel = typeof conversionFunnel.$inferSelect;
+export type InsertConversionFunnel = typeof conversionFunnel.$inferInsert;
+export type ManagerInsight = typeof managerInsights.$inferSelect;
+export type InsertManagerInsight = typeof managerInsights.$inferInsert;
 
 // CRM Goal Management Zod Schemas
 export const insertSalesGoalSchema = createInsertSchema(salesGoals).omit({
@@ -1843,6 +2004,25 @@ export const insertActivityReportSchema = createInsertSchema(activityReports).om
 export const insertGoalProgressSchema = createInsertSchema(goalProgress).omit({
   id: true,
   createdAt: true,
+});
+
+// Analytics Zod Schemas
+export const insertSalesMetricsSchema = createInsertSchema(salesMetrics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertConversionFunnelSchema = createInsertSchema(conversionFunnel).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertManagerInsightsSchema = createInsertSchema(managerInsights).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Legacy types for backward compatibility
