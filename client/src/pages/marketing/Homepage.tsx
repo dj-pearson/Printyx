@@ -79,48 +79,57 @@ const Homepage = () => {
 
   const pricingPlans = [
     {
-      name: "Starter",
+      name: "Essential",
       price: "$99",
-      period: "per month",
-      description: "Perfect for small copier dealers getting started",
+      period: "per user/month",
+      description: "Perfect for small independent dealers",
       features: [
-        "Up to 100 customers",
-        "Basic CRM & invoicing",
+        "Up to 300 customer records",
+        "Complete CRM, service dispatch, inventory management",
+        "Meter billing and contract management",
+        "Mobile technician app with offline sync",
+        "QuickBooks integration",
+        "Standard reporting dashboards",
         "Email support",
-        "Mobile app access",
-        "Standard reporting"
+        "All core manufacturer integrations included"
       ],
       popular: false,
       cta: "Start Free Trial"
     },
     {
       name: "Professional",
-      price: "$199",
-      period: "per month",
-      description: "Ideal for growing businesses with advanced needs",
+      price: "$139",
+      period: "per user/month",
+      description: "Ideal for growing multi-location dealers",
       features: [
-        "Up to 500 customers",
-        "Advanced meter billing",
-        "Service dispatch optimization",
-        "Priority phone support",
-        "Custom reports & analytics",
-        "API access"
+        "Up to 1,500 customer records",
+        "Everything in Essential, plus:",
+        "Advanced team management and territories",
+        "AI-powered insights and recommendations",
+        "Custom reporting and analytics",
+        "Advanced workflow automation",
+        "Phone + priority email support",
+        "API access for custom integrations",
+        "Multi-location management"
       ],
       popular: true,
       cta: "Start Free Trial"
     },
     {
       name: "Enterprise",
-      price: "$399",
-      period: "per month",
-      description: "Full-featured solution for large operations",
+      price: "$179",
+      period: "per user/month",
+      description: "Built for large dealer networks",
       features: [
-        "Unlimited customers",
-        "Multi-location support",
-        "Advanced RBAC & teams",
+        "Unlimited customer records",
+        "Everything in Professional, plus:",
+        "White-label customer portals",
+        "Advanced enterprise reporting",
+        "Custom field configurations",
         "Dedicated account manager",
-        "Custom integrations",
-        "White-label options"
+        "Priority support with guaranteed response times",
+        "On-site training and implementation",
+        "Custom integration development included"
       ],
       popular: false,
       cta: "Contact Sales"
@@ -546,6 +555,41 @@ const Homepage = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+          
+          {/* Volume Discounts Section */}
+          <div className="mt-16 mb-12">
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
+                  Volume Discounts
+                </CardTitle>
+                <CardDescription className="text-lg text-gray-700">
+                  Save more with larger teams - discounts applied automatically
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-blue-600 mb-1">5%</div>
+                    <div className="text-sm text-gray-600">10-24 users</div>
+                  </div>
+                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-blue-600 mb-1">10%</div>
+                    <div className="text-sm text-gray-600">25-49 users</div>
+                  </div>
+                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-blue-600 mb-1">15%</div>
+                    <div className="text-sm text-gray-600">50+ users</div>
+                  </div>
+                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-blue-600 mb-1">20%</div>
+                    <div className="text-sm text-gray-600">100+ users</div>
+                    <div className="text-xs text-gray-500 mt-1">+ enterprise negotiation</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
           
           <div className="text-center mt-12">
