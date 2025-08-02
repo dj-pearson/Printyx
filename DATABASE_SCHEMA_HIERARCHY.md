@@ -454,4 +454,237 @@ Customer migration fields in business_records:
 - `migration_status`: Tracks migration progress
 - `external_data`: Stores additional E-Automate fields as JSON
 
+## Data Enrichment & Lead Intelligence Layer
+
+### `enriched_contacts` (ZoomInfo/Apollo.io Integration)
+**Purpose**: Stores enriched contact data from external prospecting platforms
+**Function**: Lead intelligence, contact enrichment, prospecting workflow management
+**Headers/Fields**:
+- `id` (uuid, PRIMARY KEY, default: gen_random_uuid()) - Contact record identifier
+- `tenant_id` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
+- `first_name` (varchar) - Contact first name
+- `last_name` (varchar) - Contact last name
+- `full_name` (varchar) - Complete contact name
+- `email` (varchar) - Primary email address
+- `phone` (varchar) - Primary phone number
+- `job_title` (varchar) - Current job title/position
+- `job_function` (varchar) - Functional area (Sales, Marketing, IT, etc.)
+- `management_level` (varchar) - Management tier (Entry, Middle, Senior, Executive)
+- `department` (varchar) - Department/division
+- `seniority` (varchar) - Years of experience level
+- `company_name` (varchar) - Associated company name
+- `company_linkedin_url` (varchar) - Company LinkedIn profile
+- `person_linkedin_url` (varchar) - Personal LinkedIn profile
+- `twitter_username` (varchar) - Twitter handle
+- `github_username` (varchar) - GitHub username
+- `facebook_url` (varchar) - Facebook profile URL
+- `lead_score` (integer, default: 0) - Algorithmic lead scoring (0-100)
+- `prospecting_status` (varchar, default: 'new') - Workflow status (new/contacted/qualified/opportunity/closed)
+- `last_contact_date` (timestamp) - Last outreach attempt
+- `next_follow_up_date` (timestamp) - Scheduled follow-up date
+- `enrichment_source` (varchar, NOT NULL) - Data source (zoominfo/apollo/manual)
+- `source_person_id` (varchar) - External platform person ID
+- `last_enriched_date` (timestamp, default: now()) - Last data refresh
+- `created_at` (timestamp, default: now()) - Record creation timestamp
+- `updated_at` (timestamp, default: now()) - Last update timestamp
+**Relationships**:
+- Many-to-One with tenants
+- Can be converted to business_records upon qualification
+
+### `enriched_companies` (Company Intelligence)
+**Purpose**: Stores enriched company data and firmographic information
+**Function**: Account intelligence, target account identification, company profiling
+**Headers/Fields**:
+- `id` (uuid, PRIMARY KEY, default: gen_random_uuid()) - Company record identifier
+- `tenant_id` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
+- `company_name` (varchar, NOT NULL) - Official company name
+- `primary_industry` (varchar) - Primary industry classification
+- `secondary_industries` (text[]) - Additional industry categories
+- `employee_count` (integer) - Total employee count
+- `annual_revenue` (bigint) - Annual revenue in USD
+- `company_stage` (varchar) - Business stage (Startup/Growth/Established/Enterprise)
+- `headquarters_country` (varchar) - HQ country
+- `headquarters_state` (varchar) - HQ state/province
+- `headquarters_city` (varchar) - HQ city
+- `website` (varchar) - Primary company website
+- `company_linkedin_url` (varchar) - Company LinkedIn page
+- `technology_stack` (text[]) - Known technologies used
+- `target_account_tier` (varchar) - Sales classification (SMB/Mid-Market/Enterprise)
+- `lead_score` (integer, default: 0) - Company-level lead score
+- `enrichment_source` (varchar, NOT NULL) - Data source (zoominfo/apollo/manual)
+- `source_company_id` (varchar) - External platform company ID
+- `last_enriched_date` (timestamp, default: now()) - Last data refresh
+- `created_at` (timestamp, default: now()) - Record creation timestamp
+- `updated_at` (timestamp, default: now()) - Last update timestamp
+**Relationships**:
+- Many-to-One with tenants
+- One-to-Many with enriched_contacts (implicit via company_name)
+
+### `prospecting_campaigns` (Campaign Management)
+**Purpose**: Manages prospecting campaigns and outreach workflows
+**Function**: Campaign tracking, performance metrics, ROI analysis
+**Headers/Fields**:
+- `id` (uuid, PRIMARY KEY, default: gen_random_uuid()) - Campaign identifier
+- `tenant_id` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
+- `campaign_name` (varchar, NOT NULL) - Campaign display name
+- `campaign_type` (varchar, NOT NULL) - Campaign type (email_sequence/phone_campaign/linkedin_outreach/mixed)
+- `campaign_description` (text) - Campaign description and notes
+- `target_industry` (varchar) - Targeted industry vertical
+- `target_company_size` (varchar) - Target company size range
+- `target_job_titles` (text[]) - Targeted job titles/roles
+- `status` (varchar, default: 'active') - Campaign status (draft/active/paused/completed/cancelled)
+- `total_contacts` (integer, default: 0) - Total contacts in campaign
+- `contacted_count` (integer, default: 0) - Contacts reached
+- `response_count` (integer, default: 0) - Positive responses received
+- `response_rate` (decimal(5,4)) - Response rate percentage
+- `conversion_count` (integer, default: 0) - Qualified leads generated
+- `conversion_rate` (decimal(5,4)) - Conversion rate percentage
+- `start_date` (timestamp, default: now()) - Campaign start date
+- `end_date` (timestamp) - Campaign end date
+- `created_at` (timestamp, default: now()) - Record creation timestamp
+- `updated_at` (timestamp, default: now()) - Last update timestamp
+**Relationships**:
+- Many-to-One with tenants
+- One-to-Many with enriched_contacts (via campaign association)
+
+## Salesforce Integration Layer
+
+### Salesforce Field Mappings (140+ Fields)
+**Purpose**: Complete field mapping compatibility for Salesforce data migration
+**Function**: Dual-platform support enabling seamless CRM transitions
+
+#### Account Mappings (35+ Fields)
+**Salesforce → Printyx business_records mapping**:
+- `Id` → `external_customer_id`
+- `Name` → `company_name`
+- `Website` → `website`
+- `Phone` → `phone`
+- `Industry` → `industry`
+- `AnnualRevenue` → `annual_revenue`
+- `NumberOfEmployees` → `employee_count`
+- `BillingAddress` → `address` (structured)
+- `ShippingAddress` → `shipping_address` (structured)
+- `Description` → `description`
+- `AccountSource` → `lead_source`
+- `Rating` → `account_rating`
+- `Type` → `account_type`
+- `ParentId` → `parent_account_id`
+- `AccountNumber` → `account_number`
+- `Site` → `site_location`
+- `TickerSymbol` → `ticker_symbol`
+- `Ownership` → `ownership_type`
+- `Fax` → `fax`
+- `SicDesc` → `sic_description`
+- Plus 15+ custom fields and additional metadata
+
+#### Contact Mappings (40+ Fields)
+**Salesforce → Printyx enriched_contacts mapping**:
+- `Id` → `source_person_id`
+- `FirstName` → `first_name`
+- `LastName` → `last_name`
+- `Email` → `email`
+- `Phone` → `phone`
+- `Title` → `job_title`
+- `Department` → `department`
+- `AccountId` → Links to company via `company_name`
+- `MailingAddress` → `mailing_address` (structured)
+- `OtherAddress` → `other_address` (structured)
+- `MobilePhone` → `mobile_phone`
+- `HomePhone` → `home_phone`
+- `OtherPhone` → `other_phone`
+- `AssistantName` → `assistant_name`
+- `AssistantPhone` → `assistant_phone`
+- `Birthdate` → `birth_date`
+- `LeadSource` → `lead_source`
+- `Level__c` → `management_level`
+- `LinkedInProfile__c` → `person_linkedin_url`
+- `TwitterHandle__c` → `twitter_username`
+- Plus 20+ custom fields and social profiles
+
+#### Opportunity Mappings (35+ Fields)
+**Salesforce → Printyx opportunities/deals mapping**:
+- `Id` → `external_opportunity_id`
+- `Name` → `deal_name`
+- `Amount` → `deal_value`
+- `CloseDate` → `expected_close_date`
+- `StageName` → `deal_stage`
+- `Probability` → `win_probability`
+- `AccountId` → Links to business_records
+- `Type` → `opportunity_type`
+- `LeadSource` → `lead_source`
+- `NextStep` → `next_step`
+- `Description` → `description`
+- `IsWon` → `is_won`
+- `IsClosed` → `is_closed`
+- `ForecastCategory` → `forecast_category`
+- `ForecastCategoryName` → `forecast_category_name`
+- `ExpectedRevenue` → `expected_revenue`
+- `TotalOpportunityQuantity` → `total_quantity`
+- `CampaignId` → `campaign_id`
+- `Pricebook2Id` → `price_book_id`
+- `ContractId` → Links to contracts table
+- Plus 15+ custom opportunity fields
+
+#### Activity Mappings (30+ Fields)
+**Salesforce → Printyx activities/tasks mapping**:
+- `Id` → `external_activity_id`
+- `Subject` → `task_title`
+- `Description` → `description`
+- `Status` → `status`
+- `Priority` → `priority`
+- `ActivityDate` → `due_date`
+- `WhoId` → Links to contacts
+- `WhatId` → Links to accounts/opportunities
+- `Type` → `activity_type`
+- `IsTask` → `is_task`
+- `IsEvent` → `is_event`
+- `StartDateTime` → `start_date`
+- `EndDateTime` → `end_date`
+- `DurationInMinutes` → `duration_minutes`
+- `Location` → `location`
+- `IsAllDayEvent` → `is_all_day`
+- `IsRecurrence` → `is_recurring`
+- `CallDurationInSeconds` → `call_duration`
+- `CallType` → `call_type`
+- `CallDisposition` → `call_outcome`
+- Plus 10+ custom activity fields
+
+### Migration Workflow Support
+**Data Migration Process**:
+1. **Extract**: Pull data from Salesforce APIs using field mappings
+2. **Transform**: Convert Salesforce schema to Printyx schema
+3. **Load**: Insert into appropriate Printyx tables with tenant isolation
+4. **Validate**: Ensure data integrity and relationship consistency
+5. **Reconcile**: Handle conflicts and duplicate detection
+
+**Migration Status Tracking**:
+- `migration_status` field in business_records
+- `external_system_id` for source system identification
+- `external_data` JSONB field for unmapped custom fields
+- Comprehensive audit trail for data lineage
+
+## Integration Architecture Summary
+
+### Dual-Platform Strategy
+**Complete Market Coverage**:
+- **E-Automate**: 90% of copier dealer market
+- **Salesforce**: Enterprise and growth dealers
+- **Combined**: 100% dealer market coverage
+
+### Data Enrichment Workflow
+**Lead Intelligence Pipeline**:
+1. **Prospecting**: ZoomInfo/Apollo.io contact discovery
+2. **Enrichment**: Company and contact data enhancement
+3. **Scoring**: Algorithmic lead qualification
+4. **Campaigns**: Automated outreach workflows
+5. **Conversion**: Qualified leads → business_records
+6. **Analytics**: Performance tracking and ROI measurement
+
+### Schema Design Principles
+**Multi-Tenant Isolation**: All enrichment tables include tenant_id
+**Source Attribution**: Track data origin and refresh timestamps
+**Flexible Schema**: JSONB fields for platform-specific extensions
+**Relationship Integrity**: Foreign key constraints with proper cascading
+**Performance Optimization**: Indexed columns for common queries
+
 Last Updated: August 2, 2025
