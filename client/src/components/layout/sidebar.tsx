@@ -131,6 +131,7 @@ function getNavigationSections(userRole: any) {
           icon: Package,
           isExpandable: true,
           subItems: [
+            { name: 'Product Hub', href: '/product-management-hub', icon: DollarSign },
             { name: 'Product Models', href: '/admin/product-models', icon: Printer },
             { name: 'Product Accessories', href: '/admin/product-accessories', icon: Package },
             { name: 'Professional Services', href: '/admin/professional-services', icon: Users },

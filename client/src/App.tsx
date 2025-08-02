@@ -48,6 +48,7 @@ import EquipmentLifecycle from "@/pages/EquipmentLifecycle";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import WarehouseOperations from "@/pages/WarehouseOperations";
 import MobileFieldService from "@/pages/MobileFieldService";
+import ProductManagementHub from "@/pages/ProductManagementHub";
 import PricingManagement from "@/pages/PricingManagement";
 import Contacts from "@/pages/Contacts";
 import TenantSetup from "@/pages/TenantSetup";
@@ -99,6 +100,7 @@ function Router() {
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
           <Route path="/admin/product-models" component={ProductModels} />
+          <Route path="/product-management-hub" component={ProductManagementHub} />
           <Route path="/product-accessories" component={ProductAccessories} />
           <Route path="/admin/product-accessories" component={ProductAccessories} />
           <Route path="/professional-services" component={ProfessionalServices} />

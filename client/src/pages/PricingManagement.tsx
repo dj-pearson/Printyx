@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,15 +154,26 @@ export default function PricingManagement() {
     },
   });
 
-  // Form setup
+  // Form setup with useEffect to update when data loads
   const companyForm = useForm<CompanyPricingFormData>({
     resolver: zodResolver(companyPricingSchema),
     defaultValues: {
-      defaultMarkupPercentage: companySettings?.defaultMarkupPercentage || "20.00",
-      allowSalespersonOverride: companySettings?.allowSalespersonOverride || true,
-      minimumGrossProfitPercentage: companySettings?.minimumGrossProfitPercentage || "5.00",
+      defaultMarkupPercentage: "20.00",
+      allowSalespersonOverride: true,
+      minimumGrossProfitPercentage: "5.00",
     },
   });
+
+  // Update form when company settings load
+  useEffect(() => {
+    if (companySettings) {
+      companyForm.reset({
+        defaultMarkupPercentage: companySettings.defaultMarkupPercentage || "20.00",
+        allowSalespersonOverride: companySettings.allowSalespersonOverride ?? true,
+        minimumGrossProfitPercentage: companySettings.minimumGrossProfitPercentage || "5.00",
+      });
+    }
+  }, [companySettings, companyForm]);
 
   const productForm = useForm<ProductPricingFormData>({
     resolver: zodResolver(productPricingSchema),

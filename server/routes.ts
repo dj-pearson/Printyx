@@ -2331,6 +2331,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Pricing Management Routes
   app.get('/api/pricing/company-settings', requireAuth, getCompanyPricingSettings);
   app.post('/api/pricing/company-settings', requireAuth, updateCompanyPricingSettings);
+  app.get('/api/pricing/products', requireAuth, getProductPricing);
+  app.post('/api/pricing/products', requireAuth, createProductPricing);
+  app.put('/api/pricing/products/:id', requireAuth, updateProductPricing);
+  app.delete('/api/pricing/products/:id', requireAuth, deleteProductPricing);
+  
+  // Products with pricing information
+  app.get('/api/products/with-pricing', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      
+      // Get all products
+      const [models, accessories, services, supplies, managedServices, softwareProducts, professionalServices] = await Promise.all([
+        storage.getAllProductModels(tenantId),
+        storage.getAllProductAccessories(tenantId),
+        storage.getAllServiceProducts(tenantId),
+        storage.getAllSupplies(tenantId),
+        storage.getAllManagedServices(tenantId),
+        storage.getAllSoftwareProducts(tenantId),
+        storage.getAllProfessionalServices(tenantId),
+      ]);
+
+      // Get all product pricing
+      const productPricing = await storage.getProductPricing(tenantId);
+      const pricingMap = new Map(productPricing.map(p => [p.productId, p]));
+
+      // Combine all products with pricing information
+      const allProducts = [
+        ...models.map(m => ({ ...m, category: 'Equipment Models' })),
+        ...accessories.map(a => ({ ...a, category: 'Accessories' })),
+        ...services.map(s => ({ ...s, category: 'Services' })),
+        ...supplies.map(s => ({ ...s, category: 'Supplies' })),
+        ...managedServices.map(m => ({ ...m, category: 'Managed Services' })),
+        ...softwareProducts.map(s => ({ ...s, category: 'Software' })),
+        ...professionalServices.map(p => ({ ...p, category: 'Professional Services' })),
+      ].map(product => {
+        const pricing = pricingMap.get(product.id);
+        return {
+          ...product,
+          dealerCost: pricing?.dealerCost,
+          companyMarkupPercentage: pricing?.companyMarkupPercentage,
+          companyPrice: pricing?.companyPrice,
+          minimumSalePrice: pricing?.minimumSalePrice,
+          suggestedRetailPrice: pricing?.suggestedRetailPrice,
+          hasCustomPricing: !!pricing,
+        };
+      });
+
+      res.json(allProducts);
+    } catch (error) {
+      console.error("Error fetching products with pricing:", error);
+      res.status(500).json({ message: "Failed to fetch products with pricing" });
+    }
+  });
+
+  // Bulk update pricing
+  app.post('/api/pricing/products/bulk-update', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { updates } = req.body;
+
+      const results = [];
+      for (const update of updates) {
+        try {
+          const pricing = await storage.createProductPricing({
+            tenantId,
+            productId: update.productId,
+            productType: 'model', // Default type
+            companyMarkupPercentage: update.markupPercentage,
+            createdBy: req.user.id,
+          });
+          results.push(pricing);
+        } catch (error) {
+          console.error(`Error updating pricing for ${update.productId}:`, error);
+        }
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error bulk updating pricing:", error);
+      res.status(500).json({ message: "Failed to bulk update pricing" });
+    }
+  });
   
   app.get('/api/pricing/products', requireAuth, getProductPricing);
   app.post('/api/pricing/products', requireAuth, createProductPricing);
