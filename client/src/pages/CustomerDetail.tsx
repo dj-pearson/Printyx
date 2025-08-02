@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit, Plus, Phone, Mail, MapPin, Building2, User, Eye, FileText, Users, StickyNote } from "lucide-react";
+import { 
+  ArrowLeft, Edit, Plus, Phone, Mail, MapPin, Building2, User, Eye, FileText, Users, StickyNote,
+  PhoneCall, Video, Clock, MoreHorizontal, Calendar
+} from "lucide-react";
 import { Link } from "wouter";
 
 export default function CustomerDetail() {
@@ -119,6 +122,34 @@ export default function CustomerDetail() {
             New Service Ticket
           </Button>
         </div>
+      </div>
+
+      {/* Action Buttons Row - matches Lead layout exactly */}
+      <div className="flex items-center justify-center gap-2 bg-gray-50 py-4 rounded-lg mb-6">
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <StickyNote className="h-4 w-4" />
+          Note
+        </Button>
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          Email
+        </Button>
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <PhoneCall className="h-4 w-4" />
+          Call
+        </Button>
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Video className="h-4 w-4" />
+          Meeting
+        </Button>
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Task
+        </Button>
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <MoreHorizontal className="h-4 w-4" />
+          More
+        </Button>
       </div>
 
       <div className="grid grid-cols-4 gap-6">
