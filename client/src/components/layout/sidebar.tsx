@@ -169,6 +169,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [showTenantDetails, setShowTenantDetails] = useState(false);
 
   // Check if user is a platform role
   const isPlatformRole = user?.role?.canAccessAllTenants === true;
@@ -177,6 +178,24 @@ export default function Sidebar() {
   const { data: tenants, error: tenantsError } = useQuery({
     queryKey: ['/api/tenants'],
     enabled: isPlatformRole,
+  });
+
+  // Fetch tenant summary for selected tenant
+  const { data: tenantSummary } = useQuery({
+    queryKey: ['/api/tenants', selectedTenantId, 'summary'],
+    enabled: isPlatformRole && !!selectedTenantId,
+  });
+
+  // Fetch locations for selected tenant
+  const { data: tenantLocations } = useQuery({
+    queryKey: ['/api/tenants', selectedTenantId, 'locations'],
+    enabled: isPlatformRole && !!selectedTenantId && showTenantDetails,
+  });
+
+  // Fetch regions for selected tenant
+  const { data: tenantRegions } = useQuery({
+    queryKey: ['/api/tenants', selectedTenantId, 'regions'],
+    enabled: isPlatformRole && !!selectedTenantId && showTenantDetails,
   });
 
   // Get navigation sections based on user role
@@ -189,8 +208,14 @@ export default function Sidebar() {
   // Handle tenant selection for platform users
   const handleTenantChange = (tenantId: string) => {
     setSelectedTenantId(tenantId);
+    setShowTenantDetails(false); // Reset details view
     // Store selected tenant in localStorage for persistence
     localStorage.setItem('selectedTenantId', tenantId);
+  };
+
+  // Toggle tenant details visibility
+  const toggleTenantDetails = () => {
+    setShowTenantDetails(!showTenantDetails);
   };
 
   // Handle section expansion
@@ -224,9 +249,9 @@ export default function Sidebar() {
           <h1 className="text-xl font-bold text-gray-900">Printyx</h1>
         </div>
 
-        {/* Tenant Selector for Platform Roles */}
+        {/* Enhanced Tenant Selector for Platform Roles with Multi-Location Support */}
         {isPlatformRole && tenants && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
               Client Company
             </p>
@@ -245,10 +270,100 @@ export default function Sidebar() {
                 )) || []}
               </SelectContent>
             </Select>
-            {selectedTenantId && (
-              <p className="text-xs text-blue-600 font-medium">
-                {user?.role?.name} - Support Mode
-              </p>
+            
+            {selectedTenantId && tenantSummary && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-blue-600 font-medium">
+                    {user?.role?.name} - Support Mode
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleTenantDetails}
+                    className="h-6 px-2 text-xs"
+                  >
+                    {showTenantDetails ? (
+                      <ChevronDown className="h-3 w-3" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+                
+                {/* Quick Summary */}
+                <div className="bg-blue-50 rounded-lg p-2 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Locations:</span>
+                    <span className="font-medium">{tenantSummary.locationCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Regions:</span>
+                    <span className="font-medium">{tenantSummary.regionCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-600">Employees:</span>
+                    <span className="font-medium">{tenantSummary.totalEmployees}</span>
+                  </div>
+                </div>
+
+                {/* Detailed Multi-Location View */}
+                {showTenantDetails && (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {tenantRegions && tenantRegions.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-gray-700 mb-1">Regions</h4>
+                        <div className="space-y-1">
+                          {tenantRegions.map((region: any) => (
+                            <div key={region.id} className="bg-gray-50 rounded p-2 text-xs">
+                              <div className="font-medium">{region.name}</div>
+                              <div className="text-gray-500">
+                                {region.locationCount} locations
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {tenantLocations && tenantLocations.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-gray-700 mb-1">
+                          Locations ({tenantLocations.length})
+                        </h4>
+                        <div className="space-y-1">
+                          {tenantLocations.slice(0, 5).map((location: any) => (
+                            <div key={location.id} className="bg-gray-50 rounded p-2 text-xs">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium">{location.name}</div>
+                                <div className="flex items-center space-x-1">
+                                  <MapPin className="h-3 w-3 text-gray-400" />
+                                  <span className="text-gray-500">{location.city}, {location.state}</span>
+                                </div>
+                              </div>
+                              {location.regionName && (
+                                <div className="text-gray-500 mt-1">
+                                  Region: {location.regionName}
+                                </div>
+                              )}
+                              {location.employeeCount && (
+                                <div className="text-gray-500">
+                                  {location.employeeCount} employees
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          {tenantLocations.length > 5 && (
+                            <div className="text-xs text-gray-500 text-center py-1">
+                              +{tenantLocations.length - 5} more locations
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

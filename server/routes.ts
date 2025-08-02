@@ -298,6 +298,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Multi-location support routes for enhanced tenant selector
+  app.get('/api/tenants/:tenantId/locations', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.params;
+      const user = await storage.getUserWithRole(req.session.userId);
+      
+      // Only allow platform admins or users from the same tenant
+      if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+      
+      const locations = await db
+        .select({
+          id: locationTable.id,
+          name: locationTable.name,
+          address: locationTable.address,
+          city: locationTable.city,
+          state: locationTable.state,
+          zipCode: locationTable.zipCode,
+          regionId: locationTable.regionId,
+          regionName: regions.name,
+          managerId: locationTable.managerId,
+          isActive: locationTable.isActive,
+          employeeCount: locationTable.employeeCount
+        })
+        .from(locationTable)
+        .leftJoin(regions, eq(locationTable.regionId, regions.id))
+        .where(eq(locationTable.tenantId, tenantId))
+        .orderBy(locationTable.name);
+      
+      res.json(locations);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      res.status(500).json({ error: 'Failed to fetch locations' });
+    }
+  });
+
+  app.get('/api/tenants/:tenantId/regions', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.params;
+      const user = await storage.getUserWithRole(req.session.userId);
+      
+      // Only allow platform admins or users from the same tenant
+      if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+      
+      const tenantRegions = await db
+        .select({
+          id: regions.id,
+          name: regions.name,
+          description: regions.description,
+          managerId: regions.managerId,
+          locationCount: sql<number>`count(${locationTable.id})::int`
+        })
+        .from(regions)
+        .leftJoin(locationTable, eq(regions.id, locationTable.regionId))
+        .where(eq(regions.tenantId, tenantId))
+        .groupBy(regions.id, regions.name, regions.description, regions.managerId)
+        .orderBy(regions.name);
+      
+      res.json(tenantRegions);
+    } catch (error) {
+      console.error('Error fetching regions:', error);
+      res.status(500).json({ error: 'Failed to fetch regions' });
+    }
+  });
+
+  app.get('/api/tenants/:tenantId/summary', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.params;
+      const user = await storage.getUserWithRole(req.session.userId);
+      
+      // Only allow platform admins or users from the same tenant
+      if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+      
+      // Get tenant basic info
+      const [tenant] = await db
+        .select()
+        .from(tenants)
+        .where(eq(tenants.id, tenantId))
+        .limit(1);
+      
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant not found' });
+      }
+      
+      // Get location and employee counts
+      const [summary] = await db
+        .select({
+          locationCount: sql<number>`count(distinct ${locationTable.id})::int`,
+          regionCount: sql<number>`count(distinct ${regions.id})::int`,
+          totalEmployees: sql<number>`coalesce(sum(${locationTable.employeeCount}), 0)::int`
+        })
+        .from(locationTable)
+        .leftJoin(regions, eq(locationTable.regionId, regions.id))
+        .where(eq(locationTable.tenantId, tenantId));
+      
+      res.json({
+        ...tenant,
+        locationCount: summary?.locationCount || 0,
+        regionCount: summary?.regionCount || 0,
+        totalEmployees: summary?.totalEmployees || 0
+      });
+    } catch (error) {
+      console.error('Error fetching tenant summary:', error);
+      res.status(500).json({ error: 'Failed to fetch tenant summary' });
+    }
+  });
+
   // Dashboard routes - using demo tenant
   app.get('/api/dashboard/metrics', async (req: any, res) => {
     try {
