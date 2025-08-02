@@ -18,11 +18,14 @@ import {
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import Sidebar from "@/components/layout/sidebar";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CustomerDetail() {
   const { id } = useParams();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   
   // Dialog states - copied from Lead record
   const [dialogs, setDialogs] = useState({
@@ -186,14 +189,22 @@ export default function CustomerDetail() {
 
   if (customerLoading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          <div className="space-y-4">
-            <div className="h-32 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
-          </div>
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="bg-white border-b border-gray-200 px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Customer Detail</h1>
+          </header>
+          <main className="flex-1 p-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="space-y-4">
+                <div className="h-32 bg-gray-200 rounded"></div>
+                <div className="h-32 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -201,13 +212,24 @@ export default function CustomerDetail() {
 
   if (!customer) {
     return (
-      <div className="p-6">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Customer Not Found</h2>
-          <p className="text-gray-600 mb-4">The customer you're looking for doesn't exist.</p>
-          <Link href="/customers">
-            <Button>Back to Customers</Button>
-          </Link>
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="bg-white border-b border-gray-200 px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Customer Detail</h1>
+          </header>
+          <main className="flex-1 p-6">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Customer not found</h2>
+              <p className="text-gray-600 mb-4">The customer you're looking for doesn't exist.</p>
+              <Link href="/customers">
+                <Button>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Customers
+                </Button>
+              </Link>
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -216,7 +238,14 @@ export default function CustomerDetail() {
   const primaryContact = contacts.find(c => c.isPrimary) || contacts[0];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <h1 className="text-2xl font-bold text-gray-900">Customer Detail</h1>
+        </header>
+        <main className="flex-1 p-6 overflow-auto">
+          <div className="max-w-6xl mx-auto">
       {/* Header - matches Lead layout exactly */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -945,6 +974,9 @@ export default function CustomerDetail() {
           </div>
         </DialogContent>
       </Dialog>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
