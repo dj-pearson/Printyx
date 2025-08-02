@@ -411,11 +411,15 @@ export const companyContacts = pgTable("company_contacts", {
 });
 
 // Unified Business Records - Single table for entire business relationship lifecycle
+// Enhanced with E-Automate compatibility fields for seamless migration
 export const businessRecords = pgTable("business_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
-  companyId: varchar("company_id").notNull(), // Always tied to a company
-  contactId: varchar("contact_id").notNull(), // Always tied to a specific contact
+  
+  // E-Automate Compatibility - External System Integration
+  externalCustomerId: varchar("external_customer_id"), // E-Automate CustomerKey
+  externalSystemId: varchar("external_system_id"), // Track source system (e-automate, quickbooks, etc)
+  lastSyncDate: timestamp("last_sync_date"), // For incremental syncing
   
   // Record Type & Status - Controls entire business relationship lifecycle
   recordType: varchar("record_type").notNull().default("lead"), // lead, customer, former_customer
@@ -423,22 +427,76 @@ export const businessRecords = pgTable("business_records", {
   // Lead statuses: new, contacted, qualified, proposal, negotiation, closed_won, closed_lost
   // Customer statuses: active, inactive, on_hold, churned, competitor_switch, non_payment, expired
   
+  // Company Information (E-Automate compatible)
+  companyName: varchar("company_name").notNull(), // E-Automate CustomerName
+  customerType: varchar("customer_type"), // E-Automate CustomerType
+  website: varchar("website"),
+  industry: varchar("industry"),
+  companySize: varchar("company_size"),
+  annualRevenue: decimal("annual_revenue", { precision: 15, scale: 2 }),
+  
+  // Primary Contact Information
+  primaryContactName: varchar("primary_contact_name"), // E-Automate ContactName
+  primaryContactEmail: varchar("primary_contact_email"),
+  primaryContactPhone: varchar("primary_contact_phone"),
+  primaryContactTitle: varchar("primary_contact_title"),
+  
+  // Billing Contact Information (E-Automate compatible)
+  billingContactName: varchar("billing_contact_name"), // E-Automate BillingContact
+  billingContactEmail: varchar("billing_contact_email"),
+  billingContactPhone: varchar("billing_contact_phone"),
+  
+  // Address Information (E-Automate compatible)
+  addressLine1: varchar("address_line1"), // E-Automate Address1
+  addressLine2: varchar("address_line2"), // E-Automate Address2
+  city: varchar("city"),
+  state: varchar("state"),
+  postalCode: varchar("postal_code"), // E-Automate ZipCode
+  country: varchar("country").default("US"),
+  
+  // Billing Address (E-Automate compatible)
+  billingAddressLine1: varchar("billing_address_1"), // E-Automate BillingAddress1
+  billingAddressLine2: varchar("billing_address_2"), // E-Automate BillingAddress2
+  billingCity: varchar("billing_city"), // E-Automate BillingCity
+  billingState: varchar("billing_state"), // E-Automate BillingState
+  billingPostalCode: varchar("billing_zip_code"), // E-Automate BillingZip
+  
+  // Communication Details (E-Automate compatible)
+  phone: varchar("phone"), // E-Automate Phone
+  fax: varchar("fax"), // E-Automate Fax
+  
   // Lead Pipeline Information
-  leadSource: varchar("lead_source").notNull().default("website"), // website, referral, cold_call, trade_show, etc.
-  estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }),
+  leadSource: varchar("source").notNull().default("website"), // website, referral, cold_call, trade_show, etc.
+  estimatedAmount: decimal("estimated_deal_value", { precision: 10, scale: 2 }),
   probability: integer("probability").default(50), // 0-100%
   closeDate: timestamp("close_date"), // Date converted to customer or lost
+  salesStage: varchar("sales_stage"), // E-Automate pipeline stage
+  interestLevel: varchar("interest_level"), // hot, warm, cold
   
-  // Assignment & Ownership
+  // Assignment & Ownership (E-Automate compatible)
   ownerId: varchar("owner_id"), // User who owns this record
+  assignedSalesRep: varchar("assigned_sales_rep"), // E-Automate SalesRep
+  territory: varchar("territory"), // E-Automate Territory
+  accountManagerId: varchar("account_manager_id"),
   leadScore: integer("lead_score").default(0), // 0-100 scoring system
   priority: varchar("priority").default("medium"), // high, medium, low
   
-  // Customer-Specific Fields (populated when recordType changes to 'customer')
+  // Customer-Specific Fields (E-Automate compatible)
   customerNumber: varchar("customer_number").unique(), // Generated when converted to customer
   customerSince: timestamp("customer_since"), // Date of conversion to customer
   customerUntil: timestamp("customer_until"), // Date when customer relationship ended (for former customers)
-  churnReason: varchar("churn_reason"), // competitor_switch, pricing, service_issues, business_closure, etc.
+  churnReason: varchar("deactivation_reason"), // competitor_switch, pricing, service_issues, business_closure, etc.
+  reactivationDate: timestamp("reactivation_date"),
+  churnedDate: timestamp("churned_date"),
+  competitorName: varchar("competitor_name"),
+  
+  // Financial Information (E-Automate compatible)
+  creditLimit: decimal("credit_limit", { precision: 10, scale: 2 }), // E-Automate CreditLimit
+  paymentTerms: varchar("payment_terms"), // E-Automate PaymentTerms
+  billingTerms: varchar("billing_terms"),
+  taxExempt: boolean("tax_exempt").default(false), // E-Automate TaxExempt
+  taxId: varchar("tax_id"), // E-Automate TaxID
+  customerTier: varchar("customer_tier"), // Gold, Silver, Bronze, etc.
   
   // Service & Support Information (customer only)
   preferredTechnician: varchar("preferred_technician"),
@@ -454,21 +512,486 @@ export const businessRecords = pgTable("business_records", {
   lastMeterReadingDate: timestamp("last_meter_reading_date"),
   nextMeterReadingDate: timestamp("next_meter_reading_date"),
   
-  // Tracking & Notes
-  notes: text("notes"),
+  // Activity Tracking
   lastContactDate: timestamp("last_contact_date"),
   nextFollowUpDate: timestamp("next_follow_up_date"),
+  
+  // System Tracking
+  notes: text("notes"),
   createdBy: varchar("created_by").notNull(),
   convertedBy: varchar("converted_by"), // Who converted from lead to customer
   deactivatedBy: varchar("deactivated_by"), // Who deactivated the customer
   
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  // Timestamps (E-Automate compatible)
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
 });
 
 // For backward compatibility during migration
 export const leads = businessRecords; // Alias for existing code
 export const customers = businessRecords; // Alias for existing code
+
+// Equipment/Assets Table (E-Automate compatible)
+export const equipment = pgTable("equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalEquipmentId: varchar("external_equipment_id"), // E-Automate EquipmentKey
+  externalCustomerId: varchar("external_customer_id"), // E-Automate CustomerKey
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Equipment Identification
+  serialNumber: varchar("serial_number").unique(), // E-Automate SerialNumber
+  modelNumber: varchar("model_number"), // E-Automate ModelNumber
+  manufacturer: varchar("manufacturer"), // E-Automate Manufacturer
+  description: text("description"), // E-Automate Description
+  assetTag: varchar("asset_tag"), // E-Automate AssetTag
+  
+  // Location & Installation
+  customerId: varchar("customer_id").notNull(), // References business_records.id
+  locationDescription: text("location_description"), // E-Automate LocationDescription
+  installDate: timestamp("install_date"), // E-Automate InstallDate
+  ipAddress: varchar("ip_address"), // E-Automate NetworkAddress
+  
+  // Equipment Specifications
+  meterType: varchar("meter_type"), // E-Automate MeterType: bw_only, color, scan, fax
+  isColorCapable: boolean("is_color_capable").default(false), // E-Automate ColorCapable
+  equipmentStatus: varchar("equipment_status").default("active"), // E-Automate Status
+  
+  // Financial Information
+  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }), // E-Automate PurchasePrice
+  monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }), // E-Automate MonthlyPayment
+  leaseExpiresDate: timestamp("lease_expires_date"), // E-Automate LeaseExpires
+  warrantyExpiresDate: timestamp("warranty_expires_date"), // E-Automate WarrantyExpires
+  
+  // Service Information
+  serviceContractNumber: varchar("service_contract_number"), // E-Automate ServiceContract
+  lastServiceDate: timestamp("last_service_date"), // E-Automate LastServiceDate
+  nextServiceDueDate: timestamp("next_service_due_date"), // E-Automate NextServiceDue
+  
+  // System Tracking
+  notes: text("notes"), // E-Automate Notes
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+});
+
+// Service Contracts Table (E-Automate compatible)
+export const serviceContracts = pgTable("service_contracts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalContractId: varchar("external_contract_id"), // E-Automate ContractKey
+  externalCustomerId: varchar("external_customer_id"), // E-Automate CustomerKey
+  externalEquipmentId: varchar("external_equipment_id"), // E-Automate EquipmentKey
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Contract Identification
+  contractNumber: varchar("contract_number").unique(), // E-Automate ContractNumber
+  customerId: varchar("customer_id").notNull(), // References business_records.id
+  equipmentId: varchar("equipment_id"), // References equipment.id
+  
+  // Contract Details
+  contractType: varchar("contract_type"), // E-Automate ContractType: full-service, maintenance, parts-only
+  contractStatus: varchar("contract_status").default("active"), // E-Automate Status
+  startDate: timestamp("start_date"), // E-Automate StartDate
+  endDate: timestamp("end_date"), // E-Automate EndDate
+  autoRenewal: boolean("auto_renewal").default(false), // E-Automate AutoRenewal
+  
+  // Billing Information
+  billingFrequency: varchar("billing_frequency").default("monthly"), // E-Automate BillingFrequency
+  monthlyBaseRate: decimal("monthly_base_rate", { precision: 10, scale: 2 }), // E-Automate MonthlyRate
+  bwOverageRate: decimal("bw_overage_rate", { precision: 6, scale: 4 }), // E-Automate BWOverageRate
+  colorOverageRate: decimal("color_overage_rate", { precision: 6, scale: 4 }), // E-Automate ColorOverageRate
+  baseVolumeBw: integer("base_volume_bw"), // E-Automate BaseVolumeBW
+  baseVolumeColor: integer("base_volume_color"), // E-Automate BaseVolumeColor
+  totalContractValue: decimal("total_contract_value", { precision: 10, scale: 2 }), // E-Automate TotalValue
+  
+  // Service Inclusions
+  includesToner: boolean("includes_toner").default(true), // E-Automate IncludesToner
+  includesParts: boolean("includes_parts").default(true), // E-Automate IncludesParts
+  includesLabor: boolean("includes_labor").default(true), // E-Automate IncludesLabor
+  responseTimeHours: integer("response_time_hours").default(24), // E-Automate ResponseTime
+  
+  // Sales Information
+  salesRep: varchar("sales_rep"), // E-Automate SalesRep
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }), // E-Automate CommissionRate
+  
+  // System Tracking
+  contractNotes: text("contract_notes"), // E-Automate Notes
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+});
+
+// Enhanced Meter Readings Table (E-Automate compatible with comprehensive billing features)
+export const meterReadings = pgTable("meter_readings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalReadingId: varchar("external_reading_id"), // E-Automate ReadingKey
+  externalEquipmentId: varchar("external_equipment_id"), // E-Automate EquipmentKey
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Reading Identification
+  equipmentId: varchar("equipment_id").notNull(), // References equipment.id
+  contractId: varchar("contract_id"), // References contracts.id
+  readingDate: timestamp("reading_date").notNull(), // E-Automate ReadingDate
+  
+  // Meter Values (E-Automate compatible with additional fields)
+  bwMeterReading: integer("bw_meter_reading"), // E-Automate BWMeter / blackMeter
+  colorMeterReading: integer("color_meter_reading"), // E-Automate ColorMeter / colorMeter
+  scanMeterReading: integer("scan_meter_reading"), // E-Automate ScanMeter
+  faxMeterReading: integer("fax_meter_reading"), // E-Automate FaxMeter
+  largePaperMeterReading: integer("large_paper_meter_reading"), // E-Automate LargePaperMeter
+  
+  // Previous Readings for Copy Calculation
+  previousBlackMeter: integer("previous_black_meter").default(0),
+  previousColorMeter: integer("previous_color_meter").default(0),
+  blackCopies: integer("black_copies").default(0),
+  colorCopies: integer("color_copies").default(0),
+  
+  // Collection Method (Enhanced PRD requirement)
+  readingMethod: varchar("reading_method").default("manual"), // E-Automate ReadingMethod
+  collectionMethod: varchar("collection_method").default("manual"), // manual, dca, email, api, remote_monitoring
+  
+  // DCA Integration Fields
+  dcaDeviceId: varchar("dca_device_id"), // Device ID for DCA integration
+  dcaLastSync: timestamp("dca_last_sync"), // Last successful DCA sync
+  dcaError: text("dca_error"), // Any DCA collection errors
+  
+  // Email Collection Fields  
+  emailSource: varchar("email_source"), // Email address readings came from
+  emailSubject: varchar("email_subject"), // Original email subject
+  emailTimestamp: timestamp("email_timestamp"), // When email was received
+  
+  // API Collection Fields
+  apiSource: varchar("api_source"), // Which API endpoint provided the data
+  apiResponseId: varchar("api_response_id"), // Reference to API response
+  
+  // Quality Control & Verification
+  technicianId: varchar("technician_id"), // E-Automate TechnicianID
+  isVerified: boolean("is_verified").default(false), // E-Automate Verified
+  verifiedBy: varchar("verified_by"), // Who verified the reading
+  verifiedAt: timestamp("verified_at"), // When was it verified
+  
+  // Exceptions and Adjustments
+  hasException: boolean("has_exception").default(false),
+  exceptionReason: varchar("exception_reason"), // manual_override, billing_dispute, equipment_error
+  exceptionNotes: text("exception_notes"),
+  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }).default('0'),
+  
+  // Billing Information (E-Automate compatible)
+  billingPeriod: varchar("billing_period"), // E-Automate BillingPeriod
+  billingStatus: varchar("billing_status").default("pending"), // pending, processed, billed, disputed
+  invoiceNumber: varchar("invoice_number"), // E-Automate InvoiceNumber
+  invoiceId: varchar("invoice_id"), // Reference to generated invoice
+  billingAmount: decimal("billing_amount", { precision: 10, scale: 2 }),
+  
+  // System Tracking
+  readingNotes: text("reading_notes"), // E-Automate Notes
+  notes: text("notes"), // Additional notes
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Service Calls/Work Orders Table (E-Automate compatible)
+export const serviceCalls = pgTable("service_calls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalServiceCallId: varchar("external_service_call_id"), // E-Automate CallKey
+  externalCustomerId: varchar("external_customer_id"), // E-Automate CustomerKey
+  externalEquipmentId: varchar("external_equipment_id"), // E-Automate EquipmentKey
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Service Call Identification
+  serviceCallNumber: varchar("service_call_number").unique(), // E-Automate CallNumber
+  customerId: varchar("customer_id").notNull(), // References business_records.id
+  equipmentId: varchar("equipment_id"), // References equipment.id
+  
+  // Call Details
+  callDate: timestamp("call_date").notNull(), // E-Automate CallDate
+  callTime: varchar("call_time"), // E-Automate CallTime
+  callType: varchar("call_type"), // E-Automate CallType: warranty, contract, billable, internal
+  priorityLevel: varchar("priority_level").default("medium"), // E-Automate Priority: high, medium, low
+  callStatus: varchar("call_status").default("open"), // E-Automate CallStatus: open, dispatched, completed, cancelled
+  
+  // Problem Information
+  problemDescription: text("problem_description"), // E-Automate ProblemDescription
+  problemCode: varchar("problem_code"), // E-Automate ProblemCode
+  resolutionDescription: text("resolution_description"), // E-Automate Resolution
+  resolutionCode: varchar("resolution_code"), // E-Automate ResolutionCode
+  
+  // Technician Information
+  assignedTechnicianId: varchar("assigned_technician_id"), // E-Automate TechnicianID
+  dispatchedByUserId: varchar("dispatched_by_user_id"), // E-Automate DispatchedBy
+  timeOnSiteMinutes: integer("time_on_site_minutes"), // E-Automate TimeOnSite
+  travelTimeMinutes: integer("travel_time_minutes"), // E-Automate TravelTime
+  
+  // Completion Information
+  completedDate: timestamp("completed_date"), // E-Automate CompletedDate
+  customerSignature: text("customer_signature"), // E-Automate CustomerSignature
+  customerSatisfactionRating: integer("customer_satisfaction_rating"), // E-Automate CustomerSatisfaction (1-5)
+  
+  // Financial Information
+  laborChargeAmount: decimal("labor_charge_amount", { precision: 10, scale: 2 }), // E-Automate LaborCharge
+  partsChargeAmount: decimal("parts_charge_amount", { precision: 10, scale: 2 }), // E-Automate PartsCharge
+  travelChargeAmount: decimal("travel_charge_amount", { precision: 10, scale: 2 }), // E-Automate TravelCharge
+  totalChargeAmount: decimal("total_charge_amount", { precision: 10, scale: 2 }), // E-Automate TotalCharge
+  isBillable: boolean("is_billable").default(true), // E-Automate Billable
+  invoiceNumber: varchar("invoice_number"), // E-Automate InvoiceNumber
+  
+  // System Tracking
+  serviceNotes: text("service_notes"), // E-Automate Notes
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+});
+
+// Inventory/Parts Table (E-Automate compatible)
+export const inventoryItems = pgTable("inventory_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalItemId: varchar("external_item_id"), // E-Automate ItemKey
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Item Identification
+  partNumber: varchar("part_number").unique(), // E-Automate PartNumber
+  manufacturerPartNumber: varchar("manufacturer_part_number"), // E-Automate ManufacturerPartNumber
+  itemDescription: text("item_description"), // E-Automate Description
+  itemCategory: varchar("item_category"), // E-Automate Category
+  manufacturer: varchar("manufacturer"), // E-Automate Manufacturer
+  
+  // Inventory Levels
+  quantityOnHand: integer("quantity_on_hand").default(0), // E-Automate QtyOnHand
+  quantityCommitted: integer("quantity_committed").default(0), // E-Automate QtyCommitted
+  quantityAvailable: integer("quantity_available").default(0), // E-Automate QtyAvailable
+  quantityOnOrder: integer("quantity_on_order").default(0), // E-Automate QtyOnOrder
+  reorderPoint: integer("reorder_point").default(0), // E-Automate ReorderPoint
+  reorderQuantity: integer("reorder_quantity").default(0), // E-Automate ReorderQty
+  maxStockLevel: integer("max_stock_level"), // E-Automate MaxStockLevel
+  
+  // Pricing Information
+  unitCost: decimal("unit_cost", { precision: 10, scale: 4 }), // E-Automate Cost
+  averageCost: decimal("average_cost", { precision: 10, scale: 4 }), // E-Automate AverageCost
+  lastCost: decimal("last_cost", { precision: 10, scale: 4 }), // E-Automate LastCost
+  unitPrice: decimal("unit_price", { precision: 10, scale: 4 }), // E-Automate Price
+  retailPrice: decimal("retail_price", { precision: 10, scale: 4 }), // E-Automate RetailPrice
+  
+  // Location Information
+  warehouseLocation: varchar("warehouse_location"), // E-Automate Location
+  binLocation: varchar("bin_location"), // E-Automate BinLocation
+  
+  // Vendor Information
+  primaryVendor: varchar("primary_vendor"), // E-Automate Vendor
+  vendorPartNumber: varchar("vendor_part_number"), // E-Automate VendorPartNumber
+  
+  // Item Specifications
+  unitOfMeasure: varchar("unit_of_measure").default("EA"), // E-Automate UOM
+  itemWeight: decimal("item_weight", { precision: 8, scale: 3 }), // E-Automate Weight
+  isTaxable: boolean("is_taxable").default(true), // E-Automate Taxable
+  isSerialized: boolean("is_serialized").default(false), // E-Automate Serialized
+  isActive: boolean("is_active").default(true), // E-Automate Active
+  
+  // Activity Tracking
+  lastSoldDate: timestamp("last_sold_date"), // E-Automate LastSold
+  lastReceivedDate: timestamp("last_received_date"), // E-Automate LastReceived
+  
+  // System Tracking
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+});
+
+// Enhanced Invoices Table (E-Automate compatible)
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalInvoiceId: varchar("external_invoice_id"), // E-Automate InvoiceKey
+  externalCustomerId: varchar("external_customer_id"), // E-Automate CustomerKey
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Invoice Identification
+  customerId: varchar("customer_id").notNull(), // References business_records.id
+  contractId: varchar("contract_id"), // References contracts.id
+  invoiceNumber: varchar("invoice_number").unique(), // E-Automate InvoiceNumber
+  invoiceDate: timestamp("invoice_date").notNull(), // E-Automate InvoiceDate
+  dueDate: timestamp("due_date").notNull(), // E-Automate DueDate
+  poNumber: varchar("po_number"), // E-Automate PONumber
+  
+  // Sales Information
+  salesRep: varchar("sales_rep"), // E-Automate SalesRep
+  invoiceType: varchar("invoice_type").default("sales"), // E-Automate InvoiceType: sales, service, lease, rental
+  
+  // Financial Totals
+  subtotalAmount: decimal("subtotal_amount", { precision: 10, scale: 2 }), // E-Automate Subtotal
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }), // E-Automate TaxAmount
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(), // E-Automate Total
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default('0'), // E-Automate AmountPaid
+  balanceDue: decimal("balance_due", { precision: 10, scale: 2 }), // E-Automate Balance
+  
+  // Invoice Status
+  invoiceStatus: varchar("invoice_status").default("open"), // E-Automate Status: open, paid, partial, overdue, void
+  paymentTerms: varchar("payment_terms"), // E-Automate PaymentTerms
+  
+  // Billing Period (for recurring invoices)
+  billingPeriodStart: timestamp("billing_period_start"), // E-Automate BillingPeriodStart
+  billingPeriodEnd: timestamp("billing_period_end"), // E-Automate BillingPeriodEnd
+  
+  // Legacy fields for compatibility
+  monthlyBase: decimal("monthly_base", { precision: 10, scale: 2 }).default('0'),
+  blackCopiesTotal: integer("black_copies_total").default(0),
+  colorCopiesTotal: integer("color_copies_total").default(0),
+  blackAmount: decimal("black_amount", { precision: 10, scale: 2 }).default('0'),
+  colorAmount: decimal("color_amount", { precision: 10, scale: 2 }).default('0'),
+  status: varchar("status").default("draft"), // Legacy status field
+  paidDate: timestamp("paid_date"),
+  
+  // System Tracking
+  invoiceNotes: text("invoice_notes"), // E-Automate Notes
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+});
+
+// Enhanced Invoice Line Items Table (E-Automate compatible)
+export const invoiceLineItems = pgTable("invoice_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalLineItemId: varchar("external_line_item_id"), // E-Automate DetailKey
+  externalInvoiceId: varchar("external_invoice_id"), // E-Automate InvoiceKey
+  externalItemId: varchar("external_item_id"), // E-Automate ItemKey
+  externalEquipmentId: varchar("external_equipment_id"), // E-Automate EquipmentKey
+  
+  // Line Item Identification
+  invoiceId: varchar("invoice_id").notNull(), // References invoices.id
+  equipmentId: varchar("equipment_id"), // References equipment.id
+  meterReadingId: varchar("meter_reading_id"), // References meter_readings.id
+  
+  // Line Item Details
+  lineDescription: text("line_description"), // E-Automate Description
+  quantity: integer("quantity").default(0), // E-Automate Quantity
+  unitPrice: decimal("unit_price", { precision: 10, scale: 4 }), // E-Automate UnitPrice
+  extendedPrice: decimal("extended_price", { precision: 10, scale: 2 }), // E-Automate ExtendedPrice
+  
+  // Discounts
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }), // E-Automate DiscountPercent
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }), // E-Automate DiscountAmount
+  
+  // Tax Information
+  taxRate: decimal("tax_rate", { precision: 5, scale: 4 }), // E-Automate TaxRate
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }), // E-Automate TaxAmount
+  lineTotal: decimal("line_total", { precision: 10, scale: 2 }), // E-Automate LineTotal
+  
+  // Accounting
+  glAccountCode: varchar("gl_account_code"), // E-Automate GLAccount
+  
+  // Equipment/Service Specific
+  serialNumber: varchar("serial_number"), // E-Automate SerialNumber
+  meterStartReading: integer("meter_start_reading"), // E-Automate MeterStart
+  meterEndReading: integer("meter_end_reading"), // E-Automate MeterEnd
+  meterUsage: integer("meter_usage"), // E-Automate MeterUsage
+  billingType: varchar("billing_type"), // E-Automate BillingType: base, overage, one-time, recurring
+  
+  // Legacy fields for compatibility
+  description: varchar("description"), // Legacy description field
+  rate: decimal("rate", { precision: 10, scale: 4 }).default('0'),
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  lineType: varchar("line_type").default("meter"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Employees/Technicians Table (E-Automate compatible)
+export const employees = pgTable("employees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalEmployeeId: varchar("external_employee_id"), // E-Automate EmployeeKey
+  employeeNumber: varchar("employee_number").unique(), // E-Automate EmployeeNumber
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Personal Information
+  firstName: varchar("first_name").notNull(), // E-Automate FirstName
+  lastName: varchar("last_name").notNull(), // E-Automate LastName
+  workEmail: varchar("work_email"), // E-Automate Email
+  workPhone: varchar("work_phone"), // E-Automate Phone
+  mobilePhone: varchar("mobile_phone"), // E-Automate Mobile
+  
+  // Employment Information
+  department: varchar("department"), // E-Automate Department
+  jobTitle: varchar("job_title"), // E-Automate Title
+  hireDate: timestamp("hire_date"), // E-Automate HireDate
+  terminationDate: timestamp("termination_date"), // E-Automate TerminationDate
+  managerId: varchar("manager_id"), // E-Automate Manager
+  
+  // Territory & Sales
+  assignedTerritory: varchar("assigned_territory"), // E-Automate Territory
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }), // E-Automate CommissionRate
+  
+  // Technician Information
+  hourlyLaborRate: decimal("hourly_labor_rate", { precision: 10, scale: 2 }), // E-Automate LaborRate
+  technicianCertificationLevel: varchar("technician_certification_level"), // E-Automate TechnicianLevel
+  
+  // Status
+  isActive: boolean("is_active").default(true), // E-Automate Active
+  
+  // System Tracking
+  employeeNotes: text("employee_notes"), // E-Automate Notes
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+});
+
+// Vendors/Suppliers Table (E-Automate compatible)
+export const vendors = pgTable("vendors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // E-Automate Compatibility
+  externalVendorId: varchar("external_vendor_id"), // E-Automate VendorKey
+  lastSyncDate: timestamp("last_sync_date"),
+  
+  // Vendor Information
+  vendorName: varchar("vendor_name").notNull(), // E-Automate VendorName
+  primaryContactName: varchar("primary_contact_name"), // E-Automate ContactName
+  
+  // Address Information
+  addressLine1: varchar("address_line_1"), // E-Automate Address1
+  addressLine2: varchar("address_line_2"), // E-Automate Address2
+  city: varchar("city"), // E-Automate City
+  state: varchar("state"), // E-Automate State
+  zipCode: varchar("zip_code"), // E-Automate ZipCode
+  
+  // Contact Information
+  phone: varchar("phone"), // E-Automate Phone
+  fax: varchar("fax"), // E-Automate Fax
+  email: varchar("email"), // E-Automate Email
+  website: varchar("website"), // E-Automate Website
+  
+  // Financial Information
+  paymentTerms: varchar("payment_terms"), // E-Automate PaymentTerms
+  taxId: varchar("tax_id"), // E-Automate TaxID
+  accountNumber: varchar("account_number"), // E-Automate AccountNumber
+  creditLimit: decimal("credit_limit", { precision: 10, scale: 2 }), // E-Automate CreditLimit
+  
+  // Status
+  isActive: boolean("is_active").default(true), // E-Automate Active
+  
+  // System Tracking
+  vendorNotes: text("vendor_notes"), // E-Automate Notes
+  createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated
+  updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified
+});
 
 // REMOVED: Old leadActivities table - now using unified businessRecordActivities
 
@@ -728,23 +1251,6 @@ export const dealActivities = pgTable("deal_activities", {
 
 // The comprehensive customers table is defined above (line 448) with all necessary fields
 
-// Equipment table
-export const equipment = pgTable("equipment", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  customerId: varchar("customer_id").notNull(),
-  serialNumber: varchar("serial_number").notNull(),
-  model: varchar("model").notNull(),
-  manufacturer: varchar("manufacturer").notNull(),
-  location: varchar("location"),
-  installDate: timestamp("install_date"),
-  blackMeter: integer("black_meter").default(0),
-  colorMeter: integer("color_meter").default(0),
-  lastMeterReading: timestamp("last_meter_reading"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 // Contracts table - Enhanced for comprehensive meter billing
 export const contracts = pgTable("contracts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -937,19 +1443,7 @@ export const serviceTicketUpdates = pgTable("service_ticket_updates", {
 });
 
 // Inventory items table
-export const inventoryItems = pgTable("inventory_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  name: varchar("name").notNull(),
-  partNumber: varchar("part_number"),
-  category: varchar("category").notNull(),
-  currentStock: integer("current_stock").default(0),
-  reorderPoint: integer("reorder_point").default(0),
-  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
-  supplier: varchar("supplier"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// Note: inventoryItems table is defined above with full E-Automate compatibility
 
 // Technicians table
 export const technicians = pgTable("technicians", {
@@ -985,100 +1479,7 @@ export const technicianAvailability = pgTable("technician_availability", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Meter readings table for billing - Enhanced for comprehensive collection methods
-export const meterReadings = pgTable("meter_readings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  equipmentId: varchar("equipment_id").notNull(),
-  contractId: varchar("contract_id").notNull(),
-  
-  // Reading Information
-  readingDate: timestamp("reading_date").notNull(),
-  blackMeter: integer("black_meter").notNull().default(0),
-  colorMeter: integer("color_meter").notNull().default(0),
-  previousBlackMeter: integer("previous_black_meter").default(0),
-  previousColorMeter: integer("previous_color_meter").default(0),
-  blackCopies: integer("black_copies").default(0),
-  colorCopies: integer("color_copies").default(0),
-  
-  // Collection Method (PRD requirement)
-  collectionMethod: varchar("collection_method").notNull().default('manual'), // manual, dca, email, api, remote_monitoring
-  
-  // DCA Integration Fields
-  dcaDeviceId: varchar("dca_device_id"), // Device ID for DCA integration
-  dcaLastSync: timestamp("dca_last_sync"), // Last successful DCA sync
-  dcaError: text("dca_error"), // Any DCA collection errors
-  
-  // Email Collection Fields  
-  emailSource: varchar("email_source"), // Email address readings came from
-  emailSubject: varchar("email_subject"), // Original email subject
-  emailTimestamp: timestamp("email_timestamp"), // When email was received
-  
-  // API Collection Fields
-  apiSource: varchar("api_source"), // Which API endpoint provided the data
-  apiResponseId: varchar("api_response_id"), // Reference to API response
-  
-  // Quality Control
-  isVerified: boolean("is_verified").default(false), // Has reading been verified?
-  verifiedBy: varchar("verified_by"), // Who verified the reading
-  verifiedAt: timestamp("verified_at"), // When was it verified
-  
-  // Exceptions and Adjustments
-  hasException: boolean("has_exception").default(false),
-  exceptionReason: varchar("exception_reason"), // manual_override, billing_dispute, equipment_error
-  exceptionNotes: text("exception_notes"),
-  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }).default('0'),
-  
-  // Billing Processing Status
-  billingStatus: varchar("billing_status").notNull().default('pending'), // pending, processed, billed, disputed
-  invoiceId: varchar("invoice_id"), // Reference to generated invoice
-  billingAmount: decimal("billing_amount", { precision: 10, scale: 2 }),
-  
-  // Tracking
-  notes: text("notes"),
-  createdBy: varchar("created_by").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Invoices table for billing
-export const invoices = pgTable("invoices", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  customerId: varchar("customer_id").notNull(),
-  contractId: varchar("contract_id").notNull(),
-  invoiceNumber: varchar("invoice_number").notNull(),
-  billingPeriodStart: timestamp("billing_period_start").notNull(),
-  billingPeriodEnd: timestamp("billing_period_end").notNull(),
-  monthlyBase: decimal("monthly_base", { precision: 10, scale: 2 }).default('0'),
-  blackCopiesTotal: integer("black_copies_total").default(0),
-  colorCopiesTotal: integer("color_copies_total").default(0),
-  blackAmount: decimal("black_amount", { precision: 10, scale: 2 }).default('0'),
-  colorAmount: decimal("color_amount", { precision: 10, scale: 2 }).default('0'),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  status: varchar("status").notNull().default('draft'),
-  dueDate: timestamp("due_date").notNull(),
-  paidDate: timestamp("paid_date"),
-  createdBy: varchar("created_by").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Invoice line items for detailed billing
-export const invoiceLineItems = pgTable("invoice_line_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  invoiceId: varchar("invoice_id").notNull(),
-  equipmentId: varchar("equipment_id").notNull(),
-  meterReadingId: varchar("meter_reading_id"),
-  description: varchar("description").notNull(),
-  quantity: integer("quantity").default(0),
-  rate: decimal("rate", { precision: 10, scale: 4 }).default('0'),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  lineType: varchar("line_type").notNull().default('meter'),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// Note: E-Automate compatible invoices and invoiceLineItems tables are defined above with comprehensive features
 
 // CRM Activity Goal Types
 export const activityGoalTypeEnum = pgEnum("activity_goal_type", [
@@ -1418,14 +1819,7 @@ export const businessRecordsRelations = relations(businessRecords, ({ one, many 
     fields: [businessRecords.tenantId],
     references: [tenants.id],
   }),
-  company: one(companies, {
-    fields: [businessRecords.companyId],
-    references: [companies.id],
-  }),
-  contact: one(companyContacts, {
-    fields: [businessRecords.contactId],
-    references: [companyContacts.id],
-  }),
+  // Removed company and contact relations that reference non-existent fields
   owner: one(users, {
     fields: [businessRecords.ownerId],
     references: [users.id],
@@ -2762,53 +3156,7 @@ export const quotePricingLineItems = pgTable("quote_pricing_line_items", {
 // ============= ACCOUNTING MODULES =============
 
 // Vendors (Suppliers)
-export const vendors = pgTable("vendors", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  
-  // Basic Information
-  vendorNumber: varchar("vendor_number").notNull(),
-  companyName: varchar("company_name").notNull(),
-  displayName: varchar("display_name"),
-  
-  // Contact Information
-  contactPerson: varchar("contact_person"),
-  phone: varchar("phone"),
-  email: varchar("email"),
-  website: varchar("website"),
-  
-  // Address Information
-  address: text("address"),
-  city: varchar("city"),
-  state: varchar("state"),
-  zipCode: varchar("zip_code"),
-  country: varchar("country").default("US"),
-  
-  // Business Details
-  taxId: varchar("tax_id"),
-  paymentTerms: varchar("payment_terms").default("Net 30"),
-  currency: varchar("currency").default("USD"),
-  creditLimit: decimal("credit_limit", { precision: 12, scale: 2 }),
-  
-  // Categories & Classification
-  vendorType: varchar("vendor_type").notNull(),
-  category: varchar("category"),
-  accountNumber: varchar("account_number"),
-  
-  // Status & Settings
-  status: varchar("status").notNull().default("active"),
-  preferred: boolean("preferred").default(false),
-  
-  // Banking Information
-  bankName: varchar("bank_name"),
-  accountHolder: varchar("account_holder"),
-  routingNumber: varchar("routing_number"),
-  bankAccountNumber: varchar("bank_account_number"),
-  
-  // Tracking
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// Note: vendors table is defined above with full E-Automate compatibility
 
 // Accounts Payable
 export const accountsPayable = pgTable("accounts_payable", {
