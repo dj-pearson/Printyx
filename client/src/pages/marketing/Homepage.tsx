@@ -795,9 +795,9 @@ const Homepage = () => {
           <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center">
             <p className="text-gray-400">© 2025 Printyx. All rights reserved.</p>
             <div className="flex space-x-6 mt-4 sm:mt-0">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">Terms</a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">Security</a>
+              <a href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms & Conditions</a>
+              <a href="/eula" className="text-gray-400 hover:text-white transition-colors">EULA</a>
             </div>
           </div>
         </div>

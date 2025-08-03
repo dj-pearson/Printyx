@@ -58,6 +58,9 @@ import TenantSetup from "@/pages/TenantSetup";
 import Settings from "@/pages/Settings";
 import DataEnrichment from "@/pages/DataEnrichment";
 import QuickBooksIntegration from "@/pages/QuickBooksIntegration";
+import EndUserLicenseAgreement from "@/pages/legal/EndUserLicenseAgreement";
+import PrivacyPolicy from "@/pages/legal/PrivacyPolicy";
+import TermsAndConditions from "@/pages/legal/TermsAndConditions";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -74,6 +77,9 @@ function Router() {
       ) : !isAuthenticated ? (
         <Switch>
           <Route path="/login" component={Login} />
+          <Route path="/eula" component={EndUserLicenseAgreement} />
+          <Route path="/privacy" component={PrivacyPolicy} />
+          <Route path="/terms" component={TermsAndConditions} />
           <Route path="/" component={Homepage} />
           <Route component={Homepage} />
         </Switch>
@@ -141,6 +147,9 @@ function Router() {
           <Route path="/admin/pricing-management" component={PricingManagement} />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
+          <Route path="/eula" component={EndUserLicenseAgreement} />
+          <Route path="/privacy" component={PrivacyPolicy} />
+          <Route path="/terms" component={TermsAndConditions} />
         </>
       )}
       <Route component={NotFound} />
