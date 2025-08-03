@@ -227,28 +227,28 @@ export default function LeadsManagement() {
     <MainLayout title="Leads Management" description="Manage and track your sales leads">
       <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Leads</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Leads</h1>
           <p className="text-gray-600">Manage and track your sales leads</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={() => handleBulkAction("export")}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <Button variant="outline" onClick={() => handleBulkAction("export")} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-auto">
             <Upload className="h-4 w-4 mr-2" />
             Import
           </Button>
           <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Lead
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Lead</DialogTitle>
                 <DialogDescription>
@@ -265,50 +265,50 @@ export default function LeadsManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <Users className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-2xl font-bold">{filteredLeads.length}</p>
-                <p className="text-gray-600">Total Leads</p>
+              <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xl sm:text-2xl font-bold">{filteredLeads.length}</p>
+                <p className="text-sm sm:text-base text-gray-600">Total Leads</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-2xl font-bold">
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xl sm:text-2xl font-bold">
                   {filteredLeads.filter((lead: Lead) => lead.status === "qualified").length}
                 </p>
-                <p className="text-gray-600">Qualified</p>
+                <p className="text-sm sm:text-base text-gray-600">Qualified</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
-                <p className="text-2xl font-bold">
+              <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xl sm:text-2xl font-bold">
                   {formatCurrency(filteredLeads.reduce((sum: number, lead: Lead) => sum + (lead.estimatedValue || 0), 0))}
                 </p>
-                <p className="text-gray-600">Pipeline Value</p>
+                <p className="text-sm sm:text-base text-gray-600">Pipeline Value</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-orange-600" />
-              <div className="ml-4">
-                <p className="text-2xl font-bold">
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xl sm:text-2xl font-bold">
                   {filteredLeads.filter((lead: Lead) => {
                     const lastActivity = new Date(lead.lastActivity);
                     const threeDaysAgo = new Date();
@@ -316,7 +316,7 @@ export default function LeadsManagement() {
                     return lastActivity < threeDaysAgo;
                   }).length}
                 </p>
-                <p className="text-gray-600">Need Follow-up</p>
+                <p className="text-sm sm:text-base text-gray-600">Need Follow-up</p>
               </div>
             </div>
           </CardContent>
@@ -325,68 +325,69 @@ export default function LeadsManagement() {
 
       {/* Filters and Search */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search leads by name, email, company, or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        <CardContent className="p-4 sm:p-6">
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search leads by name, email, company, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-            <div className="flex gap-3">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="qualified">Qualified</SelectItem>
-                  <SelectItem value="proposal">Proposal</SelectItem>
-                  <SelectItem value="negotiation">Negotiation</SelectItem>
-                  <SelectItem value="closed_won">Closed Won</SelectItem>
-                  <SelectItem value="closed_lost">Closed Lost</SelectItem>
-                </SelectContent>
-              </Select>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="grid grid-cols-2 sm:flex gap-3 flex-1">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="contacted">Contacted</SelectItem>
+                    <SelectItem value="qualified">Qualified</SelectItem>
+                    <SelectItem value="proposal">Proposal</SelectItem>
+                    <SelectItem value="negotiation">Negotiation</SelectItem>
+                    <SelectItem value="closed_won">Closed Won</SelectItem>
+                    <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priority</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
-                  {leadSources.map((source) => (
-                    <SelectItem key={source} value={source}>
-                      {source}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger className="w-full sm:w-40 col-span-2 sm:col-span-1">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    {leadSources.map((source) => (
+                      <SelectItem key={source} value={source}>
+                        {source}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <div className="flex border rounded">
+              <div className="flex border rounded justify-center sm:justify-start">
                 <Button
                   variant={viewMode === "table" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("table")}
-                  className="rounded-r-none"
+                  className="rounded-r-none hidden sm:flex"
                 >
                   Table
                 </Button>
@@ -394,7 +395,7 @@ export default function LeadsManagement() {
                   variant={viewMode === "cards" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("cards")}
-                  className="rounded-l-none"
+                  className="rounded-l-none sm:rounded-l-none rounded-l-md"
                 >
                   Cards
                 </Button>
@@ -430,26 +431,27 @@ export default function LeadsManagement() {
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
         </div>
       ) : viewMode === "table" ? (
-        <Card>
+        <Card className="hidden sm:block">
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Last Activity</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead className="min-w-[200px]">Lead</TableHead>
+                    <TableHead className="min-w-[100px]">Status</TableHead>
+                    <TableHead className="min-w-[100px]">Priority</TableHead>
+                    <TableHead className="min-w-[120px]">Source</TableHead>
+                    <TableHead className="min-w-[100px]">Value</TableHead>
+                    <TableHead className="min-w-[120px]">Last Activity</TableHead>
+                    <TableHead className="min-w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredLeads.map((lead: Lead) => (
                   <TableRow key={lead.id}>
@@ -511,11 +513,12 @@ export default function LeadsManagement() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredLeads.map((lead: Lead) => (
             <Card key={lead.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
@@ -581,7 +584,7 @@ export default function LeadsManagement() {
       {/* Edit Lead Dialog */}
       {editingLead && (
         <Dialog open={!!editingLead} onOpenChange={() => setEditingLead(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Lead</DialogTitle>
               <DialogDescription>
@@ -634,8 +637,8 @@ function LeadForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid md:grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Name *</Label>
           <Input
