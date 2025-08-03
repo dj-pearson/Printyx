@@ -4780,6 +4780,323 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= SERVICE ANALYTICS ROUTES =============
+
+  // Get analytics metrics
+  app.get("/api/analytics/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COALESCE(SUM(total_service_calls), 0) as total_service_calls FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly' AND metric_date >= DATE_TRUNC('month', CURRENT_DATE)`,
+        `SELECT COALESCE(AVG(average_response_time_minutes), 0) as avg_response_time FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+        `SELECT COALESCE(AVG(average_satisfaction_score), 0) as customer_satisfaction FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+        `SELECT COALESCE(AVG(month_over_month_growth), 0) as revenue_growth FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+        `SELECT COALESCE(AVG(utilization_rate), 0) as utilization_rate FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+        `SELECT COALESCE(AVG(first_call_resolution_rate), 0) as first_call_resolution FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        totalServiceCalls: parseInt(results[0].rows[0].total_service_calls),
+        averageResponseTime: parseFloat(results[1].rows[0].avg_response_time),
+        customerSatisfaction: parseFloat(results[2].rows[0].customer_satisfaction),
+        revenueGrowth: parseFloat(results[3].rows[0].revenue_growth),
+        utilizationRate: parseFloat(results[4].rows[0].utilization_rate),
+        firstCallResolution: parseFloat(results[5].rows[0].first_call_resolution),
+      });
+    } catch (error) {
+      console.error("Error fetching analytics metrics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics metrics" });
+    }
+  });
+
+  // Get performance metrics
+  app.get("/api/analytics/performance-metrics", requireAuth, async (req: any, res) => {
+    try {
+      const { period } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (period && period !== 'all') {
+        whereConditions.push(`metric_period = $${queryParams.length + 1}`);
+        queryParams.push(period);
+      }
+      
+      const query = `
+        SELECT *
+        FROM service_performance_metrics
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY metric_date DESC
+        LIMIT 20
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching performance metrics:", error);
+      res.status(500).json({ error: "Failed to fetch performance metrics" });
+    }
+  });
+
+  // Get technician performance analytics
+  app.get("/api/analytics/technician-performance", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          tpa.*,
+          u.name as technician_name
+        FROM technician_performance_analytics tpa
+        LEFT JOIN users u ON tpa.technician_id = u.id
+        WHERE tpa.tenant_id = $1
+        ORDER BY tpa.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching technician performance analytics:", error);
+      res.status(500).json({ error: "Failed to fetch technician performance analytics" });
+    }
+  });
+
+  // Get customer service analytics
+  app.get("/api/analytics/customer-service", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          csa.*,
+          br.company_name as customer_name
+        FROM customer_service_analytics csa
+        LEFT JOIN business_records br ON csa.business_record_id = br.id
+        WHERE csa.tenant_id = $1
+        ORDER BY csa.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching customer service analytics:", error);
+      res.status(500).json({ error: "Failed to fetch customer service analytics" });
+    }
+  });
+
+  // Get trend analysis
+  app.get("/api/analytics/trends", requireAuth, async (req: any, res) => {
+    try {
+      const { category } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (category && category !== 'all') {
+        whereConditions.push(`trend_category = $${queryParams.length + 1}`);
+        queryParams.push(category);
+      }
+      
+      const query = `
+        SELECT *
+        FROM service_trend_analysis
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY analysis_date DESC
+        LIMIT 10
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching trend analysis:", error);
+      res.status(500).json({ error: "Failed to fetch trend analysis" });
+    }
+  });
+
+  // Get BI dashboards
+  app.get("/api/analytics/dashboards", requireAuth, async (req: any, res) => {
+    try {
+      const { category } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['bid.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (category && category !== 'all') {
+        whereConditions.push(`bid.category = $${queryParams.length + 1}`);
+        queryParams.push(category);
+      }
+      
+      const query = `
+        SELECT 
+          bid.*,
+          u.name as owner_name
+        FROM business_intelligence_dashboards bid
+        LEFT JOIN users u ON bid.owner_id = u.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY bid.is_featured DESC, bid.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching BI dashboards:", error);
+      res.status(500).json({ error: "Failed to fetch BI dashboards" });
+    }
+  });
+
+  // Create BI dashboard
+  app.post("/api/analytics/dashboards", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        dashboard_name, dashboard_type, category, visibility,
+        refresh_interval, auto_refresh, description
+      } = req.body;
+      
+      const dashboardConfig = {
+        description,
+        widgets: [],
+        layout: 'grid',
+        theme: 'default'
+      };
+      
+      const query = `
+        INSERT INTO business_intelligence_dashboards (
+          tenant_id, dashboard_name, dashboard_type, category, owner_id,
+          visibility, refresh_interval, auto_refresh, dashboard_config
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, dashboard_name, dashboard_type, category, userId,
+        visibility, refresh_interval, auto_refresh, JSON.stringify(dashboardConfig)
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating BI dashboard:", error);
+      res.status(500).json({ error: "Failed to create BI dashboard" });
+    }
+  });
+
+  // Get performance benchmarks
+  app.get("/api/analytics/benchmarks", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM performance_benchmarks
+        WHERE tenant_id = $1
+        ORDER BY improvement_priority DESC, created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching performance benchmarks:", error);
+      res.status(500).json({ error: "Failed to fetch performance benchmarks" });
+    }
+  });
+
+  // Create performance benchmark
+  app.post("/api/analytics/benchmarks", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        benchmark_name, benchmark_category, industry_average, company_target,
+        improvement_priority, target_completion_date, business_impact, investment_required
+      } = req.body;
+      
+      const query = `
+        INSERT INTO performance_benchmarks (
+          tenant_id, benchmark_name, benchmark_category, industry_average,
+          company_target, improvement_priority, target_completion_date,
+          business_impact, investment_required, trend_direction
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, benchmark_name, benchmark_category, industry_average,
+        company_target, improvement_priority, target_completion_date,
+        business_impact, investment_required, 'stable'
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating performance benchmark:", error);
+      res.status(500).json({ error: "Failed to create performance benchmark" });
+    }
+  });
+
+  // Generate analytics reports
+  app.post("/api/analytics/generate-reports", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      // Generate sample performance metrics
+      const currentDate = new Date();
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      const metricsQuery = `
+        INSERT INTO service_performance_metrics (
+          tenant_id, metric_date, metric_period, period_start, period_end,
+          total_service_calls, emergency_calls, average_response_time_minutes,
+          first_call_resolution_rate, average_satisfaction_score, total_service_revenue,
+          utilization_rate, jobs_completed_on_time, jobs_completed_late, month_over_month_growth
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `;
+      
+      await db.$client.query(metricsQuery, [
+        tenantId, currentDate, 'monthly', startOfMonth, currentDate,
+        125, 18, 45.5, 87.2, 4.3, 45000, 78.5, 98, 12, 8.5
+      ]);
+      
+      // Generate sample trend analysis
+      const trendQuery = `
+        INSERT INTO service_trend_analysis (
+          tenant_id, trend_category, analysis_date, period_type,
+          current_value, previous_value, percentage_change, trend_direction,
+          forecasted_next_period, forecast_confidence, trend_insights
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `;
+      
+      const trends = [
+        ['service_volume', 125, 118, 5.93, 'up', 132, 85, 'Service volume continues to grow steadily'],
+        ['satisfaction', 4.3, 4.1, 4.88, 'up', 4.4, 90, 'Customer satisfaction improving with recent process changes'],
+        ['response_times', 45.5, 52.3, -13.0, 'down', 42, 88, 'Response times improving due to optimized routing']
+      ];
+      
+      for (const trend of trends) {
+        await db.$client.query(trendQuery, [
+          tenantId, trend[0], currentDate, 'monthly',
+          trend[1], trend[2], trend[3], trend[4], trend[5], trend[6], trend[7]
+        ]);
+      }
+      
+      res.status(201).json({
+        message: "Analytics reports generated successfully",
+        reports_generated: 1 + trends.length
+      });
+    } catch (error) {
+      console.error("Error generating analytics reports:", error);
+      res.status(500).json({ error: "Failed to generate analytics reports" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
