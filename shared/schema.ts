@@ -1412,9 +1412,9 @@ export const customerRelatedRecords = pgTable("customer_related_records", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Type exports for the new customer management system
-export type Customer = typeof customers.$inferSelect;
-export type InsertCustomer = typeof customers.$inferInsert;
+// Type exports for the new customer management system - commented out to avoid duplicates
+// export type Customer = typeof customers.$inferSelect;
+// export type InsertCustomer = typeof customers.$inferInsert;
 export type CustomerActivity = typeof customerActivities.$inferSelect;
 export type InsertCustomerActivity = typeof customerActivities.$inferInsert;
 export type CustomerContact = typeof customerContacts.$inferSelect;
@@ -2598,8 +2598,7 @@ export type DealStage = typeof dealStages.$inferSelect;
 export type InsertDealStage = typeof dealStages.$inferInsert;
 export type DealActivity = typeof dealActivities.$inferSelect;
 export type InsertDealActivity = typeof dealActivities.$inferInsert;
-export type ContractTieredRate = typeof contractTieredRates.$inferSelect;
-export type InsertContractTieredRate = typeof contractTieredRates.$inferInsert;
+// Moved to main type exports section to avoid duplicates
 
 // CRM Goal Management Types
 export type SalesGoal = typeof salesGoals.$inferSelect;
@@ -2669,9 +2668,7 @@ export const insertManagerInsightsSchema = createInsertSchema(managerInsights).o
   updatedAt: true,
 });
 
-// Legacy types for backward compatibility
-export type Customer = typeof customers.$inferSelect;
-export type InsertCustomer = typeof customers.$inferInsert;
+// Legacy types for backward compatibility - moved to main exports
 
 // Insert schemas for forms
 export const insertRoleSchema = createInsertSchema(roles).omit({
@@ -2843,12 +2840,15 @@ export type QuoteLineItem = typeof quoteLineItems.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
 export type Contract = typeof contracts.$inferSelect;
 export type ContractTieredRate = typeof contractTieredRates.$inferSelect;
+export type InsertContractTieredRate = typeof contractTieredRates.$inferInsert;
 export type ServiceTicket = typeof serviceTickets.$inferSelect;
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type Technician = typeof technicians.$inferSelect;
 export type MeterReading = typeof meterReadings.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;
 
 // Backward compatibility type aliases
 export type LeadInteraction = LeadActivity;
@@ -3870,6 +3870,348 @@ export type InsertServiceProduct = z.infer<typeof insertServiceProductSchema>;
 export type InsertSoftwareProduct = z.infer<typeof insertSoftwareProductSchema>;
 export type InsertSupply = z.infer<typeof insertSupplySchema>;
 export type InsertManagedService = z.infer<typeof insertManagedServiceSchema>;
+
+// ============= QUOTE/PROPOSAL GENERATION SYSTEM =============
+// Inline implementation to avoid module import issues
+
+// Proposal Templates for consistent branding and standardization
+export const proposalTemplates = pgTable("proposal_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Template Details
+  templateName: varchar("template_name").notNull(),
+  templateType: varchar("template_type").notNull(), // equipment_lease, service_contract, maintenance_agreement, etc.
+  description: text("description"),
+  
+  // Template Content
+  headerContent: jsonb("header_content").$type<{
+    companyLogo?: string;
+    letterhead?: string;
+    contactInfo?: string;
+  }>(),
+  
+  coverPageTemplate: text("cover_page_template"), // HTML template
+  executiveSummaryTemplate: text("executive_summary_template"),
+  proposalBodyTemplate: text("proposal_body_template"),
+  termsAndConditionsTemplate: text("terms_conditions_template"),
+  footerTemplate: text("footer_template"),
+  
+  // Styling and Branding
+  brandingColors: jsonb("branding_colors").$type<{
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+  }>(),
+  fontSettings: jsonb("font_settings").$type<{
+    headerFont?: string;
+    bodyFont?: string;
+    fontSize?: number;
+  }>(),
+  
+  // Template Settings
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false),
+  createdBy: varchar("created_by").notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Equipment Packages - Pre-configured equipment bundles
+export const equipmentPackages = pgTable("equipment_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Package Details
+  packageName: varchar("package_name").notNull(),
+  packageCode: varchar("package_code"), // Internal reference
+  category: varchar("category"), // office_solution, production_solution, managed_print, etc.
+  description: text("description"),
+  
+  // Package Configuration
+  equipment: jsonb("equipment").$type<Array<{
+    modelId: string;
+    quantity: number;
+    unitPrice: number;
+    description?: string;
+    isOptional?: boolean;
+  }>>(),
+  
+  accessories: jsonb("accessories").$type<Array<{
+    accessoryId: string;
+    quantity: number;
+    unitPrice: number;
+    description?: string;
+    isOptional?: boolean;
+  }>>(),
+  
+  services: jsonb("services").$type<Array<{
+    serviceId: string;
+    serviceType: string;
+    monthlyPrice: number;
+    description?: string;
+    isOptional?: boolean;
+  }>>(),
+  
+  // Pricing
+  totalValue: decimal("total_value"),
+  discountPercentage: decimal("discount_percentage"),
+  marginPercentage: decimal("margin_percentage"),
+  
+  // Package Settings
+  isActive: boolean("is_active").default(true),
+  allowCustomization: boolean("allow_customization").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Main Proposals Table
+export const proposals = pgTable("proposals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Proposal Identification
+  proposalNumber: varchar("proposal_number").notNull().unique(),
+  version: varchar("version").default("1.0"),
+  title: varchar("title").notNull(),
+  
+  // Customer Information
+  businessRecordId: varchar("business_record_id").notNull(),
+  contactId: varchar("contact_id"), // Primary contact for this proposal
+  
+  // Assignment and Ownership
+  createdBy: varchar("created_by").notNull(),
+  assignedTo: varchar("assigned_to").notNull(),
+  teamId: varchar("team_id"), // Sales team responsible
+  
+  // Proposal Details
+  proposalType: varchar("proposal_type").notNull(), // equipment_lease, service_contract, etc.
+  description: text("description"),
+  
+  // Content Sections
+  executiveSummary: text("executive_summary"),
+  companyIntroduction: text("company_introduction"),
+  solutionOverview: text("solution_overview"),
+  termsAndConditions: text("terms_and_conditions"),
+  investmentSummary: text("investment_summary"),
+  nextSteps: text("next_steps"),
+  
+  // Pricing Information
+  subtotal: decimal("subtotal").default("0"),
+  discountAmount: decimal("discount_amount").default("0"),
+  discountPercentage: decimal("discount_percentage").default("0"),
+  taxAmount: decimal("tax_amount").default("0"),
+  totalAmount: decimal("total_amount").default("0"),
+  
+  // Validity and Timeline
+  validUntil: timestamp("valid_until"),
+  estimatedStartDate: timestamp("estimated_start_date"),
+  estimatedEndDate: timestamp("estimated_end_date"),
+  
+  // Status and Tracking
+  status: varchar("status").default("draft"), // draft, sent, viewed, accepted, rejected, expired
+  priority: varchar("priority").default("medium"), // low, medium, high, urgent
+  
+  // Timestamps for status tracking
+  sentAt: timestamp("sent_at"),
+  viewedAt: timestamp("viewed_at"),
+  acceptedAt: timestamp("accepted_at"),
+  rejectedAt: timestamp("rejected_at"),
+  
+  // Analytics and Tracking
+  openCount: integer("open_count").default(0),
+  lastOpenedAt: timestamp("last_opened_at"),
+  
+  // Template and Customization
+  templateId: varchar("template_id"), // Reference to proposal template used
+  customStyling: jsonb("custom_styling"),
+  
+  // Internal Notes and Comments
+  internalNotes: text("internal_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposal Line Items - Individual items/services in a proposal
+export const proposalLineItems = pgTable("proposal_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  proposalId: varchar("proposal_id").notNull(),
+  
+  // Line Item Details
+  lineNumber: integer("line_number").notNull(),
+  itemType: varchar("item_type").notNull(), // equipment, accessory, service, software, supply
+  productId: varchar("product_id"), // Reference to product table
+  productName: varchar("product_name").notNull(),
+  description: text("description"),
+  
+  // Pricing Details
+  quantity: integer("quantity").default(1),
+  unitPrice: decimal("unit_price").notNull(),
+  unitCost: decimal("unit_cost"), // Internal cost
+  totalPrice: decimal("total_price").notNull(),
+  
+  // Service-specific fields
+  serviceFrequency: varchar("service_frequency"), // monthly, quarterly, annually
+  serviceDuration: varchar("service_duration"), // Contract duration
+  
+  // Equipment-specific fields
+  equipmentCondition: varchar("equipment_condition"), // new, refurbished, demo
+  warrantyInfo: text("warranty_info"),
+  
+  // Configuration and Options
+  isOptional: boolean("is_optional").default(false),
+  isAlternative: boolean("is_alternative").default(false),
+  packageId: varchar("package_id"), // If part of an equipment package
+  
+  // Additional Details
+  specifications: jsonb("specifications"),
+  alternativeOptions: jsonb("alternative_options").$type<{
+    productId?: string;
+    productName?: string;
+    unitPrice?: number;
+    description?: string;
+  }>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposal Comments and Communication
+export const proposalComments = pgTable("proposal_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  proposalId: varchar("proposal_id").notNull(),
+  
+  // Comment Details
+  commentType: varchar("comment_type").default("general"), // general, revision_request, approval, internal
+  content: text("content").notNull(),
+  
+  // Author Information
+  authorId: varchar("author_id").notNull(),
+  authorName: varchar("author_name").notNull(),
+  authorRole: varchar("author_role"), // salesperson, manager, customer
+  
+  // Visibility and Status
+  isInternal: boolean("is_internal").default(false),
+  isResolved: boolean("is_resolved").default(false),
+  
+  // Attachments
+  attachments: jsonb("attachments").$type<Array<{
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+    fileSize: number;
+  }>>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Proposal Analytics and Tracking
+export const proposalAnalytics = pgTable("proposal_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: varchar("proposal_id").notNull(),
+  
+  // Event Details
+  eventType: varchar("event_type").notNull(), // opened, downloaded, shared, status_change
+  eventTimestamp: timestamp("event_timestamp").defaultNow(),
+  
+  // Event Context
+  eventDetails: jsonb("event_details").$type<{
+    deviceType?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    previousStatus?: string;
+    newStatus?: string;
+  }>(),
+  
+  // User Information (if applicable)
+  userId: varchar("user_id"),
+  customerUserId: varchar("customer_user_id"), // If customer has login access
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Proposal Approvals (for internal approval workflows)
+export const proposalApprovals = pgTable("proposal_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  proposalId: varchar("proposal_id").notNull(),
+  
+  // Approval Details
+  approvalLevel: varchar("approval_level").notNull(), // manager, director, executive
+  requiredBy: varchar("required_by"), // User who needs to approve
+  approvedBy: varchar("approved_by"), // User who approved
+  
+  // Status and Decisions
+  status: varchar("status").default("pending"), // pending, approved, rejected
+  approvalComments: text("approval_comments"),
+  
+  // Timestamps
+  requestedAt: timestamp("requested_at").defaultNow(),
+  respondedAt: timestamp("responded_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Insert schemas
+export const insertProposalTemplateSchema = createInsertSchema(proposalTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEquipmentPackageSchema = createInsertSchema(equipmentPackages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProposalSchema = createInsertSchema(proposals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProposalLineItemSchema = createInsertSchema(proposalLineItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProposalCommentSchema = createInsertSchema(proposalComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProposalAnalyticsSchema = createInsertSchema(proposalAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProposalApprovalSchema = createInsertSchema(proposalApprovals).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type ProposalTemplate = typeof proposalTemplates.$inferSelect;
+export type InsertProposalTemplate = typeof proposalTemplates.$inferInsert;
+export type EquipmentPackage = typeof equipmentPackages.$inferSelect;
+export type InsertEquipmentPackage = typeof equipmentPackages.$inferInsert;
+export type Proposal = typeof proposals.$inferSelect;
+export type InsertProposal = typeof proposals.$inferInsert;
+export type ProposalLineItem = typeof proposalLineItems.$inferSelect;
+export type InsertProposalLineItem = typeof proposalLineItems.$inferInsert;
+export type ProposalComment = typeof proposalComments.$inferSelect;
+export type InsertProposalComment = typeof proposalComments.$inferInsert;
+export type ProposalAnalytics = typeof proposalAnalytics.$inferSelect;
+export type InsertProposalAnalytics = typeof proposalAnalytics.$inferInsert;
+export type ProposalApproval = typeof proposalApprovals.$inferSelect;
+export type InsertProposalApproval = typeof proposalApprovals.$inferInsert;
 
 // ============= PRICING SYSTEM =============
 

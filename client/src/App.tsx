@@ -62,6 +62,7 @@ import EndUserLicenseAgreement from "@/pages/legal/EndUserLicenseAgreement";
 import PrivacyPolicy from "@/pages/legal/PrivacyPolicy";
 import TermsAndConditions from "@/pages/legal/TermsAndConditions";
 import LeadsManagement from "@/pages/LeadsManagement";
+import QuoteProposalGeneration from "@/pages/QuoteProposalGeneration";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -104,6 +105,7 @@ function Router() {
           <Route path="/crm-goals" component={CrmGoalsDashboard} />
           <Route path="/data-enrichment" component={DataEnrichment} />
           <Route path="/quickbooks-integration" component={QuickBooksIntegration} />
+          <Route path="/quote-proposal-generation" component={QuoteProposalGeneration} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />

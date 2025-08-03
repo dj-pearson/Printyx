@@ -3,6 +3,8 @@
 ## Overview
 Printyx is a unified SaaS platform designed to consolidate fragmented technology stacks for small-to-medium copier dealers. It addresses a significant market need by replacing disconnected legacy systems (CRM, billing, service dispatch, inventory) with a single, integrated solution. The platform aims to eliminate data silos, reduce manual processes, and provide a comprehensive system for managing all aspects of a copier dealership.
 
+**Recent Enhancement Focus**: Implementing comprehensive A-to-Z enhancement roadmap (COPIER_DEALER_A2Z_ROADMAP.md) starting with Phase 1 priority items: Quote/Proposal Generation, Enhanced Billing Engine, Preventive Maintenance Scheduling, and Customer Self-Service Portal.
+
 ### Business Architecture Clarification
 - **Printyx Clients**: Copier dealers who sign up for Printyx service (managed via tenant system)
 - **Business Records**: The client's customers and leads (businesses that buy/might buy copiers from the dealer)
