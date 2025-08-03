@@ -71,6 +71,7 @@ import EquipmentLifecycleManagement from "@/pages/EquipmentLifecycleManagement";
 import CommissionManagement from "@/pages/CommissionManagement";
 import RemoteMonitoring from "@/pages/RemoteMonitoring";
 import MobileServiceApp from "@/pages/MobileServiceApp";
+import ServiceAnalytics from "@/pages/ServiceAnalytics";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -122,6 +123,7 @@ function Router() {
           <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/mobile-service" component={MobileServiceApp} />
+          <Route path="/service-analytics" component={ServiceAnalytics} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
