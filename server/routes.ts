@@ -4246,6 +4246,247 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= REMOTE MONITORING ROUTES =============
+
+  // Get monitoring metrics
+  app.get("/api/monitoring/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COUNT(*) as total_devices FROM iot_devices WHERE tenant_id = $1`,
+        `SELECT COUNT(*) as online_devices FROM iot_devices WHERE tenant_id = $1 AND device_status = 'active'`,
+        `SELECT COUNT(*) as active_alerts FROM predictive_alerts WHERE tenant_id = $1 AND alert_status IN ('open', 'acknowledged')`,
+        `SELECT COUNT(*) as critical_alerts FROM predictive_alerts WHERE tenant_id = $1 AND severity = 'critical' AND alert_status IN ('open', 'acknowledged')`,
+        `SELECT COALESCE(AVG(uptime_percentage), 0) as avg_uptime FROM equipment_status_monitoring WHERE tenant_id = $1`,
+        `SELECT COUNT(*) as devices_attention FROM iot_devices WHERE tenant_id = $1 AND device_status IN ('error', 'maintenance')`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        totalDevices: parseInt(results[0].rows[0].total_devices),
+        onlineDevices: parseInt(results[1].rows[0].online_devices),
+        activeAlerts: parseInt(results[2].rows[0].active_alerts),
+        criticalAlerts: parseInt(results[3].rows[0].critical_alerts),
+        averageUptime: parseFloat(results[4].rows[0].avg_uptime),
+        devicesRequiringAttention: parseInt(results[5].rows[0].devices_attention),
+      });
+    } catch (error) {
+      console.error("Error fetching monitoring metrics:", error);
+      res.status(500).json({ error: "Failed to fetch monitoring metrics" });
+    }
+  });
+
+  // Get IoT devices
+  app.get("/api/monitoring/devices", requireAuth, async (req: any, res) => {
+    try {
+      const { type, status } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['iot.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (type && type !== 'all') {
+        whereConditions.push(`iot.device_type = $${queryParams.length + 1}`);
+        queryParams.push(type);
+      }
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`iot.device_status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      const query = `
+        SELECT 
+          iot.*,
+          br.company_name as customer_name
+        FROM iot_devices iot
+        LEFT JOIN business_records br ON iot.business_record_id = br.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY iot.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching IoT devices:", error);
+      res.status(500).json({ error: "Failed to fetch IoT devices" });
+    }
+  });
+
+  // Register IoT device
+  app.post("/api/monitoring/devices", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        device_name, device_type, manufacturer, model, device_serial_number,
+        connection_type, customer_id, installation_location, ip_address,
+        monitoring_enabled, data_collection_interval
+      } = req.body;
+      
+      const deviceId = `DEV-${Date.now()}`;
+      
+      const query = `
+        INSERT INTO iot_devices (
+          tenant_id, device_id, device_name, device_type, manufacturer,
+          model, device_serial_number, connection_type, customer_id,
+          business_record_id, installation_location, ip_address,
+          monitoring_enabled, data_collection_interval
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, deviceId, device_name, device_type, manufacturer,
+        model, device_serial_number, connection_type, customer_id,
+        customer_id, installation_location, ip_address,
+        monitoring_enabled, data_collection_interval
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error registering IoT device:", error);
+      res.status(500).json({ error: "Failed to register IoT device" });
+    }
+  });
+
+  // Get equipment status
+  app.get("/api/monitoring/equipment-status", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          esm.*,
+          iot.device_name
+        FROM equipment_status_monitoring esm
+        LEFT JOIN iot_devices iot ON esm.device_id = iot.device_id
+        WHERE esm.tenant_id = $1
+        ORDER BY esm.status_timestamp DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching equipment status:", error);
+      res.status(500).json({ error: "Failed to fetch equipment status" });
+    }
+  });
+
+  // Get predictive alerts
+  app.get("/api/monitoring/alerts", requireAuth, async (req: any, res) => {
+    try {
+      const { severity } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['pa.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (severity && severity !== 'all') {
+        whereConditions.push(`pa.severity = $${queryParams.length + 1}`);
+        queryParams.push(severity);
+      }
+      
+      const query = `
+        SELECT 
+          pa.*,
+          iot.device_name,
+          br.company_name as customer_name
+        FROM predictive_alerts pa
+        LEFT JOIN iot_devices iot ON pa.device_id = iot.device_id
+        LEFT JOIN business_records br ON pa.business_record_id = br.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY pa.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching predictive alerts:", error);
+      res.status(500).json({ error: "Failed to fetch predictive alerts" });
+    }
+  });
+
+  // Get performance trends
+  app.get("/api/monitoring/trends", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          dpt.*,
+          iot.device_name
+        FROM device_performance_trends dpt
+        LEFT JOIN iot_devices iot ON dpt.device_id = iot.device_id
+        WHERE dpt.tenant_id = $1
+        ORDER BY dpt.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching performance trends:", error);
+      res.status(500).json({ error: "Failed to fetch performance trends" });
+    }
+  });
+
+  // Sync devices (simulate data collection)
+  app.post("/api/monitoring/sync", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      // Get active devices
+      const devicesQuery = `SELECT * FROM iot_devices WHERE tenant_id = $1 AND monitoring_enabled = true`;
+      const devicesResult = await db.$client.query(devicesQuery, [tenantId]);
+      const devices = devicesResult.rows;
+      
+      let syncedDevices = 0;
+      
+      for (const device of devices) {
+        // Update device ping time
+        await db.$client.query(
+          `UPDATE iot_devices SET last_ping_time = NOW(), last_data_received = NOW() WHERE id = $1`,
+          [device.id]
+        );
+        
+        // Create sample equipment status
+        const statusQuery = `
+          INSERT INTO equipment_status_monitoring (
+            tenant_id, equipment_id, device_id, status_timestamp,
+            operational_status, power_status, connectivity_status,
+            current_job_count, total_page_count, error_count,
+            temperature, humidity, uptime_percentage
+          ) VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `;
+        
+        await db.$client.query(statusQuery, [
+          tenantId, device.equipment_id || device.device_id, device.device_id,
+          'running', 'on', 'connected',
+          Math.floor(Math.random() * 5), // current_job_count
+          Math.floor(Math.random() * 100000) + 50000, // total_page_count
+          Math.floor(Math.random() * 3), // error_count
+          20 + Math.random() * 10, // temperature
+          40 + Math.random() * 20, // humidity
+          95 + Math.random() * 5 // uptime_percentage
+        ]);
+        
+        syncedDevices++;
+      }
+      
+      res.status(200).json({
+        message: "Device sync completed",
+        synced_devices: syncedDevices
+      });
+    } catch (error) {
+      console.error("Error syncing devices:", error);
+      res.status(500).json({ error: "Failed to sync devices" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
