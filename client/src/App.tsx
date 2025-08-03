@@ -61,6 +61,7 @@ import QuickBooksIntegration from "@/pages/QuickBooksIntegration";
 import EndUserLicenseAgreement from "@/pages/legal/EndUserLicenseAgreement";
 import PrivacyPolicy from "@/pages/legal/PrivacyPolicy";
 import TermsAndConditions from "@/pages/legal/TermsAndConditions";
+import LeadsManagement from "@/pages/LeadsManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -92,6 +93,7 @@ function Router() {
           <Route path="/business-records" component={BusinessRecords} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
+          <Route path="/leads-management" component={LeadsManagement} />
           <Route path="/product-hub" component={ProductHub} />
           <Route path="/admin/product-hub" component={ProductHub} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycle} />
