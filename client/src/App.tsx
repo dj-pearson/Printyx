@@ -69,6 +69,7 @@ import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
 import FinancialForecasting from "@/pages/FinancialForecasting";
 import EquipmentLifecycleManagement from "@/pages/EquipmentLifecycleManagement";
 import CommissionManagement from "@/pages/CommissionManagement";
+import RemoteMonitoring from "@/pages/RemoteMonitoring";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -118,6 +119,7 @@ function Router() {
           <Route path="/financial-forecasting" component={FinancialForecasting} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycleManagement} />
           <Route path="/commission-management" component={CommissionManagement} />
+          <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
