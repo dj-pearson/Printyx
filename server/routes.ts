@@ -2704,6 +2704,311 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const proposalsRouter = await import('./routes-proposals.js');
   app.use('/api/proposals', proposalsRouter.default);
 
+  // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
+  
+  // Get maintenance schedules
+  app.get("/api/maintenance/schedules", requireAuth, async (req: any, res) => {
+    try {
+      const { status, equipmentId, customerId, priority } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      // Use direct SQL query for maintenance schedules
+      const query = `
+        SELECT 
+          ms.id,
+          ms.schedule_name,
+          ms.schedule_type,
+          ms.frequency,
+          ms.frequency_value,
+          ms.next_service_date,
+          ms.last_service_date,
+          ms.priority,
+          ms.is_active,
+          ms.equipment_id,
+          ms.customer_id,
+          ms.business_record_id,
+          ms.estimated_cost,
+          ms.service_duration_minutes,
+          ms.created_at,
+          e.name as equipment_name,
+          c.name as customer_name,
+          br.company_name as business_record_name
+        FROM maintenance_schedules ms
+        LEFT JOIN equipment e ON ms.equipment_id = e.id
+        LEFT JOIN customers c ON ms.customer_id = c.id
+        LEFT JOIN business_records br ON ms.business_record_id = br.id
+        WHERE ms.tenant_id = $1
+        ${status === 'active' ? 'AND ms.is_active = true' : ''}
+        ${status === 'inactive' ? 'AND ms.is_active = false' : ''}
+        ${equipmentId ? `AND ms.equipment_id = '${equipmentId}'` : ''}
+        ${customerId ? `AND ms.customer_id = '${customerId}'` : ''}
+        ${priority ? `AND ms.priority = '${priority}'` : ''}
+        ORDER BY ms.next_service_date DESC NULLS LAST
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching maintenance schedules:", error);
+      res.status(500).json({ error: "Failed to fetch maintenance schedules" });
+    }
+  });
+
+  // Get due schedules (upcoming or overdue)
+  app.get("/api/maintenance/schedules/due", requireAuth, async (req: any, res) => {
+    try {
+      const { days = 7 } = req.query;
+      const tenantId = req.user.tenantId;
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + parseInt(days));
+      
+      const query = `
+        SELECT 
+          ms.id,
+          ms.schedule_name,
+          ms.next_service_date,
+          ms.priority,
+          e.name as equipment_name,
+          c.name as customer_name,
+          br.company_name as business_record_name,
+          ms.estimated_cost,
+          CASE WHEN ms.next_service_date < NOW() THEN true ELSE false END as is_overdue
+        FROM maintenance_schedules ms
+        LEFT JOIN equipment e ON ms.equipment_id = e.id
+        LEFT JOIN customers c ON ms.customer_id = c.id
+        LEFT JOIN business_records br ON ms.business_record_id = br.id
+        WHERE ms.tenant_id = $1
+        AND ms.is_active = true
+        AND ms.next_service_date <= $2
+        ORDER BY ms.next_service_date ASC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId, futureDate.toISOString()]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching due schedules:", error);
+      res.status(500).json({ error: "Failed to fetch due schedules" });
+    }
+  });
+
+  // Create maintenance schedule
+  app.post("/api/maintenance/schedules", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const createdBy = req.user.id;
+      
+      const {
+        scheduleName,
+        scheduleType,
+        frequency,
+        frequencyValue = 1,
+        nextServiceDate,
+        equipmentId,
+        customerId,
+        businessRecordId,
+        estimatedCost,
+        serviceDuration = 60,
+        priority = 'medium',
+        advanceNotificationDays = 7,
+        customerNotification = true,
+        technicianNotification = true
+      } = req.body;
+      
+      const query = `
+        INSERT INTO maintenance_schedules (
+          tenant_id, schedule_name, schedule_type, frequency, frequency_value,
+          next_service_date, equipment_id, customer_id, business_record_id,
+          estimated_cost, service_duration_minutes, priority, advance_notification_days,
+          customer_notification, technician_notification, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, scheduleName, scheduleType, frequency, frequencyValue,
+        nextServiceDate, equipmentId, customerId, businessRecordId,
+        estimatedCost, serviceDuration, priority, advanceNotificationDays,
+        customerNotification, technicianNotification, createdBy
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating maintenance schedule:", error);
+      res.status(500).json({ error: "Failed to create maintenance schedule" });
+    }
+  });
+
+  // Analytics endpoint
+  app.get("/api/maintenance/analytics/overview", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        // Total schedules
+        `SELECT COUNT(*) as total_schedules FROM maintenance_schedules WHERE tenant_id = $1`,
+        // Active schedules
+        `SELECT COUNT(*) as active_schedules FROM maintenance_schedules WHERE tenant_id = $1 AND is_active = true`,
+        // Overdue schedules
+        `SELECT COUNT(*) as overdue_schedules FROM maintenance_schedules WHERE tenant_id = $1 AND is_active = true AND next_service_date < NOW()`,
+        // Due this week
+        `SELECT COUNT(*) as due_this_week FROM maintenance_schedules WHERE tenant_id = $1 AND is_active = true AND next_service_date BETWEEN NOW() AND (NOW() + INTERVAL '7 days')`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        totalSchedules: parseInt(results[0].rows[0].total_schedules),
+        activeSchedules: parseInt(results[1].rows[0].active_schedules),
+        overdueSchedules: parseInt(results[2].rows[0].overdue_schedules),
+        dueThisWeek: parseInt(results[3].rows[0].due_this_week),
+      });
+    } catch (error) {
+      console.error("Error fetching maintenance analytics:", error);
+      res.status(500).json({ error: "Failed to fetch maintenance analytics" });
+    }
+  });
+
+  // ============= CUSTOMER SELF-SERVICE PORTAL ROUTES =============
+
+  // Get customer service requests
+  app.get("/api/customer-portal/service-requests", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          sr.*,
+          e.name as equipment_name
+        FROM service_requests sr
+        LEFT JOIN equipment e ON sr.equipment_id = e.id
+        WHERE sr.tenant_id = $1
+        ORDER BY sr.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching service requests:", error);
+      res.status(500).json({ error: "Failed to fetch service requests" });
+    }
+  });
+
+  // Create service request
+  app.post("/api/customer-portal/service-requests", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        request_type, priority, subject, description, equipment_id,
+        equipment_make, equipment_model, equipment_serial, meter_reading,
+        preferred_contact_method, preferred_service_time, urgency_reason
+      } = req.body;
+      
+      const query = `
+        INSERT INTO service_requests (
+          tenant_id, customer_portal_user_id, business_record_id, equipment_id,
+          request_type, priority, subject, description, equipment_make,
+          equipment_model, equipment_serial, meter_reading, preferred_contact_method,
+          preferred_service_time, urgency_reason
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING *
+      `;
+      
+      // For demo, use the user's business record association
+      const businessRecordId = req.user.tenantId; // Placeholder
+      
+      const result = await db.$client.query(query, [
+        tenantId, userId, businessRecordId, equipment_id, request_type,
+        priority, subject, description, equipment_make, equipment_model,
+        equipment_serial, meter_reading, preferred_contact_method,
+        preferred_service_time, urgency_reason
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating service request:", error);
+      res.status(500).json({ error: "Failed to create service request" });
+    }
+  });
+
+  // Get customer equipment
+  app.get("/api/customer-portal/equipment", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM customer_equipment
+        WHERE tenant_id = $1
+        ORDER BY equipment_name
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching customer equipment:", error);
+      res.status(500).json({ error: "Failed to fetch customer equipment" });
+    }
+  });
+
+  // Get supply orders
+  app.get("/api/customer-portal/supply-orders", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM supply_orders
+        WHERE tenant_id = $1
+        ORDER BY created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching supply orders:", error);
+      res.status(500).json({ error: "Failed to fetch supply orders" });
+    }
+  });
+
+  // Get knowledge base articles
+  app.get("/api/customer-portal/knowledge-base", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const { search, category } = req.query;
+      
+      let whereConditions = ['tenant_id = $1', 'is_published = true'];
+      const queryParams = [tenantId];
+      
+      if (search) {
+        whereConditions.push(`(title ILIKE $${queryParams.length + 1} OR content ILIKE $${queryParams.length + 1})`);
+        queryParams.push(`%${search}%`);
+      }
+      
+      if (category && category !== 'all') {
+        whereConditions.push(`category = $${queryParams.length + 1}`);
+        queryParams.push(category);
+      }
+      
+      const query = `
+        SELECT id, title, summary, category, subcategory, view_count, 
+               helpful_votes, is_featured, created_at
+        FROM knowledge_base_articles
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY is_featured DESC, helpful_votes DESC, view_count DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching knowledge base articles:", error);
+      res.status(500).json({ error: "Failed to fetch knowledge base articles" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
