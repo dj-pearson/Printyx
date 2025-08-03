@@ -3856,20 +3856,12 @@ export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;
 export type CpcRate = typeof cpcRates.$inferSelect;
 export type ProfessionalService = typeof professionalServices.$inferSelect;
-export type ServiceProduct = typeof serviceProducts.$inferSelect;
-export type SoftwareProduct = typeof softwareProducts.$inferSelect;
-export type Supply = typeof supplies.$inferSelect;
-export type ManagedService = typeof managedServices.$inferSelect;
 
 // Product Management Insert Types (consolidated)
 export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
 export type InsertProductAccessory = z.infer<typeof insertProductAccessorySchema>;
 export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;
 export type InsertProfessionalService = z.infer<typeof insertProfessionalServiceSchema>;
-export type InsertServiceProduct = z.infer<typeof insertServiceProductSchema>;
-export type InsertSoftwareProduct = z.infer<typeof insertSoftwareProductSchema>;
-export type InsertSupply = z.infer<typeof insertSupplySchema>;
-export type InsertManagedService = z.infer<typeof insertManagedServiceSchema>;
 
 // ============= QUOTE/PROPOSAL GENERATION SYSTEM =============
 // Inline implementation to avoid module import issues
