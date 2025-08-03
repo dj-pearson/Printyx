@@ -5097,6 +5097,359 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= WORKFLOW AUTOMATION ROUTES =============
+
+  // Get automation metrics
+  app.get("/api/automation/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COUNT(*) as active_workflows FROM workflow_executions WHERE tenant_id = $1 AND status IN ('running', 'pending')`,
+        `SELECT COUNT(*) as pending_tasks FROM automated_tasks WHERE tenant_id = $1 AND status = 'pending'`,
+        `SELECT COUNT(*) as automation_rules FROM automation_rules WHERE tenant_id = $1 AND is_active = true`,
+        `SELECT COALESCE(AVG(CASE WHEN status = 'completed' THEN 1.0 ELSE 0.0 END) * 100, 0) as success_rate FROM workflow_executions WHERE tenant_id = $1`,
+        `SELECT COALESCE(SUM(actual_duration_minutes), 0) as time_saved FROM automated_tasks WHERE tenant_id = $1 AND status = 'completed'`,
+        `SELECT COUNT(*) as tasks_automated FROM automated_tasks WHERE tenant_id = $1 AND automation_trigger IS NOT NULL`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        activeWorkflows: parseInt(results[0].rows[0].active_workflows),
+        pendingTasks: parseInt(results[1].rows[0].pending_tasks),
+        automationRules: parseInt(results[2].rows[0].automation_rules),
+        successRate: parseFloat(results[3].rows[0].success_rate),
+        timeSaved: parseFloat(results[4].rows[0].time_saved),
+        tasksAutomated: parseInt(results[5].rows[0].tasks_automated),
+      });
+    } catch (error) {
+      console.error("Error fetching automation metrics:", error);
+      res.status(500).json({ error: "Failed to fetch automation metrics" });
+    }
+  });
+
+  // Get workflow templates
+  app.get("/api/automation/workflow-templates", requireAuth, async (req: any, res) => {
+    try {
+      const { category } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (category && category !== 'all') {
+        whereConditions.push(`template_category = $${queryParams.length + 1}`);
+        queryParams.push(category);
+      }
+      
+      const query = `
+        SELECT *
+        FROM workflow_templates
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY is_active DESC, created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching workflow templates:", error);
+      res.status(500).json({ error: "Failed to fetch workflow templates" });
+    }
+  });
+
+  // Create workflow template
+  app.post("/api/automation/workflow-templates", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        template_name, template_description, template_category, priority,
+        auto_start, requires_approval, execution_delay_minutes,
+        max_execution_time_hours, retry_attempts
+      } = req.body;
+      
+      // Create basic workflow configuration
+      const workflowSteps = [
+        { step: 1, name: "Initialize", type: "action", config: { action: "start_workflow" } },
+        { step: 2, name: "Process", type: "action", config: { action: "execute_main_logic" } },
+        { step: 3, name: "Complete", type: "action", config: { action: "finalize_workflow" } }
+      ];
+      
+      const triggerConditions = {
+        events: ["manual_trigger"],
+        conditions: []
+      };
+      
+      const query = `
+        INSERT INTO workflow_templates (
+          tenant_id, template_name, template_description, template_category,
+          priority, auto_start, requires_approval, execution_delay_minutes,
+          max_execution_time_hours, retry_attempts, workflow_steps,
+          trigger_conditions, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, template_name, template_description, template_category,
+        priority, auto_start, requires_approval, execution_delay_minutes,
+        max_execution_time_hours, retry_attempts, JSON.stringify(workflowSteps),
+        JSON.stringify(triggerConditions), userId
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating workflow template:", error);
+      res.status(500).json({ error: "Failed to create workflow template" });
+    }
+  });
+
+  // Execute workflow template
+  app.post("/api/automation/workflow-templates/:id/execute", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      // Get template
+      const templateQuery = `SELECT * FROM workflow_templates WHERE id = $1 AND tenant_id = $2`;
+      const templateResult = await db.$client.query(templateQuery, [id, tenantId]);
+      
+      if (templateResult.rows.length === 0) {
+        return res.status(404).json({ error: "Workflow template not found" });
+      }
+      
+      const template = templateResult.rows[0];
+      const executionId = `WF-${Date.now()}`;
+      
+      const query = `
+        INSERT INTO workflow_executions (
+          tenant_id, execution_id, workflow_template_id, execution_name,
+          triggered_by_user_id, triggered_by_event, total_steps, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `;
+      
+      const steps = template.workflow_steps || [];
+      
+      const result = await db.$client.query(query, [
+        tenantId, executionId, id, `${template.template_name} Execution`,
+        userId, 'manual', steps.length, 'pending'
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error executing workflow template:", error);
+      res.status(500).json({ error: "Failed to execute workflow template" });
+    }
+  });
+
+  // Get workflow executions
+  app.get("/api/automation/workflow-executions", requireAuth, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['we.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`we.status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      const query = `
+        SELECT 
+          we.*,
+          wt.template_name as workflow_template_name
+        FROM workflow_executions we
+        LEFT JOIN workflow_templates wt ON we.workflow_template_id = wt.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY we.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching workflow executions:", error);
+      res.status(500).json({ error: "Failed to fetch workflow executions" });
+    }
+  });
+
+  // Control workflow execution
+  app.post("/api/automation/workflow-executions/:id/:action", requireAuth, async (req: any, res) => {
+    try {
+      const { id, action } = req.params;
+      const tenantId = req.user.tenantId;
+      
+      let newStatus;
+      let updateFields = [];
+      let values = [];
+      
+      switch (action) {
+        case 'pause':
+          newStatus = 'paused';
+          updateFields.push('paused_at = NOW()');
+          break;
+        case 'resume':
+          newStatus = 'running';
+          updateFields.push('paused_at = NULL');
+          break;
+        case 'stop':
+          newStatus = 'cancelled';
+          updateFields.push('completed_at = NOW()');
+          break;
+        default:
+          return res.status(400).json({ error: "Invalid action" });
+      }
+      
+      updateFields.push(`status = $${values.length + 2}`);
+      values.push(newStatus);
+      
+      const query = `
+        UPDATE workflow_executions 
+        SET ${updateFields.join(', ')}, updated_at = NOW()
+        WHERE execution_id = $1 AND tenant_id = $${values.length + 2}
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [id, ...values, tenantId]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Workflow execution not found" });
+      }
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error controlling workflow execution:", error);
+      res.status(500).json({ error: "Failed to control workflow execution" });
+    }
+  });
+
+  // Get automation rules
+  app.get("/api/automation/rules", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM automation_rules
+        WHERE tenant_id = $1
+        ORDER BY is_active DESC, priority DESC, created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching automation rules:", error);
+      res.status(500).json({ error: "Failed to fetch automation rules" });
+    }
+  });
+
+  // Create automation rule
+  app.post("/api/automation/rules", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        rule_name, rule_description, rule_category, priority, is_critical,
+        delay_before_action, max_executions_per_day, bypass_business_hours
+      } = req.body;
+      
+      // Create basic rule configuration
+      const triggerEvents = ["entity_created", "entity_updated"];
+      const conditions = { logic: "AND", rules: [] };
+      const actions = [{ type: "notify", target: "admin" }];
+      
+      const query = `
+        INSERT INTO automation_rules (
+          tenant_id, rule_name, rule_description, rule_category, priority,
+          is_critical, delay_before_action, max_executions_per_day,
+          bypass_business_hours, trigger_events, conditions, actions, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, rule_name, rule_description, rule_category, priority,
+        is_critical, delay_before_action, max_executions_per_day,
+        bypass_business_hours, JSON.stringify(triggerEvents),
+        JSON.stringify(conditions), JSON.stringify(actions), userId
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating automation rule:", error);
+      res.status(500).json({ error: "Failed to create automation rule" });
+    }
+  });
+
+  // Get automated tasks
+  app.get("/api/automation/tasks", requireAuth, async (req: any, res) => {
+    try {
+      const { priority } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (priority && priority !== 'all') {
+        whereConditions.push(`priority = $${queryParams.length + 1}`);
+        queryParams.push(priority);
+      }
+      
+      const query = `
+        SELECT *
+        FROM automated_tasks
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY urgency_score DESC, created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching automated tasks:", error);
+      res.status(500).json({ error: "Failed to fetch automated tasks" });
+    }
+  });
+
+  // Create automated task
+  app.post("/api/automation/tasks", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        task_title, task_description, task_type, task_category, priority,
+        urgency_score, estimated_duration_minutes, due_date, assigned_to
+      } = req.body;
+      
+      const query = `
+        INSERT INTO automated_tasks (
+          tenant_id, task_title, task_description, task_type, task_category,
+          priority, urgency_score, estimated_duration_minutes, due_date,
+          assigned_to, automation_trigger
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, task_title, task_description, task_type, task_category,
+        priority, urgency_score, estimated_duration_minutes, due_date,
+        assigned_to, 'manual_creation'
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating automated task:", error);
+      res.status(500).json({ error: "Failed to create automated task" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
