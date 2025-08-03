@@ -29,7 +29,8 @@ import {
   Truck,
   Camera,
   MapPin,
-  Smartphone
+  Smartphone,
+  UserPlus
 } from "lucide-react";
 import {
   Select,
