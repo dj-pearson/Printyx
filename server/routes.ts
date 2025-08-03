@@ -3598,6 +3598,311 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= EQUIPMENT LIFECYCLE MANAGEMENT ROUTES =============
+
+  // Get equipment lifecycle metrics
+  app.get("/api/equipment-lifecycle/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COUNT(*) as total_equipment FROM equipment_lifecycle_stages WHERE tenant_id = $1 AND current_stage != 'active'`,
+        `SELECT COUNT(*) as pending_deliveries FROM equipment_delivery_schedules WHERE tenant_id = $1 AND status IN ('scheduled', 'confirmed')`,
+        `SELECT COUNT(*) as scheduled_installations FROM equipment_installations WHERE tenant_id = $1 AND status IN ('scheduled', 'in_progress')`,
+        `SELECT COUNT(*) as active_assets FROM equipment_asset_tracking WHERE tenant_id = $1 AND current_status = 'active'`,
+        `SELECT COALESCE(AVG(estimated_duration_hours), 0) as avg_installation_time FROM equipment_installations WHERE tenant_id = $1`,
+        `SELECT COALESCE(AVG(customer_satisfaction_rating), 0) as avg_satisfaction FROM equipment_installations WHERE tenant_id = $1 AND customer_satisfaction_rating IS NOT NULL`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        totalEquipmentInProcess: parseInt(results[0].rows[0].total_equipment),
+        pendingDeliveries: parseInt(results[1].rows[0].pending_deliveries),
+        scheduledInstallations: parseInt(results[2].rows[0].scheduled_installations),
+        activeAssets: parseInt(results[3].rows[0].active_assets),
+        averageInstallationTime: parseFloat(results[4].rows[0].avg_installation_time),
+        customerSatisfactionRating: parseFloat(results[5].rows[0].avg_satisfaction),
+      });
+    } catch (error) {
+      console.error("Error fetching equipment lifecycle metrics:", error);
+      res.status(500).json({ error: "Failed to fetch equipment lifecycle metrics" });
+    }
+  });
+
+  // Get equipment lifecycle stages
+  app.get("/api/equipment-lifecycle/stages", requireAuth, async (req: any, res) => {
+    try {
+      const { stage, status } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['els.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (stage && stage !== 'all') {
+        whereConditions.push(`els.current_stage = $${queryParams.length + 1}`);
+        queryParams.push(stage);
+      }
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`els.stage_status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      const query = `
+        SELECT 
+          els.*,
+          br.company_name as customer_name,
+          u.name as assigned_to_name
+        FROM equipment_lifecycle_stages els
+        LEFT JOIN business_records br ON els.business_record_id = br.id
+        LEFT JOIN users u ON els.assigned_to = u.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY els.stage_started_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching equipment lifecycle stages:", error);
+      res.status(500).json({ error: "Failed to fetch equipment lifecycle stages" });
+    }
+  });
+
+  // Get purchase orders
+  app.get("/api/equipment-lifecycle/purchase-orders", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          epo.*,
+          br.company_name as customer_name,
+          (SELECT COUNT(*) FROM po_line_items WHERE purchase_order_id = epo.id) as line_items_count
+        FROM equipment_purchase_orders epo
+        LEFT JOIN business_records br ON epo.business_record_id = br.id
+        WHERE epo.tenant_id = $1
+        ORDER BY epo.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching purchase orders:", error);
+      res.status(500).json({ error: "Failed to fetch purchase orders" });
+    }
+  });
+
+  // Create purchase order
+  app.post("/api/equipment-lifecycle/purchase-orders", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        vendor_name, order_date, requested_delivery_date, customer_id,
+        delivery_address, special_instructions, items
+      } = req.body;
+      
+      // Generate PO number
+      const poNumber = `PO-${Date.now()}`;
+      
+      // Calculate totals
+      let subtotal = 0;
+      items.forEach((item: any) => {
+        subtotal += item.quantity * item.unit_price;
+      });
+      const taxAmount = subtotal * 0.085; // 8.5% tax
+      const totalAmount = subtotal + taxAmount;
+      
+      // Create purchase order
+      const poQuery = `
+        INSERT INTO equipment_purchase_orders (
+          tenant_id, po_number, vendor_name, order_date, requested_delivery_date,
+          customer_id, business_record_id, delivery_address, special_instructions,
+          subtotal, tax_amount, total_amount, requested_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `;
+      
+      const poResult = await db.$client.query(poQuery, [
+        tenantId, poNumber, vendor_name, order_date, requested_delivery_date,
+        customer_id, customer_id, delivery_address, special_instructions,
+        subtotal, taxAmount, totalAmount, userId
+      ]);
+      
+      const po = poResult.rows[0];
+      
+      // Create line items
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const lineTotal = item.quantity * item.unit_price;
+        
+        const lineItemQuery = `
+          INSERT INTO po_line_items (
+            tenant_id, purchase_order_id, line_number, equipment_model,
+            equipment_brand, description, quantity, unit_price, line_total
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `;
+        
+        await db.$client.query(lineItemQuery, [
+          tenantId, po.id, i + 1, item.equipment_model,
+          item.equipment_brand, item.description, item.quantity, 
+          item.unit_price, lineTotal
+        ]);
+      }
+      
+      res.status(201).json(po);
+    } catch (error) {
+      console.error("Error creating purchase order:", error);
+      res.status(500).json({ error: "Failed to create purchase order" });
+    }
+  });
+
+  // Get delivery schedules
+  app.get("/api/equipment-lifecycle/deliveries", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM equipment_delivery_schedules
+        WHERE tenant_id = $1
+        ORDER BY scheduled_date DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching delivery schedules:", error);
+      res.status(500).json({ error: "Failed to fetch delivery schedules" });
+    }
+  });
+
+  // Create delivery schedule
+  app.post("/api/equipment-lifecycle/deliveries", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        purchase_order_id, scheduled_date, time_window_start, time_window_end,
+        delivery_type, contact_person, contact_phone, contact_email,
+        delivery_address, special_equipment_required, delivery_instructions
+      } = req.body;
+      
+      const deliveryId = `DEL-${Date.now()}`;
+      
+      const query = `
+        INSERT INTO equipment_delivery_schedules (
+          tenant_id, delivery_id, purchase_order_id, scheduled_date,
+          time_window_start, time_window_end, delivery_type, contact_person,
+          contact_phone, contact_email, delivery_address, special_equipment_required,
+          delivery_instructions
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, deliveryId, purchase_order_id, scheduled_date,
+        time_window_start, time_window_end, delivery_type, contact_person,
+        contact_phone, contact_email, delivery_address, special_equipment_required,
+        delivery_instructions
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating delivery schedule:", error);
+      res.status(500).json({ error: "Failed to create delivery schedule" });
+    }
+  });
+
+  // Get installations
+  app.get("/api/equipment-lifecycle/installations", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          ei.*,
+          u.name as lead_technician_name,
+          els.equipment_model,
+          els.equipment_brand
+        FROM equipment_installations ei
+        LEFT JOIN users u ON ei.lead_technician_id = u.id
+        LEFT JOIN equipment_lifecycle_stages els ON ei.equipment_id = els.equipment_id
+        WHERE ei.tenant_id = $1
+        ORDER BY ei.scheduled_date DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching installations:", error);
+      res.status(500).json({ error: "Failed to fetch installations" });
+    }
+  });
+
+  // Create installation
+  app.post("/api/equipment-lifecycle/installations", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        equipment_id, scheduled_date, scheduled_time_start, scheduled_time_end,
+        installation_location, site_contact_person, site_contact_phone,
+        lead_technician_id, power_requirements, network_requirements,
+        environmental_conditions
+      } = req.body;
+      
+      const query = `
+        INSERT INTO equipment_installations (
+          tenant_id, equipment_id, scheduled_date, scheduled_time_start,
+          scheduled_time_end, installation_location, site_contact_person,
+          site_contact_phone, lead_technician_id, power_requirements,
+          network_requirements, environmental_conditions
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, equipment_id, scheduled_date, scheduled_time_start,
+        scheduled_time_end, installation_location, site_contact_person,
+        site_contact_phone, lead_technician_id, power_requirements,
+        network_requirements, environmental_conditions
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating installation:", error);
+      res.status(500).json({ error: "Failed to create installation" });
+    }
+  });
+
+  // Get asset tracking
+  app.get("/api/equipment-lifecycle/assets", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          eat.*,
+          br.company_name as customer_name
+        FROM equipment_asset_tracking eat
+        LEFT JOIN business_records br ON eat.business_record_id = br.id
+        WHERE eat.tenant_id = $1
+        ORDER BY eat.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching asset tracking:", error);
+      res.status(500).json({ error: "Failed to fetch asset tracking" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -67,6 +67,7 @@ import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceSchedu
 import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
 import FinancialForecasting from "@/pages/FinancialForecasting";
+import EquipmentLifecycleManagement from "@/pages/EquipmentLifecycleManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -114,6 +115,7 @@ function Router() {
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/advanced-billing" component={AdvancedBillingEngine} />
           <Route path="/financial-forecasting" component={FinancialForecasting} />
+          <Route path="/equipment-lifecycle" component={EquipmentLifecycleManagement} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
