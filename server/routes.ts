@@ -448,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )),
         
         // Monthly revenue from invoices (current month)
-        db.select({ total: sql<number>`coalesce(sum(${invoices.totalAmount}), 0)::numeric` })
+        db.select({ total: sql<number>`coalesce(sum(${invoices.totalAmount}::numeric), 0)::numeric` })
           .from(invoices)
           .where(and(
             eq(invoices.tenantId, tenantId),
@@ -479,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/recent-tickets', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/dashboard/recent-tickets', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -516,7 +516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           id: businessRecords.id,
           name: businessRecords.companyName,
-          accountValue: sql<number>`coalesce(sum(${contracts.totalValue}), 0)::numeric`,
+          accountValue: sql<number>`coalesce(sum(${contracts.totalValue}::numeric), 0)::numeric`,
           contractsCount: sql<number>`count(${contracts.id})::int`
         })
         .from(businessRecords)
@@ -526,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eq(businessRecords.recordType, 'customer')
         ))
         .groupBy(businessRecords.id, businessRecords.companyName)
-        .orderBy(desc(sql`coalesce(sum(${contracts.totalValue}), 0)`))
+        .orderBy(desc(sql`coalesce(sum(${contracts.totalValue}::numeric), 0)`))
         .limit(10);
       
       res.json(customers.map(customer => ({
@@ -547,18 +547,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lowStockItems = await db
         .select({
           id: inventoryItems.id,
-          name: inventoryItems.itemDescription,
-          category: inventoryItems.itemCategory,
-          currentStock: inventoryItems.quantityOnHand,
+          name: inventoryItems.name,
+          category: inventoryItems.category,
+          currentStock: inventoryItems.currentStock,
           minThreshold: inventoryItems.reorderPoint,
           status: sql<string>`'active'`
         })
         .from(inventoryItems)
         .where(and(
           eq(inventoryItems.tenantId, tenantId),
-          sql`${inventoryItems.quantityOnHand} <= ${inventoryItems.reorderPoint}`
+          sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`
         ))
-        .orderBy(asc(inventoryItems.quantityOnHand))
+        .orderBy(asc(inventoryItems.currentStock))
         .limit(20);
       
       res.json({ lowStock: lowStockItems });
