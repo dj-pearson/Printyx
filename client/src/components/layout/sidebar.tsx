@@ -96,6 +96,7 @@ function getNavigationSections(userRole: any) {
       items: [
         { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
         { name: 'Dispatch Optimization', href: '/service-dispatch-optimization', icon: Target },
+        { name: 'Preventive Maintenance', href: '/preventive-maintenance-automation', icon: Settings },
         { name: 'Mobile Field Service', href: '/mobile-field-service', icon: Smartphone },
         { 
           name: 'Equipment Lifecycle', 

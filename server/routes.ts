@@ -1047,6 +1047,227 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Preventive Maintenance Automation Routes
+  app.get('/api/maintenance/schedules', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample maintenance schedules until schema is updated
+      const maintenanceSchedules = [
+        {
+          id: 'schedule-1',
+          equipmentId: 'eq-001',
+          equipmentModel: 'Canon imageRUNNER ADVANCE DX C5750i',
+          customerName: 'ABC Corporation',
+          customerLocation: '123 Business Way, Downtown',
+          maintenanceType: 'quarterly_service',
+          serviceName: 'Quarterly Preventive Maintenance',
+          frequency: 'quarterly',
+          frequencyValue: 3,
+          nextDueDate: new Date('2025-02-15'),
+          lastServiceDate: new Date('2024-11-15'),
+          meterBasedScheduling: true,
+          currentMeterReading: 45230,
+          meterAtLastService: 42500,
+          nextServiceMeter: 47500,
+          meterThreshold: 2500,
+          estimatedDuration: 120,
+          requiredSkills: ['preventive_maintenance', 'copier_service'],
+          requiredParts: ['toner_cartridge', 'transfer_belt', 'fuser_kit'],
+          status: 'scheduled',
+          priority: 'medium',
+          urgencyScore: 75,
+          assignedTechnicianId: 'tech-2',
+          assignedTechnicianName: 'Sarah Wilson',
+          scheduledDate: new Date('2025-02-15'),
+          scheduledTimeSlot: '10:00 AM - 12:00 PM',
+          autoScheduleEnabled: true,
+          reminderDaysBefore: 7,
+          escalationDays: 3,
+          serviceHistory: [
+            {
+              date: new Date('2024-11-15'),
+              technician: 'Mike Johnson',
+              duration: 105,
+              partsUsed: ['toner_cartridge'],
+              issues: ['paper jam sensor cleaned'],
+              meterReading: 42500
+            }
+          ],
+          predictiveInsights: {
+            riskLevel: 'low',
+            failurePrediction: 12,
+            recommendedActions: [
+              'Monitor toner levels - replacement due soon',
+              'Check paper feed mechanism during next service'
+            ],
+            costSavings: 450
+          },
+          createdAt: new Date('2024-08-01'),
+          updatedAt: new Date('2025-01-20')
+        }
+      ];
+
+      res.json(maintenanceSchedules);
+    } catch (error) {
+      console.error('Error fetching maintenance schedules:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance schedules' });
+    }
+  });
+
+  app.get('/api/maintenance/analytics', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample maintenance analytics
+      const analytics = {
+        summary: {
+          totalEquipment: 156,
+          scheduledMaintenance: 89,
+          overdueMaintenance: 12,
+          completedThisMonth: 45,
+          preventiveVsReactive: 78.5,
+          averageServiceTime: 105,
+          customerSatisfaction: 4.7,
+          costSavings: 12450
+        },
+        efficiency: {
+          maintenanceCompliance: 92.3,
+          firstTimeFixRate: 87.6,
+          averageResponseTime: 2.4,
+          technicianUtilization: 74.2,
+          partsAvailability: 94.8,
+          schedulingAccuracy: 89.1
+        },
+        equipment_health: [
+          {
+            category: 'Copiers/MFPs',
+            totalUnits: 78,
+            healthyUnits: 65,
+            warningUnits: 10,
+            criticalUnits: 3,
+            averageAge: 3.2,
+            predictedFailures: 2
+          }
+        ],
+        cost_analysis: {
+          monthlyMaintenanceCost: 8750,
+          preventiveCost: 6850,
+          reactiveCost: 1900,
+          averageCostPerUnit: 56.09,
+          costTrends: [
+            { month: 'Dec 2024', preventive: 6650, reactive: 2200, total: 8850 },
+            { month: 'Jan 2025', preventive: 6850, reactive: 1900, total: 8750 }
+          ]
+        },
+        performance_trends: [
+          { month: 'Dec', compliance: 93.1, satisfaction: 4.8, savings: 12300 },
+          { month: 'Jan', compliance: 92.3, satisfaction: 4.7, savings: 12450 }
+        ]
+      };
+
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching maintenance analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance analytics' });
+    }
+  });
+
+  app.get('/api/maintenance/templates', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample maintenance templates
+      const templates = [
+        {
+          id: 'template-1',
+          templateName: 'Standard Copier Quarterly Service',
+          description: 'Comprehensive quarterly maintenance for copiers and MFPs',
+          equipmentTypes: ['copier', 'mfp'],
+          estimatedDuration: 120,
+          frequency: 'quarterly',
+          checklist: [
+            { item: 'Clean paper path and feed rollers', required: true, estimatedTime: 15 },
+            { item: 'Replace toner cartridges if below 20%', required: true, estimatedTime: 10 }
+          ],
+          requiredParts: [
+            { partName: 'Toner Cartridge Set', quantity: 1, optional: true }
+          ],
+          requiredSkills: ['copier_maintenance', 'preventive_service'],
+          safetyRequirements: ['power_off_before_service', 'use_cleaning_gloves'],
+          isActive: true,
+          usageCount: 34,
+          lastUsed: new Date('2025-01-20'),
+          createdAt: new Date('2024-06-15')
+        }
+      ];
+
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching maintenance templates:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance templates' });
+    }
+  });
+
+  app.get('/api/maintenance/predictions', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample predictive maintenance data
+      const predictions = [
+        {
+          equipmentId: 'eq-005',
+          model: 'Canon imageRUNNER ADVANCE DX C7765i',
+          customer: 'Gamma Solutions',
+          location: 'Building A, Floor 3',
+          prediction: {
+            riskLevel: 'high',
+            failureProbability: 78,
+            predictedComponent: 'Fuser Unit',
+            timeToFailure: 14,
+            confidence: 87
+          },
+          recommendation: {
+            action: 'immediate_service',
+            priority: 'urgent',
+            estimatedCost: 485,
+            preventiveCost: 320,
+            reactiveCost: 750,
+            potentialSavings: 430
+          },
+          dataPoints: {
+            currentMeterReading: 87540,
+            averageMonthlyVolume: 12500,
+            lastServiceDate: new Date('2024-10-15'),
+            errorFrequency: 'increasing',
+            performanceMetrics: {
+              printQuality: 'declining',
+              speedReduction: '15%',
+              jamFrequency: 'high'
+            }
+          }
+        }
+      ];
+
+      res.json(predictions);
+    } catch (error) {
+      console.error('Error fetching predictive maintenance:', error);
+      res.status(500).json({ message: 'Failed to fetch predictive maintenance' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
