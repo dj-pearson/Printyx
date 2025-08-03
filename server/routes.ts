@@ -48,6 +48,7 @@ import { registerSalesforceRoutes } from "./routes-salesforce-integration";
 import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
+import { registerCommissionRoutes } from "./routes-commission";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -2492,6 +2493,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register QuickBooks integration routes
   registerQuickBooksRoutes(app);
+  
+  // Register Commission Management routes
+  registerCommissionRoutes(app);
   
   // Register Salesforce test routes (development only)
   if (process.env.NODE_ENV === 'development') {
