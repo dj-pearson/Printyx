@@ -73,6 +73,7 @@ import RemoteMonitoring from "@/pages/RemoteMonitoring";
 import MobileServiceApp from "@/pages/MobileServiceApp";
 import ServiceAnalytics from "@/pages/ServiceAnalytics";
 import MobileFieldOperations from "@/pages/MobileFieldOperations";
+import DemoScheduling from "@/pages/DemoScheduling";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -172,6 +173,7 @@ function Router() {
           <Route path="/admin/pricing-management" component={PricingManagement} />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
+          <Route path="/demo-scheduling" component={DemoScheduling} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />

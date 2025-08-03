@@ -444,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(contracts)
           .where(and(
             eq(contracts.tenantId, tenantId),
-            eq(contracts.isActive, true)
+            eq(contracts.status, 'active')
           )),
         
         // Monthly revenue from invoices (current month)
@@ -516,7 +516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           id: businessRecords.id,
           name: businessRecords.companyName,
-          accountValue: sql<number>`coalesce(sum(${contracts.totalValue}::numeric), 0)::numeric`,
+          accountValue: sql<number>`coalesce(sum(${contracts.monthlyBase}::numeric), 0)::numeric`,
           contractsCount: sql<number>`count(${contracts.id})::int`
         })
         .from(businessRecords)
@@ -526,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           eq(businessRecords.recordType, 'customer')
         ))
         .groupBy(businessRecords.id, businessRecords.companyName)
-        .orderBy(desc(sql`coalesce(sum(${contracts.totalValue}::numeric), 0)`))
+        .orderBy(desc(sql`coalesce(sum(${contracts.monthlyBase}::numeric), 0)`))
         .limit(10);
       
       res.json(customers.map(customer => ({
@@ -565,6 +565,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching alerts:", error);
       res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  // Demo Scheduling Routes
+  app.get('/api/demos', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // For now, return sample demo data structure until schema is updated
+      const sampleDemos = [
+        {
+          id: 'demo-1',
+          businessRecordId: 'customer-1',
+          customerName: 'ABC Corporation',
+          contactPerson: 'John Smith',
+          scheduledDate: new Date('2025-01-10'),
+          scheduledTime: '10:00 AM',
+          duration: 60,
+          demoType: 'equipment',
+          equipmentModels: ['Canon imageRUNNER ADVANCE C3330i'],
+          demoLocation: 'customer_site',
+          assignedSalesRep: 'Sales Rep Name',
+          status: 'scheduled',
+          confirmationStatus: 'pending',
+          preparationCompleted: false,
+          demoObjectives: 'Demonstrate color printing capabilities and scan-to-email features',
+          proposalAmount: 15000,
+          createdAt: new Date('2025-01-05')
+        }
+      ];
+
+      res.json(sampleDemos);
+    } catch (error) {
+      console.error('Error fetching demos:', error);
+      res.status(500).json({ message: 'Failed to fetch demos' });
+    }
+  });
+
+  app.get('/api/demos/customers', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Get real customers from business records
+      const customers = await db
+        .select({
+          id: businessRecords.id,
+          companyName: businessRecords.companyName,
+          primaryContactName: businessRecords.primaryContactName,
+          phone: businessRecords.phone,
+          email: businessRecords.email,
+          addressLine1: businessRecords.addressLine1,
+          city: businessRecords.city,
+          state: businessRecords.state,
+          zipCode: businessRecords.zipCode
+        })
+        .from(businessRecords)
+        .where(and(
+          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.recordType, 'customer')
+        ))
+        .orderBy(asc(businessRecords.companyName));
+
+      res.json(customers);
+    } catch (error) {
+      console.error('Error fetching customers for demo:', error);
+      res.status(500).json({ message: 'Failed to fetch customers' });
     }
   });
 

@@ -30,7 +30,8 @@ import {
   Camera,
   MapPin,
   Smartphone,
-  UserPlus
+  UserPlus,
+  Calendar
 } from "lucide-react";
 import {
   Select,
@@ -77,6 +78,7 @@ function getNavigationSections(userRole: any) {
         { name: 'Leads Management', href: '/leads-management', icon: UserPlus },
         { name: 'CRM & Pipeline', href: '/crm', icon: Target },
         { name: 'CRM Goals & Reporting', href: '/crm-goals', icon: TrendingUp },
+        { name: 'Demo Scheduling', href: '/demo-scheduling', icon: Calendar },
         { name: 'Contacts', href: '/contacts', icon: Users },
         { name: 'Deals Pipeline', href: '/deals', icon: Zap },
         { name: 'Quotes & Proposals', href: '/quotes', icon: FileText },
