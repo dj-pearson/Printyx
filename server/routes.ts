@@ -4487,6 +4487,299 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= MOBILE SERVICE APP ROUTES =============
+
+  // Get mobile app metrics
+  app.get("/api/mobile/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COUNT(*) as active_work_orders FROM mobile_work_orders WHERE tenant_id = $1 AND status IN ('assigned', 'en_route', 'on_site', 'in_progress')`,
+        `SELECT COUNT(DISTINCT technician_id) as technicians_in_field FROM technician_locations WHERE tenant_id = $1 AND recorded_at > NOW() - INTERVAL '1 hour'`,
+        `SELECT COUNT(*) as pending_parts_orders FROM mobile_field_orders WHERE tenant_id = $1 AND status IN ('submitted', 'approved', 'processing')`,
+        `SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (arrival_time - created_at))/60), 0) as avg_response_time FROM mobile_work_orders WHERE tenant_id = $1 AND arrival_time IS NOT NULL`,
+        `SELECT COALESCE(AVG(CASE WHEN status = 'completed' THEN 1.0 ELSE 0.0 END) * 100, 0) as completion_rate FROM mobile_work_orders WHERE tenant_id = $1`,
+        `SELECT COALESCE(AVG(customer_satisfaction_rating), 0) as customer_satisfaction FROM mobile_work_orders WHERE tenant_id = $1 AND customer_satisfaction_rating IS NOT NULL`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        activeWorkOrders: parseInt(results[0].rows[0].active_work_orders),
+        techniciansInField: parseInt(results[1].rows[0].technicians_in_field),
+        pendingPartsOrders: parseInt(results[2].rows[0].pending_parts_orders),
+        averageResponseTime: parseFloat(results[3].rows[0].avg_response_time),
+        completionRate: parseFloat(results[4].rows[0].completion_rate),
+        customerSatisfaction: parseFloat(results[5].rows[0].customer_satisfaction),
+      });
+    } catch (error) {
+      console.error("Error fetching mobile metrics:", error);
+      res.status(500).json({ error: "Failed to fetch mobile metrics" });
+    }
+  });
+
+  // Get mobile work orders
+  app.get("/api/mobile/work-orders", requireAuth, async (req: any, res) => {
+    try {
+      const { status, priority, technician } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['mwo.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`mwo.status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      if (priority && priority !== 'all') {
+        whereConditions.push(`mwo.priority = $${queryParams.length + 1}`);
+        queryParams.push(priority);
+      }
+      
+      if (technician && technician !== 'all') {
+        whereConditions.push(`mwo.assigned_technician_id = $${queryParams.length + 1}`);
+        queryParams.push(technician);
+      }
+      
+      const query = `
+        SELECT 
+          mwo.*,
+          br.company_name as customer_name,
+          u.name as assigned_technician_name
+        FROM mobile_work_orders mwo
+        LEFT JOIN business_records br ON mwo.business_record_id = br.id
+        LEFT JOIN users u ON mwo.assigned_technician_id = u.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY mwo.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching mobile work orders:", error);
+      res.status(500).json({ error: "Failed to fetch mobile work orders" });
+    }
+  });
+
+  // Create mobile work order
+  app.post("/api/mobile/work-orders", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        work_order_type, priority, customer_id, service_address, assigned_technician_id,
+        problem_description, scheduled_date, scheduled_time_start, estimated_duration_hours,
+        site_contact_name, site_contact_phone, access_instructions
+      } = req.body;
+      
+      const workOrderNumber = `WO-${Date.now()}`;
+      
+      const query = `
+        INSERT INTO mobile_work_orders (
+          tenant_id, work_order_number, work_order_type, priority, customer_id,
+          business_record_id, service_address, assigned_technician_id, problem_description,
+          scheduled_date, scheduled_time_start, estimated_duration_hours,
+          site_contact_name, site_contact_phone, access_instructions
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, workOrderNumber, work_order_type, priority, customer_id,
+        customer_id, service_address, assigned_technician_id, problem_description,
+        scheduled_date, scheduled_time_start, estimated_duration_hours,
+        site_contact_name, site_contact_phone, access_instructions
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating mobile work order:", error);
+      res.status(500).json({ error: "Failed to create mobile work order" });
+    }
+  });
+
+  // Get mobile parts inventory
+  app.get("/api/mobile/parts-inventory", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM mobile_parts_inventory
+        WHERE tenant_id = $1 AND is_active = true
+        ORDER BY commonly_used DESC, part_name ASC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching mobile parts inventory:", error);
+      res.status(500).json({ error: "Failed to fetch mobile parts inventory" });
+    }
+  });
+
+  // Get mobile field orders
+  app.get("/api/mobile/field-orders", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          mfo.*,
+          u.name as technician_name,
+          (SELECT COUNT(*) FROM mobile_order_line_items WHERE field_order_id = mfo.id) as line_items_count
+        FROM mobile_field_orders mfo
+        LEFT JOIN users u ON mfo.technician_id = u.id
+        WHERE mfo.tenant_id = $1
+        ORDER BY mfo.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching mobile field orders:", error);
+      res.status(500).json({ error: "Failed to fetch mobile field orders" });
+    }
+  });
+
+  // Create mobile field order
+  app.post("/api/mobile/field-orders", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        order_type, technician_id, work_order_id, delivery_method, urgency,
+        delivery_address, requested_delivery_date, parts
+      } = req.body;
+      
+      const orderNumber = `FO-${Date.now()}`;
+      const orderDate = new Date().toISOString().split('T')[0];
+      
+      // Calculate total
+      let subtotal = 0;
+      // For demo purposes, use sample pricing
+      subtotal = parts.length * 50; // Sample pricing
+      const taxAmount = subtotal * 0.085;
+      const totalAmount = subtotal + taxAmount;
+      
+      const query = `
+        INSERT INTO mobile_field_orders (
+          tenant_id, order_number, order_type, technician_id, work_order_id,
+          delivery_method, urgency, delivery_address, requested_delivery_date,
+          order_date, subtotal, tax_amount, total_amount
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, orderNumber, order_type, technician_id, work_order_id,
+        delivery_method, urgency, delivery_address, requested_delivery_date,
+        orderDate, subtotal, taxAmount, totalAmount
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating mobile field order:", error);
+      res.status(500).json({ error: "Failed to create mobile field order" });
+    }
+  });
+
+  // Get technician locations
+  app.get("/api/mobile/technician-locations", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          tl.*,
+          u.name as technician_name,
+          mwo.work_order_number,
+          br.company_name as customer_name
+        FROM technician_locations tl
+        LEFT JOIN users u ON tl.technician_id = u.id
+        LEFT JOIN mobile_work_orders mwo ON tl.work_order_id = mwo.id
+        LEFT JOIN business_records br ON tl.customer_id = br.id
+        WHERE tl.tenant_id = $1
+        ORDER BY tl.recorded_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching technician locations:", error);
+      res.status(500).json({ error: "Failed to fetch technician locations" });
+    }
+  });
+
+  // Get mobile app sessions
+  app.get("/api/mobile/app-sessions", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          mas.*,
+          u.name as technician_name
+        FROM mobile_app_sessions mas
+        LEFT JOIN users u ON mas.technician_id = u.id
+        WHERE mas.tenant_id = $1
+        ORDER BY mas.session_start DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching mobile app sessions:", error);
+      res.status(500).json({ error: "Failed to fetch mobile app sessions" });
+    }
+  });
+
+  // Sync mobile data
+  app.post("/api/mobile/sync", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      // Get active technicians
+      const techniciansQuery = `SELECT id, name FROM users WHERE tenant_id = $1 AND role LIKE '%technician%'`;
+      const techniciansResult = await db.$client.query(techniciansQuery, [tenantId]);
+      const technicians = techniciansResult.rows;
+      
+      let syncedRecords = 0;
+      
+      // Create sample technician locations
+      for (const tech of technicians) {
+        const locationQuery = `
+          INSERT INTO technician_locations (
+            tenant_id, technician_id, recorded_at, latitude, longitude,
+            location_type, device_battery_level
+          ) VALUES ($1, $2, NOW(), $3, $4, $5, $6)
+        `;
+        
+        await db.$client.query(locationQuery, [
+          tenantId, tech.id,
+          40.7128 + (Math.random() - 0.5) * 0.1, // NYC area
+          -74.0060 + (Math.random() - 0.5) * 0.1,
+          'customer_site',
+          80 + Math.floor(Math.random() * 20) // 80-100% battery
+        ]);
+        
+        syncedRecords++;
+      }
+      
+      res.status(200).json({
+        message: "Mobile data sync completed",
+        synced_records: syncedRecords
+      });
+    } catch (error) {
+      console.error("Error syncing mobile data:", error);
+      res.status(500).json({ error: "Failed to sync mobile data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
