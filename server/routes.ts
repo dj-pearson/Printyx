@@ -640,6 +640,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sales Pipeline Forecasting Routes
+  app.get('/api/sales-forecasts', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample forecasting data until schema is updated
+      const sampleForecasts = [
+        {
+          id: 'forecast-1',
+          forecastName: 'Q1 2025 Forecast',
+          forecastType: 'quarterly',
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-03-31'),
+          revenueTarget: 500000,
+          unitTarget: 25,
+          dealCountTarget: 15,
+          actualRevenue: 187500,
+          actualUnits: 9,
+          actualDeals: 6,
+          pipelineValue: 425000,
+          weightedPipelineValue: 318750,
+          probabilityAdjustedRevenue: 275000,
+          confidenceLevel: 'high',
+          confidencePercentage: 85,
+          conversionRate: 40.0,
+          averageDealSize: 31250,
+          salesCycleLength: 45,
+          status: 'active',
+          achievementPercentage: 37.5,
+          projectedRevenue: 412500,
+          gapToTarget: 87500,
+          createdAt: new Date('2024-12-15')
+        }
+      ];
+
+      res.json(sampleForecasts);
+    } catch (error) {
+      console.error('Error fetching sales forecasts:', error);
+      res.status(500).json({ message: 'Failed to fetch sales forecasts' });
+    }
+  });
+
+  app.get('/api/sales-trends', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const { months = 6 } = req.query;
+      
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample trend data
+      const sampleTrends = Array.from({ length: parseInt(months as string) }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        
+        return {
+          month: date.toISOString().substring(0, 7),
+          monthName: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          revenue: Math.floor(Math.random() * 50000) + 80000,
+          deals: Math.floor(Math.random() * 3) + 3,
+          units: Math.floor(Math.random() * 4) + 4,
+          pipelineValue: Math.floor(Math.random() * 100000) + 300000,
+          conversionRate: Math.floor(Math.random() * 20) + 25,
+          averageDealSize: Math.floor(Math.random() * 10000) + 25000
+        };
+      }).reverse();
+
+      res.json(sampleTrends);
+    } catch (error) {
+      console.error('Error fetching sales trends:', error);
+      res.status(500).json({ message: 'Failed to fetch sales trends' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
