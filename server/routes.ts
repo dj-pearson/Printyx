@@ -718,6 +718,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // E-signature Integration Routes
+  app.get('/api/signature-requests', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample signature requests until schema is updated
+      const sampleRequests = [
+        {
+          id: 'sig-req-1',
+          documentName: 'Service Agreement - ABC Corporation',
+          documentType: 'service_agreement',
+          businessRecordId: 'customer-1',
+          customerName: 'ABC Corporation',
+          customerEmail: 'john.smith@abccorp.com',
+          status: 'pending',
+          requestedBy: 'Sales Rep',
+          requestedDate: new Date('2025-01-20'),
+          expirationDate: new Date('2025-02-20'),
+          signedDate: null,
+          documentUrl: '/documents/service-agreement-abc-corp.pdf',
+          signatureUrl: null,
+          remindersSent: 1,
+          lastReminderDate: new Date('2025-01-25'),
+          contractValue: 85000,
+          contractDuration: 36,
+          signers: [{
+            name: 'John Smith',
+            email: 'john.smith@abccorp.com',
+            role: 'Customer',
+            status: 'pending',
+            signedDate: null
+          }],
+          createdAt: new Date('2025-01-20')
+        }
+      ];
+
+      res.json(sampleRequests);
+    } catch (error) {
+      console.error('Error fetching signature requests:', error);
+      res.status(500).json({ message: 'Failed to fetch signature requests' });
+    }
+  });
+
+  app.get('/api/signature-templates', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample signature templates
+      const sampleTemplates = [
+        {
+          id: 'template-1',
+          templateName: 'Standard Service Agreement',
+          documentType: 'service_agreement',
+          description: 'Standard copier service and maintenance agreement template',
+          templateUrl: '/templates/standard-service-agreement.pdf',
+          signatureFields: [
+            { fieldName: 'customer_signature', x: 100, y: 750, page: 1, required: true },
+            { fieldName: 'customer_date', x: 300, y: 750, page: 1, required: true }
+          ],
+          isActive: true,
+          usageCount: 25,
+          lastUsed: new Date('2025-01-20'),
+          createdAt: new Date('2024-10-15')
+        }
+      ];
+
+      res.json(sampleTemplates);
+    } catch (error) {
+      console.error('Error fetching signature templates:', error);
+      res.status(500).json({ message: 'Failed to fetch signature templates' });
+    }
+  });
+
+  app.get('/api/signature-analytics', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Sample analytics data
+      const analytics = {
+        totalRequests: 45,
+        completedRequests: 32,
+        pendingRequests: 8,
+        expiredRequests: 5,
+        completionRate: 71.1,
+        averageSigningTime: 2.3,
+        totalContractValue: 1850000,
+        byDocumentType: [
+          { type: 'service_agreement', count: 18, completed: 14, value: 950000 },
+          { type: 'equipment_lease', count: 20, completed: 15, value: 750000 },
+          { type: 'maintenance_contract', count: 7, completed: 3, value: 150000 }
+        ],
+        signingSpeedAnalysis: {
+          within24Hours: 12,
+          within48Hours: 8,
+          within1Week: 7,
+          moreThan1Week: 5
+        }
+      };
+
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching signature analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch signature analytics' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   

@@ -80,6 +80,7 @@ function getNavigationSections(userRole: any) {
         { name: 'CRM Goals & Reporting', href: '/crm-goals', icon: TrendingUp },
         { name: 'Demo Scheduling', href: '/demo-scheduling', icon: Calendar },
         { name: 'Sales Forecasting', href: '/sales-pipeline-forecasting', icon: TrendingUp },
+        { name: 'E-signature', href: '/esignature-integration', icon: FileText },
         { name: 'Contacts', href: '/contacts', icon: Users },
         { name: 'Deals Pipeline', href: '/deals', icon: Zap },
         { name: 'Quotes & Proposals', href: '/quotes', icon: FileText },
