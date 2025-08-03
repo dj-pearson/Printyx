@@ -5450,6 +5450,249 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= MOBILE FIELD OPERATIONS ROUTES =============
+
+  // Get mobile field metrics
+  app.get("/api/mobile-field/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COUNT(*) as active_technicians FROM field_technicians WHERE tenant_id = $1 AND employment_status = 'active' AND availability_status IN ('available', 'busy')`,
+        `SELECT COUNT(*) as work_orders_today FROM field_work_orders WHERE tenant_id = $1 AND DATE(created_at) = CURRENT_DATE`,
+        `SELECT COALESCE(AVG(CASE WHEN status = 'completed' THEN 1.0 ELSE 0.0 END) * 100, 0) as completion_rate FROM field_work_orders WHERE tenant_id = $1 AND DATE(created_at) = CURRENT_DATE`,
+        `SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (actual_start_time - created_at))/60), 0) as avg_response_time FROM field_work_orders WHERE tenant_id = $1 AND actual_start_time IS NOT NULL`,
+        `SELECT COALESCE(AVG(customer_satisfaction_rating), 0) as customer_satisfaction FROM field_technicians WHERE tenant_id = $1`,
+        `SELECT 95.5 as gps_accuracy` // Mock GPS accuracy metric
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        activeTechnicians: parseInt(results[0].rows[0].active_technicians),
+        workOrdersToday: parseInt(results[1].rows[0].work_orders_today),
+        completionRate: parseFloat(results[2].rows[0].completion_rate),
+        averageResponseTime: parseFloat(results[3].rows[0].avg_response_time),
+        customerSatisfaction: parseFloat(results[4].rows[0].customer_satisfaction),
+        gpsAccuracy: parseFloat(results[5].rows[0].gps_accuracy),
+      });
+    } catch (error) {
+      console.error("Error fetching mobile field metrics:", error);
+      res.status(500).json({ error: "Failed to fetch mobile field metrics" });
+    }
+  });
+
+  // Get field technicians
+  app.get("/api/mobile-field/technicians", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM field_technicians
+        WHERE tenant_id = $1
+        ORDER BY employment_status DESC, technician_name ASC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching field technicians:", error);
+      res.status(500).json({ error: "Failed to fetch field technicians" });
+    }
+  });
+
+  // Create field technician
+  app.post("/api/mobile-field/technicians", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        employee_id, technician_name, technician_email, technician_phone,
+        device_type, skill_categories, work_schedule, gps_tracking_enabled,
+        voice_notes_enabled, photo_upload_enabled
+      } = req.body;
+      
+      // Parse skill categories if provided
+      const skillCategoriesArray = skill_categories ? 
+        skill_categories.split(',').map((s: string) => s.trim()) : [];
+      
+      const query = `
+        INSERT INTO field_technicians (
+          tenant_id, employee_id, technician_name, technician_email,
+          technician_phone, device_type, skill_categories, work_schedule,
+          gps_tracking_enabled, voice_notes_enabled, photo_upload_enabled
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, employee_id, technician_name, technician_email,
+        technician_phone, device_type, JSON.stringify(skillCategoriesArray),
+        work_schedule || null, gps_tracking_enabled, voice_notes_enabled,
+        photo_upload_enabled
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating field technician:", error);
+      res.status(500).json({ error: "Failed to create field technician" });
+    }
+  });
+
+  // Get field work orders
+  app.get("/api/mobile-field/work-orders", requireAuth, async (req: any, res) => {
+    try {
+      const { status, technician, priority } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      if (technician && technician !== 'all') {
+        whereConditions.push(`assigned_technician_id = $${queryParams.length + 1}`);
+        queryParams.push(technician);
+      }
+      
+      if (priority && priority !== 'all') {
+        whereConditions.push(`priority = $${queryParams.length + 1}`);
+        queryParams.push(priority);
+      }
+      
+      const query = `
+        SELECT *
+        FROM field_work_orders
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY 
+          CASE priority 
+            WHEN 'emergency' THEN 1 
+            WHEN 'urgent' THEN 2 
+            WHEN 'high' THEN 3 
+            WHEN 'medium' THEN 4 
+            ELSE 5 
+          END,
+          created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching field work orders:", error);
+      res.status(500).json({ error: "Failed to fetch field work orders" });
+    }
+  });
+
+  // Create field work order
+  app.post("/api/mobile-field/work-orders", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        work_order_type, priority, customer_name, service_address,
+        work_description, estimated_duration_minutes, scheduled_date,
+        scheduled_time_start, assigned_technician_id, special_instructions
+      } = req.body;
+      
+      // Generate work order number
+      const workOrderNumber = `WO-${Date.now()}`;
+      
+      // Create service location object
+      const serviceLocation = {
+        address: service_address,
+        coordinates: null // Would be geocoded in real implementation
+      };
+      
+      const query = `
+        INSERT INTO field_work_orders (
+          tenant_id, work_order_number, work_order_type, priority,
+          customer_id, customer_name, service_location, work_description,
+          estimated_duration_minutes, scheduled_date, scheduled_time_start,
+          assigned_technician_id, special_instructions
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, workOrderNumber, work_order_type, priority,
+        'customer-' + Date.now(), customer_name, JSON.stringify(serviceLocation),
+        work_description, estimated_duration_minutes, scheduled_date,
+        scheduled_time_start, assigned_technician_id, special_instructions
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating field work order:", error);
+      res.status(500).json({ error: "Failed to create field work order" });
+    }
+  });
+
+  // Get voice notes
+  app.get("/api/mobile-field/voice-notes", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM voice_notes
+        WHERE tenant_id = $1
+        ORDER BY recorded_timestamp DESC
+        LIMIT 50
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching voice notes:", error);
+      res.status(500).json({ error: "Failed to fetch voice notes" });
+    }
+  });
+
+  // Create voice note
+  app.post("/api/mobile-field/voice-notes", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        work_order_id, note_category, note_title, transcription_text,
+        urgency_level, tags
+      } = req.body;
+      
+      // Parse tags if provided
+      const tagsArray = tags ? 
+        tags.split(',').map((t: string) => t.trim()) : [];
+      
+      // Mock audio file URL (in real implementation, this would be uploaded)
+      const audioFileUrl = `/audio/voice-note-${Date.now()}.mp3`;
+      
+      const query = `
+        INSERT INTO voice_notes (
+          tenant_id, technician_id, work_order_id, note_category,
+          audio_file_url, note_title, transcription_text, urgency_level,
+          tags, recorded_timestamp
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, userId, work_order_id, note_category, audioFileUrl,
+        note_title, transcription_text, urgency_level, JSON.stringify(tagsArray)
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating voice note:", error);
+      res.status(500).json({ error: "Failed to create voice note" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
