@@ -1701,6 +1701,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Remote Monitoring & IoT Integration Routes
+  app.get('/api/remote-monitoring/equipment-status', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const equipmentStatus = [
+        {
+          equipmentId: 'eq-001',
+          serialNumber: 'MX-2025-001',
+          model: 'Canon ImageRunner 2535i',
+          location: {
+            customerName: 'Metro Office Solutions',
+            address: '123 Business Center Dr, Suite 200',
+            floor: '2nd Floor - Copy Center',
+            coordinates: { lat: 40.7128, lng: -74.0060 }
+          },
+          status: 'operational',
+          connectionStatus: 'connected',
+          lastPing: new Date('2025-02-03T23:45:32Z'),
+          uptime: 98.7,
+          currentMetrics: {
+            pagesPerMinute: 35,
+            tonerLevels: { black: 78, cyan: 82, magenta: 75, yellow: 91 },
+            paperLevels: { tray1: 85, tray2: 92, tray3: 67 },
+            temperature: 42.3,
+            humidity: 45,
+            errorCount: 0,
+            jamCount: 2,
+            lastJobCompleted: new Date('2025-02-03T23:44:15Z')
+          },
+          performance: {
+            dailyPageCount: 1247,
+            weeklyPageCount: 8650,
+            monthlyPageCount: 32450,
+            utilizationRate: 87,
+            efficiency: 94.2,
+            averageJobSize: 12.5,
+            peakUsageHour: 14
+          },
+          maintenance: {
+            nextScheduled: new Date('2025-02-15T09:00:00Z'),
+            lastCompleted: new Date('2025-01-20T14:30:00Z'),
+            maintenanceScore: 92,
+            predictiveAlerts: [
+              {
+                component: 'Fuser Unit',
+                condition: 'good',
+                estimatedLife: 85,
+                nextReplacement: new Date('2025-04-15T00:00:00Z')
+              }
+            ]
+          },
+          alerts: [
+            {
+              id: 'alert-001',
+              type: 'supply_low',
+              severity: 'medium',
+              message: 'Magenta toner at 75% - consider ordering replacement',
+              timestamp: new Date('2025-02-03T22:30:00Z'),
+              acknowledged: false
+            }
+          ],
+          environmental: {
+            powerConsumption: 450,
+            energyEfficiency: 'A+',
+            carbonFootprint: 2.3,
+            sleepModeActive: false,
+            autoSleepEnabled: true
+          }
+        }
+      ];
+
+      res.json(equipmentStatus);
+    } catch (error) {
+      console.error('Error fetching equipment status:', error);
+      res.status(500).json({ message: 'Failed to fetch equipment status' });
+    }
+  });
+
+  app.get('/api/remote-monitoring/fleet-overview', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const fleetOverview = {
+        summary: {
+          totalEquipment: 47,
+          onlineEquipment: 44,
+          offlineEquipment: 3,
+          equipmentWithAlerts: 8,
+          criticalAlerts: 2,
+          averageUptime: 96.8,
+          fleetUtilization: 78.5,
+          energyEfficiency: 'A-'
+        },
+        statusDistribution: {
+          operational: 38,
+          warning: 6,
+          critical: 2,
+          offline: 3,
+          maintenance: 1
+        },
+        performanceTrends: {
+          weeklyUptime: [96.2, 97.1, 96.8, 97.5, 96.9, 97.2, 96.8],
+          weeklyUtilization: [75.2, 78.1, 76.8, 79.5, 77.9, 80.2, 78.5],
+          weeklyEfficiency: [89.2, 91.1, 90.8, 92.5, 91.9, 93.2, 91.5]
+        },
+        topPerformers: [
+          {
+            equipmentId: 'eq-003',
+            customerName: 'Regional Medical Center',
+            model: 'Ricoh MP C3004',
+            uptime: 99.2,
+            efficiency: 98.7,
+            utilizationRate: 95
+          }
+        ],
+        attentionRequired: [
+          {
+            equipmentId: 'eq-002',
+            customerName: 'TechStart Innovations',
+            model: 'Xerox WorkCentre 5855',
+            issues: ['Critical toner low', 'Frequent jams'],
+            priority: 'high',
+            estimatedRevenueLoss: 1200
+          }
+        ]
+      };
+
+      res.json(fleetOverview);
+    } catch (error) {
+      console.error('Error fetching fleet overview:', error);
+      res.status(500).json({ message: 'Failed to fetch fleet overview' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
