@@ -2598,6 +2598,8 @@ export type DealStage = typeof dealStages.$inferSelect;
 export type InsertDealStage = typeof dealStages.$inferInsert;
 export type DealActivity = typeof dealActivities.$inferSelect;
 export type InsertDealActivity = typeof dealActivities.$inferInsert;
+export type ContractTieredRate = typeof contractTieredRates.$inferSelect;
+export type InsertContractTieredRate = typeof contractTieredRates.$inferInsert;
 
 // CRM Goal Management Types
 export type SalesGoal = typeof salesGoals.$inferSelect;

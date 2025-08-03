@@ -82,7 +82,7 @@ import {
   type Supply,
   type ManagedService,
   type ContractTieredRate,
-  type InsertContractTieredRate,
+  contractTieredRates,
   tasks,
   projects,
   systemAlerts,
@@ -154,7 +154,7 @@ import {
   type InsertLocationHistory,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, count, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, lt, ne, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 // Interface for storage operations with role-based access control
@@ -580,14 +580,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomer(id: string, tenantId: string): Promise<Customer | undefined> {
-    const [customer] = await db
-      .select()
-      .from(customers)
-      .where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)));
-    return customer;
-  }
-
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
     const [newCustomer] = await db.insert(customers).values(customer).returning();
     return newCustomer;
@@ -801,19 +793,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomer(id: string, tenantId: string): Promise<any | undefined> {
-    try {
-      const result = await db.execute(sql`
-        SELECT * FROM business_records 
-        WHERE id = ${id} AND tenant_id = ${tenantId} AND record_type = 'customer'
-        LIMIT 1
-      `);
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error in getCustomer:', error);
-      return undefined;
-    }
-  }
+
 
   // Former customers for reporting and reactivation
   async getFormerCustomers(tenantId: string): Promise<any[]> {

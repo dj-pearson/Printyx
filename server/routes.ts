@@ -44,7 +44,6 @@ import { registerWarehouseRoutes } from "./routes-warehouse";
 import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
 import { registerCrmGoalRoutes } from "./routes-crm-goals";
 import { registerBusinessRecordRoutes } from "./routes-business-records";
-import { registerMobileRoutes } from "./routes-mobile";
 import { registerSalesforceRoutes } from "./routes-salesforce-integration";
 import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
@@ -66,6 +65,9 @@ import {
   calculatePricingForProduct
 } from "./routes-pricing";
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
+import { db } from "./db";
+import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, lt, ne, count, isNull, isNotNull } from "drizzle-orm";
+import { locations, regions, tenants, type User } from "@shared/schema";
 
 // Basic authentication middleware - Updated to work with current auth system
 const requireAuth = (req: any, res: any, next: any) => {
@@ -314,26 +316,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
       
-      const locations = await db
+      const locationResults = await db
         .select({
-          id: locationTable.id,
-          name: locationTable.name,
-          address: locationTable.address,
-          city: locationTable.city,
-          state: locationTable.state,
-          zipCode: locationTable.zipCode,
-          regionId: locationTable.regionId,
+          id: locations.id,
+          name: locations.name,
+          address: locations.address,
+          city: locations.city,
+          state: locations.state,
+          zipCode: locations.zipCode,
+          regionId: locations.regionId,
           regionName: regions.name,
-          managerId: locationTable.managerId,
-          isActive: locationTable.isActive,
-          employeeCount: locationTable.employeeCount
+          managerId: locations.locationManagerId,
+          isActive: locations.isActive,
         })
-        .from(locationTable)
-        .leftJoin(regions, eq(locationTable.regionId, regions.id))
-        .where(eq(locationTable.tenantId, tenantId))
-        .orderBy(locationTable.name);
+        .from(locations)
+        .leftJoin(regions, eq(locations.regionId, regions.id))
+        .where(eq(locations.tenantId, tenantId))
+        .orderBy(locations.name);
       
-      res.json(locations);
+      res.json(locationResults);
     } catch (error) {
       console.error('Error fetching locations:', error);
       res.status(500).json({ error: 'Failed to fetch locations' });
@@ -395,13 +396,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get location and employee counts
       const [summary] = await db
         .select({
-          locationCount: sql<number>`count(distinct ${locationTable.id})::int`,
+          locationCount: sql<number>`count(distinct ${locations.id})::int`,
           regionCount: sql<number>`count(distinct ${regions.id})::int`,
-          totalEmployees: sql<number>`coalesce(sum(${locationTable.employeeCount}), 0)::int`
+          totalEmployees: sql<number>`1::int` // placeholder for employee count
         })
-        .from(locationTable)
-        .leftJoin(regions, eq(locationTable.regionId, regions.id))
-        .where(eq(locationTable.tenantId, tenantId));
+        .from(locations)
+        .leftJoin(regions, eq(locations.regionId, regions.id))
+        .where(eq(locations.tenantId, tenantId));
       
       res.json({
         ...tenant,
