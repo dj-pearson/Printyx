@@ -123,6 +123,9 @@ function getNavigationSections(userRole: any) {
     sections.push({
       name: 'Financial',
       items: [
+        { name: 'Financial Forecasting', href: '/financial-forecasting', icon: TrendingUp },
+        { name: 'Commission Management', href: '/commission-management', icon: DollarSign },
+        { name: 'Advanced Billing', href: '/meter-billing', icon: CreditCard },
         { name: 'Invoices', href: '/invoices', icon: FileText },
         { name: 'Revenue Reports', href: '/revenue-reports', icon: DollarSign },
         { name: 'Financial Analytics', href: '/financial-analytics', icon: PieChart },

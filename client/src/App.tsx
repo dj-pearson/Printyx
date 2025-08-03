@@ -182,6 +182,7 @@ function Router() {
           <Route path="/esignature-integration" component={ESignatureIntegration} />
           <Route path="/service-dispatch-optimization" component={ServiceDispatchOptimization} />
           <Route path="/preventive-maintenance-automation" component={PreventiveMaintenanceAutomation} />
+          <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
