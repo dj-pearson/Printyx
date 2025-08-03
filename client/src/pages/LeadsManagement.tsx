@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import MainLayout from "@/components/layout/main-layout";
 import {
   Search,
   Filter,
@@ -223,7 +224,8 @@ export default function LeadsManagement() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <MainLayout title="Leads Management" description="Manage and track your sales leads">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -594,7 +596,8 @@ export default function LeadsManagement() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+      </div>
+    </MainLayout>
   );
 }
 
