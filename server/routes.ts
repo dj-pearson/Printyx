@@ -1495,6 +1495,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Customer Success & Retention Routes
+  app.get('/api/customer-success/health-scores', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const healthScores = [
+        {
+          customerId: 'cust-001',
+          customerName: 'Metro Office Solutions',
+          accountManager: 'John Smith',
+          overallHealthScore: 85,
+          healthStatus: 'healthy',
+          riskLevel: 'low',
+          churnProbability: 12,
+          scoreBreakdown: {
+            usageHealth: 92,
+            paymentHealth: 95,
+            serviceHealth: 78,
+            contractHealth: 88,
+            engagementHealth: 82
+          },
+          metrics: {
+            contractValue: 15600,
+            monthsRemaining: 18,
+            lastPaymentDate: new Date('2025-01-28'),
+            daysSinceLastService: 45,
+            averageResponseTime: 2.3,
+            satisfactionScore: 4.2,
+            usageUtilization: 87,
+            renewalProbability: 89
+          },
+          trends: {
+            usageTrend: 'stable',
+            paymentTrend: 'improving',
+            serviceTrend: 'declining',
+            engagementTrend: 'stable'
+          },
+          riskFactors: [
+            {
+              factor: 'Service Response Time',
+              severity: 'medium',
+              description: 'Average response time has increased by 20% over past 3 months',
+              impact: 15,
+              recommendation: 'Schedule proactive service check and review technician assignments'
+            }
+          ],
+          opportunities: [
+            {
+              type: 'contract_renewal',
+              description: 'Contract renewal due in 18 months - early engagement opportunity',
+              value: 15600,
+              probability: 89,
+              action: 'Schedule renewal discussion meeting'
+            }
+          ],
+          alerts: [
+            {
+              type: 'service_alert',
+              priority: 'medium',
+              message: 'Service response time degrading - schedule proactive maintenance',
+              dueDate: new Date('2025-02-15')
+            }
+          ],
+          lastUpdated: new Date('2025-02-03'),
+          nextReviewDate: new Date('2025-02-17')
+        }
+      ];
+
+      res.json(healthScores);
+    } catch (error) {
+      console.error('Error fetching customer health scores:', error);
+      res.status(500).json({ message: 'Failed to fetch customer health scores' });
+    }
+  });
+
+  app.get('/api/customer-success/usage-analytics', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const usageAnalytics = {
+        summary: {
+          totalCustomers: 45,
+          averageUtilization: 76.5,
+          totalMonthlyVolume: 2847500,
+          utilizationTrend: 2.3,
+          topPerformingAccounts: 12,
+          underutilizedAccounts: 8
+        },
+        customerBreakdown: [
+          {
+            customerId: 'cust-001',
+            customerName: 'Metro Office Solutions',
+            equipment: [
+              {
+                serialNumber: 'MX-2020-001',
+                model: 'Canon ImageRunner 2525i',
+                monthlyVolume: 12500,
+                capacity: 15000,
+                utilization: 83.3,
+                averageDailyUsage: 417,
+                peakUsageDay: 'Tuesday',
+                maintenanceScore: 92
+              }
+            ],
+            usageTrends: {
+              currentMonth: 21250,
+              lastMonth: 20800,
+              growth: 2.2,
+              yearOverYear: 15.7,
+              seasonalPattern: 'stable'
+            },
+            recommendations: [
+              {
+                type: 'optimization',
+                priority: 'medium',
+                description: 'Equipment nearing capacity - consider upgrade',
+                potentialSavings: 2400,
+                implementationCost: 850
+              }
+            ],
+            alerts: [
+              {
+                type: 'capacity_warning',
+                equipment: 'MX-2020-001',
+                message: 'Operating at 83% capacity',
+                severity: 'medium'
+              }
+            ]
+          }
+        ],
+        optimizationOpportunities: [
+          {
+            type: 'equipment_consolidation',
+            description: 'Multiple underutilized devices can be consolidated',
+            potentialSavings: 12600,
+            implementationCost: 4200,
+            roi: 300
+          }
+        ]
+      };
+
+      res.json(usageAnalytics);
+    } catch (error) {
+      console.error('Error fetching usage analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch usage analytics' });
+    }
+  });
+
+  app.get('/api/customer-success/satisfaction', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const satisfactionData = {
+        summary: {
+          overallSatisfaction: 4.2,
+          responseRate: 68.5,
+          totalSurveys: 156,
+          completedSurveys: 107,
+          npsScore: 42,
+          promoters: 65,
+          detractors: 23,
+          trend: 'improving'
+        },
+        recentSurveys: [
+          {
+            surveyId: 'surv-001',
+            customerId: 'cust-001',
+            customerName: 'Metro Office Solutions',
+            submittedDate: new Date('2025-01-30'),
+            scores: {
+              overall: 4.5,
+              serviceQuality: 4.7,
+              responseTime: 4.2,
+              technicalExpertise: 4.8,
+              communication: 4.3,
+              valueForMoney: 4.1
+            },
+            npsScore: 9,
+            category: 'promoter',
+            feedback: 'Excellent service team - always responsive and knowledgeable.',
+            actionItems: []
+          }
+        ],
+        categoryTrends: {
+          serviceQuality: { current: 4.3, previous: 4.1, trend: 'improving', target: 4.5 },
+          responseTime: { current: 3.8, previous: 3.6, trend: 'improving', target: 4.2 },
+          technicalExpertise: { current: 4.5, previous: 4.4, trend: 'stable', target: 4.6 }
+        }
+      };
+
+      res.json(satisfactionData);
+    } catch (error) {
+      console.error('Error fetching satisfaction data:', error);
+      res.status(500).json({ message: 'Failed to fetch satisfaction data' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   

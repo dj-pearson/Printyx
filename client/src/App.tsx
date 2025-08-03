@@ -78,6 +78,7 @@ import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
 import ServiceDispatchOptimization from "@/pages/ServiceDispatchOptimization";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
+import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -183,6 +184,7 @@ function Router() {
           <Route path="/service-dispatch-optimization" component={ServiceDispatchOptimization} />
           <Route path="/preventive-maintenance-automation" component={PreventiveMaintenanceAutomation} />
           <Route path="/commission-management" component={CommissionManagement} />
+          <Route path="/customer-success" component={CustomerSuccessManagement} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
