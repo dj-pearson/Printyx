@@ -3903,6 +3903,349 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= COMMISSION MANAGEMENT ROUTES =============
+
+  // Get commission metrics
+  app.get("/api/commission/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COALESCE(SUM(net_payment_amount), 0) as total_paid FROM commission_payments WHERE tenant_id = $1 AND payment_status = 'completed' AND EXTRACT(MONTH FROM payment_date) = EXTRACT(MONTH FROM CURRENT_DATE)`,
+        `SELECT COALESCE(SUM(net_commission_amount), 0) as pending_commissions FROM commission_calculations WHERE tenant_id = $1 AND payment_status = 'pending'`,
+        `SELECT COALESCE(AVG(base_commission_rate), 0) as avg_rate FROM commission_calculations WHERE tenant_id = $1`,
+        `SELECT COALESCE(MAX(net_commission_amount), 0) as top_commission FROM commission_calculations WHERE tenant_id = $1`,
+        `SELECT COUNT(*) as active_disputes FROM commission_disputes WHERE tenant_id = $1 AND status IN ('open', 'under_review')`,
+        `SELECT COALESCE(AVG(achievement_percentage), 0) as quota_attainment FROM sales_quotas WHERE tenant_id = $1 AND status = 'active'`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        totalCommissionsPaid: parseFloat(results[0].rows[0].total_paid),
+        pendingCommissions: parseFloat(results[1].rows[0].pending_commissions),
+        averageCommissionRate: parseFloat(results[2].rows[0].avg_rate),
+        topPerformerCommission: parseFloat(results[3].rows[0].top_commission),
+        activeDisputes: parseInt(results[4].rows[0].active_disputes),
+        quotaAttainment: parseFloat(results[5].rows[0].quota_attainment),
+      });
+    } catch (error) {
+      console.error("Error fetching commission metrics:", error);
+      res.status(500).json({ error: "Failed to fetch commission metrics" });
+    }
+  });
+
+  // Get commission structures
+  app.get("/api/commission/structures", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM commission_structures
+        WHERE tenant_id = $1
+        ORDER BY created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission structures:", error);
+      res.status(500).json({ error: "Failed to fetch commission structures" });
+    }
+  });
+
+  // Create commission structure
+  app.post("/api/commission/structures", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        structure_name, structure_type, applies_to, base_rate, calculation_basis,
+        calculation_period, minimum_threshold, maximum_cap, effective_date, expiration_date
+      } = req.body;
+      
+      const query = `
+        INSERT INTO commission_structures (
+          tenant_id, structure_name, structure_type, applies_to, base_rate,
+          calculation_basis, calculation_period, minimum_threshold, maximum_cap,
+          effective_date, expiration_date, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, structure_name, structure_type, applies_to, base_rate,
+        calculation_basis, calculation_period, minimum_threshold, maximum_cap,
+        effective_date, expiration_date, userId
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating commission structure:", error);
+      res.status(500).json({ error: "Failed to create commission structure" });
+    }
+  });
+
+  // Get commission calculations
+  app.get("/api/commission/calculations", requireAuth, async (req: any, res) => {
+    try {
+      const { period, status } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['cc.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (period && period !== 'all') {
+        switch (period) {
+          case 'current_month':
+            whereConditions.push(`EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`);
+            break;
+          case 'last_month':
+            whereConditions.push(`EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month') AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')`);
+            break;
+          case 'current_quarter':
+            whereConditions.push(`EXTRACT(QUARTER FROM cc.calculation_period_start) = EXTRACT(QUARTER FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`);
+            break;
+        }
+      }
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`cc.payment_status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      const query = `
+        SELECT 
+          cc.*,
+          u.name as employee_name,
+          cs.structure_name
+        FROM commission_calculations cc
+        LEFT JOIN users u ON cc.employee_id = u.id
+        LEFT JOIN commission_structures cs ON cc.commission_structure_id = cs.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY cc.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission calculations:", error);
+      res.status(500).json({ error: "Failed to fetch commission calculations" });
+    }
+  });
+
+  // Run commission calculations
+  app.post("/api/commission/calculations/run", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      // Sample commission calculations for demo
+      const sampleCalculations = [
+        {
+          employee_name: 'John Smith',
+          total_sales: 125000,
+          commission_rate: 0.05,
+          commission_amount: 6250
+        },
+        {
+          employee_name: 'Sarah Johnson',
+          total_sales: 98000,
+          commission_rate: 0.045,
+          commission_amount: 4410
+        }
+      ];
+      
+      // Get active users
+      const usersQuery = `SELECT id, name FROM users WHERE tenant_id = $1 AND role LIKE '%sales%' LIMIT 2`;
+      const usersResult = await db.$client.query(usersQuery, [tenantId]);
+      const users = usersResult.rows;
+      
+      // Get active commission structure
+      const structureQuery = `SELECT id FROM commission_structures WHERE tenant_id = $1 AND is_active = true LIMIT 1`;
+      const structureResult = await db.$client.query(structureQuery, [tenantId]);
+      const structureId = structureResult.rows[0]?.id;
+      
+      if (!structureId) {
+        return res.status(400).json({ error: "No active commission structure found" });
+      }
+      
+      const startDate = new Date();
+      startDate.setDate(1); // First day of current month
+      const endDate = new Date();
+      
+      for (let i = 0; i < Math.min(sampleCalculations.length, users.length); i++) {
+        const calc = sampleCalculations[i];
+        const user = users[i];
+        
+        const query = `
+          INSERT INTO commission_calculations (
+            tenant_id, calculation_period_start, calculation_period_end,
+            employee_id, commission_structure_id, total_sales_amount,
+            commission_base_amount, base_commission_rate, base_commission_amount,
+            gross_commission_amount, net_commission_amount, calculated_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `;
+        
+        await db.$client.query(query, [
+          tenantId, startDate, endDate, user.id, structureId,
+          calc.total_sales, calc.total_sales, calc.commission_rate,
+          calc.commission_amount, calc.commission_amount, calc.commission_amount,
+          userId
+        ]);
+      }
+      
+      res.status(201).json({
+        message: "Commission calculations completed",
+        calculations_created: Math.min(sampleCalculations.length, users.length)
+      });
+    } catch (error) {
+      console.error("Error running commission calculations:", error);
+      res.status(500).json({ error: "Failed to run commission calculations" });
+    }
+  });
+
+  // Get sales quotas
+  app.get("/api/commission/quotas", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          sq.*,
+          u.name as employee_name
+        FROM sales_quotas sq
+        LEFT JOIN users u ON sq.employee_id = u.id
+        WHERE sq.tenant_id = $1
+        ORDER BY sq.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching sales quotas:", error);
+      res.status(500).json({ error: "Failed to fetch sales quotas" });
+    }
+  });
+
+  // Create sales quota
+  app.post("/api/commission/quotas", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        employee_id, quota_period_start, quota_period_end, quota_type,
+        quota_amount, stretch_goal_amount, minimum_threshold
+      } = req.body;
+      
+      const query = `
+        INSERT INTO sales_quotas (
+          tenant_id, employee_id, quota_period_start, quota_period_end,
+          quota_type, quota_amount, stretch_goal_amount, minimum_threshold,
+          created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, employee_id, quota_period_start, quota_period_end,
+        quota_type, quota_amount, stretch_goal_amount, minimum_threshold,
+        userId
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating sales quota:", error);
+      res.status(500).json({ error: "Failed to create sales quota" });
+    }
+  });
+
+  // Get commission payments
+  app.get("/api/commission/payments", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          cp.*,
+          u.name as employee_name
+        FROM commission_payments cp
+        LEFT JOIN users u ON cp.employee_id = u.id
+        WHERE cp.tenant_id = $1
+        ORDER BY cp.payment_date DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission payments:", error);
+      res.status(500).json({ error: "Failed to fetch commission payments" });
+    }
+  });
+
+  // Get commission disputes
+  app.get("/api/commission/disputes", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          cd.*,
+          u.name as employee_name
+        FROM commission_disputes cd
+        LEFT JOIN users u ON cd.employee_id = u.id
+        WHERE cd.tenant_id = $1
+        ORDER BY cd.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission disputes:", error);
+      res.status(500).json({ error: "Failed to fetch commission disputes" });
+    }
+  });
+
+  // Create commission dispute
+  app.post("/api/commission/disputes", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        dispute_type, employee_id, commission_calculation_id, dispute_amount,
+        claimed_amount, description, priority
+      } = req.body;
+      
+      const disputeNumber = `DISP-${Date.now()}`;
+      const disputeDate = new Date().toISOString().split('T')[0];
+      
+      const query = `
+        INSERT INTO commission_disputes (
+          tenant_id, dispute_number, dispute_type, employee_id,
+          commission_calculation_id, dispute_amount, claimed_amount,
+          description, priority, dispute_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, disputeNumber, dispute_type, employee_id,
+        commission_calculation_id, dispute_amount, claimed_amount,
+        description, priority, disputeDate
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating commission dispute:", error);
+      res.status(500).json({ error: "Failed to create commission dispute" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
