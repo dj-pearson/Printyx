@@ -1,1027 +1,929 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Plus, Wifi, Monitor, AlertTriangle, CheckCircle, Clock, Activity,
-  TrendingUp, TrendingDown, Battery, Signal, Thermometer, Droplets,
-  Settings, Filter, Download, Eye, Bell, Wrench, BarChart3, Zap,
-  Router, Smartphone, Laptop, Calendar, Users, Target
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Wifi, WifiOff, Activity, AlertTriangle, CheckCircle, XCircle, Zap, Thermometer, Droplets, Bell, BellOff, Eye, Settings, RefreshCw, MapPin, TrendingUp, TrendingDown, Battery, Gauge } from 'lucide-react';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { toast } from '@/hooks/use-toast';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
-// Types
-type IoTDevice = {
-  id: string;
-  device_id: string;
-  device_name: string;
-  device_type: string;
-  manufacturer: string;
+interface EquipmentStatus {
+  equipmentId: string;
+  serialNumber: string;
   model: string;
-  device_status: string;
-  last_ping_time?: string;
-  last_data_received?: string;
-  connection_type: string;
-  ip_address?: string;
-  battery_level?: number;
-  signal_strength?: number;
-  customer_name?: string;
-  installation_location?: string;
-  created_at: string;
+  location: {
+    customerName: string;
+    address: string;
+    floor: string;
+    coordinates: { lat: number; lng: number };
+  };
+  status: string;
+  connectionStatus: string;
+  lastPing: Date;
+  uptime: number;
+  currentMetrics: {
+    pagesPerMinute: number;
+    tonerLevels: {
+      black: number;
+      cyan: number;
+      magenta: number;
+      yellow: number;
+    };
+    paperLevels: {
+      tray1: number;
+      tray2: number;
+      tray3: number;
+    };
+    temperature: number | null;
+    humidity: number | null;
+    errorCount: number;
+    jamCount: number;
+    lastJobCompleted: Date;
+  };
+  performance: {
+    dailyPageCount: number;
+    weeklyPageCount: number;
+    monthlyPageCount: number;
+    utilizationRate: number;
+    efficiency: number;
+    averageJobSize: number;
+    peakUsageHour: number;
+  };
+  maintenance: {
+    nextScheduled: Date;
+    lastCompleted: Date;
+    maintenanceScore: number;
+    predictiveAlerts: Array<{
+      component: string;
+      condition: string;
+      estimatedLife: number;
+      nextReplacement: Date;
+    }>;
+  };
+  alerts: Array<{
+    id: string;
+    type: string;
+    severity: string;
+    message: string;
+    timestamp: Date;
+    acknowledged: boolean;
+  }>;
+  environmental: {
+    powerConsumption: number;
+    energyEfficiency: string;
+    carbonFootprint: number;
+    sleepModeActive: boolean;
+    autoSleepEnabled: boolean;
+  };
+}
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'operational': return 'bg-green-100 text-green-800';
+    case 'warning': return 'bg-yellow-100 text-yellow-800';
+    case 'critical': return 'bg-red-100 text-red-800';
+    case 'offline': return 'bg-gray-100 text-gray-800';
+    case 'maintenance': return 'bg-blue-100 text-blue-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 };
 
-type EquipmentStatus = {
-  id: string;
-  equipment_id: string;
-  device_name?: string;
-  operational_status: string;
-  power_status?: string;
-  connectivity_status?: string;
-  current_job_count: number;
-  total_page_count: number;
-  error_count: number;
-  toner_levels?: any;
-  temperature?: number;
-  humidity?: number;
-  uptime_percentage?: number;
-  status_timestamp: string;
+const getStatusIcon = (status: string, connectionStatus: string) => {
+  if (connectionStatus === 'disconnected') {
+    return <WifiOff className="h-4 w-4 text-red-600" />;
+  }
+  
+  switch (status) {
+    case 'operational': return <CheckCircle className="h-4 w-4 text-green-600" />;
+    case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+    case 'critical': return <XCircle className="h-4 w-4 text-red-600" />;
+    case 'offline': return <WifiOff className="h-4 w-4 text-gray-600" />;
+    case 'maintenance': return <Settings className="h-4 w-4 text-blue-600" />;
+    default: return <Activity className="h-4 w-4 text-gray-600" />;
+  }
 };
 
-type PredictiveAlert = {
-  id: string;
-  alert_id: string;
-  device_name?: string;
-  alert_type: string;
-  alert_category: string;
-  severity: string;
-  alert_title: string;
-  alert_description: string;
-  failure_probability?: number;
-  time_to_failure_days?: number;
-  confidence_score?: number;
-  alert_status: string;
-  customer_name?: string;
-  business_impact_level?: string;
-  created_at: string;
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case 'critical': return 'bg-red-100 text-red-800 border-red-200';
+    case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
+    case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'low': return 'bg-blue-100 text-blue-800 border-blue-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
 };
 
-type PerformanceTrend = {
-  id: string;
-  device_name?: string;
-  analysis_period_start: string;
-  analysis_period_end: string;
-  analysis_type: string;
-  average_uptime_percentage?: number;
-  total_pages_processed: number;
-  performance_trend: string;
-  reliability_score?: number;
-  failure_risk_score?: number;
-  peer_performance_percentile?: number;
-  created_at: string;
-};
-
-type MonitoringMetrics = {
-  totalDevices: number;
-  onlineDevices: number;
-  activeAlerts: number;
-  criticalAlerts: number;
-  averageUptime: number;
-  devicesRequiringAttention: number;
-};
-
-// Form Schemas
-const deviceSchema = z.object({
-  device_name: z.string().min(3, "Device name required"),
-  device_type: z.enum(['printer', 'copier', 'scanner', 'mfp', 'sensor']),
-  manufacturer: z.string().min(2, "Manufacturer required"),
-  model: z.string().min(2, "Model required"),
-  device_serial_number: z.string().min(5, "Serial number required"),
-  connection_type: z.enum(['ethernet', 'wifi', 'cellular', 'hybrid']),
-  customer_id: z.string().optional(),
-  installation_location: z.string().min(5, "Location required"),
-  ip_address: z.string().optional(),
-  monitoring_enabled: z.boolean(),
-  data_collection_interval: z.number().min(60).max(3600),
-});
-
-type DeviceForm = z.infer<typeof deviceSchema>;
+const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
 export default function RemoteMonitoring() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [isDeviceDialogOpen, setIsDeviceDialogOpen] = useState(false);
-  const [selectedDeviceType, setSelectedDeviceType] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedSeverity, setSelectedSeverity] = useState("all");
-  
+  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds
   const queryClient = useQueryClient();
+  const { register, handleSubmit, reset } = useForm();
 
-  // Fetch monitoring metrics
-  const { data: metrics } = useQuery<MonitoringMetrics>({
-    queryKey: ["/api/monitoring/metrics"],
-  });
-
-  // Fetch IoT devices
-  const { data: devices = [], isLoading: devicesLoading } = useQuery<IoTDevice[]>({
-    queryKey: ["/api/monitoring/devices", selectedDeviceType, selectedStatus],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedDeviceType !== "all") params.append("type", selectedDeviceType);
-      if (selectedStatus !== "all") params.append("status", selectedStatus);
-      return await apiRequest(`/api/monitoring/devices?${params.toString()}`);
-    },
-  });
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['/api/remote-monitoring/equipment-status'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/remote-monitoring/fleet-overview'] });
+    }, refreshInterval);
+    
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval, queryClient]);
 
   // Fetch equipment status
   const { data: equipmentStatus = [], isLoading: statusLoading } = useQuery<EquipmentStatus[]>({
-    queryKey: ["/api/monitoring/equipment-status"],
+    queryKey: ['/api/remote-monitoring/equipment-status'],
+    select: (data: any[]) => data.map(equipment => ({
+      ...equipment,
+      lastPing: new Date(equipment.lastPing),
+      currentMetrics: {
+        ...equipment.currentMetrics,
+        lastJobCompleted: new Date(equipment.currentMetrics.lastJobCompleted)
+      },
+      maintenance: {
+        ...equipment.maintenance,
+        nextScheduled: new Date(equipment.maintenance.nextScheduled),
+        lastCompleted: new Date(equipment.maintenance.lastCompleted),
+        predictiveAlerts: equipment.maintenance.predictiveAlerts.map((alert: any) => ({
+          ...alert,
+          nextReplacement: new Date(alert.nextReplacement)
+        }))
+      },
+      alerts: equipment.alerts.map((alert: any) => ({
+        ...alert,
+        timestamp: new Date(alert.timestamp)
+      }))
+    }))
   });
 
-  // Fetch predictive alerts
-  const { data: alerts = [], isLoading: alertsLoading } = useQuery<PredictiveAlert[]>({
-    queryKey: ["/api/monitoring/alerts", selectedSeverity],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedSeverity !== "all") params.append("severity", selectedSeverity);
-      return await apiRequest(`/api/monitoring/alerts?${params.toString()}`);
-    },
+  // Fetch fleet overview
+  const { data: fleetOverview } = useQuery({
+    queryKey: ['/api/remote-monitoring/fleet-overview']
   });
 
-  // Fetch performance trends
-  const { data: trends = [], isLoading: trendsLoading } = useQuery<PerformanceTrend[]>({
-    queryKey: ["/api/monitoring/trends"],
+  // Fetch sensor data for selected equipment
+  const { data: sensorData } = useQuery({
+    queryKey: ['/api/remote-monitoring/sensor-data', selectedEquipment],
+    enabled: !!selectedEquipment
   });
 
-  // Fetch customers for dropdown
-  const { data: businessRecords = [] } = useQuery<any[]>({
-    queryKey: ["/api/business-records"],
-  });
-
-  // Register device mutation
-  const registerDeviceMutation = useMutation({
-    mutationFn: async (data: DeviceForm) =>
-      await apiRequest("/api/monitoring/devices", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+  // Acknowledge alert mutation
+  const acknowledgeAlertMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('/api/remote-monitoring/acknowledge-alert', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/devices"] });
-      setIsDeviceDialogOpen(false);
-    },
+      queryClient.invalidateQueries({ queryKey: ['/api/remote-monitoring/equipment-status'] });
+      toast({
+        title: "Alert Acknowledged",
+        description: "The alert has been successfully acknowledged.",
+      });
+    }
   });
 
-  // Sync devices mutation
-  const syncDevicesMutation = useMutation({
-    mutationFn: async () =>
-      await apiRequest("/api/monitoring/sync", {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/devices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/equipment-status"] });
-    },
-  });
-
-  // Form setup
-  const deviceForm = useForm<DeviceForm>({
-    resolver: zodResolver(deviceSchema),
-    defaultValues: {
-      device_type: "mfp",
-      connection_type: "ethernet",
-      monitoring_enabled: true,
-      data_collection_interval: 300,
-    },
-  });
-
-  const onDeviceSubmit = (data: DeviceForm) => {
-    registerDeviceMutation.mutate(data);
+  const handleAcknowledgeAlert = (alertId: string, note: string = '') => {
+    acknowledgeAlertMutation.mutate({ alertId, acknowledgmentNote: note });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': case 'running': case 'connected': return 'default';
-      case 'offline': case 'disconnected': return 'destructive';
-      case 'idle': case 'standby': return 'secondary';
-      case 'maintenance': case 'warning': return 'secondary';
-      case 'error': case 'critical': return 'destructive';
-      default: return 'outline';
-    }
-  };
+  if (statusLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading equipment monitoring data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'destructive';
-      case 'error': return 'destructive';
-      case 'warning': return 'secondary';
-      case 'info': return 'outline';
-      default: return 'outline';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active': case 'running': case 'connected': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'offline': case 'disconnected': case 'error': return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      case 'idle': case 'standby': return <Clock className="h-4 w-4 text-blue-600" />;
-      case 'maintenance': return <Wrench className="h-4 w-4 text-orange-600" />;
-      default: return <Activity className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'improving': return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'declining': return <TrendingDown className="h-4 w-4 text-red-600" />;
-      case 'stable': return <Activity className="h-4 w-4 text-blue-600" />;
-      default: return <Activity className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const getDeviceTypeIcon = (type: string) => {
-    switch (type) {
-      case 'printer': return <Monitor className="h-4 w-4" />;
-      case 'copier': return <Monitor className="h-4 w-4" />;
-      case 'scanner': return <Monitor className="h-4 w-4" />;
-      case 'mfp': return <Monitor className="h-4 w-4" />;
-      case 'sensor': return <Activity className="h-4 w-4" />;
-      default: return <Monitor className="h-4 w-4" />;
-    }
-  };
-
-  const getConnectionIcon = (type: string) => {
-    switch (type) {
-      case 'ethernet': return <Router className="h-4 w-4" />;
-      case 'wifi': return <Wifi className="h-4 w-4" />;
-      case 'cellular': return <Smartphone className="h-4 w-4" />;
-      case 'hybrid': return <Laptop className="h-4 w-4" />;
-      default: return <Router className="h-4 w-4" />;
-    }
-  };
-
-  // Auto-refresh data every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/equipment-status"] });
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [queryClient]);
+  const onlineEquipment = equipmentStatus.filter(eq => eq.connectionStatus === 'connected').length;
+  const offlineEquipment = equipmentStatus.filter(eq => eq.connectionStatus === 'disconnected').length;
+  const criticalAlerts = equipmentStatus.reduce((sum, eq) => sum + eq.alerts.filter(alert => alert.severity === 'critical').length, 0);
+  const totalAlerts = equipmentStatus.reduce((sum, eq) => sum + eq.alerts.length, 0);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Remote Monitoring & IoT</h1>
-          <p className="text-muted-foreground mt-2">
-            Real-time equipment monitoring, predictive maintenance, and IoT device management
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Remote Monitoring & IoT</h1>
+          <p className="text-gray-600 mt-2">Real-time equipment monitoring and predictive analytics</p>
         </div>
-        <div className="flex space-x-2">
-          <Dialog open={isDeviceDialogOpen} onOpenChange={setIsDeviceDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Plus className="mr-2 h-4 w-4" />
-                Register Device
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Register IoT Device</DialogTitle>
-              </DialogHeader>
-              <Form {...deviceForm}>
-                <form onSubmit={deviceForm.handleSubmit(onDeviceSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={deviceForm.control}
-                      name="device_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Device Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Office MFP - Floor 2" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={deviceForm.control}
-                      name="device_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Device Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="printer">Printer</SelectItem>
-                              <SelectItem value="copier">Copier</SelectItem>
-                              <SelectItem value="scanner">Scanner</SelectItem>
-                              <SelectItem value="mfp">Multifunction Printer</SelectItem>
-                              <SelectItem value="sensor">Sensor</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={deviceForm.control}
-                      name="manufacturer"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Manufacturer</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Canon" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={deviceForm.control}
-                      name="model"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Model</FormLabel>
-                          <FormControl>
-                            <Input placeholder="imageRUNNER 2530i" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={deviceForm.control}
-                    name="device_serial_number"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Serial Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="CN123456789" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={deviceForm.control}
-                      name="connection_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Connection Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="ethernet">Ethernet</SelectItem>
-                              <SelectItem value="wifi">Wi-Fi</SelectItem>
-                              <SelectItem value="cellular">Cellular</SelectItem>
-                              <SelectItem value="hybrid">Hybrid</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={deviceForm.control}
-                      name="ip_address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>IP Address (Optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="192.168.1.100" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={deviceForm.control}
-                    name="customer_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Customer</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select customer" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {businessRecords.map((record: any) => (
-                              <SelectItem key={record.id} value={record.id}>
-                                {record.company_name || record.companyName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={deviceForm.control}
-                    name="installation_location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Installation Location</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Building A, Floor 2, Main Office" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={deviceForm.control}
-                      name="data_collection_interval"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data Collection Interval (seconds)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min="60" 
-                              max="3600"
-                              {...field}
-                              onChange={e => field.onChange(parseInt(e.target.value) || 300)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={deviceForm.control}
-                      name="monitoring_enabled"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-6">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel>Enable monitoring</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setIsDeviceDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={registerDeviceMutation.isPending}>
-                      {registerDeviceMutation.isPending ? "Registering..." : "Register Device"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-
-          <Button onClick={() => syncDevicesMutation.mutate()} disabled={syncDevicesMutation.isPending}>
-            <Activity className="mr-2 h-4 w-4" />
-            {syncDevicesMutation.isPending ? "Syncing..." : "Sync Devices"}
+        
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="auto-refresh">Auto Refresh</Label>
+            <Button
+              variant={autoRefresh ? "default" : "outline"}
+              size="sm"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className="flex items-center gap-1"
+            >
+              {autoRefresh ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+              {autoRefresh ? 'On' : 'Off'}
+            </Button>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/remote-monitoring'] });
+            }}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
           </Button>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="devices">Devices</TabsTrigger>
-          <TabsTrigger value="status">Live Status</TabsTrigger>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Online Equipment</CardTitle>
+            <Wifi className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{onlineEquipment}</div>
+            <p className="text-xs text-muted-foreground">
+              {offlineEquipment} offline
+            </p>
+            <div className="text-xs text-gray-600 mt-1">
+              {((onlineEquipment / equipmentStatus.length) * 100).toFixed(1)}% connectivity
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Critical Alerts</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{criticalAlerts}</div>
+            <p className="text-xs text-muted-foreground">
+              {totalAlerts} total alerts
+            </p>
+            {fleetOverview && (
+              <div className="text-xs text-gray-600 mt-1">
+                {fleetOverview.summary.equipmentWithAlerts} units need attention
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fleet Uptime</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {fleetOverview && (
+              <>
+                <div className="text-2xl font-bold">{fleetOverview.summary.averageUptime.toFixed(1)}%</div>
+                <p className="text-xs text-muted-foreground">
+                  Average across all equipment
+                </p>
+                <Progress value={fleetOverview.summary.averageUptime} className="mt-2" />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fleet Utilization</CardTitle>
+            <Gauge className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {fleetOverview && (
+              <>
+                <div className="text-2xl font-bold">{fleetOverview.summary.fleetUtilization.toFixed(1)}%</div>
+                <p className="text-xs text-muted-foreground">
+                  Equipment usage efficiency
+                </p>
+                <div className="text-xs text-gray-600 mt-1">
+                  Energy Rating: {fleetOverview.summary.energyEfficiency}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="equipment-status" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="equipment-status">Equipment Status</TabsTrigger>
+          <TabsTrigger value="fleet-overview">Fleet Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
-          <TabsTrigger value="trends">Performance</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          {/* Monitoring Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <TabsContent value="equipment-status" className="space-y-6">
+          {equipmentStatus.length === 0 ? (
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
-                <Monitor className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {metrics?.totalDevices || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {metrics?.onlineDevices || 0} online
-                </p>
+              <CardContent className="text-center py-12">
+                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Equipment Monitored</h3>
+                <p className="text-gray-600 mb-4">Start monitoring your copier fleet to see real-time status.</p>
+                <Button>
+                  <Wifi className="h-4 w-4 mr-2" />
+                  Set Up Monitoring
+                </Button>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
-                <Bell className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {metrics?.activeAlerts || 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {metrics?.criticalAlerts || 0} critical
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Average Uptime</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {metrics?.averageUptime ? `${metrics.averageUptime.toFixed(1)}%` : "0%"}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Last 30 days
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Recent Activity and Critical Alerts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Equipment Status Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {statusLoading ? (
-                  <p className="text-center py-4">Loading status...</p>
-                ) : (equipmentStatus as EquipmentStatus[]).length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">No equipment monitored</p>
-                ) : (
-                  <div className="space-y-3">
-                    {(equipmentStatus as EquipmentStatus[]).slice(0, 5).map((status) => (
-                      <div key={status.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          {getStatusIcon(status.operational_status)}
-                          <div>
-                            <h4 className="font-medium text-sm">{status.device_name}</h4>
-                            <p className="text-xs text-muted-foreground">
-                              {status.current_job_count} jobs • {status.total_page_count.toLocaleString()} pages
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant={getStatusColor(status.operational_status)} className="text-xs">
-                            {status.operational_status}
+          ) : (
+            <div className="space-y-4">
+              {equipmentStatus.map((equipment) => (
+                <Card key={equipment.equipmentId} className="hover:shadow-md transition-shadow">
+                  <CardContent className="py-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          {getStatusIcon(equipment.status, equipment.connectionStatus)}
+                          <h3 className="font-medium text-lg">{equipment.model}</h3>
+                          <Badge className={getStatusColor(equipment.status)}>
+                            {equipment.status}
                           </Badge>
-                          {status.uptime_percentage && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {status.uptime_percentage.toFixed(1)}% uptime
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Alerts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {alertsLoading ? (
-                  <p className="text-center py-4">Loading alerts...</p>
-                ) : (alerts as PredictiveAlert[]).length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">No alerts</p>
-                ) : (
-                  <div className="space-y-3">
-                    {(alerts as PredictiveAlert[]).slice(0, 5).map((alert) => (
-                      <div key={alert.id} className="flex items-start justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <Badge variant={getSeverityColor(alert.severity)} className="text-xs">
-                              {alert.severity}
+                          {equipment.connectionStatus === 'connected' ? (
+                            <Badge className="bg-green-100 text-green-800">
+                              <Wifi className="h-3 w-3 mr-1" />
+                              Connected
                             </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {alert.alert_category}
-                            </span>
-                          </div>
-                          <h4 className="font-medium text-sm">{alert.alert_title}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {alert.device_name} • {alert.customer_name}
-                          </p>
-                          {alert.time_to_failure_days && (
-                            <p className="text-xs text-orange-600 mt-1">
-                              Predicted failure in {alert.time_to_failure_days} days
-                            </p>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-800">
+                              <WifiOff className="h-3 w-3 mr-1" />
+                              Offline
+                            </Badge>
                           )}
                         </div>
-                        <Badge variant={getStatusColor(alert.alert_status)} className="text-xs">
-                          {alert.alert_status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="devices" className="space-y-6">
-          {/* Device Filters */}
-          <div className="flex space-x-4">
-            <Select value={selectedDeviceType} onValueChange={setSelectedDeviceType}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Device Types</SelectItem>
-                <SelectItem value="printer">Printer</SelectItem>
-                <SelectItem value="copier">Copier</SelectItem>
-                <SelectItem value="scanner">Scanner</SelectItem>
-                <SelectItem value="mfp">Multifunction Printer</SelectItem>
-                <SelectItem value="sensor">Sensor</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="offline">Offline</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
-                <SelectItem value="error">Error</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>IoT Devices</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {devicesLoading ? (
-                <p className="text-center py-8">Loading devices...</p>
-              ) : (devices as IoTDevice[]).length === 0 ? (
-                <div className="text-center py-8">
-                  <Monitor className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No IoT devices registered</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {(devices as IoTDevice[]).map((device) => (
-                    <div key={device.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-3">
-                          <div className="flex items-center space-x-2">
-                            {getDeviceTypeIcon(device.device_type)}
-                            {getConnectionIcon(device.connection_type)}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h3 className="font-medium">{device.device_name}</h3>
-                              <Badge variant={getStatusColor(device.device_status)}>
-                                {device.device_status}
-                              </Badge>
-                            </div>
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <p>{device.manufacturer} {device.model}</p>
-                              <p>Type: {device.device_type} • Connection: {device.connection_type}</p>
-                              <p>Location: {device.installation_location}</p>
-                              <p>Customer: {device.customer_name}</p>
-                              {device.ip_address && (
-                                <p>IP: {device.ip_address}</p>
-                              )}
-                              {device.last_data_received && (
-                                <p>Last Data: {format(new Date(device.last_data_received), 'MMM dd, HH:mm')}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right space-y-2">
-                          {device.battery_level !== undefined && (
-                            <div className="flex items-center space-x-1">
-                              <Battery className="h-3 w-3" />
-                              <span className="text-xs">{device.battery_level}%</span>
-                            </div>
-                          )}
-                          {device.signal_strength !== undefined && (
-                            <div className="flex items-center space-x-1">
-                              <Signal className="h-3 w-3" />
-                              <span className="text-xs">{device.signal_strength}%</span>
-                            </div>
-                          )}
-                          <div className="flex space-x-1">
-                            <Button variant="outline" size="sm">
-                              <Eye className="h-3 w-3" />
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Settings className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="status" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Live Equipment Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {statusLoading ? (
-                <p className="text-center py-8">Loading status...</p>
-              ) : (equipmentStatus as EquipmentStatus[]).length === 0 ? (
-                <div className="text-center py-8">
-                  <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No equipment status available</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(equipmentStatus as EquipmentStatus[]).map((status) => (
-                    <Card key={status.id}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{status.device_name}</CardTitle>
-                          {getStatusIcon(status.operational_status)}
-                        </div>
-                        <Badge variant={getStatusColor(status.operational_status)} className="w-fit">
-                          {status.operational_status}
-                        </Badge>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                           <div>
-                            <p className="text-muted-foreground">Jobs</p>
-                            <p className="font-medium">{status.current_job_count}</p>
+                            <span className="font-medium">Customer:</span>
+                            <br />
+                            {equipment.location.customerName}
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Pages</p>
-                            <p className="font-medium">{status.total_page_count.toLocaleString()}</p>
+                            <span className="font-medium">Location:</span>
+                            <br />
+                            {equipment.location.floor}
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Errors</p>
-                            <p className="font-medium">{status.error_count}</p>
+                            <span className="font-medium">Serial Number:</span>
+                            <br />
+                            {equipment.serialNumber}
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Uptime</p>
-                            <p className="font-medium">
-                              {status.uptime_percentage ? `${status.uptime_percentage.toFixed(1)}%` : 'N/A'}
-                            </p>
+                            <span className="font-medium">Last Ping:</span>
+                            <br />
+                            {format(equipment.lastPing, 'MMM dd, HH:mm')}
                           </div>
                         </div>
 
-                        {(status.temperature || status.humidity) && (
-                          <div className="border-t pt-3">
-                            <p className="text-sm font-medium mb-2">Environmental</p>
-                            <div className="flex space-x-4 text-sm">
-                              {status.temperature && (
-                                <div className="flex items-center space-x-1">
-                                  <Thermometer className="h-3 w-3" />
-                                  <span>{status.temperature}°C</span>
+                        {/* Performance metrics */}
+                        <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                          <h5 className="font-medium text-blue-800 mb-3">Performance Metrics</h5>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <div className="text-lg font-bold text-blue-700">{equipment.uptime.toFixed(1)}%</div>
+                              <div className="text-blue-600">Uptime</div>
+                              <Progress value={equipment.uptime} className="mt-1 h-2" />
+                            </div>
+                            <div>
+                              <div className="text-lg font-bold text-blue-700">{equipment.performance.utilizationRate}%</div>
+                              <div className="text-blue-600">Utilization</div>
+                              <Progress value={equipment.performance.utilizationRate} className="mt-1 h-2" />
+                            </div>
+                            <div>
+                              <div className="text-lg font-bold text-blue-700">{equipment.performance.efficiency.toFixed(1)}%</div>
+                              <div className="text-blue-600">Efficiency</div>
+                              <Progress value={equipment.performance.efficiency} className="mt-1 h-2" />
+                            </div>
+                            <div>
+                              <div className="text-lg font-bold text-blue-700">{equipment.maintenance.maintenanceScore}</div>
+                              <div className="text-blue-600">Health Score</div>
+                              <Progress value={equipment.maintenance.maintenanceScore} className="mt-1 h-2" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Supply levels */}
+                        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                          <h5 className="font-medium text-gray-800 mb-2">Supply Levels</h5>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            {Object.entries(equipment.currentMetrics.tonerLevels).map(([color, level]) => (
+                              <div key={color} className="space-y-1">
+                                <div className="flex justify-between">
+                                  <span className="capitalize">{color} Toner</span>
+                                  <span className="font-medium">{level}%</span>
                                 </div>
-                              )}
-                              {status.humidity && (
-                                <div className="flex items-center space-x-1">
-                                  <Droplets className="h-3 w-3" />
-                                  <span>{status.humidity}%</span>
+                                <Progress 
+                                  value={level} 
+                                  className={`h-2 ${level < 20 ? 'bg-red-100' : level < 50 ? 'bg-yellow-100' : 'bg-green-100'}`}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 text-sm mt-3">
+                            {Object.entries(equipment.currentMetrics.paperLevels).map(([tray, level]) => (
+                              <div key={tray} className="space-y-1">
+                                <div className="flex justify-between">
+                                  <span className="capitalize">{tray}</span>
+                                  <span className="font-medium">{level}%</span>
+                                </div>
+                                <Progress 
+                                  value={level} 
+                                  className={`h-2 ${level < 20 ? 'bg-red-100' : 'bg-green-100'}`}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Environmental data */}
+                        {equipment.currentMetrics.temperature && (
+                          <div className="bg-green-50 rounded-lg p-3 mb-4">
+                            <h5 className="font-medium text-green-800 mb-2">Environmental Conditions</h5>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Thermometer className="h-4 w-4 text-green-600" />
+                                <span>{equipment.currentMetrics.temperature}°C</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Droplets className="h-4 w-4 text-blue-600" />
+                                <span>{equipment.currentMetrics.humidity}% humidity</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-yellow-600" />
+                                <span>{equipment.environmental.powerConsumption}W</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Battery className="h-4 w-4 text-green-600" />
+                                <span>Rating: {equipment.environmental.energyEfficiency}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Active alerts */}
+                        {equipment.alerts.length > 0 && (
+                          <div className="bg-red-50 rounded-lg p-3 mb-4">
+                            <h5 className="font-medium text-red-800 mb-2">Active Alerts ({equipment.alerts.length})</h5>
+                            <div className="space-y-2">
+                              {equipment.alerts.slice(0, 3).map((alert) => (
+                                <div key={alert.id} className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Badge className={getSeverityColor(alert.severity)}>
+                                        {alert.severity}
+                                      </Badge>
+                                      <span className="text-sm font-medium capitalize">
+                                        {alert.type.replace('_', ' ')}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-red-700">{alert.message}</div>
+                                    <div className="text-xs text-red-600">
+                                      {format(alert.timestamp, 'MMM dd, HH:mm')}
+                                    </div>
+                                  </div>
+                                  {!alert.acknowledged && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleAcknowledgeAlert(alert.id)}
+                                    >
+                                      Acknowledge
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                              {equipment.alerts.length > 3 && (
+                                <div className="text-xs text-red-600">
+                                  +{equipment.alerts.length - 3} more alerts
                                 </div>
                               )}
                             </div>
                           </div>
                         )}
 
-                        {status.toner_levels && (
-                          <div className="border-t pt-3">
-                            <p className="text-sm font-medium mb-2">Toner Levels</p>
-                            <div className="space-y-1">
-                              {Object.entries(status.toner_levels).map(([color, level]: [string, any]) => (
-                                <div key={color} className="flex items-center justify-between text-xs">
-                                  <span className="capitalize">{color}</span>
-                                  <span>{level}%</span>
+                        {/* Predictive maintenance */}
+                        {equipment.maintenance.predictiveAlerts.length > 0 && (
+                          <div className="bg-orange-50 rounded-lg p-3">
+                            <h5 className="font-medium text-orange-800 mb-2">Predictive Maintenance</h5>
+                            <div className="space-y-2">
+                              {equipment.maintenance.predictiveAlerts.map((alert, idx) => (
+                                <div key={idx} className="text-sm">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium text-orange-700">{alert.component}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {alert.condition}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-orange-600">
+                                    {alert.estimatedLife}% life remaining
+                                  </div>
+                                  <div className="text-xs text-orange-700">
+                                    Replace by: {format(alert.nextReplacement, 'MMM dd, yyyy')}
+                                  </div>
+                                  <Progress value={alert.estimatedLife} className="mt-1 h-1" />
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
+                      </div>
+                      
+                      <div className="text-right ml-6">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {equipment.performance.dailyPageCount.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500">Pages today</div>
+                        
+                        <div className="mt-4 space-y-1 text-xs">
+                          <div>Weekly: {equipment.performance.weeklyPageCount.toLocaleString()}</div>
+                          <div>Monthly: {equipment.performance.monthlyPageCount.toLocaleString()}</div>
+                          <div>Avg Job: {equipment.performance.averageJobSize.toFixed(1)} pages</div>
+                        </div>
+                        
+                        <div className="mt-4 text-xs text-gray-600">
+                          <div>Next maintenance:</div>
+                          <div>{format(equipment.maintenance.nextScheduled, 'MMM dd, yyyy')}</div>
+                        </div>
+                      </div>
+                    </div>
 
-                        <p className="text-xs text-muted-foreground">
-                          Updated: {format(new Date(status.status_timestamp), 'HH:mm:ss')}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setSelectedEquipment(equipment.equipmentId)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Details
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Locate
+                      </Button>
+                      {equipment.alerts.length > 0 && (
+                        <Button size="sm">
+                          Resolve Alerts
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="fleet-overview" className="space-y-6">
+          {fleetOverview && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Fleet Status Distribution</CardTitle>
+                    <CardDescription>Equipment status across the fleet</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Object.entries(fleetOverview.statusDistribution).map(([status, count]: [string, any]) => (
+                        <div key={status} className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(status, 'connected')}
+                            <span className="capitalize">{status}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">{count}</span>
+                            <div className="w-20 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${(count / fleetOverview.summary.totalEquipment) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Trends</CardTitle>
+                    <CardDescription>Weekly fleet performance metrics</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={fleetOverview.performanceTrends.weeklyUptime.map((uptime, index) => ({
+                        day: `Day ${index + 1}`,
+                        uptime,
+                        utilization: fleetOverview.performanceTrends.weeklyUtilization[index],
+                        efficiency: fleetOverview.performanceTrends.weeklyEfficiency[index]
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="day" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="uptime" stroke="#8884d8" name="Uptime %" />
+                        <Line type="monotone" dataKey="utilization" stroke="#82ca9d" name="Utilization %" />
+                        <Line type="monotone" dataKey="efficiency" stroke="#ffc658" name="Efficiency %" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Performers</CardTitle>
+                    <CardDescription>Best performing equipment</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {fleetOverview.topPerformers.map((performer: any, idx: number) => (
+                        <div key={performer.equipmentId} className="border rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <div className="font-medium">{performer.model}</div>
+                              <div className="text-sm text-gray-600">{performer.customerName}</div>
+                            </div>
+                            <Badge className="bg-green-100 text-green-800">
+                              #{idx + 1}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <div className="text-gray-600">Uptime</div>
+                              <div className="font-bold">{performer.uptime}%</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-600">Efficiency</div>
+                              <div className="font-bold">{performer.efficiency}%</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-600">Utilization</div>
+                              <div className="font-bold">{performer.utilizationRate}%</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Attention Required</CardTitle>
+                    <CardDescription>Equipment needing immediate attention</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {fleetOverview.attentionRequired.map((equipment: any) => (
+                        <div key={equipment.equipmentId} className="border rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <div className="font-medium">{equipment.model}</div>
+                              <div className="text-sm text-gray-600">{equipment.customerName}</div>
+                            </div>
+                            <Badge className={equipment.priority === 'critical' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'}>
+                              {equipment.priority}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-1 text-sm">
+                            {equipment.issues.map((issue: string, idx: number) => (
+                              <div key={idx} className="text-red-600">• {issue}</div>
+                            ))}
+                          </div>
+                          
+                          <div className="text-xs text-gray-600 mt-2">
+                            Estimated revenue loss: ${equipment.estimatedRevenueLoss.toLocaleString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          {sensorData && selectedEquipment && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sensor Data Analytics</CardTitle>
+                  <CardDescription>Equipment ID: {selectedEquipment}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-medium mb-3">Temperature Trends</h4>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={sensorData.historicalData.temperature}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="timestamp" tickFormatter={(time) => format(new Date(time), 'HH:mm')} />
+                          <YAxis />
+                          <Tooltip labelFormatter={(time) => format(new Date(time), 'MMM dd, HH:mm')} />
+                          <Line type="monotone" dataKey="value" stroke="#ff7c7c" name="Temperature °C" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-3">Power Consumption</h4>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={sensorData.historicalData.powerConsumption}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="timestamp" tickFormatter={(time) => format(new Date(time), 'HH:mm')} />
+                          <YAxis />
+                          <Tooltip labelFormatter={(time) => format(new Date(time), 'MMM dd, HH:mm')} />
+                          <Area type="monotone" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} name="Power (W)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Predictive Insights</CardTitle>
+                  <CardDescription>AI-powered maintenance and supply predictions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <h5 className="font-medium text-blue-800 mb-2">Recommended Actions</h5>
+                      {sensorData.predictions.recommendedActions.map((action: any, idx: number) => (
+                        <div key={idx} className="bg-white rounded p-3 mb-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">{action.action}</div>
+                              <div className="text-sm text-gray-600">Prevents: {action.preventsPotentialIssue}</div>
+                            </div>
+                            <div className="text-right">
+                              <Badge className={action.priority === 'high' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}>
+                                {action.priority}
+                              </Badge>
+                              <div className="text-sm text-gray-600">
+                                Cost: ${action.estimatedCost}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-orange-50 rounded-lg p-4">
+                        <h5 className="font-medium text-orange-800 mb-2">Failure Probability</h5>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Next 7 days:</span>
+                            <span className="font-bold">{sensorData.predictions.probabilityOfFailure.next7Days}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Next 30 days:</span>
+                            <span className="font-bold">{sensorData.predictions.probabilityOfFailure.next30Days}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Next 90 days:</span>
+                            <span className="font-bold">{sensorData.predictions.probabilityOfFailure.next90Days}%</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-green-50 rounded-lg p-4">
+                        <h5 className="font-medium text-green-800 mb-2">Supply Replacements</h5>
+                        <div className="space-y-2 text-sm">
+                          {Object.entries(sensorData.predictions.estimatedTonerReplacementDates).map(([color, date]: [string, any]) => (
+                            <div key={color} className="flex justify-between">
+                              <span className="capitalize">{color}:</span>
+                              <span className="font-bold">{format(new Date(date), 'MMM dd')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+          
+          {!selectedEquipment && (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Select Equipment for Analytics</h3>
+                <p className="text-gray-600">Choose equipment from the status tab to view detailed analytics.</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-6">
-          {/* Alert Filters */}
-          <div className="flex space-x-4">
-            <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Severities</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-                <SelectItem value="error">Error</SelectItem>
-                <SelectItem value="warning">Warning</SelectItem>
-                <SelectItem value="info">Info</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <Card>
             <CardHeader>
-              <CardTitle>Predictive Alerts</CardTitle>
+              <CardTitle>Fleet Alert Summary</CardTitle>
+              <CardDescription>All active alerts across the fleet</CardDescription>
             </CardHeader>
             <CardContent>
-              {alertsLoading ? (
-                <p className="text-center py-8">Loading alerts...</p>
-              ) : (alerts as PredictiveAlert[]).length === 0 ? (
-                <div className="text-center py-8">
-                  <Bell className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No alerts found</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {(alerts as PredictiveAlert[]).map((alert) => (
-                    <div key={alert.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Badge variant={getSeverityColor(alert.severity)}>
-                              {alert.severity}
-                            </Badge>
-                            <Badge variant="outline">
-                              {alert.alert_category}
-                            </Badge>
-                            <Badge variant="outline">
-                              {alert.alert_type.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                          <h3 className="font-medium mb-1">{alert.alert_title}</h3>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {alert.alert_description}
-                          </p>
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <p>Device: {alert.device_name}</p>
-                            <p>Customer: {alert.customer_name}</p>
-                            <p>Created: {format(new Date(alert.created_at), 'MMM dd, yyyy HH:mm')}</p>
-                            {alert.time_to_failure_days && (
-                              <p className="text-orange-600">
-                                Predicted failure in {alert.time_to_failure_days} days
-                              </p>
-                            )}
-                            {alert.failure_probability && (
-                              <p>
-                                Failure probability: {(alert.failure_probability * 100).toFixed(1)}%
-                              </p>
-                            )}
-                            {alert.confidence_score && (
-                              <p>
-                                Confidence: {(alert.confidence_score * 100).toFixed(0)}%
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right space-y-2">
-                          <Badge variant={getStatusColor(alert.alert_status)}>
-                            {alert.alert_status}
+              <div className="space-y-4">
+                {equipmentStatus.flatMap(equipment => 
+                  equipment.alerts.map(alert => ({
+                    ...alert,
+                    equipmentId: equipment.equipmentId,
+                    model: equipment.model,
+                    customerName: equipment.location.customerName
+                  }))
+                )
+                .sort((a, b) => {
+                  const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+                  return severityOrder[a.severity as keyof typeof severityOrder] - severityOrder[b.severity as keyof typeof severityOrder];
+                })
+                .map((alert) => (
+                  <div key={`${alert.equipmentId}-${alert.id}`} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={getSeverityColor(alert.severity)}>
+                            {alert.severity}
                           </Badge>
-                          {alert.business_impact_level && (
-                            <p className="text-xs text-muted-foreground">
-                              Impact: {alert.business_impact_level}
-                            </p>
-                          )}
-                          <div className="flex space-x-1">
-                            <Button variant="outline" size="sm">
-                              <Eye className="h-3 w-3" />
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <CheckCircle className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          <span className="font-medium capitalize">
+                            {alert.type.replace('_', ' ')}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {alert.model} - {alert.customerName}
+                          </span>
+                        </div>
+                        
+                        <div className="text-gray-700 mb-2">{alert.message}</div>
+                        
+                        <div className="text-sm text-gray-600">
+                          <div>Equipment ID: {alert.equipmentId}</div>
+                          <div>Time: {format(alert.timestamp, 'MMM dd, yyyy HH:mm')}</div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Trends</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {trendsLoading ? (
-                <p className="text-center py-8">Loading trends...</p>
-              ) : (trends as PerformanceTrend[]).length === 0 ? (
-                <div className="text-center py-8">
-                  <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No performance trends available</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {(trends as PerformanceTrend[]).map((trend) => (
-                    <div key={trend.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-medium">{trend.device_name}</h3>
-                            {getTrendIcon(trend.performance_trend)}
-                            <Badge variant="outline">
-                              {trend.analysis_type}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <p>
-                              Period: {format(new Date(trend.analysis_period_start), 'MMM dd')} - {format(new Date(trend.analysis_period_end), 'MMM dd, yyyy')}
-                            </p>
-                            <p>Pages Processed: {trend.total_pages_processed.toLocaleString()}</p>
-                            <p>Trend: {trend.performance_trend}</p>
-                            {trend.average_uptime_percentage && (
-                              <p>Uptime: {trend.average_uptime_percentage.toFixed(1)}%</p>
-                            )}
-                            {trend.reliability_score && (
-                              <p>Reliability Score: {(trend.reliability_score * 100).toFixed(0)}%</p>
-                            )}
-                            {trend.peer_performance_percentile && (
-                              <p>vs Peers: {trend.peer_performance_percentile}th percentile</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold">
-                            {trend.performance_trend}
-                          </div>
-                          {trend.failure_risk_score && (
-                            <p className={`text-sm ${
-                              trend.failure_risk_score > 0.7 ? 'text-red-600' :
-                              trend.failure_risk_score > 0.4 ? 'text-orange-600' : 'text-green-600'
-                            }`}>
-                              Risk: {(trend.failure_risk_score * 100).toFixed(0)}%
-                            </p>
-                          )}
-                        </div>
+                      
+                      <div className="flex gap-2">
+                        {!alert.acknowledged && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleAcknowledgeAlert(alert.id)}
+                          >
+                            Acknowledge
+                          </Button>
+                        )}
+                        <Button size="sm">
+                          Resolve
+                        </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    
+                    {alert.acknowledged && (
+                      <div className="mt-2 p-2 bg-green-50 rounded text-sm text-green-700">
+                        Alert acknowledged
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {equipmentStatus.every(eq => eq.alerts.length === 0) && (
+                  <div className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Alerts</h3>
+                    <p className="text-gray-600">All equipment is operating normally.</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

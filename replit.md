@@ -9,6 +9,8 @@ Printyx is a unified SaaS platform designed to consolidate fragmented technology
 
 **Customer Success Management**: Comprehensive customer health scoring with predictive churn analysis, equipment usage analytics with optimization recommendations, satisfaction tracking with NPS scoring, and automated intervention workflows for at-risk accounts.
 
+**Remote Monitoring & IoT Integration**: Real-time equipment monitoring with IoT sensors, predictive maintenance analytics, fleet overview dashboards, automated alert systems, and environmental condition tracking for proactive equipment management and reduced downtime.
+
 ### Business Architecture Clarification
 - **Printyx Clients**: Copier dealers who sign up for Printyx service (managed via tenant system)
 - **Business Records**: The client's customers and leads (businesses that buy/might buy copiers from the dealer)

@@ -33,7 +33,8 @@ import {
   UserPlus,
   Calendar,
   HeartHandshake,
-  CreditCard
+  CreditCard,
+  Wifi
 } from "lucide-react";
 import {
   Select,
@@ -100,6 +101,7 @@ function getNavigationSections(userRole: any) {
         { name: 'Service Dispatch', href: '/service-dispatch', icon: Wrench },
         { name: 'Dispatch Optimization', href: '/service-dispatch-optimization', icon: Target },
         { name: 'Preventive Maintenance', href: '/preventive-maintenance-automation', icon: Settings },
+        { name: 'Remote Monitoring', href: '/remote-monitoring', icon: Wifi },
         { name: 'Mobile Field Service', href: '/mobile-field-service', icon: Smartphone },
         { 
           name: 'Equipment Lifecycle', 

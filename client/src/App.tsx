@@ -69,10 +69,10 @@ import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
 import FinancialForecasting from "@/pages/FinancialForecasting";
 import EquipmentLifecycleManagement from "@/pages/EquipmentLifecycleManagement";
 import CommissionManagement from "@/pages/CommissionManagement";
-import RemoteMonitoring from "@/pages/RemoteMonitoring";
 import MobileServiceApp from "@/pages/MobileServiceApp";
 import ServiceAnalytics from "@/pages/ServiceAnalytics";
 import MobileFieldOperations from "@/pages/MobileFieldOperations";
+import RemoteMonitoring from "@/pages/RemoteMonitoring";
 import DemoScheduling from "@/pages/DemoScheduling";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
@@ -185,6 +185,7 @@ function Router() {
           <Route path="/preventive-maintenance-automation" component={PreventiveMaintenanceAutomation} />
           <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/customer-success" component={CustomerSuccessManagement} />
+          <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
