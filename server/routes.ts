@@ -3009,6 +3009,319 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= ADVANCED BILLING ENGINE ROUTES =============
+
+  // Get billing analytics
+  app.get("/api/billing/analytics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COUNT(*) as total_invoices FROM billing_invoices WHERE tenant_id = $1`,
+        `SELECT COALESCE(SUM(total_amount), 0) as total_revenue FROM billing_invoices WHERE tenant_id = $1 AND status = 'paid'`,
+        `SELECT COALESCE(SUM(balance_due), 0) as outstanding_amount FROM billing_invoices WHERE tenant_id = $1 AND status != 'paid'`,
+        `SELECT COUNT(*) as overdue_invoices FROM billing_invoices WHERE tenant_id = $1 AND status = 'overdue'`,
+        `SELECT COALESCE(AVG(total_amount), 0) as average_invoice_amount FROM billing_invoices WHERE tenant_id = $1`,
+        `SELECT COALESCE(SUM(total_amount), 0) as monthly_recurring FROM billing_invoices WHERE tenant_id = $1 AND billing_period_start >= date_trunc('month', CURRENT_DATE)`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      const totalRevenue = parseFloat(results[1].rows[0].total_revenue);
+      const outstandingAmount = parseFloat(results[2].rows[0].outstanding_amount);
+      const monthlyRecurring = parseFloat(results[5].rows[0].monthly_recurring);
+      
+      res.json({
+        totalInvoices: parseInt(results[0].rows[0].total_invoices),
+        totalRevenue,
+        outstandingAmount,
+        overdueInvoices: parseInt(results[3].rows[0].overdue_invoices),
+        averageInvoiceAmount: parseFloat(results[4].rows[0].average_invoice_amount),
+        collectionRate: totalRevenue > 0 ? (totalRevenue / (totalRevenue + outstandingAmount)) : 0,
+        monthlyRecurringRevenue: monthlyRecurring,
+        annualRecurringRevenue: monthlyRecurring * 12,
+      });
+    } catch (error) {
+      console.error("Error fetching billing analytics:", error);
+      res.status(500).json({ error: "Failed to fetch billing analytics" });
+    }
+  });
+
+  // Get billing invoices
+  app.get("/api/billing/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['bi.tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`bi.status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      const query = `
+        SELECT 
+          bi.*,
+          br.company_name as business_record_name
+        FROM billing_invoices bi
+        LEFT JOIN business_records br ON bi.business_record_id = br.id
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY bi.created_at DESC
+        LIMIT 100
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching billing invoices:", error);
+      res.status(500).json({ error: "Failed to fetch billing invoices" });
+    }
+  });
+
+  // Get billing configurations
+  app.get("/api/billing/configurations", requireAuth, async (req: any, res) => {
+    try {
+      const { type } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      if (type && type !== 'all') {
+        whereConditions.push(`billing_type = $${queryParams.length + 1}`);
+        queryParams.push(type);
+      }
+      
+      const query = `
+        SELECT *
+        FROM billing_configurations
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY is_default DESC, configuration_name
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching billing configurations:", error);
+      res.status(500).json({ error: "Failed to fetch billing configurations" });
+    }
+  });
+
+  // Create billing configuration
+  app.post("/api/billing/configurations", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        configuration_name, billing_type, billing_frequency, billing_day,
+        base_rate, minimum_charge, maximum_charge, overage_rate, setup_fee,
+        maintenance_fee, tax_rate, tax_inclusive, contract_length_months,
+        early_termination_fee, is_default
+      } = req.body;
+      
+      // If setting as default, unset other defaults first
+      if (is_default) {
+        await db.$client.query(
+          'UPDATE billing_configurations SET is_default = false WHERE tenant_id = $1',
+          [tenantId]
+        );
+      }
+      
+      const query = `
+        INSERT INTO billing_configurations (
+          tenant_id, configuration_name, billing_type, billing_frequency, billing_day,
+          base_rate, minimum_charge, maximum_charge, overage_rate, setup_fee,
+          maintenance_fee, tax_rate, tax_inclusive, contract_length_months,
+          early_termination_fee, is_default
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, configuration_name, billing_type, billing_frequency, billing_day,
+        base_rate, minimum_charge, maximum_charge, overage_rate, setup_fee,
+        maintenance_fee, tax_rate, tax_inclusive, contract_length_months,
+        early_termination_fee, is_default
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating billing configuration:", error);
+      res.status(500).json({ error: "Failed to create billing configuration" });
+    }
+  });
+
+  // Get billing cycles
+  app.get("/api/billing/cycles", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM billing_cycles
+        WHERE tenant_id = $1
+        ORDER BY created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching billing cycles:", error);
+      res.status(500).json({ error: "Failed to fetch billing cycles" });
+    }
+  });
+
+  // Run billing cycle
+  app.post("/api/billing/cycles/run", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      // Create a new billing cycle
+      const cycleDate = new Date().toISOString().split('T')[0];
+      const cycleName = `Billing Cycle ${format(new Date(), 'MMM yyyy')}`;
+      
+      const cycleQuery = `
+        INSERT INTO billing_cycles (
+          tenant_id, cycle_name, cycle_date, status, started_at
+        ) VALUES ($1, $2, $3, 'processing', NOW())
+        RETURNING *
+      `;
+      
+      const cycleResult = await db.$client.query(cycleQuery, [
+        tenantId, cycleName, cycleDate
+      ]);
+      
+      const cycle = cycleResult.rows[0];
+      
+      // For demo purposes, create a few sample invoices
+      const sampleInvoices = [
+        {
+          invoice_number: `INV-${Date.now()}-001`,
+          business_record_id: 'adc117e7-611d-426a-b569-6c6c0b32e234',
+          amount: 299.99
+        },
+        {
+          invoice_number: `INV-${Date.now()}-002`,
+          business_record_id: 'adc117e7-611d-426a-b569-6c6c0b32e234',
+          amount: 459.99
+        }
+      ];
+      
+      let totalAmount = 0;
+      let invoicesGenerated = 0;
+      
+      for (const invoice of sampleInvoices) {
+        const invoiceQuery = `
+          INSERT INTO billing_invoices (
+            tenant_id, business_record_id, invoice_number, invoice_date, due_date,
+            billing_period_start, billing_period_end, subtotal, total_amount,
+            balance_due, billing_cycle_id, auto_generated
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+        `;
+        
+        const invoiceDate = new Date();
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+        
+        const periodStart = new Date();
+        periodStart.setMonth(periodStart.getMonth() - 1);
+        const periodEnd = new Date();
+        
+        await db.$client.query(invoiceQuery, [
+          tenantId, invoice.business_record_id, invoice.invoice_number,
+          invoiceDate, dueDate, periodStart, periodEnd,
+          invoice.amount, invoice.amount, invoice.amount, cycle.id
+        ]);
+        
+        totalAmount += invoice.amount;
+        invoicesGenerated++;
+      }
+      
+      // Update billing cycle with results
+      await db.$client.query(`
+        UPDATE billing_cycles 
+        SET status = 'completed', 
+            completed_at = NOW(),
+            total_customers = $1,
+            processed_customers = $2,
+            total_invoices_generated = $3,
+            total_amount = $4
+        WHERE id = $5
+      `, [sampleInvoices.length, sampleInvoices.length, invoicesGenerated, totalAmount, cycle.id]);
+      
+      res.status(201).json({
+        message: "Billing cycle completed successfully",
+        cycle_id: cycle.id,
+        invoices_generated: invoicesGenerated,
+        total_amount: totalAmount
+      });
+    } catch (error) {
+      console.error("Error running billing cycle:", error);
+      res.status(500).json({ error: "Failed to run billing cycle" });
+    }
+  });
+
+  // Get billing adjustments
+  app.get("/api/billing/adjustments", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT 
+          ba.*,
+          u1.name as requested_by_name,
+          u2.name as approved_by_name
+        FROM billing_adjustments ba
+        LEFT JOIN users u1 ON ba.requested_by = u1.id
+        LEFT JOIN users u2 ON ba.approved_by = u2.id
+        WHERE ba.tenant_id = $1
+        ORDER BY ba.created_at DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching billing adjustments:", error);
+      res.status(500).json({ error: "Failed to fetch billing adjustments" });
+    }
+  });
+
+  // Create billing adjustment
+  app.post("/api/billing/adjustments", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        adjustment_type, adjustment_reason, amount, description,
+        invoice_id, business_record_id
+      } = req.body;
+      
+      const query = `
+        INSERT INTO billing_adjustments (
+          tenant_id, adjustment_type, adjustment_reason, amount, description,
+          invoice_id, business_record_id, requested_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, adjustment_type, adjustment_reason, amount, description,
+        invoice_id, business_record_id, userId
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating billing adjustment:", error);
+      res.status(500).json({ error: "Failed to create billing adjustment" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
