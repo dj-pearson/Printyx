@@ -63,6 +63,8 @@ import PrivacyPolicy from "@/pages/legal/PrivacyPolicy";
 import TermsAndConditions from "@/pages/legal/TermsAndConditions";
 import LeadsManagement from "@/pages/LeadsManagement";
 import QuoteProposalGeneration from "@/pages/QuoteProposalGeneration";
+import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceScheduling";
+import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -106,6 +108,8 @@ function Router() {
           <Route path="/data-enrichment" component={DataEnrichment} />
           <Route path="/quickbooks-integration" component={QuickBooksIntegration} />
           <Route path="/quote-proposal-generation" component={QuoteProposalGeneration} />
+          <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
+          <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
