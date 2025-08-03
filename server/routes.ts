@@ -356,13 +356,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: regions.id,
           name: regions.name,
           description: regions.description,
-          managerId: regions.managerId,
-          locationCount: sql<number>`count(${locationTable.id})::int`
+          locationCount: sql<number>`count(${locations.id})::int`
         })
         .from(regions)
-        .leftJoin(locationTable, eq(regions.id, locationTable.regionId))
+        .leftJoin(locations, eq(regions.id, locations.regionId))
         .where(eq(regions.tenantId, tenantId))
-        .groupBy(regions.id, regions.name, regions.description, regions.managerId)
+        .groupBy(regions.id, regions.name, regions.description)
         .orderBy(regions.name);
       
       res.json(tenantRegions);
