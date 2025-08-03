@@ -5693,6 +5693,369 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============= COMMISSION MANAGEMENT ROUTES =============
+
+  // Get commission metrics
+  app.get("/api/commission/metrics", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const queries = [
+        `SELECT COALESCE(SUM(final_payment_amount), 0) as total_paid FROM commission_payments WHERE tenant_id = $1 AND payment_status = 'processed'`,
+        `SELECT COALESCE(SUM(commission_amount), 0) as total_pending FROM commission_transactions WHERE tenant_id = $1 AND payment_status = 'unpaid'`,
+        `SELECT COALESCE(AVG(commission_rate), 0) as avg_rate FROM commission_transactions WHERE tenant_id = $1`,
+        `SELECT COUNT(*) as total_reps FROM sales_representatives WHERE tenant_id = $1 AND employment_status = 'active'`,
+        `SELECT COUNT(*) as transactions_this_month FROM commission_transactions WHERE tenant_id = $1 AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)`,
+        `SELECT COUNT(*) as active_disputes FROM commission_disputes WHERE tenant_id = $1 AND dispute_status IN ('submitted', 'under_review')`
+      ];
+      
+      const results = await Promise.all(
+        queries.map(query => db.$client.query(query, [tenantId]))
+      );
+      
+      res.json({
+        totalCommissionPaid: parseFloat(results[0].rows[0].total_paid),
+        totalCommissionPending: parseFloat(results[1].rows[0].total_pending),
+        averageCommissionRate: parseFloat(results[2].rows[0].avg_rate),
+        totalSalesRepresentatives: parseInt(results[3].rows[0].total_reps),
+        totalTransactionsThisMonth: parseInt(results[4].rows[0].transactions_this_month),
+        totalDisputesActive: parseInt(results[5].rows[0].active_disputes),
+      });
+    } catch (error) {
+      console.error("Error fetching commission metrics:", error);
+      res.status(500).json({ error: "Failed to fetch commission metrics" });
+    }
+  });
+
+  // Get commission structures
+  app.get("/api/commission/structures", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM commission_structures
+        WHERE tenant_id = $1
+        ORDER BY is_active DESC, structure_name ASC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission structures:", error);
+      res.status(500).json({ error: "Failed to fetch commission structures" });
+    }
+  });
+
+  // Create commission structure
+  app.post("/api/commission/structures", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const userId = req.user.id;
+      
+      const {
+        structure_name, structure_type, product_category, base_rate,
+        calculation_period, payment_schedule, effective_start_date,
+        effective_end_date, is_active
+      } = req.body;
+      
+      const query = `
+        INSERT INTO commission_structures (
+          tenant_id, structure_name, structure_type, applies_to,
+          base_rate, calculation_period, payment_schedule,
+          effective_date, expiration_date, is_active,
+          created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, structure_name, structure_type, product_category || 'all',
+        base_rate, calculation_period, payment_schedule,
+        effective_start_date, effective_end_date, is_active, userId
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating commission structure:", error);
+      res.status(500).json({ error: "Failed to create commission structure" });
+    }
+  });
+
+  // Get sales representatives
+  app.get("/api/commission/sales-reps", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM sales_representatives
+        WHERE tenant_id = $1
+        ORDER BY employment_status DESC, rep_name ASC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching sales representatives:", error);
+      res.status(500).json({ error: "Failed to fetch sales representatives" });
+    }
+  });
+
+  // Create sales representative
+  app.post("/api/commission/sales-reps", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        employee_id, rep_name, rep_email, rep_phone, manager_id,
+        primary_commission_structure_id, employment_status
+      } = req.body;
+      
+      const query = `
+        INSERT INTO sales_representatives (
+          tenant_id, employee_id, rep_name, rep_email, rep_phone,
+          manager_id, primary_commission_structure_id, employment_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, employee_id, rep_name, rep_email, rep_phone,
+        manager_id, primary_commission_structure_id, employment_status
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating sales representative:", error);
+      res.status(500).json({ error: "Failed to create sales representative" });
+    }
+  });
+
+  // Get commission transactions
+  app.get("/api/commission/transactions", requireAuth, async (req: any, res) => {
+    try {
+      const { period, status } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      // Add period filter
+      if (period && period !== 'all') {
+        switch (period) {
+          case 'current_month':
+            whereConditions.push(`DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE)`);
+            break;
+          case 'last_month':
+            whereConditions.push(`DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`);
+            break;
+          case 'current_quarter':
+            whereConditions.push(`DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE)`);
+            break;
+          case 'last_quarter':
+            whereConditions.push(`DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '3 months')`);
+            break;
+          case 'current_year':
+            whereConditions.push(`DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE)`);
+            break;
+        }
+      }
+      
+      if (status && status !== 'all') {
+        whereConditions.push(`commission_status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
+      
+      const query = `
+        SELECT *
+        FROM commission_transactions
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY sale_date DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission transactions:", error);
+      res.status(500).json({ error: "Failed to fetch commission transactions" });
+    }
+  });
+
+  // Create commission transaction
+  app.post("/api/commission/transactions", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        transaction_type, sales_rep_id, customer_name, sale_amount,
+        commission_rate, sale_date, product_category
+      } = req.body;
+      
+      // Get sales rep name
+      const repQuery = `SELECT rep_name FROM sales_representatives WHERE id = $1 AND tenant_id = $2`;
+      const repResult = await db.$client.query(repQuery, [sales_rep_id, tenantId]);
+      
+      if (repResult.rows.length === 0) {
+        return res.status(404).json({ error: "Sales representative not found" });
+      }
+      
+      const sales_rep_name = repResult.rows[0].rep_name;
+      const commission_amount = sale_amount * commission_rate;
+      const commission_period = new Date(sale_date).toISOString().slice(0, 7); // YYYY-MM format
+      
+      const query = `
+        INSERT INTO commission_transactions (
+          tenant_id, transaction_type, sales_rep_id, sales_rep_name,
+          customer_name, sale_amount, commission_rate, commission_amount,
+          sale_date, commission_period, product_category
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, transaction_type, sales_rep_id, sales_rep_name,
+        customer_name, sale_amount, commission_rate, commission_amount,
+        sale_date, commission_period, product_category
+      ]);
+      
+      // Update sales rep performance metrics
+      const updateRepQuery = `
+        UPDATE sales_representatives 
+        SET 
+          current_month_sales = current_month_sales + $1,
+          current_quarter_sales = current_quarter_sales + $1,
+          current_year_sales = current_year_sales + $1
+        WHERE id = $2 AND tenant_id = $3
+      `;
+      
+      await db.$client.query(updateRepQuery, [sale_amount, sales_rep_id, tenantId]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating commission transaction:", error);
+      res.status(500).json({ error: "Failed to create commission transaction" });
+    }
+  });
+
+  // Get commission payments
+  app.get("/api/commission/payments", requireAuth, async (req: any, res) => {
+    try {
+      const { period } = req.query;
+      const tenantId = req.user.tenantId;
+      
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
+      
+      // Add period filter
+      if (period && period !== 'all') {
+        switch (period) {
+          case 'current_month':
+            whereConditions.push(`DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE)`);
+            break;
+          case 'last_month':
+            whereConditions.push(`DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`);
+            break;
+          case 'current_quarter':
+            whereConditions.push(`DATE_TRUNC('quarter', payment_date) = DATE_TRUNC('quarter', CURRENT_DATE)`);
+            break;
+          case 'current_year':
+            whereConditions.push(`DATE_TRUNC('year', payment_date) = DATE_TRUNC('year', CURRENT_DATE)`);
+            break;
+        }
+      }
+      
+      const query = `
+        SELECT *
+        FROM commission_payments
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY payment_date DESC
+      `;
+      
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission payments:", error);
+      res.status(500).json({ error: "Failed to fetch commission payments" });
+    }
+  });
+
+  // Get commission disputes
+  app.get("/api/commission/disputes", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const query = `
+        SELECT *
+        FROM commission_disputes
+        WHERE tenant_id = $1
+        ORDER BY 
+          CASE dispute_status 
+            WHEN 'submitted' THEN 1 
+            WHEN 'under_review' THEN 2 
+            ELSE 3 
+          END,
+          CASE priority 
+            WHEN 'urgent' THEN 1 
+            WHEN 'high' THEN 2 
+            WHEN 'medium' THEN 3 
+            ELSE 4 
+          END,
+          submitted_date DESC
+      `;
+      
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching commission disputes:", error);
+      res.status(500).json({ error: "Failed to fetch commission disputes" });
+    }
+  });
+
+  // Create commission dispute
+  app.post("/api/commission/disputes", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      
+      const {
+        dispute_type, sales_rep_id, commission_transaction_id,
+        dispute_amount, dispute_description, priority
+      } = req.body;
+      
+      // Get sales rep name
+      const repQuery = `SELECT rep_name FROM sales_representatives WHERE id = $1 AND tenant_id = $2`;
+      const repResult = await db.$client.query(repQuery, [sales_rep_id, tenantId]);
+      
+      if (repResult.rows.length === 0) {
+        return res.status(404).json({ error: "Sales representative not found" });
+      }
+      
+      const sales_rep_name = repResult.rows[0].rep_name;
+      const dispute_number = `DISP-${Date.now()}`;
+      const submitted_date = new Date().toISOString().split('T')[0];
+      
+      const query = `
+        INSERT INTO commission_disputes (
+          tenant_id, dispute_number, dispute_type, sales_rep_id,
+          sales_rep_name, commission_transaction_id, dispute_amount,
+          dispute_description, priority, submitted_date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *
+      `;
+      
+      const result = await db.$client.query(query, [
+        tenantId, dispute_number, dispute_type, sales_rep_id,
+        sales_rep_name, commission_transaction_id, dispute_amount,
+        dispute_description, priority, submitted_date
+      ]);
+      
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating commission dispute:", error);
+      res.status(500).json({ error: "Failed to create commission dispute" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
