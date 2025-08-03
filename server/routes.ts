@@ -48,6 +48,7 @@ import { registerMobileRoutes } from "./routes-mobile";
 import { registerSalesforceRoutes } from "./routes-salesforce-integration";
 import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
+import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -2488,6 +2489,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register data enrichment routes (ZoomInfo and Apollo.io)
   registerDataEnrichmentRoutes(app);
+  
+  // Register QuickBooks integration routes
+  registerQuickBooksRoutes(app);
   
   // Register Salesforce test routes (development only)
   if (process.env.NODE_ENV === 'development') {

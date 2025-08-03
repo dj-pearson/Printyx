@@ -82,6 +82,37 @@ export type {
   InsertLocationHistory,
 } from "./mobile-service-schema";
 
+// Re-export QuickBooks integration schemas
+export {
+  qbVendors,
+  glAccounts,
+  paymentTerms,
+  paymentMethods,
+  quickbooksIntegrations,
+  vendorBills,
+  insertQbVendorSchema,
+  insertGlAccountSchema,
+  insertPaymentTermSchema,
+  insertPaymentMethodSchema,
+  insertQuickbooksIntegrationSchema,
+  insertVendorBillSchema,
+} from "./quickbooks-schema";
+
+export type {
+  QbVendor,
+  InsertQbVendor,
+  GlAccount,
+  InsertGlAccount,
+  PaymentTerm,
+  InsertPaymentTerm,
+  PaymentMethod,
+  InsertPaymentMethod,
+  QuickbooksIntegration,
+  InsertQuickbooksIntegration,
+  VendorBill,
+  InsertVendorBill,
+} from "./quickbooks-schema";
+
 // Session storage table - required for Replit Auth
 export const sessions = pgTable(
   "sessions",
