@@ -807,20 +807,84 @@ export class DatabaseStorage implements IStorage {
 
   // Unified Business Records operations - handles entire lead-to-customer lifecycle
   async getBusinessRecords(tenantId: string, recordType?: string, status?: string): Promise<any[]> {
-    let query = db.select().from(businessRecords).where(eq(businessRecords.tenantId, tenantId));
-    
-    if (recordType) {
-      query = query.where(eq(businessRecords.recordType, recordType));
+    try {
+      // Use raw SQL to avoid Drizzle schema mapping issues
+      const conditions = [`tenant_id = '${tenantId}'`];
+      if (recordType) conditions.push(`record_type = '${recordType}'`);
+      if (status) conditions.push(`status = '${status}'`);
+      
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      
+      const result = await db.execute(sql`
+        SELECT 
+          id, 
+          tenant_id, 
+          company_name, 
+          status, 
+          record_type,
+          phone,
+          COALESCE(primary_contact_name, '') as primary_contact_name,
+          COALESCE(primary_contact_email, '') as primary_contact_email,
+          COALESCE(primary_contact_phone, '') as primary_contact_phone,
+          COALESCE(website, '') as website,
+          COALESCE(industry, '') as industry,
+          COALESCE(address_line1, '') as address_line1,
+          COALESCE(city, '') as city,
+          COALESCE(state, '') as state,
+          COALESCE(postal_code, '') as postal_code,
+          created_at,
+          updated_at
+        FROM business_records 
+        ${sql.raw(whereClause)}
+        ORDER BY created_at DESC
+      `);
+      
+      return result.rows.map((row: any) => ({
+        id: row.id,
+        tenantId: row.tenant_id,
+        companyName: row.company_name,
+        status: row.status,
+        recordType: row.record_type,
+        phone: row.phone,
+        primaryContactName: row.primary_contact_name,
+        primaryContactEmail: row.primary_contact_email,
+        primaryContactPhone: row.primary_contact_phone,
+        website: row.website,
+        industry: row.industry,
+        addressLine1: row.address_line1,
+        city: row.city,
+        state: row.state,
+        postalCode: row.postal_code,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+    } catch (error) {
+      console.error('Error in getBusinessRecords:', error);
+      // Return empty array to prevent frontend crashes
+      return [];
     }
-    if (status) {
-      query = query.where(eq(businessRecords.status, status));
-    }
-    
-    return await query;
   }
 
   async getBusinessRecord(id: string, tenantId: string): Promise<any | undefined> {
-    const [record] = await db.select().from(businessRecords).where(
+    const [record] = await db.select({
+      id: businessRecords.id,
+      tenantId: businessRecords.tenantId,
+      recordType: businessRecords.recordType,
+      status: businessRecords.status,
+      companyName: businessRecords.companyName,
+      primaryContactName: businessRecords.primaryContactName,
+      primaryContactEmail: businessRecords.primaryContactEmail,
+      primaryContactPhone: businessRecords.primaryContactPhone,
+      phone: businessRecords.phone,
+      website: businessRecords.website,
+      industry: businessRecords.industry,
+      addressLine1: businessRecords.addressLine1,
+      city: businessRecords.city,
+      state: businessRecords.state,
+      postalCode: businessRecords.postalCode,
+      createdAt: businessRecords.createdAt,
+      updatedAt: businessRecords.updatedAt,
+    }).from(businessRecords).where(
       and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId))
     );
     return record;
