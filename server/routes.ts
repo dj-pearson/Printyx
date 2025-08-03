@@ -86,7 +86,7 @@ const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
     req.user = {
       id: req.session.userId,
-      tenantId: req.session.tenantId || "550e8400-e29b-41d4-a716-446655440000"
+      tenantId: req.session.tenantId || req.user?.tenantId
     };
   } else if (!req.user.tenantId && !req.user.id) {
     // If we have user claims but no structured user object, build it
@@ -290,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/auth', authRoutes);
 
   // Tenants route for platform users
-  app.get("/api/tenants", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/tenants", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const user = await storage.getUserWithRole(req.session.userId);
       
@@ -310,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Multi-location support routes for enhanced tenant selector
-  app.get('/api/tenants/:tenantId/locations', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/tenants/:tenantId/locations', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.params;
       const user = await storage.getUserWithRole(req.session.userId);
@@ -345,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/tenants/:tenantId/regions', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/tenants/:tenantId/regions', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.params;
       const user = await storage.getUserWithRole(req.session.userId);
@@ -375,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/tenants/:tenantId/summary', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/tenants/:tenantId/summary', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.params;
       const user = await storage.getUserWithRole(req.session.userId);
@@ -479,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/recent-tickets', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/dashboard/recent-tickets', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -547,18 +547,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lowStockItems = await db
         .select({
           id: inventoryItems.id,
-          name: inventoryItems.name,
-          category: inventoryItems.category,
-          currentStock: inventoryItems.quantity,
-          minThreshold: inventoryItems.minimumQuantity,
-          status: inventoryItems.status
+          name: inventoryItems.itemDescription,
+          category: inventoryItems.itemCategory,
+          currentStock: inventoryItems.quantityOnHand,
+          minThreshold: inventoryItems.reorderPoint,
+          status: sql<string>`'active'`
         })
         .from(inventoryItems)
         .where(and(
           eq(inventoryItems.tenantId, tenantId),
-          sql`${inventoryItems.quantity} <= ${inventoryItems.minimumQuantity}`
+          sql`${inventoryItems.quantityOnHand} <= ${inventoryItems.reorderPoint}`
         ))
-        .orderBy(desc(sql`${inventoryItems.minimumQuantity} - ${inventoryItems.quantity}`))
+        .orderBy(asc(inventoryItems.quantityOnHand))
         .limit(20);
       
       res.json({ lowStock: lowStockItems });
@@ -823,7 +823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Records routes (client's customers/leads)
-  app.get('/api/customers', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/customers', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -838,7 +838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/customers/:id', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/customers/:id', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.user?.tenantId;
@@ -858,7 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/customers', requireAuth, requireAuth, async (req: any, res) => {
+  app.post('/api/customers', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -879,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company management routes (new primary business entity)
-  app.get('/api/companies', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/companies', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const user = req.user as User;
       const tenantId = user.tenantId;
@@ -893,10 +893,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/companies/:id', requireAuth, async (req: any, res) => {
+  app.get('/api/companies/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const company = await storage.getCompany(id, tenantId);
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
@@ -908,7 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/companies', requireAuth, requireAuth, async (req: any, res) => {
+  app.post('/api/companies', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -926,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/companies/:id', requireAuth, requireAuth, async (req: any, res) => {
+  app.put('/api/companies/:id', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.user?.tenantId;
@@ -945,7 +948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company contact routes
-  app.get('/api/companies/:companyId/contacts', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/companies/:companyId/contacts', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { companyId } = req.params;
       const tenantId = req.user?.tenantId;
@@ -960,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/companies/:companyId/contacts', requireAuth, requireAuth, async (req: any, res) => {
+  app.post('/api/companies/:companyId/contacts', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { companyId } = req.params;
       const tenantId = req.user?.tenantId;
@@ -981,9 +984,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lead management routes (potential copier buyers for Printyx clients)
-  app.get('/api/leads', requireAuth, async (req: any, res) => {
+  app.get('/api/leads', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       // Get business records where recordType = 'lead' (potential copier buyers)
       const leads = await storage.getLeads(tenantId);
       res.json(leads);
@@ -993,10 +999,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/leads/:id', requireAuth, async (req: any, res) => {
+  app.get('/api/leads/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const lead = await storage.getLead(id, tenantId);
       if (!lead) {
         return res.status(404).json({ message: "Lead not found" });
@@ -1008,9 +1017,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/leads', requireAuth, async (req: any, res) => {
+  app.post('/api/leads', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertLeadSchema.parse({
         ...req.body,
         tenantId: tenantId,
@@ -1024,10 +1036,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/leads/:id', requireAuth, async (req: any, res) => {
+  app.put('/api/leads/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const updatedLead = await storage.updateLead(id, req.body, tenantId);
       if (!updatedLead) {
         return res.status(404).json({ message: "Lead not found" });
@@ -1040,10 +1055,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Convert lead to customer
-  app.post('/api/leads/:id/convert', requireAuth, async (req: any, res) => {
+  app.post('/api/leads/:id/convert', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const customer = await storage.convertLeadToCustomer(id, tenantId);
       res.json(customer);
     } catch (error) {
@@ -1053,10 +1071,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lead activities
-  app.get('/api/leads/:id/activities', requireAuth, async (req: any, res) => {
+  app.get('/api/leads/:id/activities', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const activities = await storage.getLeadActivities(id, tenantId);
       res.json(activities);
     } catch (error) {
@@ -1065,10 +1086,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/leads/:id/activities', requireAuth, async (req: any, res) => {
+  app.post('/api/leads/:id/activities', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const activityData = { 
         ...req.body, 
         leadId: id, 
@@ -1084,10 +1108,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lead contacts
-  app.get('/api/leads/:id/contacts', requireAuth, async (req: any, res) => {
+  app.get('/api/leads/:id/contacts', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const contacts = await storage.getLeadContacts(id, tenantId);
       res.json(contacts);
     } catch (error) {
@@ -1096,10 +1123,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/leads/:id/contacts', requireAuth, async (req: any, res) => {
+  app.post('/api/leads/:id/contacts', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const contactData = { 
         ...req.body, 
         leadId: id, 
@@ -1114,10 +1144,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lead related records
-  app.get('/api/leads/:id/related-records', requireAuth, async (req: any, res) => {
+  app.get('/api/leads/:id/related-records', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const records = await storage.getLeadRelatedRecords(id, tenantId);
       res.json(records);
     } catch (error) {
@@ -1129,9 +1162,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product Management Routes
   
   // Product Models
-  app.get('/api/product-models', requireAuth, async (req: any, res) => {
+  app.get('/api/product-models', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const models = await storage.getProductModels(tenantId);
       res.json(models);
     } catch (error) {
@@ -1140,10 +1176,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/product-models/:id', requireAuth, async (req: any, res) => {
+  app.get('/api/product-models/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const model = await storage.getProductModel(id, tenantId);
       if (!model) {
         return res.status(404).json({ message: "Product model not found" });
@@ -1155,9 +1194,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/product-models', requireAuth, async (req: any, res) => {
+  app.post('/api/product-models', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertProductModelSchema.parse({ ...req.body, tenantId });
       const model = await storage.createProductModel(validatedData);
       res.json(model);
@@ -1167,10 +1209,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/product-models/:id', requireAuth, async (req: any, res) => {
+  app.patch('/api/product-models/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const model = await storage.updateProductModel(id, req.body, tenantId);
       if (!model) {
         return res.status(404).json({ message: "Product model not found" });
@@ -1183,9 +1228,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Product Accessories
-  app.get('/api/product-accessories', requireAuth, async (req: any, res) => {
+  app.get('/api/product-accessories', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const accessories = await storage.getAllProductAccessories(tenantId);
       res.json(accessories);
     } catch (error) {
@@ -1194,10 +1242,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/product-models/:modelId/accessories', requireAuth, async (req: any, res) => {
+  app.get('/api/product-models/:modelId/accessories', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { modelId } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const accessories = await storage.getProductAccessories(modelId, tenantId);
       res.json(accessories);
     } catch (error) {
@@ -1206,9 +1257,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/product-accessories', requireAuth, async (req: any, res) => {
+  app.post('/api/product-accessories', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertProductAccessorySchema.parse({ 
         ...req.body, 
         tenantId 
@@ -1221,10 +1275,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/product-models/:modelId/accessories', requireAuth, async (req: any, res) => {
+  app.post('/api/product-models/:modelId/accessories', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { modelId } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertProductAccessorySchema.parse({ 
         ...req.body, 
         modelId, 
@@ -1238,10 +1295,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/product-accessories/:id', requireAuth, async (req: any, res) => {
+  app.patch('/api/product-accessories/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const accessory = await storage.updateProductAccessory(id, req.body, tenantId);
       if (!accessory) {
         return res.status(404).json({ message: "Product accessory not found" });
@@ -1254,9 +1314,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Professional Services
-  app.get('/api/professional-services', requireAuth, async (req: any, res) => {
+  app.get('/api/professional-services', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const services = await storage.getAllProfessionalServices(tenantId);
       res.json(services);
     } catch (error) {
@@ -1265,9 +1328,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/professional-services', requireAuth, async (req: any, res) => {
+  app.post('/api/professional-services', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertProfessionalServiceSchema.parse({ 
         ...req.body, 
         tenantId 
@@ -1281,9 +1347,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Service Products
-  app.get('/api/service-products', requireAuth, async (req: any, res) => {
+  app.get('/api/service-products', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const services = await storage.getAllServiceProducts(tenantId);
       res.json(services);
     } catch (error) {
@@ -1292,9 +1361,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/service-products', requireAuth, async (req: any, res) => {
+  app.post('/api/service-products', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertServiceProductSchema.parse({ 
         ...req.body, 
         tenantId 
@@ -1308,9 +1380,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Software Products
-  app.get('/api/software-products', requireAuth, async (req: any, res) => {
+  app.get('/api/software-products', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const products = await storage.getAllSoftwareProducts(tenantId);
       res.json(products);
     } catch (error) {
@@ -1319,9 +1394,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/software-products', requireAuth, async (req: any, res) => {
+  app.post('/api/software-products', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertSoftwareProductSchema.parse({ 
         ...req.body, 
         tenantId 
@@ -1335,9 +1413,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Supplies
-  app.get('/api/supplies', requireAuth, async (req: any, res) => {
+  app.get('/api/supplies', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const supplies = await storage.getAllSupplies(tenantId);
       res.json(supplies);
     } catch (error) {
@@ -1346,9 +1427,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/supplies', requireAuth, async (req: any, res) => {
+  app.post('/api/supplies', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertSupplySchema.parse({ 
         ...req.body, 
         tenantId 
@@ -1362,9 +1446,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Managed Services
-  app.get('/api/managed-services', requireAuth, async (req: any, res) => {
+  app.get('/api/managed-services', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const services = await storage.getAllManagedServices(tenantId);
       res.json(services);
     } catch (error) {
@@ -1373,9 +1460,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/managed-services', requireAuth, async (req: any, res) => {
+  app.post('/api/managed-services', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertManagedServiceSchema.parse({ 
         ...req.body, 
         tenantId 
@@ -1627,7 +1717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company contacts endpoints
-  app.post("/api/companies/:companyId/contacts", requireAuth, async (req: any, res) => {
+  app.post("/api/companies/:companyId/contacts", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { companyId } = req.params;
       const { contacts } = req.body;
@@ -1670,9 +1760,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= METER BILLING API ROUTES =============
   
   // Contract Tiered Rates Management
-  app.get('/api/contract-tiered-rates', requireAuth, async (req: any, res) => {
+  app.get('/api/contract-tiered-rates', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const rates = await storage.getContractTieredRates(tenantId);
       res.json(rates);
     } catch (error) {
@@ -1681,9 +1774,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/contract-tiered-rates', requireAuth, async (req: any, res) => {
+  app.post('/api/contract-tiered-rates', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertContractTieredRateSchema.parse({ 
         ...req.body, 
         tenantId 
@@ -1697,9 +1793,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Automated Invoice Generation
-  app.post('/api/billing/generate-invoices', requireAuth, async (req: any, res) => {
+  app.post('/api/billing/generate-invoices', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       
       // Get all pending meter readings
       const pendingReadings = await storage.getMeterReadingsByStatus(tenantId, 'pending');
@@ -1769,9 +1868,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contract Profitability Analysis
-  app.get('/api/billing/contract-profitability', requireAuth, async (req: any, res) => {
+  app.get('/api/billing/contract-profitability', requireAuth, requireAuth, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       
       const contracts = await storage.getContracts(tenantId);
       const invoices = await storage.getInvoices(tenantId);
@@ -1807,7 +1909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/companies/:companyId/contacts", requireAuth, async (req: any, res) => {
+  app.get("/api/companies/:companyId/contacts", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { companyId } = req.params;
       
@@ -1829,7 +1931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/contacts/:contactId", requireAuth, async (req: any, res) => {
+  app.put("/api/contacts/:contactId", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { contactId } = req.params;
       const contactData = req.body;
@@ -1857,7 +1959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/contacts/:contactId", requireAuth, async (req: any, res) => {
+  app.delete("/api/contacts/:contactId", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { contactId } = req.params;
       
@@ -1882,13 +1984,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CSV Import Endpoints
   
   // Product Models Import
-  app.post('/api/product-models/import', upload.single('file'), requireAuth, async (req: any, res) => {
+  app.post('/api/product-models/import', upload.single('file'), requireAuth, requireAuth, async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const csvData = await parseCSV(req.file.buffer);
       
       let imported = 0;
@@ -1928,13 +2033,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Supplies Import
-  app.post('/api/supplies/import', upload.single('file'), requireAuth, async (req: any, res) => {
+  app.post('/api/supplies/import', upload.single('file'), requireAuth, requireAuth, async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const csvData = await parseCSV(req.file.buffer);
       
       let imported = 0;
@@ -1974,13 +2082,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Managed Services Import
-  app.post('/api/managed-services/import', upload.single('file'), requireAuth, async (req: any, res) => {
+  app.post('/api/managed-services/import', upload.single('file'), requireAuth, requireAuth, async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const csvData = await parseCSV(req.file.buffer);
       
       let imported = 0;
@@ -2020,27 +2131,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Placeholder endpoints for other product types
-  app.post('/api/product-accessories/import', upload.single('file'), requireAuth, async (req: any, res) => {
+  app.post('/api/product-accessories/import', upload.single('file'), requireAuth, requireAuth, async (req: any, res) => {
     res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Product Accessories not yet implemented'] });
   });
 
-  app.post('/api/professional-services/import', upload.single('file'), requireAuth, async (req: any, res) => {
+  app.post('/api/professional-services/import', upload.single('file'), requireAuth, requireAuth, async (req: any, res) => {
     res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Professional Services not yet implemented'] });
   });
 
-  app.post('/api/service-products/import', upload.single('file'), requireAuth, async (req: any, res) => {
+  app.post('/api/service-products/import', upload.single('file'), requireAuth, requireAuth, async (req: any, res) => {
     res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Service Products not yet implemented'] });
   });
 
-  app.post('/api/software-products/import', upload.single('file'), requireAuth, async (req: any, res) => {
+  app.post('/api/software-products/import', upload.single('file'), requireAuth, requireAuth, async (req: any, res) => {
     res.json({ success: false, imported: 0, skipped: 0, errors: ['Import for Software Products not yet implemented'] });
   });
 
   // CPC Rates
-  app.get('/api/product-models/:modelId/cpc-rates', requireAuth, async (req: any, res) => {
+  app.get('/api/product-models/:modelId/cpc-rates', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { modelId } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const rates = await storage.getCpcRates(modelId, tenantId);
       res.json(rates);
     } catch (error) {
@@ -2049,10 +2163,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/product-models/:modelId/cpc-rates', requireAuth, async (req: any, res) => {
+  app.post('/api/product-models/:modelId/cpc-rates', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { modelId } = req.params;
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
       const validatedData = insertCpcRateSchema.parse({ 
         ...req.body, 
         modelId, 
@@ -2075,7 +2192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerMobileRoutes(app);
 
   // Workflow Automation Routes
-  app.get("/api/workflow-rules", requireAuth, async (req: any, res) => {
+  app.get("/api/workflow-rules", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.claims.sub;
       
@@ -2143,7 +2260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/workflow-rules", requireAuth, async (req: any, res) => {
+  app.post("/api/workflow-rules", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.claims.sub;
       const ruleData = {
@@ -2162,7 +2279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/workflow-rules/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/workflow-rules/:id", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -2175,7 +2292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/workflow-rules/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/workflow-rules/:id", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       
@@ -2188,7 +2305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Advanced Reporting Routes
-  app.get("/api/advanced-reports/revenue-analytics", requireAuth, async (req: any, res) => {
+  app.get("/api/advanced-reports/revenue-analytics", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.claims.sub;
       const { startDate, endDate } = req.query;
@@ -2217,7 +2334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/advanced-reports/customer-profitability", requireAuth, async (req: any, res) => {
+  app.get("/api/advanced-reports/customer-profitability", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.claims.sub;
       
@@ -2240,7 +2357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/advanced-reports/service-performance", requireAuth, async (req: any, res) => {
+  app.get("/api/advanced-reports/service-performance", requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.claims.sub;
       
@@ -2274,7 +2391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal Management Routes
   
   // Get all deals with optional filtering
-  app.get("/api/deals", requireAuth, async (req: any, res) => {
+  app.get("/api/deals", requireAuth, requireAuth, async (req: any, res) => {
     // Simple session-based authentication check
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -2297,7 +2414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single deal
-  app.get("/api/deals/:id", requireAuth, async (req: any, res) => {
+  app.get("/api/deals/:id", requireAuth, requireAuth, async (req: any, res) => {
     try {
       // Simple session-based authentication check
       if (!req.session.userId) {
@@ -2325,7 +2442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new deal
-  app.post("/api/deals", requireAuth, async (req: any, res) => {
+  app.post("/api/deals", requireAuth, requireAuth, async (req: any, res) => {
     try {
       // Simple session-based authentication check
       if (!req.session.userId) {
@@ -2413,7 +2530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update deal
-  app.put("/api/deals/:id", requireAuth, requireAuth, async (req: any, res) => {
+  app.put("/api/deals/:id", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -2431,7 +2548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update deal stage (for drag and drop)
-  app.put("/api/deals/:id/stage", requireAuth, requireAuth, async (req: any, res) => {
+  app.put("/api/deals/:id/stage", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -2452,7 +2569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal Stages Routes
   
   // Get all deal stages for tenant
-  app.get("/api/deal-stages", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/deal-stages", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -2465,7 +2582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create deal stage
-  app.post("/api/deal-stages", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/deal-stages", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -2483,7 +2600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize default deal stages for a tenant (called on first access)
-  app.post("/api/deal-stages/initialize", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/deal-stages/initialize", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -2525,7 +2642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal Activities Routes
   
   // Get activities for a deal
-  app.get("/api/deals/:id/activities", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/deals/:id/activities", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -2539,7 +2656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create deal activity
-  app.post("/api/deals/:id/activities", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/deals/:id/activities", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -2600,7 +2717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerMobileRoutes(app);
 
   // Performance monitoring routes
-  app.get('/api/performance/metrics', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/performance/metrics', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.session?.tenantId;
       const metrics = await storage.getPerformanceMetrics(tenantId);
@@ -2611,7 +2728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/performance/alerts', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/performance/alerts', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.session?.tenantId;
       const alerts = await storage.getSystemAlerts(tenantId);
@@ -2631,7 +2748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/pricing/products/:id', requireAuth, deleteProductPricing);
   
   // Products with pricing information
-  app.get('/api/products/with-pricing', requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/products/with-pricing', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.user;
       
@@ -2680,7 +2797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk update pricing
-  app.post('/api/pricing/products/bulk-update', requireAuth, requireAuth, async (req: any, res) => {
+  app.post('/api/pricing/products/bulk-update', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.user;
       const { updates } = req.body;
@@ -2804,7 +2921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
   
   // Get maintenance schedules
-  app.get("/api/maintenance/schedules", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/maintenance/schedules", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { status, equipmentId, customerId, priority } = req.query;
       const tenantId = req.user.tenantId;
@@ -2852,7 +2969,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get due schedules (upcoming or overdue)
-  app.get("/api/maintenance/schedules/due", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/maintenance/schedules/due", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { days = 7 } = req.query;
       const tenantId = req.user.tenantId;
@@ -2889,7 +3006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create maintenance schedule
-  app.post("/api/maintenance/schedules", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/maintenance/schedules", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const createdBy = req.user.id;
@@ -2936,7 +3053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics endpoint
-  app.get("/api/maintenance/analytics/overview", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/maintenance/analytics/overview", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -2970,7 +3087,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= CUSTOMER SELF-SERVICE PORTAL ROUTES =============
 
   // Get customer service requests
-  app.get("/api/customer-portal/service-requests", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/customer-portal/service-requests", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -2993,7 +3110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create service request
-  app.post("/api/customer-portal/service-requests", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/customer-portal/service-requests", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -3032,7 +3149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get customer equipment
-  app.get("/api/customer-portal/equipment", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/customer-portal/equipment", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3052,7 +3169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get supply orders
-  app.get("/api/customer-portal/supply-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/customer-portal/supply-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3072,7 +3189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get knowledge base articles
-  app.get("/api/customer-portal/knowledge-base", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/customer-portal/knowledge-base", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { search, category } = req.query;
@@ -3109,7 +3226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= ADVANCED BILLING ENGINE ROUTES =============
 
   // Get billing analytics
-  app.get("/api/billing/analytics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/billing/analytics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3147,7 +3264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get billing invoices
-  app.get("/api/billing/invoices", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/billing/invoices", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { status } = req.query;
       const tenantId = req.user.tenantId;
@@ -3180,7 +3297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get billing configurations
-  app.get("/api/billing/configurations", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/billing/configurations", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { type } = req.query;
       const tenantId = req.user.tenantId;
@@ -3209,7 +3326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create billing configuration
-  app.post("/api/billing/configurations", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/billing/configurations", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3253,7 +3370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get billing cycles
-  app.get("/api/billing/cycles", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/billing/cycles", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3273,7 +3390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Run billing cycle
-  app.post("/api/billing/cycles/run", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/billing/cycles/run", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -3364,7 +3481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get billing adjustments
-  app.get("/api/billing/adjustments", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/billing/adjustments", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3389,7 +3506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create billing adjustment
-  app.post("/api/billing/adjustments", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/billing/adjustments", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -3422,7 +3539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= FINANCIAL FORECASTING ROUTES =============
 
   // Get financial metrics
-  app.get("/api/financial/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/financial/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3452,7 +3569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get financial forecasts
-  app.get("/api/financial/forecasts", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/financial/forecasts", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { type } = req.query;
       const tenantId = req.user.tenantId;
@@ -3481,7 +3598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create financial forecast
-  app.post("/api/financial/forecasts", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/financial/forecasts", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -3517,7 +3634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get cash flow projections
-  app.get("/api/financial/cash-flow", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/financial/cash-flow", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3537,7 +3654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create cash flow projection
-  app.post("/api/financial/cash-flow", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/financial/cash-flow", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -3583,7 +3700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get profitability analysis
-  app.get("/api/financial/profitability", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/financial/profitability", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { type } = req.query;
       const tenantId = req.user.tenantId;
@@ -3612,7 +3729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Run profitability analysis
-  app.post("/api/financial/profitability/run", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/financial/profitability/run", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -3677,7 +3794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get financial KPIs
-  app.get("/api/financial/kpis", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/financial/kpis", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3699,7 +3816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= EQUIPMENT LIFECYCLE MANAGEMENT ROUTES =============
 
   // Get equipment lifecycle metrics
-  app.get("/api/equipment-lifecycle/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/equipment-lifecycle/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3731,7 +3848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get equipment lifecycle stages
-  app.get("/api/equipment-lifecycle/stages", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/equipment-lifecycle/stages", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { stage, status } = req.query;
       const tenantId = req.user.tenantId;
@@ -3770,7 +3887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get purchase orders
-  app.get("/api/equipment-lifecycle/purchase-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/equipment-lifecycle/purchase-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3794,7 +3911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create purchase order
-  app.post("/api/equipment-lifecycle/purchase-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/equipment-lifecycle/purchase-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -3860,7 +3977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get delivery schedules
-  app.get("/api/equipment-lifecycle/deliveries", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/equipment-lifecycle/deliveries", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3880,7 +3997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create delivery schedule
-  app.post("/api/equipment-lifecycle/deliveries", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/equipment-lifecycle/deliveries", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3917,7 +4034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get installations
-  app.get("/api/equipment-lifecycle/installations", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/equipment-lifecycle/installations", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3943,7 +4060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create installation
-  app.post("/api/equipment-lifecycle/installations", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/equipment-lifecycle/installations", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -3979,7 +4096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get asset tracking
-  app.get("/api/equipment-lifecycle/assets", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/equipment-lifecycle/assets", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4004,7 +4121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= COMMISSION MANAGEMENT ROUTES =============
 
   // Get commission metrics
-  app.get("/api/commission/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4036,7 +4153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission structures
-  app.get("/api/commission/structures", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/structures", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4056,7 +4173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create commission structure
-  app.post("/api/commission/structures", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/structures", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -4089,7 +4206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission calculations
-  app.get("/api/commission/calculations", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/calculations", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { period, status } = req.query;
       const tenantId = req.user.tenantId;
@@ -4137,7 +4254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Run commission calculations
-  app.post("/api/commission/calculations/run", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/calculations/run", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -4208,7 +4325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get sales quotas
-  app.get("/api/commission/quotas", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/quotas", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4231,7 +4348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create sales quota
-  app.post("/api/commission/quotas", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/quotas", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -4264,7 +4381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission payments
-  app.get("/api/commission/payments", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/payments", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4287,7 +4404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission disputes
-  app.get("/api/commission/disputes", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/disputes", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4310,7 +4427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create commission dispute
-  app.post("/api/commission/disputes", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/disputes", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4347,7 +4464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= REMOTE MONITORING ROUTES =============
 
   // Get monitoring metrics
-  app.get("/api/monitoring/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/monitoring/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4379,7 +4496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get IoT devices
-  app.get("/api/monitoring/devices", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/monitoring/devices", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { type, status } = req.query;
       const tenantId = req.user.tenantId;
@@ -4416,7 +4533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Register IoT device
-  app.post("/api/monitoring/devices", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/monitoring/devices", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4453,7 +4570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get equipment status
-  app.get("/api/monitoring/equipment-status", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/monitoring/equipment-status", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4476,7 +4593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get predictive alerts
-  app.get("/api/monitoring/alerts", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/monitoring/alerts", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { severity } = req.query;
       const tenantId = req.user.tenantId;
@@ -4510,7 +4627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get performance trends
-  app.get("/api/monitoring/trends", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/monitoring/trends", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4533,7 +4650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sync devices (simulate data collection)
-  app.post("/api/monitoring/sync", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/monitoring/sync", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4588,7 +4705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= MOBILE SERVICE APP ROUTES =============
 
   // Get mobile app metrics
-  app.get("/api/mobile/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4620,7 +4737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get mobile work orders
-  app.get("/api/mobile/work-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile/work-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { status, priority, technician } = req.query;
       const tenantId = req.user.tenantId;
@@ -4664,7 +4781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create mobile work order
-  app.post("/api/mobile/work-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/mobile/work-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4701,7 +4818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get mobile parts inventory
-  app.get("/api/mobile/parts-inventory", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile/parts-inventory", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4721,7 +4838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get mobile field orders
-  app.get("/api/mobile/field-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile/field-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4745,7 +4862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create mobile field order
-  app.post("/api/mobile/field-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/mobile/field-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4787,7 +4904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get technician locations
-  app.get("/api/mobile/technician-locations", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile/technician-locations", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4814,7 +4931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get mobile app sessions
-  app.get("/api/mobile/app-sessions", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile/app-sessions", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4837,7 +4954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sync mobile data
-  app.post("/api/mobile/sync", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/mobile/sync", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4881,7 +4998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= SERVICE ANALYTICS ROUTES =============
 
   // Get analytics metrics
-  app.get("/api/analytics/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4913,7 +5030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get performance metrics
-  app.get("/api/analytics/performance-metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/performance-metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { period } = req.query;
       const tenantId = req.user.tenantId;
@@ -4943,7 +5060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get technician performance analytics
-  app.get("/api/analytics/technician-performance", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/technician-performance", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4966,7 +5083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get customer service analytics
-  app.get("/api/analytics/customer-service", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/customer-service", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -4989,7 +5106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get trend analysis
-  app.get("/api/analytics/trends", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/trends", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { category } = req.query;
       const tenantId = req.user.tenantId;
@@ -5019,7 +5136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get BI dashboards
-  app.get("/api/analytics/dashboards", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/dashboards", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { category } = req.query;
       const tenantId = req.user.tenantId;
@@ -5051,7 +5168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create BI dashboard
-  app.post("/api/analytics/dashboards", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/analytics/dashboards", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -5089,7 +5206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get performance benchmarks
-  app.get("/api/analytics/benchmarks", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/benchmarks", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5109,7 +5226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create performance benchmark
-  app.post("/api/analytics/benchmarks", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/analytics/benchmarks", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5141,7 +5258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate analytics reports
-  app.post("/api/analytics/generate-reports", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/analytics/generate-reports", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5198,7 +5315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= WORKFLOW AUTOMATION ROUTES =============
 
   // Get automation metrics
-  app.get("/api/automation/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/automation/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5230,7 +5347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get workflow templates
-  app.get("/api/automation/workflow-templates", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/automation/workflow-templates", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { category } = req.query;
       const tenantId = req.user.tenantId;
@@ -5259,7 +5376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create workflow template
-  app.post("/api/automation/workflow-templates", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/automation/workflow-templates", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -5307,7 +5424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Execute workflow template
-  app.post("/api/automation/workflow-templates/:id/execute", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/automation/workflow-templates/:id/execute", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.user.tenantId;
@@ -5347,7 +5464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get workflow executions
-  app.get("/api/automation/workflow-executions", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/automation/workflow-executions", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { status } = req.query;
       const tenantId = req.user.tenantId;
@@ -5379,7 +5496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Control workflow execution
-  app.post("/api/automation/workflow-executions/:id/:action", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/automation/workflow-executions/:id/:action", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id, action } = req.params;
       const tenantId = req.user.tenantId;
@@ -5429,7 +5546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get automation rules
-  app.get("/api/automation/rules", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/automation/rules", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5449,7 +5566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create automation rule
-  app.post("/api/automation/rules", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/automation/rules", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -5488,7 +5605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get automated tasks
-  app.get("/api/automation/tasks", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/automation/tasks", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { priority } = req.query;
       const tenantId = req.user.tenantId;
@@ -5517,7 +5634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create automated task
-  app.post("/api/automation/tasks", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/automation/tasks", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5551,7 +5668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= MOBILE FIELD OPERATIONS ROUTES =============
 
   // Get mobile field metrics
-  app.get("/api/mobile-field/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile-field/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5583,7 +5700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get field technicians
-  app.get("/api/mobile-field/technicians", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile-field/technicians", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5603,7 +5720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create field technician
-  app.post("/api/mobile-field/technicians", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/mobile-field/technicians", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5641,7 +5758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get field work orders
-  app.get("/api/mobile-field/work-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile-field/work-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { status, technician, priority } = req.query;
       const tenantId = req.user.tenantId;
@@ -5688,7 +5805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create field work order
-  app.post("/api/mobile-field/work-orders", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/mobile-field/work-orders", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5732,7 +5849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get voice notes
-  app.get("/api/mobile-field/voice-notes", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/mobile-field/voice-notes", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5753,7 +5870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create voice note
-  app.post("/api/mobile-field/voice-notes", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/mobile-field/voice-notes", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -5794,7 +5911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= COMMISSION MANAGEMENT ROUTES =============
 
   // Get commission metrics
-  app.get("/api/commission/metrics", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/metrics", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5826,7 +5943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission structures
-  app.get("/api/commission/structures", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/structures", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5846,7 +5963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create commission structure
-  app.post("/api/commission/structures", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/structures", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.id;
@@ -5881,7 +5998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get sales representatives
-  app.get("/api/commission/sales-reps", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/sales-reps", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5901,7 +6018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create sales representative
-  app.post("/api/commission/sales-reps", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/sales-reps", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -5931,7 +6048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission transactions
-  app.get("/api/commission/transactions", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/transactions", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { period, status } = req.query;
       const tenantId = req.user.tenantId;
@@ -5981,7 +6098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create commission transaction
-  app.post("/api/commission/transactions", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/transactions", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -6037,7 +6154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission payments
-  app.get("/api/commission/payments", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/payments", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { period } = req.query;
       const tenantId = req.user.tenantId;
@@ -6079,7 +6196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commission disputes
-  app.get("/api/commission/disputes", requireAuth, requireAuth, async (req: any, res) => {
+  app.get("/api/commission/disputes", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
@@ -6111,7 +6228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create commission dispute
-  app.post("/api/commission/disputes", requireAuth, requireAuth, async (req: any, res) => {
+  app.post("/api/commission/disputes", requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
