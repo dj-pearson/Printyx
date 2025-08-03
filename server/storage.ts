@@ -762,47 +762,72 @@ export class DatabaseStorage implements IStorage {
   // Lead operations (simplified pipeline tracking)
   // Lead-specific operations (filtered views of business records)
   async getLeads(tenantId: string): Promise<any[]> {
-    return await db.select().from(businessRecords).where(
-      and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'lead')
-      )
-    );
+    try {
+      // Use raw SQL to avoid Drizzle schema mapping issues
+      const result = await db.execute(sql`
+        SELECT * FROM business_records 
+        WHERE tenant_id = ${tenantId} AND record_type = 'lead'
+        ORDER BY created_at DESC
+      `);
+      return result.rows;
+    } catch (error) {
+      console.error('Error in getLeads:', error);
+      return [];
+    }
   }
 
   // Customer-specific operations (filtered views of business records)
   async getCustomers(tenantId: string, includeInactive: boolean = false): Promise<any[]> {
-    const conditions = [
-      eq(businessRecords.tenantId, tenantId),
-      eq(businessRecords.recordType, 'customer')
-    ];
-    
-    if (!includeInactive) {
-      conditions.push(eq(businessRecords.status, 'active'));
+    try {
+      // Use raw SQL to avoid Drizzle schema mapping issues
+      if (!includeInactive) {
+        const result = await db.execute(sql`
+          SELECT * FROM business_records 
+          WHERE tenant_id = ${tenantId} AND record_type = 'customer' AND status = 'active'
+          ORDER BY created_at DESC
+        `);
+        return result.rows;
+      } else {
+        const result = await db.execute(sql`
+          SELECT * FROM business_records 
+          WHERE tenant_id = ${tenantId} AND record_type = 'customer'
+          ORDER BY created_at DESC
+        `);
+        return result.rows;
+      }
+    } catch (error) {
+      console.error('Error in getCustomers:', error);
+      return [];
     }
-    
-    return await db.select().from(businessRecords).where(and(...conditions));
   }
 
   async getCustomer(id: string, tenantId: string): Promise<any | undefined> {
-    const [customer] = await db.select().from(businessRecords).where(
-      and(
-        eq(businessRecords.id, id), 
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'customer')
-      )
-    );
-    return customer;
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM business_records 
+        WHERE id = ${id} AND tenant_id = ${tenantId} AND record_type = 'customer'
+        LIMIT 1
+      `);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error in getCustomer:', error);
+      return undefined;
+    }
   }
 
   // Former customers for reporting and reactivation
   async getFormerCustomers(tenantId: string): Promise<any[]> {
-    return await db.select().from(businessRecords).where(
-      and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'former_customer')
-      )
-    );
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM business_records 
+        WHERE tenant_id = ${tenantId} AND record_type = 'former_customer'
+        ORDER BY created_at DESC
+      `);
+      return result.rows;
+    } catch (error) {
+      console.error('Error in getFormerCustomers:', error);
+      return [];
+    }
   }
 
   // Unified Business Records operations - handles entire lead-to-customer lifecycle
