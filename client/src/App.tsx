@@ -124,6 +124,7 @@ function Router() {
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/mobile-service" component={MobileServiceApp} />
           <Route path="/service-analytics" component={ServiceAnalytics} />
+          <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
