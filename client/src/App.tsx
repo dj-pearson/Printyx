@@ -75,6 +75,7 @@ import ServiceAnalytics from "@/pages/ServiceAnalytics";
 import MobileFieldOperations from "@/pages/MobileFieldOperations";
 import DemoScheduling from "@/pages/DemoScheduling";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
+import ESignatureIntegration from "@/pages/ESignatureIntegration";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -176,6 +177,7 @@ function Router() {
           <Route path="/settings" component={Settings} />
           <Route path="/demo-scheduling" component={DemoScheduling} />
           <Route path="/sales-pipeline-forecasting" component={SalesPipelineForecasting} />
+          <Route path="/esignature-integration" component={ESignatureIntegration} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
