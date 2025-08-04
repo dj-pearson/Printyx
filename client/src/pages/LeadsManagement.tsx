@@ -417,7 +417,7 @@ export default function LeadsManagement() {
 
   // Handle lead row click to navigate to detail page
   const handleLeadClick = (leadId: string) => {
-    setLocation(`/lead-detail/${leadId}`);
+    setLocation(`/leads/${leadId}`);
   };
 
   // Render table cell content based on column type
