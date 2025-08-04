@@ -51,7 +51,6 @@ import {
   Eye,
   Phone,
   MessageSquare,
-  Tool,
   Activity,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -601,7 +600,7 @@ export function CustomerServiceHistory({
                                   View Details
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
-                                  <Tool className="mr-2 h-4 w-4" />
+                                  <Wrench className="mr-2 h-4 w-4" />
                                   View Resolution
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
