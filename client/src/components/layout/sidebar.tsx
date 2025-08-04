@@ -174,6 +174,7 @@ function getNavigationSections(userRole: any) {
         { name: 'Integration Hub', href: '/integration-hub', icon: Network },
         { name: 'Workflow Automation', href: '/workflow-automation', icon: Zap },
         { name: 'Predictive Analytics', href: '/predictive-analytics', icon: TrendingUp },
+        { name: 'ERP Integration', href: '/erp-integration', icon: Network },
         { name: 'Multi-Tenant Setup', href: '/tenant-setup', icon: Building2 },
         { name: 'System Settings', href: '/settings', icon: Shield },
       ]

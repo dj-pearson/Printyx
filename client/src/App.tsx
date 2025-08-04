@@ -87,6 +87,7 @@ import AIAnalyticsDashboard from "@/pages/AIAnalyticsDashboard";
 import IntegrationHub from "@/pages/IntegrationHub";
 import WorkflowAutomation from "@/pages/WorkflowAutomation";
 import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
+import ERPIntegration from "@/pages/ERPIntegration";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -204,6 +205,7 @@ function Router() {
           <Route path="/integration-hub" component={IntegrationHub} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route path="/predictive-analytics" component={PredictiveAnalytics} />
+          <Route path="/erp-integration" component={ERPIntegration} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
