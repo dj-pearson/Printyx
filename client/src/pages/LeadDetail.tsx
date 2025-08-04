@@ -289,113 +289,126 @@ export default function LeadDetailHubspot() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto">
-        {/* HubSpot-style Header */}
-        <div className="flex items-center justify-between mb-6 bg-white p-6 rounded-lg shadow-sm border">
-          <div className="flex items-center space-x-4">
+        {/* Mobile-Optimized Header */}
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border mb-6">
+          {/* Top Row: Back Button and Edit Button */}
+          <div className="flex items-center justify-between mb-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation("/leads-management")}
+              className="px-2 sm:px-3"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Leads
+              <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Back to Leads</span>
+              <span className="sm:hidden">Back</span>
             </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex items-center space-x-3">
-              <Avatar className="h-12 w-12">
-                <AvatarFallback className="bg-blue-100 text-blue-600 text-lg font-semibold">
-                  {lead.companyName?.[0] || "L"}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  {lead.companyName || "Unnamed Lead"}
-                </h1>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Badge
-                    variant={
-                      lead.status === "qualified" ? "default" : "secondary"
-                    }
-                  >
-                    {lead.status || "New"}
-                  </Badge>
-                  <span>•</span>
-                  <span>Lead score: {lead.leadScore || 0}</span>
-                  <span>•</span>
-                  <span>
-                    Created{" "}
-                    {lead.createdAt
-                      ? format(new Date(lead.createdAt), "MMM d, yyyy")
-                      : "Recently"}
-                  </span>
-                </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+              className="px-2 sm:px-3"
+            >
+              <Edit className="h-4 w-4 mr-1 sm:mr-2" />
+              {isEditing ? "Cancel" : "Edit"}
+            </Button>
+          </div>
+
+          {/* Company Info */}
+          <div className="flex items-start space-x-3 mb-4">
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+              <AvatarFallback className="bg-blue-100 text-blue-600 text-base sm:text-lg font-semibold">
+                {lead.companyName?.[0] || "L"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg sm:text-2xl font-semibold text-gray-900 truncate">
+                {lead.companyName || "Unnamed Lead"}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
+                <Badge
+                  variant={
+                    lead.status === "qualified" ? "default" : "secondary"
+                  }
+                  className="text-xs"
+                >
+                  {lead.status || "New"}
+                </Badge>
+                <span className="hidden sm:inline">•</span>
+                <span>Lead score: {lead.leadScore || 0}</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="hidden sm:inline">
+                  Created{" "}
+                  {lead.createdAt
+                    ? format(new Date(lead.createdAt), "MMM d, yyyy")
+                    : "Recently"}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* Action Buttons - Mobile Grid Layout */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, call: true }))}
+              className="justify-center sm:justify-start"
             >
-              <PhoneCall className="h-4 w-4 mr-2" />
+              <PhoneCall className="h-4 w-4 mr-1 sm:mr-2" />
               Call
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, email: true }))}
+              className="justify-center sm:justify-start"
             >
-              <Mail className="h-4 w-4 mr-2" />
+              <Mail className="h-4 w-4 mr-1 sm:mr-2" />
               Email
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, meeting: true }))}
+              className="justify-center sm:justify-start"
             >
-              <Calendar className="h-4 w-4 mr-2" />
+              <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
               Meeting
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, note: true }))}
+              className="justify-center sm:justify-start"
             >
-              <FileText className="h-4 w-4 mr-2" />
+              <FileText className="h-4 w-4 mr-1 sm:mr-2" />
               Note
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, task: true }))}
+              className="justify-center sm:justify-start"
             >
-              <CheckSquare className="h-4 w-4 mr-2" />
+              <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
               Task
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              {isEditing ? "Cancel" : "Edit"}
             </Button>
             {isEditing && (
               <Button
                 size="sm"
                 onClick={handleSave}
                 disabled={updateMutation.isPending}
+                className="col-span-2 sm:col-span-1 justify-center sm:justify-start"
               >
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4 mr-1 sm:mr-2" />
                 Save Changes
               </Button>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Left Column - Main Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Lead Management Tabs */}
@@ -408,35 +421,35 @@ export default function LeadDetailHubspot() {
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <BookOpen className="h-4 w-4" />
-                      <span className="hidden sm:inline">Overview</span>
+                      <span>Overview</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="activities"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Activity className="h-4 w-4" />
-                      <span className="hidden sm:inline">Activities</span>
+                      <span>Activities</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="contacts"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Users className="h-4 w-4" />
-                      <span className="hidden sm:inline">Contacts</span>
+                      <span>Contacts</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="deals"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Target className="h-4 w-4" />
-                      <span className="hidden sm:inline">Deals</span>
+                      <span>Deals</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="proposals"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <FileCheck className="h-4 w-4" />
-                      <span className="hidden sm:inline">Proposals</span>
+                      <span>Proposals</span>
                     </TabsTrigger>
                   </div>
                 </TabsList>
@@ -464,7 +477,7 @@ export default function LeadDetailHubspot() {
 
                   {expandedSections.company && (
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div>
                           <Label htmlFor="companyName">Company Name *</Label>
                           {isEditing ? (
