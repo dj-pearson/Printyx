@@ -85,102 +85,60 @@ export default function RootAdminDashboard() {
   const queryClient = useQueryClient();
   const [selectedTimeRange, setSelectedTimeRange] = useState("24h");
   
-  // Mock data for demonstration
-  const systemOverview: SystemOverview = {
-    totalTenants: 47,
-    activeTenants: 43,
-    totalUsers: 1247,
-    activeUsers: 892,
-    systemUptime: 99.97,
-    criticalAlerts: 2,
-    pendingActions: 5,
-    systemHealth: 'healthy'
+  // Fetch real system overview data
+  const { data: systemOverview, isLoading: overviewLoading } = useQuery({
+    queryKey: ["/api/root-admin/overview"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch real tenant metrics
+  const { data: tenantMetrics, isLoading: tenantsLoading } = useQuery({
+    queryKey: ["/api/root-admin/tenants"],
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Fetch real security alerts
+  const { data: securityAlerts, isLoading: alertsLoading } = useQuery({
+    queryKey: ["/api/root-admin/security-alerts"],
+    refetchInterval: 15000, // Refresh every 15 seconds
+  });
+
+  // Fetch real system resources
+  const { data: systemResources, isLoading: resourcesLoading } = useQuery({
+    queryKey: ["/api/root-admin/system-resources"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Loading states
+  if (overviewLoading) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="text-center py-12">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p>Loading Root Admin Dashboard...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Default values for when data is loading or unavailable
+  const defaultOverview = {
+    totalTenants: 0,
+    activeTenants: 0,
+    totalUsers: 0,
+    activeUsers: 0,
+    systemUptime: 0,
+    criticalAlerts: 0,
+    pendingActions: 0,
+    systemHealth: 'unknown' as const
   };
 
-  const tenantMetrics: TenantMetrics[] = [
-    {
-      id: "tenant-001",
-      name: "Ace Copy Solutions",
-      userCount: 25,
-      status: "active",
-      subscription: "Enterprise",
-      lastActivity: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      storageUsed: 15.6,
-      apiCalls: 12450,
-      billingStatus: "current"
-    },
-    {
-      id: "tenant-002",
-      name: "PrintMax Industries",
-      userCount: 18,
-      status: "active",
-      subscription: "Professional",
-      lastActivity: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      storageUsed: 8.2,
-      apiCalls: 8930,
-      billingStatus: "current"
-    },
-    {
-      id: "tenant-003",
-      name: "Office Solutions Pro",
-      userCount: 12,
-      status: "trial",
-      subscription: "Trial",
-      lastActivity: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-      storageUsed: 2.1,
-      apiCalls: 2340,
-      billingStatus: "current"
-    },
-    {
-      id: "tenant-004",
-      name: "Global Copy Corp",
-      userCount: 45,
-      status: "suspended",
-      subscription: "Enterprise",
-      lastActivity: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-      storageUsed: 32.8,
-      apiCalls: 0,
-      billingStatus: "overdue"
-    }
-  ];
-
-  const securityAlerts: SecurityAlert[] = [
-    {
-      id: "alert-001",
-      type: "suspicious_activity",
-      severity: "high",
-      tenant: "Ace Copy Solutions",
-      message: "Multiple failed admin login attempts from unusual IP addresses",
-      timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-      status: "open"
-    },
-    {
-      id: "alert-002",
-      type: "unauthorized_access",
-      severity: "critical",
-      tenant: "PrintMax Industries",
-      message: "Unauthorized attempt to access tenant configuration",
-      timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-      status: "investigating"
-    },
-    {
-      id: "alert-003",
-      type: "failed_login",
-      severity: "medium",
-      tenant: "Office Solutions Pro",
-      message: "Repeated failed login attempts for user admin@officesol.com",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-      status: "resolved"
-    }
-  ];
-
-  const systemResources: SystemResource[] = [
-    { name: "CPU Usage", current: 34.2, threshold: 80, unit: "%", status: "normal", trend: "stable" },
-    { name: "Memory Usage", current: 67.8, threshold: 85, unit: "%", status: "warning", trend: "up" },
-    { name: "Disk Usage", current: 45.3, threshold: 90, unit: "%", status: "normal", trend: "up" },
-    { name: "Active Connections", current: 1247, threshold: 2000, unit: "", status: "normal", trend: "stable" },
-    { name: "API Rate", current: 890, threshold: 1500, unit: "req/min", status: "normal", trend: "down" }
-  ];
+  const currentOverview = systemOverview || defaultOverview;
+  const currentTenants = tenantMetrics || [];
+  const currentAlerts = securityAlerts || [];
+  const currentResources = systemResources || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -264,8 +222,8 @@ export default function RootAdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Tenants</p>
-                  <p className="text-2xl font-bold">{systemOverview.totalTenants}</p>
-                  <p className="text-xs text-green-600">{systemOverview.activeTenants} active</p>
+                  <p className="text-2xl font-bold">{currentOverview.totalTenants}</p>
+                  <p className="text-xs text-green-600">{currentOverview.activeTenants} active</p>
                 </div>
                 <Building2 className="w-8 h-8 text-blue-600" />
               </div>
@@ -277,8 +235,8 @@ export default function RootAdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold">{systemOverview.totalUsers}</p>
-                  <p className="text-xs text-green-600">{systemOverview.activeUsers} active</p>
+                  <p className="text-2xl font-bold">{currentOverview.totalUsers}</p>
+                  <p className="text-xs text-green-600">{currentOverview.activeUsers} active</p>
                 </div>
                 <Users className="w-8 h-8 text-green-600" />
               </div>
@@ -290,7 +248,7 @@ export default function RootAdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">System Uptime</p>
-                  <p className="text-2xl font-bold">{systemOverview.systemUptime}%</p>
+                  <p className="text-2xl font-bold">{currentOverview.systemUptime}%</p>
                   <p className="text-xs text-gray-500">Last 30 days</p>
                 </div>
                 <Server className="w-8 h-8 text-purple-600" />
@@ -303,8 +261,8 @@ export default function RootAdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Critical Alerts</p>
-                  <p className="text-2xl font-bold text-red-600">{systemOverview.criticalAlerts}</p>
-                  <p className="text-xs text-orange-600">{systemOverview.pendingActions} pending</p>
+                  <p className="text-2xl font-bold text-red-600">{currentOverview.criticalAlerts}</p>
+                  <p className="text-xs text-orange-600">{currentOverview.pendingActions} pending</p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
@@ -359,7 +317,7 @@ export default function RootAdminDashboard() {
                         <AlertTriangle className="w-5 h-5 text-red-600" />
                         <span>Security Alerts</span>
                       </div>
-                      <Badge className="bg-red-100 text-red-800">{systemOverview.criticalAlerts} Critical</Badge>
+                      <Badge className="bg-red-100 text-red-800">{currentOverview.criticalAlerts} Critical</Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -374,7 +332,7 @@ export default function RootAdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {systemResources.slice(0, 3).map((resource, index) => (
+                    {currentResources.slice(0, 3).map((resource, index) => (
                       <div key={index} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -428,7 +386,7 @@ export default function RootAdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tenantMetrics.map((tenant) => (
+                    {currentTenants.map((tenant) => (
                       <TableRow key={tenant.id}>
                         <TableCell>
                           <div className="font-medium">{tenant.name}</div>
@@ -479,7 +437,7 @@ export default function RootAdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {securityAlerts.map((alert) => (
+                  {currentAlerts.map((alert) => (
                     <Card key={alert.id} className="border-l-4 border-l-red-500">
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
@@ -518,7 +476,7 @@ export default function RootAdminDashboard() {
           {/* System Resources */}
           <TabsContent value="resources" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {systemResources.map((resource, index) => (
+              {currentResources.map((resource, index) => (
                 <Card key={index}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">

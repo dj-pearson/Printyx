@@ -5317,6 +5317,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const socialMediaRoutes = await import('./routes-social-media');
   app.use('/', socialMediaRoutes.default);
 
+  // Root Admin Routes
+  const rootAdminRoutes = await import('./routes-root-admin');
+  app.use('/api/root-admin', rootAdminRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
   
   // Get maintenance schedules
