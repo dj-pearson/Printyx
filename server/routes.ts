@@ -2508,6 +2508,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced Integration Hub Routes
+  app.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const integrationHubData = {
+        integrationOverview: {
+          totalIntegrations: 47, activeIntegrations: 42, pendingIntegrations: 3, failedIntegrations: 2,
+          successRate: 97.4, apiCallsToday: 45672, dataVolumeProcessed: 2.4, uptimePercentage: 99.7,
+          averageResponseTime: 156, errorRate: 0.3, lastSyncTime: new Date('2025-02-01T08:45:00Z')
+        },
+        activeIntegrations: [
+          {
+            id: 'int-001', name: 'Salesforce CRM', category: 'CRM', provider: 'Salesforce', status: 'active',
+            health: 'healthy', version: '2.1.0', lastSync: new Date('2025-02-01T08:30:00Z'), syncFrequency: 'real-time',
+            recordsSynced: 15672, errorCount: 2, uptimePercentage: 99.8, dataFlow: 'bidirectional',
+            authStatus: 'valid', authExpiresAt: new Date('2025-08-15T00:00:00Z'),
+            endpoints: [
+              { name: 'Accounts', status: 'active', lastCall: new Date('2025-02-01T08:29:00Z') },
+              { name: 'Contacts', status: 'active', lastCall: new Date('2025-02-01T08:28:00Z') }
+            ],
+            metrics: { apiCallsToday: 8934, successRate: 99.2, avgResponseTime: 234, bandwidth: 145.6 }
+          }
+        ],
+        apiMarketplace: {
+          availableIntegrations: 156,
+          popularIntegrations: [
+            {
+              id: 'market-001', name: 'Microsoft 365', category: 'Productivity', provider: 'Microsoft',
+              description: 'Integrate with Outlook, Teams, SharePoint, and OneDrive for comprehensive productivity suite connectivity',
+              rating: 4.8, reviews: 234, installations: 12567, pricing: 'free',
+              features: ['Email Integration', 'Calendar Sync', 'Document Storage', 'Team Collaboration'],
+              lastUpdated: new Date('2025-01-25T00:00:00Z'), compatibility: ['Cloud', 'On-Premise'],
+              dataTypes: ['Contacts', 'Calendar', 'Documents', 'Communications'], estimatedSetupTime: 30
+            }
+          ],
+          categories: [{ name: 'CRM', count: 23, popular: true }]
+        },
+        dataFlowManagement: {
+          activeFlows: 23, totalDataProcessed: 4.7, transformationRules: 89, mappingConfigurations: 156,
+          dataFlows: [
+            {
+              id: 'flow-001', name: 'Salesforce to Business Records Sync', source: 'Salesforce CRM', destination: 'Business Records',
+              status: 'active', frequency: 'real-time', recordsProcessed: 8934, lastRun: new Date('2025-02-01T08:30:00Z'),
+              successRate: 98.7, avgProcessingTime: 234, dataTypes: ['Accounts', 'Contacts', 'Opportunities'],
+              transformations: ['Name standardization', 'Phone number formatting'], errorHandling: 'retry_with_notification', retentionPeriod: 90
+            }
+          ]
+        },
+        webhookManagement: {
+          activeWebhooks: 34, webhooksTriggered: 15672, successfulDeliveries: 15234, failedDeliveries: 438,
+          deliverySuccessRate: 97.2, averageDeliveryTime: 89,
+          webhooks: [
+            {
+              id: 'webhook-001', name: 'New Customer Created', event: 'customer.created', url: 'https://api.partner.com/webhooks/customer',
+              method: 'POST', status: 'active', secret: 'whsec_••••••••••••••••', retryPolicy: 'exponential_backoff',
+              maxRetries: 3, timeout: 30, lastTriggered: new Date('2025-02-01T08:35:00Z'), deliveryAttempts: 8934,
+              successfulDeliveries: 8901, failedDeliveries: 33, successRate: 99.6,
+              headers: { 'Content-Type': 'application/json', 'X-Printyx-Event': 'customer.created' }
+            }
+          ]
+        },
+        healthMonitoring: {
+          overallHealth: 'healthy', monitoringRules: 45, alertsTriggered: 12, issuesResolved: 34,
+          alerts: [
+            {
+              id: 'alert-001', integration: 'E-Automate', severity: 'warning', type: 'high_error_rate',
+              message: 'Error rate above 5% threshold for Service Calls endpoint', triggeredAt: new Date('2025-02-01T06:30:00Z'),
+              acknowledged: false, assignedTo: 'Integration Team', suggestedAction: 'Check E-Automate system status and network connectivity'
+            }
+          ],
+          healthChecks: [
+            { name: 'Endpoint Availability', status: 'passing', lastCheck: new Date('2025-02-01T08:45:00Z') }
+          ]
+        }
+      };
+
+      res.json(integrationHubData);
+    } catch (error) {
+      console.error('Error fetching integration hub dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   

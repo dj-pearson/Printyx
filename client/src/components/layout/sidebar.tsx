@@ -37,7 +37,8 @@ import {
   Wifi,
   FolderOpen,
   Siren,
-  Brain
+  Brain,
+  Network
 } from "lucide-react";
 import {
   Select,
@@ -170,6 +171,7 @@ function getNavigationSections(userRole: any) {
         { name: 'Security & Compliance', href: '/security-compliance', icon: Shield },
         { name: 'Incident Response', href: '/incident-response', icon: Siren },
         { name: 'AI Analytics', href: '/ai-analytics', icon: Brain },
+        { name: 'Integration Hub', href: '/integration-hub', icon: Network },
         { name: 'Multi-Tenant Setup', href: '/tenant-setup', icon: Building2 },
         { name: 'System Settings', href: '/settings', icon: Shield },
       ]
