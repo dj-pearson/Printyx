@@ -36,7 +36,6 @@ import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import JournalEntries from "@/pages/JournalEntries";
 import MeterBilling from "@/pages/MeterBilling";
 import AdvancedReporting from "@/pages/AdvancedReporting";
-import WorkflowAutomation from "@/pages/WorkflowAutomation";
 import MobileOptimization from "@/pages/MobileOptimization";
 import PerformanceMonitoring from "@/pages/PerformanceMonitoring";
 import SystemIntegrations from "@/pages/SystemIntegrations";
@@ -86,6 +85,7 @@ import SecurityComplianceManagement from "@/pages/SecurityComplianceManagement";
 import IncidentResponseSystem from "@/pages/IncidentResponseSystem";
 import AIAnalyticsDashboard from "@/pages/AIAnalyticsDashboard";
 import IntegrationHub from "@/pages/IntegrationHub";
+import WorkflowAutomation from "@/pages/WorkflowAutomation";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -201,6 +201,7 @@ function Router() {
           <Route path="/incident-response" component={IncidentResponseSystem} />
           <Route path="/ai-analytics" component={AIAnalyticsDashboard} />
           <Route path="/integration-hub" component={IntegrationHub} />
+          <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />

@@ -172,6 +172,7 @@ function getNavigationSections(userRole: any) {
         { name: 'Incident Response', href: '/incident-response', icon: Siren },
         { name: 'AI Analytics', href: '/ai-analytics', icon: Brain },
         { name: 'Integration Hub', href: '/integration-hub', icon: Network },
+        { name: 'Workflow Automation', href: '/workflow-automation', icon: Zap },
         { name: 'Multi-Tenant Setup', href: '/tenant-setup', icon: Building2 },
         { name: 'System Settings', href: '/settings', icon: Shield },
       ]
