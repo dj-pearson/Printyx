@@ -120,6 +120,7 @@ function Router() {
           <Route path="/business-records" component={BusinessRecords} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
+          <Route path="/deals-management" component={DealsManagement} />
           <Route path="/leads-management" component={LeadsManagement} />
           <Route path="/product-hub" component={ProductHub} />
           <Route path="/admin/product-hub" component={ProductHub} />
@@ -129,6 +130,7 @@ function Router() {
           <Route path="/admin/purchase-orders" component={PurchaseOrders} />
           <Route path="/warehouse-operations" component={WarehouseOperations} />
           <Route path="/crm-goals" component={CrmGoalsDashboard} />
+          <Route path="/crm-goals-dashboard" component={CrmGoalsDashboard} />
           <Route path="/data-enrichment" component={DataEnrichment} />
           <Route path="/quickbooks-integration" component={QuickBooksIntegration} />
           <Route path="/quote-proposal-generation" component={QuoteProposalGeneration} />
@@ -146,6 +148,7 @@ function Router() {
           <Route path="/admin/warehouse-operations" component={WarehouseOperations} />
           <Route path="/leads/:id" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
+          <Route path="/company-contacts" component={CompanyContacts} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/service-reports" component={ServiceReports} />
           <Route path="/revenue-reports" component={RevenueReports} />
