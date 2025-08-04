@@ -13,6 +13,8 @@ Printyx is a unified SaaS platform designed to consolidate fragmented technology
 
 **Document Management & Workflow Automation**: Advanced document lifecycle management with OCR processing, automated workflow orchestration, compliance tracking, and intelligent categorization system for contracts, service documentation, and regulatory records.
 
+**Mobile Service App**: Comprehensive mobile application for field technicians with GPS route optimization, real-time job management, parts inventory tracking, timer functionality, and offline capabilities for efficient field service operations.
+
 ### Business Architecture Clarification
 - **Printyx Clients**: Copier dealers who sign up for Printyx service (managed via tenant system)
 - **Business Records**: The client's customers and leads (businesses that buy/might buy copiers from the dealer)

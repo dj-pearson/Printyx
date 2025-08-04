@@ -69,7 +69,6 @@ import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
 import FinancialForecasting from "@/pages/FinancialForecasting";
 import EquipmentLifecycleManagement from "@/pages/EquipmentLifecycleManagement";
 import CommissionManagement from "@/pages/CommissionManagement";
-import MobileServiceApp from "@/pages/MobileServiceApp";
 import ServiceAnalytics from "@/pages/ServiceAnalytics";
 import MobileFieldOperations from "@/pages/MobileFieldOperations";
 import RemoteMonitoring from "@/pages/RemoteMonitoring";
@@ -80,6 +79,7 @@ import ServiceDispatchOptimization from "@/pages/ServiceDispatchOptimization";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
 import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
 import DocumentManagement from "@/pages/DocumentManagement";
+import MobileServiceApp from "@/pages/MobileServiceApp";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -188,6 +188,7 @@ function Router() {
           <Route path="/customer-success" component={CustomerSuccessManagement} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/document-management" component={DocumentManagement} />
+          <Route path="/mobile-service-app" component={MobileServiceApp} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
