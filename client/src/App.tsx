@@ -80,6 +80,7 @@ import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutoma
 import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
 import DocumentManagement from "@/pages/DocumentManagement";
 import MobileServiceApp from "@/pages/MobileServiceApp";
+import AdvancedAnalyticsDashboard from "@/pages/AdvancedAnalyticsDashboard";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -189,6 +190,7 @@ function Router() {
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/document-management" component={DocumentManagement} />
           <Route path="/mobile-service-app" component={MobileServiceApp} />
+          <Route path="/advanced-analytics" component={AdvancedAnalyticsDashboard} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />

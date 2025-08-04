@@ -2118,6 +2118,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced Analytics Dashboard Routes
+  app.get('/api/analytics/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const analyticsDashboard = {
+        executiveSummary: {
+          totalRevenue: { current: 2847650.75, previous: 2634580.20, growth: 8.1, trend: 'up' },
+          activeCustomers: { current: 847, previous: 832, growth: 1.8, trend: 'up' },
+          serviceTickets: { current: 2156, previous: 2089, growth: 3.2, trend: 'up' },
+          grossMargin: { current: 42.7, previous: 41.2, growth: 1.5, trend: 'up' }
+        },
+        revenueAnalytics: {
+          monthlyRevenue: [
+            { month: '2024-07', revenue: 245680.50, contracts: 78, newCustomers: 12 },
+            { month: '2025-01', revenue: 356290.10, contracts: 102, newCustomers: 28 }
+          ],
+          revenueByCategory: [
+            { category: 'Equipment Sales', amount: 1247850.30, percentage: 43.8, growth: 12.5 },
+            { category: 'Service Contracts', amount: 892640.75, percentage: 31.4, growth: 6.2 }
+          ],
+          topPerformingProducts: [
+            { product: 'Canon ImageRunner Advance DX 6780i', revenue: 287450.00, units: 23, margin: 38.5, trend: 'up' }
+          ]
+        },
+        customerAnalytics: {
+          customerSegmentation: [
+            { segment: 'Enterprise (500+ employees)', count: 89, revenue: 1456780.25, percentage: 51.2 }
+          ],
+          customerLifetimeValue: { average: 18750.45, median: 14280.20, top10Percent: 67890.75, churnRate: 4.2, retentionRate: 95.8 },
+          topCustomers: [
+            { name: 'Metro Healthcare Systems', revenue: 187450.75, contracts: 15, satisfaction: 4.8, lastPurchase: new Date('2025-01-28T00:00:00Z'), nextRenewal: new Date('2025-06-15T00:00:00Z') }
+          ]
+        },
+        serviceAnalytics: {
+          serviceMetrics: { totalTickets: 2156, avgResolutionTime: 3.4, firstCallResolution: 87.5, customerSatisfaction: 4.6, technicianUtilization: 78.3 },
+          ticketTrends: [{ month: '2025-01', tickets: 338, resolved: 329, satisfaction: 4.6 }],
+          topIssues: [{ issue: 'Paper Jam', count: 387, avgTime: 1.2, resolution: 96.8 }],
+          technicianPerformance: [{ technician: 'Mike Rodriguez', tickets: 187, avgTime: 2.8, satisfaction: 4.8, efficiency: 94.2 }]
+        },
+        equipmentAnalytics: {
+          fleetOverview: { totalUnits: 1247, averageAge: 3.2, utilizationRate: 73.4, maintenanceCompliance: 94.7 },
+          equipmentByManufacturer: [{ manufacturer: 'Canon', units: 387, percentage: 31.0, avgAge: 2.8 }],
+          maintenanceSchedule: { overdue: 23, dueSoon: 67, upcoming: 156, compliant: 1001 }
+        },
+        financialAnalytics: {
+          profitability: { grossProfit: 1215867.45, grossMargin: 42.7, netProfit: 567890.25, netMargin: 19.9, ebitda: 678950.75 },
+          cashFlow: [{ month: '2025-01', inflow: 434567.10, outflow: 324567.85, net: 109999.25 }],
+          expenseBreakdown: [{ category: 'Cost of Goods Sold', amount: 1631783.30, percentage: 57.3 }]
+        },
+        predictiveAnalytics: {
+          revenueForecast: [{ month: '2025-02', predicted: 389670.50, confidence: 87.5 }],
+          churnPrediction: { highRisk: 23, mediumRisk: 67, lowRisk: 757, actions: [{ customer: 'Sunset Industries', risk: 89.2, action: 'Immediate intervention required' }] }
+        },
+        competitiveAnalysis: {
+          marketShare: { company: 12.7, competitor1: 18.9, competitor2: 15.4, competitor3: 13.2, others: 39.8 },
+          winLossAnalysis: { totalOpportunities: 287, won: 156, lost: 89, pending: 42, winRate: 54.4, lossReasons: [{ reason: 'Price', count: 34, percentage: 38.2 }] }
+        }
+      };
+
+      res.json(analyticsDashboard);
+    } catch (error) {
+      console.error('Error fetching analytics dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
