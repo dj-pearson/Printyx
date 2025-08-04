@@ -335,7 +335,7 @@ export default function SystemIntegrations() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockWebhooks.map((webhook) => (
+                  {(webhooks || []).map((webhook) => (
                     <div key={webhook.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
                         <h4 className="font-medium">{webhook.name}</h4>

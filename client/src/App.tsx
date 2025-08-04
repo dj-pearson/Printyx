@@ -217,6 +217,7 @@ function Router() {
           <Route path="/security-compliance" component={SecurityComplianceManagement} />
           <Route path="/incident-response" component={IncidentResponseSystem} />
           <Route path="/ai-analytics" component={AIAnalyticsDashboard} />
+          <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
           <Route path="/predictive-analytics" component={PredictiveAnalytics} />
           <Route path="/integration-hub" component={IntegrationHub} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
