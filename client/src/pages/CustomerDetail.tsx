@@ -27,6 +27,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ActivityForm } from "@/components/forms/ActivityForms";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
+import { ContactManager } from "@/components/ContactManager";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -408,9 +409,10 @@ export default function CustomerDetailHubspot() {
           <div className="lg:col-span-2 space-y-6">
             {/* Overview Tab Content */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="activities">Activities</TabsTrigger>
+                <TabsTrigger value="contacts">Contacts</TabsTrigger>
                 <TabsTrigger value="service">Service</TabsTrigger>
                 <TabsTrigger value="invoices">Invoices</TabsTrigger>
                 <TabsTrigger value="files">Files</TabsTrigger>
@@ -1884,6 +1886,13 @@ export default function CustomerDetailHubspot() {
                   </div>
                   <ActivityTimeline businessRecordId={id} />
                 </div>
+              </TabsContent>
+
+              <TabsContent value="contacts" className="mt-6">
+                <ContactManager
+                  companyId={customer?.companyId || customer?.id || ""}
+                  companyName={customer?.companyName || "Unknown Company"}
+                />
               </TabsContent>
 
               <TabsContent value="service" className="mt-6">
