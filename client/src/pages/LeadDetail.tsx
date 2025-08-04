@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ActivityForm } from "@/components/forms/ActivityForms";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { ContactManager } from "@/components/ContactManager";
+import { LeadProposals } from "@/components/leads/LeadProposals";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -431,11 +432,11 @@ export default function LeadDetailHubspot() {
                       <span className="hidden sm:inline">Deals</span>
                     </TabsTrigger>
                     <TabsTrigger
-                      value="files"
+                      value="proposals"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
-                      <FileText className="h-4 w-4" />
-                      <span className="hidden sm:inline">Files</span>
+                      <FileCheck className="h-4 w-4" />
+                      <span className="hidden sm:inline">Proposals</span>
                     </TabsTrigger>
                   </div>
                 </TabsList>
@@ -1665,17 +1666,11 @@ export default function LeadDetailHubspot() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="files" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Files & Documents</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Uploaded files and documents will be displayed here.
-                    </p>
-                  </CardContent>
-                </Card>
+              <TabsContent value="proposals" className="mt-6">
+                <LeadProposals
+                  leadId={lead?.id || ""}
+                  leadName={lead?.companyName || "Unknown Lead"}
+                />
               </TabsContent>
             </Tabs>
           </div>
