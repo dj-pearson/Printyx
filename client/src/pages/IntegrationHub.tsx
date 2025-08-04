@@ -262,17 +262,20 @@ const getProviderIcon = (provider: string) => {
   }
 };
 
-const formatPercentage = (value: number) => {
+const formatPercentage = (value: number | undefined) => {
+  if (value === undefined || value === null) return '0.0%';
   return `${value.toFixed(1)}%`;
 };
 
-const formatNumber = (num: number) => {
+const formatNumber = (num: number | undefined) => {
+  if (num === undefined || num === null) return '0';
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
   return num.toString();
 };
 
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number | undefined) => {
+  if (amount === undefined || amount === null) return '$0.00';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -281,7 +284,8 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const renderStarRating = (rating: number) => {
+const renderStarRating = (rating: number | undefined) => {
+  if (rating === undefined || rating === null) rating = 0;
   const stars = [];
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 !== 0;
@@ -310,32 +314,35 @@ export default function IntegrationHub() {
   // Fetch integration hub data
   const { data: integrationData, isLoading, refetch } = useQuery({
     queryKey: ['/api/integration-hub/dashboard'],
-    select: (data: any) => ({
-      ...data,
-      apiMarketplace: {
-        ...data.apiMarketplace,
-        availableAPIs: data.apiMarketplace?.availableAPIs?.map((api: any) => ({
-          ...api,
-          lastUpdated: new Date(api.lastUpdated)
-        })) || []
-      },
-      activeIntegrations: data.activeIntegrations?.map((integration: any) => ({
-        ...integration,
-        configuredAt: new Date(integration.configuredAt),
-        lastSync: new Date(integration.lastSync),
-        recentActivity: integration.recentActivity?.map((activity: any) => ({
-          ...activity,
-          timestamp: new Date(activity.timestamp)
-        })) || []
-      })) || [],
-      webhookManagement: {
-        ...data.webhookManagement,
-        recentDeliveries: data.webhookManagement?.recentDeliveries?.map((delivery: any) => ({
-          ...delivery,
-          timestamp: new Date(delivery.timestamp)
-        })) || []
-      }
-    }),
+    select: (data: any) => {
+      if (!data) return null;
+      return {
+        ...data,
+        apiMarketplace: {
+          ...data.apiMarketplace,
+          availableAPIs: data.apiMarketplace?.availableAPIs?.map((api: any) => ({
+            ...api,
+            lastUpdated: api.lastUpdated ? new Date(api.lastUpdated) : new Date()
+          })) || []
+        },
+        activeIntegrations: data.activeIntegrations?.map((integration: any) => ({
+          ...integration,
+          configuredAt: integration.configuredAt ? new Date(integration.configuredAt) : new Date(),
+          lastSync: integration.lastSync ? new Date(integration.lastSync) : new Date(),
+          recentActivity: integration.recentActivity?.map((activity: any) => ({
+            ...activity,
+            timestamp: activity.timestamp ? new Date(activity.timestamp) : new Date()
+          })) || []
+        })) || [],
+        webhookManagement: {
+          ...data.webhookManagement,
+          recentDeliveries: data.webhookManagement?.recentDeliveries?.map((delivery: any) => ({
+            ...delivery,
+            timestamp: delivery.timestamp ? new Date(delivery.timestamp) : new Date()
+          })) || []
+        }
+      };
+    },
     refetchInterval: 30000 // Refresh every 30 seconds
   });
 
@@ -391,7 +398,7 @@ export default function IntegrationHub() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Active Integrations</p>
                     <p className="text-2xl font-bold text-blue-900">
-                      {integrationData.integrationOverview.activeIntegrations}
+                      {integrationData.integrationOverview?.activeIntegrations || 0}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -401,7 +408,7 @@ export default function IntegrationHub() {
                 <div className="flex items-center mt-2 text-sm">
                   <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
                   <span className="text-green-600">
-                    {formatPercentage(integrationData.integrationOverview.integrationSuccessRate)} success rate
+                    {formatPercentage(integrationData.integrationOverview?.integrationSuccessRate)} success rate
                   </span>
                 </div>
               </CardContent>
@@ -413,7 +420,7 @@ export default function IntegrationHub() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">API Calls Today</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatNumber(integrationData.integrationOverview.apiCallsToday)}
+                      {formatNumber(integrationData.integrationOverview?.apiCallsToday)}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -423,7 +430,7 @@ export default function IntegrationHub() {
                 <div className="flex items-center mt-2 text-sm">
                   <Activity className="h-4 w-4 text-blue-600 mr-1" />
                   <span className="text-blue-600">
-                    {integrationData.integrationOverview.averageLatency}ms avg latency
+                    {integrationData.integrationOverview?.averageLatency || 0}ms avg latency
                   </span>
                 </div>
               </CardContent>
@@ -435,7 +442,7 @@ export default function IntegrationHub() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Data Transferred</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {integrationData.integrationOverview.dataTransferred}GB
+                      {integrationData.integrationOverview?.dataTransferred || 0}GB
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -445,7 +452,7 @@ export default function IntegrationHub() {
                 <div className="flex items-center mt-2 text-sm">
                   <Webhook className="h-4 w-4 text-purple-600 mr-1" />
                   <span className="text-purple-600">
-                    {formatNumber(integrationData.integrationOverview.webhooksDelivered)} webhooks
+                    {formatNumber(integrationData.integrationOverview?.webhooksDelivered)} webhooks
                   </span>
                 </div>
               </CardContent>
@@ -457,7 +464,7 @@ export default function IntegrationHub() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">System Uptime</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatPercentage(integrationData.integrationOverview.integrationUptime)}
+                      {formatPercentage(integrationData.integrationOverview?.integrationUptime)}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
@@ -467,7 +474,7 @@ export default function IntegrationHub() {
                 <div className="flex items-center mt-2 text-sm">
                   <AlertTriangle className="h-4 w-4 text-orange-600 mr-1" />
                   <span className="text-orange-600">
-                    {formatPercentage(integrationData.integrationOverview.errorRate)} error rate
+                    {formatPercentage(integrationData.integrationOverview?.errorRate)} error rate
                   </span>
                 </div>
               </CardContent>
