@@ -2660,6 +2660,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Predictive Analytics Engine Routes
+  app.get('/api/predictive-analytics/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const predictiveAnalyticsData = {
+        analyticsOverview: {
+          totalModels: 18, activeModels: 15, trainingModels: 2, failedModels: 1, averageAccuracy: 91.3,
+          predictionsToday: 28947, dataPointsProcessed: 4.7, computeTimeUsed: 234.5, modelRefreshFrequency: 'daily',
+          lastModelUpdate: new Date('2025-02-01T06:00:00Z'), predictionSuccessRate: 94.7
+        },
+        predictiveModels: [
+          {
+            id: 'model-001', name: 'Customer Churn Prediction', category: 'Customer Analytics', type: 'classification',
+            status: 'active', accuracy: 94.2, precision: 92.8, recall: 96.1, f1Score: 94.4, version: '3.2.1',
+            lastTrained: new Date('2025-02-01T06:00:00Z'), trainingDataSize: 145623, features: 47, predictionsToday: 8934,
+            confidenceThreshold: 0.85, featureImportance: [
+              { feature: 'payment_history', importance: 0.234, description: 'Payment delays and defaults' },
+              { feature: 'service_call_frequency', importance: 0.198, description: 'Equipment maintenance frequency' }
+            ]
+          },
+          {
+            id: 'model-002', name: 'Revenue Forecasting', category: 'Financial Analytics', type: 'regression',
+            status: 'active', accuracy: 89.7, version: '2.8.4', lastTrained: new Date('2025-01-31T06:00:00Z'),
+            trainingDataSize: 89456, features: 34, predictionsToday: 5678
+          }
+        ],
+        businessIntelligence: {
+          keyInsights: [
+            {
+              id: 'insight-001', category: 'Customer Behavior', title: 'Peak Service Request Pattern Identified',
+              description: 'Equipment service requests spike 23% on Mondays and 18% after holidays, indicating usage pattern optimization opportunities.',
+              impact: 'high', confidence: 0.94, dataPoints: 12456, timeframe: 'last_6_months',
+              recommendedActions: ['Adjust technician schedules for Monday coverage', 'Proactive maintenance before holidays'],
+              potentialValue: 45000, implementation: 'immediate'
+            }
+          ],
+          marketTrends: [
+            {
+              trend: 'Remote Work Impact', description: 'Remote work adoption has reduced office printing by 42% but increased home office equipment demand by 67%',
+              strength: 'strong', confidence: 0.89, businessImpact: 'reshaping_market', opportunity: 'home_office_solutions'
+            }
+          ],
+          competitiveIntelligence: [
+            {
+              competitor: 'Regional Competitor A', activity: 'aggressive_pricing', impact: 'moderate',
+              affectedSegments: ['small_business', 'healthcare'], responseStrategy: 'value_proposition_enhancement', confidence: 0.76
+            }
+          ]
+        },
+        performanceMetrics: {
+          predictionAccuracy: { churnPrediction: 94.2, revenueForecast: 89.7, equipmentFailure: 92.4, salesConversion: 88.9 },
+          businessImpact: { revenueProtected: 1234000, costsAvoided: 567000, efficiencyGains: 345000, newOpportunities: 789000 },
+          modelPerformance: [
+            { model: 'Customer Churn', accuracy: 94.2, improvement: '+2.3%', trend: 'improving' },
+            { model: 'Revenue Forecast', accuracy: 89.7, improvement: '+1.8%', trend: 'stable' }
+          ]
+        },
+        realTimeAnalytics: {
+          liveMetrics: { predictionsPerMinute: 127, dataIngestionRate: 45.7, modelResponseTime: 234, alertsTriggered: 23, confidenceThreshold: 0.85, activeMonitoringDevices: 1247 },
+          alertsAndNotifications: [
+            {
+              id: 'alert-001', type: 'high_churn_risk', severity: 'critical', customer: 'TechCorp Solutions',
+              probability: 0.87, triggeredAt: new Date('2025-02-01T08:45:00Z'), status: 'active',
+              assignedTo: 'customer_success_team', estimatedImpact: 125000
+            }
+          ]
+        }
+      };
+
+      res.json(predictiveAnalyticsData);
+    } catch (error) {
+      console.error('Error fetching predictive analytics dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch predictive analytics dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
