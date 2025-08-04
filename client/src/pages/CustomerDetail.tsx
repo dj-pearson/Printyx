@@ -28,6 +28,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ActivityForm } from "@/components/forms/ActivityForms";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { ContactManager } from "@/components/ContactManager";
+import { CustomerInvoices } from "@/components/customer/CustomerInvoices";
+import { CustomerServiceHistory } from "@/components/customer/CustomerServiceHistory";
+import { CustomerEquipment } from "@/components/customer/CustomerEquipment";
+import { CustomerSupplies } from "@/components/customer/CustomerSupplies";
+import { CustomerFinancials } from "@/components/customer/CustomerFinancials";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -409,13 +414,15 @@ export default function CustomerDetailHubspot() {
           <div className="lg:col-span-2 space-y-6">
             {/* Overview Tab Content */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-8">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="activities">Activities</TabsTrigger>
                 <TabsTrigger value="contacts">Contacts</TabsTrigger>
                 <TabsTrigger value="service">Service</TabsTrigger>
+                <TabsTrigger value="equipment">Equipment</TabsTrigger>
+                <TabsTrigger value="supplies">Supplies</TabsTrigger>
                 <TabsTrigger value="invoices">Invoices</TabsTrigger>
-                <TabsTrigger value="files">Files</TabsTrigger>
+                <TabsTrigger value="financials">Financials</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6 mt-6">
@@ -1896,44 +1903,38 @@ export default function CustomerDetailHubspot() {
               </TabsContent>
 
               <TabsContent value="service" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Service History</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Service tickets and maintenance history will be displayed
-                      here.
-                    </p>
-                  </CardContent>
-                </Card>
+                <CustomerServiceHistory
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
+              </TabsContent>
+
+              <TabsContent value="equipment" className="mt-6">
+                <CustomerEquipment
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
+              </TabsContent>
+
+              <TabsContent value="supplies" className="mt-6">
+                <CustomerSupplies
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
               </TabsContent>
 
               <TabsContent value="invoices" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Invoices & Payments</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Invoice history and payment records will be displayed
-                      here.
-                    </p>
-                  </CardContent>
-                </Card>
+                <CustomerInvoices
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
               </TabsContent>
 
-              <TabsContent value="files" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Files & Documents</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Uploaded files and documents will be displayed here.
-                    </p>
-                  </CardContent>
-                </Card>
+              <TabsContent value="financials" className="mt-6">
+                <CustomerFinancials
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
               </TabsContent>
             </Tabs>
           </div>
