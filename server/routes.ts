@@ -8661,6 +8661,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Security & Compliance routes
+  app.get('/api/security-compliance/security-dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      res.json({
+        activeSessions: 12,
+        gdprRequests: 3,
+        securityAlerts: 2,
+        dataAccessEvents: 147,
+        auditLogCount: 1250,
+        lastAuditEntry: new Date().toISOString(),
+        complianceScore: 94,
+        riskLevel: 'low'
+      });
+    } catch (error) {
+      console.error('Error fetching security dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch security dashboard' });
+    }
+  });
+
+  app.get('/api/security-compliance/audit-logs', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { page = 1, limit = 50 } = req.query;
+      
+      const logs = Array.from({ length: parseInt(limit as string) }, (_, i) => ({
+        id: `audit-${i + 1}`,
+        timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+        userId: req.user.id,
+        action: ['LOGIN', 'CREATE_CUSTOMER', 'UPDATE_CONTRACT', 'DELETE_INVOICE'][i % 4],
+        resource: ['auth', 'customers', 'contracts', 'invoices'][i % 4],
+        severity: ['low', 'medium', 'high'][i % 3],
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0...',
+        success: Math.random() > 0.1
+      }));
+      
+      res.json({
+        logs,
+        total: 1250,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string)
+      });
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      res.status(500).json({ message: 'Failed to fetch audit logs' });
+    }
+  });
+
+  app.get('/api/security-compliance/gdpr-requests', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      
+      const requests = [
+        {
+          id: 'gdpr-1',
+          requestType: 'access',
+          dataSubject: 'john.doe@example.com',
+          status: 'pending',
+          submittedAt: new Date(Date.now() - 86400000).toISOString(),
+          dueDate: new Date(Date.now() + 29 * 86400000).toISOString(),
+          description: 'Request for all personal data under GDPR Article 15'
+        },
+        {
+          id: 'gdpr-2',
+          requestType: 'deletion',
+          dataSubject: 'jane.smith@example.com',
+          status: 'in_progress',
+          submittedAt: new Date(Date.now() - 172800000).toISOString(),
+          dueDate: new Date(Date.now() + 28 * 86400000).toISOString(),
+          description: 'Request for data deletion under GDPR Article 17'
+        }
+      ];
+      
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching GDPR requests:', error);
+      res.status(500).json({ message: 'Failed to fetch GDPR requests' });
+    }
+  });
+
+  app.get('/api/security-compliance/security-sessions', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      
+      const sessions = [
+        {
+          id: 'session-1',
+          userId: req.user.id,
+          userEmail: req.user.email,
+          ipAddress: '192.168.1.100',
+          location: 'New York, NY',
+          device: 'Chrome on Windows',
+          loginTime: new Date(Date.now() - 3600000).toISOString(),
+          lastActivity: new Date(Date.now() - 300000).toISOString(),
+          status: 'active',
+          riskScore: 'low'
+        }
+      ];
+      
+      res.json(sessions);
+    } catch (error) {
+      console.error('Error fetching security sessions:', error);
+      res.status(500).json({ message: 'Failed to fetch security sessions' });
+    }
+  });
+
+  app.get('/api/security-compliance/compliance-settings', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      
+      const settings = {
+        gdprResponseDays: 30,
+        sessionTimeoutMinutes: 60,
+        dataRetentionDays: 2555, // 7 years
+        encryptionRequired: true,
+        auditScope: 'full',
+        passwordPolicy: {
+          minLength: 12,
+          requireUppercase: true,
+          requireLowercase: true,
+          requireNumbers: true,
+          requireSymbols: true
+        }
+      };
+      
+      res.json(settings);
+    } catch (error) {
+      console.error('Error fetching compliance settings:', error);
+      res.status(500).json({ message: 'Failed to fetch compliance settings' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

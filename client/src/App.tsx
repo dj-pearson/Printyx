@@ -81,6 +81,7 @@ import DocumentManagement from "@/pages/DocumentManagement";
 import MobileServiceApp from "@/pages/MobileServiceApp";
 import AdvancedAnalyticsDashboard from "@/pages/AdvancedAnalyticsDashboard";
 import BusinessProcessOptimization from "@/pages/BusinessProcessOptimization";
+import SecurityCompliance from "@/pages/SecurityCompliance";
 import SecurityComplianceManagement from "@/pages/SecurityComplianceManagement";
 import IncidentResponseSystem from "@/pages/IncidentResponseSystem";
 import AIAnalyticsDashboard from "@/pages/AIAnalyticsDashboard";
@@ -214,7 +215,7 @@ function Router() {
           <Route path="/advanced-analytics" component={AdvancedAnalyticsDashboard} />
           <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
           <Route path="/business-process-optimization" component={BusinessProcessOptimization} />
-          <Route path="/security-compliance" component={SecurityComplianceManagement} />
+          <Route path="/security-compliance" component={SecurityCompliance} />
           <Route path="/security-compliance-management" component={SecurityComplianceManagement} />
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />

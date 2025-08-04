@@ -98,6 +98,43 @@ export {
   insertVendorBillSchema,
 } from "./quickbooks-schema";
 
+// Re-export Security & Compliance schemas
+export {
+  auditLogs,
+  dataAccessLogs,
+  encryptedFields,
+  gdprRequests,
+  securitySessions,
+  complianceSettings,
+  auditSeverityEnum,
+  auditCategoryEnum,
+  accessTypeEnum,
+  dataClassificationEnum,
+  gdprRequestTypeEnum,
+  gdprStatusEnum,
+  insertAuditLogSchema,
+  insertDataAccessLogSchema,
+  insertEncryptedFieldSchema,
+  insertGdprRequestSchema,
+  insertSecuritySessionSchema,
+  insertComplianceSettingsSchema,
+} from "./security-schema";
+
+export type {
+  AuditLog,
+  InsertAuditLog,
+  DataAccessLog,
+  InsertDataAccessLog,
+  EncryptedField,
+  InsertEncryptedField,
+  GdprRequest,
+  InsertGdprRequest,
+  SecuritySession,
+  InsertSecuritySession,
+  ComplianceSettings,
+  InsertComplianceSettings,
+} from "./security-schema";
+
 // Re-export Demo Scheduling schemas
 export {
   demoSchedules,
