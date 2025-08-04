@@ -74,6 +74,7 @@ import MobileFieldOperations from "@/pages/MobileFieldOperations";
 import RemoteMonitoring from "@/pages/RemoteMonitoring";
 import DemoScheduling from "@/pages/DemoScheduling";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
+import SalesPipelineWorkflow from "@/pages/SalesPipelineWorkflow";
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
 import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
@@ -204,6 +205,7 @@ function Router() {
           <Route path="/settings" component={Settings} />
           <Route path="/demo-scheduling" component={DemoScheduling} />
           <Route path="/sales-pipeline-forecasting" component={SalesPipelineForecasting} />
+          <Route path="/sales-pipeline-workflow" component={SalesPipelineWorkflow} />
           <Route path="/esignature-integration" component={ESignatureIntegration} />
           <Route path="/service-dispatch-optimization" component={ServiceDispatchOptimization} />
           <Route path="/preventive-maintenance-automation" component={PreventiveMaintenanceAutomation} />
