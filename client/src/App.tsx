@@ -135,10 +135,14 @@ function Router() {
           <Route path="/quickbooks-integration" component={QuickBooksIntegration} />
           <Route path="/quote-proposal-generation" component={QuoteProposalGeneration} />
           <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
+          <Route path="/preventive-maintenance-scheduling" component={PreventiveMaintenanceScheduling} />
+          <Route path="/incident-response-system" component={IncidentResponseSystem} />
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/advanced-billing" component={AdvancedBillingEngine} />
           <Route path="/financial-forecasting" component={FinancialForecasting} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycleManagement} />
+          <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleManagement} />
+          <Route path="/admin/equipment-lifecycle-management" component={EquipmentLifecycleManagement} />
           <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/mobile-service" component={MobileServiceApp} />
@@ -161,6 +165,7 @@ function Router() {
           <Route path="/product-models" component={ProductModels} />
           <Route path="/admin/product-models" component={ProductModels} />
           <Route path="/product-management-hub" component={ProductManagementHub} />
+          <Route path="/admin/product-management-hub" component={ProductManagementHub} />
           <Route path="/product-accessories" component={ProductAccessories} />
           <Route path="/admin/product-accessories" component={ProductAccessories} />
           <Route path="/professional-services" component={ProfessionalServices} />
