@@ -206,6 +206,7 @@ function Router() {
           <Route path="/demo-scheduling" component={DemoScheduling} />
           <Route path="/sales-pipeline-forecasting" component={SalesPipelineForecasting} />
           <Route path="/sales-pipeline-workflow" component={SalesPipelineWorkflow} />
+          <Route path="/sales-pipeline" component={SalesPipelineWorkflow} />
           <Route path="/esignature-integration" component={ESignatureIntegration} />
           <Route path="/service-dispatch-optimization" component={ServiceDispatchOptimization} />
           <Route path="/preventive-maintenance-automation" component={PreventiveMaintenanceAutomation} />

@@ -107,6 +107,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       items: [
         { name: "Leads Management", href: "/leads-management", icon: UserPlus },
         { name: "CRM Enhanced", href: "/crm-enhanced", icon: Target },
+        { name: "Sales Pipeline Workflow", href: "/sales-pipeline", icon: Target },
         {
           name: "CRM Goals Dashboard",
           href: "/crm-goals-dashboard",
