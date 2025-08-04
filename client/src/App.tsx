@@ -83,6 +83,7 @@ import MobileServiceApp from "@/pages/MobileServiceApp";
 import AdvancedAnalyticsDashboard from "@/pages/AdvancedAnalyticsDashboard";
 import BusinessProcessOptimization from "@/pages/BusinessProcessOptimization";
 import SecurityComplianceManagement from "@/pages/SecurityComplianceManagement";
+import IncidentResponseSystem from "@/pages/IncidentResponseSystem";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -195,6 +196,7 @@ function Router() {
           <Route path="/advanced-analytics" component={AdvancedAnalyticsDashboard} />
           <Route path="/business-process-optimization" component={BusinessProcessOptimization} />
           <Route path="/security-compliance" component={SecurityComplianceManagement} />
+          <Route path="/incident-response" component={IncidentResponseSystem} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
