@@ -77,6 +77,9 @@ import SocialMediaGenerator from "@/pages/SocialMediaGenerator";
 import SecurityManagement from "@/pages/SecurityManagement";
 import SystemMonitoring from "@/pages/SystemMonitoring";
 import AccessControl from "@/pages/AccessControl";
+import RootAdminDashboard from "@/pages/RootAdminDashboard";
+import PlatformConfiguration from "@/pages/PlatformConfiguration";
+import DatabaseManagement from "@/pages/DatabaseManagement";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
 import SalesPipelineWorkflow from "@/pages/SalesPipelineWorkflow";
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
@@ -236,6 +239,9 @@ function Router() {
           <Route path="/security-management" component={SecurityManagement} />
           <Route path="/system-monitoring" component={SystemMonitoring} />
           <Route path="/access-control" component={AccessControl} />
+          <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
+          <Route path="/platform-configuration" component={PlatformConfiguration} />
+          <Route path="/database-management" component={DatabaseManagement} />
           <Route path="/erp-integration" component={ERPIntegration} />
           <Route path="/customer-access-management" component={CustomerAccessManagement} />
           <Route path="/eula" component={EndUserLicenseAgreement} />

@@ -66,6 +66,8 @@ import {
   Cog,
   Headphones,
   MapPin,
+  Crown,
+  Database,
 } from "lucide-react";
 
 // Navigation structure based on role permissions
@@ -415,10 +417,13 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     sections.push({
       name: "Root Admin",
       items: [
+        { name: "Root Admin Dashboard", href: "/root-admin-dashboard", icon: Settings },
         { name: "Social Media Generator", href: "/social-media-generator", icon: Zap },
         { name: "Security Management", href: "/security-management", icon: Shield },
         { name: "System Monitoring", href: "/system-monitoring", icon: Monitor },
         { name: "Access Control", href: "/access-control", icon: UserCheck },
+        { name: "Platform Configuration", href: "/platform-configuration", icon: Settings },
+        { name: "Database Management", href: "/database-management", icon: Database },
       ],
     });
   }
