@@ -293,7 +293,7 @@ export function registerBusinessRecordRoutes(app: Express) {
     }
   });
 
-  app.post("/api/business-records/:id/activities", resolveTenant, requireTenant, isAuthenticated, async (req: TenantRequest, res) => {
+  app.post("/api/business-records/:id/activities", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
       const tenantId = req.tenantId!;
       const userId = req.user?.id || 'system';
