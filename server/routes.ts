@@ -2311,6 +2311,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Security Incident Response System Routes
+  app.get('/api/incident-response/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const incidentResponseData = {
+        responseOverview: {
+          activeIncidents: 7, criticalIncidents: 1, highIncidents: 2, mediumIncidents: 3, lowIncidents: 1,
+          avgResponseTime: 12.5, avgResolutionTime: 4.2, mttr: 3.8, slaCompliance: 94.7, escalatedIncidents: 2, falsePositives: 8
+        },
+        activeIncidents: [
+          {
+            id: 'INC-2025-007', title: 'Potential Data Exfiltration', severity: 'critical', priority: 'p1', status: 'investigating',
+            category: 'data_breach', subcategory: 'data_exfiltration', detectedAt: new Date('2025-02-01T08:15:00Z'),
+            reportedBy: 'DLP System', assignedTo: 'Incident Response Team Alpha', responder: 'Sarah Chen',
+            affectedSystems: ['Customer Database', 'File Server', 'Email System'], affectedUsers: 15, estimatedImpact: 'high',
+            businessImpact: 'Potential customer data exposure - regulatory compliance risk', detectionMethod: 'automated',
+            confidenceLevel: 87.5, ttl: 2.3, slaDeadline: new Date('2025-02-01T12:15:00Z'), currentPhase: 'containment',
+            progress: 35, tags: ['gdpr', 'customer_data', 'regulatory'], threatActors: ['Unknown Internal User'],
+            indicators: ['Unusual bulk data access pattern', 'Large file transfers to external email', 'After-hours system access']
+          }
+        ],
+        incidentStats: {
+          monthlyTrends: [{ month: '2025-01', incidents: 24, resolved: 22, avgTime: 4.2 }],
+          categoriesBreakdown: [
+            { category: 'malware', count: 35, percentage: 28.5, avgSeverity: 'medium' },
+            { category: 'social_engineering', count: 28, percentage: 22.8, avgSeverity: 'high' }
+          ],
+          severityDistribution: {
+            critical: { count: 8, percentage: 6.5, avgResolutionTime: 2.1 },
+            high: { count: 31, percentage: 25.2, avgResolutionTime: 6.8 }
+          },
+          detectionSources: [
+            { source: 'SIEM/SOAR', incidents: 45, percentage: 36.6 },
+            { source: 'EDR/XDR', incidents: 32, percentage: 26.0 }
+          ]
+        },
+        teamPerformance: {
+          teams: [
+            {
+              name: 'Incident Response Team Alpha', lead: 'Sarah Chen', members: 4, specialization: 'Critical Incidents & Data Breaches',
+              activeIncidents: 3, avgResponseTime: 8.2, avgResolutionTime: 2.8, slaCompliance: 97.3, workload: 'high',
+              status: 'available', onCallSchedule: 'Week 1-2 February'
+            }
+          ],
+          individuals: [
+            {
+              name: 'Sarah Chen', role: 'Senior Incident Response Analyst', team: 'Alpha', activeIncidents: 1, totalIncidents: 47,
+              avgResponseTime: 6.2, avgResolutionTime: 2.1, specialties: ['Data Breaches', 'Forensics', 'Compliance'],
+              certifications: ['GCIH', 'GCFA', 'CISSP'], availability: 'on_call', performance: 'excellent'
+            }
+          ]
+        },
+        threatIntelligence: {
+          activeThreatFeeds: 12, iocMatches: 156, newThreats: 23,
+          currentThreats: [
+            {
+              threatId: 'TI-2025-001', name: 'Lazarus Group Campaign', threatActor: 'Lazarus Group (APT38)',
+              firstSeen: new Date('2025-01-28T00:00:00Z'), lastUpdated: new Date('2025-02-01T06:30:00Z'),
+              severity: 'high', confidence: 89.2, targeting: ['Financial Services', 'Technology'],
+              ttps: ['T1566.001', 'T1055', 'T1071.001'],
+              iocs: [{ type: 'domain', value: 'malicious-domain.com', confidence: 95 }],
+              mitigation: 'Block domains, monitor for lateral movement techniques', relevanceScore: 78.5
+            }
+          ]
+        },
+        automatedResponse: {
+          playbooks: [
+            {
+              id: 'playbook-001', name: 'Malware Incident Response', triggers: ['malware_detected', 'suspicious_process'],
+              automationLevel: 78.5, steps: 12, avgExecutionTime: 15.7, successRate: 94.2,
+              lastUpdated: new Date('2025-01-15T00:00:00Z'), status: 'active'
+            }
+          ],
+          automationMetrics: {
+            totalAutomatedActions: 1247, automationSuccessRate: 92.8, timesSaved: 847.3,
+            falsePositiveReduction: 67.4, humanInterventionRequired: 12.5
+          }
+        }
+      };
+
+      res.json(incidentResponseData);
+    } catch (error) {
+      console.error('Error fetching incident response dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch incident response dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
