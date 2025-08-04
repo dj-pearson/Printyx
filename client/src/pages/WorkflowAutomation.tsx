@@ -261,7 +261,7 @@ export default function WorkflowAutomation() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
 
-  // Fetch workflow automation data
+  // Fetch workflow automation data with optimized caching
   const { data: workflowData, isLoading, refetch } = useQuery({
     queryKey: ['/api/workflow-automation/dashboard', selectedCategory, selectedStatus],
     select: (data: any) => ({
@@ -284,7 +284,11 @@ export default function WorkflowAutomation() {
         })) || []
       }
     }),
-    refetchInterval: 30000 // Refresh every 30 seconds
+    staleTime: 2 * 60 * 1000, // 2 minutes - workflows don't change that frequently
+    cacheTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchInterval: 60 * 1000, // Standardized to 1 minute polling
+    refetchIntervalInBackground: false, // Save resources when tab not active
+    refetchOnWindowFocus: false, // Prevent excessive refetches
   });
 
   if (isLoading) {
