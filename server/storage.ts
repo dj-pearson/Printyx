@@ -694,11 +694,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCompanyByName(name: string, tenantId: string): Promise<Company | undefined> {
-    const [company] = await db
-      .select()
-      .from(companies)
-      .where(and(eq(companies.name, name), eq(companies.tenantId, tenantId)));
-    return company;
+    // Handle null, undefined, or empty names
+    if (!name || name.trim() === '') {
+      return undefined;
+    }
+    
+    try {
+      const [company] = await db
+        .select()
+        .from(companies)
+        .where(and(eq(companies.businessName, name.trim()), eq(companies.tenantId, tenantId)));
+      return company;
+    } catch (error) {
+      console.error('Error in getCompanyByName:', error);
+      return undefined;
+    }
   }
 
   async createCompany(company: Omit<Company, "id" | "createdAt" | "updatedAt">): Promise<Company> {

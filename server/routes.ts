@@ -3373,7 +3373,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const businessRecord = await storage.getBusinessRecord(companyId, tenantId);
         if (businessRecord) {
           // Try to find an existing company with the same name
-          const existingCompanyByName = await storage.getCompanyByName(businessRecord.company_name || businessRecord.name, tenantId);
+          const companyName = businessRecord.companyName || businessRecord.company_name || businessRecord.name;
+          const existingCompanyByName = await storage.getCompanyByName(companyName, tenantId);
           
           if (existingCompanyByName) {
             actualCompanyId = existingCompanyByName.id;
@@ -3424,24 +3425,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const businessRecord = await storage.getBusinessRecord(companyId, tenantId);
         if (businessRecord) {
           // Try to find an existing company with the same name
-          const existingCompanyByName = await storage.getCompanyByName(businessRecord.company_name || businessRecord.name, tenantId);
+          const companyName = businessRecord.companyName || businessRecord.company_name || businessRecord.name;
+          const existingCompanyByName = await storage.getCompanyByName(companyName, tenantId);
           
           if (existingCompanyByName) {
             actualCompanyId = existingCompanyByName.id;
           } else {
             // Create a new company based on the business record
             const newCompany = await storage.createCompany({
-              name: businessRecord.company_name || businessRecord.name || 'Unknown Company',
+              businessName: companyName || 'Unknown Company',
               tenantId: tenantId,
-              businessRecordId: companyId, // Link back to the business record
               industry: businessRecord.industry,
               website: businessRecord.website,
               phone: businessRecord.phone,
-              address: businessRecord.address,
-              city: businessRecord.city,
-              state: businessRecord.state,
-              zipCode: businessRecord.zip_code,
-              country: businessRecord.country || 'USA',
+              billingAddress: businessRecord.addressLine1,
+              billingCity: businessRecord.city,
+              billingState: businessRecord.state,
+              billingZip: businessRecord.postalCode,
             });
             actualCompanyId = newCompany.id;
           }
