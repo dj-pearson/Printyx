@@ -2,11 +2,37 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -36,9 +62,20 @@ import {
   Target,
   Clock,
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface Lead {
   id: string;
@@ -97,28 +134,144 @@ const priorityColors = {
 
 // Available table columns with HubSpot-style configuration
 const AVAILABLE_COLUMNS: TableColumn[] = [
-  { id: "lead", label: "Lead name", icon: User, width: "min-w-[250px]", sortable: true },
-  { id: "company", label: "Company name", icon: Building2, width: "min-w-[200px]", sortable: true },
-  { id: "status", label: "Lead status", icon: Target, width: "min-w-[120px]", sortable: true },
-  { id: "priority", label: "Priority", icon: TrendingUp, width: "min-w-[100px]", sortable: true },
-  { id: "source", label: "Lead source", icon: MapPin, width: "min-w-[120px]", sortable: true },
-  { id: "industry", label: "Industry", icon: Building2, width: "min-w-[120px]", sortable: true },
-  { id: "territory", label: "Territory", icon: MapPin, width: "min-w-[120px]", sortable: true },
-  { id: "value", label: "Deal amount", icon: DollarSign, width: "min-w-[120px]", sortable: true },
-  { id: "score", label: "Lead score", icon: Target, width: "min-w-[100px]", sortable: true },
-  { id: "lastActivity", label: "Last activity date", icon: Clock, width: "min-w-[150px]", sortable: true },
-  { id: "nextFollowUp", label: "Next activity date", icon: Calendar, width: "min-w-[150px]", sortable: true },
-  { id: "assignedTo", label: "Lead owner", icon: User, width: "min-w-[150px]", sortable: true },
-  { id: "phone", label: "Phone number", icon: Phone, width: "min-w-[140px]", sortable: false },
-  { id: "email", label: "Email", icon: Mail, width: "min-w-[200px]", sortable: false },
-  { id: "website", label: "Website", icon: Building2, width: "min-w-[180px]", sortable: false },
-  { id: "employeeCount", label: "Number of employees", icon: Users, width: "min-w-[150px]", sortable: true },
-  { id: "annualRevenue", label: "Annual revenue", icon: DollarSign, width: "min-w-[140px]", sortable: true },
-  { id: "createdDate", label: "Create date", icon: Calendar, width: "min-w-[120px]", sortable: true },
+  {
+    id: "lead",
+    label: "Lead name",
+    icon: User,
+    width: "min-w-[250px]",
+    sortable: true,
+  },
+  {
+    id: "company",
+    label: "Company name",
+    icon: Building2,
+    width: "min-w-[200px]",
+    sortable: true,
+  },
+  {
+    id: "status",
+    label: "Lead status",
+    icon: Target,
+    width: "min-w-[120px]",
+    sortable: true,
+  },
+  {
+    id: "priority",
+    label: "Priority",
+    icon: TrendingUp,
+    width: "min-w-[100px]",
+    sortable: true,
+  },
+  {
+    id: "source",
+    label: "Lead source",
+    icon: MapPin,
+    width: "min-w-[120px]",
+    sortable: true,
+  },
+  {
+    id: "industry",
+    label: "Industry",
+    icon: Building2,
+    width: "min-w-[120px]",
+    sortable: true,
+  },
+  {
+    id: "territory",
+    label: "Territory",
+    icon: MapPin,
+    width: "min-w-[120px]",
+    sortable: true,
+  },
+  {
+    id: "value",
+    label: "Deal amount",
+    icon: DollarSign,
+    width: "min-w-[120px]",
+    sortable: true,
+  },
+  {
+    id: "score",
+    label: "Lead score",
+    icon: Target,
+    width: "min-w-[100px]",
+    sortable: true,
+  },
+  {
+    id: "lastActivity",
+    label: "Last activity date",
+    icon: Clock,
+    width: "min-w-[150px]",
+    sortable: true,
+  },
+  {
+    id: "nextFollowUp",
+    label: "Next activity date",
+    icon: Calendar,
+    width: "min-w-[150px]",
+    sortable: true,
+  },
+  {
+    id: "assignedTo",
+    label: "Lead owner",
+    icon: User,
+    width: "min-w-[150px]",
+    sortable: true,
+  },
+  {
+    id: "phone",
+    label: "Phone number",
+    icon: Phone,
+    width: "min-w-[140px]",
+    sortable: false,
+  },
+  {
+    id: "email",
+    label: "Email",
+    icon: Mail,
+    width: "min-w-[200px]",
+    sortable: false,
+  },
+  {
+    id: "website",
+    label: "Website",
+    icon: Building2,
+    width: "min-w-[180px]",
+    sortable: false,
+  },
+  {
+    id: "employeeCount",
+    label: "Number of employees",
+    icon: Users,
+    width: "min-w-[150px]",
+    sortable: true,
+  },
+  {
+    id: "annualRevenue",
+    label: "Annual revenue",
+    icon: DollarSign,
+    width: "min-w-[140px]",
+    sortable: true,
+  },
+  {
+    id: "createdDate",
+    label: "Create date",
+    icon: Calendar,
+    width: "min-w-[120px]",
+    sortable: true,
+  },
 ];
 
 // Default visible columns (HubSpot-style defaults)
-const DEFAULT_VISIBLE_COLUMNS = ["lead", "company", "status", "source", "value", "lastActivity", "assignedTo"];
+const DEFAULT_VISIBLE_COLUMNS = [
+  "lead",
+  "company",
+  "status",
+  "source",
+  "value",
+  "lastActivity",
+  "assignedTo",
+];
 
 export default function LeadsManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -129,7 +282,9 @@ export default function LeadsManagement() {
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(
+    DEFAULT_VISIBLE_COLUMNS
+  );
   const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
 
   const { toast } = useToast();
@@ -137,20 +292,29 @@ export default function LeadsManagement() {
   const [, setLocation] = useLocation();
 
   // Fetch leads data from business records
-  const { data: allBusinessRecords = [], isLoading, error } = useQuery({
+  const {
+    data: allBusinessRecords = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["/api/business-records"],
     retry: false,
   });
 
   // Filter for leads only
   const leads = useMemo(() => {
-    return allBusinessRecords.filter((record: any) => record.recordType === 'lead');
+    return allBusinessRecords.filter(
+      (record: any) => record.recordType === "lead"
+    );
   }, [allBusinessRecords]);
 
   // Create lead mutation
   const createLeadMutation = useMutation({
-    mutationFn: (leadData: Partial<Lead>) => 
-      apiRequest("/api/business-records", "POST", { ...leadData, recordType: "lead" }),
+    mutationFn: (leadData: Partial<Lead>) =>
+      apiRequest("/api/business-records", "POST", {
+        ...leadData,
+        recordType: "lead",
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
       setIsNewLeadOpen(false);
@@ -192,17 +356,20 @@ export default function LeadsManagement() {
   // Filter leads based on search and filters
   const filteredLeads = useMemo(() => {
     if (!leads || leads.length === 0) return [];
-    
+
     return leads.filter((lead: Lead) => {
-      const matchesSearch = 
+      const matchesSearch =
         lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.phone?.includes(searchTerm);
 
-      const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
-      const matchesPriority = priorityFilter === "all" || lead.priority === priorityFilter;
-      const matchesSource = sourceFilter === "all" || lead.leadSource === sourceFilter;
+      const matchesStatus =
+        statusFilter === "all" || lead.status === statusFilter;
+      const matchesPriority =
+        priorityFilter === "all" || lead.priority === priorityFilter;
+      const matchesSource =
+        sourceFilter === "all" || lead.leadSource === sourceFilter;
 
       return matchesSearch && matchesStatus && matchesPriority && matchesSource;
     });
@@ -211,14 +378,16 @@ export default function LeadsManagement() {
   // Get unique sources for filter dropdown
   const leadSources = useMemo(() => {
     if (!leads || leads.length === 0) return [];
-    const sources = [...new Set(leads.map((lead: Lead) => lead.leadSource).filter(Boolean))];
+    const sources = [
+      ...new Set(leads.map((lead: Lead) => lead.leadSource).filter(Boolean)),
+    ];
     return sources;
   }, [leads]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
       minimumFractionDigits: 0,
     }).format(amount || 0);
   };
@@ -230,16 +399,16 @@ export default function LeadsManagement() {
 
   // Get visible columns configuration
   const visibleColumnsConfig = useMemo(() => {
-    return AVAILABLE_COLUMNS.filter(col => visibleColumns.includes(col.id));
+    return AVAILABLE_COLUMNS.filter((col) => visibleColumns.includes(col.id));
   }, [visibleColumns]);
 
   // Handle column toggle
   const toggleColumn = (columnId: string) => {
-    setVisibleColumns(prev => {
+    setVisibleColumns((prev) => {
       if (prev.includes(columnId)) {
         // Don't allow removing the last column
         if (prev.length === 1) return prev;
-        return prev.filter(id => id !== columnId);
+        return prev.filter((id) => id !== columnId);
       } else {
         return [...prev, columnId];
       }
@@ -256,50 +425,76 @@ export default function LeadsManagement() {
     switch (column.id) {
       case "lead":
         return (
-          <div className="cursor-pointer" onClick={() => handleLeadClick(lead.id)}>
-            <div className="font-medium text-blue-600 hover:text-blue-800">{lead.name}</div>
+          <div
+            className="cursor-pointer"
+            onClick={() => handleLeadClick(lead.id)}
+          >
+            <div className="font-medium text-blue-600 hover:text-blue-800">
+              {lead.name}
+            </div>
             <div className="text-sm text-gray-500">{lead.jobTitle}</div>
           </div>
         );
       case "company":
         return (
-          <div className="cursor-pointer" onClick={() => handleLeadClick(lead.id)}>
-            <div className="font-medium text-blue-600 hover:text-blue-800">{lead.companyName}</div>
-            <div className="text-sm text-gray-500">{lead.industry || '-'}</div>
+          <div
+            className="cursor-pointer"
+            onClick={() => handleLeadClick(lead.id)}
+          >
+            <div className="font-medium text-blue-600 hover:text-blue-800">
+              {lead.companyName}
+            </div>
+            <div className="text-sm text-gray-500">{lead.industry || "-"}</div>
           </div>
         );
       case "status":
         return (
-          <Badge className={statusColors[lead.status as keyof typeof statusColors] || "bg-gray-100"}>
+          <Badge
+            className={
+              statusColors[lead.status as keyof typeof statusColors] ||
+              "bg-gray-100"
+            }
+          >
             {lead.status}
           </Badge>
         );
       case "priority":
         return (
-          <Badge className={priorityColors[lead.priority as keyof typeof priorityColors] || "bg-gray-100"}>
+          <Badge
+            className={
+              priorityColors[lead.priority as keyof typeof priorityColors] ||
+              "bg-gray-100"
+            }
+          >
             {lead.priority}
           </Badge>
         );
       case "source":
         return <span className="text-sm">{lead.leadSource}</span>;
       case "industry":
-        return <span className="text-sm">{lead.industry || '-'}</span>;
+        return <span className="text-sm">{lead.industry || "-"}</span>;
       case "territory":
-        return <span className="text-sm">{lead.territory || '-'}</span>;
+        return <span className="text-sm">{lead.territory || "-"}</span>;
       case "value":
-        return <span className="font-medium">{formatCurrency(lead.estimatedValue)}</span>;
-      case "score":
         return (
-          <Badge variant="outline">
-            {lead.leadScore || 0}
-          </Badge>
+          <span className="font-medium">
+            {formatCurrency(lead.estimatedValue)}
+          </span>
         );
+      case "score":
+        return <Badge variant="outline">{lead.leadScore || 0}</Badge>;
       case "lastActivity":
         return <span className="text-sm">{formatDate(lead.lastActivity)}</span>;
       case "nextFollowUp":
-        return <span className="text-sm">{lead.nextFollowUpDate ? formatDate(lead.nextFollowUpDate) : '-'}</span>;
+        return (
+          <span className="text-sm">
+            {lead.nextFollowUpDate ? formatDate(lead.nextFollowUpDate) : "-"}
+          </span>
+        );
       case "assignedTo":
-        return <span className="text-sm">{lead.assignedTo || 'Unassigned'}</span>;
+        return (
+          <span className="text-sm">{lead.assignedTo || "Unassigned"}</span>
+        );
       case "phone":
         return (
           <div className="flex items-center space-x-2">
@@ -317,13 +512,17 @@ export default function LeadsManagement() {
       case "website":
         return (
           <span className="text-sm text-blue-600 hover:text-blue-800">
-            {lead.website || '-'}
+            {lead.website || "-"}
           </span>
         );
       case "employeeCount":
-        return <span className="text-sm">{lead.employeeCount || '-'}</span>;
+        return <span className="text-sm">{lead.employeeCount || "-"}</span>;
       case "annualRevenue":
-        return <span className="text-sm">{lead.annualRevenue ? formatCurrency(lead.annualRevenue) : '-'}</span>;
+        return (
+          <span className="text-sm">
+            {lead.annualRevenue ? formatCurrency(lead.annualRevenue) : "-"}
+          </span>
+        );
       case "createdDate":
         return <span className="text-sm">{formatDate(lead.createdAt)}</span>;
       default:
@@ -349,9 +548,9 @@ export default function LeadsManagement() {
   };
 
   const toggleLeadSelection = (leadId: string) => {
-    setSelectedLeads(prev => 
-      prev.includes(leadId) 
-        ? prev.filter(id => id !== leadId)
+    setSelectedLeads((prev) =>
+      prev.includes(leadId)
+        ? prev.filter((id) => id !== leadId)
         : [...prev, leadId]
     );
   };
@@ -380,434 +579,541 @@ export default function LeadsManagement() {
   }
 
   return (
-    <MainLayout title="Leads Management" description="Manage and track your sales leads">
+    <MainLayout
+      title="Leads Management"
+      description="Manage and track your sales leads"
+    >
       <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Leads</h1>
-          <p className="text-gray-600">Manage and track your sales leads</p>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Leads
+            </h1>
+            <p className="text-gray-600">Manage and track your sales leads</p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <Button
+              variant="outline"
+              onClick={() => handleBulkAction("export")}
+              className="w-full sm:w-auto"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" className="w-full sm:w-auto">
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+            <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Lead
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Lead</DialogTitle>
+                  <DialogDescription>
+                    Add a new lead to your sales pipeline
+                  </DialogDescription>
+                </DialogHeader>
+                <LeadForm
+                  onSubmit={(data) => createLeadMutation.mutate(data)}
+                  isLoading={createLeadMutation.isPending}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-          <Button variant="outline" onClick={() => handleBulkAction("export")} className="w-full sm:w-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" className="w-full sm:w-auto">
-            <Upload className="h-4 w-4 mr-2" />
-            Import
-          </Button>
-          <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Lead
-              </Button>
-            </DialogTrigger>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center">
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <div className="ml-3 sm:ml-4">
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {filteredLeads.length}
+                  </p>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    Total Leads
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center">
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                <div className="ml-3 sm:ml-4">
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {
+                      filteredLeads.filter(
+                        (lead: Lead) => lead.status === "qualified"
+                      ).length
+                    }
+                  </p>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    Qualified
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center">
+                <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                <div className="ml-3 sm:ml-4">
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {formatCurrency(
+                      filteredLeads.reduce(
+                        (sum: number, lead: Lead) =>
+                          sum + (lead.estimatedValue || 0),
+                        0
+                      )
+                    )}
+                  </p>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    Pipeline Value
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center">
+                <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
+                <div className="ml-3 sm:ml-4">
+                  <p className="text-xl sm:text-2xl font-bold">
+                    {
+                      filteredLeads.filter((lead: Lead) => {
+                        const lastActivity = new Date(lead.lastActivity);
+                        const threeDaysAgo = new Date();
+                        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                        return lastActivity < threeDaysAgo;
+                      }).length
+                    }
+                  </p>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    Need Follow-up
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters and Search */}
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search leads by name, email, company, or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="grid grid-cols-2 sm:flex gap-3 flex-1">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="contacted">Contacted</SelectItem>
+                      <SelectItem value="qualified">Qualified</SelectItem>
+                      <SelectItem value="proposal">Proposal</SelectItem>
+                      <SelectItem value="negotiation">Negotiation</SelectItem>
+                      <SelectItem value="closed_won">Closed Won</SelectItem>
+                      <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={priorityFilter}
+                    onValueChange={setPriorityFilter}
+                  >
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Priority</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <SelectTrigger className="w-full sm:w-40 col-span-2 sm:col-span-1">
+                      <SelectValue placeholder="Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sources</SelectItem>
+                      {leadSources.map((source) => (
+                        <SelectItem key={source} value={source}>
+                          {source}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex border rounded justify-center sm:justify-start">
+                    <Button
+                      variant={viewMode === "table" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("table")}
+                      className="rounded-r-none hidden sm:flex"
+                    >
+                      Table
+                    </Button>
+                    <Button
+                      variant={viewMode === "cards" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("cards")}
+                      className="rounded-l-none"
+                    >
+                      Cards
+                    </Button>
+                  </div>
+
+                  {/* Column Customizer */}
+                  {viewMode === "table" && (
+                    <Popover
+                      open={isColumnCustomizerOpen}
+                      onOpenChange={setIsColumnCustomizerOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="hidden sm:flex"
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Edit columns
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80" align="end">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">Edit columns</h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setVisibleColumns(DEFAULT_VISIBLE_COLUMNS)
+                              }
+                            >
+                              Reset
+                            </Button>
+                          </div>
+                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {AVAILABLE_COLUMNS.map((column) => {
+                              const Icon = column.icon;
+                              return (
+                                <div
+                                  key={column.id}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={column.id}
+                                    checked={visibleColumns.includes(column.id)}
+                                    onCheckedChange={() =>
+                                      toggleColumn(column.id)
+                                    }
+                                  />
+                                  <Icon className="h-4 w-4 text-gray-500" />
+                                  <Label
+                                    htmlFor={column.id}
+                                    className="text-sm flex-1 cursor-pointer"
+                                  >
+                                    {column.label}
+                                  </Label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {visibleColumns.length} of{" "}
+                            {AVAILABLE_COLUMNS.length} columns selected
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bulk Actions */}
+            {selectedLeads.length > 0 && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
+                <span className="text-sm text-blue-800">
+                  {selectedLeads.length} lead
+                  {selectedLeads.length === 1 ? "" : "s"} selected
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkAction("update_status")}
+                  >
+                    Update Status
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkAction("assign")}
+                  >
+                    Assign
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkAction("delete")}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Leads Data */}
+        {isLoading ? (
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          </div>
+        ) : viewMode === "table" ? (
+          <Card className="hidden sm:block">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b-2">
+                      <TableHead className="w-12 pl-6">
+                        <Checkbox
+                          checked={
+                            selectedLeads.length === filteredLeads.length &&
+                            filteredLeads.length > 0
+                          }
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
+                      {visibleColumnsConfig.map((column) => {
+                        const Icon = column.icon;
+                        return (
+                          <TableHead
+                            key={column.id}
+                            className={`${column.width} font-medium text-gray-700`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <Icon className="h-4 w-4" />
+                              <span>{column.label}</span>
+                            </div>
+                          </TableHead>
+                        );
+                      })}
+                      <TableHead className="w-20">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLeads.map((lead: Lead) => (
+                      <TableRow
+                        key={lead.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <TableCell className="pl-6">
+                          <Checkbox
+                            checked={selectedLeads.includes(lead.id)}
+                            onCheckedChange={() => toggleLeadSelection(lead.id)}
+                          />
+                        </TableCell>
+                        {visibleColumnsConfig.map((column) => (
+                          <TableCell key={column.id} className="py-4">
+                            {renderTableCell(lead, column)}
+                          </TableCell>
+                        ))}
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-gray-200"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => handleLeadClick(lead.id)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setEditingLead(lead)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                <Phone className="mr-2 h-4 w-4" />
+                                Call
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Mail className="mr-2 h-4 w-4" />
+                                Send Email
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {filteredLeads.map((lead: Lead) => (
+              <Card key={lead.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => handleLeadClick(lead.id)}
+                    >
+                      <CardTitle className="text-lg text-blue-600 hover:text-blue-800">
+                        {lead.name}
+                      </CardTitle>
+                      <CardDescription>{lead.companyName}</CardDescription>
+                    </div>
+                    <Checkbox
+                      checked={selectedLeads.includes(lead.id)}
+                      onCheckedChange={() => toggleLeadSelection(lead.id)}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm">{lead.email}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm">{lead.phone}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm">
+                        {formatCurrency(lead.estimatedValue)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex space-x-2">
+                        <Badge
+                          className={
+                            statusColors[
+                              lead.status as keyof typeof statusColors
+                            ] || "bg-gray-100"
+                          }
+                        >
+                          {lead.status}
+                        </Badge>
+                        <Badge
+                          className={
+                            priorityColors[
+                              lead.priority as keyof typeof priorityColors
+                            ] || "bg-gray-100"
+                          }
+                        >
+                          {lead.priority}
+                        </Badge>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleLeadClick(lead.id)}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setEditingLead(lead)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Edit Lead Dialog */}
+        {editingLead && (
+          <Dialog
+            open={!!editingLead}
+            onOpenChange={() => setEditingLead(null)}
+          >
             <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Lead</DialogTitle>
-                <DialogDescription>
-                  Add a new lead to your sales pipeline
-                </DialogDescription>
+                <DialogTitle>Edit Lead</DialogTitle>
+                <DialogDescription>Update lead information</DialogDescription>
               </DialogHeader>
               <LeadForm
-                onSubmit={(data) => createLeadMutation.mutate(data)}
-                isLoading={createLeadMutation.isPending}
+                initialData={editingLead}
+                onSubmit={(data) =>
+                  updateLeadMutation.mutate({ ...data, id: editingLead.id })
+                }
+                isLoading={updateLeadMutation.isPending}
               />
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center">
-              <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              <div className="ml-3 sm:ml-4">
-                <p className="text-xl sm:text-2xl font-bold">{filteredLeads.length}</p>
-                <p className="text-sm sm:text-base text-gray-600">Total Leads</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center">
-              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-              <div className="ml-3 sm:ml-4">
-                <p className="text-xl sm:text-2xl font-bold">
-                  {filteredLeads.filter((lead: Lead) => lead.status === "qualified").length}
-                </p>
-                <p className="text-sm sm:text-base text-gray-600">Qualified</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center">
-              <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-              <div className="ml-3 sm:ml-4">
-                <p className="text-xl sm:text-2xl font-bold">
-                  {formatCurrency(filteredLeads.reduce((sum: number, lead: Lead) => sum + (lead.estimatedValue || 0), 0))}
-                </p>
-                <p className="text-sm sm:text-base text-gray-600">Pipeline Value</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center">
-              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-              <div className="ml-3 sm:ml-4">
-                <p className="text-xl sm:text-2xl font-bold">
-                  {filteredLeads.filter((lead: Lead) => {
-                    const lastActivity = new Date(lead.lastActivity);
-                    const threeDaysAgo = new Date();
-                    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-                    return lastActivity < threeDaysAgo;
-                  }).length}
-                </p>
-                <p className="text-sm sm:text-base text-gray-600">Need Follow-up</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <CardContent className="p-4 sm:p-6">
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search leads by name, email, company, or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="grid grid-cols-2 sm:flex gap-3 flex-1">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="qualified">Qualified</SelectItem>
-                    <SelectItem value="proposal">Proposal</SelectItem>
-                    <SelectItem value="negotiation">Negotiation</SelectItem>
-                    <SelectItem value="closed_won">Closed Won</SelectItem>
-                    <SelectItem value="closed_lost">Closed Lost</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Priority</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                  <SelectTrigger className="w-full sm:w-40 col-span-2 sm:col-span-1">
-                    <SelectValue placeholder="Source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sources</SelectItem>
-                    {leadSources.map((source) => (
-                      <SelectItem key={source} value={source}>
-                        {source}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2">
-                <div className="flex border rounded justify-center sm:justify-start">
-                  <Button
-                    variant={viewMode === "table" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("table")}
-                    className="rounded-r-none hidden sm:flex"
-                  >
-                    Table
-                  </Button>
-                  <Button
-                    variant={viewMode === "cards" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("cards")}
-                    className="rounded-l-none"
-                  >
-                    Cards
-                  </Button>
-                </div>
-                
-                {/* Column Customizer */}
-                {viewMode === "table" && (
-                  <Popover open={isColumnCustomizerOpen} onOpenChange={setIsColumnCustomizerOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="hidden sm:flex">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Edit columns
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80" align="end">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium">Edit columns</h4>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setVisibleColumns(DEFAULT_VISIBLE_COLUMNS)}
-                          >
-                            Reset
-                          </Button>
-                        </div>
-                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                          {AVAILABLE_COLUMNS.map((column) => {
-                            const Icon = column.icon;
-                            return (
-                              <div key={column.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={column.id}
-                                  checked={visibleColumns.includes(column.id)}
-                                  onCheckedChange={() => toggleColumn(column.id)}
-                                />
-                                <Icon className="h-4 w-4 text-gray-500" />
-                                <Label htmlFor={column.id} className="text-sm flex-1 cursor-pointer">
-                                  {column.label}
-                                </Label>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {visibleColumns.length} of {AVAILABLE_COLUMNS.length} columns selected
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Bulk Actions */}
-          {selectedLeads.length > 0 && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
-              <span className="text-sm text-blue-800">
-                {selectedLeads.length} lead{selectedLeads.length === 1 ? '' : 's'} selected
-              </span>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => handleBulkAction("update_status")}>
-                  Update Status
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleBulkAction("assign")}>
-                  Assign
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleBulkAction("delete")}>
-                  Delete
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Leads Data */}
-      {isLoading ? (
-        <div className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-        </div>
-      ) : viewMode === "table" ? (
-        <Card className="hidden sm:block">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-b-2">
-                    <TableHead className="w-12 pl-6">
-                      <Checkbox
-                        checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
-                    {visibleColumnsConfig.map((column) => {
-                      const Icon = column.icon;
-                      return (
-                        <TableHead key={column.id} className={`${column.width} font-medium text-gray-700`}>
-                          <div className="flex items-center space-x-2">
-                            <Icon className="h-4 w-4" />
-                            <span>{column.label}</span>
-                          </div>
-                        </TableHead>
-                      );
-                    })}
-                    <TableHead className="w-20">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.map((lead: Lead) => (
-                    <TableRow key={lead.id} className="hover:bg-gray-50 transition-colors">
-                      <TableCell className="pl-6">
-                        <Checkbox
-                          checked={selectedLeads.includes(lead.id)}
-                          onCheckedChange={() => toggleLeadSelection(lead.id)}
-                        />
-                      </TableCell>
-                      {visibleColumnsConfig.map((column) => (
-                        <TableCell key={column.id} className="py-4">
-                          {renderTableCell(lead, column)}
-                        </TableCell>
-                      ))}
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-200">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleLeadClick(lead.id)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setEditingLead(lead)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Phone className="mr-2 h-4 w-4" />
-                              Call
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Mail className="mr-2 h-4 w-4" />
-                              Send Email
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {filteredLeads.map((lead: Lead) => (
-            <Card key={lead.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="cursor-pointer" onClick={() => handleLeadClick(lead.id)}>
-                    <CardTitle className="text-lg text-blue-600 hover:text-blue-800">{lead.name}</CardTitle>
-                    <CardDescription>{lead.companyName}</CardDescription>
-                  </div>
-                  <Checkbox
-                    checked={selectedLeads.includes(lead.id)}
-                    onCheckedChange={() => toggleLeadSelection(lead.id)}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{lead.email}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{lead.phone}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{formatCurrency(lead.estimatedValue)}</span>
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex space-x-2">
-                      <Badge className={statusColors[lead.status as keyof typeof statusColors] || "bg-gray-100"}>
-                        {lead.status}
-                      </Badge>
-                      <Badge className={priorityColors[lead.priority as keyof typeof priorityColors] || "bg-gray-100"}>
-                        {lead.priority}
-                      </Badge>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleLeadClick(lead.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setEditingLead(lead)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Edit Lead Dialog */}
-      {editingLead && (
-        <Dialog open={!!editingLead} onOpenChange={() => setEditingLead(null)}>
-          <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Lead</DialogTitle>
-              <DialogDescription>
-                Update lead information
-              </DialogDescription>
-            </DialogHeader>
-            <LeadForm
-              initialData={editingLead}
-              onSubmit={(data) => updateLeadMutation.mutate({ ...data, id: editingLead.id })}
-              isLoading={updateLeadMutation.isPending}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+        )}
       </div>
     </MainLayout>
   );
 }
 
 // Lead Form Component
-function LeadForm({ 
-  initialData, 
-  onSubmit, 
-  isLoading 
-}: { 
-  initialData?: Lead; 
-  onSubmit: (data: Partial<Lead>) => void; 
-  isLoading: boolean; 
+function LeadForm({
+  initialData,
+  onSubmit,
+  isLoading,
+}: {
+  initialData?: Lead;
+  onSubmit: (data: Partial<Lead>) => void;
+  isLoading: boolean;
 }) {
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
@@ -832,7 +1138,10 @@ function LeadForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 max-h-[60vh] overflow-y-auto"
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Name *</Label>
@@ -849,7 +1158,9 @@ function LeadForm({
             id="email"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
             required
           />
         </div>
@@ -858,7 +1169,9 @@ function LeadForm({
           <Input
             id="phone"
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, phone: e.target.value })
+            }
           />
         </div>
         <div className="space-y-2">
@@ -866,7 +1179,9 @@ function LeadForm({
           <Input
             id="companyName"
             value={formData.companyName}
-            onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, companyName: e.target.value })
+            }
           />
         </div>
         <div className="space-y-2">
@@ -874,12 +1189,19 @@ function LeadForm({
           <Input
             id="jobTitle"
             value={formData.jobTitle}
-            onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, jobTitle: e.target.value })
+            }
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="leadSource">Lead Source</Label>
-          <Select value={formData.leadSource} onValueChange={(value) => setFormData({ ...formData, leadSource: value })}>
+          <Select
+            value={formData.leadSource}
+            onValueChange={(value) =>
+              setFormData({ ...formData, leadSource: value })
+            }
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select source" />
             </SelectTrigger>
@@ -896,7 +1218,12 @@ function LeadForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
-          <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+          <Select
+            value={formData.status}
+            onValueChange={(value) =>
+              setFormData({ ...formData, status: value })
+            }
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -913,7 +1240,12 @@ function LeadForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="priority">Priority</Label>
-          <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
+          <Select
+            value={formData.priority}
+            onValueChange={(value) =>
+              setFormData({ ...formData, priority: value })
+            }
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -930,7 +1262,12 @@ function LeadForm({
             id="estimatedValue"
             type="number"
             value={formData.estimatedValue}
-            onChange={(e) => setFormData({ ...formData, estimatedValue: parseFloat(e.target.value) || 0 })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                estimatedValue: parseFloat(e.target.value) || 0,
+              })
+            }
           />
         </div>
         <div className="space-y-2">
@@ -938,7 +1275,9 @@ function LeadForm({
           <Input
             id="address"
             value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, address: e.target.value })
+            }
           />
         </div>
         <div className="space-y-2">
@@ -954,7 +1293,9 @@ function LeadForm({
           <Input
             id="state"
             value={formData.state}
-            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, state: e.target.value })
+            }
           />
         </div>
         <div className="space-y-2">
@@ -962,7 +1303,9 @@ function LeadForm({
           <Input
             id="zipCode"
             value={formData.zipCode}
-            onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, zipCode: e.target.value })
+            }
           />
         </div>
       </div>
@@ -977,7 +1320,11 @@ function LeadForm({
       </div>
       <div className="flex justify-end space-x-2">
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Saving..." : initialData ? "Update Lead" : "Create Lead"}
+          {isLoading
+            ? "Saving..."
+            : initialData
+            ? "Update Lead"
+            : "Create Lead"}
         </Button>
       </div>
     </form>
