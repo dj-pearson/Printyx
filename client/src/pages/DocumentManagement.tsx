@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { FileText, Upload, Search, FileCheck, Clock, AlertTriangle, CheckCircle, FolderOpen, Download, Share, Edit, Eye, Settings, Filter, FileSignature, Zap, Users, Calendar, Target } from 'lucide-react';
+import { FileText, Upload, Search, FileCheck, Clock, AlertTriangle, CheckCircle, FolderOpen, Download, Share, Edit, Eye, Settings, Filter, FileSignature, Zap, Users, Calendar, Target, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
