@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -262,8 +263,9 @@ export default function ChartOfAccounts() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
+      <MainLayout>
+        <div className="p-6">
+          <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/4"></div>
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           <div className="space-y-2">
@@ -272,12 +274,14 @@ export default function ChartOfAccounts() {
             ))}
           </div>
         </div>
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <MainLayout>
+      <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Chart of Accounts</h1>
@@ -698,6 +702,7 @@ export default function ChartOfAccounts() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
