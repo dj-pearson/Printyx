@@ -47,7 +47,7 @@ export async function getUserSettings(req: Request, res: Response) {
       settings = {
         id: `settings-${user.id}`,
         userId: user.id,
-        tenantId: user.tenantId || '550e8400-e29b-41d4-a716-446655440000',
+        tenantId: user.tenantId || (req as any).tenantId || 'demo-tenant',
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',

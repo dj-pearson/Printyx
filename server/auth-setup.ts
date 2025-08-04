@@ -199,7 +199,7 @@ export async function setupDemoAuth() {
 
     // Create demo tenant
     const demoTenant = {
-      id: "550e8400-e29b-41d4-a716-446655440000",
+      id: process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000",
       name: "Demo Copier Dealership",
       subdomain: "demo",
       settings: {

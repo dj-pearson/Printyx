@@ -34,12 +34,12 @@ const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
     req.user = {
       id: req.session.userId,
-      tenantId: req.session.tenantId || "550e8400-e29b-41d4-a716-446655440000"
+      tenantId: req.session.tenantId || process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000"
     };
   } else if (!req.user.tenantId && !req.user.id) {
     req.user = {
       id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId || "550e8400-e29b-41d4-a716-446655440000"
+      tenantId: req.user.tenantId || req.session?.tenantId || process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000"
     };
   }
   next();

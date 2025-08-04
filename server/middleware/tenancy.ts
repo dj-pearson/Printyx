@@ -66,7 +66,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         // console.log(`[TENANT DEBUG] Using session tenant: ${req.tenantId}`);
       } else {
         // Default to demo tenant for development
-        req.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+        req.tenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
         // console.log(`[TENANT DEBUG] Using default demo tenant: ${req.tenantId}`);
       }
       

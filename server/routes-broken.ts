@@ -4,6 +4,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { authRoutes } from "./auth-routes";
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { 
   requireRole, 
   requireSalesAccess, 
@@ -49,10 +50,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.use('/api/auth', authRoutes);
 
-  // Dashboard routes - using demo tenant
-  app.get('/api/dashboard/metrics', async (req: any, res) => {
+  // Dashboard routes - using proper tenant resolution
+  app.get('/api/dashboard/metrics', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!;
       const metrics = await storage.getDashboardMetrics(tenantId);
       res.json(metrics);
     } catch (error) {
@@ -61,9 +62,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/recent-tickets', async (req: any, res) => {
+  app.get('/api/dashboard/recent-tickets', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!;
       const tickets = await storage.getRecentServiceTickets(tenantId);
       res.json(tickets);
     } catch (error) {
@@ -72,9 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/top-customers', async (req: any, res) => {
+  app.get('/api/dashboard/top-customers', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!;
       const customers = await storage.getTopCustomers(tenantId);
       res.json(customers);
     } catch (error) {
@@ -83,9 +84,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/dashboard/alerts', async (req: any, res) => {
+  app.get('/api/dashboard/alerts', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!;
       const lowStockItems = await storage.getLowStockAlerts(tenantId);
       res.json({ lowStock: lowStockItems });
     } catch (error) {
@@ -97,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer routes with RBAC (demo mode)
   app.get('/api/customers', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       // Demo mode - show all customers
       const customers = await storage.getCustomers(tenantId);
       
@@ -110,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/customers', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       
       const validatedData = insertCustomerSchema.parse({
         ...req.body,
@@ -128,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Lead routes (demo mode)
   app.get('/api/leads', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       // Demo mode - show all leads
       const leads = await storage.getLeads(tenantId);
       
@@ -141,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/leads', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       const userId = "demo-user-123";
       
       const validatedData = insertLeadSchema.parse({
@@ -162,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Quote routes (demo mode)
   app.get('/api/quotes', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       const quotes = await storage.getQuotes(tenantId); // TODO: Add role-based filtering
       res.json(quotes);
     } catch (error) {
@@ -173,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/quotes', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       const userId = "demo-user-123";
       
       const validatedData = insertQuoteSchema.parse({
@@ -194,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Service ticket routes (demo mode)
   app.get('/api/service-tickets', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       // Demo mode - show all tickets
       const tickets = await storage.getServiceTickets(tenantId);
       
@@ -207,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/service-tickets', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       const userId = "demo-user-123";
       
       const validatedData = insertServiceTicketSchema.parse({
@@ -228,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contract routes (demo mode)
   app.get('/api/contracts', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       // Demo mode - show all contracts
       const contracts = await storage.getContracts(tenantId);
       
@@ -242,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Inventory routes (demo mode)
   app.get('/api/inventory', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       // Demo mode - allow management
       const canManage = true;
       const items = await storage.getInventoryItems(tenantId);
@@ -257,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Billing routes (demo mode)
   app.get('/api/invoices', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!; // From tenant middleware
       const invoices = await storage.getInvoices(tenantId);
       res.json(invoices);
     } catch (error) {
@@ -269,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contract routes
   app.get('/api/contracts', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const contracts = await storage.getContracts(tenantId);
       res.json(contracts);
     } catch (error) {
@@ -281,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Equipment routes
   app.get('/api/equipment', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const equipment = await storage.getEquipment(tenantId);
       res.json(equipment);
     } catch (error) {
@@ -293,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Inventory routes
   app.get('/api/inventory', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const inventory = await storage.getInventoryItems(tenantId);
       res.json(inventory);
     } catch (error) {
@@ -305,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Technician routes
   app.get('/api/technicians', async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const technicians = await storage.getTechnicians(tenantId);
       res.json(technicians);
     } catch (error) {
@@ -319,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all meter readings
   app.get("/api/meter-readings", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const readings = await storage.getMeterReadings(tenantId);
       res.json(readings);
     } catch (error) {
@@ -331,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get meter readings for specific equipment
   app.get("/api/meter-readings/equipment/:equipmentId", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { equipmentId } = req.params;
       const readings = await storage.getMeterReadingsByEquipment(equipmentId, tenantId);
       res.json(readings);
@@ -344,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new meter reading
   app.post("/api/meter-readings", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const userId = "demo-user-123"; // Demo user
 
       const validatedData = insertMeterReadingSchema.parse({
@@ -364,7 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Calculate billing for a meter reading
   app.post("/api/meter-readings/:readingId/calculate-billing", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { readingId } = req.params;
       const { contractId } = req.body;
 
@@ -381,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all invoices
   app.get("/api/invoices", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const invoices = await storage.getInvoices(tenantId);
       res.json(invoices);
     } catch (error) {
@@ -393,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific invoice with line items
   app.get("/api/invoices/:id", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { id } = req.params;
       const invoice = await storage.getInvoice(id, tenantId);
       if (!invoice) {
@@ -411,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create invoice from meter readings
   app.post("/api/invoices/generate", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { contractId, billingPeriodStart, billingPeriodEnd } = req.body;
 
       const invoice = await storage.generateInvoiceFromMeterReadings(
@@ -431,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update invoice status
   app.patch("/api/invoices/:id", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { id } = req.params;
       const updateData = req.body;
 
@@ -453,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auto-assign technician based on skills and availability
   app.post("/api/service-tickets/:id/assign", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { id } = req.params;
       const { technicianId, scheduledDate } = req.body;
 
@@ -473,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Find optimal technician for a ticket
   app.post("/api/service-tickets/:id/find-technician", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { requiredSkills, scheduledDate } = req.body;
 
       const technician = await storage.findOptimalTechnician(
@@ -491,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get service ticket timeline/updates
   app.get("/api/service-tickets/:id/updates", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { id } = req.params;
 
       const updates = await storage.getServiceTicketUpdates(id, tenantId);
@@ -507,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leads management
   app.get("/api/leads", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const leads = await storage.getLeads(tenantId);
       res.json(leads);
     } catch (error) {
@@ -518,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/leads/:id", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { id } = req.params;
       const lead = await storage.getLead(id, tenantId);
       if (!lead) {
@@ -533,7 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/leads", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const leadData = { ...req.body, tenantId, createdBy: "demo-user-123" };
       const lead = await storage.createLead(leadData);
       res.status(201).json(lead);
@@ -545,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/leads/:id", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { id } = req.params;
       const updateData = req.body;
       const lead = await storage.updateLead(id, updateData, tenantId);
@@ -559,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Quotes management
   app.get("/api/quotes", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const quotes = await storage.getQuotes(tenantId);
       res.json(quotes);
     } catch (error) {
@@ -570,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quotes", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const quoteData = { ...req.body, tenantId, createdBy: "demo-user-123" };
       const quote = await storage.createQuote(quoteData);
       res.status(201).json(quote);
@@ -583,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer interactions management
   app.get("/api/customer-interactions", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const interactions = await storage.getCustomerInteractions(tenantId);
       res.json(interactions);
     } catch (error) {
@@ -594,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/customer-interactions", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const interactionData = { ...req.body, tenantId, createdBy: "demo-user-123" };
       const interaction = await storage.createCustomerInteraction(interactionData);
       res.status(201).json(interaction);
@@ -607,7 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer contacts management
   app.get("/api/customer-contacts", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const { customerId } = req.query;
       const contacts = await storage.getCustomerContacts(tenantId, customerId as string);
       res.json(contacts);
@@ -619,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/customer-contacts", async (req: any, res) => {
     try {
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Demo tenant
+      const tenantId = req.tenantId!; // From tenant middleware
       const contactData = { ...req.body, tenantId };
       const contact = await storage.createCustomerContact(contactData);
       res.status(201).json(contact);
