@@ -314,7 +314,7 @@ export async function seedRoles() {
 export async function createDemoTenant() {
   console.log("Creating demo tenant...");
   
-  const demoTenantId = "550e8400-e29b-41d4-a716-446655440000";
+  const demoTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
   
   // Check if demo tenant exists
   const existingTenant = await db.select().from(tenants).where(eq(tenants.id, demoTenantId)).limit(1);

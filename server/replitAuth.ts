@@ -52,7 +52,7 @@ async function upsertUser(
   claims: any,
 ) {
   // Use existing demo tenant for all authenticated users
-  const defaultTenantId = "550e8400-e29b-41d4-a716-446655440000";
+  const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
   
   // Ensure tenant exists
   let tenant = await storage.getTenant(defaultTenantId);
