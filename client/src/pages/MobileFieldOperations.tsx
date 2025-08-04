@@ -36,7 +36,7 @@ type FieldTechnician = {
   current_location?: any;
   jobs_completed_today: number;
   jobs_completed_week: number;
-  customer_satisfaction_rating: number;
+  customer_satisfaction_rating?: number;
   first_time_fix_rate: number;
   employment_status: string;
   last_sync_timestamp?: string;
@@ -1038,11 +1038,11 @@ export default function MobileFieldOperations() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Satisfaction:</span>
-                            <span>{(technician.customer_satisfaction_rating || 0).toFixed(1)}★</span>
+                            <span>{Number(technician.customer_satisfaction_rating || 0).toFixed(1)}★</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">First Time Fix:</span>
-                            <span>{(technician.first_time_fix_rate || 0).toFixed(1)}%</span>
+                            <span>{Number(technician.first_time_fix_rate || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from "@/components/layout/main-layout";
 import { 
   Plus, BarChart3, TrendingUp, TrendingDown, Users, Clock, Star,
   DollarSign, Target, Award, Activity, Calendar, Filter, Download,
@@ -339,7 +340,8 @@ export default function ServiceAnalytics() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Service Analytics & Performance</h1>
@@ -1250,7 +1252,7 @@ export default function ServiceAnalytics() {
                             {benchmark.percentile_ranking && (
                               <div>
                                 <p className="text-muted-foreground">Percentile Ranking</p>
-                                <p className="font-medium">{benchmark.percentile_ranking.toFixed(0)}th</p>
+                                <p className="font-medium">{Number(benchmark.percentile_ranking || 0).toFixed(0)}th</p>
                               </div>
                             )}
                           </div>
@@ -1279,6 +1281,7 @@ export default function ServiceAnalytics() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
