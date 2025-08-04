@@ -81,6 +81,7 @@ import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
 import DocumentManagement from "@/pages/DocumentManagement";
 import MobileServiceApp from "@/pages/MobileServiceApp";
 import AdvancedAnalyticsDashboard from "@/pages/AdvancedAnalyticsDashboard";
+import BusinessProcessOptimization from "@/pages/BusinessProcessOptimization";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -191,6 +192,7 @@ function Router() {
           <Route path="/document-management" component={DocumentManagement} />
           <Route path="/mobile-service-app" component={MobileServiceApp} />
           <Route path="/advanced-analytics" component={AdvancedAnalyticsDashboard} />
+          <Route path="/business-process-optimization" component={BusinessProcessOptimization} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
