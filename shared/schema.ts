@@ -4698,3 +4698,86 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
 
 export type UserSettings = typeof userSettings.$inferSelect;
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+
+// Social Media Post Generator Schema
+export const socialMediaPosts = pgTable("social_media_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Generation metadata
+  generationType: varchar("generation_type").notNull(), // manual, scheduled, cron
+  status: varchar("status").notNull().default("draft"), // draft, generated, published, failed
+  
+  // Claude API Integration
+  claudeModel: varchar("claude_model").default("claude-sonnet-4-20250514"),
+  claudePrompt: text("claude_prompt"),
+  claudeResponse: jsonb("claude_response"),
+  
+  // Post Content
+  title: varchar("title").notNull(),
+  shortContent: text("short_content").notNull(), // Twitter < 200 chars
+  longContent: text("long_content").notNull(), // Facebook/LinkedIn
+  websiteLink: varchar("website_link").default("https://printyx.net"),
+  
+  // Scheduling & Automation
+  scheduledFor: timestamp("scheduled_for"),
+  cronExpression: varchar("cron_expression"), // For recurring posts
+  isRecurring: boolean("is_recurring").default(false),
+  
+  // Webhook & Broadcasting
+  webhookUrl: varchar("webhook_url"),
+  webhookPayload: jsonb("webhook_payload"),
+  webhookStatus: varchar("webhook_status"), // pending, sent, failed
+  webhookSentAt: timestamp("webhook_sent_at"),
+  
+  // Platform targeting
+  targetPlatforms: jsonb("target_platforms"), // ["twitter", "facebook", "linkedin"]
+  
+  // Audit fields
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const socialMediaCronJobs = pgTable("social_media_cron_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  name: varchar("name").notNull(),
+  description: text("description"),
+  cronExpression: varchar("cron_expression").notNull(), // 0 9 * * 1 (every Monday at 9 AM)
+  isActive: boolean("is_active").default(true),
+  
+  // Post generation settings
+  promptTemplate: text("prompt_template").notNull(),
+  targetPlatforms: jsonb("target_platforms").notNull(),
+  webhookUrl: varchar("webhook_url").notNull(),
+  
+  // Execution tracking
+  lastExecuted: timestamp("last_executed"),
+  nextExecution: timestamp("next_execution"),
+  executionCount: integer("execution_count").default(0),
+  failureCount: integer("failure_count").default(0),
+  
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Drizzle schemas for validation
+export const insertSocialMediaPostSchema = createInsertSchema(socialMediaPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSocialMediaCronJobSchema = createInsertSchema(socialMediaCronJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SocialMediaPost = typeof socialMediaPosts.$inferSelect;
+export type InsertSocialMediaPost = z.infer<typeof insertSocialMediaPostSchema>;
+export type SocialMediaCronJob = typeof socialMediaCronJobs.$inferSelect;
+export type InsertSocialMediaCronJob = z.infer<typeof insertSocialMediaCronJobSchema>;
