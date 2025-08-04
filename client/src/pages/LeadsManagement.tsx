@@ -279,7 +279,8 @@ export default function LeadsManagement() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  // Force cards view on mobile, table view on desktop by default
+  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
@@ -785,7 +786,7 @@ export default function LeadsManagement() {
                       variant={viewMode === "cards" ? "default" : "ghost"}
                       size="sm"
                       onClick={() => setViewMode("cards")}
-                      className="rounded-l-none"
+                      className="sm:rounded-l-none rounded-md"
                     >
                       Cards
                     </Button>
