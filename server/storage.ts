@@ -1208,7 +1208,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBusinessRecordActivity(activity: any): Promise<any> {
-    const [newActivity] = await db.insert(businessRecordActivities).values(activity).returning();
+    // Parse date fields to ensure they are proper Date objects
+    const processedActivity = {
+      ...activity,
+      // Convert date strings to Date objects
+      scheduledDate: activity.scheduledDate ? new Date(activity.scheduledDate) : null,
+      dueDate: activity.dueDate ? new Date(activity.dueDate) : null,
+      followUpDate: activity.followUpDate ? new Date(activity.followUpDate) : null,
+      completedDate: activity.completedDate ? new Date(activity.completedDate) : null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const [newActivity] = await db.insert(businessRecordActivities).values(processedActivity).returning();
     return newActivity;
   }
 
