@@ -98,6 +98,48 @@ export {
   insertVendorBillSchema,
 } from "./quickbooks-schema";
 
+// Re-export Demo Scheduling schemas
+export {
+  demoSchedules,
+  demoEquipmentRequirements,
+  demoOutcomes,
+  insertDemoScheduleSchema,
+  insertDemoEquipmentRequirementSchema,
+  insertDemoOutcomeSchema,
+} from "../server/demo-scheduling-schema";
+
+export type {
+  DemoSchedule,
+  InsertDemoSchedule,
+  DemoEquipmentRequirement,
+  InsertDemoEquipmentRequirement,
+  DemoOutcome,
+  InsertDemoOutcome,
+} from "../server/demo-scheduling-schema";
+
+// Re-export Sales Forecasting schemas
+export {
+  salesForecasts,
+  forecastPipelineItems,
+  forecastMetrics,
+  forecastRules,
+  insertSalesForecastSchema,
+  insertForecastPipelineItemSchema,
+  insertForecastMetricSchema,
+  insertForecastRuleSchema,
+} from "../server/sales-forecasting-schema";
+
+export type {
+  SalesForecast,
+  InsertSalesForecast,
+  ForecastPipelineItem,
+  InsertForecastPipelineItem,
+  ForecastMetric,
+  InsertForecastMetric,
+  ForecastRule,
+  InsertForecastRule,
+} from "../server/sales-forecasting-schema";
+
 export type {
   QbVendor,
   InsertQbVendor,
