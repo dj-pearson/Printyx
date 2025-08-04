@@ -280,9 +280,9 @@ export function registerBusinessRecordRoutes(app: Express) {
   });
 
   // Business Record Activities - Unified activity system
-  app.get("/api/business-records/:id/activities", isAuthenticated, async (req: any, res) => {
+  app.get("/api/business-records/:id/activities", resolveTenant, requireTenant, isAuthenticated, async (req: TenantRequest, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.tenantId!;
       const { id } = req.params;
       
       const activities = await storage.getBusinessRecordActivities(id, tenantId);
@@ -293,10 +293,10 @@ export function registerBusinessRecordRoutes(app: Express) {
     }
   });
 
-  app.post("/api/business-records/:id/activities", isAuthenticated, async (req: any, res) => {
+  app.post("/api/business-records/:id/activities", resolveTenant, requireTenant, isAuthenticated, async (req: TenantRequest, res) => {
     try {
-      const tenantId = req.user?.tenantId;
-      const userId = req.user?.claims?.sub;
+      const tenantId = req.tenantId!;
+      const userId = req.user?.id || 'system';
       const { id } = req.params;
       
       const activityData = {

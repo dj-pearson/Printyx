@@ -3349,7 +3349,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!tenantId) {
         return res.status(400).json({ message: "Tenant ID is required" });
       }
-      const contacts = await storage.getCompanyContacts(companyId, tenantId);
+
+      // Check if this is actually a business record ID instead of a company ID
+      let actualCompanyId = companyId;
+      
+      // First check if it's a valid company ID
+      const existingCompany = await storage.getCompany(companyId, tenantId);
+      
+      if (!existingCompany) {
+        // It might be a business record ID, try to get the business record
+        const businessRecord = await storage.getBusinessRecord(companyId, tenantId);
+        if (businessRecord) {
+          // Try to find an existing company with the same name
+          const existingCompanyByName = await storage.getCompanyByName(businessRecord.company_name || businessRecord.name, tenantId);
+          
+          if (existingCompanyByName) {
+            actualCompanyId = existingCompanyByName.id;
+          } else {
+            // No company exists yet, return empty array
+            return res.json([]);
+          }
+        } else {
+          return res.status(404).json({ message: "Company or business record not found" });
+        }
+      }
+
+      const contacts = await storage.getCompanyContacts(actualCompanyId, tenantId);
       res.json(contacts);
     } catch (error) {
       console.error("Error fetching company contacts:", error);
@@ -3364,15 +3389,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!tenantId) {
         return res.status(400).json({ message: "Tenant ID is required" });
       }
+
+      // Check if this is actually a business record ID instead of a company ID
+      // If so, try to find or create the corresponding company
+      let actualCompanyId = companyId;
+      
+      // First check if it's a valid company ID
+      const existingCompany = await storage.getCompany(companyId, tenantId);
+      
+      if (!existingCompany) {
+        // It might be a business record ID, try to get the business record
+        const businessRecord = await storage.getBusinessRecord(companyId, tenantId);
+        if (businessRecord) {
+          // Try to find an existing company with the same name
+          const existingCompanyByName = await storage.getCompanyByName(businessRecord.company_name || businessRecord.name, tenantId);
+          
+          if (existingCompanyByName) {
+            actualCompanyId = existingCompanyByName.id;
+          } else {
+            // Create a new company based on the business record
+            const newCompany = await storage.createCompany({
+              name: businessRecord.company_name || businessRecord.name || 'Unknown Company',
+              tenantId: tenantId,
+              businessRecordId: companyId, // Link back to the business record
+              industry: businessRecord.industry,
+              website: businessRecord.website,
+              phone: businessRecord.phone,
+              address: businessRecord.address,
+              city: businessRecord.city,
+              state: businessRecord.state,
+              zipCode: businessRecord.zip_code,
+              country: businessRecord.country || 'USA',
+            });
+            actualCompanyId = newCompany.id;
+          }
+        } else {
+          return res.status(404).json({ message: "Company or business record not found" });
+        }
+      }
+
       const validatedData = insertCompanyContactSchema.parse({
         ...req.body,
         tenantId: tenantId,
-        companyId: companyId,
+        companyId: actualCompanyId,
       });
       const contact = await storage.createCompanyContact(validatedData);
       res.status(201).json(contact);
     } catch (error) {
       console.error("Error creating company contact:", error);
+      if (error.code === '23503') {
+        return res.status(400).json({ message: "Invalid company reference" });
+      }
       res.status(500).json({ message: "Failed to create company contact" });
     }
   });
