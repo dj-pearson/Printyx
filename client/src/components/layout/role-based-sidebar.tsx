@@ -109,7 +109,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       items: [
         { name: "Leads Management", href: "/leads-management", icon: UserPlus },
         { name: "CRM Enhanced", href: "/crm-enhanced", icon: Target },
-        { name: "Sales Pipeline Workflow", href: "/sales-pipeline", icon: Target },
+        {
+          name: "Sales Pipeline Workflow",
+          href: "/sales-pipeline",
+          icon: Target,
+        },
         {
           name: "CRM Goals Dashboard",
           href: "/crm-goals-dashboard",
@@ -413,17 +417,45 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   }
 
   // Root Admin section - show only for platform/root admin users
-  if (isPlatformRole || userRole?.role === "admin" || userRole?.role === "super_admin") {
+  if (
+    isPlatformRole ||
+    userRole?.role === "admin" ||
+    userRole?.role === "super_admin"
+  ) {
     sections.push({
       name: "Root Admin",
       items: [
-        { name: "Root Admin Dashboard", href: "/root-admin-dashboard", icon: Settings },
-        { name: "Social Media Generator", href: "/social-media-generator", icon: Zap },
-        { name: "Security Management", href: "/security-management", icon: Shield },
-        { name: "System Monitoring", href: "/system-monitoring", icon: Monitor },
+        {
+          name: "Root Admin Dashboard",
+          href: "/root-admin-dashboard",
+          icon: Settings,
+        },
+        {
+          name: "Social Media Generator",
+          href: "/social-media-generator",
+          icon: Zap,
+        },
+        {
+          name: "Security Management",
+          href: "/security-management",
+          icon: Shield,
+        },
+        {
+          name: "System Monitoring",
+          href: "/system-monitoring",
+          icon: Monitor,
+        },
         { name: "Access Control", href: "/access-control", icon: UserCheck },
-        { name: "Platform Configuration", href: "/platform-configuration", icon: Settings },
-        { name: "Database Management", href: "/database-management", icon: Database },
+        {
+          name: "Platform Configuration",
+          href: "/platform-configuration",
+          icon: Settings,
+        },
+        {
+          name: "Database Management",
+          href: "/database-management",
+          icon: Database,
+        },
       ],
     });
   }
