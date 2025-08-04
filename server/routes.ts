@@ -1842,6 +1842,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Document Management & Workflow Automation Routes
+  app.get('/api/document-management/library', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const documentLibrary = {
+        summary: {
+          totalDocuments: 2847,
+          categoriesCount: 12,
+          pendingApproval: 23,
+          expiringSoon: 8,
+          storageUsed: '4.2 GB',
+          storageLimit: '50 GB',
+          lastBackup: new Date('2025-02-03T02:00:00Z'),
+          complianceScore: 96.5
+        },
+        categories: [
+          {
+            id: 'contracts',
+            name: 'Contracts & Agreements',
+            documentCount: 456,
+            subcategories: [
+              { name: 'Service Contracts', count: 234, icon: 'FileText' },
+              { name: 'Lease Agreements', count: 156, icon: 'FileSignature' },
+              { name: 'Master Service Agreements', count: 45, icon: 'FileContract' }
+            ],
+            recentActivity: 12,
+            complianceStatus: 'compliant',
+            retentionPolicy: '7 years',
+            accessLevel: 'restricted'
+          },
+          {
+            id: 'service-docs',
+            name: 'Service Documentation',
+            documentCount: 1342,
+            subcategories: [
+              { name: 'Service Reports', count: 789, icon: 'FileText' },
+              { name: 'Installation Docs', count: 234, icon: 'Settings' },
+              { name: 'Maintenance Records', count: 198, icon: 'Wrench' }
+            ],
+            recentActivity: 45,
+            complianceStatus: 'compliant',
+            retentionPolicy: '5 years',
+            accessLevel: 'department'
+          }
+        ],
+        recentDocuments: [
+          {
+            id: 'doc-001',
+            title: 'Metro Office Solutions - Service Contract Renewal',
+            category: 'contracts',
+            subcategory: 'Service Contracts',
+            fileType: 'pdf',
+            fileSize: '2.4 MB',
+            lastModified: new Date('2025-02-03T16:30:00Z'),
+            modifiedBy: 'Sarah Chen',
+            status: 'active',
+            version: '2.1',
+            tags: ['renewal', 'service', 'metro-office'],
+            workflow: {
+              currentStage: 'customer_review',
+              nextAction: 'awaiting_signature',
+              dueDate: new Date('2025-02-10T17:00:00Z'),
+              assignedTo: 'John Smith'
+            }
+          }
+        ],
+        pendingActions: [
+          {
+            id: 'action-001',
+            documentId: 'doc-001',
+            documentTitle: 'Metro Office Solutions - Service Contract Renewal',
+            actionType: 'approval_required',
+            priority: 'high',
+            assignedTo: 'John Smith',
+            dueDate: new Date('2025-02-05T17:00:00Z'),
+            description: 'Contract renewal requires final management approval',
+            estimatedTime: 15
+          }
+        ]
+      };
+
+      res.json(documentLibrary);
+    } catch (error) {
+      console.error('Error fetching document library:', error);
+      res.status(500).json({ message: 'Failed to fetch document library' });
+    }
+  });
+
+  app.get('/api/document-management/workflows', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const workflowData = {
+        templates: [
+          {
+            id: 'contract-approval',
+            name: 'Contract Approval Workflow',
+            description: 'Multi-stage approval process for service contracts',
+            isActive: true,
+            usage: 156,
+            stages: [
+              { id: 'stage-1', name: 'Initial Review', assignedRole: 'sales', slaHours: 24 },
+              { id: 'stage-2', name: 'Legal Review', assignedRole: 'legal', slaHours: 48 },
+              { id: 'stage-3', name: 'Management Approval', assignedRole: 'management', slaHours: 12 }
+            ],
+            metrics: {
+              averageCompletionTime: 4.2,
+              approvalRate: 89.5,
+              slaComplianceRate: 92.1
+            }
+          }
+        ],
+        activeWorkflows: [
+          {
+            id: 'wf-001',
+            templateId: 'contract-approval',
+            documentTitle: 'Metro Office Solutions - Service Contract Renewal',
+            currentStage: 'management_approval',
+            progress: 75,
+            startedAt: new Date('2025-01-30T09:00:00Z'),
+            dueAt: new Date('2025-02-05T17:00:00Z'),
+            assignedTo: 'John Smith',
+            priority: 'high',
+            slaStatus: 'on_track'
+          }
+        ],
+        automationStats: {
+          totalRulesActive: 24,
+          rulesTriggeredToday: 12,
+          automationSuccessRate: 96.8,
+          timesSaved: 145,
+          documentsProcessed: 2847
+        }
+      };
+
+      res.json(workflowData);
+    } catch (error) {
+      console.error('Error fetching workflow data:', error);
+      res.status(500).json({ message: 'Failed to fetch workflow data' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   

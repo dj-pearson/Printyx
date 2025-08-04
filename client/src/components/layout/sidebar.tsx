@@ -34,7 +34,8 @@ import {
   Calendar,
   HeartHandshake,
   CreditCard,
-  Wifi
+  Wifi,
+  FolderOpen
 } from "lucide-react";
 import {
   Select,
@@ -158,6 +159,7 @@ function getNavigationSections(userRole: any) {
             { name: 'IT & Managed Services', href: '/admin/it-services', icon: Shield },
           ]
         },
+        { name: 'Document Management', href: '/document-management', icon: FolderOpen },
         { name: 'Inventory', href: '/inventory', icon: Package },
         { name: 'Contracts', href: '/contracts', icon: FileText },
         { name: 'User Management', href: '/user-management', icon: UserCog },
