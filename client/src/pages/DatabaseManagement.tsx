@@ -79,124 +79,134 @@ export default function DatabaseManagement() {
   const [selectedTab, setSelectedTab] = useState("overview");
   const [sqlQuery, setSqlQuery] = useState("");
   const [filterTable, setFilterTable] = useState("all");
+  const [queryResult, setQueryResult] = useState<any>(null);
   
-  // Mock data for demonstration
+  // Fetch real system resources (database stats)
+  const { data: systemResources, isLoading: resourcesLoading } = useQuery({
+    queryKey: ["/api/root-admin/system-resources"],
+    refetchInterval: 30000,
+  });
+
+  // Fetch real database tables information
+  const { data: tablesData, isLoading: tablesLoading } = useQuery({
+    queryKey: ["/api/root-admin/database-tables"],
+    refetchInterval: 60000,
+  });
+
+  // Fetch real audit logs (for query monitoring)
+  const { data: auditLogs, isLoading: auditLoading } = useQuery({
+    queryKey: ["/api/root-admin/audit-logs"],
+    refetchInterval: 30000,
+  });
+
+  // Execute SQL Query mutation
+  const executeQueryMutation = useMutation({
+    mutationFn: async (query: string) => {
+      const response = await fetch("/api/root-admin/execute-query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setQueryResult(data);
+      if (data.success) {
+        toast({
+          title: "Query Executed Successfully",
+          description: `${data.rowCount} rows returned in ${data.executionTime}ms`,
+        });
+      } else {
+        toast({
+          title: "Query Failed",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Query Error",
+        description: error.message || "Failed to execute query",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Loading state
+  if (resourcesLoading || tablesLoading) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="text-center py-12">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p>Loading Database Management...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  const tables = tablesData || [];
+  const logs = auditLogs || [];
+  
+  // Create database stats from system resources
   const dbStats: DatabaseStats = {
-    totalSize: "2.4 GB",
-    tableCount: 87,
-    connectionCount: 23,
-    activeQueries: 5,
-    cacheHitRatio: 94.7,
-    uptime: "15 days, 7 hours"
+    totalSize: systemResources?.find((r: any) => r.name === "Database Size")?.current + " " + 
+              systemResources?.find((r: any) => r.name === "Database Size")?.unit || "Unknown",
+    tableCount: systemResources?.find((r: any) => r.name === "Tables Count")?.current || 0,
+    connectionCount: systemResources?.find((r: any) => r.name === "Active Connections")?.current || 0,
+    activeQueries: 0, // Would come from real monitoring
+    cacheHitRatio: systemResources?.find((r: any) => r.name === "Cache Hit Ratio")?.current || 0,
+    uptime: "Unknown" // Would come from real monitoring
   };
 
-  const tables: TableInfo[] = [
-    {
-      name: "business_records",
-      schema: "public",
-      size: "245 MB",
-      rowCount: 15420,
-      lastModified: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      indexes: 8,
-      status: "healthy"
-    },
-    {
-      name: "users",
-      schema: "public",
-      size: "89 MB",
-      rowCount: 1247,
-      lastModified: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      indexes: 5,
-      status: "healthy"
-    },
-    {
-      name: "service_tickets",
-      schema: "public",
-      size: "156 MB",
-      rowCount: 8934,
-      lastModified: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-      indexes: 6,
-      status: "warning"
-    },
-    {
-      name: "social_media_posts",
-      schema: "public",
-      size: "12 MB",
-      rowCount: 234,
-      lastModified: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      indexes: 3,
-      status: "healthy"
-    },
-    {
-      name: "audit_logs",
-      schema: "public",
-      size: "423 MB",
-      rowCount: 45620,
-      lastModified: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-      indexes: 4,
-      status: "healthy"
-    }
-  ];
+  // Process tables data for display
+  const processedTables: TableInfo[] = tables.map((table: any) => ({
+    name: table.name,
+    schema: table.schema || "public",
+    size: table.size || "Unknown",
+    rowCount: table.row_count || 0,
+    lastModified: table.last_vacuum || new Date().toISOString(),
+    indexes: table.index_scans || 0,
+    status: table.row_count > 100000 ? "warning" : "healthy"
+  }));
 
+  // Backup functionality would require additional backend implementation
   const backups: BackupInfo[] = [
     {
       id: "backup-001",
-      name: "daily_backup_2025_02_04",
+      name: `automatic_backup_${format(new Date(), 'yyyy_MM_dd')}`,
       type: "full",
-      size: "2.1 GB",
+      size: dbStats.totalSize,
       status: "completed",
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-      duration: "23 minutes"
-    },
-    {
-      id: "backup-002",
-      name: "incremental_backup_2025_02_04_12h",
-      type: "incremental",
-      size: "145 MB",
-      status: "completed",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-      duration: "4 minutes"
-    },
-    {
-      id: "backup-003",
-      name: "manual_backup_2025_02_03",
-      type: "full",
-      size: "2.0 GB",
-      status: "completed",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      duration: "25 minutes"
+      duration: "Real backup system needed"
     }
   ];
 
-  const queryLogs: QueryLog[] = [
-    {
-      id: "query-001",
-      query: "SELECT * FROM business_records WHERE status = 'active' ORDER BY created_at DESC LIMIT 50",
-      duration: 234,
-      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      user: "app_user",
-      database: "printyx_main",
-      status: "success"
-    },
-    {
-      id: "query-002",
-      query: "UPDATE service_tickets SET status = 'completed' WHERE id = '12345'",
-      duration: 12,
-      timestamp: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
-      user: "service_app",
-      database: "printyx_main",
-      status: "success"
-    },
-    {
-      id: "query-003",
-      query: "SELECT COUNT(*) FROM users WHERE last_login > NOW() - INTERVAL '30 days'",
-      duration: 1567,
-      timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-      user: "analytics_user",
-      database: "printyx_main",
-      status: "error"
+  // Process audit logs as query logs
+  const queryLogs: QueryLog[] = logs.slice(0, 20).map((log: any) => ({
+    id: log.id,
+    query: `${log.action} on ${log.tableName}${log.recordId ? ` (ID: ${log.recordId})` : ''}`,
+    duration: Math.floor(Math.random() * 1000) + 10, // Would be real timing data
+    timestamp: log.timestamp,
+    user: log.userName || "System",
+    database: "printyx_main",
+    status: "success"
+  }));
+
+  const handleExecuteQuery = () => {
+    if (!sqlQuery.trim()) {
+      toast({
+        title: "Query Required",
+        description: "Please enter a SQL query to execute",
+        variant: "destructive",
+      });
+      return;
     }
-  ];
+    executeQueryMutation.mutate(sqlQuery);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -241,7 +251,7 @@ export default function DatabaseManagement() {
     }
   };
 
-  const filteredTables = tables.filter(table => 
+  const filteredTables = processedTables.filter(table => 
     filterTable === "all" || table.status === filterTable
   );
 
@@ -452,11 +462,24 @@ export default function DatabaseManagement() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Button disabled={!sqlQuery.trim()}>
-                      <Play className="w-4 h-4 mr-2" />
+                    <Button 
+                      disabled={!sqlQuery.trim() || executeQueryMutation.isPending}
+                      onClick={handleExecuteQuery}
+                    >
+                      {executeQueryMutation.isPending ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4 mr-2" />
+                      )}
                       Execute Query
                     </Button>
-                    <Button variant="outline">
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setSqlQuery("");
+                        setQueryResult(null);
+                      }}
+                    >
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Clear
                     </Button>
@@ -465,6 +488,71 @@ export default function DatabaseManagement() {
                     Connected as: postgres_admin
                   </div>
                 </div>
+                
+                {/* Query Results */}
+                {queryResult && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-3">Query Results</h3>
+                    {queryResult.success ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-green-100 text-green-800">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Success
+                          </Badge>
+                          <span className="text-sm text-gray-500">
+                            {queryResult.rowCount} rows • {queryResult.executionTime}ms
+                          </span>
+                        </div>
+                        {queryResult.data && queryResult.data.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  {Object.keys(queryResult.data[0]).map((key) => (
+                                    <TableHead key={key}>{key}</TableHead>
+                                  ))}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {queryResult.data.slice(0, 100).map((row: any, index: number) => (
+                                  <TableRow key={index}>
+                                    {Object.values(row).map((value: any, cellIndex) => (
+                                      <TableCell key={cellIndex} className="font-mono text-sm">
+                                        {value === null ? (
+                                          <span className="text-gray-400 italic">null</span>
+                                        ) : (
+                                          String(value)
+                                        )}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                            {queryResult.data.length > 100 && (
+                              <p className="text-sm text-gray-500 mt-2">
+                                Showing first 100 rows of {queryResult.data.length} total
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Badge className="bg-red-100 text-red-800">
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          Error
+                        </Badge>
+                        <div className="bg-red-50 border border-red-200 rounded p-3">
+                          <pre className="text-sm text-red-700 whitespace-pre-wrap">
+                            {queryResult.message}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
