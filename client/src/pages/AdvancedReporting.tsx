@@ -30,6 +30,10 @@ export default function AdvancedReporting() {
   const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
   const [selectedReport, setSelectedReport] = useState<string>("revenue");
 
+  const handleDateRangeChange = (range: { from: Date; to: Date }) => {
+    setDateRange(range);
+  };
+
   // Data fetching
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
