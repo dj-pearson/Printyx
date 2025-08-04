@@ -33,6 +33,7 @@ import { CustomerServiceHistory } from "@/components/customer/CustomerServiceHis
 import { CustomerEquipment } from "@/components/customer/CustomerEquipment";
 import { CustomerSupplies } from "@/components/customer/CustomerSupplies";
 import { CustomerFinancials } from "@/components/customer/CustomerFinancials";
+import { CustomerProposals } from "@/components/customer/CustomerProposals";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -86,6 +87,7 @@ import {
   Printer,
   Receipt,
   PieChart,
+  FileCheck,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -472,6 +474,13 @@ export default function CustomerDetailHubspot() {
                     >
                       <Receipt className="h-4 w-4" />
                       <span className="hidden sm:inline">Invoices</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="proposals"
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <FileCheck className="h-4 w-4" />
+                      <span className="hidden sm:inline">Proposals</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="financials"
@@ -1984,6 +1993,13 @@ export default function CustomerDetailHubspot() {
 
               <TabsContent value="invoices" className="mt-6">
                 <CustomerInvoices
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
+              </TabsContent>
+
+              <TabsContent value="proposals" className="mt-6">
+                <CustomerProposals
                   customerId={customer?.id || ""}
                   customerName={customer?.companyName || "Unknown Customer"}
                 />
