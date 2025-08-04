@@ -26,7 +26,7 @@ export interface AuthenticatedRequest extends Express.Request {
 
 // Role-based permission checking middleware
 export const requireRole = (minimumLevel: number, department?: string): RequestHandler => {
-  return async (req: AuthenticatedRequest, res, next) => {
+  return async (req: any, res, next) => {
     try {
       const userId = req.user?.claims?.sub;
       
@@ -61,7 +61,7 @@ export const requireRole = (minimumLevel: number, department?: string): RequestH
       req.user.roleLevel = role.level;
       req.user.department = role.department;
       req.user.teamId = team?.id;
-      req.user.tenantId = tenantId;
+      req.user.tenantId = tenantId || undefined;
 
       next();
     } catch (error) {
@@ -131,7 +131,7 @@ export const canAccessServiceTicket = async (req: AuthenticatedRequest, ticketId
 };
 
 // Data scope middleware - automatically filters data based on user permissions
-export const applyScopeFilter: RequestHandler = async (req: AuthenticatedRequest, res, next) => {
+export const applyScopeFilter: RequestHandler = async (req: any, res, next) => {
   try {
     const { roleLevel, teamId, tenantId } = req.user;
     const userId = req.user.claims.sub;
@@ -140,9 +140,9 @@ export const applyScopeFilter: RequestHandler = async (req: AuthenticatedRequest
     req.dataScope = {
       userId,
       tenantId: tenantId!,
-      roleLevel: roleLevel!,
+      roleLevel: roleLevel || 0,
       teamId,
-      canAccessAll: roleLevel >= 4, // Directors and above see all data
+      canAccessAll: (roleLevel || 0) >= 4, // Directors and above see all data
     };
 
     next();

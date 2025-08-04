@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import MainLayout from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Brain,
   TrendingUp,
@@ -185,6 +185,8 @@ export default function PredictiveAnalytics() {
       description="AI-powered forecasting and predictive insights for your business"
     >
       <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Brain className="h-6 w-6 text-blue-600" />
             Predictive Analytics & AI Platform
           </h1>
