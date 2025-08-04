@@ -2402,6 +2402,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-Powered Analytics & Intelligence Routes
+  app.get('/api/ai-analytics/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const aiAnalyticsData = {
+        aiOverview: {
+          modelsDeployed: 12, predictionsGenerated: 15847, accuracyScore: 94.3, automatedDecisions: 8934,
+          mlModelStatus: 'optimal', dataQualityScore: 97.2, lastModelUpdate: new Date('2025-01-28T00:00:00Z'),
+          computeUtilization: 67.8, apiCallsToday: 2456, costOptimization: 23.7
+        },
+        customerPredictions: {
+          churnPrediction: {
+            totalCustomersAnalyzed: 1247, highRiskCustomers: 89, mediumRiskCustomers: 234, lowRiskCustomers: 924,
+            predictionAccuracy: 89.4, interventioneSuccessRate: 73.2, estimatedRevenueSaved: 342500,
+            highRiskCustomers: [
+              {
+                customerId: 'CUST-001', customerName: 'Tech Solutions Inc', churnProbability: 0.87,
+                riskFactors: ['Decreasing usage', 'Service complaints', 'Payment delays'], estimatedValue: 45600,
+                recommendedActions: ['Schedule executive meeting', 'Offer service upgrade', 'Provide usage training'],
+                timeToIntervene: 14, lastInteraction: new Date('2025-01-15T00:00:00Z'), trend: 'deteriorating'
+              }
+            ]
+          },
+          lifetimeValuePrediction: {
+            averagePredictedCLV: 48750, clivAccuracyRate: 91.7,
+            customerSegments: [
+              { segment: 'High Value Prospects', count: 156, avgPredictedCLV: 125400, conversionProbability: 0.73, recommendedInvestment: 2800, expectedROI: 4.2 }
+            ]
+          },
+          upsellPredictions: [
+            {
+              customerId: 'CUST-003', customerName: 'Downtown Legal Group', currentMRR: 850, predictedUpsellValue: 2100,
+              upsellProbability: 0.76, recommendedProducts: ['Document Finishing', 'Cloud Services', 'Security Package'],
+              bestApproachTime: new Date('2025-02-15T00:00:00Z'), confidence: 0.83
+            }
+          ]
+        },
+        salesForecasting: {
+          revenueForecast: {
+            currentMonth: { predicted: 487500, actual: 445200, confidence: 0.94, variance: -8.7 },
+            nextMonth: { predicted: 523800, confidence: 0.89, factors: ['Seasonal uptick', 'Pipeline momentum', 'New product launch'] },
+            quarterlyForecast: {
+              q1: { predicted: 1560000, confidence: 0.87 }, q2: { predicted: 1685000, confidence: 0.82 }
+            }
+          },
+          dealProbabilityScoring: [
+            {
+              dealId: 'DEAL-001', prospectName: 'Enterprise Solutions Ltd', dealValue: 125000, originalProbability: 0.60, aiProbability: 0.78,
+              probabilityFactors: [{ factor: 'Engagement level', impact: 0.12, confidence: 0.91 }],
+              recommendedActions: ['Schedule C-level meeting', 'Provide competitive differentiation'],
+              nextBestAction: 'Schedule demo with decision makers', optimalCloseDate: new Date('2025-03-15T00:00:00Z')
+            }
+          ]
+        },
+        serviceOptimization: {
+          predictiveMaintenance: {
+            equipmentMonitored: 2456, predictedFailures: 23, preventedDowntime: 1247, costSavings: 189400, accuracyRate: 87.6,
+            criticalAlerts: [
+              {
+                equipmentId: 'EQ-001', location: 'Downtown Office Complex', model: 'Canon imageRUNNER C7565i',
+                predictedFailure: 'Fuser assembly failure', probability: 0.89, estimatedFailureDate: new Date('2025-02-08T00:00:00Z'),
+                recommendedAction: 'Schedule preventive replacement', costOfFailure: 4500, costOfPrevention: 850, savingsPotential: 3650
+              }
+            ]
+          }
+        },
+        nlpInsights: {
+          customerSentiment: {
+            overallSentiment: 0.72, sentimentTrend: 'improving', analysisVolume: 8934,
+            sentimentByChannel: [{ channel: 'Email', sentiment: 0.68, volume: 4567 }],
+            keyTopics: [{ topic: 'Service Quality', sentiment: 0.81, volume: 1234, trend: 'improving', keywords: ['fast response', 'professional'] }]
+          }
+        },
+        modelPerformance: {
+          models: [
+            {
+              modelName: 'Customer Churn Predictor', version: '2.1.0', accuracy: 89.4, precision: 0.87, recall: 0.91,
+              f1Score: 0.89, lastTrained: new Date('2025-01-25T00:00:00Z'), dataPoints: 15647, status: 'production', performanceTrend: 'improving'
+            }
+          ]
+        },
+        recommendationsEngine: {
+          personalizedRecommendations: {
+            customersTargeted: 1247, recommendationAccuracy: 76.8, uptakeRate: 23.4, revenueGenerated: 189400,
+            activeRecommendations: [
+              {
+                customerId: 'CUST-005', customerName: 'Regional Accounting Firm', recommendation: 'Document Management Suite',
+                reasoning: 'High document volume, compliance needs, efficiency gains', confidence: 0.83, estimatedValue: 12400,
+                deliveryChannel: 'email', optimalTiming: new Date('2025-02-07T00:00:00Z')
+              }
+            ]
+          }
+        }
+      };
+
+      res.json(aiAnalyticsData);
+    } catch (error) {
+      console.error('Error fetching AI analytics dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch AI analytics dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   

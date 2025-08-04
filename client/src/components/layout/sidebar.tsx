@@ -36,7 +36,8 @@ import {
   CreditCard,
   Wifi,
   FolderOpen,
-  Siren
+  Siren,
+  Brain
 } from "lucide-react";
 import {
   Select,
@@ -168,6 +169,7 @@ function getNavigationSections(userRole: any) {
         { name: 'User Management', href: '/user-management', icon: UserCog },
         { name: 'Security & Compliance', href: '/security-compliance', icon: Shield },
         { name: 'Incident Response', href: '/incident-response', icon: Siren },
+        { name: 'AI Analytics', href: '/ai-analytics', icon: Brain },
         { name: 'Multi-Tenant Setup', href: '/tenant-setup', icon: Building2 },
         { name: 'System Settings', href: '/settings', icon: Shield },
       ]
