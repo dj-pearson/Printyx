@@ -2241,6 +2241,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Security & Compliance Management Routes
+  app.get('/api/security/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const securityData = {
+        securityOverview: {
+          securityScore: 94.7,
+          vulnerabilities: { critical: 0, high: 2, medium: 8, low: 15, total: 25 },
+          complianceScore: 96.2,
+          lastSecurityAudit: new Date('2024-12-15T00:00:00Z'),
+          nextAuditDue: new Date('2025-06-15T00:00:00Z'),
+          activeThreats: 3,
+          resolvedIncidents: 47,
+          systemUptime: 99.97
+        },
+        complianceStatus: [
+          {
+            framework: 'SOC 2 Type II', status: 'compliant', score: 96.8, lastAudit: new Date('2024-09-30T00:00:00Z'),
+            nextAudit: new Date('2025-09-30T00:00:00Z'), findings: 1, remediated: 3, inProgress: 0,
+            requirements: { total: 64, implemented: 62, pending: 2, notApplicable: 0 }
+          }
+        ],
+        securityIncidents: [
+          {
+            id: 'INC-2025-001', title: 'Suspicious Login Attempts', severity: 'medium', status: 'investigating',
+            category: 'authentication', reportedAt: new Date('2025-01-30T14:30:00Z'), reportedBy: 'Security Monitoring System',
+            affectedSystems: ['User Authentication', 'CRM Access'], description: 'Multiple failed login attempts detected from unusual geographic locations',
+            assignedTo: 'Security Team', estimatedResolution: new Date('2025-02-01T18:00:00Z'),
+            actions: ['IP addresses blocked temporarily', 'User accounts secured', 'Additional monitoring enabled']
+          }
+        ],
+        vulnerabilities: [
+          {
+            id: 'VULN-2025-001', title: 'Outdated SSL Certificate', severity: 'high', cvss: 7.2, category: 'network_security',
+            affectedAssets: ['mail.company.com'], discoveredDate: new Date('2025-01-20T00:00:00Z'), status: 'remediation_in_progress',
+            dueDate: new Date('2025-02-05T00:00:00Z'), assignedTo: 'Network Security Team', description: 'SSL certificate for mail server expires within 30 days',
+            remediation: 'Renew SSL certificate and update configuration', businessImpact: 'Medium - Email service continuity risk'
+          }
+        ],
+        accessControl: {
+          userAccounts: { total: 247, active: 231, inactive: 16, privileged: 23, serviceAccounts: 12, pendingActivation: 3, pendingDeactivation: 5 },
+          permissions: { totalRoles: 15, customRoles: 8, defaultRoles: 7, roleAssignments: 231, excessivePrivileges: 4, unusedPermissions: 12 },
+          authentication: { mfaEnabled: 218, mfaDisabled: 13, ssoUsers: 195, localAuthUsers: 36, passwordExpiring: 27, accountsLocked: 2 }
+        },
+        dataProtection: {
+          dataClassification: { public: 15678, internal: 89432, confidential: 34567, restricted: 8934, total: 148611 },
+          dataRetention: { policiesTotal: 12, policiesActive: 11, retentionCompliant: 96.8, recordsScheduledDeletion: 2847, recordsDeleted: 15678, retentionViolations: 23 },
+          privacyRequests: [
+            { id: 'PR-2025-001', type: 'data_access', requestDate: new Date('2025-01-28T00:00:00Z'), status: 'completed', responseTime: 18, dataSubject: 'customer@example.com', completedDate: new Date('2025-01-29T18:00:00Z') }
+          ]
+        },
+        securityTraining: {
+          trainingPrograms: [
+            { program: 'Security Awareness Fundamentals', participants: 231, completed: 218, inProgress: 13, completionRate: 94.4, averageScore: 87.3, lastUpdated: new Date('2024-12-01T00:00:00Z') }
+          ],
+          phishingSimulations: { totalCampaigns: 12, totalEmails: 2772, clicked: 167, reported: 89, clickRate: 6.0, reportRate: 3.2, improvementTrend: 'positive' }
+        }
+      };
+
+      res.json(securityData);
+    } catch (error) {
+      console.error('Error fetching security dashboard data:', error);
+      res.status(500).json({ message: 'Failed to fetch security dashboard data' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
