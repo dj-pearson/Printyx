@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
+import { useLocation } from "wouter";
 import {
   Search,
   Filter,
@@ -28,9 +29,16 @@ import {
   MoreHorizontal,
   Download,
   Upload,
+  Settings,
+  X,
+  Building2,
+  User,
+  Target,
+  Clock,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Lead {
   id: string;
@@ -52,6 +60,23 @@ interface Lead {
   state: string;
   zipCode: string;
   recordType: string;
+  // Additional fields from business_records schema
+  industry?: string;
+  territory?: string;
+  leadScore?: number;
+  nextFollowUpDate?: string;
+  website?: string;
+  employeeCount?: number;
+  annualRevenue?: number;
+  lastContactDate?: string;
+}
+
+interface TableColumn {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+  width: string;
+  sortable: boolean;
 }
 
 const statusColors = {
@@ -70,6 +95,31 @@ const priorityColors = {
   high: "bg-red-100 text-red-800",
 };
 
+// Available table columns with HubSpot-style configuration
+const AVAILABLE_COLUMNS: TableColumn[] = [
+  { id: "lead", label: "Lead name", icon: User, width: "min-w-[250px]", sortable: true },
+  { id: "company", label: "Company name", icon: Building2, width: "min-w-[200px]", sortable: true },
+  { id: "status", label: "Lead status", icon: Target, width: "min-w-[120px]", sortable: true },
+  { id: "priority", label: "Priority", icon: TrendingUp, width: "min-w-[100px]", sortable: true },
+  { id: "source", label: "Lead source", icon: MapPin, width: "min-w-[120px]", sortable: true },
+  { id: "industry", label: "Industry", icon: Building2, width: "min-w-[120px]", sortable: true },
+  { id: "territory", label: "Territory", icon: MapPin, width: "min-w-[120px]", sortable: true },
+  { id: "value", label: "Deal amount", icon: DollarSign, width: "min-w-[120px]", sortable: true },
+  { id: "score", label: "Lead score", icon: Target, width: "min-w-[100px]", sortable: true },
+  { id: "lastActivity", label: "Last activity date", icon: Clock, width: "min-w-[150px]", sortable: true },
+  { id: "nextFollowUp", label: "Next activity date", icon: Calendar, width: "min-w-[150px]", sortable: true },
+  { id: "assignedTo", label: "Lead owner", icon: User, width: "min-w-[150px]", sortable: true },
+  { id: "phone", label: "Phone number", icon: Phone, width: "min-w-[140px]", sortable: false },
+  { id: "email", label: "Email", icon: Mail, width: "min-w-[200px]", sortable: false },
+  { id: "website", label: "Website", icon: Building2, width: "min-w-[180px]", sortable: false },
+  { id: "employeeCount", label: "Number of employees", icon: Users, width: "min-w-[150px]", sortable: true },
+  { id: "annualRevenue", label: "Annual revenue", icon: DollarSign, width: "min-w-[140px]", sortable: true },
+  { id: "createdDate", label: "Create date", icon: Calendar, width: "min-w-[120px]", sortable: true },
+];
+
+// Default visible columns (HubSpot-style defaults)
+const DEFAULT_VISIBLE_COLUMNS = ["lead", "company", "status", "source", "value", "lastActivity", "assignedTo"];
+
 export default function LeadsManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -79,9 +129,12 @@ export default function LeadsManagement() {
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Fetch leads data from business records
   const { data: allBusinessRecords = [], isLoading, error } = useQuery({
@@ -173,6 +226,109 @@ export default function LeadsManagement() {
   const formatDate = (date: string) => {
     if (!date) return "Never";
     return new Date(date).toLocaleDateString();
+  };
+
+  // Get visible columns configuration
+  const visibleColumnsConfig = useMemo(() => {
+    return AVAILABLE_COLUMNS.filter(col => visibleColumns.includes(col.id));
+  }, [visibleColumns]);
+
+  // Handle column toggle
+  const toggleColumn = (columnId: string) => {
+    setVisibleColumns(prev => {
+      if (prev.includes(columnId)) {
+        // Don't allow removing the last column
+        if (prev.length === 1) return prev;
+        return prev.filter(id => id !== columnId);
+      } else {
+        return [...prev, columnId];
+      }
+    });
+  };
+
+  // Handle lead row click to navigate to detail page
+  const handleLeadClick = (leadId: string) => {
+    setLocation(`/lead-detail/${leadId}`);
+  };
+
+  // Render table cell content based on column type
+  const renderTableCell = (lead: Lead, column: TableColumn) => {
+    switch (column.id) {
+      case "lead":
+        return (
+          <div className="cursor-pointer" onClick={() => handleLeadClick(lead.id)}>
+            <div className="font-medium text-blue-600 hover:text-blue-800">{lead.name}</div>
+            <div className="text-sm text-gray-500">{lead.jobTitle}</div>
+          </div>
+        );
+      case "company":
+        return (
+          <div className="cursor-pointer" onClick={() => handleLeadClick(lead.id)}>
+            <div className="font-medium text-blue-600 hover:text-blue-800">{lead.companyName}</div>
+            <div className="text-sm text-gray-500">{lead.industry || '-'}</div>
+          </div>
+        );
+      case "status":
+        return (
+          <Badge className={statusColors[lead.status as keyof typeof statusColors] || "bg-gray-100"}>
+            {lead.status}
+          </Badge>
+        );
+      case "priority":
+        return (
+          <Badge className={priorityColors[lead.priority as keyof typeof priorityColors] || "bg-gray-100"}>
+            {lead.priority}
+          </Badge>
+        );
+      case "source":
+        return <span className="text-sm">{lead.leadSource}</span>;
+      case "industry":
+        return <span className="text-sm">{lead.industry || '-'}</span>;
+      case "territory":
+        return <span className="text-sm">{lead.territory || '-'}</span>;
+      case "value":
+        return <span className="font-medium">{formatCurrency(lead.estimatedValue)}</span>;
+      case "score":
+        return (
+          <Badge variant="outline">
+            {lead.leadScore || 0}
+          </Badge>
+        );
+      case "lastActivity":
+        return <span className="text-sm">{formatDate(lead.lastActivity)}</span>;
+      case "nextFollowUp":
+        return <span className="text-sm">{lead.nextFollowUpDate ? formatDate(lead.nextFollowUpDate) : '-'}</span>;
+      case "assignedTo":
+        return <span className="text-sm">{lead.assignedTo || 'Unassigned'}</span>;
+      case "phone":
+        return (
+          <div className="flex items-center space-x-2">
+            <Phone className="h-4 w-4 text-gray-400" />
+            <span className="text-sm">{lead.phone}</span>
+          </div>
+        );
+      case "email":
+        return (
+          <div className="flex items-center space-x-2">
+            <Mail className="h-4 w-4 text-gray-400" />
+            <span className="text-sm">{lead.email}</span>
+          </div>
+        );
+      case "website":
+        return (
+          <span className="text-sm text-blue-600 hover:text-blue-800">
+            {lead.website || '-'}
+          </span>
+        );
+      case "employeeCount":
+        return <span className="text-sm">{lead.employeeCount || '-'}</span>;
+      case "annualRevenue":
+        return <span className="text-sm">{lead.annualRevenue ? formatCurrency(lead.annualRevenue) : '-'}</span>;
+      case "createdDate":
+        return <span className="text-sm">{formatDate(lead.createdAt)}</span>;
+      default:
+        return <span>-</span>;
+    }
   };
 
   const handleBulkAction = (action: string) => {
@@ -382,23 +538,72 @@ export default function LeadsManagement() {
                 </Select>
               </div>
 
-              <div className="flex border rounded justify-center sm:justify-start">
-                <Button
-                  variant={viewMode === "table" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                  className="rounded-r-none hidden sm:flex"
-                >
-                  Table
-                </Button>
-                <Button
-                  variant={viewMode === "cards" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("cards")}
-                  className="rounded-l-none sm:rounded-l-none rounded-l-md"
-                >
-                  Cards
-                </Button>
+              <div className="flex gap-2">
+                <div className="flex border rounded justify-center sm:justify-start">
+                  <Button
+                    variant={viewMode === "table" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                    className="rounded-r-none hidden sm:flex"
+                  >
+                    Table
+                  </Button>
+                  <Button
+                    variant={viewMode === "cards" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("cards")}
+                    className="rounded-l-none"
+                  >
+                    Cards
+                  </Button>
+                </div>
+                
+                {/* Column Customizer */}
+                {viewMode === "table" && (
+                  <Popover open={isColumnCustomizerOpen} onOpenChange={setIsColumnCustomizerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="hidden sm:flex">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Edit columns
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="end">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium">Edit columns</h4>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setVisibleColumns(DEFAULT_VISIBLE_COLUMNS)}
+                          >
+                            Reset
+                          </Button>
+                        </div>
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                          {AVAILABLE_COLUMNS.map((column) => {
+                            const Icon = column.icon;
+                            return (
+                              <div key={column.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={column.id}
+                                  checked={visibleColumns.includes(column.id)}
+                                  onCheckedChange={() => toggleColumn(column.id)}
+                                />
+                                <Icon className="h-4 w-4 text-gray-500" />
+                                <Label htmlFor={column.id} className="text-sm flex-1 cursor-pointer">
+                                  {column.label}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {visibleColumns.length} of {AVAILABLE_COLUMNS.length} columns selected
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
             </div>
           </div>
@@ -436,101 +641,73 @@ export default function LeadsManagement() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
+                  <TableRow className="hover:bg-transparent border-b-2">
+                    <TableHead className="w-12 pl-6">
                       <Checkbox
                         checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="min-w-[200px]">Lead</TableHead>
-                    <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="min-w-[100px]">Priority</TableHead>
-                    <TableHead className="min-w-[120px]">Source</TableHead>
-                    <TableHead className="min-w-[100px]">Industry</TableHead>
-                    <TableHead className="min-w-[100px]">Territory</TableHead>
-                    <TableHead className="min-w-[100px]">Value</TableHead>
-                    <TableHead className="min-w-[100px]">Lead Score</TableHead>
-                    <TableHead className="min-w-[120px]">Last Activity</TableHead>
-                    <TableHead className="min-w-[120px]">Next Follow-up</TableHead>
-                    <TableHead className="min-w-[100px]">Actions</TableHead>
+                    {visibleColumnsConfig.map((column) => {
+                      const Icon = column.icon;
+                      return (
+                        <TableHead key={column.id} className={`${column.width} font-medium text-gray-700`}>
+                          <div className="flex items-center space-x-2">
+                            <Icon className="h-4 w-4" />
+                            <span>{column.label}</span>
+                          </div>
+                        </TableHead>
+                      );
+                    })}
+                    <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-              <TableBody>
-                {filteredLeads.map((lead: Lead) => (
-                  <TableRow key={lead.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedLeads.includes(lead.id)}
-                        onCheckedChange={() => toggleLeadSelection(lead.id)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{lead.name}</div>
-                        <div className="text-sm text-gray-500">{lead.companyName}</div>
-                        <div className="text-sm text-gray-500">{lead.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[lead.status as keyof typeof statusColors] || "bg-gray-100"}>
-                        {lead.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={priorityColors[lead.priority as keyof typeof priorityColors] || "bg-gray-100"}>
-                        {lead.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{lead.leadSource}</TableCell>
-                    <TableCell>
-                      <span className="text-sm">{lead.industry || '-'}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{lead.territory || '-'}</span>
-                    </TableCell>
-                    <TableCell>{formatCurrency(lead.estimatedValue)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {lead.leadScore || 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(lead.lastActivity)}</TableCell>
-                    <TableCell>
-                      {lead.nextFollowUpDate ? formatDate(lead.nextFollowUpDate) : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => setEditingLead(lead)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Mail className="mr-2 h-4 w-4" />
-                            Send Email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Phone className="mr-2 h-4 w-4" />
-                            Call
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                <TableBody>
+                  {filteredLeads.map((lead: Lead) => (
+                    <TableRow key={lead.id} className="hover:bg-gray-50 transition-colors">
+                      <TableCell className="pl-6">
+                        <Checkbox
+                          checked={selectedLeads.includes(lead.id)}
+                          onCheckedChange={() => toggleLeadSelection(lead.id)}
+                        />
+                      </TableCell>
+                      {visibleColumnsConfig.map((column) => (
+                        <TableCell key={column.id} className="py-4">
+                          {renderTableCell(lead, column)}
+                        </TableCell>
+                      ))}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-200">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleLeadClick(lead.id)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setEditingLead(lead)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <Phone className="mr-2 h-4 w-4" />
+                              Call
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Mail className="mr-2 h-4 w-4" />
+                              Send Email
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
             </div>
           </CardContent>
@@ -541,8 +718,8 @@ export default function LeadsManagement() {
             <Card key={lead.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{lead.name}</CardTitle>
+                  <div className="cursor-pointer" onClick={() => handleLeadClick(lead.id)}>
+                    <CardTitle className="text-lg text-blue-600 hover:text-blue-800">{lead.name}</CardTitle>
                     <CardDescription>{lead.companyName}</CardDescription>
                   </div>
                   <Checkbox
@@ -581,13 +758,13 @@ export default function LeadsManagement() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleLeadClick(lead.id)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setEditingLead(lead)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
