@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Calendar, Clock, AlertTriangle, CheckCircle, Settings, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import MainLayout from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -164,7 +165,8 @@ export default function PreventiveMaintenanceScheduling() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Preventive Maintenance Scheduling</h1>
@@ -649,6 +651,7 @@ export default function PreventiveMaintenanceScheduling() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

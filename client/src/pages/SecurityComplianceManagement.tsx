@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -278,19 +279,22 @@ export default function SecurityComplianceManagement() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading security & compliance data...</p>
+      <MainLayout>
+        <div className="container mx-auto p-4">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading security & compliance data...</p>
+            </div>
           </div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
+    <MainLayout>
+      <div className="container mx-auto p-4 max-w-7xl">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -1013,6 +1017,7 @@ export default function SecurityComplianceManagement() {
           </Tabs>
         </>
       )}
-    </div>
+      </div>
+    </MainLayout>
   );
 }
