@@ -1,19 +1,22 @@
 import type { Express } from "express";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
+import { BusinessRecordsTransformer } from './data-field-mapping';
 
 export function registerBusinessRecordRoutes(app: Express) {
   // Unified Business Records API - supports entire lead-to-customer lifecycle
 
   // Get all business records with filtering
-  app.get("/api/business-records", async (req: any, res) => {
+  app.get("/api/business-records", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
-      // For demo purposes, use hardcoded tenant ID
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!;
       const { recordType, status } = req.query;
       
       const records = await storage.getBusinessRecords(tenantId, recordType, status);
-      res.json(records);
+      // Transform database fields to frontend format
+      const transformedRecords = records.map(record => BusinessRecordsTransformer.toFrontend(record));
+      res.json(transformedRecords);
     } catch (error) {
       console.error("Error fetching business records:", error);
       res.status(500).json({ message: "Failed to fetch business records" });
@@ -21,10 +24,9 @@ export function registerBusinessRecordRoutes(app: Express) {
   });
 
   // Get specific business record
-  app.get("/api/business-records/:id", async (req: any, res) => {
+  app.get("/api/business-records/:id", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
-      // For demo purposes, use hardcoded tenant ID
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!;
       const { id } = req.params;
       
       const record = await storage.getBusinessRecord(id, tenantId);
@@ -32,7 +34,9 @@ export function registerBusinessRecordRoutes(app: Express) {
         return res.status(404).json({ message: "Business record not found" });
       }
       
-      res.json(record);
+      // Transform database fields to frontend format
+      const transformedRecord = BusinessRecordsTransformer.toFrontend(record);
+      res.json(transformedRecord);
     } catch (error) {
       console.error("Error fetching business record:", error);
       res.status(500).json({ message: "Failed to fetch business record" });
@@ -40,20 +44,31 @@ export function registerBusinessRecordRoutes(app: Express) {
   });
 
   // Create new business record (can be lead or customer)
-  app.post("/api/business-records", async (req: any, res) => {
+  app.post("/api/business-records", resolveTenant, requireTenant, isAuthenticated, async (req: TenantRequest, res) => {
     try {
-      // For demo purposes, use hardcoded tenant ID and user ID
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
-      const userId = "demo-user";
+      const tenantId = req.tenantId!;
+      const userId = req.user?.id || 'system';
+      
+      // Transform frontend data to database format
+      const frontendData = req.body;
+      const dbData = BusinessRecordsTransformer.toDb(frontendData);
+      
+      // Normalize record type and status
+      const recordType = BusinessRecordsTransformer.normalizeRecordType(frontendData.recordType || 'lead');
+      const status = BusinessRecordsTransformer.normalizeStatus(frontendData.status || 'new', recordType);
       
       const recordData = {
-        ...req.body,
-        tenantId,
-        createdBy: userId,
+        ...dbData,
+        tenant_id: tenantId,
+        created_by: userId,
+        record_type: recordType,
+        status: status,
       };
       
       const newRecord = await storage.createBusinessRecord(recordData);
-      res.status(201).json(newRecord);
+      // Transform response back to frontend format
+      const transformedNewRecord = BusinessRecordsTransformer.toFrontend(newRecord);
+      res.status(201).json(transformedNewRecord);
     } catch (error) {
       console.error("Error creating business record:", error);
       res.status(500).json({ message: "Failed to create business record" });
@@ -61,18 +76,37 @@ export function registerBusinessRecordRoutes(app: Express) {
   });
 
   // Update business record
-  app.put("/api/business-records/:id", async (req: any, res) => {
+  app.put("/api/business-records/:id", resolveTenant, requireTenant, isAuthenticated, async (req: TenantRequest, res) => {
     try {
-      // For demo purposes, use hardcoded tenant ID
-      const tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      const tenantId = req.tenantId!;
       const { id } = req.params;
       
-      const updatedRecord = await storage.updateBusinessRecord(id, tenantId, req.body);
+      // Transform frontend data to database format
+      const frontendData = req.body;
+      const dbData = BusinessRecordsTransformer.toDb(frontendData);
+      
+      // Handle record type changes (lead to customer conversion)
+      if (frontendData.recordType) {
+        const recordType = BusinessRecordsTransformer.normalizeRecordType(frontendData.recordType);
+        const status = BusinessRecordsTransformer.normalizeStatus(frontendData.status || 'active', recordType);
+        dbData.record_type = recordType;
+        dbData.status = status;
+        
+        // Set conversion timestamp if converting lead to customer
+        if (recordType === 'customer' && !dbData.customer_since) {
+          dbData.customer_since = new Date().toISOString();
+          dbData.converted_by = req.user?.id || 'system';
+        }
+      }
+      
+      const updatedRecord = await storage.updateBusinessRecord(id, tenantId, dbData);
       if (!updatedRecord) {
         return res.status(404).json({ message: "Business record not found" });
       }
       
-      res.json(updatedRecord);
+      // Transform response back to frontend format
+      const transformedRecord = BusinessRecordsTransformer.toFrontend(updatedRecord);
+      res.json(transformedRecord);
     } catch (error) {
       console.error("Error updating business record:", error);
       res.status(500).json({ message: "Failed to update business record" });

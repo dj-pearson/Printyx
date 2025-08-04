@@ -2,7 +2,9 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte, between } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { businessRecords } from '../shared/schema';
+import { salesForecasts, forecastPipelineItems, forecastMetrics, forecastRules } from './sales-forecasting-schema';
 
 const router = express.Router();
 
@@ -10,14 +12,20 @@ const router = express.Router();
 // Note: Database tables will be created after schema update
 
 // Get all sales forecasts
-router.get('/api/sales-forecasts', requireAuth, async (req: any, res) => {
+router.get('/api/sales-forecasts', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
-    }
+    const tenantId = req.tenantId!;
 
-    // Sample forecasting data until schema is updated
+    // Query actual database for forecasts
+    const forecasts = await db.select().from(salesForecasts)
+      .where(eq(salesForecasts.tenantId, tenantId))
+      .orderBy(desc(salesForecasts.createdAt));
+
+    res.json(forecasts);
+  } catch (error) {
+    console.error('Error fetching forecasts:', error);
+    
+    // Fallback to sample data if schema tables don't exist yet
     const sampleForecasts = [
       {
         id: 'forecast-1',

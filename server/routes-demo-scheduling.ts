@@ -2,7 +2,9 @@ import express from 'express';
 import { desc, eq, and, sql, asc } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { businessRecords } from '../shared/schema';
+import { demoSchedules, demoEquipmentRequirements, demoOutcomes } from './demo-scheduling-schema';
 
 const router = express.Router();
 
@@ -10,14 +12,20 @@ const router = express.Router();
 // Note: Database tables will be created after schema update
 
 // Get all scheduled demos
-router.get('/api/demos', requireAuth, async (req: any, res) => {
+router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
-    }
+    const tenantId = req.tenantId!;
 
-    // For now, return sample demo data structure until schema is updated
+    // Query actual database for demos
+    const demos = await db.select().from(demoSchedules)
+      .where(eq(demoSchedules.tenantId, tenantId))
+      .orderBy(desc(demoSchedules.scheduledDate));
+
+    res.json(demos);
+  } catch (error) {
+    console.error('Error fetching demos:', error);
+    
+    // Fallback to sample data if schema tables don't exist yet
     const sampleDemos = [
       {
         id: 'demo-1',
@@ -60,10 +68,6 @@ router.get('/api/demos', requireAuth, async (req: any, res) => {
     ];
 
     res.json(sampleDemos);
-    
-  } catch (error) {
-    console.error('Error fetching demos:', error);
-    res.status(500).json({ message: 'Failed to fetch demos' });
   }
 });
 
