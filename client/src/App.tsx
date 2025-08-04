@@ -79,6 +79,7 @@ import ESignatureIntegration from "@/pages/ESignatureIntegration";
 import ServiceDispatchOptimization from "@/pages/ServiceDispatchOptimization";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
 import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
+import DocumentManagement from "@/pages/DocumentManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -186,6 +187,7 @@ function Router() {
           <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/customer-success" component={CustomerSuccessManagement} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
+          <Route path="/document-management" component={DocumentManagement} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />

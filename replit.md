@@ -11,6 +11,8 @@ Printyx is a unified SaaS platform designed to consolidate fragmented technology
 
 **Remote Monitoring & IoT Integration**: Real-time equipment monitoring with IoT sensors, predictive maintenance analytics, fleet overview dashboards, automated alert systems, and environmental condition tracking for proactive equipment management and reduced downtime.
 
+**Document Management & Workflow Automation**: Advanced document lifecycle management with OCR processing, automated workflow orchestration, compliance tracking, and intelligent categorization system for contracts, service documentation, and regulatory records.
+
 ### Business Architecture Clarification
 - **Printyx Clients**: Copier dealers who sign up for Printyx service (managed via tenant system)
 - **Business Records**: The client's customers and leads (businesses that buy/might buy copiers from the dealer)
