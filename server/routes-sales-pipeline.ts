@@ -58,47 +58,47 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         SELECT 
           br.*,
           br.id as id,
-          br."companyName" as company_name,
-          br."primaryContactName" as contact_name,
-          br."primaryContactEmail" as contact_email,
-          br."primaryContactPhone" as contact_phone,
-          br."leadStatus" as stage,
-          br."estimatedDealValue" as estimated_value,
-          br."probability",
-          br."expectedCloseDate" as expected_close_date,
-          br."leadSource" as lead_source,
+          br.company_name as company_name,
+          br.primary_contact_name as contact_name,
+          br.primary_contact_email as contact_email,
+          br.primary_contact_phone as contact_phone,
+          br.status as stage,
+          COALESCE(br.estimated_deal_value, 0) as estimated_value,
+          COALESCE(br.probability, 50) as probability,
+          COALESCE(br.close_date, NOW() + INTERVAL '30 days') as expected_close_date,
+          br.source as lead_source,
           br.notes,
-          br."assignedTo" as assigned_rep,
-          br."lastContactDate" as last_activity,
-          COALESCE(EXTRACT(DAY FROM NOW() - br."updatedAt"), 0) as days_in_stage,
-          br."createdAt" as created_at,
+          br.owner_id as assigned_rep,
+          br.last_contact_date as last_activity,
+          COALESCE(EXTRACT(DAY FROM NOW() - br.updated_at), 0) as days_in_stage,
+          br.created_at as created_at,
           CASE 
-            WHEN br."nextFollowUpDate" IS NOT NULL THEN 
-              'Follow up on ' || TO_CHAR(br."nextFollowUpDate", 'Mon DD')
+            WHEN br.next_follow_up_date IS NOT NULL THEN 
+              'Follow up on ' || TO_CHAR(br.next_follow_up_date, 'Mon DD')
             ELSE 'Update required'
           END as next_action
         FROM business_records br
-        WHERE br."tenantId" = $1 
-          AND br."recordType" = 'lead'
-          AND br."leadStatus" NOT IN ('closed_won', 'closed_lost')
+        WHERE br.tenant_id = $1 
+          AND br.record_type = 'lead'
+          AND br.status NOT IN ('closed_won', 'closed_lost')
       `;
 
       const params = [tenantId];
       let paramIndex = 2;
 
       if (stage && stage !== 'all') {
-        query += ` AND br."leadStatus" = $${paramIndex}`;
+        query += ` AND br.status = $${paramIndex}`;
         params.push(stage);
         paramIndex++;
       }
 
       if (rep && rep !== 'all') {
-        query += ` AND br."assignedTo" = $${paramIndex}`;
+        query += ` AND br.owner_id = $${paramIndex}`;
         params.push(rep);
         paramIndex++;
       }
 
-      query += ` ORDER BY br."updatedAt" DESC`;
+      query += ` ORDER BY br.updated_at DESC`;
 
       const result = await db.execute(sql.raw(query, params));
       
@@ -145,11 +145,11 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       const updateQuery = `
         UPDATE business_records 
         SET 
-          "leadStatus" = $1,
+          status = $1,
           notes = COALESCE(notes, '') || $2,
-          "updatedAt" = NOW(),
-          "lastContactDate" = NOW()
-        WHERE id = $3 AND "tenantId" = $4
+          updated_at = NOW(),
+          last_contact_date = NOW()
+        WHERE id = $3 AND tenant_id = $4
         RETURNING *
       `;
 
@@ -164,13 +164,13 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       // Log the stage change activity
       const activityQuery = `
         INSERT INTO business_record_activities (
-          "businessRecordId",
-          "activityType",
+          business_record_id,
+          activity_type,
           subject,
           description,
-          "createdBy",
-          "tenantId",
-          "createdAt"
+          created_by,
+          tenant_id,
+          created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `;
 
@@ -205,13 +205,13 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       // Log the activity
       const activityQuery = `
         INSERT INTO business_record_activities (
-          "businessRecordId",
-          "activityType",
+          business_record_id,
+          activity_type,
           subject,
           description,
-          "createdBy",
-          "tenantId",
-          "createdAt"
+          created_by,
+          tenant_id,
+          created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `;
 
@@ -227,8 +227,8 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       // Update last contact date on the business record
       const updateQuery = `
         UPDATE business_records 
-        SET "lastContactDate" = NOW(), "updatedAt" = NOW()
-        WHERE id = $1 AND "tenantId" = $2
+        SET last_contact_date = NOW(), updated_at = NOW()
+        WHERE id = $1 AND tenant_id = $2
       `;
 
       await db.execute(sql.raw(updateQuery, [id, tenantId]));
@@ -253,41 +253,41 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         WITH rep_stats AS (
           SELECT 
             u.id as rep_id,
-            u."displayName" as rep_name,
-            u."managerId" as manager_id,
+            CONCAT(u.first_name, ' ', u.last_name) as rep_name,
+            u.manager_id as manager_id,
             
             -- Lead metrics
-            COUNT(br.id) FILTER (WHERE br."recordType" = 'lead') as total_leads,
-            COUNT(br.id) FILTER (WHERE br."recordType" = 'lead' AND br."leadStatus" IN ('qualified', 'demo_scheduled', 'demo_completed', 'proposal_prep', 'proposal_sent', 'negotiation')) as qualified_leads,
-            COUNT(br.id) FILTER (WHERE br."leadStatus" = 'demo_scheduled') as demos_scheduled,
-            COUNT(br.id) FILTER (WHERE br."leadStatus" = 'demo_completed') as demos_completed,
-            COUNT(br.id) FILTER (WHERE br."leadStatus" = 'proposal_sent') as proposals_sent,
-            COUNT(br.id) FILTER (WHERE br."leadStatus" = 'closed_won') as deals_closed,
+            COUNT(br.id) FILTER (WHERE br.record_type = 'lead') as total_leads,
+            COUNT(br.id) FILTER (WHERE br.record_type = 'lead' AND br.status IN ('qualified', 'demo_scheduled', 'demo_completed', 'proposal_prep', 'proposal_sent', 'negotiation')) as qualified_leads,
+            COUNT(br.id) FILTER (WHERE br.status = 'demo_scheduled') as demos_scheduled,
+            COUNT(br.id) FILTER (WHERE br.status = 'demo_completed') as demos_completed,
+            COUNT(br.id) FILTER (WHERE br.status = 'proposal_sent') as proposals_sent,
+            COUNT(br.id) FILTER (WHERE br.status = 'closed_won') as deals_closed,
             
             -- Revenue metrics
-            COALESCE(SUM(br."estimatedDealValue") FILTER (WHERE br."leadStatus" = 'closed_won'), 0) as total_revenue,
-            COALESCE(AVG(br."estimatedDealValue") FILTER (WHERE br."leadStatus" = 'closed_won'), 0) as avg_deal_size,
+            COALESCE(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won'), 0) as total_revenue,
+            COALESCE(AVG(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won'), 0) as avg_deal_size,
             
             -- Calculate average sales cycle (days from created to closed)
-            COALESCE(AVG(EXTRACT(DAY FROM br."updatedAt" - br."createdAt")) FILTER (WHERE br."leadStatus" = 'closed_won'), 30) as avg_sales_cycle,
+            COALESCE(AVG(EXTRACT(DAY FROM br.updated_at - br.created_at)) FILTER (WHERE br.status = 'closed_won'), 30) as avg_sales_cycle,
             
             -- Activity score based on recent activities
             CASE 
-              WHEN MAX(br."lastContactDate") >= NOW() - INTERVAL '3 days' THEN 100
-              WHEN MAX(br."lastContactDate") >= NOW() - INTERVAL '7 days' THEN 80
-              WHEN MAX(br."lastContactDate") >= NOW() - INTERVAL '14 days' THEN 60
-              WHEN MAX(br."lastContactDate") >= NOW() - INTERVAL '30 days' THEN 40
+              WHEN MAX(br.last_contact_date) >= NOW() - INTERVAL '3 days' THEN 100
+              WHEN MAX(br.last_contact_date) >= NOW() - INTERVAL '7 days' THEN 80
+              WHEN MAX(br.last_contact_date) >= NOW() - INTERVAL '14 days' THEN 60
+              WHEN MAX(br.last_contact_date) >= NOW() - INTERVAL '30 days' THEN 40
               ELSE 20
             END as activity_score,
             
             -- Last activity
-            TO_CHAR(MAX(br."lastContactDate"), 'MM/DD/YY') as last_activity
+            TO_CHAR(MAX(br.last_contact_date), 'MM/DD/YY') as last_activity
             
           FROM users u
-          LEFT JOIN business_records br ON u.id = br."assignedTo" AND br."tenantId" = u."tenantId"
-          WHERE u."tenantId" = $1 
+          LEFT JOIN business_records br ON u.id = br.owner_id AND br.tenant_id = u.tenant_id
+          WHERE u.tenant_id = $1 
             AND u.role IN ('sales_rep', 'sales_manager', 'account_manager')
-          GROUP BY u.id, u."displayName", u."managerId"
+          GROUP BY u.id, u.first_name, u.last_name, u.manager_id
         ),
         goals AS (
           SELECT 
@@ -295,7 +295,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
             COALESCE(monthly_revenue_goal, 50000) as revenue_goal,
             COALESCE(monthly_deals_goal, 5) as deals_goal
           FROM crm_goals 
-          WHERE tenant_id = $1 
+          WHERE tenant_id = $2 
             AND goal_type = 'monthly'
             AND is_active = true
         )
@@ -323,7 +323,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ORDER BY rs.rep_name
       `;
 
-      const result = await db.execute(sql.raw(metricsQuery, [tenantId]));
+      const result = await db.execute(sql.raw(metricsQuery, [tenantId, tenantId]));
       
       const metrics = result.rows.map((row: any) => ({
         rep_id: row.rep_id,
@@ -364,43 +364,43 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         WITH pipeline_metrics AS (
           SELECT 
             -- Total pipeline value
-            COALESCE(SUM(br."estimatedDealValue") FILTER (WHERE br."recordType" = 'lead' AND br."leadStatus" NOT IN ('closed_won', 'closed_lost')), 0) as total_value,
+            COALESCE(SUM(br.estimated_deal_value) FILTER (WHERE br.record_type = 'lead' AND br.status NOT IN ('closed_won', 'closed_lost')), 0) as total_value,
             
             -- Active opportunities
-            COUNT(br.id) FILTER (WHERE br."recordType" = 'lead' AND br."leadStatus" NOT IN ('closed_won', 'closed_lost')) as active_opportunities,
+            COUNT(br.id) FILTER (WHERE br.record_type = 'lead' AND br.status NOT IN ('closed_won', 'closed_lost')) as active_opportunities,
             
             -- Qualified opportunities
-            COUNT(br.id) FILTER (WHERE br."leadStatus" IN ('qualified', 'demo_scheduled', 'demo_completed', 'proposal_prep', 'proposal_sent', 'negotiation')) as qualified_opportunities,
+            COUNT(br.id) FILTER (WHERE br.status IN ('qualified', 'demo_scheduled', 'demo_completed', 'proposal_prep', 'proposal_sent', 'negotiation')) as qualified_opportunities,
             
             -- This month closed revenue
-            COALESCE(SUM(br."estimatedDealValue") FILTER (WHERE br."leadStatus" = 'closed_won' AND br."updatedAt" >= DATE_TRUNC('month', NOW())), 0) as monthly_revenue,
+            COALESCE(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW())), 0) as monthly_revenue,
             
             -- Conversion rate
             CASE 
-              WHEN COUNT(br.id) FILTER (WHERE br."recordType" = 'lead') > 0 THEN
-                ROUND((COUNT(br.id) FILTER (WHERE br."leadStatus" = 'closed_won')::numeric / COUNT(br.id) FILTER (WHERE br."recordType" = 'lead')::numeric) * 100, 1)
+              WHEN COUNT(br.id) FILTER (WHERE br.record_type = 'lead') > 0 THEN
+                ROUND((COUNT(br.id) FILTER (WHERE br.status = 'closed_won')::numeric / COUNT(br.id) FILTER (WHERE br.record_type = 'lead')::numeric) * 100, 1)
               ELSE 0
             END as conversion_rate,
             
             -- Average sales cycle
-            COALESCE(AVG(EXTRACT(DAY FROM br."updatedAt" - br."createdAt")) FILTER (WHERE br."leadStatus" = 'closed_won'), 30) as avg_sales_cycle,
+            COALESCE(AVG(EXTRACT(DAY FROM br.updated_at - br.created_at)) FILTER (WHERE br.status = 'closed_won'), 30) as avg_sales_cycle,
             
             -- Growth rate (this month vs last month)
             CASE 
-              WHEN LAG(SUM(br."estimatedDealValue") FILTER (WHERE br."leadStatus" = 'closed_won' AND br."updatedAt" >= DATE_TRUNC('month', NOW()))) OVER () > 0 THEN
-                ROUND(((SUM(br."estimatedDealValue") FILTER (WHERE br."leadStatus" = 'closed_won' AND br."updatedAt" >= DATE_TRUNC('month', NOW())) / 
-                       LAG(SUM(br."estimatedDealValue") FILTER (WHERE br."leadStatus" = 'closed_won' AND br."updatedAt" >= DATE_TRUNC('month', NOW()))) OVER ()) - 1) * 100, 1)
+              WHEN LAG(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW()))) OVER () > 0 THEN
+                ROUND(((SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW())) / 
+                       LAG(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW()))) OVER ()) - 1) * 100, 1)
               ELSE 0
             END as growth_rate
             
           FROM business_records br
-          WHERE br."tenantId" = $1
+          WHERE br.tenant_id = $1
         ),
         goals_summary AS (
           SELECT 
             COALESCE(SUM(monthly_revenue_goal), 200000) as total_revenue_goal
           FROM crm_goals 
-          WHERE tenant_id = $1 
+          WHERE tenant_id = $2 
             AND goal_type = 'monthly'
             AND is_active = true
         )
@@ -416,7 +416,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         CROSS JOIN goals_summary gs
       `;
 
-      const result = await db.execute(sql.raw(summaryQuery, [tenantId]));
+      const result = await db.execute(sql.raw(summaryQuery, [tenantId, tenantId]));
       
       if (result.rows.length === 0) {
         return res.json({
@@ -461,22 +461,22 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       const insertQuery = `
         INSERT INTO business_records (
-          "tenantId",
-          "recordType",
-          "companyName",
-          "primaryContactName",
-          "primaryContactEmail",
-          "primaryContactPhone",
-          "leadStatus",
-          "estimatedDealValue",
-          "probability",
-          "expectedCloseDate",
-          "leadSource",
-          "assignedTo",
-          "createdBy",
+          tenant_id,
+          record_type,
+          company_name,
+          primary_contact_name,
+          primary_contact_email,
+          primary_contact_phone,
+          status,
+          estimated_deal_value,
+          probability,
+          close_date,
+          source,
+          owner_id,
+          created_by,
           notes,
-          "createdAt",
-          "updatedAt"
+          created_at,
+          updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
         RETURNING *
       `;
