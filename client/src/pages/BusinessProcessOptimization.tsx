@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -169,19 +170,22 @@ export default function BusinessProcessOptimization() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4">
+      <MainLayout>
+        <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading process optimization dashboard...</p>
           </div>
         </div>
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
+    <MainLayout>
+      <div className="container mx-auto p-4 max-w-7xl">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -799,6 +803,7 @@ export default function BusinessProcessOptimization() {
           </Tabs>
         </>
       )}
-    </div>
+      </div>
+    </MainLayout>
   );
 }

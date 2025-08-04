@@ -215,6 +215,9 @@ function Router() {
           <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
           <Route path="/business-process-optimization" component={BusinessProcessOptimization} />
           <Route path="/security-compliance" component={SecurityComplianceManagement} />
+          <Route path="/security-compliance-management" component={SecurityComplianceManagement} />
+          <Route path="/customer-portal" component={CustomerSelfServicePortal} />
+          <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
           <Route path="/incident-response" component={IncidentResponseSystem} />
           <Route path="/ai-analytics" component={AIAnalyticsDashboard} />
           <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />

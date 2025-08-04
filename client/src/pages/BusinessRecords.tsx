@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from '@/components/layout/main-layout';
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,16 +185,19 @@ export default function BusinessRecords() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
+      <MainLayout>
+        <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading business records...</div>
         </div>
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Business Records Management</h1>
@@ -482,6 +486,7 @@ export default function BusinessRecords() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
