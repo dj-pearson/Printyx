@@ -15,7 +15,7 @@ import SalesReports from "@/pages/placeholder/SalesReports";
 import ServiceReports from "@/pages/placeholder/ServiceReports";
 import RevenueReports from "@/pages/placeholder/RevenueReports";
 import Contracts from "@/pages/contracts";
-import ServiceDispatchEnhanced from "@/pages/ServiceDispatchEnhanced";
+import ServiceDispatchOptimization from "@/pages/ServiceDispatchOptimization";
 import Inventory from "@/pages/inventory";
 import Billing from "@/pages/billing";
 import Reports from "@/pages/reports";
@@ -74,7 +74,6 @@ import RemoteMonitoring from "@/pages/RemoteMonitoring";
 import DemoScheduling from "@/pages/DemoScheduling";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
-import ServiceDispatchOptimization from "@/pages/ServiceDispatchOptimization";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
 import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
 import DocumentManagement from "@/pages/DocumentManagement";
@@ -88,6 +87,7 @@ import IntegrationHub from "@/pages/IntegrationHub";
 import WorkflowAutomation from "@/pages/WorkflowAutomation";
 import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
 import ERPIntegration from "@/pages/ERPIntegration";
+import CustomerAccessManagement from "@/pages/CustomerAccessManagement";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -155,7 +155,7 @@ function Router() {
           <Route path="/contracts" component={Contracts} />
           <Route path="/meter-readings" component={MeterReadings} />
           <Route path="/invoices" component={Invoices} />
-          <Route path="/service-dispatch" component={ServiceDispatchEnhanced} />
+          <Route path="/service-dispatch" component={ServiceDispatchOptimization} />
           <Route path="/mobile-field-service" component={MobileFieldService} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
@@ -210,6 +210,7 @@ function Router() {
           <Route path="/integration-hub" component={IntegrationHub} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route path="/erp-integration" component={ERPIntegration} />
+          <Route path="/customer-access-management" component={CustomerAccessManagement} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
