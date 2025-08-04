@@ -422,59 +422,59 @@ export default function CustomerDetailHubspot() {
                 <TabsList className="h-auto p-0 bg-transparent space-x-0">
                   <div className="flex flex-wrap gap-1 p-1">
                     {/* Primary tabs - always visible */}
-                    <TabsTrigger 
-                      value="overview" 
+                    <TabsTrigger
+                      value="overview"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <BookOpen className="h-4 w-4" />
                       <span className="hidden sm:inline">Overview</span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="activities" 
+                    <TabsTrigger
+                      value="activities"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Activity className="h-4 w-4" />
                       <span className="hidden sm:inline">Activities</span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="contacts" 
+                    <TabsTrigger
+                      value="contacts"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Users className="h-4 w-4" />
                       <span className="hidden sm:inline">Contacts</span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="service" 
+                    <TabsTrigger
+                      value="service"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Wrench className="h-4 w-4" />
                       <span className="hidden sm:inline">Service</span>
                     </TabsTrigger>
-                    
+
                     {/* Secondary tabs - wrap on mobile */}
-                    <TabsTrigger 
-                      value="equipment" 
+                    <TabsTrigger
+                      value="equipment"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Printer className="h-4 w-4" />
                       <span className="hidden sm:inline">Equipment</span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="supplies" 
+                    <TabsTrigger
+                      value="supplies"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Package className="h-4 w-4" />
                       <span className="hidden sm:inline">Supplies</span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="invoices" 
+                    <TabsTrigger
+                      value="invoices"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <Receipt className="h-4 w-4" />
                       <span className="hidden sm:inline">Invoices</span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="financials" 
+                    <TabsTrigger
+                      value="financials"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
                       <PieChart className="h-4 w-4" />
