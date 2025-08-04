@@ -5312,6 +5312,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import and register proposals routes
   const proposalsRouter = await import('./routes-proposals.js');
   app.use('/api/proposals', proposalsRouter.default);
+  
+  // Social Media Post Generator Routes
+  const socialMediaRoutes = await import('./routes-social-media');
+  app.use('/', socialMediaRoutes.default);
 
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
   
