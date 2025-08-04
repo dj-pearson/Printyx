@@ -29,12 +29,48 @@ const requireAuth = (req: any, res: any, next: any) => {
 const router = Router();
 
 // Middleware to check root admin access
-const requireRootAdmin = (req: any, res: any, next: any) => {
-  const user = req.user;
-  if (!user || (!user.role?.canAccessAllTenants && user.role?.role !== "admin" && user.role?.role !== "super_admin")) {
-    return res.status(403).json({ message: "Root admin access required" });
+const requireRootAdmin = async (req: any, res: any, next: any) => {
+  try {
+    const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    // Get user with role information from database
+    const userWithRole = await db
+      .select({
+        userId: users.id,
+        roleId: users.roleId,
+        roleName: roles.name,
+        roleLevel: roles.level,
+        canAccessAllTenants: roles.canAccessAllTenants
+      })
+      .from(users)
+      .leftJoin(roles, eq(users.roleId, roles.id))
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!userWithRole.length || !userWithRole[0].roleLevel) {
+      return res.status(403).json({ message: "Root admin access required - no role assigned" });
+    }
+
+    const user = userWithRole[0];
+    
+    // Check if user has root admin level (7+) or can access all tenants
+    if (user.roleLevel < 7 && !user.canAccessAllTenants) {
+      return res.status(403).json({ message: "Root admin access required - insufficient privileges" });
+    }
+
+    // Add role info to request for later use
+    req.user.roleLevel = user.roleLevel;
+    req.user.canAccessAllTenants = user.canAccessAllTenants;
+    
+    next();
+  } catch (error) {
+    console.error("Root admin check error:", error);
+    res.status(500).json({ message: "Internal server error during authorization" });
   }
-  next();
 };
 
 // System Overview
