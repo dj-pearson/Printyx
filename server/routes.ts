@@ -3355,8 +3355,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this is actually a business record ID instead of a company ID
       let actualCompanyId = companyId;
       
-      // First check if it's a valid company ID
-      const existingCompany = await storage.getCompany(companyId, tenantId);
+      // First check if it's a valid company ID (only if it looks like a UUID)
+      let existingCompany = null;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(companyId);
+      
+      if (isUuid) {
+        try {
+          existingCompany = await storage.getCompany(companyId, tenantId);
+        } catch (error) {
+          // Ignore UUID validation errors, we'll try business records instead
+          existingCompany = null;
+        }
+      }
       
       if (!existingCompany) {
         // It might be a business record ID, try to get the business record
@@ -3396,8 +3406,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If so, try to find or create the corresponding company
       let actualCompanyId = companyId;
       
-      // First check if it's a valid company ID
-      const existingCompany = await storage.getCompany(companyId, tenantId);
+      // First check if it's a valid company ID (only if it looks like a UUID)
+      let existingCompany = null;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(companyId);
+      
+      if (isUuid) {
+        try {
+          existingCompany = await storage.getCompany(companyId, tenantId);
+        } catch (error) {
+          // Ignore UUID validation errors, we'll try business records instead
+          existingCompany = null;
+        }
+      }
       
       if (!existingCompany) {
         // It might be a business record ID, try to get the business record
