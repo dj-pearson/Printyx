@@ -410,6 +410,19 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     });
   }
 
+  // Root Admin section - show only for platform/root admin users
+  if (isPlatformRole || userRole?.role === "admin" || userRole?.role === "super_admin") {
+    sections.push({
+      name: "Root Admin",
+      items: [
+        { name: "Social Media Generator", href: "/social-media-generator", icon: Zap },
+        { name: "Security Management", href: "/security-management", icon: Shield },
+        { name: "System Monitoring", href: "/system-monitoring", icon: Monitor },
+        { name: "Access Control", href: "/access-control", icon: UserCheck },
+      ],
+    });
+  }
+
   // Platform-only section
   if (isPlatformRole) {
     sections.push({
