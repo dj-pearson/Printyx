@@ -14,8 +14,8 @@ const router = express.Router();
 
 // Advanced Security & Compliance Management API Routes
 
-// Get security dashboard data
-router.get('/api/security/dashboard', requireAuth, async (req: any, res) => {
+// Get security compliance dashboard
+router.get('/api/security-compliance/dashboard', requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -23,644 +23,565 @@ router.get('/api/security/dashboard', requireAuth, async (req: any, res) => {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    const securityData = {
+    const securityComplianceData = {
       // Security Overview
       securityOverview: {
-        securityScore: 94.7,
-        vulnerabilities: {
-          critical: 0,
-          high: 2,
-          medium: 8,
-          low: 15,
-          total: 25
-        },
-        complianceScore: 96.2,
-        lastSecurityAudit: new Date('2024-12-15T00:00:00Z'),
-        nextAuditDue: new Date('2025-06-15T00:00:00Z'),
+        overallSecurityScore: 94.7,
+        complianceStatus: 'compliant',
         activeThreats: 3,
-        resolvedIncidents: 47,
-        systemUptime: 99.97
+        resolvedThreats: 127,
+        securityIncidents: 2,
+        lastSecurityAudit: new Date('2025-01-28T00:00:00Z'),
+        nextAuditDue: new Date('2025-04-28T00:00:00Z'),
+        certificationsActive: 6,
+        vulnerabilitiesDetected: 8,
+        vulnerabilitiesPatched: 45,
+        securityTrainingCompliance: 96.8,
+        dataBackupStatus: 'healthy',
+        encryptionCoverage: 100.0
       },
 
-      // Compliance Status
-      complianceStatus: [
-        {
-          framework: 'SOC 2 Type II',
-          status: 'compliant',
-          score: 96.8,
-          lastAudit: new Date('2024-09-30T00:00:00Z'),
-          nextAudit: new Date('2025-09-30T00:00:00Z'),
-          findings: 1,
-          remediated: 3,
-          inProgress: 0,
-          requirements: {
-            total: 64,
-            implemented: 62,
-            pending: 2,
-            notApplicable: 0
-          }
-        },
-        {
-          framework: 'GDPR',
-          status: 'compliant',
-          score: 94.3,
-          lastAudit: new Date('2024-11-20T00:00:00Z'),
-          nextAudit: new Date('2025-11-20T00:00:00Z'),
-          findings: 2,
-          remediated: 5,
-          inProgress: 1,
-          requirements: {
-            total: 48,
-            implemented: 45,
-            pending: 3,
-            notApplicable: 0
-          }
-        },
-        {
-          framework: 'CCPA',
-          status: 'compliant',
-          score: 97.1,
-          lastAudit: new Date('2024-10-10T00:00:00Z'),
-          nextAudit: new Date('2025-10-10T00:00:00Z'),
-          findings: 0,
-          remediated: 2,
-          inProgress: 0,
-          requirements: {
-            total: 32,
-            implemented: 31,
-            pending: 1,
-            notApplicable: 0
-          }
-        },
-        {
-          framework: 'HIPAA',
-          status: 'compliant',
-          score: 93.7,
-          lastAudit: new Date('2024-08-25T00:00:00Z'),
-          nextAudit: new Date('2025-08-25T00:00:00Z'),
-          findings: 3,
-          remediated: 4,
-          inProgress: 2,
-          requirements: {
-            total: 78,
-            implemented: 73,
-            pending: 5,
-            notApplicable: 0
-          }
-        }
-      ],
-
-      // Security Incidents
-      securityIncidents: [
-        {
-          id: 'INC-2025-001',
-          title: 'Suspicious Login Attempts',
-          severity: 'medium',
-          status: 'investigating',
-          category: 'authentication',
-          reportedAt: new Date('2025-01-30T14:30:00Z'),
-          reportedBy: 'Security Monitoring System',
-          affectedSystems: ['User Authentication', 'CRM Access'],
-          description: 'Multiple failed login attempts detected from unusual geographic locations',
-          assignedTo: 'Security Team',
-          estimatedResolution: new Date('2025-02-01T18:00:00Z'),
-          actions: [
-            'IP addresses blocked temporarily',
-            'User accounts secured',
-            'Additional monitoring enabled',
-            'Investigating source of attempts'
-          ]
-        },
-        {
-          id: 'INC-2025-002',
-          title: 'Email Phishing Attempt',
-          severity: 'high',
-          status: 'contained',
-          category: 'social_engineering',
-          reportedAt: new Date('2025-01-28T09:15:00Z'),
-          reportedBy: 'Employee Report',
-          affectedSystems: ['Email System'],
-          description: 'Phishing email targeting employee credentials was reported and contained',
-          assignedTo: 'IT Security',
-          estimatedResolution: new Date('2025-01-29T17:00:00Z'),
-          actions: [
-            'Email quarantined and analyzed',
-            'Employee training reminder sent',
-            'Email filters updated',
-            'Similar patterns monitored'
-          ]
-        },
-        {
-          id: 'INC-2025-003',
-          title: 'Unusual Data Access Pattern',
-          severity: 'low',
-          status: 'resolved',
-          category: 'data_access',
-          reportedAt: new Date('2025-01-25T16:45:00Z'),
-          reportedBy: 'Data Loss Prevention System',
-          affectedSystems: ['Customer Database'],
-          description: 'Automated system detected unusual bulk data access pattern',
-          assignedTo: 'Data Protection Officer',
-          resolvedAt: new Date('2025-01-26T11:30:00Z'),
-          actions: [
-            'Access pattern analyzed',
-            'Legitimate business activity confirmed',
-            'No data breach identified',
-            'Monitoring thresholds adjusted'
-          ]
-        }
-      ],
-
-      // Vulnerability Management
-      vulnerabilities: [
-        {
-          id: 'VULN-2025-001',
-          title: 'Outdated SSL Certificate',
-          severity: 'high',
-          cvss: 7.2,
-          category: 'network_security',
-          affectedAssets: ['mail.company.com'],
-          discoveredDate: new Date('2025-01-20T00:00:00Z'),
-          status: 'remediation_in_progress',
-          dueDate: new Date('2025-02-05T00:00:00Z'),
-          assignedTo: 'Network Security Team',
-          description: 'SSL certificate for mail server expires within 30 days',
-          remediation: 'Renew SSL certificate and update configuration',
-          businessImpact: 'Medium - Email service continuity risk'
-        },
-        {
-          id: 'VULN-2025-002',
-          title: 'Unpatched Software Component',
-          severity: 'high',
-          cvss: 7.8,
-          category: 'software_vulnerability',
-          affectedAssets: ['Web Application Server'],
-          discoveredDate: new Date('2025-01-18T00:00:00Z'),
-          status: 'patch_scheduled',
-          dueDate: new Date('2025-02-01T00:00:00Z'),
-          assignedTo: 'Application Security Team',
-          description: 'Critical security patch available for web framework',
-          remediation: 'Apply security patch during next maintenance window',
-          businessImpact: 'High - Potential unauthorized access risk'
-        },
-        {
-          id: 'VULN-2025-003',
-          title: 'Weak Password Policy',
-          severity: 'medium',
-          cvss: 5.4,
-          category: 'access_control',
-          affectedAssets: ['User Management System'],
-          discoveredDate: new Date('2025-01-15T00:00:00Z'),
-          status: 'policy_update_required',
-          dueDate: new Date('2025-02-15T00:00:00Z'),
-          assignedTo: 'Identity Management Team',
-          description: 'Password policy does not meet current security standards',
-          remediation: 'Update password policy to require stronger passwords',
-          businessImpact: 'Medium - Account compromise risk'
-        }
-      ],
-
-      // Access Control & Permissions
-      accessControl: {
-        userAccounts: {
-          total: 247,
-          active: 231,
-          inactive: 16,
-          privileged: 23,
-          serviceAccounts: 12,
-          pendingActivation: 3,
-          pendingDeactivation: 5
+      // Threat Detection & Monitoring
+      threatDetection: {
+        realTimeMonitoring: {
+          activeScans: 12,
+          threatsDetected: 3,
+          falsePositives: 7,
+          threatScore: 2.4, // out of 10
+          lastScanCompleted: new Date('2025-02-01T07:30:00Z'),
+          nextScheduledScan: new Date('2025-02-01T19:30:00Z'),
+          monitoringUptime: 99.94
         },
         
-        permissions: {
+        detectedThreats: [
+          {
+            id: 'threat-001',
+            type: 'suspicious_login_attempt',
+            severity: 'medium',
+            status: 'investigating',
+            detectedAt: new Date('2025-02-01T06:45:00Z'),
+            source: '192.168.1.247',
+            targetUser: 'john.smith@printyx.com',
+            description: 'Multiple failed login attempts from unusual location',
+            riskScore: 6.2,
+            affectedSystems: ['user_portal', 'admin_dashboard'],
+            mitigationActions: ['account_lockout', 'security_notification', 'ip_monitoring'],
+            investigator: 'security_team',
+            estimatedResolutionTime: 45 // minutes
+          },
+          {
+            id: 'threat-002',
+            type: 'data_access_anomaly',
+            severity: 'high',
+            status: 'contained',
+            detectedAt: new Date('2025-02-01T04:20:00Z'),
+            source: 'internal_user',
+            targetUser: 'admin@dealership.com',
+            description: 'Unusual bulk data access outside normal business hours',
+            riskScore: 7.8,
+            affectedSystems: ['customer_database', 'financial_records'],
+            mitigationActions: ['access_restriction', 'audit_trail_review', 'manager_notification'],
+            investigator: 'compliance_officer',
+            estimatedResolutionTime: 120
+          },
+          {
+            id: 'threat-003',
+            type: 'malware_detection',
+            severity: 'low',
+            status: 'resolved',
+            detectedAt: new Date('2025-01-31T14:30:00Z'),
+            source: 'email_attachment',
+            targetUser: 'sales@dealership.com',
+            description: 'Suspicious email attachment quarantined automatically',
+            riskScore: 3.1,
+            affectedSystems: ['email_server'],
+            mitigationActions: ['quarantine', 'user_training', 'email_filtering_update'],
+            investigator: 'it_security',
+            estimatedResolutionTime: 15,
+            resolvedAt: new Date('2025-01-31T14:45:00Z')
+          }
+        ],
+        
+        threatTrends: [
+          { category: 'phishing_attempts', count: 23, change: '+12%', severity: 'medium' },
+          { category: 'suspicious_logins', count: 15, change: '-8%', severity: 'medium' },
+          { category: 'malware_detected', count: 4, change: '-25%', severity: 'low' },
+          { category: 'data_breach_attempts', count: 1, change: '0%', severity: 'high' },
+          { category: 'ddos_attempts', count: 2, change: '+100%', severity: 'medium' }
+        ]
+      },
+
+      // Compliance Management
+      complianceManagement: {
+        regulations: [
+          {
+            id: 'gdpr',
+            name: 'General Data Protection Regulation (GDPR)',
+            status: 'compliant',
+            complianceScore: 96.8,
+            lastAudit: new Date('2025-01-15T00:00:00Z'),
+            nextAudit: new Date('2025-07-15T00:00:00Z'),
+            requirements: 47,
+            compliantRequirements: 45,
+            nonCompliantRequirements: 2,
+            actionItemsOpen: 3,
+            actionItemsCompleted: 28,
+            certificationStatus: 'active',
+            expiryDate: new Date('2025-12-31T00:00:00Z'),
+            auditor: 'EU Compliance Solutions',
+            riskLevel: 'low'
+          },
+          {
+            id: 'hipaa',
+            name: 'Health Insurance Portability and Accountability Act (HIPAA)',
+            status: 'compliant',
+            complianceScore: 94.2,
+            lastAudit: new Date('2025-01-08T00:00:00Z'),
+            nextAudit: new Date('2025-06-08T00:00:00Z'),
+            requirements: 34,
+            compliantRequirements: 32,
+            nonCompliantRequirements: 2,
+            actionItemsOpen: 4,
+            actionItemsCompleted: 19,
+            certificationStatus: 'active',
+            expiryDate: new Date('2025-11-30T00:00:00Z'),
+            auditor: 'Healthcare Compliance Partners',
+            riskLevel: 'low'
+          },
+          {
+            id: 'sox',
+            name: 'Sarbanes-Oxley Act (SOX)',
+            status: 'compliant',
+            complianceScore: 92.5,
+            lastAudit: new Date('2024-12-20T00:00:00Z'),
+            nextAudit: new Date('2025-06-20T00:00:00Z'),
+            requirements: 28,
+            compliantRequirements: 26,
+            nonCompliantRequirements: 2,
+            actionItemsOpen: 5,
+            actionItemsCompleted: 15,
+            certificationStatus: 'active',
+            expiryDate: new Date('2025-12-20T00:00:00Z'),
+            auditor: 'Financial Compliance Group',
+            riskLevel: 'medium'
+          },
+          {
+            id: 'pci_dss',
+            name: 'Payment Card Industry Data Security Standard (PCI DSS)',
+            status: 'compliant',
+            complianceScore: 97.1,
+            lastAudit: new Date('2025-01-20T00:00:00Z'),
+            nextAudit: new Date('2025-04-20T00:00:00Z'),
+            requirements: 12,
+            compliantRequirements: 12,
+            nonCompliantRequirements: 0,
+            actionItemsOpen: 1,
+            actionItemsCompleted: 23,
+            certificationStatus: 'active',
+            expiryDate: new Date('2026-01-20T00:00:00Z'),
+            auditor: 'Payment Security Institute',
+            riskLevel: 'low'
+          }
+        ],
+        
+        actionItems: [
+          {
+            id: 'action-001',
+            regulation: 'GDPR',
+            priority: 'high',
+            title: 'Update Data Processing Records',
+            description: 'Complete documentation of new data processing activities for Q1 2025',
+            assignee: 'data_protection_officer',
+            dueDate: new Date('2025-02-15T00:00:00Z'),
+            status: 'in_progress',
+            progress: 67,
+            estimatedHours: 8,
+            completedHours: 5.5,
+            riskIfDelayed: 'regulatory_fine'
+          },
+          {
+            id: 'action-002',
+            regulation: 'HIPAA',
+            priority: 'medium',
+            title: 'Security Training Update',
+            description: 'Conduct updated HIPAA security training for all staff handling healthcare data',
+            assignee: 'hr_manager',
+            dueDate: new Date('2025-02-28T00:00:00Z'),
+            status: 'pending',
+            progress: 12,
+            estimatedHours: 16,
+            completedHours: 2,
+            riskIfDelayed: 'compliance_violation'
+          },
+          {
+            id: 'action-003',
+            regulation: 'SOX',
+            priority: 'high',
+            title: 'Financial Controls Review',
+            description: 'Quarterly review of financial reporting controls and documentation',
+            assignee: 'financial_controller',
+            dueDate: new Date('2025-02-10T00:00:00Z'),
+            status: 'overdue',
+            progress: 23,
+            estimatedHours: 12,
+            completedHours: 3,
+            riskIfDelayed: 'audit_finding'
+          }
+        ],
+        
+        complianceMetrics: {
+          overallComplianceScore: 95.2,
+          regulationsMonitored: 4,
+          activeCompliance: 4,
+          nonCompliantRegulations: 0,
+          overdueActionItems: 1,
+          upcomingAudits: 3,
+          certificationRenewals: 2,
+          complianceTrainingCompletion: 94.8
+        }
+      },
+
+      // Access Control & Identity Management
+      accessControl: {
+        userAccessMatrix: {
+          totalUsers: 247,
+          activeUsers: 234,
+          inactiveUsers: 13,
+          privilegedUsers: 23,
+          serviceAccounts: 8,
+          pendingAccessRequests: 5,
+          expiredAccounts: 2,
+          multiFactorEnabled: 231,
+          singleSignOnEnabled: 198
+        },
+        
+        accessReviews: [
+          {
+            id: 'review-001',
+            type: 'quarterly_review',
+            status: 'in_progress',
+            startDate: new Date('2025-01-01T00:00:00Z'),
+            dueDate: new Date('2025-02-01T00:00:00Z'),
+            completionRate: 78,
+            usersReviewed: 193,
+            totalUsers: 247,
+            accessChanges: 12,
+            accessRevocations: 5,
+            newAccessGranted: 7,
+            reviewer: 'security_manager',
+            findings: ['3 unused accounts', '5 excessive permissions', '2 missing MFA']
+          },
+          {
+            id: 'review-002',
+            type: 'privileged_access_review',
+            status: 'completed',
+            startDate: new Date('2024-12-01T00:00:00Z'),
+            dueDate: new Date('2024-12-31T00:00:00Z'),
+            completionRate: 100,
+            usersReviewed: 23,
+            totalUsers: 23,
+            accessChanges: 3,
+            accessRevocations: 1,
+            newAccessGranted: 2,
+            reviewer: 'chief_security_officer',
+            findings: ['1 dormant admin account', '2 temporary access expired']
+          }
+        ],
+        
+        roleBasedAccess: {
           totalRoles: 15,
           customRoles: 8,
           defaultRoles: 7,
-          roleAssignments: 231,
-          excessivePrivileges: 4,
-          unusedPermissions: 12
-        },
-
-        authentication: {
-          mfaEnabled: 218,
-          mfaDisabled: 13,
-          ssoUsers: 195,
-          localAuthUsers: 36,
-          passwordExpiring: 27,
-          accountsLocked: 2
-        },
-
-        recentChanges: [
-          {
-            timestamp: new Date('2025-01-30T10:15:00Z'),
-            action: 'role_assigned',
-            user: 'john.doe@company.com',
-            details: 'Assigned "Sales Manager" role',
-            performedBy: 'admin@company.com'
-          },
-          {
-            timestamp: new Date('2025-01-29T16:22:00Z'),
-            action: 'permission_revoked',
-            user: 'jane.smith@company.com',
-            details: 'Removed "Admin Console" access',
-            performedBy: 'security@company.com'
-          },
-          {
-            timestamp: new Date('2025-01-29T14:08:00Z'),
-            action: 'account_deactivated',
-            user: 'former.employee@company.com',
-            details: 'Account deactivated due to termination',
-            performedBy: 'hr@company.com'
-          }
-        ]
+          roleAssignments: 247,
+          roleConflicts: 0,
+          segregationOfDutiesViolations: 0,
+          leastPrivilegeCompliance: 94.3
+        }
       },
 
       // Data Protection & Privacy
       dataProtection: {
         dataClassification: {
-          public: 15678,
-          internal: 89432,
-          confidential: 34567,
-          restricted: 8934,
-          total: 148611
+          totalDataAssets: 1247,
+          publicData: 234,
+          internalData: 789,
+          confidentialData: 187,
+          restrictedData: 37,
+          unclassifiedData: 0,
+          encryptedAssets: 1247,
+          encryptionCoverage: 100.0
         },
-
-        dataRetention: {
-          policiesTotal: 12,
-          policiesActive: 11,
-          retentionCompliant: 96.8,
-          recordsScheduledDeletion: 2847,
-          recordsDeleted: 15678,
-          retentionViolations: 23
+        
+        dataPrivacy: {
+          personalDataRecords: 45672,
+          dataSubjectRequests: 23,
+          pendingRequests: 3,
+          completedRequests: 20,
+          averageResponseTime: 4.2, // days
+          dataBreachIncidents: 0,
+          privacyPolicyUpdates: 2,
+          consentManagementActive: true,
+          rightToErasureRequests: 5,
+          dataPortabilityRequests: 3
         },
-
-        privacyRequests: [
-          {
-            id: 'PR-2025-001',
-            type: 'data_access',
-            requestDate: new Date('2025-01-28T00:00:00Z'),
-            status: 'completed',
-            responseTime: 18, // hours
-            dataSubject: 'customer@example.com',
-            completedDate: new Date('2025-01-29T18:00:00Z')
-          },
-          {
-            id: 'PR-2025-002',
-            type: 'data_deletion',
-            requestDate: new Date('2025-01-25T00:00:00Z'),
-            status: 'in_progress',
-            responseTime: null,
-            dataSubject: 'former-customer@example.com',
-            estimatedCompletion: new Date('2025-02-03T00:00:00Z')
-          },
-          {
-            id: 'PR-2025-003',
-            type: 'data_portability',
-            requestDate: new Date('2025-01-30T00:00:00Z'),
-            status: 'received',
-            responseTime: null,
-            dataSubject: 'client@business.com',
-            estimatedCompletion: new Date('2025-02-05T00:00:00Z')
-          }
-        ],
-
-        dataBreaches: {
-          totalIncidents: 0,
-          lastIncident: null,
-          avgResponseTime: 4.2, // hours
-          regulatoryReports: 0,
-          customersNotified: 0
+        
+        backupAndRecovery: {
+          lastBackupCompleted: new Date('2025-02-01T02:00:00Z'),
+          backupFrequency: 'daily',
+          backupSuccess: 99.8,
+          backupRetention: '7 years',
+          disasterRecoveryTested: new Date('2024-12-15T00:00:00Z'),
+          recoveryTimeObjective: '4 hours',
+          recoveryPointObjective: '1 hour',
+          offSiteBackups: true,
+          encryptedBackups: true
         }
       },
 
-      // Security Training & Awareness
-      securityTraining: {
-        trainingPrograms: [
-          {
-            program: 'Security Awareness Fundamentals',
-            participants: 231,
-            completed: 218,
-            inProgress: 13,
-            completionRate: 94.4,
-            averageScore: 87.3,
-            lastUpdated: new Date('2024-12-01T00:00:00Z')
-          },
-          {
-            program: 'Phishing Recognition',
-            participants: 231,
-            completed: 203,
-            inProgress: 28,
-            completionRate: 87.9,
-            averageScore: 91.2,
-            lastUpdated: new Date('2025-01-15T00:00:00Z')
-          },
-          {
-            program: 'Data Protection & Privacy',
-            participants: 156,
-            completed: 142,
-            inProgress: 14,
-            completionRate: 91.0,
-            averageScore: 89.7,
-            lastUpdated: new Date('2024-11-20T00:00:00Z')
-          }
-        ],
-
-        phishingSimulations: {
-          totalCampaigns: 12,
-          totalEmails: 2772,
-          clicked: 167,
-          reported: 89,
-          clickRate: 6.0,
-          reportRate: 3.2,
-          improvementTrend: 'positive'
+      // Security Monitoring & Analytics
+      securityAnalytics: {
+        securityEvents: {
+          totalEvents: 45672,
+          criticalEvents: 12,
+          highPriorityEvents: 87,
+          mediumPriorityEvents: 234,
+          lowPriorityEvents: 567,
+          falsePositives: 143,
+          eventsInvestigated: 45385,
+          meanTimeToDetection: 4.7, // minutes
+          meanTimeToResponse: 12.3 // minutes
         },
-
-        certifications: [
-          {
-            certification: 'CISSP',
-            holders: 3,
-            expiringWithin90Days: 1,
-            renewalsNeeded: 1
-          },
-          {
-            certification: 'CISM',
-            holders: 2,
-            expiringWithin90Days: 0,
-            renewalsNeeded: 0
-          },
-          {
-            certification: 'CompTIA Security+',
-            holders: 8,
-            expiringWithin90Days: 2,
-            renewalsNeeded: 3
-          }
-        ]
+        
+        vulnerabilityManagement: {
+          totalVulnerabilities: 53,
+          criticalVulnerabilities: 0,
+          highVulnerabilities: 3,
+          mediumVulnerabilities: 15,
+          lowVulnerabilities: 35,
+          patchedVulnerabilities: 45,
+          pendingPatches: 8,
+          averagePatchTime: 2.4, // days
+          vulnerabilityScans: 'weekly',
+          lastScanDate: new Date('2025-01-28T00:00:00Z')
+        },
+        
+        securityTraining: {
+          totalEmployees: 156,
+          trainingCompleted: 151,
+          trainingPending: 5,
+          complianceRate: 96.8,
+          lastTrainingDate: new Date('2025-01-15T00:00:00Z'),
+          nextTrainingDue: new Date('2025-04-15T00:00:00Z'),
+          phishingSimulations: 12,
+          phishingClickRate: 3.4, // percentage
+          securityAwarenessScore: 87.2
+        }
       },
 
-      // Risk Assessment
-      riskAssessment: {
-        overallRiskScore: 2.3, // out of 10, lower is better
-        riskCategories: [
+      // Incident Response
+      incidentResponse: {
+        activeIncidents: [
           {
-            category: 'Cyber Security',
-            riskScore: 2.1,
-            trend: 'decreasing',
-            lastAssessment: new Date('2024-12-01T00:00:00Z'),
-            nextAssessment: new Date('2025-03-01T00:00:00Z'),
-            mitigation: 'Enhanced monitoring and updated security policies'
-          },
-          {
-            category: 'Data Privacy',
-            riskScore: 1.8,
-            trend: 'stable',
-            lastAssessment: new Date('2024-11-15T00:00:00Z'),
-            nextAssessment: new Date('2025-02-15T00:00:00Z'),
-            mitigation: 'Regular privacy impact assessments and staff training'
-          },
-          {
-            category: 'Compliance',
-            riskScore: 2.7,
-            trend: 'decreasing',
-            lastAssessment: new Date('2024-10-30T00:00:00Z'),
-            nextAssessment: new Date('2025-01-30T00:00:00Z'),
-            mitigation: 'Automated compliance monitoring and remediation workflows'
-          },
-          {
-            category: 'Third Party',
-            riskScore: 3.1,
-            trend: 'stable',
-            lastAssessment: new Date('2024-12-10T00:00:00Z'),
-            nextAssessment: new Date('2025-03-10T00:00:00Z'),
-            mitigation: 'Vendor security assessments and contract reviews'
+            id: 'incident-001',
+            title: 'Data Access Anomaly Investigation',
+            severity: 'medium',
+            status: 'investigating',
+            reportedAt: new Date('2025-02-01T04:20:00Z'),
+            reportedBy: 'automated_system',
+            assignedTo: 'incident_response_team',
+            category: 'data_security',
+            description: 'Unusual bulk data access pattern detected outside business hours',
+            affectedSystems: ['customer_database', 'financial_records'],
+            estimatedImpact: 'low',
+            containmentActions: ['access_monitoring', 'user_notification', 'audit_review'],
+            timeline: [
+              { time: new Date('2025-02-01T04:20:00Z'), action: 'incident_detected', actor: 'monitoring_system' },
+              { time: new Date('2025-02-01T04:25:00Z'), action: 'team_notified', actor: 'automated_system' },
+              { time: new Date('2025-02-01T04:45:00Z'), action: 'investigation_started', actor: 'security_analyst' },
+              { time: new Date('2025-02-01T06:00:00Z'), action: 'containment_implemented', actor: 'security_manager' }
+            ]
           }
         ],
-
-        criticalRisks: [
+        
+        resolvedIncidents: [
           {
-            risk: 'Vendor Security Posture',
-            probability: 'medium',
-            impact: 'high',
-            riskScore: 6.8,
-            mitigation: 'Implement vendor security assessment program',
-            owner: 'Risk Management Team',
-            dueDate: new Date('2025-03-15T00:00:00Z'),
-            status: 'in_progress'
-          },
-          {
-            risk: 'Insider Threat',
-            probability: 'low',
-            impact: 'high',
-            riskScore: 4.2,
-            mitigation: 'Enhanced user activity monitoring and access controls',
-            owner: 'Security Team',
-            dueDate: new Date('2025-02-28T00:00:00Z'),
-            status: 'planning'
+            id: 'incident-002',
+            title: 'Phishing Email Campaign',
+            severity: 'high',
+            status: 'resolved',
+            reportedAt: new Date('2025-01-28T09:15:00Z'),
+            resolvedAt: new Date('2025-01-28T14:30:00Z'),
+            resolutionTime: 5.25, // hours
+            category: 'email_security',
+            affectedUsers: 23,
+            mitigationActions: ['email_filtering', 'user_training', 'password_reset'],
+            lessonsLearned: ['Improve email filtering rules', 'Enhance user training frequency']
           }
-        ]
+        ],
+        
+        responseMetrics: {
+          meanTimeToDetection: 4.7, // minutes
+          meanTimeToContainment: 23.5, // minutes
+          meanTimeToResolution: 2.4, // hours
+          incidentTrends: {
+            thisMonth: 3,
+            lastMonth: 5,
+            change: '-40%'
+          },
+          responseTeamAvailability: 98.7
+        }
       },
 
-      // Security Metrics & KPIs
-      securityMetrics: {
-        monthlyTrends: [
-          { month: '2024-07', incidents: 6, vulnerabilities: 32, complianceScore: 93.1 },
-          { month: '2024-08', incidents: 4, vulnerabilities: 28, complianceScore: 94.2 },
-          { month: '2024-09', incidents: 7, vulnerabilities: 24, complianceScore: 94.8 },
-          { month: '2024-10', incidents: 3, vulnerabilities: 29, complianceScore: 95.1 },
-          { month: '2024-11', incidents: 5, vulnerabilities: 26, complianceScore: 95.7 },
-          { month: '2024-12', incidents: 4, vulnerabilities: 22, complianceScore: 96.0 },
-          { month: '2025-01', incidents: 3, vulnerabilities: 25, complianceScore: 96.2 }
+      // Audit & Reporting
+      auditReporting: {
+        scheduledAudits: [
+          {
+            id: 'audit-001',
+            type: 'internal_security_audit',
+            auditor: 'internal_audit_team',
+            scheduledDate: new Date('2025-02-15T00:00:00Z'),
+            scope: ['access_controls', 'data_protection', 'incident_response'],
+            status: 'scheduled',
+            estimatedDuration: 5 // days
+          },
+          {
+            id: 'audit-002',
+            type: 'gdpr_compliance_audit',
+            auditor: 'EU Compliance Solutions',
+            scheduledDate: new Date('2025-03-01T00:00:00Z'),
+            scope: ['data_processing', 'consent_management', 'privacy_controls'],
+            status: 'preparing',
+            estimatedDuration: 3
+          }
         ],
-
-        performanceIndicators: {
-          meanTimeToDetect: 2.3, // hours
-          meanTimeToRespond: 1.8, // hours
-          meanTimeToResolve: 18.5, // hours
-          falsePositiveRate: 4.2, // percentage
-          securityAwareness: 94.4, // percentage
-          patchCompliance: 96.8, // percentage
-          backupSuccess: 99.1, // percentage
-          encryptionCompliance: 100 // percentage
+        
+        completedAudits: [
+          {
+            id: 'audit-003',
+            type: 'pci_dss_audit',
+            auditor: 'Payment Security Institute',
+            completedDate: new Date('2025-01-20T00:00:00Z'),
+            result: 'passed',
+            score: 97.1,
+            findings: 1,
+            criticalFindings: 0,
+            recommendations: 3,
+            certificationIssued: true,
+            validUntil: new Date('2026-01-20T00:00:00Z')
+          }
+        ],
+        
+        reportingMetrics: {
+          executiveReports: 'monthly',
+          complianceReports: 'quarterly',
+          incidentReports: 'real-time',
+          auditReports: 'annual',
+          stakeholderNotifications: 'automated',
+          regulatoryFilings: 'as_required'
         }
       }
     };
 
-    res.json(securityData);
+    res.json(securityComplianceData);
     
   } catch (error) {
-    console.error('Error fetching security dashboard data:', error);
-    res.status(500).json({ message: 'Failed to fetch security dashboard data' });
+    console.error('Error fetching security compliance dashboard:', error);
+    res.status(500).json({ message: 'Failed to fetch security compliance dashboard' });
   }
 });
 
-// Get security incident details
-router.get('/api/security/incidents/:incidentId', requireAuth, async (req: any, res) => {
+// Get detailed threat information
+router.get('/api/security-compliance/threats/:threatId', requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { incidentId } = req.params;
+    const { threatId } = req.params;
     
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    // Mock detailed incident data
-    const incidentDetails = {
-      id: incidentId,
-      title: 'Suspicious Login Attempts',
+    // Mock detailed threat data
+    const threatDetails = {
+      id: threatId,
+      type: 'suspicious_login_attempt',
       severity: 'medium',
       status: 'investigating',
-      category: 'authentication',
+      detectedAt: new Date('2025-02-01T06:45:00Z'),
       
-      timeline: [
-        {
-          timestamp: new Date('2025-01-30T14:30:00Z'),
-          event: 'Incident Detected',
-          description: 'Automated security monitoring detected unusual login patterns',
-          actor: 'Security Monitoring System'
-        },
-        {
-          timestamp: new Date('2025-01-30T14:32:00Z'),
-          event: 'Alert Generated',
-          description: 'Security alert sent to incident response team',
-          actor: 'Alert System'
-        },
-        {
-          timestamp: new Date('2025-01-30T14:45:00Z'),
-          event: 'Initial Response',
-          description: 'Security analyst began investigation',
-          actor: 'Security Analyst'
-        },
-        {
-          timestamp: new Date('2025-01-30T15:00:00Z'),
-          event: 'Containment Measures',
-          description: 'Suspicious IP addresses blocked temporarily',
-          actor: 'Security Team'
-        }
-      ],
-
-      evidence: [
-        {
-          type: 'log_files',
-          description: 'Authentication logs showing failed login attempts',
-          collectedAt: new Date('2025-01-30T14:35:00Z'),
-          hash: 'sha256:a1b2c3d4e5f6...'
-        },
-        {
-          type: 'network_traffic',
-          description: 'Network traffic analysis from suspicious IPs',
-          collectedAt: new Date('2025-01-30T14:50:00Z'),
-          hash: 'sha256:f6e5d4c3b2a1...'
-        }
-      ],
-
-      affectedUsers: [
-        { username: 'john.doe@company.com', lastSuccessfulLogin: new Date('2025-01-29T16:45:00Z') },
-        { username: 'jane.smith@company.com', lastSuccessfulLogin: new Date('2025-01-30T08:30:00Z') }
-      ],
-
-      remediationSteps: [
-        'Analyze authentication logs for patterns',
-        'Verify legitimacy of affected user accounts',
-        'Update IP blocking rules if necessary',
-        'Implement additional monitoring for affected accounts',
-        'Document findings and lessons learned'
-      ]
-    };
-
-    res.json(incidentDetails);
-    
-  } catch (error) {
-    console.error('Error fetching incident details:', error);
-    res.status(500).json({ message: 'Failed to fetch incident details' });
-  }
-});
-
-// Create security incident
-router.post('/api/security/incidents', requireAuth, async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const incidentData = req.body;
-    
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
-    }
-
-    // Mock incident creation
-    const newIncident = {
-      id: `INC-${Date.now()}`,
-      ...incidentData,
-      tenantId,
-      reportedAt: new Date(),
-      status: 'reported',
-      assignedTo: 'Security Team'
-    };
-
-    res.status(201).json(newIncident);
-    
-  } catch (error) {
-    console.error('Error creating incident:', error);
-    res.status(500).json({ message: 'Failed to create incident' });
-  }
-});
-
-// Get compliance report
-router.get('/api/security/compliance/:framework/report', requireAuth, async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const { framework } = req.params;
-    
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
-    }
-
-    // Mock compliance report
-    const complianceReport = {
-      framework: framework.toUpperCase(),
-      generatedAt: new Date(),
-      reportPeriod: {
-        start: new Date('2024-01-01T00:00:00Z'),
-        end: new Date('2024-12-31T23:59:59Z')
+      technicalDetails: {
+        sourceIP: '192.168.1.247',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        geolocation: 'Unknown (VPN detected)',
+        attemptCount: 12,
+        timespan: '15 minutes',
+        targetEndpoints: ['/api/auth/login', '/api/dashboard', '/api/admin'],
+        httpMethods: ['POST', 'GET'],
+        responseCodesSeen: [401, 403, 200]
       },
-      overallScore: 96.2,
       
-      controlAreas: [
+      investigationLog: [
         {
-          area: 'Access Controls',
-          score: 98.1,
-          controls: 12,
-          compliant: 12,
-          nonCompliant: 0,
-          findings: []
+          timestamp: new Date('2025-02-01T06:45:00Z'),
+          action: 'threat_detected',
+          actor: 'intrusion_detection_system',
+          details: 'Multiple failed login attempts detected from single IP'
         },
         {
-          area: 'Data Protection',
-          score: 94.7,
-          controls: 8,
-          compliant: 7,
-          nonCompliant: 1,
-          findings: ['Encryption key rotation policy needs update']
+          timestamp: new Date('2025-02-01T06:47:00Z'),
+          action: 'alert_generated',
+          actor: 'security_monitoring',
+          details: 'Alert sent to security team, automatic IP monitoring enabled'
         },
         {
-          area: 'Incident Response',
-          score: 95.5,
-          controls: 6,
-          compliant: 6,
-          nonCompliant: 0,
-          findings: []
+          timestamp: new Date('2025-02-01T07:00:00Z'),
+          action: 'investigation_started',
+          actor: 'security_analyst_mike',
+          details: 'Manual investigation initiated, IP geolocation analysis in progress'
         }
       ],
-
-      recommendations: [
-        'Update encryption key rotation policy to meet current standards',
-        'Implement automated compliance monitoring for real-time visibility',
-        'Conduct quarterly compliance assessments to maintain high scores'
+      
+      mitigationSteps: [
+        { step: 'Account lockout for target user', status: 'completed', timestamp: new Date('2025-02-01T06:46:00Z') },
+        { step: 'IP address monitoring and logging', status: 'active', timestamp: new Date('2025-02-01T06:47:00Z') },
+        { step: 'User notification sent', status: 'completed', timestamp: new Date('2025-02-01T06:50:00Z') },
+        { step: 'VPN detection analysis', status: 'in_progress', timestamp: new Date('2025-02-01T07:05:00Z') }
       ]
     };
 
-    res.json(complianceReport);
+    res.json(threatDetails);
     
   } catch (error) {
-    console.error('Error generating compliance report:', error);
-    res.status(500).json({ message: 'Failed to generate compliance report' });
+    console.error('Error fetching threat details:', error);
+    res.status(500).json({ message: 'Failed to fetch threat details' });
+  }
+});
+
+// Update compliance action item
+router.patch('/api/security-compliance/actions/:actionId', requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { actionId } = req.params;
+    const { status, progress, notes } = req.body;
+    
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    // Mock action item update
+    const updatedAction = {
+      id: actionId,
+      status: status || 'in_progress',
+      progress: progress || 75,
+      lastUpdated: new Date(),
+      updatedBy: req.user.email,
+      notes: notes || 'Progress update via dashboard'
+    };
+
+    res.json(updatedAction);
+    
+  } catch (error) {
+    console.error('Error updating action item:', error);
+    res.status(500).json({ message: 'Failed to update action item' });
   }
 });
 

@@ -7,173 +7,173 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { 
   Shield, 
-  AlertTriangle, 
   CheckCircle, 
-  XCircle,
+  AlertTriangle, 
+  Users, 
+  Lock, 
+  FileText, 
   Clock, 
-  Target, 
-  BarChart3, 
-  Eye,
-  Plus,
-  Download,
-  RefreshCw,
-  Users,
-  Lock,
-  Key,
-  FileCheck,
-  Activity,
-  TrendingUp,
+  TrendingUp, 
   TrendingDown,
-  AlertCircle,
+  Activity, 
+  Eye, 
   Settings,
+  Zap,
+  Database,
+  Key,
+  Fingerprint,
+  Wifi,
+  Globe,
   Search,
   Filter,
-  Calendar,
+  Download,
+  Upload,
+  Bell,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Timer,
+  BarChart3,
+  PieChart,
+  LineChart,
+  Gauge,
   Award,
-  Zap
+  Crosshair,
+  Target,
+  Radar,
+  ScanLine,
+  Bug,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldX,
+  UserCheck,
+  UserX,
+  RefreshCw,
+  Calendar,
+  MapPin,
+  Monitor,
+  Smartphone,
+  Server,
+  HardDrive,
+  Network,
+  Cpu
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-interface SecurityData {
+interface SecurityComplianceData {
   securityOverview: {
-    securityScore: number;
-    vulnerabilities: {
-      critical: number;
-      high: number;
-      medium: number;
-      low: number;
-      total: number;
-    };
-    complianceScore: number;
+    overallSecurityScore: number;
+    complianceStatus: string;
+    activeThreats: number;
+    resolvedThreats: number;
+    securityIncidents: number;
     lastSecurityAudit: Date;
     nextAuditDue: Date;
-    activeThreats: number;
-    resolvedIncidents: number;
-    systemUptime: number;
+    certificationsActive: number;
+    vulnerabilitiesDetected: number;
+    vulnerabilitiesPatched: number;
+    securityTrainingCompliance: number;
+    dataBackupStatus: string;
+    encryptionCoverage: number;
   };
-  complianceStatus: Array<{
-    framework: string;
-    status: string;
-    score: number;
-    lastAudit: Date;
-    nextAudit: Date;
-    findings: number;
-    remediated: number;
-    inProgress: number;
-    requirements: {
-      total: number;
-      implemented: number;
-      pending: number;
-      notApplicable: number;
+  threatDetection: {
+    realTimeMonitoring: {
+      activeScans: number;
+      threatsDetected: number;
+      falsePositives: number;
+      threatScore: number;
+      lastScanCompleted: Date;
+      nextScheduledScan: Date;
+      monitoringUptime: number;
     };
-  }>;
-  securityIncidents: Array<{
-    id: string;
-    title: string;
-    severity: string;
-    status: string;
-    category: string;
-    reportedAt: Date;
-    reportedBy: string;
-    affectedSystems: string[];
-    description: string;
-    assignedTo: string;
-    estimatedResolution?: Date;
-    resolvedAt?: Date;
-    actions: string[];
-  }>;
-  vulnerabilities: Array<{
-    id: string;
-    title: string;
-    severity: string;
-    cvss: number;
-    category: string;
-    affectedAssets: string[];
-    discoveredDate: Date;
-    status: string;
-    dueDate: Date;
-    assignedTo: string;
-    description: string;
-    remediation: string;
-    businessImpact: string;
-  }>;
+    detectedThreats: Array<{
+      id: string;
+      type: string;
+      severity: string;
+      status: string;
+      detectedAt: Date;
+      source: string;
+      targetUser: string;
+      description: string;
+      riskScore: number;
+      affectedSystems: string[];
+      mitigationActions: string[];
+      investigator: string;
+      estimatedResolutionTime: number;
+      resolvedAt?: Date;
+    }>;
+    threatTrends: Array<{
+      category: string;
+      count: number;
+      change: string;
+      severity: string;
+    }>;
+  };
+  complianceManagement: {
+    regulations: Array<{
+      id: string;
+      name: string;
+      status: string;
+      complianceScore: number;
+      lastAudit: Date;
+      nextAudit: Date;
+      requirements: number;
+      compliantRequirements: number;
+      nonCompliantRequirements: number;
+      actionItemsOpen: number;
+      actionItemsCompleted: number;
+      certificationStatus: string;
+      expiryDate: Date;
+      auditor: string;
+      riskLevel: string;
+    }>;
+    actionItems: Array<{
+      id: string;
+      regulation: string;
+      priority: string;
+      title: string;
+      description: string;
+      assignee: string;
+      dueDate: Date;
+      status: string;
+      progress: number;
+      estimatedHours: number;
+      completedHours: number;
+      riskIfDelayed: string;
+    }>;
+    complianceMetrics: {
+      overallComplianceScore: number;
+      regulationsMonitored: number;
+      activeCompliance: number;
+      nonCompliantRegulations: number;
+      overdueActionItems: number;
+      upcomingAudits: number;
+      certificationRenewals: number;
+      complianceTrainingCompletion: number;
+    };
+  };
   accessControl: {
-    userAccounts: {
-      total: number;
-      active: number;
-      inactive: number;
-      privileged: number;
+    userAccessMatrix: {
+      totalUsers: number;
+      activeUsers: number;
+      inactiveUsers: number;
+      privilegedUsers: number;
       serviceAccounts: number;
-      pendingActivation: number;
-      pendingDeactivation: number;
+      pendingAccessRequests: number;
+      expiredAccounts: number;
+      multiFactorEnabled: number;
+      singleSignOnEnabled: number;
     };
-    permissions: {
+    roleBasedAccess: {
       totalRoles: number;
       customRoles: number;
       defaultRoles: number;
       roleAssignments: number;
-      excessivePrivileges: number;
-      unusedPermissions: number;
-    };
-    authentication: {
-      mfaEnabled: number;
-      mfaDisabled: number;
-      ssoUsers: number;
-      localAuthUsers: number;
-      passwordExpiring: number;
-      accountsLocked: number;
-    };
-  };
-  dataProtection: {
-    dataClassification: {
-      public: number;
-      internal: number;
-      confidential: number;
-      restricted: number;
-      total: number;
-    };
-    dataRetention: {
-      policiesTotal: number;
-      policiesActive: number;
-      retentionCompliant: number;
-      recordsScheduledDeletion: number;
-      recordsDeleted: number;
-      retentionViolations: number;
-    };
-    privacyRequests: Array<{
-      id: string;
-      type: string;
-      requestDate: Date;
-      status: string;
-      responseTime?: number;
-      dataSubject: string;
-      completedDate?: Date;
-      estimatedCompletion?: Date;
-    }>;
-  };
-  securityTraining: {
-    trainingPrograms: Array<{
-      program: string;
-      participants: number;
-      completed: number;
-      inProgress: number;
-      completionRate: number;
-      averageScore: number;
-      lastUpdated: Date;
-    }>;
-    phishingSimulations: {
-      totalCampaigns: number;
-      totalEmails: number;
-      clicked: number;
-      reported: number;
-      clickRate: number;
-      reportRate: number;
-      improvementTrend: string;
+      roleConflicts: number;
+      segregationOfDutiesViolations: number;
+      leastPrivilegeCompliance: number;
     };
   };
 }
@@ -191,29 +191,22 @@ const getSeverityColor = (severity: string) => {
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
     case 'compliant': return 'bg-green-100 text-green-800';
+    case 'active': return 'bg-green-100 text-green-800';
     case 'resolved': return 'bg-green-100 text-green-800';
     case 'investigating': return 'bg-yellow-100 text-yellow-800';
-    case 'in_progress': return 'bg-blue-100 text-blue-800';
-    case 'open': return 'bg-red-100 text-red-800';
-    case 'contained': return 'bg-orange-100 text-orange-800';
+    case 'contained': return 'bg-blue-100 text-blue-800';
+    case 'overdue': return 'bg-red-100 text-red-800';
+    case 'pending': return 'bg-gray-100 text-gray-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
 
-const getStatusIcon = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'compliant':
-    case 'resolved':
-      return <CheckCircle className="h-4 w-4 text-green-600" />;
-    case 'investigating':
-    case 'in_progress':
-      return <Clock className="h-4 w-4 text-yellow-600" />;
-    case 'open':
-      return <XCircle className="h-4 w-4 text-red-600" />;
-    case 'contained':
-      return <AlertTriangle className="h-4 w-4 text-orange-600" />;
-    default:
-      return <AlertCircle className="h-4 w-4 text-gray-600" />;
+const getPriorityColor = (priority: string) => {
+  switch (priority.toLowerCase()) {
+    case 'high': return 'bg-red-100 text-red-800 border-red-200';
+    case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'low': return 'bg-blue-100 text-blue-800 border-blue-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
   }
 };
 
@@ -221,14 +214,31 @@ const formatPercentage = (value: number) => {
   return `${value.toFixed(1)}%`;
 };
 
-export default function SecurityComplianceManagement() {
-  const [selectedFramework, setSelectedFramework] = useState('all');
-  const [selectedSeverity, setSelectedSeverity] = useState('all');
-  const [showCreateIncident, setShowCreateIncident] = useState(false);
+const getSecurityScoreColor = (score: number) => {
+  if (score >= 90) return 'text-green-600';
+  if (score >= 75) return 'text-yellow-600';
+  return 'text-red-600';
+};
 
-  // Fetch security dashboard data
+const getThreatIcon = (type: string) => {
+  switch (type.toLowerCase()) {
+    case 'suspicious_login_attempt': return <UserX className="h-5 w-5 text-orange-600" />;
+    case 'data_access_anomaly': return <Database className="h-5 w-5 text-red-600" />;
+    case 'malware_detection': return <Bug className="h-5 w-5 text-red-600" />;
+    case 'phishing_attempts': return <Wifi className="h-5 w-5 text-yellow-600" />;
+    case 'ddos_attempts': return <Network className="h-5 w-5 text-red-600" />;
+    default: return <AlertTriangle className="h-5 w-5 text-gray-600" />;
+  }
+};
+
+export default function SecurityComplianceManagement() {
+  const [selectedTab, setSelectedTab] = useState('overview');
+  const [selectedThreatFilter, setSelectedThreatFilter] = useState('all');
+  const [selectedComplianceFilter, setSelectedComplianceFilter] = useState('all');
+
+  // Fetch security compliance data
   const { data: securityData, isLoading, refetch } = useQuery({
-    queryKey: ['/api/security/dashboard', selectedFramework, selectedSeverity],
+    queryKey: ['/api/security-compliance/dashboard'],
     select: (data: any) => ({
       ...data,
       securityOverview: {
@@ -236,40 +246,34 @@ export default function SecurityComplianceManagement() {
         lastSecurityAudit: new Date(data.securityOverview.lastSecurityAudit),
         nextAuditDue: new Date(data.securityOverview.nextAuditDue)
       },
-      complianceStatus: data.complianceStatus?.map((compliance: any) => ({
-        ...compliance,
-        lastAudit: new Date(compliance.lastAudit),
-        nextAudit: new Date(compliance.nextAudit)
-      })) || [],
-      securityIncidents: data.securityIncidents?.map((incident: any) => ({
-        ...incident,
-        reportedAt: new Date(incident.reportedAt),
-        estimatedResolution: incident.estimatedResolution ? new Date(incident.estimatedResolution) : undefined,
-        resolvedAt: incident.resolvedAt ? new Date(incident.resolvedAt) : undefined
-      })) || [],
-      vulnerabilities: data.vulnerabilities?.map((vuln: any) => ({
-        ...vuln,
-        discoveredDate: new Date(vuln.discoveredDate),
-        dueDate: new Date(vuln.dueDate)
-      })) || [],
-      dataProtection: {
-        ...data.dataProtection,
-        privacyRequests: data.dataProtection?.privacyRequests?.map((request: any) => ({
-          ...request,
-          requestDate: new Date(request.requestDate),
-          completedDate: request.completedDate ? new Date(request.completedDate) : undefined,
-          estimatedCompletion: request.estimatedCompletion ? new Date(request.estimatedCompletion) : undefined
+      threatDetection: {
+        ...data.threatDetection,
+        realTimeMonitoring: {
+          ...data.threatDetection.realTimeMonitoring,
+          lastScanCompleted: new Date(data.threatDetection.realTimeMonitoring.lastScanCompleted),
+          nextScheduledScan: new Date(data.threatDetection.realTimeMonitoring.nextScheduledScan)
+        },
+        detectedThreats: data.threatDetection?.detectedThreats?.map((threat: any) => ({
+          ...threat,
+          detectedAt: new Date(threat.detectedAt),
+          resolvedAt: threat.resolvedAt ? new Date(threat.resolvedAt) : undefined
         })) || []
       },
-      securityTraining: {
-        ...data.securityTraining,
-        trainingPrograms: data.securityTraining?.trainingPrograms?.map((program: any) => ({
-          ...program,
-          lastUpdated: new Date(program.lastUpdated)
+      complianceManagement: {
+        ...data.complianceManagement,
+        regulations: data.complianceManagement?.regulations?.map((reg: any) => ({
+          ...reg,
+          lastAudit: new Date(reg.lastAudit),
+          nextAudit: new Date(reg.nextAudit),
+          expiryDate: new Date(reg.expiryDate)
+        })) || [],
+        actionItems: data.complianceManagement?.actionItems?.map((item: any) => ({
+          ...item,
+          dueDate: new Date(item.dueDate)
         })) || []
       }
     }),
-    refetchInterval: 300000 // Refresh every 5 minutes
+    refetchInterval: 30000 // Refresh every 30 seconds
   });
 
   if (isLoading) {
@@ -277,8 +281,8 @@ export default function SecurityComplianceManagement() {
       <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading security dashboard...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading security & compliance data...</p>
           </div>
         </div>
       </div>
@@ -290,81 +294,27 @@ export default function SecurityComplianceManagement() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-6 w-6" />
-            Security & Compliance Management
+            <Shield className="h-6 w-6 text-red-600" />
+            Advanced Security & Compliance Management
           </h1>
-          <p className="text-gray-600 mt-1">Monitor security posture, manage compliance, and protect sensitive data</p>
+          <p className="text-gray-600 mt-1">Comprehensive security monitoring, threat detection, and regulatory compliance management</p>
         </div>
         
         <div className="flex items-center gap-3">
-          <Select value={selectedFramework} onValueChange={setSelectedFramework}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Frameworks</SelectItem>
-              <SelectItem value="soc2">SOC 2</SelectItem>
-              <SelectItem value="gdpr">GDPR</SelectItem>
-              <SelectItem value="ccpa">CCPA</SelectItem>
-              <SelectItem value="hipaa">HIPAA</SelectItem>
-            </SelectContent>
-          </Select>
-          
           <Button onClick={() => refetch()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
           
-          <Dialog open={showCreateIncident} onOpenChange={setShowCreateIncident}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Report Incident
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Report Security Incident</DialogTitle>
-                <DialogDescription>
-                  Report a new security incident for investigation and response
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="incident-title">Incident Title</Label>
-                    <Input id="incident-title" placeholder="Brief description of the incident" />
-                  </div>
-                  <div>
-                    <Label htmlFor="incident-severity">Severity</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select severity" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="critical">Critical</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="incident-description">Description</Label>
-                  <Textarea id="incident-description" placeholder="Detailed description of the security incident" />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowCreateIncident(false)}>
-                    Cancel
-                  </Button>
-                  <Button>
-                    Report Incident
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button variant="outline">
+            <Eye className="h-4 w-4 mr-2" />
+            Security Audit
+          </Button>
+          
+          <Button className="bg-red-600 hover:bg-red-700">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Security Center
+          </Button>
         </div>
       </div>
 
@@ -372,25 +322,24 @@ export default function SecurityComplianceManagement() {
         <>
           {/* Security Overview KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <Card>
+            <Card className="border-red-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Security Score</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {formatPercentage(securityData.securityOverview.securityScore)}
+                    <p className={`text-2xl font-bold ${getSecurityScoreColor(securityData.securityOverview.overallSecurityScore)}`}>
+                      {formatPercentage(securityData.securityOverview.overallSecurityScore)}
                     </p>
                   </div>
-                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-green-600" />
+                  <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-red-600" />
                   </div>
                 </div>
-                <div className="mt-2">
-                  <Progress value={securityData.securityOverview.securityScore} className="h-2" />
-                  <p className="text-sm text-green-600 mt-1 flex items-center">
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    Excellent security posture
-                  </p>
+                <div className="flex items-center mt-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
+                  <span className="text-green-600 capitalize">
+                    {securityData.securityOverview.complianceStatus}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -399,44 +348,20 @@ export default function SecurityComplianceManagement() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Compliance Score</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {formatPercentage(securityData.securityOverview.complianceScore)}
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <FileCheck className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <Progress value={securityData.securityOverview.complianceScore} className="h-2" />
-                  <p className="text-sm text-blue-600 mt-1">
-                    Next audit: {format(securityData.securityOverview.nextAuditDue, 'MMM dd, yyyy')}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Vulnerabilities</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {securityData.securityOverview.vulnerabilities.total}
+                    <p className="text-sm font-medium text-gray-600">Active Threats</p>
+                    <p className="text-2xl font-bold text-orange-900">
+                      {securityData.securityOverview.activeThreats}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
                     <AlertTriangle className="h-6 w-6 text-orange-600" />
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-2 text-sm">
-                  <Badge className={getSeverityColor('critical')} variant="outline">
-                    {securityData.securityOverview.vulnerabilities.critical} Critical
-                  </Badge>
-                  <Badge className={getSeverityColor('high')} variant="outline">
-                    {securityData.securityOverview.vulnerabilities.high} High
-                  </Badge>
+                <div className="flex items-center mt-2 text-sm">
+                  <Target className="h-4 w-4 text-blue-600 mr-1" />
+                  <span className="text-blue-600">
+                    {securityData.securityOverview.resolvedThreats} resolved
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -445,659 +370,644 @@ export default function SecurityComplianceManagement() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">System Uptime</p>
+                    <p className="text-sm font-medium text-gray-600">Vulnerabilities</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatPercentage(securityData.securityOverview.systemUptime)}
+                      {securityData.securityOverview.vulnerabilitiesDetected}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Activity className="h-6 w-6 text-purple-600" />
+                    <Bug className="h-6 w-6 text-purple-600" />
                   </div>
                 </div>
                 <div className="flex items-center mt-2 text-sm">
-                  <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
+                  <CheckCircle2 className="h-4 w-4 text-green-600 mr-1" />
                   <span className="text-green-600">
-                    {securityData.securityOverview.resolvedIncidents} incidents resolved
+                    {securityData.securityOverview.vulnerabilitiesPatched} patched
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Compliance</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatPercentage(securityData.complianceManagement.complianceMetrics.overallComplianceScore)}
+                    </p>
+                  </div>
+                  <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <Award className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+                <div className="flex items-center mt-2 text-sm">
+                  <FileText className="h-4 w-4 text-blue-600 mr-1" />
+                  <span className="text-blue-600">
+                    {securityData.securityOverview.certificationsActive} certifications
                   </span>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Tabs defaultValue="incidents" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="incidents">Incidents</TabsTrigger>
-              <TabsTrigger value="vulnerabilities">Vulnerabilities</TabsTrigger>
+          <Tabs defaultValue="threats" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="threats">Threat Detection</TabsTrigger>
               <TabsTrigger value="compliance">Compliance</TabsTrigger>
               <TabsTrigger value="access">Access Control</TabsTrigger>
-              <TabsTrigger value="data">Data Protection</TabsTrigger>
-              <TabsTrigger value="training">Training</TabsTrigger>
+              <TabsTrigger value="monitoring">Security Monitoring</TabsTrigger>
+              <TabsTrigger value="audits">Audits & Reports</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="incidents" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {securityData.securityIncidents.map((incident: any, idx: number) => (
-                  <Card key={idx} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{incident.title}</CardTitle>
-                          <CardDescription className="mt-1">{incident.description}</CardDescription>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <Badge className={getSeverityColor(incident.severity)}>
-                            {incident.severity}
-                          </Badge>
-                          <Badge className={getStatusColor(incident.status)}>
-                            {getStatusIcon(incident.status)}
-                            <span className="ml-1">{incident.status.replace('_', ' ')}</span>
-                          </Badge>
-                        </div>
+            <TabsContent value="threats" className="space-y-6">
+              {/* Real-time Monitoring */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Radar className="h-5 w-5 text-blue-600" />
+                    Real-time Threat Monitoring
+                  </CardTitle>
+                  <CardDescription>Live security monitoring and threat detection status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-blue-900">
+                        {securityData.threatDetection.realTimeMonitoring.activeScans}
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-500">Reported:</span>
-                            <span className="ml-2 font-medium">
-                              {format(incident.reportedAt, 'MMM dd, HH:mm')}
-                            </span>
+                      <div className="text-sm text-gray-600">Active Scans</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-red-900">
+                        {securityData.threatDetection.realTimeMonitoring.threatsDetected}
+                      </div>
+                      <div className="text-sm text-gray-600">Threats Detected</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-yellow-900">
+                        {securityData.threatDetection.realTimeMonitoring.falsePositives}
+                      </div>
+                      <div className="text-sm text-gray-600">False Positives</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-orange-900">
+                        {securityData.threatDetection.realTimeMonitoring.threatScore.toFixed(1)}/10
+                      </div>
+                      <div className="text-sm text-gray-600">Threat Score</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-green-900">
+                        {formatPercentage(securityData.threatDetection.realTimeMonitoring.monitoringUptime)}
+                      </div>
+                      <div className="text-sm text-gray-600">Uptime</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-purple-900">
+                        {format(securityData.threatDetection.realTimeMonitoring.nextScheduledScan, 'HH:mm')}
+                      </div>
+                      <div className="text-sm text-gray-600">Next Scan</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Detected Threats */}
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-orange-600" />
+                        Detected Threats
+                      </CardTitle>
+                      <CardDescription>Current security threats requiring attention</CardDescription>
+                    </div>
+                    <Select value={selectedThreatFilter} onValueChange={setSelectedThreatFilter}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Threats</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="investigating">Investigating</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {securityData.threatDetection.detectedThreats.map((threat: any, idx: number) => (
+                      <div key={idx} className={`p-4 border rounded-lg ${getSeverityColor(threat.severity)}`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {getThreatIcon(threat.type)}
+                              <h3 className="font-semibold capitalize">{threat.type.replace('_', ' ')}</h3>
+                              <Badge className={getSeverityColor(threat.severity)}>
+                                {threat.severity}
+                              </Badge>
+                              <Badge className={getStatusColor(threat.status)}>
+                                {threat.status}
+                              </Badge>
+                            </div>
+                            <p className="text-sm mb-2">{threat.description}</p>
                           </div>
-                          <div>
-                            <span className="text-gray-500">Category:</span>
-                            <span className="ml-2 font-medium capitalize">
-                              {incident.category.replace('_', ' ')}
-                            </span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-gray-500">Assigned to:</span>
-                            <span className="ml-2 font-medium">{incident.assignedTo}</span>
+                          <div className="text-right">
+                            <div className="text-lg font-bold">{threat.riskScore.toFixed(1)}</div>
+                            <div className="text-xs text-gray-500">risk score</div>
                           </div>
                         </div>
-
-                        <div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Source:</span>
+                            <span className="ml-2 font-medium">{threat.source}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Target:</span>
+                            <span className="ml-2 font-medium">{threat.targetUser}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Detected:</span>
+                            <span className="ml-2 font-medium">{format(threat.detectedAt, 'MMM dd, HH:mm')}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Investigator:</span>
+                            <span className="ml-2 font-medium capitalize">{threat.investigator.replace('_', ' ')}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
                           <div className="text-sm text-gray-600 mb-2">Affected Systems:</div>
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {threat.affectedSystems.map((system: string, sysIdx: number) => (
+                              <Badge key={sysIdx} variant="secondary" className="text-xs">
+                                {system.replace('_', ' ')}
+                              </Badge>
+                            ))}
+                          </div>
+                          
+                          <div className="text-sm text-gray-600 mb-2">Mitigation Actions:</div>
                           <div className="flex flex-wrap gap-1">
-                            {incident.affectedSystems.map((system: string, sysIdx: number) => (
-                              <Badge key={sysIdx} variant="outline" className="text-xs">
-                                {system}
+                            {threat.mitigationActions.map((action: string, actionIdx: number) => (
+                              <Badge key={actionIdx} variant="outline" className="text-xs">
+                                {action.replace('_', ' ')}
                               </Badge>
                             ))}
                           </div>
                         </div>
-
-                        <div>
-                          <div className="text-sm text-gray-600 mb-2">Recent Actions:</div>
-                          <div className="space-y-1">
-                            {incident.actions.slice(0, 2).map((action: string, actionIdx: number) => (
-                              <div key={actionIdx} className="text-xs text-gray-700 flex items-center">
-                                <div className="w-1 h-1 bg-blue-500 rounded-full mr-2"></div>
-                                {action}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs text-gray-500">
-                            ID: {incident.id}
-                          </div>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                        </div>
-
-                        {incident.estimatedResolution && (
-                          <div className="text-xs text-blue-600">
-                            Est. resolution: {format(incident.estimatedResolution, 'MMM dd, HH:mm')}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="vulnerabilities" className="space-y-6">
-              <div className="space-y-4">
-                {securityData.vulnerabilities.map((vuln: any, idx: number) => (
-                  <Card key={idx}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-gray-900">{vuln.title}</h3>
-                            <Badge className={getSeverityColor(vuln.severity)}>
-                              {vuln.severity} (CVSS {vuln.cvss})
-                            </Badge>
-                          </div>
-                          <p className="text-gray-600 text-sm">{vuln.description}</p>
-                        </div>
-                        <Badge className={getStatusColor(vuln.status)} variant="outline">
-                          {vuln.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                          <div className="text-sm text-gray-600 mb-2">Affected Assets:</div>
-                          <div className="space-y-1">
-                            {vuln.affectedAssets.map((asset: string, assetIdx: number) => (
-                              <div key={assetIdx} className="text-sm font-medium">{asset}</div>
-                            ))}
-                          </div>
-                        </div>
                         
-                        <div>
-                          <div className="text-sm text-gray-600 mb-2">Timeline:</div>
-                          <div className="space-y-1 text-sm">
-                            <div>Discovered: {format(vuln.discoveredDate, 'MMM dd, yyyy')}</div>
-                            <div>Due: {format(vuln.dueDate, 'MMM dd, yyyy')}</div>
-                            <div>Assigned: {vuln.assignedTo}</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <div className="text-sm text-gray-600 mb-2">Remediation:</div>
-                          <div className="text-sm">{vuln.remediation}</div>
-                          <div className="text-xs text-orange-600 mt-2">
-                            <strong>Impact:</strong> {vuln.businessImpact}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="compliance" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {securityData.complianceStatus.map((compliance: any, idx: number) => (
-                  <Card key={idx}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <FileCheck className="h-5 w-5" />
-                          {compliance.framework}
-                        </CardTitle>
-                        <Badge className={getStatusColor(compliance.status)}>
-                          {getStatusIcon(compliance.status)}
-                          <span className="ml-1">{compliance.status}</span>
-                        </Badge>
-                      </div>
-                      <CardDescription>
-                        Compliance score: {formatPercentage(compliance.score)}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-gray-600">Overall Compliance</span>
-                            <span className="text-sm font-medium">{formatPercentage(compliance.score)}</span>
-                          </div>
-                          <Progress value={compliance.score} className="h-2" />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-500">Last Audit:</span>
-                            <div className="font-medium">{format(compliance.lastAudit, 'MMM dd, yyyy')}</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Next Audit:</span>
-                            <div className="font-medium">{format(compliance.nextAudit, 'MMM dd, yyyy')}</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Findings:</span>
-                            <div className="font-medium">{compliance.findings} open</div>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Remediated:</span>
-                            <div className="font-medium">{compliance.remediated} fixed</div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-sm text-gray-600 mb-2">Requirements Status:</div>
-                          <div className="grid grid-cols-4 gap-2 text-xs">
-                            <div className="text-center p-2 bg-green-50 rounded">
-                              <div className="font-bold text-green-900">{compliance.requirements.implemented}</div>
-                              <div className="text-green-600">Implemented</div>
-                            </div>
-                            <div className="text-center p-2 bg-yellow-50 rounded">
-                              <div className="font-bold text-yellow-900">{compliance.requirements.pending}</div>
-                              <div className="text-yellow-600">Pending</div>
-                            </div>
-                            <div className="text-center p-2 bg-gray-50 rounded">
-                              <div className="font-bold text-gray-900">{compliance.requirements.notApplicable}</div>
-                              <div className="text-gray-600">N/A</div>
-                            </div>
-                            <div className="text-center p-2 bg-blue-50 rounded">
-                              <div className="font-bold text-blue-900">{compliance.requirements.total}</div>
-                              <div className="text-blue-600">Total</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <Button variant="outline" className="w-full">
-                          <Download className="h-4 w-4 mr-2" />
-                          Generate Report
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="access" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* User Accounts */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      User Accounts
-                    </CardTitle>
-                    <CardDescription>Account status and management</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Total Accounts</span>
-                        <span className="font-bold">{securityData.accessControl.userAccounts.total}</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Active</span>
-                          <span className="text-sm font-medium text-green-600">
-                            {securityData.accessControl.userAccounts.active}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Inactive</span>
-                          <span className="text-sm font-medium text-gray-600">
-                            {securityData.accessControl.userAccounts.inactive}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Privileged</span>
-                          <span className="text-sm font-medium text-orange-600">
-                            {securityData.accessControl.userAccounts.privileged}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Service Accounts</span>
-                          <span className="text-sm font-medium text-blue-600">
-                            {securityData.accessControl.userAccounts.serviceAccounts}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Permissions & Roles */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Key className="h-5 w-5" />
-                      Permissions & Roles
-                    </CardTitle>
-                    <CardDescription>Role assignments and permissions</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Total Roles</span>
-                        <span className="font-bold">{securityData.accessControl.permissions.totalRoles}</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">Custom Roles</span>
-                          <span className="text-sm font-medium">
-                            {securityData.accessControl.permissions.customRoles}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Role Assignments</span>
-                          <span className="text-sm font-medium">
-                            {securityData.accessControl.permissions.roleAssignments}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Excessive Privileges</span>
-                          <span className="text-sm font-medium text-orange-600">
-                            {securityData.accessControl.permissions.excessivePrivileges}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Unused Permissions</span>
-                          <span className="text-sm font-medium text-gray-600">
-                            {securityData.accessControl.permissions.unusedPermissions}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Authentication */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Lock className="h-5 w-5" />
-                      Authentication
-                    </CardTitle>
-                    <CardDescription>Authentication methods and security</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm">MFA Enabled</span>
-                          <span className="text-sm font-medium text-green-600">
-                            {securityData.accessControl.authentication.mfaEnabled}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">MFA Disabled</span>
-                          <span className="text-sm font-medium text-red-600">
-                            {securityData.accessControl.authentication.mfaDisabled}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">SSO Users</span>
-                          <span className="text-sm font-medium text-blue-600">
-                            {securityData.accessControl.authentication.ssoUsers}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Passwords Expiring</span>
-                          <span className="text-sm font-medium text-yellow-600">
-                            {securityData.accessControl.authentication.passwordExpiring}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm">Accounts Locked</span>
-                          <span className="text-sm font-medium text-red-600">
-                            {securityData.accessControl.authentication.accountsLocked}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="data" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Data Classification */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileCheck className="h-5 w-5" />
-                      Data Classification
-                    </CardTitle>
-                    <CardDescription>Classification of data assets by sensitivity</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="text-center p-3 bg-gray-50 rounded">
-                        <div className="text-2xl font-bold text-gray-900">
-                          {securityData.dataProtection.dataClassification.total.toLocaleString()}
-                        </div>
-                        <div className="text-sm text-gray-600">Total Records</div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
-                          <span className="font-medium text-green-800">Public</span>
-                          <span className="font-bold text-green-900">
-                            {securityData.dataProtection.dataClassification.public.toLocaleString()}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded">
-                          <span className="font-medium text-blue-800">Internal</span>
-                          <span className="font-bold text-blue-900">
-                            {securityData.dataProtection.dataClassification.internal.toLocaleString()}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded">
-                          <span className="font-medium text-yellow-800">Confidential</span>
-                          <span className="font-bold text-yellow-900">
-                            {securityData.dataProtection.dataClassification.confidential.toLocaleString()}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded">
-                          <span className="font-medium text-red-800">Restricted</span>
-                          <span className="font-bold text-red-900">
-                            {securityData.dataProtection.dataClassification.restricted.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Privacy Requests */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      Privacy Requests
-                    </CardTitle>
-                    <CardDescription>Data subject rights and privacy requests</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {securityData.dataProtection.privacyRequests.map((request: any, idx: number) => (
-                        <div key={idx} className="p-3 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium text-sm">{request.id}</div>
-                            <Badge className={getStatusColor(request.status)} variant="outline">
-                              {request.status.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-gray-600 space-y-1">
-                            <div>
-                              <strong>Type:</strong> {request.type.replace('_', ' ')}
-                            </div>
-                            <div>
-                              <strong>Subject:</strong> {request.dataSubject}
-                            </div>
-                            <div>
-                              <strong>Requested:</strong> {format(request.requestDate, 'MMM dd, yyyy')}
-                            </div>
-                            {request.completedDate && (
-                              <div>
-                                <strong>Completed:</strong> {format(request.completedDate, 'MMM dd, yyyy')}
-                              </div>
+                        <div className="flex justify-between items-center mt-4 pt-3 border-t">
+                          <div className="text-sm text-gray-600">
+                            ETA: {threat.estimatedResolutionTime} minutes
+                            {threat.resolvedAt && (
+                              <span className="ml-2 text-green-600">
+                                Resolved {format(threat.resolvedAt, 'MMM dd, HH:mm')}
+                              </span>
                             )}
-                            {request.estimatedCompletion && !request.completedDate && (
-                              <div>
-                                <strong>Est. Completion:</strong> {format(request.estimatedCompletion, 'MMM dd, yyyy')}
-                              </div>
-                            )}
-                            {request.responseTime && (
-                              <div>
-                                <strong>Response Time:</strong> {request.responseTime}h
-                              </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-4 w-4 mr-2" />
+                              Details
+                            </Button>
+                            {threat.status !== 'resolved' && (
+                              <Button size="sm">
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Resolve
+                              </Button>
                             )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Data Retention */}
+              {/* Threat Trends */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Data Retention Management
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                    Threat Trends
                   </CardTitle>
-                  <CardDescription>Data retention policies and compliance status</CardDescription>
+                  <CardDescription>Security threat patterns and trends analysis</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-900">
-                        {securityData.dataProtection.dataRetention.policiesActive}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {securityData.threatDetection.threatTrends.map((trend: any, idx: number) => (
+                      <div key={idx} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-medium capitalize">{trend.category.replace('_', ' ')}</div>
+                          <Badge className={getSeverityColor(trend.severity)}>
+                            {trend.severity}
+                          </Badge>
+                        </div>
+                        <div className="text-2xl font-bold">{trend.count}</div>
+                        <div className={`text-sm flex items-center gap-1 ${
+                          trend.change.startsWith('+') ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {trend.change.startsWith('+') ? 
+                            <TrendingUp className="h-4 w-4" /> : 
+                            <TrendingDown className="h-4 w-4" />
+                          }
+                          {trend.change}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">Active Policies</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        of {securityData.dataProtection.dataRetention.policiesTotal} total
-                      </div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-900">
-                        {formatPercentage(securityData.dataProtection.dataRetention.retentionCompliant)}
-                      </div>
-                      <div className="text-sm text-gray-600">Compliance Rate</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {securityData.dataProtection.dataRetention.retentionViolations} violations
-                      </div>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-900">
-                        {securityData.dataProtection.dataRetention.recordsScheduledDeletion.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-600">Scheduled for Deletion</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {securityData.dataProtection.dataRetention.recordsDeleted.toLocaleString()} deleted this period
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="training" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Training Programs */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Award className="h-5 w-5" />
-                      Security Training Programs
-                    </CardTitle>
-                    <CardDescription>Employee security awareness and training</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {securityData.securityTraining.trainingPrograms.map((program: any, idx: number) => (
-                        <div key={idx} className="p-4 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium">{program.program}</div>
-                            <Badge variant="outline">
-                              {formatPercentage(program.completionRate)}
-                            </Badge>
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-4 text-sm mb-3">
-                            <div>
-                              <span className="text-gray-500">Participants:</span>
-                              <div className="font-medium">{program.participants}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Completed:</span>
-                              <div className="font-medium text-green-600">{program.completed}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Avg Score:</span>
-                              <div className="font-medium">{formatPercentage(program.averageScore)}</div>
-                            </div>
-                          </div>
-                          
-                          <div className="mb-2">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs text-gray-600">Progress</span>
-                              <span className="text-xs font-medium">{program.completed}/{program.participants}</span>
-                            </div>
-                            <Progress value={program.completionRate} className="h-2" />
-                          </div>
-                          
-                          <div className="text-xs text-gray-500">
-                            Last updated: {format(program.lastUpdated, 'MMM dd, yyyy')}
-                          </div>
-                        </div>
-                      ))}
+            <TabsContent value="compliance" className="space-y-6">
+              {/* Compliance Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-green-600" />
+                    Compliance Status Overview
+                  </CardTitle>
+                  <CardDescription>Current regulatory compliance status and metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-green-900">
+                        {formatPercentage(securityData.complianceManagement.complianceMetrics.overallComplianceScore)}
+                      </div>
+                      <div className="text-sm text-gray-600">Overall Score</div>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-blue-900">
+                        {securityData.complianceManagement.complianceMetrics.regulationsMonitored}
+                      </div>
+                      <div className="text-sm text-gray-600">Regulations</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-green-900">
+                        {securityData.complianceManagement.complianceMetrics.activeCompliance}
+                      </div>
+                      <div className="text-sm text-gray-600">Compliant</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-red-900">
+                        {securityData.complianceManagement.complianceMetrics.nonCompliantRegulations}
+                      </div>
+                      <div className="text-sm text-gray-600">Non-Compliant</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-orange-900">
+                        {securityData.complianceManagement.complianceMetrics.overdueActionItems}
+                      </div>
+                      <div className="text-sm text-gray-600">Overdue</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-purple-900">
+                        {securityData.complianceManagement.complianceMetrics.upcomingAudits}
+                      </div>
+                      <div className="text-sm text-gray-600">Audits Due</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-yellow-900">
+                        {securityData.complianceManagement.complianceMetrics.certificationRenewals}
+                      </div>
+                      <div className="text-sm text-gray-600">Renewals</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-indigo-900">
+                        {formatPercentage(securityData.complianceManagement.complianceMetrics.complianceTrainingCompletion)}
+                      </div>
+                      <div className="text-sm text-gray-600">Training</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* Phishing Simulations */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5" />
-                      Phishing Simulations
-                    </CardTitle>
-                    <CardDescription>Phishing awareness test results</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center p-3 bg-blue-50 rounded">
-                          <div className="text-xl font-bold text-blue-900">
-                            {securityData.securityTraining.phishingSimulations.totalCampaigns}
+              {/* Regulations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    Regulatory Compliance
+                  </CardTitle>
+                  <CardDescription>Status of regulatory frameworks and compliance requirements</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {securityData.complianceManagement.regulations.map((regulation: any, idx: number) => (
+                      <div key={idx} className="p-4 border rounded-lg">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{regulation.name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge className={getStatusColor(regulation.status)}>
+                                {regulation.status}
+                              </Badge>
+                              <Badge variant="outline" className={`capitalize ${
+                                regulation.riskLevel === 'low' ? 'text-green-600' :
+                                regulation.riskLevel === 'medium' ? 'text-yellow-600' : 'text-red-600'
+                              }`}>
+                                {regulation.riskLevel} risk
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="text-sm text-blue-600">Total Campaigns</div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-green-600">
+                              {formatPercentage(regulation.complianceScore)}
+                            </div>
+                            <div className="text-xs text-gray-500">compliance</div>
+                          </div>
                         </div>
-                        <div className="text-center p-3 bg-blue-50 rounded">
-                          <div className="text-xl font-bold text-blue-900">
-                            {securityData.securityTraining.phishingSimulations.totalEmails}
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                          <div>
+                            <span className="text-gray-600">Requirements:</span>
+                            <span className="ml-2 font-medium">{regulation.compliantRequirements}/{regulation.requirements}</span>
                           </div>
-                          <div className="text-sm text-blue-600">Emails Sent</div>
+                          <div>
+                            <span className="text-gray-600">Action Items:</span>
+                            <span className="ml-2 font-medium">{regulation.actionItemsOpen} open</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Last Audit:</span>
+                            <span className="ml-2 font-medium">{format(regulation.lastAudit, 'MMM dd, yyyy')}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Next Audit:</span>
+                            <span className="ml-2 font-medium">{format(regulation.nextAudit, 'MMM dd, yyyy')}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Auditor:</span>
+                            <span className="ml-2 font-medium">{regulation.auditor}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Expires:</span>
+                            <span className="ml-2 font-medium">{format(regulation.expiryDate, 'MMM dd, yyyy')}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Compliance Progress</span>
+                            <span>{regulation.compliantRequirements}/{regulation.requirements}</span>
+                          </div>
+                          <Progress 
+                            value={(regulation.compliantRequirements / regulation.requirements) * 100} 
+                            className="h-2"
+                          />
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <Badge className={regulation.certificationStatus === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                            {regulation.certificationStatus} certification
+                          </Badge>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm">
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="text-center p-3 bg-red-50 border border-red-200 rounded">
-                          <div className="text-xl font-bold text-red-900">
-                            {formatPercentage(securityData.securityTraining.phishingSimulations.clickRate)}
+              {/* Action Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-orange-600" />
+                    Compliance Action Items
+                  </CardTitle>
+                  <CardDescription>Outstanding compliance tasks and their progress</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {securityData.complianceManagement.actionItems.map((item: any, idx: number) => (
+                      <div key={idx} className={`p-4 border rounded-lg ${getPriorityColor(item.priority)}`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold">{item.title}</h3>
+                              <Badge className={getPriorityColor(item.priority)}>
+                                {item.priority} priority
+                              </Badge>
+                              <Badge className={getStatusColor(item.status)}>
+                                {item.status}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                            <div className="text-sm text-gray-600">
+                              Regulation: <span className="font-medium">{item.regulation}</span>
+                            </div>
                           </div>
-                          <div className="text-sm text-red-600">Click Rate</div>
-                          <div className="text-xs text-red-500 mt-1">
-                            {securityData.securityTraining.phishingSimulations.clicked} clicked
+                          <div className="text-right">
+                            <div className="text-lg font-bold">{item.progress}%</div>
+                            <div className="text-xs text-gray-500">complete</div>
                           </div>
                         </div>
-                        <div className="text-center p-3 bg-green-50 border border-green-200 rounded">
-                          <div className="text-xl font-bold text-green-900">
-                            {formatPercentage(securityData.securityTraining.phishingSimulations.reportRate)}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
+                          <div>
+                            <span className="text-gray-600">Assignee:</span>
+                            <span className="ml-2 font-medium capitalize">{item.assignee.replace('_', ' ')}</span>
                           </div>
-                          <div className="text-sm text-green-600">Report Rate</div>
-                          <div className="text-xs text-green-500 mt-1">
-                            {securityData.securityTraining.phishingSimulations.reported} reported
+                          <div>
+                            <span className="text-gray-600">Due Date:</span>
+                            <span className="ml-2 font-medium">{format(item.dueDate, 'MMM dd, yyyy')}</span>
                           </div>
+                          <div>
+                            <span className="text-gray-600">Hours:</span>
+                            <span className="ml-2 font-medium">{item.completedHours}/{item.estimatedHours}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Progress</span>
+                            <span>{item.progress}%</span>
+                          </div>
+                          <Progress value={item.progress} className="h-2" />
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm">
+                            <span className="text-gray-600">Risk if delayed:</span>
+                            <span className="ml-2 font-medium capitalize text-red-600">
+                              {item.riskIfDelayed.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <Button size="sm">
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Update Progress
+                          </Button>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                      <div className="p-3 bg-green-50 border border-green-200 rounded text-center">
-                        <div className="flex items-center justify-center gap-2 text-green-800">
-                          <TrendingUp className="h-4 w-4" />
-                          <span className="font-medium">
-                            Improvement Trend: {securityData.securityTraining.phishingSimulations.improvementTrend}
-                          </span>
-                        </div>
+            <TabsContent value="access" className="space-y-6">
+              {/* Access Control Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Key className="h-5 w-5 text-purple-600" />
+                    Access Control Overview
+                  </CardTitle>
+                  <CardDescription>User access management and identity security metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-9 gap-4">
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-blue-900">
+                        {securityData.accessControl.userAccessMatrix.totalUsers}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Users</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-green-900">
+                        {securityData.accessControl.userAccessMatrix.activeUsers}
+                      </div>
+                      <div className="text-sm text-gray-600">Active</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-gray-900">
+                        {securityData.accessControl.userAccessMatrix.inactiveUsers}
+                      </div>
+                      <div className="text-sm text-gray-600">Inactive</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-orange-900">
+                        {securityData.accessControl.userAccessMatrix.privilegedUsers}
+                      </div>
+                      <div className="text-sm text-gray-600">Privileged</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-purple-900">
+                        {securityData.accessControl.userAccessMatrix.serviceAccounts}
+                      </div>
+                      <div className="text-sm text-gray-600">Service Accounts</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-yellow-900">
+                        {securityData.accessControl.userAccessMatrix.pendingAccessRequests}
+                      </div>
+                      <div className="text-sm text-gray-600">Pending</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-red-900">
+                        {securityData.accessControl.userAccessMatrix.expiredAccounts}
+                      </div>
+                      <div className="text-sm text-gray-600">Expired</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-indigo-900">
+                        {securityData.accessControl.userAccessMatrix.multiFactorEnabled}
+                      </div>
+                      <div className="text-sm text-gray-600">MFA Enabled</div>
+                    </div>
+                    <div className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-cyan-900">
+                        {securityData.accessControl.userAccessMatrix.singleSignOnEnabled}
+                      </div>
+                      <div className="text-sm text-gray-600">SSO Enabled</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Role-Based Access Control */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    Role-Based Access Control
+                  </CardTitle>
+                  <CardDescription>RBAC configuration and compliance metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-blue-900">
+                        {securityData.accessControl.roleBasedAccess.totalRoles}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Roles</div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        {securityData.accessControl.roleBasedAccess.customRoles} custom, {securityData.accessControl.roleBasedAccess.defaultRoles} default
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-green-900">
+                        {securityData.accessControl.roleBasedAccess.roleAssignments}
+                      </div>
+                      <div className="text-sm text-gray-600">Role Assignments</div>
+                      <div className="text-xs text-green-600 mt-1">Active assignments</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-red-900">
+                        {securityData.accessControl.roleBasedAccess.roleConflicts}
+                      </div>
+                      <div className="text-sm text-gray-600">Role Conflicts</div>
+                      <div className="text-xs text-red-600 mt-1">Conflicts detected</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-purple-900">
+                        {formatPercentage(securityData.accessControl.roleBasedAccess.leastPrivilegeCompliance)}
+                      </div>
+                      <div className="text-sm text-gray-600">Least Privilege</div>
+                      <div className="text-xs text-purple-600 mt-1">Compliance rate</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-800">Segregation of Duties Compliance</span>
+                    </div>
+                    <p className="text-sm text-green-700">
+                      No segregation of duties violations detected. All critical business functions maintain proper access separation.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="monitoring" className="space-y-6">
+              <div className="text-center py-12">
+                <Monitor className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Security Monitoring Dashboard</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Advanced security monitoring, analytics, and incident response tracking
+                </p>
+                <Button>
+                  <Activity className="h-4 w-4 mr-2" />
+                  View Monitoring
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="audits" className="space-y-6">
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Audit Reports & Documentation</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Security audit reports, compliance documentation, and regulatory filing management
+                </p>
+                <Button>
+                  <Download className="h-4 w-4 mr-2" />
+                  Generate Report
+                </Button>
               </div>
             </TabsContent>
           </Tabs>
