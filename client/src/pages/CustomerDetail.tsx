@@ -238,14 +238,8 @@ export default function CustomerDetail() {
   const primaryContact = contacts.find(c => c.isPrimary) || contacts[0];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Customer Detail</h1>
-        </header>
-        <main className="flex-1 p-6 overflow-auto">
-          <div className="max-w-6xl mx-auto">
+    <MainLayout title="Customer Detail" description="View and manage customer information and service history">
+      <div className="max-w-6xl mx-auto">
       {/* Header - matches Lead layout exactly */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -975,8 +969,7 @@ export default function CustomerDetail() {
         </DialogContent>
       </Dialog>
           </div>
-        </main>
       </div>
-    </div>
+    </MainLayout>
   );
 }
