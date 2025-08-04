@@ -116,6 +116,7 @@ function Router() {
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:id" component={CustomerDetail} />
           <Route path="/crm" component={CRMEnhanced} />
+          <Route path="/crm-enhanced" component={CRMEnhanced} />
           <Route path="/business-records" component={BusinessRecords} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
