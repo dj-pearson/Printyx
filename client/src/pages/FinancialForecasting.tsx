@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from '@/components/layout/main-layout';
 import { 
   Plus, TrendingUp, TrendingDown, Calculator, DollarSign, PieChart,
   BarChart3, Calendar, Target, AlertTriangle, CheckCircle, Activity,
@@ -257,7 +258,8 @@ export default function FinancialForecasting() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Financial Forecasting & Analysis</h1>
@@ -792,7 +794,7 @@ export default function FinancialForecasting() {
                             {kpi.current_value.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {kpi.percentage_change > 0 ? '+' : ''}{kpi.percentage_change.toFixed(1)}%
+                            {kpi.percentage_change > 0 ? '+' : ''}{Number(kpi.percentage_change || 0).toFixed(1)}%
                           </p>
                         </div>
                       </div>
@@ -1048,7 +1050,7 @@ export default function FinancialForecasting() {
                           <div>
                             <p className="text-muted-foreground">Change</p>
                             <p className={`font-medium ${kpi.percentage_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {kpi.percentage_change > 0 ? '+' : ''}{kpi.percentage_change.toFixed(1)}%
+                              {kpi.percentage_change > 0 ? '+' : ''}{Number(kpi.percentage_change || 0).toFixed(1)}%
                             </p>
                           </div>
                           <div>
@@ -1067,6 +1069,7 @@ export default function FinancialForecasting() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

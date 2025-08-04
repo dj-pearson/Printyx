@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from '@/components/layout/main-layout';
 import { 
   Plus, DollarSign, Calculator, FileText, CreditCard, AlertTriangle,
   TrendingUp, Users, Calendar, Settings, Edit, Trash2, Eye,
@@ -272,7 +273,8 @@ export default function AdvancedBillingEngine() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Advanced Billing Engine</h1>
@@ -1108,6 +1110,7 @@ export default function AdvancedBillingEngine() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from '@/components/layout/main-layout';
 import { 
   Plus, Package, Truck, Settings, CheckCircle, Clock, AlertTriangle,
   MapPin, User, Calendar, FileText, Download, Filter, ArrowRight,
@@ -303,7 +304,8 @@ export default function EquipmentLifecycleManagement() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Equipment Lifecycle Management</h1>
@@ -1377,6 +1379,7 @@ export default function EquipmentLifecycleManagement() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

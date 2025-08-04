@@ -65,6 +65,7 @@ import QuoteProposalGeneration from "@/pages/QuoteProposalGeneration";
 import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceScheduling";
 import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
+import VendorManagement from "@/pages/VendorManagement";
 import FinancialForecasting from "@/pages/FinancialForecasting";
 import EquipmentLifecycleManagement from "@/pages/EquipmentLifecycleManagement";
 import CommissionManagement from "@/pages/CommissionManagement";
@@ -179,6 +180,10 @@ function Router() {
           <Route path="/managed-services" component={ManagedServices} />
           <Route path="/admin/managed-services" component={ManagedServices} />
           <Route path="/billing" component={MeterBilling} />
+          <Route path="/meter-billing" component={MeterBilling} />
+          <Route path="/advanced-billing-engine" component={AdvancedBillingEngine} />
+          <Route path="/vendor-management" component={VendorManagement} />
+          <Route path="/admin/vendor-management" component={VendorManagement} />
           <Route path="/vendors" component={Vendors} />
           <Route path="/accounts-payable" component={AccountsPayable} />
           <Route path="/accounts-receivable" component={AccountsReceivable} />
