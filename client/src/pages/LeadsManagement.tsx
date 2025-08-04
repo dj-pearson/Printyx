@@ -447,8 +447,12 @@ export default function LeadsManagement() {
                     <TableHead className="min-w-[100px]">Status</TableHead>
                     <TableHead className="min-w-[100px]">Priority</TableHead>
                     <TableHead className="min-w-[120px]">Source</TableHead>
+                    <TableHead className="min-w-[100px]">Industry</TableHead>
+                    <TableHead className="min-w-[100px]">Territory</TableHead>
                     <TableHead className="min-w-[100px]">Value</TableHead>
+                    <TableHead className="min-w-[100px]">Lead Score</TableHead>
                     <TableHead className="min-w-[120px]">Last Activity</TableHead>
+                    <TableHead className="min-w-[120px]">Next Follow-up</TableHead>
                     <TableHead className="min-w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -479,8 +483,22 @@ export default function LeadsManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>{lead.leadSource}</TableCell>
+                    <TableCell>
+                      <span className="text-sm">{lead.industry || '-'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{lead.territory || '-'}</span>
+                    </TableCell>
                     <TableCell>{formatCurrency(lead.estimatedValue)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {lead.leadScore || 0}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{formatDate(lead.lastActivity)}</TableCell>
+                    <TableCell>
+                      {lead.nextFollowUpDate ? formatDate(lead.nextFollowUpDate) : '-'}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

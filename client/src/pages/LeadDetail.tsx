@@ -538,14 +538,44 @@ export default function LeadDetail() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-3 gap-6">
                         <div>
                           <Label className="text-sm font-medium text-gray-500">Company Name</Label>
-                          <p className="text-gray-900 mt-1">Lead #{lead.id}</p>
+                          <p className="text-gray-900 mt-1">{lead.companyName || `Lead #${lead.id}`}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Industry</Label>
+                          <p className="text-gray-900 mt-1">{lead.industry || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Website</Label>
+                          <p className="text-gray-900 mt-1">
+                            {lead.website ? (
+                              <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                {lead.website}
+                              </a>
+                            ) : 'Not specified'}
+                          </p>
                         </div>
                         <div>
                           <Label className="text-sm font-medium text-gray-500">Source</Label>
                           <p className="text-gray-900 mt-1">{lead.leadSource || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Territory</Label>
+                          <p className="text-gray-900 mt-1">{lead.territory || 'Not assigned'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Priority</Label>
+                          <div className="mt-1">
+                            <Badge variant={
+                              lead.priority === 'high' ? 'destructive' : 
+                              lead.priority === 'medium' ? 'default' : 
+                              'secondary'
+                            }>
+                              {lead.priority || 'medium'}
+                            </Badge>
+                          </div>
                         </div>
                         <div>
                           <Label className="text-sm font-medium text-gray-500">Status</Label>
@@ -556,9 +586,31 @@ export default function LeadDetail() {
                           </div>
                         </div>
                         <div>
+                          <Label className="text-sm font-medium text-gray-500">Lead Score</Label>
+                          <div className="mt-1">
+                            <Badge variant="outline">
+                              {lead.leadScore || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Interest Level</Label>
+                          <p className="text-gray-900 mt-1">{lead.interestLevel || 'Not assessed'}</p>
+                        </div>
+                        <div>
                           <Label className="text-sm font-medium text-gray-500">Estimated Value</Label>
                           <p className="text-gray-900 mt-1 font-semibold">
                             {lead.estimatedAmount ? `$${Number(lead.estimatedAmount).toLocaleString()}` : 'Not specified'}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Probability</Label>
+                          <p className="text-gray-900 mt-1">{lead.probability || 0}%</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Expected Close Date</Label>
+                          <p className="text-gray-900 mt-1">
+                            {lead.closeDate ? format(new Date(lead.closeDate), 'MMM dd, yyyy') : 'Not set'}
                           </p>
                         </div>
                       </div>

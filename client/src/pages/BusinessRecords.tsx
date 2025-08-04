@@ -290,8 +290,12 @@ export default function BusinessRecords() {
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Contact</TableHead>
+                    <TableHead>Industry</TableHead>
+                    <TableHead>Territory</TableHead>
                     <TableHead>Value</TableHead>
+                    <TableHead>Priority</TableHead>
                     <TableHead>Last Contact</TableHead>
+                    <TableHead>Next Follow-up</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -332,15 +336,40 @@ export default function BusinessRecords() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <span className="text-sm">
+                          {record.industry || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {record.territory || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
                         {record.estimatedDealValue ? 
                           `$${record.estimatedDealValue.toLocaleString()}` : 
                           '-'
                         }
                       </TableCell>
                       <TableCell>
+                        <Badge variant={
+                          record.priority === 'high' ? 'destructive' : 
+                          record.priority === 'medium' ? 'default' : 
+                          'secondary'
+                        }>
+                          {record.priority || 'medium'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         {record.lastContactDate ? 
                           format(new Date(record.lastContactDate), 'MMM dd, yyyy') : 
                           'Never'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {record.nextFollowUpDate ? 
+                          format(new Date(record.nextFollowUpDate), 'MMM dd, yyyy') : 
+                          '-'
                         }
                       </TableCell>
                       <TableCell>
