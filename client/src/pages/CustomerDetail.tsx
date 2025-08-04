@@ -82,6 +82,10 @@ import {
   Wrench,
   Package,
   CheckSquare,
+  BookOpen,
+  Printer,
+  Receipt,
+  PieChart,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -412,18 +416,73 @@ export default function CustomerDetailHubspot() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Main Information */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Overview Tab Content */}
+            {/* Customer Management Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-8">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="activities">Activities</TabsTrigger>
-                <TabsTrigger value="contacts">Contacts</TabsTrigger>
-                <TabsTrigger value="service">Service</TabsTrigger>
-                <TabsTrigger value="equipment">Equipment</TabsTrigger>
-                <TabsTrigger value="supplies">Supplies</TabsTrigger>
-                <TabsTrigger value="invoices">Invoices</TabsTrigger>
-                <TabsTrigger value="financials">Financials</TabsTrigger>
-              </TabsList>
+              <div className="border-b border-gray-200">
+                <TabsList className="h-auto p-0 bg-transparent space-x-0">
+                  <div className="flex flex-wrap gap-1 p-1">
+                    {/* Primary tabs - always visible */}
+                    <TabsTrigger 
+                      value="overview" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span className="hidden sm:inline">Overview</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="activities" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Activity className="h-4 w-4" />
+                      <span className="hidden sm:inline">Activities</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="contacts" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="hidden sm:inline">Contacts</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="service" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Wrench className="h-4 w-4" />
+                      <span className="hidden sm:inline">Service</span>
+                    </TabsTrigger>
+                    
+                    {/* Secondary tabs - wrap on mobile */}
+                    <TabsTrigger 
+                      value="equipment" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Printer className="h-4 w-4" />
+                      <span className="hidden sm:inline">Equipment</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="supplies" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Package className="h-4 w-4" />
+                      <span className="hidden sm:inline">Supplies</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="invoices" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Receipt className="h-4 w-4" />
+                      <span className="hidden sm:inline">Invoices</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="financials" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <PieChart className="h-4 w-4" />
+                      <span className="hidden sm:inline">Financials</span>
+                    </TabsTrigger>
+                  </div>
+                </TabsList>
+              </div>
 
               <TabsContent value="overview" className="space-y-6 mt-6">
                 {/* Company Information */}
