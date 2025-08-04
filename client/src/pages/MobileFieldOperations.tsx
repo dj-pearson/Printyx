@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from "@/components/layout/main-layout";
 import { 
   MapPin, Clock, Smartphone, Navigation, Mic, Camera, 
   CheckCircle, Users, TrendingUp, Zap, Calendar, Target,
@@ -313,7 +314,8 @@ export default function MobileFieldOperations() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Mobile Field Operations</h1>
@@ -1036,11 +1038,11 @@ export default function MobileFieldOperations() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Satisfaction:</span>
-                            <span>{technician.customer_satisfaction_rating.toFixed(1)}★</span>
+                            <span>{(technician.customer_satisfaction_rating || 0).toFixed(1)}★</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">First Time Fix:</span>
-                            <span>{technician.first_time_fix_rate.toFixed(1)}%</span>
+                            <span>{(technician.first_time_fix_rate || 0).toFixed(1)}%</span>
                           </div>
                         </div>
 
@@ -1366,6 +1368,7 @@ export default function MobileFieldOperations() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
