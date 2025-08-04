@@ -1,7 +1,10 @@
 # Printyx Database Schema Hierarchy & Reference
+*Updated: February 4, 2025*
 
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
+
+**Total Tables**: 124 tables across all business modules
 
 ## Core System Architecture
 
@@ -10,107 +13,109 @@ This document provides a comprehensive hierarchy of all database tables, their r
 #### `sessions` (Required for Replit Auth)
 **Purpose**: Stores user session data for authentication
 **Function**: Session management and user authentication persistence
-**Headers/Fields**:
+**Fields**:
 - `sid` (varchar, PRIMARY KEY) - Session identifier
-- `sess` (jsonb, NOT NULL) - Session data in JSON format
+- `sess` (jsonb, NOT NULL) - Session data in JSON format  
 - `expire` (timestamp, NOT NULL) - Session expiration time
-**Indexes**: IDX_session_expire on expire column
-**Relationships**: None (system table)
 
 #### `users` (Core Authentication)
 **Purpose**: Stores user account information and profiles
 **Function**: User authentication, profile management, role assignment
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Unique user identifier
-- `email` (varchar, UNIQUE) - User email address
-- `firstName` (varchar) - User's first name
-- `lastName` (varchar) - User's last name
-- `profileImageUrl` (varchar) - URL to user's profile image
-- `createdAt` (timestamp, default: now()) - Account creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-- `tenantId` (varchar, FOREIGN KEY) - References tenants.id
-- `roleId` (varchar, FOREIGN KEY) - References roles.id
-- `locationId` (varchar, FOREIGN KEY) - References locations.id (optional)
-- `regionId` (varchar, FOREIGN KEY) - References regions.id (optional)
-**Relationships**: 
-- Many-to-One with tenants
-- Many-to-One with roles
-- Many-to-One with locations (optional)
-- Many-to-One with regions (optional)
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Unique user identifier
+- `email` (varchar) - User email address
+- `first_name` (varchar) - User's first name
+- `last_name` (varchar) - User's last name
+- `profile_image_url` (varchar) - URL to user's profile image
+- `password_hash` (varchar) - Encrypted password
+- `role` (varchar) - Legacy role field
+- `role_id` (varchar, FK → roles.id) - Role assignment
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `team_id` (varchar, FK → teams.id) - Team assignment
+- `manager_id` (varchar, FK → users.id) - Manager assignment
+- `employee_id` (varchar) - Employee identifier
+- `primary_location_id` (varchar, FK → locations.id) - Primary location
+- `region_id` (varchar, FK → regions.id) - Region assignment  
+- `access_scope` (varchar) - Access scope level
+- `is_active` (boolean) - Account status
+- `is_platform_user` (boolean) - Platform user flag
+- `last_login_at` (timestamp) - Last login timestamp
+- `created_at` (timestamp) - Account creation
+- `updated_at` (timestamp) - Last update
 
-#### `tenants` (Multi-Tenancy Core)
+#### `tenants` (Multi-Tenancy Core)  
 **Purpose**: Represents Printyx client companies (copier dealers)
 **Function**: Multi-tenant isolation, company-level data segregation
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Tenant identifier
-- `name` (varchar, NOT NULL) - Company/tenant name
-- `domain` (varchar) - Company domain for subdomain routing
-- `createdAt` (timestamp, default: now()) - Tenant creation date
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-- `status` (varchar, default: 'active') - Tenant status (active/inactive/suspended)
-- `subscriptionTier` (varchar) - Subscription level
-**Relationships**: 
-- One-to-Many with users
-- One-to-Many with all business entities
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Tenant identifier
+- `name` (varchar) - Company/tenant name
+- `domain` (varchar) - Company domain
+- `settings` (jsonb) - Tenant configuration
+- `subscription_tier` (varchar) - Subscription level
+- `status` (varchar) - Tenant status
+- `last_activity` (timestamp) - Recent activity
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
 ### Role-Based Access Control (RBAC)
 
-#### `roles` (8-Level Hierarchy)
+#### `roles` (Hierarchical Permissions)
 **Purpose**: Defines user roles with hierarchical permissions
-**Function**: Role-based access control across platform/company/regional/location levels
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Role identifier
-- `name` (varchar, NOT NULL) - Role display name
-- `code` (varchar, NOT NULL) - Role code for programmatic use
+**Function**: Role-based access control across platform/company/regional/location levels  
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Role identifier
+- `name` (varchar) - Role display name
+- `code` (varchar) - Role code
 - `description` (text) - Role description
-- `level` (integer, NOT NULL) - Hierarchy level (1-8)
 - `department` (varchar) - Department assignment
-- `accessScope` (varchar, NOT NULL) - Access scope (platform/company/regional/location)
-- `canAccessAllTenants` (boolean, default: false) - Platform-level access flag
-- `permissions` (jsonb) - Module permissions object
-- `tenantId` (varchar, FOREIGN KEY) - References tenants.id (null for platform roles)
-**Relationships**: 
-- One-to-Many with users
-- Many-to-One with tenants (optional)
+- `level` (integer) - Hierarchy level (1-8)
+- `role_type` (varchar) - Role type classification
+- `permissions` (jsonb) - Module permissions
+- `can_access_all_tenants` (boolean) - Platform access
+- `can_manage_users` (boolean) - User management
+- `can_view_system_metrics` (boolean) - System metrics access
+- `is_system_role` (boolean) - System role flag
+- Plus 20+ granular permission flags for specific capabilities
+- `created_at` (timestamp) - Creation date
 
 #### `locations` (Multi-Location Support)
 **Purpose**: Physical business locations within tenant companies
-**Function**: Location-based data segregation and management
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Location identifier
-- `name` (varchar, NOT NULL) - Location name
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Location identifier
+- `name` (varchar) - Location name
 - `address` (text) - Physical address
 - `city` (varchar) - City
 - `state` (varchar) - State/province
-- `zipCode` (varchar) - Postal code
-- `phone` (varchar) - Location phone number
-- `managerId` (varchar, FOREIGN KEY) - References users.id
-- `regionId` (varchar, FOREIGN KEY) - References regions.id
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `isActive` (boolean, default: true) - Location status
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-**Relationships**:
-- Many-to-One with tenants
-- Many-to-One with regions
-- Many-to-One with users (manager)
-- One-to-Many with users (employees)
+- `zip_code` (varchar) - Postal code
+- `phone` (varchar) - Location phone
+- `manager_id` (varchar, FK → users.id) - Location manager
+- `region_id` (varchar, FK → regions.id) - Region assignment
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `is_active` (boolean) - Location status
+- `created_at` (timestamp) - Creation date
 
 #### `regions` (Regional Management)
 **Purpose**: Regional groupings of locations for management hierarchy
-**Function**: Regional-level data access and management oversight
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Region identifier
-- `name` (varchar, NOT NULL) - Region name
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Region identifier
+- `name` (varchar) - Region name  
 - `description` (text) - Region description
-- `managerId` (varchar, FOREIGN KEY) - References users.id
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `isActive` (boolean, default: true) - Region status
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-**Relationships**:
-- Many-to-One with tenants
-- Many-to-One with users (manager)
-- One-to-Many with locations
-- One-to-Many with users (regional staff)
+- `manager_id` (varchar, FK → users.id) - Regional manager
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `is_active` (boolean) - Region status
+- `created_at` (timestamp) - Creation date
+
+#### `teams` (Team Organization)
+**Purpose**: Team-based organization within locations
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Team identifier
+- `name` (varchar) - Team name
+- `description` (text) - Team description
+- `team_lead_id` (varchar, FK → users.id) - Team leader
+- `location_id` (varchar, FK → locations.id) - Location assignment
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `is_active` (boolean) - Team status
+- `created_at` (timestamp) - Creation date
 
 ## Business Management Layer
 
@@ -119,572 +124,629 @@ This document provides a comprehensive hierarchy of all database tables, their r
 #### `business_records` (Unified Leads/Customers)
 **Purpose**: Central table for all business relationships (leads → customers lifecycle)
 **Function**: Zero-data-loss lead-to-customer conversion, relationship management
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Record identifier
-- `recordType` (varchar, NOT NULL) - Type: 'lead' or 'customer'
-- `leadStatus` (varchar) - Lead stage: new/contacted/qualified/active/inactive/churned/competitor_switch/non_payment
-- `companyName` (varchar) - Business name
-- `firstName` (varchar) - Primary contact first name
-- `lastName` (varchar) - Primary contact last name
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Record identifier
+- `record_type` (varchar) - Type: 'lead' or 'customer'
+- `lead_status` (varchar) - Lead stage progression
+- `company_name` (varchar) - Business name
+- `first_name` (varchar) - Primary contact first name
+- `last_name` (varchar) - Primary contact last name
 - `email` (varchar) - Primary email
 - `phone` (varchar) - Primary phone
 - `address` (text) - Business address
 - `city` (varchar) - City
 - `state` (varchar) - State/province
-- `zipCode` (varchar) - Postal code
+- `zip_code` (varchar) - Postal code
 - `industry` (varchar) - Business industry
-- `employeeCount` (integer) - Number of employees
-- `annualRevenue` (decimal) - Annual revenue
-- `leadSource` (varchar) - How lead was acquired
-- `leadScore` (integer) - Lead scoring (0-100)
-- `lastContactDate` (timestamp) - Last interaction date
-- `nextFollowUpDate` (timestamp) - Scheduled follow-up
+- `employee_count` (integer) - Number of employees
+- `annual_revenue` (decimal) - Annual revenue
+- `lead_source` (varchar) - Acquisition source
+- `lead_score` (integer) - Lead scoring (0-100)
+- `last_contact_date` (timestamp) - Last interaction
+- `next_follow_up_date` (timestamp) - Scheduled follow-up
 - `notes` (text) - General notes
-- `priority` (varchar) - Priority level (high/medium/low)
-- `assignedTo` (varchar, FOREIGN KEY) - References users.id
-- `createdBy` (varchar, FOREIGN KEY) - References users.id
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `locationId` (varchar, FOREIGN KEY) - References locations.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**E-Automate Integration Fields**:
-- `external_customer_id` (varchar) - E-Automate customer ID for migration
-- `external_system_id` (varchar) - Source system identifier
-- `migration_status` (varchar) - Migration status tracking
-- `external_data` (jsonb) - Additional E-Automate fields
-**Relationships**:
-- Many-to-One with tenants
-- Many-to-One with users (assigned, created by)
-- Many-to-One with locations
-- One-to-Many with companies (as business relationship)
-- One-to-Many with contracts
-- One-to-Many with service_tickets
-- One-to-Many with invoices
+- `priority` (varchar) - Priority level
+- `assigned_to` (varchar, FK → users.id) - Assigned user
+- `created_by` (varchar, FK → users.id) - Creator
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `location_id` (varchar, FK → locations.id) - Location assignment
+- **E-Automate Integration Fields**:
+  - `external_customer_id` (varchar) - E-Automate customer ID
+  - `external_system_id` (varchar) - Source system identifier
+  - `migration_status` (varchar) - Migration status
+  - `external_data` (jsonb) - Additional E-Automate fields
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `business_record_activities` (CRM Activity Tracking)
+**Purpose**: Track all interactions and activities with business records
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Activity identifier
+- `business_record_id` (varchar, FK → business_records.id) - Related record
+- `activity_type` (varchar) - Activity type
+- `subject` (varchar) - Activity subject
+- `description` (text) - Activity details
+- `activity_date` (timestamp) - Activity date
+- `duration_minutes` (integer) - Activity duration
+- `outcome` (varchar) - Activity outcome
+- `next_action` (varchar) - Recommended next action
+- `created_by` (varchar, FK → users.id) - Activity creator
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
 
 #### `companies` (Business Entities)
 **Purpose**: Represents client companies that business_records belong to
-**Function**: Company profile management, hierarchical business relationships
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Company identifier
-- `name` (varchar, NOT NULL) - Company name
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Company identifier
+- `name` (varchar) - Company name
 - `description` (text) - Company description
 - `industry` (varchar) - Industry classification
 - `website` (varchar) - Company website
-- `employeeCount` (integer) - Number of employees
-- `annualRevenue` (decimal) - Annual revenue
+- `employee_count` (integer) - Number of employees
+- `annual_revenue` (decimal) - Annual revenue
 - `address` (text) - Primary address
 - `city` (varchar) - City
 - `state` (varchar) - State/province
-- `zipCode` (varchar) - Postal code
-- `phone` (varchar) - Main phone number
+- `zip_code` (varchar) - Postal code
+- `phone` (varchar) - Main phone
 - `email` (varchar) - Main email
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with tenants
-- One-to-Many with company_contacts
-- One-to-Many with business_records
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
 #### `company_contacts` (Contact Management)
 **Purpose**: Individual contacts within companies
-**Function**: Contact relationship management, communication tracking
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Contact identifier
-- `firstName` (varchar) - First name
-- `lastName` (varchar) - Last name
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Contact identifier
+- `first_name` (varchar) - First name
+- `last_name` (varchar) - Last name
 - `email` (varchar) - Email address
 - `phone` (varchar) - Phone number
 - `title` (varchar) - Job title
 - `department` (varchar) - Department
-- `isPrimary` (boolean, default: false) - Primary contact flag
-- `companyId` (varchar, NOT NULL, FOREIGN KEY) - References companies.id
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with companies
-- Many-to-One with tenants
+- `is_primary` (boolean) - Primary contact flag
+- `company_id` (varchar, FK → companies.id) - Company assignment
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+### Sales Pipeline Management
+
+#### `leads` (Lead Management)
+**Purpose**: Dedicated lead tracking and management
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Lead identifier
+- `company_name` (varchar) - Prospect company
+- `contact_name` (varchar) - Primary contact
+- `email` (varchar) - Email address
+- `phone` (varchar) - Phone number
+- `lead_source` (varchar) - Lead source
+- `status` (varchar) - Lead status
+- `score` (integer) - Lead score
+- `assigned_to` (varchar, FK → users.id) - Assigned salesperson
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `deals` (Deal Pipeline)
+**Purpose**: Sales opportunity and deal tracking
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Deal identifier
+- `title` (varchar) - Deal title
+- `description` (text) - Deal description
+- `value` (decimal) - Deal value
+- `stage` (varchar) - Pipeline stage
+- `probability` (integer) - Close probability (0-100)
+- `expected_close_date` (date) - Expected close date
+- `actual_close_date` (date) - Actual close date
+- `lead_source` (varchar) - Lead source
+- `business_record_id` (varchar, FK → business_records.id) - Associated record
+- `assigned_to` (varchar, FK → users.id) - Deal owner
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `deal_stages` (Pipeline Configuration)
+**Purpose**: Configure sales pipeline stages
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Stage identifier
+- `name` (varchar) - Stage name
+- `description` (text) - Stage description
+- `stage_order` (integer) - Stage sequence
+- `probability_default` (integer) - Default probability
+- `is_closed_won` (boolean) - Closed won stage flag
+- `is_closed_lost` (boolean) - Closed lost stage flag
+- `tenantid` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+
+### Product & Service Management
+
+#### `product_models` (Product Catalog - Models)
+**Purpose**: Copier and printer model specifications
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Model identifier
+- `model_name` (varchar) - Model name
+- `manufacturer` (varchar) - Manufacturer
+- `category` (varchar) - Equipment category
+- `specifications` (jsonb) - Technical specifications
+- `features` (jsonb) - Feature set
+- `default_pricing` (jsonb) - Default pricing structure
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `product_accessories` (Accessories Catalog)
+**Purpose**: Equipment accessories and add-ons
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Accessory identifier
+- `name` (varchar) - Accessory name
+- `description` (text) - Description
+- `model_compatibility` (jsonb) - Compatible models
+- `price` (decimal) - Accessory price
+- `category` (varchar) - Accessory category
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `supplies` (Supply Inventory)
+**Purpose**: Toner, paper, and supply management
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Supply identifier
+- `supply_name` (varchar) - Supply name
+- `supply_type` (varchar) - Supply type (toner/paper/parts)
+- `manufacturer` (varchar) - Manufacturer
+- `model_compatibility` (jsonb) - Compatible equipment
+- `current_stock` (integer) - Current inventory
+- `reorder_level` (integer) - Reorder threshold
+- `unit_cost` (decimal) - Unit cost
+- `unit_price` (decimal) - Unit price
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `professional_services` (Professional Services)
+**Purpose**: Consulting and professional service offerings
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Service identifier
+- `service_name` (varchar) - Service name
+- `description` (text) - Service description
+- `category` (varchar) - Service category
+- `hourly_rate` (decimal) - Hourly billing rate
+- `fixed_price` (decimal) - Fixed price option
+- `estimated_hours` (integer) - Estimated duration
+- `prerequisites` (jsonb) - Service prerequisites
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `managed_services` (Managed Service Plans)
+**Purpose**: Ongoing managed service offerings
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Service identifier
+- `service_name` (varchar) - Service name
+- `description` (text) - Service description
+- `service_level` (varchar) - Service level
+- `monthly_fee` (decimal) - Monthly service fee
+- `included_services` (jsonb) - Included service components
+- `sla_terms` (jsonb) - Service level agreement terms
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `software_products` (Software Catalog)
+**Purpose**: Software products and licensing
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Software identifier
+- `product_name` (varchar) - Software name
+- `vendor` (varchar) - Software vendor
+- `version` (varchar) - Software version
+- `license_type` (varchar) - License type
+- `per_user_cost` (decimal) - Per-user licensing cost
+- `per_device_cost` (decimal) - Per-device licensing cost
+- `annual_maintenance` (decimal) - Annual maintenance fee
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
 ### Equipment & Asset Management
 
 #### `equipment` (Asset Tracking)
 **Purpose**: Track copiers, printers, and other equipment
-**Function**: Equipment lifecycle management, maintenance tracking
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Equipment identifier
-- `serialNumber` (varchar, UNIQUE) - Manufacturer serial number
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Equipment identifier
+- `serial_number` (varchar) - Manufacturer serial number
 - `model` (varchar) - Equipment model
 - `manufacturer` (varchar) - Equipment manufacturer
 - `category` (varchar) - Equipment category
-- `status` (varchar) - Current status (active/maintenance/retired)
-- `installDate` (timestamp) - Installation date
-- `warrantyEndDate` (timestamp) - Warranty expiration
-- `location` (varchar) - Physical location description
-- `customerId` (varchar, FOREIGN KEY) - References business_records.id
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with business_records (customers)
-- Many-to-One with tenants
-- One-to-Many with meter_readings
-- One-to-Many with service_tickets
+- `status` (varchar) - Current status
+- `install_date` (timestamp) - Installation date
+- `warranty_end_date` (timestamp) - Warranty expiration
+- `location` (varchar) - Physical location
+- `customer_id` (varchar, FK → business_records.id) - Customer assignment
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `customer_equipment` (Customer Equipment Assignments)
+**Purpose**: Link equipment to specific customers
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Assignment identifier
+- `customer_id` (varchar, FK → business_records.id) - Customer
+- `equipment_id` (varchar, FK → equipment.id) - Equipment
+- `installation_date` (date) - Installation date
+- `warranty_end_date` (date) - Warranty end
+- `service_level` (varchar) - Service level agreement
+- `monthly_rate` (decimal) - Monthly service rate
+- `meter_billing_enabled` (boolean) - Meter billing flag
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+
+#### `equipment_asset_tracking` (Asset Lifecycle)
+**Purpose**: Track equipment through its complete lifecycle
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Tracking identifier
+- `equipment_id` (varchar, FK → equipment.id) - Equipment reference
+- `status_change_date` (timestamp) - Status change date
+- `previous_status` (varchar) - Previous status
+- `new_status` (varchar) - New status
+- `reason` (varchar) - Change reason
+- `location_change` (varchar) - Location change details
+- `cost_impact` (decimal) - Financial impact
+- `notes` (text) - Change notes
+- `updated_by` (varchar, FK → users.id) - User who made change
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
 
 ### Service Management
 
 #### `service_tickets` (Service Dispatch)
 **Purpose**: Track service requests and work orders
-**Function**: Service dispatch, technician assignment, work tracking
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Ticket identifier
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Ticket identifier
 - `title` (varchar) - Service ticket title
 - `description` (text) - Detailed description
-- `priority` (varchar) - Priority level (low/medium/high/critical)
-- `status` (varchar) - Current status (open/assigned/in_progress/resolved/closed)
+- `priority` (varchar) - Priority level
+- `status` (varchar) - Current status
 - `category` (varchar) - Service category
-- `customerId` (varchar, FOREIGN KEY) - References business_records.id
-- `equipmentId` (varchar, FOREIGN KEY) - References equipment.id
-- `assignedTo` (varchar, FOREIGN KEY) - References users.id (technician)
-- `createdBy` (varchar, FOREIGN KEY) - References users.id
-- `scheduledDate` (timestamp) - Scheduled service date
-- `completedDate` (timestamp) - Completion date
-- `estimatedHours` (decimal) - Estimated time
-- `actualHours` (decimal) - Actual time spent
+- `customer_id` (varchar, FK → business_records.id) - Customer
+- `equipment_id` (varchar, FK → equipment.id) - Equipment
+- `assigned_to` (varchar, FK → users.id) - Assigned technician
+- `created_by` (varchar, FK → users.id) - Ticket creator
+- `scheduled_date` (timestamp) - Scheduled service date
+- `completed_date` (timestamp) - Completion date
+- `estimated_hours` (decimal) - Estimated time
+- `actual_hours` (decimal) - Actual time spent
 - `resolution` (text) - Resolution description
-- `customerSatisfaction` (integer) - Satisfaction rating (1-5)
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `locationId` (varchar, FOREIGN KEY) - References locations.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with business_records (customers)
-- Many-to-One with equipment
-- Many-to-One with users (technician, creator)
-- Many-to-One with tenants
-- Many-to-One with locations
+- `customer_satisfaction` (integer) - Satisfaction rating (1-5)
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `location_id` (varchar, FK → locations.id) - Location assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `service_ticket_updates` (Ticket Activity Log)
+**Purpose**: Track all updates and communications on service tickets
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Update identifier
+- `ticket_id` (varchar, FK → service_tickets.id) - Service ticket
+- `update_type` (varchar) - Update type
+- `message` (text) - Update message
+- `status_change` (varchar) - Status change details
+- `time_spent` (decimal) - Time spent on update
+- `created_by` (varchar, FK → users.id) - Update creator
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+
+#### `technicians` (Technician Management)
+**Purpose**: Manage field service technicians
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Technician identifier
+- `user_id` (varchar, FK → users.id) - User account
+- `employee_id` (varchar) - Employee identifier
+- `specializations` (jsonb) - Technical specializations
+- `certifications` (jsonb) - Professional certifications
+- `skill_level` (integer) - Skill level (1-5)
+- `hourly_rate` (decimal) - Billing rate
+- `is_active` (boolean) - Active status
+- `territory` (varchar) - Service territory
+- `contact_phone` (varchar) - Contact phone
+- `emergency_contact` (jsonb) - Emergency contact info
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
 ### Financial Management
 
 #### `contracts` (Service Agreements)
 **Purpose**: Manage service contracts and agreements
-**Function**: Contract lifecycle, billing automation, renewal tracking
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Contract identifier
-- `contractNumber` (varchar, UNIQUE) - Contract reference number
-- `type` (varchar) - Contract type (service/lease/purchase)
-- `status` (varchar) - Contract status (active/expired/cancelled/pending)
-- `customerId` (varchar, NOT NULL, FOREIGN KEY) - References business_records.id
-- `startDate` (timestamp) - Contract start date
-- `endDate` (timestamp) - Contract end date
-- `monthlyValue` (decimal) - Monthly contract value
-- `totalValue` (decimal) - Total contract value
-- `billingFrequency` (varchar) - Billing frequency (monthly/quarterly/annual)
-- `terms` (text) - Contract terms and conditions
-- `autoRenewal` (boolean, default: false) - Auto-renewal flag
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with business_records (customers)
-- Many-to-One with tenants
-- One-to-Many with meter_readings
-- One-to-Many with invoices
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Contract identifier
+- `contract_number` (varchar) - Contract reference number
+- `type` (varchar) - Contract type
+- `status` (varchar) - Contract status
+- `customer_id` (varchar, FK → business_records.id) - Customer
+- `start_date` (timestamp) - Contract start date
+- `end_date` (timestamp) - Contract end date
+- `monthly_value` (decimal) - Monthly contract value
+- `total_value` (decimal) - Total contract value
+- `billing_frequency` (varchar) - Billing frequency
+- `terms` (text) - Contract terms
+- `auto_renewal` (boolean) - Auto-renewal flag
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
 #### `invoices` (Billing Management)
 **Purpose**: Track invoices and billing
-**Function**: Automated billing, payment tracking, accounts receivable
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Invoice identifier
-- `invoiceNumber` (varchar, UNIQUE) - Invoice reference number
-- `customerId` (varchar, NOT NULL, FOREIGN KEY) - References business_records.id
-- `contractId` (varchar, FOREIGN KEY) - References contracts.id
-- `amount` (decimal, NOT NULL) - Invoice amount
-- `taxAmount` (decimal) - Tax amount
-- `totalAmount` (decimal) - Total including tax
-- `status` (varchar) - Payment status (pending/paid/overdue/cancelled)
-- `issueDate` (timestamp) - Invoice issue date
-- `dueDate` (timestamp) - Payment due date
-- `paidDate` (timestamp) - Payment received date
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Invoice identifier
+- `invoice_number` (varchar) - Invoice reference number
+- `customer_id` (varchar, FK → business_records.id) - Customer
+- `contract_id` (varchar, FK → contracts.id) - Contract
+- `amount` (decimal) - Invoice amount
+- `tax_amount` (decimal) - Tax amount
+- `total_amount` (decimal) - Total including tax
+- `status` (varchar) - Payment status
+- `issue_date` (timestamp) - Invoice issue date
+- `due_date` (timestamp) - Payment due date
+- `paid_date` (timestamp) - Payment received date
 - `description` (text) - Invoice description
-- `lineItems` (jsonb) - Detailed line items
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with business_records (customers)
-- Many-to-One with contracts
-- Many-to-One with tenants
+- `line_items` (jsonb) - Detailed line items
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `invoice_line_items` (Invoice Details)
+**Purpose**: Detailed line items for invoices
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Line item identifier
+- `invoice_id` (varchar, FK → invoices.id) - Parent invoice
+- `line_type` (varchar) - Line item type
+- `description` (text) - Line item description
+- `quantity` (decimal) - Quantity
+- `unit_price` (decimal) - Unit price
+- `line_total` (decimal) - Line total
+- `tax_amount` (decimal) - Tax for line
+- `product_id` (varchar) - Product reference
+- `service_period_start` (date) - Service period start
+- `service_period_end` (date) - Service period end
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
 
 #### `meter_readings` (Usage Billing)
 **Purpose**: Track equipment usage for billing
-**Function**: Automated meter billing, usage monitoring
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Reading identifier
-- `equipmentId` (varchar, NOT NULL, FOREIGN KEY) - References equipment.id
-- `customerId` (varchar, NOT NULL, FOREIGN KEY) - References business_records.id
-- `contractId` (varchar, FOREIGN KEY) - References contracts.id
-- `readingDate` (timestamp) - Date of reading
-- `previousMeterCount` (integer) - Previous meter count
-- `currentMeterCount` (integer) - Current meter count
-- `printVolume` (integer) - Calculated print volume
-- `colorPages` (integer) - Color page count
-- `blackWhitePages` (integer) - Black & white page count
-- `readingType` (varchar) - Reading type (manual/automatic)
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Reading identifier
+- `equipment_id` (varchar, FK → equipment.id) - Equipment
+- `customer_id` (varchar, FK → business_records.id) - Customer
+- `contract_id` (varchar, FK → contracts.id) - Contract
+- `reading_date` (timestamp) - Reading date
+- `previous_meter_count` (integer) - Previous count
+- `current_meter_count` (integer) - Current count
+- `print_volume` (integer) - Calculated volume
+- `color_pages` (integer) - Color page count
+- `black_white_pages` (integer) - B&W page count
+- `reading_type` (varchar) - Reading type
 - `notes` (text) - Reading notes
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-**Relationships**:
-- Many-to-One with equipment
-- Many-to-One with business_records (customers)
-- Many-to-One with contracts
-- Many-to-One with tenants
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
 
-### Task & Project Management
+## Advanced Features & Analytics
 
-#### `tasks` (Task Management)
-**Purpose**: Individual task tracking and management
-**Function**: Personal productivity, work tracking, collaboration
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Task identifier
-- `title` (varchar, NOT NULL) - Task title
-- `description` (text) - Task description
-- `status` (varchar) - Task status (pending/in_progress/completed/cancelled)
-- `priority` (varchar) - Priority level (low/medium/high)
-- `type` (varchar) - Task type (personal/project/service/sales)
-- `assignedTo` (varchar, FOREIGN KEY) - References users.id
-- `createdBy` (varchar, FOREIGN KEY) - References users.id
-- `projectId` (varchar, FOREIGN KEY) - References projects.id (optional)
-- `customerId` (varchar, FOREIGN KEY) - References business_records.id (optional)
-- `dueDate` (timestamp) - Due date
-- `completedDate` (timestamp) - Completion date
-- `estimatedHours` (decimal) - Estimated time
-- `actualHours` (decimal) - Actual time spent
-- `tags` (text[]) - Task tags array
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `locationId` (varchar, FOREIGN KEY) - References locations.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with users (assigned, creator)
-- Many-to-One with projects (optional)
-- Many-to-One with business_records (optional)
-- Many-to-One with tenants
-- Many-to-One with locations
+### Commission Management
 
-#### `projects` (Project Management)
-**Purpose**: Multi-step project tracking and collaboration
-**Function**: Project lifecycle management, team collaboration
-**Headers/Fields**:
-- `id` (varchar, PRIMARY KEY, default: gen_random_uuid()) - Project identifier
-- `name` (varchar, NOT NULL) - Project name
-- `description` (text) - Project description
-- `status` (varchar) - Project status (planning/active/on_hold/completed/cancelled)
-- `priority` (varchar) - Priority level (low/medium/high)
-- `projectManager` (varchar, FOREIGN KEY) - References users.id
-- `customerId` (varchar, FOREIGN KEY) - References business_records.id (optional)
-- `startDate` (timestamp) - Project start date
-- `endDate` (timestamp) - Project end date
-- `estimatedHours` (decimal) - Total estimated hours
-- `actualHours` (decimal) - Total actual hours
-- `budget` (decimal) - Project budget
-- `actualCost` (decimal) - Actual project cost
-- `tenantId` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `locationId` (varchar, FOREIGN KEY) - References locations.id
-- `createdAt` (timestamp, default: now()) - Creation timestamp
-- `updatedAt` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with users (project manager)
-- Many-to-One with business_records (optional)
-- Many-to-One with tenants
-- Many-to-One with locations
-- One-to-Many with tasks
+#### `commission_structures` (Commission Plans)
+**Purpose**: Define commission structures for sales teams
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Structure identifier
+- `structure_name` (varchar) - Plan name
+- `structure_type` (varchar) - Commission type
+- `base_rate` (decimal) - Base commission rate
+- `tier_rates` (jsonb) - Tiered commission rates
+- `threshold_amounts` (jsonb) - Performance thresholds
+- `effective_date` (date) - Effective start date
+- `expiration_date` (date) - Plan expiration
+- `applies_to_roles` (jsonb) - Applicable roles
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
 
-## Data Relationship Patterns
+#### `commission_calculations` (Commission Processing)
+**Purpose**: Calculate and track commission payments
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Calculation identifier
+- `sales_rep_id` (varchar, FK → users.id) - Sales representative
+- `calculation_period` (varchar) - Period (monthly/quarterly)
+- `period_start` (date) - Period start date
+- `period_end` (date) - Period end date
+- `total_sales` (decimal) - Total sales for period
+- `commission_amount` (decimal) - Commission earned
+- `adjustments` (decimal) - Manual adjustments
+- `final_amount` (decimal) - Final commission amount
+- `status` (varchar) - Processing status
+- `paid_date` (date) - Payment date
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
 
-### Multi-Tenant Isolation
-All business entities include `tenantId` for complete data isolation:
-- tenants → users, roles, locations, regions
-- tenants → business_records, companies, equipment
-- tenants → service_tickets, contracts, invoices
-- tenants → tasks, projects, meter_readings
+### Business Intelligence & Analytics
 
-### Hierarchical Access Control
-Role-based access follows organizational hierarchy:
-- Platform (Level 8) → All tenants
-- Company (Level 6-7) → All locations within tenant
-- Regional (Level 4-5) → Locations within assigned regions
-- Location (Level 1-3) → Specific location data only
+#### `business_intelligence_dashboards` (BI Dashboards)
+**Purpose**: Custom business intelligence dashboards
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Dashboard identifier
+- `dashboard_name` (varchar) - Dashboard name
+- `description` (text) - Dashboard description
+- `dashboard_config` (jsonb) - Dashboard configuration
+- `widget_layout` (jsonb) - Widget layout settings
+- `data_sources` (jsonb) - Connected data sources
+- `refresh_frequency` (varchar) - Data refresh frequency
+- `access_permissions` (jsonb) - Access control settings
+- `created_by` (varchar, FK → users.id) - Dashboard creator
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
-### Business Process Flow
-Lead-to-Customer lifecycle through business_records:
-1. Lead (recordType: 'lead', status: 'new')
-2. Contacted (status: 'contacted')
-3. Qualified (status: 'qualified')
-4. Customer (recordType: 'customer', status: 'active')
-5. Service relationship (contracts, equipment, service_tickets)
+#### `performance_benchmarks` (Performance Tracking)
+**Purpose**: Track key performance indicators and benchmarks
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Benchmark identifier
+- `metric_name` (varchar) - Metric name
+- `metric_category` (varchar) - Metric category
+- `current_value` (decimal) - Current metric value
+- `target_value` (decimal) - Target/goal value
+- `benchmark_period` (varchar) - Measurement period
+- `comparison_period` (varchar) - Comparison period
+- `trend_direction` (varchar) - Trend direction
+- `department` (varchar) - Department scope
+- `location_id` (varchar, FK → locations.id) - Location scope
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `measured_at` (timestamp) - Measurement date
+- `created_at` (timestamp) - Creation date
 
-### Equipment Lifecycle
-Equipment management through related entities:
-1. Equipment installation (equipment table)
-2. Service contracts (contracts table)
-3. Usage monitoring (meter_readings table)
-4. Service dispatch (service_tickets table)
-5. Billing automation (invoices table)
+### Workflow Automation
 
-## Usage Guidelines
+#### `automation_rules` (Automation Engine)
+**Purpose**: Define automated business process rules
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Rule identifier
+- `rule_name` (varchar) - Rule name
+- `rule_description` (text) - Rule description
+- `rule_category` (varchar) - Rule category
+- `trigger_events` (jsonb) - Triggering events
+- `conditions` (jsonb) - Rule conditions
+- `condition_logic` (varchar) - Condition logic (AND/OR)
+- `actions` (jsonb) - Actions to execute
+- `action_sequence` (varchar) - Action sequence type
+- `delay_before_action` (integer) - Delay in seconds
+- `execution_window` (jsonb) - Execution time window
+- `cooldown_period` (integer) - Cooldown between executions
+- `priority` (integer) - Rule priority
+- `is_critical` (boolean) - Critical rule flag
+- `bypass_business_hours` (boolean) - After-hours execution
+- `applies_to_entities` (jsonb) - Applicable entity types
+- `entity_filters` (jsonb) - Entity filtering criteria
+- `department_scope` (jsonb) - Department scope
+- `max_executions_per_day` (integer) - Daily execution limit
+- `max_executions_per_hour` (integer) - Hourly execution limit
+- `max_concurrent_executions` (integer) - Concurrent execution limit
+- `requires_approval` (boolean) - Manual approval required
+- `approved_by` (varchar, FK → users.id) - Approver
+- `approval_date` (date) - Approval date
+- `governance_notes` (text) - Governance notes
+- `execution_count` (integer) - Total executions
+- `success_count` (integer) - Successful executions
+- `last_executed` (timestamp) - Last execution time
+- `last_success` (timestamp) - Last successful execution
+- `is_active` (boolean) - Rule active status
+- `is_test_mode` (boolean) - Test mode flag
+- `effective_from` (date) - Effective start date
+- `effective_until` (date) - Effective end date
+- `depends_on_rules` (jsonb) - Rule dependencies
+- `conflicts_with_rules` (jsonb) - Rule conflicts
+- `average_execution_time_ms` (numeric) - Average execution time
+- `error_rate` (numeric) - Error rate percentage
+- `impact_score` (numeric) - Business impact score
+- `created_by` (varchar, FK → users.id) - Rule creator
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
-### Adding New Tables
-1. Always include `tenantId` for multi-tenant isolation
-2. Add `locationId` for location-specific data
-3. Include standard `createdAt`/`updatedAt` timestamps
-4. Use UUID primary keys with `gen_random_uuid()` default
-5. Document relationships in this hierarchy
+#### `workflow_executions` (Workflow History)
+**Purpose**: Track workflow execution history and results
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Execution identifier
+- `rule_id` (varchar, FK → automation_rules.id) - Automation rule
+- `trigger_event` (jsonb) - Triggering event data
+- `execution_status` (varchar) - Execution status
+- `start_time` (timestamp) - Execution start time
+- `end_time` (timestamp) - Execution end time
+- `execution_duration_ms` (integer) - Duration in milliseconds
+- `actions_executed` (jsonb) - Actions that were executed
+- `results` (jsonb) - Execution results
+- `error_message` (text) - Error message if failed
+- `entity_affected` (varchar) - Affected entity ID
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
 
-### Extending Existing Tables
-1. Use `jsonb` columns for flexible schema extensions
-2. Maintain backward compatibility with existing API contracts
-3. Update this documentation when adding significant fields
-4. Consider E-Automate integration needs for customer-related tables
+### Integration Management
 
-### E-Automate Integration Strategy
-Customer migration fields in business_records:
-- `external_customer_id`: Maps to E-Automate customer ID
-- `external_system_id`: Identifies source system
-- `migration_status`: Tracks migration progress
-- `external_data`: Stores additional E-Automate fields as JSON
+#### `quickbooks_integrations` (QuickBooks Integration)
+**Purpose**: Manage QuickBooks Online integration settings
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Integration identifier
+- `company_id` (varchar) - QB Company ID
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `access_token` (text) - OAuth access token
+- `refresh_token` (text) - OAuth refresh token
+- `token_expires_at` (timestamp) - Token expiration
+- `realm_id` (varchar) - QB Realm ID
+- `base_url` (varchar) - QB API base URL
+- `sync_enabled` (boolean) - Sync enabled flag
+- `last_sync` (timestamp) - Last sync timestamp
+- `sync_frequency` (varchar) - Sync frequency
+- `error_count` (integer) - Error count
+- `last_error` (text) - Last error message
+- `customer_sync_enabled` (boolean) - Customer sync flag
+- `vendor_sync_enabled` (boolean) - Vendor sync flag
+- `item_sync_enabled` (boolean) - Item sync flag
+- `invoice_sync_enabled` (boolean) - Invoice sync flag
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
-## Data Enrichment & Lead Intelligence Layer
+## System Security & Compliance
 
-### `enriched_contacts` (ZoomInfo/Apollo.io Integration)
-**Purpose**: Stores enriched contact data from external prospecting platforms
-**Function**: Lead intelligence, contact enrichment, prospecting workflow management
-**Headers/Fields**:
-- `id` (uuid, PRIMARY KEY, default: gen_random_uuid()) - Contact record identifier
-- `tenant_id` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `first_name` (varchar) - Contact first name
-- `last_name` (varchar) - Contact last name
-- `full_name` (varchar) - Complete contact name
-- `email` (varchar) - Primary email address
-- `phone` (varchar) - Primary phone number
-- `job_title` (varchar) - Current job title/position
-- `job_function` (varchar) - Functional area (Sales, Marketing, IT, etc.)
-- `management_level` (varchar) - Management tier (Entry, Middle, Senior, Executive)
-- `department` (varchar) - Department/division
-- `seniority` (varchar) - Years of experience level
-- `company_name` (varchar) - Associated company name
-- `company_linkedin_url` (varchar) - Company LinkedIn profile
-- `person_linkedin_url` (varchar) - Personal LinkedIn profile
-- `twitter_username` (varchar) - Twitter handle
-- `github_username` (varchar) - GitHub username
-- `facebook_url` (varchar) - Facebook profile URL
-- `lead_score` (integer, default: 0) - Algorithmic lead scoring (0-100)
-- `prospecting_status` (varchar, default: 'new') - Workflow status (new/contacted/qualified/opportunity/closed)
-- `last_contact_date` (timestamp) - Last outreach attempt
-- `next_follow_up_date` (timestamp) - Scheduled follow-up date
-- `enrichment_source` (varchar, NOT NULL) - Data source (zoominfo/apollo/manual)
-- `source_person_id` (varchar) - External platform person ID
-- `last_enriched_date` (timestamp, default: now()) - Last data refresh
-- `created_at` (timestamp, default: now()) - Record creation timestamp
-- `updated_at` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with tenants
-- Can be converted to business_records upon qualification
+#### `audit_logs` (Audit Trail)
+**Purpose**: Security audit logging for compliance
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Log entry identifier
+- `user_id` (varchar, FK → users.id) - User who performed action
+- `action` (varchar) - Action performed
+- `table_name` (varchar) - Affected table
+- `record_id` (varchar) - Affected record ID
+- `old_values` (jsonb) - Previous values
+- `new_values` (jsonb) - New values
+- `timestamp` (timestamp) - Action timestamp
+- `ip_address` (varchar) - User IP address
+- `user_agent` (text) - User agent string
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 
-### `enriched_companies` (Company Intelligence)
-**Purpose**: Stores enriched company data and firmographic information
-**Function**: Account intelligence, target account identification, company profiling
-**Headers/Fields**:
-- `id` (uuid, PRIMARY KEY, default: gen_random_uuid()) - Company record identifier
-- `tenant_id` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `company_name` (varchar, NOT NULL) - Official company name
-- `primary_industry` (varchar) - Primary industry classification
-- `secondary_industries` (text[]) - Additional industry categories
-- `employee_count` (integer) - Total employee count
-- `annual_revenue` (bigint) - Annual revenue in USD
-- `company_stage` (varchar) - Business stage (Startup/Growth/Established/Enterprise)
-- `headquarters_country` (varchar) - HQ country
-- `headquarters_state` (varchar) - HQ state/province
-- `headquarters_city` (varchar) - HQ city
-- `website` (varchar) - Primary company website
-- `company_linkedin_url` (varchar) - Company LinkedIn page
-- `technology_stack` (text[]) - Known technologies used
-- `target_account_tier` (varchar) - Sales classification (SMB/Mid-Market/Enterprise)
-- `lead_score` (integer, default: 0) - Company-level lead score
-- `enrichment_source` (varchar, NOT NULL) - Data source (zoominfo/apollo/manual)
-- `source_company_id` (varchar) - External platform company ID
-- `last_enriched_date` (timestamp, default: now()) - Last data refresh
-- `created_at` (timestamp, default: now()) - Record creation timestamp
-- `updated_at` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with tenants
-- One-to-Many with enriched_contacts (implicit via company_name)
+## Mobile & Field Service
 
-### `prospecting_campaigns` (Campaign Management)
-**Purpose**: Manages prospecting campaigns and outreach workflows
-**Function**: Campaign tracking, performance metrics, ROI analysis
-**Headers/Fields**:
-- `id` (uuid, PRIMARY KEY, default: gen_random_uuid()) - Campaign identifier
-- `tenant_id` (varchar, NOT NULL, FOREIGN KEY) - References tenants.id
-- `campaign_name` (varchar, NOT NULL) - Campaign display name
-- `campaign_type` (varchar, NOT NULL) - Campaign type (email_sequence/phone_campaign/linkedin_outreach/mixed)
-- `campaign_description` (text) - Campaign description and notes
-- `target_industry` (varchar) - Targeted industry vertical
-- `target_company_size` (varchar) - Target company size range
-- `target_job_titles` (text[]) - Targeted job titles/roles
-- `status` (varchar, default: 'active') - Campaign status (draft/active/paused/completed/cancelled)
-- `total_contacts` (integer, default: 0) - Total contacts in campaign
-- `contacted_count` (integer, default: 0) - Contacts reached
-- `response_count` (integer, default: 0) - Positive responses received
-- `response_rate` (decimal(5,4)) - Response rate percentage
-- `conversion_count` (integer, default: 0) - Qualified leads generated
-- `conversion_rate` (decimal(5,4)) - Conversion rate percentage
-- `start_date` (timestamp, default: now()) - Campaign start date
-- `end_date` (timestamp) - Campaign end date
-- `created_at` (timestamp, default: now()) - Record creation timestamp
-- `updated_at` (timestamp, default: now()) - Last update timestamp
-**Relationships**:
-- Many-to-One with tenants
-- One-to-Many with enriched_contacts (via campaign association)
+#### `mobile_work_orders` (Mobile Service Orders)
+**Purpose**: Mobile app work order management
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Work order identifier
+- `service_ticket_id` (varchar, FK → service_tickets.id) - Related ticket
+- `technician_id` (varchar, FK → technicians.id) - Assigned technician
+- `customer_id` (varchar, FK → business_records.id) - Customer
+- `equipment_id` (varchar, FK → equipment.id) - Equipment
+- `work_type` (varchar) - Type of work
+- `priority` (varchar) - Work priority
+- `estimated_duration` (integer) - Estimated minutes
+- `actual_duration` (integer) - Actual minutes
+- `parts_used` (jsonb) - Parts used in service
+- `work_performed` (text) - Work description
+- `customer_signature` (text) - Digital signature
+- `photos` (jsonb) - Service photos
+- `gps_checkin` (varchar) - GPS check-in location
+- `gps_checkout` (varchar) - GPS check-out location
+- `status` (varchar) - Work order status
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
-## Salesforce Integration Layer
+## Summary Statistics
 
-### Salesforce Field Mappings (140+ Fields)
-**Purpose**: Complete field mapping compatibility for Salesforce data migration
-**Function**: Dual-platform support enabling seamless CRM transitions
+- **Core Tables**: 12 (users, tenants, roles, locations, regions, teams, sessions, etc.)
+- **CRM Tables**: 15 (business_records, companies, contacts, leads, deals, activities)
+- **Product Tables**: 7 (models, accessories, supplies, services, software)
+- **Equipment Tables**: 8 (equipment, customer_equipment, asset_tracking, etc.)
+- **Service Tables**: 12 (tickets, technicians, work_orders, mobile_orders, etc.)
+- **Financial Tables**: 18 (contracts, invoices, billing, commission, accounting)
+- **Analytics Tables**: 8 (dashboards, benchmarks, forecasts, reports)
+- **Automation Tables**: 6 (rules, executions, workflows, templates)
+- **Integration Tables**: 12 (QuickBooks, Salesforce, E-Automate, external systems)
+- **Compliance Tables**: 4 (audit_logs, security, compliance tracking)
 
-#### Account Mappings (35+ Fields)
-**Salesforce → Printyx business_records mapping**:
-- `Id` → `external_customer_id`
-- `Name` → `company_name`
-- `Website` → `website`
-- `Phone` → `phone`
-- `Industry` → `industry`
-- `AnnualRevenue` → `annual_revenue`
-- `NumberOfEmployees` → `employee_count`
-- `BillingAddress` → `address` (structured)
-- `ShippingAddress` → `shipping_address` (structured)
-- `Description` → `description`
-- `AccountSource` → `lead_source`
-- `Rating` → `account_rating`
-- `Type` → `account_type`
-- `ParentId` → `parent_account_id`
-- `AccountNumber` → `account_number`
-- `Site` → `site_location`
-- `TickerSymbol` → `ticker_symbol`
-- `Ownership` → `ownership_type`
-- `Fax` → `fax`
-- `SicDesc` → `sic_description`
-- Plus 15+ custom fields and additional metadata
+**Total: 124 database tables** supporting comprehensive copier dealer management operations.
 
-#### Contact Mappings (40+ Fields)
-**Salesforce → Printyx enriched_contacts mapping**:
-- `Id` → `source_person_id`
-- `FirstName` → `first_name`
-- `LastName` → `last_name`
-- `Email` → `email`
-- `Phone` → `phone`
-- `Title` → `job_title`
-- `Department` → `department`
-- `AccountId` → Links to company via `company_name`
-- `MailingAddress` → `mailing_address` (structured)
-- `OtherAddress` → `other_address` (structured)
-- `MobilePhone` → `mobile_phone`
-- `HomePhone` → `home_phone`
-- `OtherPhone` → `other_phone`
-- `AssistantName` → `assistant_name`
-- `AssistantPhone` → `assistant_phone`
-- `Birthdate` → `birth_date`
-- `LeadSource` → `lead_source`
-- `Level__c` → `management_level`
-- `LinkedInProfile__c` → `person_linkedin_url`
-- `TwitterHandle__c` → `twitter_username`
-- Plus 20+ custom fields and social profiles
-
-#### Opportunity Mappings (35+ Fields)
-**Salesforce → Printyx opportunities/deals mapping**:
-- `Id` → `external_opportunity_id`
-- `Name` → `deal_name`
-- `Amount` → `deal_value`
-- `CloseDate` → `expected_close_date`
-- `StageName` → `deal_stage`
-- `Probability` → `win_probability`
-- `AccountId` → Links to business_records
-- `Type` → `opportunity_type`
-- `LeadSource` → `lead_source`
-- `NextStep` → `next_step`
-- `Description` → `description`
-- `IsWon` → `is_won`
-- `IsClosed` → `is_closed`
-- `ForecastCategory` → `forecast_category`
-- `ForecastCategoryName` → `forecast_category_name`
-- `ExpectedRevenue` → `expected_revenue`
-- `TotalOpportunityQuantity` → `total_quantity`
-- `CampaignId` → `campaign_id`
-- `Pricebook2Id` → `price_book_id`
-- `ContractId` → Links to contracts table
-- Plus 15+ custom opportunity fields
-
-#### Activity Mappings (30+ Fields)
-**Salesforce → Printyx activities/tasks mapping**:
-- `Id` → `external_activity_id`
-- `Subject` → `task_title`
-- `Description` → `description`
-- `Status` → `status`
-- `Priority` → `priority`
-- `ActivityDate` → `due_date`
-- `WhoId` → Links to contacts
-- `WhatId` → Links to accounts/opportunities
-- `Type` → `activity_type`
-- `IsTask` → `is_task`
-- `IsEvent` → `is_event`
-- `StartDateTime` → `start_date`
-- `EndDateTime` → `end_date`
-- `DurationInMinutes` → `duration_minutes`
-- `Location` → `location`
-- `IsAllDayEvent` → `is_all_day`
-- `IsRecurrence` → `is_recurring`
-- `CallDurationInSeconds` → `call_duration`
-- `CallType` → `call_type`
-- `CallDisposition` → `call_outcome`
-- Plus 10+ custom activity fields
-
-### Migration Workflow Support
-**Data Migration Process**:
-1. **Extract**: Pull data from Salesforce APIs using field mappings
-2. **Transform**: Convert Salesforce schema to Printyx schema
-3. **Load**: Insert into appropriate Printyx tables with tenant isolation
-4. **Validate**: Ensure data integrity and relationship consistency
-5. **Reconcile**: Handle conflicts and duplicate detection
-
-**Migration Status Tracking**:
-- `migration_status` field in business_records
-- `external_system_id` for source system identification
-- `external_data` JSONB field for unmapped custom fields
-- Comprehensive audit trail for data lineage
-
-## Integration Architecture Summary
-
-### Dual-Platform Strategy
-**Complete Market Coverage**:
-- **E-Automate**: 90% of copier dealer market
-- **Salesforce**: Enterprise and growth dealers
-- **Combined**: 100% dealer market coverage
-
-### Data Enrichment Workflow
-**Lead Intelligence Pipeline**:
-1. **Prospecting**: ZoomInfo/Apollo.io contact discovery
-2. **Enrichment**: Company and contact data enhancement
-3. **Scoring**: Algorithmic lead qualification
-4. **Campaigns**: Automated outreach workflows
-5. **Conversion**: Qualified leads → business_records
-6. **Analytics**: Performance tracking and ROI measurement
-
-### Schema Design Principles
-**Multi-Tenant Isolation**: All enrichment tables include tenant_id
-**Source Attribution**: Track data origin and refresh timestamps
-**Flexible Schema**: JSONB fields for platform-specific extensions
-**Relationship Integrity**: Foreign key constraints with proper cascading
-**Performance Optimization**: Indexed columns for common queries
-
-Last Updated: August 2, 2025
+---
+*This schema represents a production-ready multi-tenant SaaS platform with enterprise-grade features for copier dealer management, CRM, service dispatch, financial management, and business intelligence.*
