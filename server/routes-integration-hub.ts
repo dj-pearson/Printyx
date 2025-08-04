@@ -26,469 +26,577 @@ router.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) 
     const integrationHubData = {
       // Integration Overview
       integrationOverview: {
-        totalIntegrations: 47,
-        activeIntegrations: 42,
-        pendingIntegrations: 3,
-        failedIntegrations: 2,
-        successRate: 97.4,
-        apiCallsToday: 45672,
-        dataVolumeProcessed: 2.4, // GB today
-        uptimePercentage: 99.7,
-        averageResponseTime: 156, // milliseconds
-        errorRate: 0.3,
-        lastSyncTime: new Date('2025-02-01T08:45:00Z')
+        totalIntegrations: 42,
+        activeIntegrations: 39,
+        pendingIntegrations: 2,
+        failedIntegrations: 1,
+        integrationSuccessRate: 97.4,
+        apiCallsToday: 1245678,
+        dataTransferred: 15.7, // GB
+        webhooksDelivered: 34567,
+        integrationUptime: 99.8,
+        averageLatency: 189, // ms
+        errorRate: 0.8,
+        rateLimitHits: 23
+      },
+
+      // API Marketplace
+      apiMarketplace: {
+        availableAPIs: [
+          {
+            id: 'api-salesforce',
+            name: 'Salesforce CRM',
+            category: 'CRM',
+            provider: 'Salesforce',
+            version: 'v59.0',
+            status: 'active',
+            popularity: 94.7,
+            integrations: 1247,
+            ratingAverage: 4.8,
+            ratingCount: 356,
+            description: 'Complete CRM integration for sales, marketing, and customer service',
+            endpoints: 15,
+            authentication: 'OAuth2',
+            pricing: 'freemium',
+            documentation: 'https://developer.salesforce.com/docs',
+            capabilities: ['lead_management', 'opportunity_tracking', 'contact_sync', 'activity_logging'],
+            lastUpdated: new Date('2025-01-15T00:00:00Z'),
+            supportLevel: 'enterprise',
+            setupComplexity: 'medium'
+          },
+          {
+            id: 'api-hubspot',
+            name: 'HubSpot Marketing',
+            category: 'Marketing',
+            provider: 'HubSpot',
+            version: 'v3',
+            status: 'active',
+            popularity: 89.3,
+            integrations: 987,
+            ratingAverage: 4.6,
+            ratingCount: 234,
+            description: 'Marketing automation and lead nurturing platform integration',
+            endpoints: 12,
+            authentication: 'API Key',
+            pricing: 'free',
+            documentation: 'https://developers.hubspot.com/',
+            capabilities: ['email_marketing', 'lead_scoring', 'campaign_automation', 'analytics'],
+            lastUpdated: new Date('2025-01-20T00:00:00Z'),
+            supportLevel: 'standard',
+            setupComplexity: 'easy'
+          },
+          {
+            id: 'api-stripe',
+            name: 'Stripe Payments',
+            category: 'Payments',
+            provider: 'Stripe',
+            version: '2023-10-16',
+            status: 'active',
+            popularity: 92.1,
+            integrations: 2134,
+            ratingAverage: 4.9,
+            ratingCount: 567,
+            description: 'Complete payment processing and subscription management',
+            endpoints: 18,
+            authentication: 'API Key',
+            pricing: 'usage_based',
+            documentation: 'https://stripe.com/docs/api',
+            capabilities: ['payment_processing', 'subscription_billing', 'fraud_detection', 'reporting'],
+            lastUpdated: new Date('2025-01-25T00:00:00Z'),
+            supportLevel: 'enterprise',
+            setupComplexity: 'medium'
+          },
+          {
+            id: 'api-quickbooks',
+            name: 'QuickBooks Online',
+            category: 'Accounting',
+            provider: 'Intuit',
+            version: 'v3',
+            status: 'active',
+            popularity: 87.5,
+            integrations: 1567,
+            ratingAverage: 4.4,
+            ratingCount: 289,
+            description: 'Financial data synchronization and accounting automation',
+            endpoints: 22,
+            authentication: 'OAuth2',
+            pricing: 'subscription',
+            documentation: 'https://developer.intuit.com/app/developer/qbo/docs',
+            capabilities: ['financial_sync', 'invoice_management', 'expense_tracking', 'reporting'],
+            lastUpdated: new Date('2025-01-10T00:00:00Z'),
+            supportLevel: 'standard',
+            setupComplexity: 'hard'
+          },
+          {
+            id: 'api-mailchimp',
+            name: 'Mailchimp',
+            category: 'Email Marketing',
+            provider: 'Mailchimp',
+            version: '3.0',
+            status: 'active',
+            popularity: 78.9,
+            integrations: 734,
+            ratingAverage: 4.3,
+            ratingCount: 167,
+            description: 'Email marketing campaigns and audience management',
+            endpoints: 14,
+            authentication: 'API Key',
+            pricing: 'freemium',
+            documentation: 'https://mailchimp.com/developer/',
+            capabilities: ['email_campaigns', 'audience_sync', 'automation', 'analytics'],
+            lastUpdated: new Date('2025-01-18T00:00:00Z'),
+            supportLevel: 'standard',
+            setupComplexity: 'easy'
+          },
+          {
+            id: 'api-slack',
+            name: 'Slack',
+            category: 'Communication',
+            provider: 'Slack Technologies',
+            version: 'v1.11.0',
+            status: 'active',
+            popularity: 85.4,
+            integrations: 892,
+            ratingAverage: 4.7,
+            ratingCount: 201,
+            description: 'Team communication and workflow notifications',
+            endpoints: 8,
+            authentication: 'OAuth2',
+            pricing: 'free',
+            documentation: 'https://api.slack.com/',
+            capabilities: ['notifications', 'channel_management', 'file_sharing', 'bot_integration'],
+            lastUpdated: new Date('2025-01-22T00:00:00Z'),
+            supportLevel: 'community',
+            setupComplexity: 'easy'
+          }
+        ],
+        
+        categories: [
+          { name: 'CRM', count: 8, description: 'Customer relationship management systems' },
+          { name: 'Marketing', count: 6, description: 'Marketing automation and campaign tools' },
+          { name: 'Payments', count: 4, description: 'Payment processing and billing systems' },
+          { name: 'Accounting', count: 5, description: 'Financial and accounting software' },
+          { name: 'Communication', count: 7, description: 'Team communication and collaboration' },
+          { name: 'Analytics', count: 3, description: 'Business intelligence and reporting' },
+          { name: 'E-commerce', count: 4, description: 'Online store and marketplace platforms' },
+          { name: 'Project Management', count: 5, description: 'Project tracking and team coordination' }
+        ],
+        
+        featuredIntegrations: [
+          { id: 'api-salesforce', reason: 'Most popular CRM integration' },
+          { id: 'api-stripe', reason: 'Highest rated payment processor' },
+          { id: 'api-hubspot', reason: 'Best for marketing automation' }
+        ]
       },
 
       // Active Integrations
       activeIntegrations: [
         {
-          id: 'int-001',
-          name: 'Salesforce CRM',
-          category: 'CRM',
-          provider: 'Salesforce',
+          id: 'integration-001',
+          apiId: 'api-salesforce',
+          name: 'Salesforce CRM Integration',
           status: 'active',
-          health: 'healthy',
-          version: '2.1.0',
-          lastSync: new Date('2025-02-01T08:30:00Z'),
+          configuredAt: new Date('2024-12-15T00:00:00Z'),
+          lastSync: new Date('2025-02-01T08:20:00Z'),
           syncFrequency: 'real-time',
-          recordsSynced: 15672,
+          recordsSynced: 45678,
+          apiCallsToday: 12456,
+          successRate: 98.7,
+          averageLatency: 234, // ms
+          dataVolume: 2.3, // GB
+          errorCount: 5,
+          
+          configuration: {
+            environment: 'production',
+            instanceUrl: 'https://company.my.salesforce.com',
+            apiVersion: 'v59.0',
+            rateLimitPerHour: 5000,
+            retryAttempts: 3,
+            timeoutSeconds: 30
+          },
+          
+          dataMapping: {
+            contacts: { source: 'salesforce.Contact', target: 'printyx.BusinessRecord', fields: 23 },
+            accounts: { source: 'salesforce.Account', target: 'printyx.Customer', fields: 18 },
+            opportunities: { source: 'salesforce.Opportunity', target: 'printyx.Deal', fields: 15 },
+            activities: { source: 'salesforce.Task', target: 'printyx.Activity', fields: 12 }
+          },
+          
+          webhooks: [
+            { event: 'contact.created', url: '/webhook/salesforce/contact', status: 'active', deliveryRate: 99.2 },
+            { event: 'opportunity.updated', url: '/webhook/salesforce/opportunity', status: 'active', deliveryRate: 97.8 },
+            { event: 'account.deleted', url: '/webhook/salesforce/account', status: 'active', deliveryRate: 98.5 }
+          ],
+          
+          recentActivity: [
+            { timestamp: new Date('2025-02-01T08:20:00Z'), action: 'contact_sync', records: 234, status: 'success' },
+            { timestamp: new Date('2025-02-01T08:15:00Z'), action: 'opportunity_update', records: 67, status: 'success' },
+            { timestamp: new Date('2025-02-01T08:10:00Z'), action: 'account_sync', records: 12, status: 'success' }
+          ]
+        },
+        {
+          id: 'integration-002',
+          apiId: 'api-stripe',
+          name: 'Stripe Payment Processing',
+          status: 'active',
+          configuredAt: new Date('2024-11-20T00:00:00Z'),
+          lastSync: new Date('2025-02-01T08:18:00Z'),
+          syncFrequency: 'event-driven',
+          recordsSynced: 8934,
+          apiCallsToday: 3456,
+          successRate: 99.4,
+          averageLatency: 187,
+          dataVolume: 0.8,
           errorCount: 2,
-          uptimePercentage: 99.8,
-          dataFlow: 'bidirectional',
-          authStatus: 'valid',
-          authExpiresAt: new Date('2025-08-15T00:00:00Z'),
-          endpoints: [
-            { name: 'Accounts', status: 'active', lastCall: new Date('2025-02-01T08:29:00Z') },
-            { name: 'Contacts', status: 'active', lastCall: new Date('2025-02-01T08:28:00Z') },
-            { name: 'Opportunities', status: 'active', lastCall: new Date('2025-02-01T08:27:00Z') },
-            { name: 'Activities', status: 'warning', lastCall: new Date('2025-02-01T07:45:00Z') }
+          
+          configuration: {
+            environment: 'production',
+            publishableKey: 'pk_live_***',
+            webhookSecret: 'whsec_***',
+            accountId: 'acct_***',
+            apiVersion: '2023-10-16'
+          },
+          
+          dataMapping: {
+            payments: { source: 'stripe.PaymentIntent', target: 'printyx.Payment', fields: 14 },
+            customers: { source: 'stripe.Customer', target: 'printyx.Customer', fields: 8 },
+            invoices: { source: 'stripe.Invoice', target: 'printyx.Invoice', fields: 16 },
+            subscriptions: { source: 'stripe.Subscription', target: 'printyx.Contract', fields: 11 }
+          },
+          
+          webhooks: [
+            { event: 'payment_intent.succeeded', url: '/webhook/stripe/payment', status: 'active', deliveryRate: 99.8 },
+            { event: 'invoice.payment_failed', url: '/webhook/stripe/invoice', status: 'active', deliveryRate: 98.9 },
+            { event: 'customer.subscription.updated', url: '/webhook/stripe/subscription', status: 'active', deliveryRate: 99.1 }
           ],
-          metrics: {
-            apiCallsToday: 8934,
-            successRate: 99.2,
-            avgResponseTime: 234,
-            bandwidth: 145.6 // MB
-          }
+          
+          recentActivity: [
+            { timestamp: new Date('2025-02-01T08:18:00Z'), action: 'payment_processed', records: 45, status: 'success' },
+            { timestamp: new Date('2025-02-01T08:12:00Z'), action: 'invoice_created', records: 23, status: 'success' },
+            { timestamp: new Date('2025-02-01T08:05:00Z'), action: 'subscription_updated', records: 8, status: 'success' }
+          ]
         },
         {
-          id: 'int-002',
-          name: 'QuickBooks Online',
-          category: 'Accounting',
-          provider: 'Intuit',
+          id: 'integration-003',
+          apiId: 'api-hubspot',
+          name: 'HubSpot Marketing Automation',
           status: 'active',
-          health: 'healthy',
-          version: '1.8.3',
-          lastSync: new Date('2025-02-01T08:15:00Z'),
+          configuredAt: new Date('2025-01-05T00:00:00Z'),
+          lastSync: new Date('2025-02-01T08:16:00Z'),
           syncFrequency: 'hourly',
-          recordsSynced: 4567,
-          errorCount: 0,
-          uptimePercentage: 100.0,
-          dataFlow: 'bidirectional',
-          authStatus: 'valid',
-          authExpiresAt: new Date('2025-05-20T00:00:00Z'),
-          endpoints: [
-            { name: 'Customers', status: 'active', lastCall: new Date('2025-02-01T08:15:00Z') },
-            { name: 'Invoices', status: 'active', lastCall: new Date('2025-02-01T08:14:00Z') },
-            { name: 'Items', status: 'active', lastCall: new Date('2025-02-01T08:13:00Z') },
-            { name: 'Payments', status: 'active', lastCall: new Date('2025-02-01T08:12:00Z') }
-          ],
-          metrics: {
-            apiCallsToday: 2345,
-            successRate: 100.0,
-            avgResponseTime: 189,
-            bandwidth: 67.8
-          }
-        },
-        {
-          id: 'int-003',
-          name: 'E-Automate',
-          category: 'Legacy ERP',
-          provider: 'ECI Software Solutions',
-          status: 'active',
-          health: 'warning',
-          version: '3.2.1',
-          lastSync: new Date('2025-02-01T07:30:00Z'),
-          syncFrequency: 'daily',
           recordsSynced: 23456,
-          errorCount: 12,
-          uptimePercentage: 96.8,
-          dataFlow: 'inbound',
-          authStatus: 'valid',
-          authExpiresAt: new Date('2025-12-31T00:00:00Z'),
-          endpoints: [
-            { name: 'Customers', status: 'active', lastCall: new Date('2025-02-01T07:30:00Z') },
-            { name: 'Equipment', status: 'warning', lastCall: new Date('2025-02-01T06:15:00Z') },
-            { name: 'Contracts', status: 'active', lastCall: new Date('2025-02-01T07:28:00Z') },
-            { name: 'Service Calls', status: 'error', lastCall: new Date('2025-01-31T22:45:00Z') }
+          apiCallsToday: 5678,
+          successRate: 97.2,
+          averageLatency: 298,
+          dataVolume: 1.5,
+          errorCount: 8,
+          
+          configuration: {
+            portalId: '12345678',
+            apiKey: 'pat-na1-***',
+            region: 'na1',
+            rateLimitPerDay: 100000,
+            batchSize: 100
+          },
+          
+          dataMapping: {
+            contacts: { source: 'hubspot.Contact', target: 'printyx.Lead', fields: 19 },
+            companies: { source: 'hubspot.Company', target: 'printyx.Account', fields: 13 },
+            deals: { source: 'hubspot.Deal', target: 'printyx.Opportunity', fields: 17 },
+            emails: { source: 'hubspot.Email', target: 'printyx.EmailActivity', fields: 9 }
+          },
+          
+          webhooks: [
+            { event: 'contact.propertyChange', url: '/webhook/hubspot/contact', status: 'active', deliveryRate: 96.7 },
+            { event: 'deal.creation', url: '/webhook/hubspot/deal', status: 'active', deliveryRate: 98.3 }
           ],
-          metrics: {
-            apiCallsToday: 1245,
-            successRate: 94.2,
-            avgResponseTime: 890,
-            bandwidth: 234.5
-          }
-        },
-        {
-          id: 'int-004',
-          name: 'DocuSign',
-          category: 'Document Management',
-          provider: 'DocuSign',
-          status: 'active',
-          health: 'healthy',
-          version: '1.5.2',
-          lastSync: new Date('2025-02-01T08:40:00Z'),
-          syncFrequency: 'real-time',
-          recordsSynced: 892,
-          errorCount: 1,
-          uptimePercentage: 99.9,
-          dataFlow: 'bidirectional',
-          authStatus: 'valid',
-          authExpiresAt: new Date('2025-07-10T00:00:00Z'),
-          endpoints: [
-            { name: 'Envelopes', status: 'active', lastCall: new Date('2025-02-01T08:40:00Z') },
-            { name: 'Templates', status: 'active', lastCall: new Date('2025-02-01T08:35:00Z') },
-            { name: 'Recipients', status: 'active', lastCall: new Date('2025-02-01T08:38:00Z') }
-          ],
-          metrics: {
-            apiCallsToday: 567,
-            successRate: 99.8,
-            avgResponseTime: 123,
-            bandwidth: 45.2
-          }
+          
+          recentActivity: [
+            { timestamp: new Date('2025-02-01T08:16:00Z'), action: 'contact_sync', records: 156, status: 'success' },
+            { timestamp: new Date('2025-02-01T07:16:00Z'), action: 'deal_update', records: 34, status: 'success' },
+            { timestamp: new Date('2025-02-01T06:16:00Z'), action: 'company_sync', records: 67, status: 'success' }
+          ]
         }
       ],
 
-      // API Marketplace
-      apiMarketplace: {
-        availableIntegrations: 156,
-        popularIntegrations: [
-          {
-            id: 'market-001',
-            name: 'Microsoft 365',
-            category: 'Productivity',
-            provider: 'Microsoft',
-            description: 'Integrate with Outlook, Teams, SharePoint, and OneDrive for comprehensive productivity suite connectivity',
-            rating: 4.8,
-            reviews: 234,
-            installations: 12567,
-            pricing: 'free',
-            features: ['Email Integration', 'Calendar Sync', 'Document Storage', 'Team Collaboration'],
-            lastUpdated: new Date('2025-01-25T00:00:00Z'),
-            compatibility: ['Cloud', 'On-Premise'],
-            dataTypes: ['Contacts', 'Calendar', 'Documents', 'Communications'],
-            estimatedSetupTime: 30 // minutes
-          },
-          {
-            id: 'market-002',
-            name: 'Stripe Payments',
-            category: 'Payment Processing',
-            provider: 'Stripe',
-            description: 'Accept online payments, manage subscriptions, and automate billing processes',
-            rating: 4.9,
-            reviews: 456,
-            installations: 8934,
-            pricing: 'usage-based',
-            features: ['Payment Processing', 'Subscription Management', 'Automated Billing', 'Analytics'],
-            lastUpdated: new Date('2025-01-28T00:00:00Z'),
-            compatibility: ['Cloud'],
-            dataTypes: ['Payments', 'Subscriptions', 'Customers', 'Invoices'],
-            estimatedSetupTime: 45
-          },
-          {
-            id: 'market-003',
-            name: 'Slack Notifications',
-            category: 'Communication',
-            provider: 'Slack Technologies',
-            description: 'Send real-time notifications and alerts to Slack channels and users',
-            rating: 4.7,
-            reviews: 178,
-            installations: 15672,
-            pricing: 'free',
-            features: ['Channel Notifications', 'Direct Messages', 'Custom Alerts', 'Bot Integration'],
-            lastUpdated: new Date('2025-01-20T00:00:00Z'),
-            compatibility: ['Cloud'],
-            dataTypes: ['Notifications', 'Alerts', 'Messages'],
-            estimatedSetupTime: 15
-          },
-          {
-            id: 'market-004',
-            name: 'Zapier Automation',
-            category: 'Workflow Automation',
-            provider: 'Zapier',
-            description: 'Connect Printyx with 5000+ apps using automated workflows and triggers',
-            rating: 4.6,
-            reviews: 89,
-            installations: 3456,
-            pricing: 'tiered',
-            features: ['Multi-App Workflows', 'Trigger Events', 'Data Transformation', 'Conditional Logic'],
-            lastUpdated: new Date('2025-01-30T00:00:00Z'),
-            compatibility: ['Cloud'],
-            dataTypes: ['Any', 'Custom Mapping'],
-            estimatedSetupTime: 60
-          }
-        ],
-
-        categories: [
-          { name: 'CRM', count: 23, popular: true },
-          { name: 'Accounting', count: 18, popular: true },
-          { name: 'Communication', count: 34, popular: false },
-          { name: 'Document Management', count: 15, popular: true },
-          { name: 'Payment Processing', count: 12, popular: false },
-          { name: 'Marketing', count: 28, popular: false },
-          { name: 'Analytics', count: 19, popular: false },
-          { name: 'Productivity', count: 7, popular: true }
-        ]
-      },
-
-      // Data Flow Management
-      dataFlowManagement: {
-        activeFlows: 23,
-        totalDataProcessed: 4.7, // GB today
-        transformationRules: 89,
-        mappingConfigurations: 156,
-        
-        dataFlows: [
-          {
-            id: 'flow-001',
-            name: 'Salesforce to Business Records Sync',
-            source: 'Salesforce CRM',
-            destination: 'Business Records',
-            status: 'active',
-            frequency: 'real-time',
-            recordsProcessed: 8934,
-            lastRun: new Date('2025-02-01T08:30:00Z'),
-            successRate: 98.7,
-            avgProcessingTime: 234, // milliseconds
-            dataTypes: ['Accounts', 'Contacts', 'Opportunities'],
-            transformations: [
-              'Name standardization',
-              'Phone number formatting',
-              'Address validation',
-              'Duplicate detection'
-            ],
-            errorHandling: 'retry_with_notification',
-            retentionPeriod: 90 // days
-          },
-          {
-            id: 'flow-002',
-            name: 'Equipment Data to Service Analytics',
-            source: 'Equipment Monitoring',
-            destination: 'Service Analytics',
-            status: 'active',
-            frequency: 'every 5 minutes',
-            recordsProcessed: 45672,
-            lastRun: new Date('2025-02-01T08:45:00Z'),
-            successRate: 99.2,
-            avgProcessingTime: 156,
-            dataTypes: ['Meter Readings', 'Error Codes', 'Performance Metrics'],
-            transformations: [
-              'Data aggregation',
-              'Anomaly detection',
-              'Trend calculation',
-              'Alert generation'
-            ],
-            errorHandling: 'log_and_continue',
-            retentionPeriod: 365
-          },
-          {
-            id: 'flow-003',
-            name: 'Invoice Generation from QuickBooks',
-            source: 'Billing System',
-            destination: 'QuickBooks Online',
-            status: 'active',
-            frequency: 'hourly',
-            recordsProcessed: 2345,
-            lastRun: new Date('2025-02-01T08:00:00Z'),
-            successRate: 100.0,
-            avgProcessingTime: 445,
-            dataTypes: ['Invoices', 'Line Items', 'Tax Information'],
-            transformations: [
-              'Currency conversion',
-              'Tax calculation',
-              'Account mapping',
-              'Format standardization'
-            ],
-            errorHandling: 'stop_and_alert',
-            retentionPeriod: 2555 // 7 years for financial records
-          }
-        ]
-      },
-
       // Webhook Management
       webhookManagement: {
-        activeWebhooks: 34,
-        webhooksTriggered: 15672, // today
-        successfulDeliveries: 15234,
-        failedDeliveries: 438,
-        deliverySuccessRate: 97.2,
-        averageDeliveryTime: 89, // milliseconds
+        totalWebhooks: 67,
+        activeWebhooks: 64,
+        pausedWebhooks: 2,
+        failedWebhooks: 1,
+        deliverySuccessRate: 98.3,
+        averageDeliveryTime: 234, // ms
+        retryAttempts: 1567,
+        successfulRetries: 1456,
         
-        webhooks: [
+        recentDeliveries: [
           {
-            id: 'webhook-001',
-            name: 'New Customer Created',
-            event: 'customer.created',
-            url: 'https://api.partner.com/webhooks/customer',
-            method: 'POST',
-            status: 'active',
-            secret: 'whsec_••••••••••••••••',
-            retryPolicy: 'exponential_backoff',
-            maxRetries: 3,
-            timeout: 30, // seconds
-            lastTriggered: new Date('2025-02-01T08:35:00Z'),
-            deliveryAttempts: 8934,
-            successfulDeliveries: 8901,
-            failedDeliveries: 33,
-            successRate: 99.6,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Printyx-Event': 'customer.created',
-              'X-Printyx-Signature': 'calculated'
-            }
+            id: 'delivery-001',
+            webhook: 'Salesforce Contact Created',
+            url: '/webhook/salesforce/contact',
+            timestamp: new Date('2025-02-01T08:20:00Z'),
+            status: 'delivered',
+            responseCode: 200,
+            responseTime: 187, // ms
+            attempts: 1,
+            payload: { event: 'contact.created', objectId: 'SF001234', changes: ['email', 'phone'] }
           },
           {
-            id: 'webhook-002',
-            name: 'Service Call Completed',
-            event: 'service.completed',
-            url: 'https://crm.company.com/api/service-updates',
-            method: 'POST',
-            status: 'active',
-            secret: 'whsec_••••••••••••••••',
-            retryPolicy: 'fixed_interval',
-            maxRetries: 5,
-            timeout: 15,
-            lastTriggered: new Date('2025-02-01T08:42:00Z'),
-            deliveryAttempts: 4567,
-            successfulDeliveries: 4532,
-            failedDeliveries: 35,
-            successRate: 99.2,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer token',
-              'X-Source': 'Printyx'
-            }
+            id: 'delivery-002',
+            webhook: 'Stripe Payment Succeeded',
+            url: '/webhook/stripe/payment',
+            timestamp: new Date('2025-02-01T08:18:00Z'),
+            status: 'delivered',
+            responseCode: 200,
+            responseTime: 156,
+            attempts: 1,
+            payload: { event: 'payment_intent.succeeded', amount: 15000, currency: 'usd' }
+          },
+          {
+            id: 'delivery-003',
+            webhook: 'HubSpot Deal Updated',
+            url: '/webhook/hubspot/deal',
+            timestamp: new Date('2025-02-01T08:16:00Z'),
+            status: 'failed',
+            responseCode: 500,
+            responseTime: 5000,
+            attempts: 3,
+            payload: { event: 'deal.propertyChange', dealId: 'HS789012', stage: 'closed-won' },
+            error: 'Internal server error during processing'
           }
-        ]
-      },
-
-      // API Gateway Analytics
-      apiGatewayAnalytics: {
-        totalRequests: 245672, // today
-        successfulRequests: 242156,
-        failedRequests: 3516,
-        successRate: 98.6,
-        averageResponseTime: 178, // milliseconds
-        topEndpoints: [
-          { endpoint: '/api/customers', requests: 45672, avgResponseTime: 134, successRate: 99.2 },
-          { endpoint: '/api/equipment', requests: 34567, avgResponseTime: 189, successRate: 98.8 },
-          { endpoint: '/api/service-calls', requests: 28934, avgResponseTime: 203, successRate: 97.9 },
-          { endpoint: '/api/invoices', requests: 23456, avgResponseTime: 167, successRate: 99.5 }
         ],
         
-        rateLimiting: {
-          enabled: true,
-          requestsPerMinute: 1000,
-          burstLimit: 2000,
-          currentUtilization: 34.7, // percentage
-          throttledRequests: 234 // today
+        deliveryMetrics: {
+          last24Hours: { delivered: 2345, failed: 67, successRate: 97.2 },
+          last7Days: { delivered: 16789, failed: 456, successRate: 97.3 },
+          last30Days: { delivered: 78456, failed: 2134, successRate: 97.4 }
         },
         
-        security: {
-          authenticationEnabled: true,
-          encryptionEnabled: true,
-          ipWhitelisting: true,
-          ddosProtection: true,
-          suspiciousRequests: 12, // today
-          blockedRequests: 89
+        retryConfiguration: {
+          maxAttempts: 5,
+          backoffStrategy: 'exponential',
+          initialDelay: 1000, // ms
+          maxDelay: 30000,
+          timeoutAfter: 3600000 // 1 hour
         }
       },
 
-      // Custom Integration Builder
-      customIntegrationBuilder: {
-        customIntegrations: 12,
-        templates: [
+      // Data Transformation Engine
+      dataTransformation: {
+        transformationRules: [
           {
-            id: 'template-001',
-            name: 'REST API Integration',
-            description: 'Connect to any REST API with authentication and data mapping',
-            category: 'API',
-            difficulty: 'beginner',
-            estimatedTime: 45, // minutes
-            features: ['Authentication', 'Data Mapping', 'Error Handling', 'Rate Limiting'],
-            usageCount: 156
+            id: 'rule-001',
+            name: 'Salesforce Contact to Business Record',
+            sourceSystem: 'Salesforce',
+            targetSystem: 'Printyx',
+            status: 'active',
+            recordsProcessed: 45678,
+            successRate: 98.7,
+            lastRun: new Date('2025-02-01T08:20:00Z'),
+            
+            fieldMappings: [
+              { source: 'FirstName', target: 'firstName', transformation: 'capitalize', required: true },
+              { source: 'LastName', target: 'lastName', transformation: 'capitalize', required: true },
+              { source: 'Email', target: 'email', transformation: 'lowercase', required: true },
+              { source: 'Phone', target: 'phone', transformation: 'format_phone', required: false },
+              { source: 'Account.Name', target: 'companyName', transformation: 'none', required: false }
+            ],
+            
+            validationRules: [
+              { field: 'email', rule: 'email_format', errorAction: 'reject' },
+              { field: 'phone', rule: 'phone_format', errorAction: 'warn' },
+              { field: 'firstName', rule: 'required', errorAction: 'reject' }
+            ],
+            
+            businessRules: [
+              { condition: 'Account.Type = "Customer"', action: 'set_record_type', value: 'customer' },
+              { condition: 'Lead.Status = "Qualified"', action: 'set_priority', value: 'high' },
+              { condition: 'Contact.CreatedDate > LAST_N_DAYS:30', action: 'add_tag', value: 'new_contact' }
+            ]
           },
           {
-            id: 'template-002',
-            name: 'Database Connection',
-            description: 'Direct database integration with SQL support',
-            category: 'Database',
-            difficulty: 'intermediate',
-            estimatedTime: 90,
-            features: ['SQL Queries', 'Connection Pooling', 'Transaction Support', 'Data Validation'],
-            usageCount: 67
-          },
-          {
-            id: 'template-003',
-            name: 'File Processing',
-            description: 'Process CSV, Excel, and other file formats',
-            category: 'File Processing',
-            difficulty: 'beginner',
-            estimatedTime: 30,
-            features: ['Format Detection', 'Data Validation', 'Batch Processing', 'Error Reporting'],
-            usageCount: 234
+            id: 'rule-002',
+            name: 'Stripe Payment to Printyx Invoice',
+            sourceSystem: 'Stripe',
+            targetSystem: 'Printyx',
+            status: 'active',
+            recordsProcessed: 8934,
+            successRate: 99.4,
+            lastRun: new Date('2025-02-01T08:18:00Z'),
+            
+            fieldMappings: [
+              { source: 'amount', target: 'totalAmount', transformation: 'cents_to_dollars', required: true },
+              { source: 'currency', target: 'currency', transformation: 'uppercase', required: true },
+              { source: 'customer.email', target: 'customerEmail', transformation: 'lowercase', required: true },
+              { source: 'created', target: 'paymentDate', transformation: 'unix_to_date', required: true }
+            ],
+            
+            validationRules: [
+              { field: 'totalAmount', rule: 'positive_number', errorAction: 'reject' },
+              { field: 'currency', rule: 'valid_currency', errorAction: 'reject' }
+            ],
+            
+            businessRules: [
+              { condition: 'amount > 100000', action: 'set_status', value: 'requires_approval' },
+              { condition: 'currency != "USD"', action: 'convert_currency', value: 'USD' }
+            ]
           }
         ],
         
-        buildInProgress: [
+        customFunctions: [
+          { name: 'format_phone', description: 'Format phone number to standard format', usage: 2345 },
+          { name: 'capitalize', description: 'Capitalize first letter of each word', usage: 5678 },
+          { name: 'cents_to_dollars', description: 'Convert cents to dollar amount', usage: 1234 },
+          { name: 'unix_to_date', description: 'Convert Unix timestamp to date', usage: 3456 }
+        ],
+        
+        errorHandling: {
+          totalErrors: 234,
+          fieldValidationErrors: 156,
+          transformationErrors: 45,
+          businessRuleErrors: 33,
+          retryableErrors: 178,
+          permanentErrors: 56,
+          averageRetryTime: 2.3 // minutes
+        }
+      },
+
+      // API Rate Limiting & Quotas
+      rateLimiting: {
+        quotaManagement: [
           {
-            id: 'build-001',
-            name: 'Custom ERP Integration',
-            template: 'REST API Integration',
-            progress: 67.5,
-            estimatedCompletion: new Date('2025-02-05T16:00:00Z'),
-            lastActivity: new Date('2025-02-01T07:30:00Z')
+            apiId: 'api-salesforce',
+            quotaType: 'daily_calls',
+            limit: 5000,
+            used: 3456,
+            remaining: 1544,
+            resetTime: new Date('2025-02-02T00:00:00Z'),
+            warningThreshold: 4000,
+            status: 'ok'
+          },
+          {
+            apiId: 'api-stripe',
+            quotaType: 'requests_per_second',
+            limit: 100,
+            used: 67,
+            remaining: 33,
+            resetTime: new Date('2025-02-01T08:21:00Z'),
+            warningThreshold: 80,
+            status: 'ok'
+          },
+          {
+            apiId: 'api-hubspot',
+            quotaType: 'daily_requests',
+            limit: 100000,
+            used: 87654,
+            remaining: 12346,
+            resetTime: new Date('2025-02-02T00:00:00Z'),
+            warningThreshold: 90000,
+            status: 'warning'
+          }
+        ],
+        
+        rateLimitHits: [
+          {
+            timestamp: new Date('2025-02-01T07:45:00Z'),
+            apiId: 'api-hubspot',
+            endpoint: '/contacts/v1/lists/all/contacts/all',
+            limitType: 'requests_per_second',
+            retryAfter: 2000, // ms
+            action: 'queued'
+          },
+          {
+            timestamp: new Date('2025-02-01T06:30:00Z'),
+            apiId: 'api-salesforce',
+            endpoint: '/services/data/v59.0/query',
+            limitType: 'concurrent_requests',
+            retryAfter: 1000,
+            action: 'delayed'
           }
         ]
       },
 
-      // Integration Health Monitoring
-      healthMonitoring: {
-        overallHealth: 'healthy',
-        monitoringRules: 45,
-        alertsTriggered: 12, // today
-        issuesResolved: 34, // this week
+      // Integration Analytics
+      integrationAnalytics: {
+        usageStatistics: {
+          totalApiCalls: 1245678,
+          totalDataTransferred: 15.7, // GB
+          totalWebhooksDelivered: 34567,
+          averageResponseTime: 189, // ms
+          peakUsageHour: '10:00-11:00',
+          topIntegrationByVolume: 'Salesforce CRM',
+          topIntegrationByUsage: 'Stripe Payments'
+        },
         
-        alerts: [
-          {
-            id: 'alert-001',
-            integration: 'E-Automate',
-            severity: 'warning',
-            type: 'high_error_rate',
-            message: 'Error rate above 5% threshold for Service Calls endpoint',
-            triggeredAt: new Date('2025-02-01T06:30:00Z'),
-            acknowledged: false,
-            assignedTo: 'Integration Team',
-            suggestedAction: 'Check E-Automate system status and network connectivity'
+        performanceMetrics: {
+          responseTimePercentiles: {
+            p50: 156, // ms
+            p95: 789,
+            p99: 2345
           },
-          {
-            id: 'alert-002',
-            integration: 'Salesforce CRM',
-            severity: 'info',
-            type: 'auth_expiring',
-            message: 'Authentication token expires in 30 days',
-            triggeredAt: new Date('2025-02-01T08:00:00Z'),
-            acknowledged: true,
-            assignedTo: 'System Admin',
-            suggestedAction: 'Renew Salesforce authentication token'
+          errorRateByCategory: {
+            authentication: 0.2, // percentage
+            rateLimiting: 0.3,
+            timeout: 0.1,
+            serverError: 0.2
+          },
+          uptimeByIntegration: {
+            'Salesforce CRM': 99.8,
+            'Stripe Payments': 99.9,
+            'HubSpot Marketing': 99.2,
+            'QuickBooks Online': 98.7
           }
-        ],
+        },
         
-        healthChecks: [
-          { name: 'Endpoint Availability', status: 'passing', lastCheck: new Date('2025-02-01T08:45:00Z') },
-          { name: 'Authentication Status', status: 'passing', lastCheck: new Date('2025-02-01T08:44:00Z') },
-          { name: 'Data Consistency', status: 'warning', lastCheck: new Date('2025-02-01T08:43:00Z') },
-          { name: 'Rate Limit Status', status: 'passing', lastCheck: new Date('2025-02-01T08:42:00Z') }
-        ]
+        costAnalysis: {
+          totalMonthlyCost: 2345.67,
+          costByProvider: {
+            'Salesforce': 890.00,
+            'Stripe': 567.89,
+            'HubSpot': 234.56,
+            'Others': 653.22
+          },
+          costPerApiCall: 0.0019,
+          estimatedMonthlySavings: 1234.56 // from automation
+        }
+      },
+
+      // Security & Compliance
+      security: {
+        authentication: {
+          oauth2Integrations: 23,
+          apiKeyIntegrations: 16,
+          certificateBasedAuth: 3,
+          tokenRotationSchedule: 'monthly',
+          lastSecurityAudit: new Date('2025-01-15T00:00:00Z'),
+          vulnerabilityScore: 2.4 // out of 10, lower is better
+        },
+        
+        dataEncryption: {
+          inTransit: true,
+          atRest: true,
+          encryptionStandard: 'AES-256',
+          keyManagement: 'AWS KMS',
+          certificateValidUntil: new Date('2025-12-31T00:00:00Z')
+        },
+        
+        complianceStatus: {
+          gdprCompliant: true,
+          hipaaCompliant: true,
+          soc2Compliant: true,
+          lastComplianceReview: new Date('2025-01-20T00:00:00Z'),
+          dataRetentionPolicies: 'active',
+          auditLogsRetention: '7 years'
+        },
+        
+        accessControl: {
+          rbacEnabled: true,
+          mfaRequired: true,
+          ipWhitelistingActive: false,
+          sessionTimeout: 3600, // seconds
+          failedLoginLockout: 15 // minutes
+        }
       }
     };
 
@@ -500,126 +608,55 @@ router.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) 
   }
 });
 
-// Get integration details
-router.get('/api/integration-hub/integrations/:integrationId', requireAuth, async (req: any, res) => {
+// Get available APIs for marketplace
+router.get('/api/integration-hub/marketplace', requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { integrationId } = req.params;
+    const { category, search } = req.query;
     
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    // Mock detailed integration data
-    const integrationDetails = {
-      id: integrationId,
-      name: 'Salesforce CRM',
-      category: 'CRM',
-      provider: 'Salesforce',
-      status: 'active',
-      
-      configuration: {
-        instanceUrl: 'https://printyx.my.salesforce.com',
-        apiVersion: 'v58.0',
-        authenticationType: 'OAuth2',
-        refreshTokenRotation: true,
-        sandboxMode: false,
-        syncDirection: 'bidirectional',
-        conflictResolution: 'source_wins'
-      },
-      
-      fieldMappings: [
-        { sourceField: 'Account.Name', targetField: 'Business Records.companyName', transformation: 'none' },
-        { sourceField: 'Contact.Email', targetField: 'Business Records.email', transformation: 'lowercase' },
-        { sourceField: 'Opportunity.Amount', targetField: 'Business Records.dealValue', transformation: 'currency_convert' }
-      ],
-      
-      syncHistory: [
-        {
-          timestamp: new Date('2025-02-01T08:30:00Z'),
-          operation: 'full_sync',
-          recordsProcessed: 8934,
-          recordsSuccessful: 8901,
-          recordsFailed: 33,
-          duration: 245, // seconds
-          errors: ['Invalid email format for Contact ID 003XX0000004abc']
-        }
-      ]
-    };
+    // Mock marketplace data with filtering
+    const marketplaceAPIs = [
+      // This would contain the full marketplace data
+      // For now, return a subset for demonstration
+    ];
 
-    res.json(integrationDetails);
+    res.json({ apis: marketplaceAPIs, total: marketplaceAPIs.length });
     
   } catch (error) {
-    console.error('Error fetching integration details:', error);
-    res.status(500).json({ message: 'Failed to fetch integration details' });
+    console.error('Error fetching marketplace APIs:', error);
+    res.status(500).json({ message: 'Failed to fetch marketplace APIs' });
   }
 });
 
-// Install integration from marketplace
-router.post('/api/integration-hub/marketplace/:integrationId/install', requireAuth, async (req: any, res) => {
+// Configure new integration
+router.post('/api/integration-hub/integrations', requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { integrationId } = req.params;
-    const { configuration } = req.body;
+    const { apiId, configuration } = req.body;
     
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    // Mock installation process
-    const installation = {
-      installationId: `install-${Date.now()}`,
-      integrationId,
-      status: 'installing',
-      progress: 0,
-      startTime: new Date(),
-      estimatedCompletion: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-      steps: [
-        { step: 'Validation', status: 'pending' },
-        { step: 'Authentication', status: 'pending' },
-        { step: 'Configuration', status: 'pending' },
-        { step: 'Testing', status: 'pending' },
-        { step: 'Activation', status: 'pending' }
-      ]
+    // Mock integration setup
+    const newIntegration = {
+      id: `integration-${Date.now()}`,
+      apiId,
+      status: 'configuring',
+      configuredAt: new Date(),
+      configuredBy: req.user.email,
+      configuration
     };
 
-    res.status(202).json(installation);
+    res.status(201).json(newIntegration);
     
   } catch (error) {
-    console.error('Error installing integration:', error);
-    res.status(500).json({ message: 'Failed to install integration' });
-  }
-});
-
-// Test integration connection
-router.post('/api/integration-hub/integrations/:integrationId/test', requireAuth, async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const { integrationId } = req.params;
-    
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
-    }
-
-    // Mock connection test
-    const testResult = {
-      testId: `test-${Date.now()}`,
-      integrationId,
-      status: 'running',
-      startTime: new Date(),
-      tests: [
-        { name: 'Authentication', status: 'passed', duration: 234, message: 'Successfully authenticated' },
-        { name: 'Endpoint Connectivity', status: 'passed', duration: 156, message: 'All endpoints accessible' },
-        { name: 'Data Retrieval', status: 'running', duration: null, message: 'Testing data retrieval...' },
-        { name: 'Rate Limiting', status: 'pending', duration: null, message: 'Waiting to test...' }
-      ]
-    };
-
-    res.status(202).json(testResult);
-    
-  } catch (error) {
-    console.error('Error testing integration:', error);
-    res.status(500).json({ message: 'Failed to test integration' });
+    console.error('Error creating integration:', error);
+    res.status(500).json({ message: 'Failed to create integration' });
   }
 });
 
