@@ -2595,6 +2595,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced Workflow Automation Routes
+  app.get('/api/workflow-automation/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const workflowAutomationData = {
+        automationOverview: {
+          totalWorkflows: 89, activeWorkflows: 76, pausedWorkflows: 8, failedWorkflows: 5, successRate: 94.7,
+          executionsToday: 15672, timeSaved: 847.3, errorRate: 2.1, averageExecutionTime: 234, automationCoverage: 78.4,
+          lastExecution: new Date('2025-02-01T08:45:00Z')
+        },
+        activeWorkflows: [
+          {
+            id: 'wf-001', name: 'Customer Onboarding Automation', category: 'Customer Management', status: 'active',
+            trigger: 'customer_created', priority: 'high', version: '2.1.0', createdAt: new Date('2024-12-15T00:00:00Z'),
+            lastModified: new Date('2025-01-28T00:00:00Z'), lastExecution: new Date('2025-02-01T08:30:00Z'),
+            executionCount: 2456, successRate: 96.8, averageExecutionTime: 1245, estimatedTimeSaved: 45.7,
+            steps: [
+              { id: 'step-001', name: 'Send Welcome Email', type: 'email', status: 'active', config: {}, successRate: 98.9, avgExecutionTime: 234 },
+              { id: 'step-002', name: 'Create Initial Service Ticket', type: 'service_ticket', status: 'active', config: {}, successRate: 97.2, avgExecutionTime: 456 }
+            ],
+            triggers: [{ type: 'event', event: 'customer_created', conditions: [{ field: 'customer_type', operator: 'equals', value: 'business' }] }],
+            metrics: { totalExecutions: 2456, successfulExecutions: 2378, failedExecutions: 78, costSavings: 12400 }
+          }
+        ],
+        workflowTemplates: [
+          {
+            id: 'template-001', name: 'Customer Communication Sequence', category: 'Customer Management',
+            description: 'Automated communication workflow for customer lifecycle management', popularity: 87.5,
+            installations: 234, rating: 4.8, complexity: 'beginner', estimatedSetupTime: 30,
+            features: ['Multi-channel communication', 'Personalization engine'], steps: ['Initial contact', 'Follow-up sequence'],
+            integrations: ['email', 'sms', 'crm']
+          }
+        ],
+        rulesEngine: {
+          totalRules: 234, activeRules: 198,
+          ruleCategories: [{ category: 'Customer Management', count: 67, performance: 96.2 }],
+          rules: [
+            {
+              id: 'rule-001', name: 'High-Value Customer Priority', category: 'Customer Management', status: 'active',
+              priority: 'high', description: 'Automatically prioritize service tickets for high-value customers',
+              trigger: 'service_ticket_created', conditions: [{ field: 'customer_value', operator: 'greater_than', value: 50000 }],
+              actions: [{ type: 'set_priority', value: 'urgent' }], executionCount: 1245, successRate: 97.8,
+              lastExecuted: new Date('2025-02-01T07:45:00Z')
+            }
+          ]
+        },
+        performanceAnalytics: {
+          executionTrends: [{ date: '2025-02-01', executions: 15672, successRate: 94.7 }],
+          topPerformingWorkflows: [{ name: 'Invoice Processing Automation', successRate: 99.1, executions: 4567, timeSaved: 156.8 }],
+          errorAnalysis: [{ errorType: 'Integration Timeout', count: 234, percentage: 34.5, trend: 'decreasing' }],
+          businessImpact: { totalTimeSaved: 847.3, totalCostSavings: 234500, errorReduction: 67.8, customerSatisfactionIncrease: 23.4, processEfficiencyGain: 45.7 }
+        }
+      };
+
+      res.json(workflowAutomationData);
+    } catch (error) {
+      console.error('Error fetching workflow automation dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch workflow automation dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
