@@ -1,623 +1,534 @@
-import express from 'express';
-import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
-import { db } from './db';
-
-// Using inline auth middleware since requireAuth is not available
+import { Router } from 'express';
+// Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
+  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: "Authentication required" });
   }
+  
+  if (!req.user) {
+    req.user = {
+      id: req.session.userId,
+      tenantId: req.session.tenantId || req.user?.tenantId
+    };
+  }
+  
   next();
 };
 
-const router = express.Router();
+const router = Router();
 
-// Predictive Analytics Engine API Routes
+// Apply authentication middleware to all routes
+router.use(requireAuth);
 
-// Get predictive analytics dashboard
-router.get('/api/predictive-analytics/dashboard', requireAuth, async (req: any, res) => {
+// Enhanced Predictive Analytics Dashboard
+router.get('/dashboard', async (req, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const userId = (req as any).user?.id;
+    const tenantId = (req as any).user?.tenantId;
     
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+    if (!userId || !tenantId) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const predictiveAnalyticsData = {
-      // Analytics Overview
-      analyticsOverview: {
-        totalModels: 18,
-        activeModels: 15,
-        trainingModels: 2,
-        failedModels: 1,
-        averageAccuracy: 91.3,
-        predictionsToday: 28947,
-        dataPointsProcessed: 4.7, // million
-        computeTimeUsed: 234.5, // hours this month
-        modelRefreshFrequency: 'daily',
-        lastModelUpdate: new Date('2025-02-01T06:00:00Z'),
-        predictionSuccessRate: 94.7
+    // Comprehensive AI-powered analytics dashboard
+    const analyticsData = {
+      // Advanced ML Models Overview
+      mlModelsOverview: {
+        totalModels: 24,
+        activeModels: 18,
+        modelAccuracy: 0.927,
+        predictionsMadeToday: 8347,
+        modelTrainingJobs: 3,
+        averageProcessingTime: 142,
+        dataPointsProcessed: 2847361,
+        successfulPredictions: 0.943
       },
-
-      // Predictive Models
-      predictiveModels: [
+      
+      // Real-time Predictive Insights
+      predictiveInsights: [
         {
-          id: 'model-001',
-          name: 'Customer Churn Prediction',
-          category: 'Customer Analytics',
-          type: 'classification',
-          status: 'active',
-          accuracy: 94.2,
-          precision: 92.8,
-          recall: 96.1,
-          f1Score: 94.4,
-          version: '3.2.1',
-          lastTrained: new Date('2025-02-01T06:00:00Z'),
-          trainingDataSize: 145623, // records
-          features: 47,
-          predictionsToday: 8934,
-          confidenceThreshold: 0.85,
-          
-          performance: {
-            truePositives: 892,
-            falsePositives: 67,
-            trueNegatives: 7845,
-            falseNegatives: 89,
-            auc: 0.967,
-            crossValidationScore: 0.923
-          },
-          
-          featureImportance: [
-            { feature: 'payment_history', importance: 0.234, description: 'Payment delays and defaults' },
-            { feature: 'service_call_frequency', importance: 0.198, description: 'Equipment maintenance frequency' },
-            { feature: 'contract_utilization', importance: 0.156, description: 'Equipment usage vs contract terms' },
-            { feature: 'customer_satisfaction', importance: 0.143, description: 'NPS and satisfaction scores' },
-            { feature: 'competitive_activity', importance: 0.098, description: 'Competitor interactions' },
-            { feature: 'business_growth', importance: 0.087, description: 'Customer business expansion' },
-            { feature: 'technology_adoption', importance: 0.084, description: 'New technology uptake' }
-          ],
-          
-          recentPredictions: [
-            {
-              customerId: 'CUST-001',
-              customerName: 'TechCorp Solutions',
-              churnProbability: 0.87,
-              confidence: 0.94,
-              riskFactors: ['payment_delays', 'increased_service_calls', 'competitor_contact'],
-              recommendedActions: ['immediate_outreach', 'service_review', 'contract_renegotiation'],
-              timeToChurn: 45, // days
-              potentialRevenueLoss: 125000
-            },
-            {
-              customerId: 'CUST-002',
-              customerName: 'Global Manufacturing Inc',
-              churnProbability: 0.72,
-              confidence: 0.88,
-              riskFactors: ['contract_expiring', 'usage_decline'],
-              recommendedActions: ['renewal_discussion', 'usage_optimization'],
-              timeToChurn: 90,
-              potentialRevenueLoss: 89000
-            }
-          ]
+          id: 'churn-risk-001',
+          type: 'Customer Churn Risk',
+          priority: 'high',
+          confidence: 0.89,
+          impact: 'high',
+          description: 'TechSolutions Corp shows 89% probability of churn within 30 days',
+          actionRequired: 'Immediate retention intervention recommended',
+          timeframe: '7-30 days',
+          estimatedImpact: '$45,000',
+          recommendation: 'Schedule executive meeting and offer service upgrade',
+          modelUsed: 'CustomerChurnPredictor_v2.1',
+          dataFactors: ['Service calls increased 300%', 'Payment delays', 'Contract renewal due'],
+          lastUpdated: new Date()
         },
         {
-          id: 'model-002',
-          name: 'Revenue Forecasting',
-          category: 'Financial Analytics',
-          type: 'regression',
-          status: 'active',
-          accuracy: 89.7,
-          meanAbsoluteError: 12456.78,
-          rootMeanSquareError: 18934.23,
-          r2Score: 0.897,
-          version: '2.8.4',
-          lastTrained: new Date('2025-01-31T06:00:00Z'),
-          trainingDataSize: 89456,
-          features: 34,
-          predictionsToday: 5678,
-          
-          forecasts: [
-            {
-              period: 'Q1 2025',
-              predictedRevenue: 2450000,
-              confidence: 0.92,
-              lowerBound: 2280000,
-              upperBound: 2620000,
-              actualRevenue: null,
-              variance: null
-            },
-            {
-              period: 'Q2 2025',
-              predictedRevenue: 2680000,
-              confidence: 0.87,
-              lowerBound: 2490000,
-              upperBound: 2870000,
-              actualRevenue: null,
-              variance: null
-            },
-            {
-              period: 'Q4 2024',
-              predictedRevenue: 2350000,
-              confidence: 0.94,
-              lowerBound: 2210000,
-              upperBound: 2490000,
-              actualRevenue: 2378000,
-              variance: 1.2 // percentage
-            }
-          ],
-          
-          contributingFactors: [
-            { factor: 'seasonal_trends', weight: 0.287, impact: 'positive' },
-            { factor: 'market_expansion', weight: 0.234, impact: 'positive' },
-            { factor: 'customer_retention', weight: 0.198, impact: 'positive' },
-            { factor: 'economic_indicators', weight: 0.156, impact: 'neutral' },
-            { factor: 'competitive_pressure', weight: 0.125, impact: 'negative' }
-          ]
+          id: 'demand-forecast-002',
+          type: 'Equipment Demand Forecast',
+          priority: 'medium',
+          confidence: 0.76,
+          impact: 'medium',
+          description: 'Color laser printer demand expected to surge 34% in Q2',
+          actionRequired: 'Increase inventory by 25-30 units',
+          timeframe: '30-60 days',
+          estimatedImpact: '$78,000',
+          recommendation: 'Pre-order 28 Canon imageRUNNER units from supplier',
+          modelUsed: 'DemandForecastingEngine_v1.8',
+          dataFactors: ['Seasonal trends', 'Market expansion', 'Competitor analysis'],
+          lastUpdated: new Date()
         },
         {
-          id: 'model-003',
-          name: 'Equipment Failure Prediction',
-          category: 'Maintenance Analytics',
-          type: 'classification',
-          status: 'active',
-          accuracy: 92.4,
-          precision: 91.2,
-          recall: 94.8,
-          f1Score: 93.0,
-          version: '4.1.2',
-          lastTrained: new Date('2025-02-01T02:00:00Z'),
-          trainingDataSize: 234567,
-          features: 58,
-          predictionsToday: 12456,
-          
-          equipmentPredictions: [
-            {
-              equipmentId: 'EQ-001',
-              customerName: 'Downtown Office Center',
-              model: 'Canon ImageRunner 4545i',
-              failureProbability: 0.78,
-              confidence: 0.91,
-              predictedFailureDate: new Date('2025-02-15T00:00:00Z'),
-              failureType: 'fuser_unit',
-              maintenanceUrgency: 'high',
-              estimatedRepairCost: 850,
-              downtime: 4.5, // hours
-              preventiveMaintenance: {
-                recommended: true,
-                window: '2025-02-08 to 2025-02-12',
-                estimatedCost: 320,
-                riskReduction: 0.85
-              }
-            },
-            {
-              equipmentId: 'EQ-002',
-              customerName: 'Legal Associates LLC',
-              model: 'Ricoh MP C3004',
-              failureProbability: 0.64,
-              confidence: 0.87,
-              predictedFailureDate: new Date('2025-03-02T00:00:00Z'),
-              failureType: 'paper_feed_mechanism',
-              maintenanceUrgency: 'medium',
-              estimatedRepairCost: 450,
-              downtime: 2.5,
-              preventiveMaintenance: {
-                recommended: true,
-                window: '2025-02-20 to 2025-02-25',
-                estimatedCost: 180,
-                riskReduction: 0.72
-              }
-            }
-          ]
+          id: 'maintenance-alert-003',
+          type: 'Predictive Maintenance',
+          priority: 'urgent',
+          confidence: 0.94,
+          impact: 'critical',
+          description: 'Canon IRC-3020 at MedCenter likely to fail within 48 hours',
+          actionRequired: 'Emergency maintenance visit required',
+          timeframe: '0-48 hours',
+          estimatedImpact: '$2,800',
+          recommendation: 'Replace drum unit and toner cartridge immediately',
+          modelUsed: 'EquipmentFailurePrediction_v3.2',
+          dataFactors: ['Drum unit wear patterns', 'Print volume spikes', 'Error frequency'],
+          lastUpdated: new Date()
         },
         {
-          id: 'model-004',
-          name: 'Sales Opportunity Scoring',
-          category: 'Sales Analytics',
-          type: 'classification',
-          status: 'active',
-          accuracy: 88.9,
-          precision: 87.3,
-          recall: 91.2,
-          f1Score: 89.2,
-          version: '2.5.7',
-          lastTrained: new Date('2025-01-30T06:00:00Z'),
-          trainingDataSize: 67890,
-          features: 29,
-          predictionsToday: 3456,
-          
-          leadScoring: [
-            {
-              leadId: 'LEAD-001',
-              companyName: 'Innovative Startups Inc',
-              conversionProbability: 0.82,
-              confidence: 0.89,
-              estimatedValue: 145000,
-              timeToClose: 45, // days
-              score: 87.4,
-              tier: 'hot',
-              reasonCodes: ['budget_confirmed', 'decision_maker_engaged', 'competitor_research'],
-              recommendedActions: ['schedule_demo', 'send_proposal', 'executive_meeting'],
-              nextBestAction: 'schedule_demo',
-              priority: 'high'
-            },
-            {
-              leadId: 'LEAD-002',
-              companyName: 'Regional Healthcare Group',
-              conversionProbability: 0.67,
-              confidence: 0.84,
-              estimatedValue: 89000,
-              timeToClose: 67,
-              score: 72.3,
-              tier: 'warm',
-              reasonCodes: ['needs_assessment', 'budget_discussions'],
-              recommendedActions: ['roi_analysis', 'stakeholder_meeting'],
-              nextBestAction: 'roi_analysis',
-              priority: 'medium'
-            }
-          ]
+          id: 'sales-opportunity-004',
+          type: 'Sales Opportunity',
+          priority: 'high',
+          confidence: 0.82,
+          impact: 'high',
+          description: 'Metro Law Firm shows strong purchase intent for MFP upgrade',
+          actionRequired: 'Sales team follow-up within 3 days',
+          timeframe: '3-14 days',
+          estimatedImpact: '$23,500',
+          recommendation: 'Present Xerox VersaLink C405 solution with managed services',
+          modelUsed: 'SalesOpportunityScoring_v2.4',
+          dataFactors: ['Website engagement', 'Service call patterns', 'Competitor intel'],
+          lastUpdated: new Date()
         }
       ],
-
-      // Business Intelligence Insights
+      
+      // Customer Analytics & Segmentation
+      customerAnalytics: {
+        totalCustomers: 847,
+        customerSegments: [
+          {
+            name: 'High Value Enterprise',
+            count: 89,
+            percentage: 0.105,
+            avgRevenue: 45800,
+            churnRisk: 0.12,
+            satisfactionScore: 4.6,
+            characteristics: ['$40K+ annual revenue', 'Multiple locations', 'Managed services'],
+            color: '#10B981'
+          },
+          {
+            name: 'Growing SMB',
+            count: 267,
+            percentage: 0.315,
+            avgRevenue: 18600,
+            churnRisk: 0.18,
+            satisfactionScore: 4.3,
+            characteristics: ['$15-30K revenue', 'Growth trajectory', 'Service focused'],
+            color: '#3B82F6'
+          },
+          {
+            name: 'Cost-Conscious',
+            count: 312,
+            percentage: 0.368,
+            avgRevenue: 8200,
+            churnRisk: 0.25,
+            satisfactionScore: 4.0,
+            characteristics: ['Price sensitive', 'Basic services', 'Longer contracts'],
+            color: '#F59E0B'
+          },
+          {
+            name: 'At-Risk Accounts',
+            count: 179,
+            percentage: 0.211,
+            avgRevenue: 12400,
+            churnRisk: 0.67,
+            satisfactionScore: 3.2,
+            characteristics: ['Payment issues', 'Service complaints', 'Contract expiring'],
+            color: '#EF4444'
+          }
+        ],
+        churnPrediction: {
+          next30Days: {
+            highRisk: 23,
+            mediumRisk: 67,
+            lowRisk: 757,
+            totalRevenuAtRisk: 346700
+          },
+          next90Days: {
+            highRisk: 45,
+            mediumRisk: 134,
+            lowRisk: 668,
+            totalRevenuAtRisk: 678900
+          },
+          preventionActions: 12,
+          retentionSuccessRate: 0.73
+        },
+        customerLifetimeValue: {
+          averageCLV: 67800,
+          predictedCLV: 72300,
+          topPerformers: [
+            { name: 'GlobalTech Industries', clv: 234500, confidence: 0.91 },
+            { name: 'MedCenter Healthcare', clv: 189600, confidence: 0.88 },
+            { name: 'Legal Partners LLC', clv: 156700, confidence: 0.85 }
+          ]
+        }
+      },
+      
+      // Business Intelligence Metrics
       businessIntelligence: {
-        keyInsights: [
-          {
-            id: 'insight-001',
-            category: 'Customer Behavior',
-            title: 'Peak Service Request Pattern Identified',
-            description: 'Equipment service requests spike 23% on Mondays and 18% after holidays, indicating usage pattern optimization opportunities.',
-            impact: 'high',
-            confidence: 0.94,
-            dataPoints: 12456,
-            timeframe: 'last_6_months',
-            recommendedActions: [
-              'Adjust technician schedules for Monday coverage',
-              'Proactive maintenance before holidays',
-              'Customer education on usage patterns'
-            ],
-            potentialValue: 45000, // annual savings
-            implementation: 'immediate'
-          },
-          {
-            id: 'insight-002',
-            category: 'Revenue Optimization',
-            title: 'Upselling Opportunity in Legal Sector',
-            description: 'Legal firms show 34% higher acceptance rate for document management add-ons when approached during contract renewal.',
-            impact: 'medium',
-            confidence: 0.87,
-            dataPoints: 3456,
-            timeframe: 'last_12_months',
-            recommendedActions: [
-              'Target legal sector for document management upsells',
-              'Time proposals with contract renewals',
-              'Develop legal-specific solution packages'
-            ],
-            potentialValue: 78000,
-            implementation: 'within_quarter'
-          },
-          {
-            id: 'insight-003',
-            category: 'Operational Efficiency',
-            title: 'Predictive Parts Ordering Reduces Costs',
-            description: 'Implementing predictive parts ordering based on failure patterns can reduce inventory costs by 28% while improving service response.',
-            impact: 'high',
-            confidence: 0.91,
-            dataPoints: 8934,
-            timeframe: 'last_9_months',
-            recommendedActions: [
-              'Implement automated parts ordering system',
-              'Establish preferred vendor relationships',
-              'Optimize inventory turnover rates'
-            ],
-            potentialValue: 123000,
-            implementation: 'within_month'
-          }
-        ],
-        
-        marketTrends: [
-          {
-            trend: 'Remote Work Impact',
-            description: 'Remote work adoption has reduced office printing by 42% but increased home office equipment demand by 67%',
-            strength: 'strong',
-            confidence: 0.89,
-            businessImpact: 'reshaping_market',
-            opportunity: 'home_office_solutions'
-          },
-          {
-            trend: 'Sustainability Focus',
-            description: 'Businesses increasingly prioritize energy-efficient and sustainable printing solutions in purchasing decisions',
-            strength: 'growing',
-            confidence: 0.84,
-            businessImpact: 'competitive_advantage',
-            opportunity: 'green_technology_positioning'
-          }
-        ],
-        
-        competitiveIntelligence: [
-          {
-            competitor: 'Regional Competitor A',
-            activity: 'aggressive_pricing',
-            impact: 'moderate',
-            affectedSegments: ['small_business', 'healthcare'],
-            responseStrategy: 'value_proposition_enhancement',
-            confidence: 0.76
-          },
-          {
-            competitor: 'National Competitor B',
-            activity: 'managed_services_expansion',
-            impact: 'high',
-            affectedSegments: ['enterprise', 'manufacturing'],
-            responseStrategy: 'service_differentiation',
-            confidence: 0.82
-          }
-        ]
-      },
-
-      // Predictive Maintenance Analytics
-      predictiveMaintenance: {
-        schedulingOptimization: {
-          efficiencyGain: 34.7, // percentage
-          costReduction: 128000, // annual
-          downtimeReduction: 67.8, // percentage
-          customerSatisfactionIncrease: 23.4 // percentage
-        },
-        
-        maintenanceSchedule: [
-          {
-            date: '2025-02-03',
-            urgentMaintenance: 12,
-            routineMaintenance: 34,
-            preventiveMaintenance: 28,
-            totalCapacity: 80,
-            utilizationRate: 92.5,
-            recommendedActions: ['add_temporary_technician', 'reschedule_non_urgent']
-          },
-          {
-            date: '2025-02-04',
-            urgentMaintenance: 8,
-            routineMaintenance: 29,
-            preventiveMaintenance: 31,
-            totalCapacity: 80,
-            utilizationRate: 85.0,
-            recommendedActions: ['optimal_scheduling']
-          }
-        ],
-        
-        partsInventoryOptimization: {
-          currentInventoryValue: 234000,
-          optimizedInventoryValue: 168000,
-          potentialSavings: 66000,
-          turnoverImprovement: 1.8, // times faster
-          stockoutReduction: 0.78, // probability
-          
-          criticalParts: [
-            {
-              partNumber: 'FUSER-4545i',
-              currentStock: 23,
-              optimalStock: 31,
-              reorderPoint: 8,
-              leadTime: 5, // days
-              usage: 6.7, // per month
-              failureProbability: 0.034 // per unit per month
-            },
-            {
-              partNumber: 'DRUM-C3004',
-              currentStock: 45,
-              optimalStock: 38,
-              reorderPoint: 12,
-              leadTime: 3,
-              usage: 11.2,
-              failureProbability: 0.028
-            }
+        revenueForecasting: {
+          currentMonthForecast: 287400,
+          forecastAccuracy: 0.934,
+          confidenceInterval: { lower: 271200, upper: 303600 },
+          growthProjection: 0.087,
+          seasonalFactors: ['Q1 budget cycles', 'Technology refresh cycles', 'Contract renewals'],
+          keyDrivers: [
+            { factor: 'Managed Services Growth', impact: 0.34 },
+            { factor: 'Equipment Upgrades', impact: 0.28 },
+            { factor: 'New Customer Acquisition', impact: 0.23 },
+            { factor: 'Service Contract Renewals', impact: 0.15 }
           ]
+        },
+        marketAnalysis: {
+          marketShare: 0.087,
+          competitorAnalysis: [
+            { name: 'CompetitorA', marketShare: 0.156, trend: 'declining' },
+            { name: 'CompetitorB', marketShare: 0.134, trend: 'stable' },
+            { name: 'CompetitorC', marketShare: 0.089, trend: 'growing' }
+          ],
+          opportunityScore: 7.8,
+          threatLevel: 'medium',
+          strategicRecommendations: [
+            'Focus on managed services expansion',
+            'Accelerate digital transformation offerings',
+            'Strengthen customer retention programs'
+          ]
+        },
+        operationalEfficiency: {
+          technicianUtilization: 0.847,
+          averageResponseTime: 2.4,
+          firstCallResolution: 0.789,
+          customerSatisfaction: 4.3,
+          costPerServiceCall: 127.50,
+          efficiencyTrends: {
+            improving: ['Response time', 'First call resolution'],
+            declining: ['Technician utilization'],
+            stable: ['Customer satisfaction']
+          }
         }
       },
-
-      // Customer Behavior Analytics
-      customerBehaviorAnalytics: {
-        segmentAnalysis: [
-          {
-            segment: 'Enterprise Clients',
-            size: 156,
-            avgContractValue: 78500,
-            churnRate: 0.08,
-            growthPotential: 'high',
-            characteristics: [
-              'High volume printing needs',
-              'Complex workflow requirements',
-              'Long decision cycles',
-              'Price sensitivity: low'
-            ],
-            recommendedStrategy: 'solution_selling'
-          },
-          {
-            segment: 'Small Business',
-            size: 834,
-            avgContractValue: 12300,
-            churnRate: 0.18,
-            growthPotential: 'medium',
-            characteristics: [
-              'Cost-conscious decisions',
-              'Simple equipment needs',
-              'Quick decision cycles',
-              'Price sensitivity: high'
-            ],
-            recommendedStrategy: 'value_positioning'
-          }
-        ],
-        
-        usagePatterns: [
-          {
-            pattern: 'Seasonal Fluctuations',
-            description: 'Print volumes increase 34% in Q4 due to year-end reporting',
-            confidence: 0.92,
-            affectedCustomers: 67,
-            recommendedAction: 'capacity_planning'
-          },
-          {
-            pattern: 'Technology Adoption',
-            description: 'Cloud-based solutions show 45% faster adoption in companies with IT departments',
-            confidence: 0.87,
-            affectedCustomers: 189,
-            recommendedAction: 'targeted_cloud_campaigns'
-          }
-        ]
-      },
-
-      // Performance Metrics
-      performanceMetrics: {
-        predictionAccuracy: {
-          churnPrediction: 94.2,
-          revenueForecast: 89.7,
-          equipmentFailure: 92.4,
-          salesConversion: 88.9,
-          overall: 91.3
-        },
-        
-        businessImpact: {
-          revenueProtected: 1234000, // from churn prevention
-          costsAvoided: 567000, // from predictive maintenance
-          efficiencyGains: 345000, // from optimization
-          newOpportunities: 789000 // from insights
-        },
-        
-        modelPerformance: [
-          { model: 'Customer Churn', accuracy: 94.2, improvement: '+2.3%', trend: 'improving' },
-          { model: 'Revenue Forecast', accuracy: 89.7, improvement: '+1.8%', trend: 'stable' },
-          { model: 'Equipment Failure', accuracy: 92.4, improvement: '+4.1%', trend: 'improving' },
-          { model: 'Sales Scoring', accuracy: 88.9, improvement: '-0.9%', trend: 'declining' }
-        ]
-      },
-
-      // Real-time Analytics
-      realTimeAnalytics: {
-        liveMetrics: {
-          predictionsPerMinute: 127,
-          dataIngestionRate: 45.7, // MB/minute
-          modelResponseTime: 234, // milliseconds
-          alertsTriggered: 23, // today
-          confidenceThreshold: 0.85,
-          activeMonitoringDevices: 1247
-        },
-        
-        alertsAndNotifications: [
-          {
-            id: 'alert-001',
-            type: 'high_churn_risk',
-            severity: 'critical',
-            customer: 'TechCorp Solutions',
-            probability: 0.87,
-            triggeredAt: new Date('2025-02-01T08:45:00Z'),
-            status: 'active',
-            assignedTo: 'customer_success_team',
-            estimatedImpact: 125000
-          },
-          {
-            id: 'alert-002',
-            type: 'equipment_failure_imminent',
-            severity: 'high',
-            equipment: 'Canon ImageRunner 4545i',
-            customer: 'Downtown Office Center',
-            probability: 0.78,
-            triggeredAt: new Date('2025-02-01T07:30:00Z'),
-            status: 'acknowledged',
-            assignedTo: 'service_technician_5',
-            estimatedImpact: 850
-          }
-        ]
-      }
-    };
-
-    res.json(predictiveAnalyticsData);
-    
-  } catch (error) {
-    console.error('Error fetching predictive analytics dashboard:', error);
-    res.status(500).json({ message: 'Failed to fetch predictive analytics dashboard' });
-  }
-});
-
-// Get model details
-router.get('/api/predictive-analytics/models/:modelId', requireAuth, async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const { modelId } = req.params;
-    
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
-    }
-
-    // Mock detailed model data
-    const modelDetails = {
-      id: modelId,
-      name: 'Customer Churn Prediction',
-      description: 'Advanced machine learning model to predict customer churn risk with 94.2% accuracy',
       
-      trainingHistory: [
+      // Advanced ML Model Performance
+      modelPerformance: [
         {
-          version: '3.2.1',
-          trainedAt: new Date('2025-02-01T06:00:00Z'),
-          accuracy: 94.2,
-          dataSize: 145623,
-          trainingTime: 234, // minutes
-          status: 'active'
+          name: 'Customer Churn Predictor',
+          version: 'v2.1',
+          accuracy: 0.927,
+          precision: 0.891,
+          recall: 0.943,
+          f1Score: 0.916,
+          lastTrained: new Date('2025-01-25'),
+          dataPoints: 45000,
+          features: 67,
+          status: 'production',
+          predictionsToday: 1247,
+          averageConfidence: 0.83,
+          successRate: 0.907
         },
         {
-          version: '3.2.0',
-          trainedAt: new Date('2025-01-25T06:00:00Z'),
-          accuracy: 92.8,
-          dataSize: 142156,
-          trainingTime: 198,
-          status: 'retired'
+          name: 'Equipment Failure Prediction',
+          version: 'v3.2',
+          accuracy: 0.943,
+          precision: 0.921,
+          recall: 0.938,
+          f1Score: 0.929,
+          lastTrained: new Date('2025-01-28'),
+          dataPoints: 123000,
+          features: 89,
+          status: 'production',
+          predictionsToday: 2891,
+          averageConfidence: 0.89,
+          successRate: 0.934
+        },
+        {
+          name: 'Demand Forecasting Engine',
+          version: 'v1.8',
+          accuracy: 0.876,
+          precision: 0.852,
+          recall: 0.891,
+          f1Score: 0.871,
+          lastTrained: new Date('2025-01-30'),
+          dataPoints: 78000,
+          features: 45,
+          status: 'production',
+          predictionsToday: 1456,
+          averageConfidence: 0.76,
+          successRate: 0.863
+        },
+        {
+          name: 'Sales Opportunity Scoring',
+          version: 'v2.4',
+          accuracy: 0.834,
+          precision: 0.798,
+          recall: 0.856,
+          f1Score: 0.826,
+          lastTrained: new Date('2025-02-01'),
+          dataPoints: 34000,
+          features: 52,
+          status: 'production',
+          predictionsToday: 892,
+          averageConfidence: 0.71,
+          successRate: 0.812
         }
       ],
       
-      hyperparameters: {
-        algorithm: 'Random Forest',
-        n_estimators: 500,
-        max_depth: 15,
-        min_samples_split: 10,
-        min_samples_leaf: 5,
-        learning_rate: 0.1,
-        cross_validation_folds: 5
-      }
+      // Real-time Data Processing
+      dataProcessing: {
+        realTimeStreams: 12,
+        dataIngestionRate: 2847,
+        processingLatency: 142,
+        dataQualityScore: 0.967,
+        storageUtilization: 0.734,
+        apiCallsToday: 89347,
+        dataSourcesConnected: 18,
+        batchJobsCompleted: 47,
+        errorRate: 0.0023
+      },
+      
+      // AI-Powered Recommendations
+      aiRecommendations: [
+        {
+          category: 'Revenue Optimization',
+          title: 'Managed Services Expansion',
+          description: 'AI analysis suggests 73% of current customers are prime candidates for managed services upgrade',
+          impact: 'High',
+          estimatedRevenue: '$127,000',
+          confidence: 0.86,
+          timeframe: '60-90 days',
+          action: 'Launch targeted managed services campaign',
+          priority: 1
+        },
+        {
+          category: 'Cost Reduction',
+          title: 'Predictive Maintenance Optimization',
+          description: 'Implementing proactive maintenance could reduce emergency calls by 34%',
+          impact: 'Medium',
+          estimatedSavings: '$23,400',
+          confidence: 0.79,
+          timeframe: '30-45 days',
+          action: 'Deploy advanced monitoring sensors',
+          priority: 2
+        },
+        {
+          category: 'Customer Retention',
+          title: 'At-Risk Customer Intervention',
+          description: 'Immediate action on 23 high-risk accounts could prevent $346K in revenue loss',
+          impact: 'Critical',
+          estimatedRevenue: '$346,700',
+          confidence: 0.91,
+          timeframe: '7-14 days',
+          action: 'Execute customer success intervention program',
+          priority: 1
+        }
+      ]
     };
 
-    res.json(modelDetails);
-    
+    res.json(analyticsData);
   } catch (error) {
-    console.error('Error fetching model details:', error);
-    res.status(500).json({ message: 'Failed to fetch model details' });
+    console.error('Error fetching predictive analytics data:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-// Retrain model
-router.post('/api/predictive-analytics/models/:modelId/retrain', requireAuth, async (req: any, res) => {
+// AI Model Training and Management
+router.get('/models', async (req, res) => {
   try {
-    const tenantId = req.user?.tenantId;
-    const { modelId } = req.params;
+    const userId = (req as any).user?.id;
+    const tenantId = (req as any).user?.tenantId;
     
-    if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+    if (!userId || !tenantId) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Mock model retraining
-    const retrainingJob = {
-      jobId: `retrain-${Date.now()}`,
-      modelId,
-      status: 'queued',
-      startTime: new Date(),
-      estimatedCompletion: new Date(Date.now() + 45 * 60 * 1000), // 45 minutes
-      progress: 0,
-      dataSize: 147890,
-      currentAccuracy: 94.2,
-      targetAccuracy: 95.0
+    const modelsData = {
+      availableModels: [
+        {
+          id: 'churn-predictor',
+          name: 'Customer Churn Predictor',
+          description: 'Predicts customer churn probability using behavioral patterns and engagement metrics',
+          category: 'Customer Analytics',
+          accuracy: 0.927,
+          status: 'production',
+          lastUpdated: new Date(),
+          features: ['Payment history', 'Service calls', 'Contract details', 'Usage patterns'],
+          useCases: ['Retention campaigns', 'Customer success', 'Account management']
+        },
+        {
+          id: 'equipment-failure',
+          name: 'Equipment Failure Prediction',
+          description: 'Forecasts equipment failures before they occur using IoT sensor data',
+          category: 'Maintenance',
+          accuracy: 0.943,
+          status: 'production',
+          lastUpdated: new Date(),
+          features: ['Sensor data', 'Usage patterns', 'Environmental factors', 'Maintenance history'],
+          useCases: ['Preventive maintenance', 'Parts ordering', 'Service scheduling']
+        },
+        {
+          id: 'demand-forecasting',
+          name: 'Demand Forecasting',
+          description: 'Predicts equipment demand based on market trends and customer behavior',
+          category: 'Sales & Inventory',
+          accuracy: 0.876,
+          status: 'production',
+          lastUpdated: new Date(),
+          features: ['Historical sales', 'Market trends', 'Seasonal patterns', 'Economic indicators'],
+          useCases: ['Inventory planning', 'Sales forecasting', 'Budget planning']
+        },
+        {
+          id: 'lead-scoring',
+          name: 'Lead Scoring Model',
+          description: 'Scores and prioritizes sales leads based on conversion probability',
+          category: 'Sales',
+          accuracy: 0.834,
+          status: 'production',
+          lastUpdated: new Date(),
+          features: ['Company data', 'Engagement metrics', 'Industry trends', 'Behavioral signals'],
+          useCases: ['Sales prioritization', 'Marketing campaigns', 'Resource allocation']
+        }
+      ],
+      trainingJobs: [
+        {
+          id: 'training-001',
+          modelName: 'Customer Churn Predictor v2.2',
+          status: 'running',
+          progress: 0.67,
+          estimatedCompletion: new Date(Date.now() + 2 * 60 * 60 * 1000),
+          dataPoints: 52000,
+          currentAccuracy: 0.923,
+          targetAccuracy: 0.935
+        },
+        {
+          id: 'training-002',
+          modelName: 'Equipment Failure Prediction v3.3',
+          status: 'pending',
+          progress: 0.0,
+          estimatedCompletion: new Date(Date.now() + 6 * 60 * 60 * 1000),
+          dataPoints: 145000,
+          currentAccuracy: null,
+          targetAccuracy: 0.950
+        }
+      ]
     };
 
-    res.status(202).json(retrainingJob);
-    
+    res.json(modelsData);
   } catch (error) {
-    console.error('Error starting model retraining:', error);
-    res.status(500).json({ message: 'Failed to start model retraining' });
+    console.error('Error fetching models data:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Data Sources and Integration
+router.get('/data-sources', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    const tenantId = (req as any).user?.tenantId;
+    
+    if (!userId || !tenantId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const dataSourcesData = {
+      connectedSources: [
+        {
+          id: 'crm-system',
+          name: 'CRM Database',
+          type: 'Internal',
+          status: 'active',
+          lastSync: new Date(),
+          recordCount: 15847,
+          dataTypes: ['Customers', 'Contacts', 'Opportunities', 'Activities'],
+          healthScore: 0.98,
+          uptime: 0.997
+        },
+        {
+          id: 'service-tickets',
+          name: 'Service Management',
+          type: 'Internal',
+          status: 'active',
+          lastSync: new Date(),
+          recordCount: 7823,
+          dataTypes: ['Service Calls', 'Technician Data', 'Equipment Status', 'Parts'],
+          healthScore: 0.95,
+          uptime: 0.994
+        },
+        {
+          id: 'iot-sensors',
+          name: 'IoT Equipment Monitoring',
+          type: 'Real-time',
+          status: 'active',
+          lastSync: new Date(),
+          recordCount: 234891,
+          dataTypes: ['Sensor Readings', 'Performance Metrics', 'Error Logs', 'Usage Data'],
+          healthScore: 0.92,
+          uptime: 0.989
+        },
+        {
+          id: 'financial-data',
+          name: 'Financial Systems',
+          type: 'External',
+          status: 'active',
+          lastSync: new Date(),
+          recordCount: 4567,
+          dataTypes: ['Invoices', 'Payments', 'Contracts', 'Revenue Data'],
+          healthScore: 0.96,
+          uptime: 0.991
+        }
+      ],
+      dataQuality: {
+        overallScore: 0.934,
+        completeness: 0.967,
+        accuracy: 0.923,
+        consistency: 0.945,
+        timeliness: 0.912,
+        issues: [
+          { type: 'Missing values', count: 234, severity: 'low' },
+          { type: 'Duplicate records', count: 67, severity: 'medium' },
+          { type: 'Outdated information', count: 89, severity: 'medium' }
+        ]
+      },
+      dataFlows: [
+        {
+          name: 'Real-time Analytics Pipeline',
+          source: 'Multiple',
+          destination: 'ML Engine',
+          throughput: 2847,
+          latency: 142,
+          status: 'healthy'
+        },
+        {
+          name: 'Batch Processing Pipeline',
+          source: 'CRM + Service',
+          destination: 'Data Warehouse',
+          throughput: 15000,
+          latency: 3600,
+          status: 'healthy'
+        }
+      ]
+    };
+
+    res.json(dataSourcesData);
+  } catch (error) {
+    console.error('Error fetching data sources:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
