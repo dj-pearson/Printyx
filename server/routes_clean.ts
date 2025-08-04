@@ -163,7 +163,6 @@ function parseCSV(buffer: Buffer): Promise<any[]> {
 function calculateTieredAmount(
   totalCopies: number,
   tieredRates: any[],
-<<<<<<< HEAD
   baseRate: number,
 ): number {
   if (!tieredRates || tieredRates.length === 0) {
@@ -346,11 +345,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },
-<<<<<<< HEAD
     }),
-=======
     })
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Auth routes
@@ -377,11 +373,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching tenants:", error);
         res.status(500).json({ message: "Failed to fetch tenants" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Multi-location support routes for enhanced tenant selector
@@ -423,11 +416,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching locations:", error);
         res.status(500).json({ error: "Failed to fetch locations" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -463,11 +453,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching regions:", error);
         res.status(500).json({ error: "Failed to fetch regions" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -517,11 +504,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching tenant summary:", error);
         res.status(500).json({ error: "Failed to fetch tenant summary" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Dashboard routes - using authenticated user's tenant
@@ -543,13 +527,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .where(
                 and(
                   eq(businessRecords.tenantId, tenantId),
-<<<<<<< HEAD
                   eq(businessRecords.recordType, "customer"),
                 ),
-=======
                   eq(businessRecords.recordType, "customer")
                 )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               ),
 
             // Active contracts count
@@ -559,13 +540,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .where(
                 and(
                   eq(contracts.tenantId, tenantId),
-<<<<<<< HEAD
                   eq(contracts.status, "active"),
                 ),
-=======
                   eq(contracts.status, "active")
                 )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               ),
 
             // Monthly revenue from invoices (current month)
@@ -577,13 +555,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .where(
                 and(
                   eq(invoices.tenantId, tenantId),
-<<<<<<< HEAD
                   sql`date_trunc('month', ${invoices.createdAt}) = date_trunc('month', current_date)`,
                 ),
-=======
                   sql`date_trunc('month', ${invoices.createdAt}) = date_trunc('month', current_date)`
                 )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               ),
 
             // Open service tickets count
@@ -593,13 +568,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .where(
                 and(
                   eq(serviceTickets.tenantId, tenantId),
-<<<<<<< HEAD
                   eq(serviceTickets.status, "open"),
                 ),
-=======
                   eq(serviceTickets.status, "open")
                 )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               ),
           ]);
 
@@ -616,11 +588,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching dashboard metrics:", error);
         res.status(500).json({ message: "Failed to fetch dashboard metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -644,11 +613,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(serviceTickets)
           .leftJoin(
             businessRecords,
-<<<<<<< HEAD
             eq(serviceTickets.customerId, businessRecords.id),
-=======
             eq(serviceTickets.customerId, businessRecords.id)
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           )
           .where(eq(serviceTickets.tenantId, tenantId))
           .orderBy(desc(serviceTickets.createdAt))
@@ -659,11 +625,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching recent tickets:", error);
         res.status(500).json({ message: "Failed to fetch recent tickets" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -687,21 +650,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(
             and(
               eq(businessRecords.tenantId, tenantId),
-<<<<<<< HEAD
               eq(businessRecords.recordType, "customer"),
             ),
           )
           .groupBy(businessRecords.id, businessRecords.companyName)
           .orderBy(
             desc(sql`coalesce(sum(${contracts.monthlyBase}::numeric), 0)`),
-=======
               eq(businessRecords.recordType, "customer")
             )
           )
           .groupBy(businessRecords.id, businessRecords.companyName)
           .orderBy(
             desc(sql`coalesce(sum(${contracts.monthlyBase}::numeric), 0)`)
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           )
           .limit(10);
 
@@ -709,21 +669,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customers.map((customer) => ({
             ...customer,
             accountValue: Number(customer.accountValue || 0),
-<<<<<<< HEAD
           })),
-=======
           }))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
       } catch (error) {
         console.error("Error fetching top customers:", error);
         res.status(500).json({ message: "Failed to fetch top customers" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -748,13 +702,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(
             and(
               eq(inventoryItems.tenantId, tenantId),
-<<<<<<< HEAD
               sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`,
             ),
-=======
               sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`
             )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           )
           .orderBy(asc(inventoryItems.currentStock))
           .limit(20);
@@ -764,11 +715,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching alerts:", error);
         res.status(500).json({ message: "Failed to fetch alerts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Demo Scheduling Routes
@@ -834,13 +782,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-<<<<<<< HEAD
             eq(businessRecords.recordType, "customer"),
           ),
-=======
             eq(businessRecords.recordType, "customer")
           )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         )
         .orderBy(asc(businessRecords.companyName));
 
@@ -925,11 +870,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             conversionRate: Math.floor(Math.random() * 20) + 25,
             averageDealSize: Math.floor(Math.random() * 10000) + 25000,
           };
-<<<<<<< HEAD
         },
-=======
         }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       ).reverse();
 
       res.json(sampleTrends);
@@ -1154,7 +1096,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch dispatch recommendations" });
       }
-<<<<<<< HEAD
     },
   );
 
@@ -1205,7 +1146,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ];
 
-=======
     }
   );
 
@@ -1256,7 +1196,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ];
 
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         res.json(technicianAvailability);
       } catch (error) {
         console.error("Error fetching technician availability:", error);
@@ -1264,11 +1203,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch technician availability" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get("/api/dispatch/analytics", requireAuth, async (req: any, res) => {
@@ -1629,11 +1565,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch predictive maintenance" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Commission Management Routes
@@ -1764,7 +1697,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             calculatedBy: "system",
           },
         ];
-<<<<<<< HEAD
 
         res.json(calculations);
       } catch (error) {
@@ -1776,7 +1708,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-=======
 
         res.json(calculations);
       } catch (error) {
@@ -1788,7 +1719,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   app.get("/api/commission/analytics", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
@@ -1986,11 +1916,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch customer health scores" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -2070,11 +1997,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching usage analytics:", error);
         res.status(500).json({ message: "Failed to fetch usage analytics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -2146,11 +2070,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching satisfaction data:", error);
         res.status(500).json({ message: "Failed to fetch satisfaction data" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Remote Monitoring & IoT Integration Routes
@@ -2236,11 +2157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching equipment status:", error);
         res.status(500).json({ message: "Failed to fetch equipment status" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -2303,11 +2221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching fleet overview:", error);
         res.status(500).json({ message: "Failed to fetch fleet overview" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Document Management & Workflow Automation Routes
@@ -2409,11 +2324,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching document library:", error);
         res.status(500).json({ message: "Failed to fetch document library" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -2490,11 +2402,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching workflow data:", error);
         res.status(500).json({ message: "Failed to fetch workflow data" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Mobile Service App Routes
@@ -2631,11 +2540,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching route data:", error);
         res.status(500).json({ message: "Failed to fetch route data" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Advanced Analytics Dashboard Routes
@@ -2966,21 +2872,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error(
           "Error fetching business process optimization data:",
-<<<<<<< HEAD
           error,
-=======
           error
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.status(500).json({
           message: "Failed to fetch business process optimization data",
         });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Security & Compliance Management Routes
@@ -3333,11 +3233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch incident response dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // AI-Powered Analytics & Intelligence Routes
@@ -3744,11 +3641,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch integration hub dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Advanced Workflow Automation Routes
@@ -3920,11 +3814,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch workflow automation dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Import and register the new predictive analytics routes
@@ -4104,11 +3995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch predictive analytics dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Security & Compliance Management Routes
@@ -4284,11 +4172,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch security compliance dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // ERP Integration Hub Routes
@@ -4542,11 +4427,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch ERP integration dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Advanced Integration Hub Routes
@@ -4770,11 +4652,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch integration hub dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Apply tenant resolution middleware to all API routes
@@ -4787,11 +4666,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tenantId = req.tenantId || user.tenantId;
 
       console.log(
-<<<<<<< HEAD
         `[CONTACTS DEBUG] User: ${user?.id}, TenantId: ${tenantId}, req.tenantId: ${req.tenantId}, user.tenantId: ${user?.tenantId}`,
-=======
         `[CONTACTS DEBUG] User: ${user?.id}, TenantId: ${tenantId}, req.tenantId: ${req.tenantId}, user.tenantId: ${user?.tenantId}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       );
 
       // Get query parameters
@@ -4816,11 +4692,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let filters: any = { tenantId };
 
       console.log(
-<<<<<<< HEAD
         `[CONTACTS DEBUG] Filters before role logic: ${JSON.stringify(filters)}`,
-=======
         `[CONTACTS DEBUG] Filters before role logic: ${JSON.stringify(filters)}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       );
 
       // Role-based access control
@@ -4863,11 +4736,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               gte: new Date(
                 yesterday.getFullYear(),
                 yesterday.getMonth(),
-<<<<<<< HEAD
                 yesterday.getDate(),
-=======
                 yesterday.getDate()
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               ),
               lt: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
@@ -4899,11 +4769,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               gte: new Date(
                 yesterday.getFullYear(),
                 yesterday.getMonth(),
-<<<<<<< HEAD
                 yesterday.getDate(),
-=======
                 yesterday.getDate()
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               ),
               lt: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
@@ -4926,13 +4793,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(
         `[CONTACTS DEBUG] Final filters: ${JSON.stringify(
-<<<<<<< HEAD
           filters,
         )}, search: '${search}', sortBy: ${sortBy}, offset: ${offset}, limit: ${limitNum}`,
-=======
           filters
         )}, search: '${search}', sortBy: ${sortBy}, offset: ${offset}, limit: ${limitNum}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       );
 
       const contacts = await storage.getContacts({
@@ -4950,11 +4814,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(
-<<<<<<< HEAD
         `[CONTACTS DEBUG] Results: contacts.length=${contacts.length}, total=${total}`,
-=======
         `[CONTACTS DEBUG] Results: contacts.length=${contacts.length}, total=${total}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       );
 
       res.json({
@@ -5106,11 +4967,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching customers:", error);
         res.status(500).json({ message: "Failed to fetch customers" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -5136,11 +4994,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching customer:", error);
         res.status(500).json({ message: "Failed to fetch customer" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5166,11 +5021,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating customer:", error);
         res.status(500).json({ message: "Failed to create customer" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Company management routes (new primary business entity)
@@ -5191,11 +5043,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching companies:", error);
         res.status(500).json({ message: "Failed to fetch companies" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -5218,11 +5067,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching company:", error);
         res.status(500).json({ message: "Failed to fetch company" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5246,11 +5092,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating company:", error);
         res.status(500).json({ message: "Failed to create company" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.put(
@@ -5268,11 +5111,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updatedCompany = await storage.updateCompany(
           id,
           req.body,
-<<<<<<< HEAD
           tenantId,
-=======
           tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         if (!updatedCompany) {
           return res.status(404).json({ message: "Company not found" });
@@ -5282,11 +5122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating company:", error);
         res.status(500).json({ message: "Failed to update company" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Company contact routes
@@ -5313,21 +5150,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // It might be a business record ID, try to get the business record
           const businessRecord = await storage.getBusinessRecord(
             companyId,
-<<<<<<< HEAD
             tenantId,
-=======
             tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           if (businessRecord) {
             // Try to find an existing company with the same name
             const existingCompanyByName = await storage.getCompanyByName(
               businessRecord.company_name || businessRecord.name,
-<<<<<<< HEAD
               tenantId,
-=======
               tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
 
             if (existingCompanyByName) {
@@ -5345,22 +5176,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const contacts = await storage.getCompanyContacts(
           actualCompanyId,
-<<<<<<< HEAD
           tenantId,
-=======
           tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(contacts);
       } catch (error) {
         console.error("Error fetching company contacts:", error);
         res.status(500).json({ message: "Failed to fetch company contacts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5387,21 +5212,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // It might be a business record ID, try to get the business record
           const businessRecord = await storage.getBusinessRecord(
             companyId,
-<<<<<<< HEAD
             tenantId,
-=======
             tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           if (businessRecord) {
             // Try to find an existing company with the same name
             const existingCompanyByName = await storage.getCompanyByName(
               businessRecord.company_name || businessRecord.name,
-<<<<<<< HEAD
               tenantId,
-=======
               tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
 
             if (existingCompanyByName) {
@@ -5447,11 +5266,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         res.status(500).json({ message: "Failed to create company contact" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Lead management routes (potential copier buyers for Printyx clients)
@@ -5543,11 +5359,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error converting lead:", error);
         res.status(500).json({ message: "Failed to convert lead to customer" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Lead activities
@@ -5568,11 +5381,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching lead activities:", error);
         res.status(500).json({ message: "Failed to fetch lead activities" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5598,11 +5408,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating lead activity:", error);
         res.status(500).json({ message: "Failed to create lead activity" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Lead contacts
@@ -5623,11 +5430,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching lead contacts:", error);
         res.status(500).json({ message: "Failed to fetch lead contacts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5652,11 +5456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating lead contact:", error);
         res.status(500).json({ message: "Failed to create lead contact" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Lead related records
@@ -5679,11 +5480,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch lead related records" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Product Management Routes
@@ -5705,11 +5503,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching product models:", error);
         res.status(500).json({ message: "Failed to fetch product models" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -5732,11 +5527,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching product model:", error);
         res.status(500).json({ message: "Failed to fetch product model" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5759,11 +5551,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating product model:", error);
         res.status(500).json({ message: "Failed to create product model" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.patch(
@@ -5786,11 +5575,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating product model:", error);
         res.status(500).json({ message: "Failed to update product model" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Product Accessories
@@ -5812,11 +5598,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch product accessories" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -5832,11 +5615,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         const accessories = await storage.getProductAccessories(
           modelId,
-<<<<<<< HEAD
           tenantId,
-=======
           tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(accessories);
       } catch (error) {
@@ -5845,11 +5625,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch product accessories" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5872,11 +5649,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating product accessory:", error);
         res.status(500).json({ message: "Failed to create product accessory" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5901,11 +5675,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating product accessory:", error);
         res.status(500).json({ message: "Failed to create product accessory" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.patch(
@@ -5922,11 +5693,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const accessory = await storage.updateProductAccessory(
           id,
           req.body,
-<<<<<<< HEAD
           tenantId,
-=======
           tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         if (!accessory) {
           return res
@@ -5938,11 +5706,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating product accessory:", error);
         res.status(500).json({ message: "Failed to update product accessory" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Professional Services
@@ -5964,11 +5729,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch professional services" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -5993,11 +5755,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to create professional service" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Service Products
@@ -6017,11 +5776,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching service products:", error);
         res.status(500).json({ message: "Failed to fetch service products" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -6044,11 +5800,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating service product:", error);
         res.status(500).json({ message: "Failed to create service product" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Software Products
@@ -6068,11 +5821,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching software products:", error);
         res.status(500).json({ message: "Failed to fetch software products" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -6095,11 +5845,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating software product:", error);
         res.status(500).json({ message: "Failed to create software product" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Supplies
@@ -6152,11 +5899,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching managed services:", error);
         res.status(500).json({ message: "Failed to fetch managed services" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -6179,14 +5923,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating managed service:", error);
         res.status(500).json({ message: "Failed to create managed service" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= ACCOUNTING API ROUTES =============
 
   // Vendors Management
   app.get("/api/vendors", requireAuth, async (req, res) => {
@@ -6377,11 +6117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedEntry = await storage.updateJournalEntry(
         id,
         updateData,
-<<<<<<< HEAD
         tenantId,
-=======
         tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       );
       if (!updatedEntry) {
         return res.status(404).json({ message: "Journal entry not found" });
@@ -6477,14 +6214,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating company contacts:", error);
         res.status(500).json({ message: "Failed to create contacts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= METER BILLING API ROUTES =============
 
   // Contract Tiered Rates Management
   app.get(
@@ -6505,11 +6238,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch contract tiered rates" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -6534,11 +6264,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to create contract tiered rate" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Automated Invoice Generation
@@ -6556,11 +6283,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get all pending meter readings
         const pendingReadings = await storage.getMeterReadingsByStatus(
           tenantId,
-<<<<<<< HEAD
           "pending",
-=======
           "pending"
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         const generatedInvoices = [];
@@ -6569,21 +6293,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Calculate billing amounts using tiered rates
             const contract = await storage.getContract(
               reading.contractId,
-<<<<<<< HEAD
               tenantId,
-=======
               tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
             if (!contract) continue;
 
             // Get tiered rates for this contract
             const tieredRates = await storage.getContractTieredRatesByContract(
-<<<<<<< HEAD
               reading.contractId,
-=======
               reading.contractId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
 
             let blackAmount = 0;
@@ -6597,11 +6315,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               blackAmount = calculateTieredAmount(
                 reading.blackCopies,
                 blackRates,
-<<<<<<< HEAD
                 parseFloat(contract.blackRate?.toString() || "0"),
-=======
                 parseFloat(contract.blackRate?.toString() || "0")
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
             }
 
@@ -6613,11 +6328,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               colorAmount = calculateTieredAmount(
                 reading.colorCopies,
                 colorRates,
-<<<<<<< HEAD
                 parseFloat(contract.colorRate?.toString() || "0"),
-=======
                 parseFloat(contract.colorRate?.toString() || "0")
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
             }
 
@@ -6641,11 +6353,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: "pending",
               description: `Meter billing for ${format(
                 new Date(reading.readingDate),
-<<<<<<< HEAD
                 "MMMM yyyy",
-=======
                 "MMMM yyyy"
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               )}`,
             });
 
@@ -6657,22 +6366,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 billingAmount: totalAmount.toString(),
                 invoiceId: invoice.id,
               },
-<<<<<<< HEAD
               tenantId,
-=======
               tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
 
             generatedInvoices.push(invoice);
           } catch (readingError) {
             console.error(
               `Error processing reading ${reading.id}:`,
-<<<<<<< HEAD
               readingError,
-=======
               readingError
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
           }
         }
@@ -6685,11 +6388,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error generating invoices:", error);
         res.status(500).json({ message: "Failed to generate invoices" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Contract Profitability Analysis
@@ -6709,7 +6409,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const profitabilityData = contracts.map((contract) => {
           const contractInvoices = invoices.filter(
-<<<<<<< HEAD
             (inv) => inv.contractId === contract.id,
           );
           const totalRevenue = contractInvoices.reduce(
@@ -6722,7 +6421,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           const equipmentCost = parseFloat(
             contract.equipmentCost?.toString() || "0",
-=======
             (inv) => inv.contractId === contract.id
           );
           const totalRevenue = contractInvoices.reduce(
@@ -6735,7 +6433,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           const equipmentCost = parseFloat(
             contract.equipmentCost?.toString() || "0"
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           const monthlyCosts =
             parseFloat(contract.monthlyBase?.toString() || "0") * 12; // Assume yearly cost
@@ -6768,11 +6465,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to calculate contract profitability" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -6795,18 +6489,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const contacts = await storage.getContactsByCompany(
           companyId,
-<<<<<<< HEAD
           user.tenantId,
-=======
           user.tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(contacts);
       } catch (error) {
         console.error("Error fetching company contacts:", error);
         res.status(500).json({ message: "Failed to fetch contacts" });
       }
-<<<<<<< HEAD
     },
   );
 
@@ -6851,7 +6541,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const { contactId } = req.params;
 
-=======
     }
   );
 
@@ -6864,7 +6553,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { contactId } = req.params;
         const contactData = req.body;
 
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         // Simple session-based authentication check
         if (!req.session.userId) {
           return res.status(401).json({ message: "Not authenticated" });
@@ -6875,7 +6563,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Access denied" });
         }
 
-<<<<<<< HEAD
         await storage.deleteContact(contactId, user.tenantId);
         res.json({ message: "Contact deleted successfully" });
       } catch (error) {
@@ -6883,7 +6570,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ message: "Failed to delete contact" });
       }
     },
-=======
         const updatedContact = await storage.updateContact(contactId, {
           ...contactData,
           tenantId: user.tenantId,
@@ -6923,7 +6609,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ message: "Failed to delete contact" });
       }
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // CSV Import Endpoints
@@ -6968,11 +6653,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
                 error instanceof Error ? error.message : "Unknown error"
-<<<<<<< HEAD
               }`,
-=======
               }`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
             skipped++;
           }
@@ -6988,11 +6670,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error importing product models:", error);
         res.status(500).json({ message: "Failed to import product models" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Supplies Import
@@ -7035,11 +6714,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
                 error instanceof Error ? error.message : "Unknown error"
-<<<<<<< HEAD
               }`,
-=======
               }`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
             skipped++;
           }
@@ -7055,11 +6731,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error importing supplies:", error);
         res.status(500).json({ message: "Failed to import supplies" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Managed Services Import
@@ -7102,11 +6775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
                 error instanceof Error ? error.message : "Unknown error"
-<<<<<<< HEAD
               }`,
-=======
               }`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
             skipped++;
           }
@@ -7122,11 +6792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error importing managed services:", error);
         res.status(500).json({ message: "Failed to import managed services" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Placeholder endpoints for other product types
@@ -7142,11 +6809,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         skipped: 0,
         errors: ["Import for Product Accessories not yet implemented"],
       });
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -7161,11 +6825,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         skipped: 0,
         errors: ["Import for Professional Services not yet implemented"],
       });
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -7180,11 +6841,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         skipped: 0,
         errors: ["Import for Service Products not yet implemented"],
       });
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -7199,11 +6857,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         skipped: 0,
         errors: ["Import for Software Products not yet implemented"],
       });
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // CPC Rates
@@ -7224,11 +6879,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching CPC rates:", error);
         res.status(500).json({ message: "Failed to fetch CPC rates" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -7253,11 +6905,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating CPC rate:", error);
         res.status(500).json({ message: "Failed to create CPC rate" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Simple health check
@@ -7348,11 +6997,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching workflow rules:", error);
         res.status(500).json({ message: "Failed to fetch workflow rules" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.post(
@@ -7376,11 +7022,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating workflow rule:", error);
         res.status(500).json({ message: "Failed to create workflow rule" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.patch(
@@ -7398,11 +7041,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating workflow rule:", error);
         res.status(500).json({ message: "Failed to update workflow rule" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.delete(
@@ -7419,11 +7059,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error deleting workflow rule:", error);
         res.status(500).json({ message: "Failed to delete workflow rule" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Advanced Reporting Routes
@@ -7460,11 +7097,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching revenue analytics:", error);
         res.status(500).json({ message: "Failed to fetch revenue analytics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -7494,11 +7128,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch customer profitability" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -7538,11 +7169,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch service performance" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Deal Management Routes
@@ -7724,11 +7352,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(
         "[DEAL DEBUG] Processed deal data:",
-<<<<<<< HEAD
         JSON.stringify(dealData, null, 2),
-=======
         JSON.stringify(dealData, null, 2)
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       );
 
       const deal = await storage.createDeal(dealData);
@@ -7760,11 +7385,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating deal:", error);
         res.status(500).json({ message: "Failed to update deal" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Update deal stage (for drag and drop)
@@ -7789,11 +7411,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error updating deal stage:", error);
         res.status(500).json({ message: "Failed to update deal stage" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Deal Stages Routes
@@ -7814,11 +7433,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching deal stages:", error);
         res.status(500).json({ message: "Failed to fetch deal stages" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create deal stage
@@ -7842,11 +7458,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating deal stage:", error);
         res.status(500).json({ message: "Failed to create deal stage" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Initialize default deal stages for a tenant (called on first access)
@@ -7939,11 +7552,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error initializing deal stages:", error);
         res.status(500).json({ message: "Failed to initialize deal stages" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Deal Activities Routes
@@ -7965,11 +7575,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching deal activities:", error);
         res.status(500).json({ message: "Failed to fetch deal activities" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create deal activity
@@ -7997,11 +7604,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating deal activity:", error);
         res.status(500).json({ message: "Failed to create deal activity" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Register integration and deployment routes
@@ -8063,11 +7667,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching performance metrics:", error);
         res.status(500).json({ error: "Failed to fetch performance metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -8084,31 +7685,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching system alerts:", error);
         res.status(500).json({ error: "Failed to fetch system alerts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Pricing Management Routes
   app.get(
     "/api/pricing/company-settings",
     requireAuth,
-<<<<<<< HEAD
     getCompanyPricingSettings,
-=======
     getCompanyPricingSettings
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
   app.post(
     "/api/pricing/company-settings",
     requireAuth,
-<<<<<<< HEAD
     updateCompanyPricingSettings,
-=======
     updateCompanyPricingSettings
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
   app.get("/api/pricing/products", requireAuth, getProductPricing);
   app.post("/api/pricing/products", requireAuth, createProductPricing);
@@ -8183,11 +7775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch products with pricing" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Bulk update pricing
@@ -8215,11 +7804,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             console.error(
               `Error updating pricing for ${update.productId}:`,
-<<<<<<< HEAD
               error,
-=======
               error
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
           }
         }
@@ -8229,11 +7815,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error bulk updating pricing:", error);
         res.status(500).json({ message: "Failed to bulk update pricing" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get("/api/pricing/products", requireAuth, getProductPricing);
@@ -8248,11 +7831,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(
     "/api/pricing/quotes/:quotePricingId/line-items",
     requireAuth,
-<<<<<<< HEAD
     getQuoteLineItems,
-=======
     getQuoteLineItems
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
   app.post("/api/pricing/line-items", requireAuth, createQuoteLineItem);
   app.put("/api/pricing/line-items/:id", requireAuth, updateQuoteLineItem);
@@ -8282,11 +7862,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/user/avatar",
     requireAuth,
     avatarUpload.single("avatar"),
-<<<<<<< HEAD
     uploadAvatar,
-=======
     uploadAvatar
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
   app.get("/api/user/export", requireAuth, exportUserData);
   app.delete("/api/user/delete", requireAuth, deleteUserAccount);
@@ -8300,22 +7877,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const equipment = await storage.getCustomerEquipment(
           req.params.id,
-<<<<<<< HEAD
           req.tenantId,
-=======
           req.tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(equipment);
       } catch (error) {
         console.error("Error fetching customer equipment:", error);
         res.status(500).json({ message: "Failed to fetch customer equipment" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -8326,11 +7897,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const meterReadings = await storage.getCustomerMeterReadings(
           req.params.id,
-<<<<<<< HEAD
           req.tenantId,
-=======
           req.tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(meterReadings);
       } catch (error) {
@@ -8339,11 +7907,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch customer meter readings" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -8354,22 +7919,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const invoices = await storage.getCustomerInvoices(
           req.params.id,
-<<<<<<< HEAD
           req.tenantId,
-=======
           req.tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(invoices);
       } catch (error) {
         console.error("Error fetching customer invoices:", error);
         res.status(500).json({ message: "Failed to fetch customer invoices" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -8380,11 +7939,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const serviceTickets = await storage.getCustomerServiceTickets(
           req.params.id,
-<<<<<<< HEAD
           req.tenantId,
-=======
           req.tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(serviceTickets);
       } catch (error) {
@@ -8393,11 +7949,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch customer service tickets" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -8408,22 +7961,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const contracts = await storage.getCustomerContracts(
           req.params.id,
-<<<<<<< HEAD
           req.tenantId,
-=======
           req.tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res.json(contracts);
       } catch (error) {
         console.error("Error fetching customer contracts:", error);
         res.status(500).json({ message: "Failed to fetch customer contracts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Import and register proposals routes
@@ -8438,7 +7985,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const rootAdminRoutes = await import("./routes-root-admin");
   app.use("/api/root-admin", rootAdminRoutes.default);
 
-  // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
   app.get(
@@ -8493,11 +8039,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch maintenance schedules" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get due schedules (upcoming or overdue)
@@ -8543,11 +8086,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching due schedules:", error);
         res.status(500).json({ error: "Failed to fetch due schedules" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create maintenance schedule
@@ -8614,11 +8154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create maintenance schedule" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Analytics endpoint
@@ -8643,11 +8180,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -8662,14 +8196,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch maintenance analytics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= CUSTOMER SELF-SERVICE PORTAL ROUTES =============
 
   // Get customer service requests
   app.get(
@@ -8697,11 +8227,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching service requests:", error);
         res.status(500).json({ error: "Failed to fetch service requests" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create service request
@@ -8766,11 +8293,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating service request:", error);
         res.status(500).json({ error: "Failed to create service request" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get customer equipment
@@ -8796,11 +8320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching customer equipment:", error);
         res.status(500).json({ error: "Failed to fetch customer equipment" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get supply orders
@@ -8826,11 +8347,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching supply orders:", error);
         res.status(500).json({ error: "Failed to fetch supply orders" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get knowledge base articles
@@ -8851,11 +8369,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           whereConditions.push(
             `(title ILIKE $${queryParams.length + 1} OR content ILIKE $${
               queryParams.length + 1
-<<<<<<< HEAD
             })`,
-=======
             })`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(`%${search}%`);
         }
@@ -8881,14 +8396,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch knowledge base articles" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= ADVANCED BILLING ENGINE ROUTES =============
 
   // Get billing analytics
   app.get(
@@ -8910,26 +8421,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         const totalRevenue = parseFloat(results[1].rows[0].total_revenue);
         const outstandingAmount = parseFloat(
-<<<<<<< HEAD
           results[2].rows[0].outstanding_amount,
         );
         const monthlyRecurring = parseFloat(
           results[5].rows[0].monthly_recurring,
-=======
           results[2].rows[0].outstanding_amount
         );
         const monthlyRecurring = parseFloat(
           results[5].rows[0].monthly_recurring
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -8938,11 +8443,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           outstandingAmount,
           overdueInvoices: parseInt(results[3].rows[0].overdue_invoices),
           averageInvoiceAmount: parseFloat(
-<<<<<<< HEAD
             results[4].rows[0].average_invoice_amount,
-=======
             results[4].rows[0].average_invoice_amount
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
           collectionRate:
             totalRevenue > 0
@@ -8955,11 +8457,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching billing analytics:", error);
         res.status(500).json({ error: "Failed to fetch billing analytics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get billing invoices
@@ -8998,11 +8497,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching billing invoices:", error);
         res.status(500).json({ error: "Failed to fetch billing invoices" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get billing configurations
@@ -9039,11 +8535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch billing configurations" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create billing configuration
@@ -9078,11 +8571,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (is_default) {
           await db.$client.query(
             "UPDATE billing_configurations SET is_default = false WHERE tenant_id = $1",
-<<<<<<< HEAD
             [tenantId],
-=======
             [tenantId]
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
         }
 
@@ -9122,11 +8612,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create billing configuration" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get billing cycles
@@ -9152,11 +8639,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching billing cycles:", error);
         res.status(500).json({ error: "Failed to fetch billing cycles" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Run billing cycle
@@ -9259,11 +8743,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             invoicesGenerated,
             totalAmount,
             cycle.id,
-<<<<<<< HEAD
           ],
-=======
           ]
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.status(201).json({
@@ -9276,11 +8757,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error running billing cycle:", error);
         res.status(500).json({ error: "Failed to run billing cycle" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get billing adjustments
@@ -9311,11 +8789,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching billing adjustments:", error);
         res.status(500).json({ error: "Failed to fetch billing adjustments" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create billing adjustment
@@ -9362,14 +8837,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating billing adjustment:", error);
         res.status(500).json({ error: "Failed to create billing adjustment" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= FINANCIAL FORECASTING ROUTES =============
 
   // Get financial metrics
   app.get(
@@ -9389,26 +8860,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
           totalRevenueForecast: parseFloat(
-<<<<<<< HEAD
             results[0].rows[0].total_revenue_forecast,
           ),
           cashFlowProjection: parseFloat(
             results[1].rows[0].cash_flow_projection,
-=======
             results[0].rows[0].total_revenue_forecast
           ),
           cashFlowProjection: parseFloat(
             results[1].rows[0].cash_flow_projection
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
           profitMargin: parseFloat(results[2].rows[0].avg_profit_margin),
           growthProjection: parseFloat(results[3].rows[0].avg_growth_rate),
@@ -9419,11 +8884,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching financial metrics:", error);
         res.status(500).json({ error: "Failed to fetch financial metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get financial forecasts
@@ -9458,11 +8920,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching financial forecasts:", error);
         res.status(500).json({ error: "Failed to fetch financial forecasts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create financial forecast
@@ -9520,11 +8979,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating financial forecast:", error);
         res.status(500).json({ error: "Failed to create financial forecast" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get cash flow projections
@@ -9552,11 +9008,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch cash flow projections" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create cash flow projection
@@ -9630,11 +9083,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create cash flow projection" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get profitability analysis
@@ -9671,11 +9121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch profitability analysis" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Run profitability analysis
@@ -9701,22 +9148,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .leftJoin(invoices, eq(businessRecords.id, invoices.customerId))
           .leftJoin(
             serviceTickets,
-<<<<<<< HEAD
             eq(businessRecords.id, serviceTickets.customerId),
-=======
             eq(businessRecords.id, serviceTickets.customerId)
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           )
           .where(
             and(
               eq(businessRecords.tenantId, tenantId),
-<<<<<<< HEAD
               eq(businessRecords.recordType, "customer"),
             ),
-=======
               eq(businessRecords.recordType, "customer")
             )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           )
           .groupBy(businessRecords.id, businessRecords.companyName)
           .having(sql`sum(${invoices.totalAmount}) > 0`)
@@ -9774,11 +9215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error running profitability analysis:", error);
         res.status(500).json({ error: "Failed to run profitability analysis" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get financial KPIs
@@ -9804,14 +9242,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching financial KPIs:", error);
         res.status(500).json({ error: "Failed to fetch financial KPIs" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= EQUIPMENT LIFECYCLE MANAGEMENT ROUTES =============
 
   // Get equipment lifecycle metrics
   app.get(
@@ -9833,18 +9267,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
           totalEquipmentInProcess: parseInt(results[0].rows[0].total_equipment),
           pendingDeliveries: parseInt(results[1].rows[0].pending_deliveries),
           scheduledInstallations: parseInt(
-<<<<<<< HEAD
             results[2].rows[0].scheduled_installations,
           ),
           activeAssets: parseInt(results[3].rows[0].active_assets),
@@ -9853,7 +9283,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ),
           customerSatisfactionRating: parseFloat(
             results[5].rows[0].avg_satisfaction,
-=======
             results[2].rows[0].scheduled_installations
           ),
           activeAssets: parseInt(results[3].rows[0].active_assets),
@@ -9862,7 +9291,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ),
           customerSatisfactionRating: parseFloat(
             results[5].rows[0].avg_satisfaction
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
         });
       } catch (error) {
@@ -9871,11 +9299,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch equipment lifecycle metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get equipment lifecycle stages
@@ -9894,11 +9319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (stage && stage !== "all") {
           whereConditions.push(
-<<<<<<< HEAD
             `els.current_stage = $${queryParams.length + 1}`,
-=======
             `els.current_stage = $${queryParams.length + 1}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(stage);
         }
@@ -9928,11 +9350,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch equipment lifecycle stages" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get purchase orders
@@ -9962,11 +9381,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching purchase orders:", error);
         res.status(500).json({ error: "Failed to fetch purchase orders" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create purchase order
@@ -10059,11 +9475,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating purchase order:", error);
         res.status(500).json({ error: "Failed to create purchase order" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get delivery schedules
@@ -10089,11 +9502,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching delivery schedules:", error);
         res.status(500).json({ error: "Failed to fetch delivery schedules" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create delivery schedule
@@ -10153,11 +9563,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating delivery schedule:", error);
         res.status(500).json({ error: "Failed to create delivery schedule" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get installations
@@ -10189,11 +9596,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching installations:", error);
         res.status(500).json({ error: "Failed to fetch installations" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create installation
@@ -10250,11 +9654,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating installation:", error);
         res.status(500).json({ error: "Failed to create installation" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get asset tracking
@@ -10283,14 +9684,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching asset tracking:", error);
         res.status(500).json({ error: "Failed to fetch asset tracking" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= COMMISSION MANAGEMENT ROUTES =============
 
   // Get commission metrics
   app.get(
@@ -10312,21 +9709,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
           totalCommissionsPaid: parseFloat(results[0].rows[0].total_paid),
           pendingCommissions: parseFloat(
-<<<<<<< HEAD
             results[1].rows[0].pending_commissions,
-=======
             results[1].rows[0].pending_commissions
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
           averageCommissionRate: parseFloat(results[2].rows[0].avg_rate),
           topPerformerCommission: parseFloat(results[3].rows[0].top_commission),
@@ -10337,11 +9728,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching commission metrics:", error);
         res.status(500).json({ error: "Failed to fetch commission metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission structures
@@ -10369,11 +9757,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch commission structures" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create commission structure
@@ -10431,11 +9816,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create commission structure" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission calculations
@@ -10456,29 +9838,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           switch (period) {
             case "current_month":
               whereConditions.push(
-<<<<<<< HEAD
                 `EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`,
-=======
                 `EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "last_month":
               whereConditions.push(
-<<<<<<< HEAD
                 `EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month') AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')`,
-=======
                 `EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month') AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "current_quarter":
               whereConditions.push(
-<<<<<<< HEAD
                 `EXTRACT(QUARTER FROM cc.calculation_period_start) = EXTRACT(QUARTER FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`,
-=======
                 `EXTRACT(QUARTER FROM cc.calculation_period_start) = EXTRACT(QUARTER FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
           }
@@ -10486,11 +9859,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (status && status !== "all") {
           whereConditions.push(
-<<<<<<< HEAD
             `cc.payment_status = $${queryParams.length + 1}`,
-=======
             `cc.payment_status = $${queryParams.length + 1}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(status);
         }
@@ -10515,11 +9885,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch commission calculations" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Run commission calculations
@@ -10608,11 +9975,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Commission calculations completed",
           calculations_created: Math.min(
             sampleCalculations.length,
-<<<<<<< HEAD
             users.length,
-=======
             users.length
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
         });
       } catch (error) {
@@ -10621,11 +9985,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to run commission calculations" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get sales quotas
@@ -10654,11 +10015,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching sales quotas:", error);
         res.status(500).json({ error: "Failed to fetch sales quotas" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create sales quota
@@ -10708,11 +10066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating sales quota:", error);
         res.status(500).json({ error: "Failed to create sales quota" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission payments
@@ -10741,11 +10096,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching commission payments:", error);
         res.status(500).json({ error: "Failed to fetch commission payments" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission disputes
@@ -10774,11 +10126,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching commission disputes:", error);
         res.status(500).json({ error: "Failed to fetch commission disputes" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create commission dispute
@@ -10831,14 +10180,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating commission dispute:", error);
         res.status(500).json({ error: "Failed to create commission dispute" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= REMOTE MONITORING ROUTES =============
 
   // Get monitoring metrics
   app.get(
@@ -10860,11 +10205,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -10874,22 +10216,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           criticalAlerts: parseInt(results[3].rows[0].critical_alerts),
           averageUptime: parseFloat(results[4].rows[0].avg_uptime),
           devicesRequiringAttention: parseInt(
-<<<<<<< HEAD
             results[5].rows[0].devices_attention,
-=======
             results[5].rows[0].devices_attention
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
         });
       } catch (error) {
         console.error("Error fetching monitoring metrics:", error);
         res.status(500).json({ error: "Failed to fetch monitoring metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get IoT devices
@@ -10913,11 +10249,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (status && status !== "all") {
           whereConditions.push(
-<<<<<<< HEAD
             `iot.device_status = $${queryParams.length + 1}`,
-=======
             `iot.device_status = $${queryParams.length + 1}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(status);
         }
@@ -10938,11 +10271,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching IoT devices:", error);
         res.status(500).json({ error: "Failed to fetch IoT devices" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Register IoT device
@@ -11003,11 +10333,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error registering IoT device:", error);
         res.status(500).json({ error: "Failed to register IoT device" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get equipment status
@@ -11036,11 +10363,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching equipment status:", error);
         res.status(500).json({ error: "Failed to fetch equipment status" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get predictive alerts
@@ -11080,11 +10404,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching predictive alerts:", error);
         res.status(500).json({ error: "Failed to fetch predictive alerts" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get performance trends
@@ -11113,11 +10434,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching performance trends:", error);
         res.status(500).json({ error: "Failed to fetch performance trends" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Sync devices (simulate data collection)
@@ -11141,11 +10459,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update device ping time
           await db.$client.query(
             `UPDATE iot_devices SET last_ping_time = NOW(), last_data_received = NOW() WHERE id = $1`,
-<<<<<<< HEAD
             [device.id],
-=======
             [device.id]
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
 
           // Create sample equipment status
@@ -11184,14 +10499,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error syncing devices:", error);
         res.status(500).json({ error: "Failed to sync devices" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= MOBILE SERVICE APP ROUTES =============
 
   // Get mobile app metrics
   app.get(
@@ -11213,11 +10524,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -11227,22 +10535,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           averageResponseTime: parseFloat(results[3].rows[0].avg_response_time),
           completionRate: parseFloat(results[4].rows[0].completion_rate),
           customerSatisfaction: parseFloat(
-<<<<<<< HEAD
             results[5].rows[0].customer_satisfaction,
-=======
             results[5].rows[0].customer_satisfaction
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
         });
       } catch (error) {
         console.error("Error fetching mobile metrics:", error);
         res.status(500).json({ error: "Failed to fetch mobile metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get mobile work orders
@@ -11271,11 +10573,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (technician && technician !== "all") {
           whereConditions.push(
-<<<<<<< HEAD
             `mwo.assigned_technician_id = $${queryParams.length + 1}`,
-=======
             `mwo.assigned_technician_id = $${queryParams.length + 1}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(technician);
         }
@@ -11298,11 +10597,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching mobile work orders:", error);
         res.status(500).json({ error: "Failed to fetch mobile work orders" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create mobile work order
@@ -11365,11 +10661,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating mobile work order:", error);
         res.status(500).json({ error: "Failed to create mobile work order" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get mobile parts inventory
@@ -11397,11 +10690,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch mobile parts inventory" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get mobile field orders
@@ -11431,11 +10721,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching mobile field orders:", error);
         res.status(500).json({ error: "Failed to fetch mobile field orders" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create mobile field order
@@ -11499,11 +10786,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating mobile field order:", error);
         res.status(500).json({ error: "Failed to create mobile field order" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get technician locations
@@ -11536,11 +10820,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching technician locations:", error);
         res.status(500).json({ error: "Failed to fetch technician locations" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get mobile app sessions
@@ -11569,11 +10850,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching mobile app sessions:", error);
         res.status(500).json({ error: "Failed to fetch mobile app sessions" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Sync mobile data
@@ -11624,14 +10902,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error syncing mobile data:", error);
         res.status(500).json({ error: "Failed to sync mobile data" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= SERVICE ANALYTICS ROUTES =============
 
   // Get analytics metrics
   app.get(
@@ -11653,42 +10927,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
           totalServiceCalls: parseInt(results[0].rows[0].total_service_calls),
           averageResponseTime: parseFloat(results[1].rows[0].avg_response_time),
           customerSatisfaction: parseFloat(
-<<<<<<< HEAD
             results[2].rows[0].customer_satisfaction,
-=======
             results[2].rows[0].customer_satisfaction
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
           revenueGrowth: parseFloat(results[3].rows[0].revenue_growth),
           utilizationRate: parseFloat(results[4].rows[0].utilization_rate),
           firstCallResolution: parseFloat(
-<<<<<<< HEAD
             results[5].rows[0].first_call_resolution,
-=======
             results[5].rows[0].first_call_resolution
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
         });
       } catch (error) {
         console.error("Error fetching analytics metrics:", error);
         res.status(500).json({ error: "Failed to fetch analytics metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get performance metrics
@@ -11724,11 +10986,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching performance metrics:", error);
         res.status(500).json({ error: "Failed to fetch performance metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get technician performance analytics
@@ -11756,21 +11015,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error(
           "Error fetching technician performance analytics:",
-<<<<<<< HEAD
           error,
-=======
           error
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
         res
           .status(500)
           .json({ error: "Failed to fetch technician performance analytics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get customer service analytics
@@ -11801,11 +11054,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch customer service analytics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get trend analysis
@@ -11841,11 +11091,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching trend analysis:", error);
         res.status(500).json({ error: "Failed to fetch trend analysis" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get BI dashboards
@@ -11883,11 +11130,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching BI dashboards:", error);
         res.status(500).json({ error: "Failed to fetch BI dashboards" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create BI dashboard
@@ -11943,11 +11187,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating BI dashboard:", error);
         res.status(500).json({ error: "Failed to create BI dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get performance benchmarks
@@ -11975,11 +11216,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch performance benchmarks" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create performance benchmark
@@ -12032,11 +11270,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create performance benchmark" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Generate analytics reports
@@ -12054,11 +11289,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const startOfMonth = new Date(
           currentDate.getFullYear(),
           currentDate.getMonth(),
-<<<<<<< HEAD
           1,
-=======
           1
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         const metricsQuery = `
@@ -12154,14 +11386,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error generating analytics reports:", error);
         res.status(500).json({ error: "Failed to generate analytics reports" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= WORKFLOW AUTOMATION ROUTES =============
 
   // Get automation metrics
   app.get(
@@ -12183,11 +11411,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -12202,11 +11427,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching automation metrics:", error);
         res.status(500).json({ error: "Failed to fetch automation metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get workflow templates
@@ -12225,11 +11447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (category && category !== "all") {
           whereConditions.push(
-<<<<<<< HEAD
             `template_category = $${queryParams.length + 1}`,
-=======
             `template_category = $${queryParams.length + 1}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(category);
         }
@@ -12247,11 +11466,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching workflow templates:", error);
         res.status(500).json({ error: "Failed to fetch workflow templates" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create workflow template
@@ -12335,11 +11551,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating workflow template:", error);
         res.status(500).json({ error: "Failed to create workflow template" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Execute workflow template
@@ -12394,11 +11607,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error executing workflow template:", error);
         res.status(500).json({ error: "Failed to execute workflow template" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get workflow executions
@@ -12436,11 +11646,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching workflow executions:", error);
         res.status(500).json({ error: "Failed to fetch workflow executions" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Control workflow execution
@@ -12498,11 +11705,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error controlling workflow execution:", error);
         res.status(500).json({ error: "Failed to control workflow execution" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get automation rules
@@ -12528,11 +11732,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching automation rules:", error);
         res.status(500).json({ error: "Failed to fetch automation rules" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create automation rule
@@ -12592,11 +11793,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating automation rule:", error);
         res.status(500).json({ error: "Failed to create automation rule" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get automated tasks
@@ -12631,11 +11829,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching automated tasks:", error);
         res.status(500).json({ error: "Failed to fetch automated tasks" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create automated task
@@ -12688,14 +11883,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating automated task:", error);
         res.status(500).json({ error: "Failed to create automated task" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= MOBILE FIELD OPERATIONS ROUTES =============
 
   // Get mobile field metrics
   app.get(
@@ -12717,11 +11908,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -12730,11 +11918,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           completionRate: parseFloat(results[2].rows[0].completion_rate),
           averageResponseTime: parseFloat(results[3].rows[0].avg_response_time),
           customerSatisfaction: parseFloat(
-<<<<<<< HEAD
             results[4].rows[0].customer_satisfaction,
-=======
             results[4].rows[0].customer_satisfaction
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
           gpsAccuracy: parseFloat(results[5].rows[0].gps_accuracy),
         });
@@ -12742,11 +11927,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching mobile field metrics:", error);
         res.status(500).json({ error: "Failed to fetch mobile field metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get field technicians
@@ -12772,11 +11954,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching field technicians:", error);
         res.status(500).json({ error: "Failed to fetch field technicians" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create field technician
@@ -12835,11 +12014,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating field technician:", error);
         res.status(500).json({ error: "Failed to create field technician" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get field work orders
@@ -12863,11 +12039,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (technician && technician !== "all") {
           whereConditions.push(
-<<<<<<< HEAD
             `assigned_technician_id = $${queryParams.length + 1}`,
-=======
             `assigned_technician_id = $${queryParams.length + 1}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(technician);
         }
@@ -12898,11 +12071,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching field work orders:", error);
         res.status(500).json({ error: "Failed to fetch field work orders" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create field work order
@@ -12968,11 +12138,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating field work order:", error);
         res.status(500).json({ error: "Failed to create field work order" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get voice notes
@@ -12999,11 +12166,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching voice notes:", error);
         res.status(500).json({ error: "Failed to fetch voice notes" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create voice note
@@ -13060,14 +12224,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating voice note:", error);
         res.status(500).json({ error: "Failed to create voice note" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
-  // ============= COMMISSION MANAGEMENT ROUTES =============
 
   // Get commission metrics
   app.get(
@@ -13089,11 +12249,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
 
         const results = await Promise.all(
-<<<<<<< HEAD
           queries.map((query) => db.$client.query(query, [tenantId])),
-=======
           queries.map((query) => db.$client.query(query, [tenantId]))
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -13102,11 +12259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           averageCommissionRate: parseFloat(results[2].rows[0].avg_rate),
           totalSalesRepresentatives: parseInt(results[3].rows[0].total_reps),
           totalTransactionsThisMonth: parseInt(
-<<<<<<< HEAD
             results[4].rows[0].transactions_this_month,
-=======
             results[4].rows[0].transactions_this_month
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
           totalDisputesActive: parseInt(results[5].rows[0].active_disputes),
         });
@@ -13114,11 +12268,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching commission metrics:", error);
         res.status(500).json({ error: "Failed to fetch commission metrics" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission structures
@@ -13146,11 +12297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch commission structures" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create commission structure
@@ -13207,11 +12355,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create commission structure" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get sales representatives
@@ -13239,11 +12384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch sales representatives" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create sales representative
@@ -13292,11 +12434,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create sales representative" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission transactions
@@ -13318,47 +12457,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           switch (period) {
             case "current_month":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE)`,
-=======
                 `DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "last_month":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`,
-=======
                 `DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "current_quarter":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE)`,
-=======
                 `DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "last_quarter":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '3 months')`,
-=======
                 `DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '3 months')`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "current_year":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE)`,
-=======
                 `DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
           }
@@ -13366,11 +12490,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (status && status !== "all") {
           whereConditions.push(
-<<<<<<< HEAD
             `commission_status = $${queryParams.length + 1}`,
-=======
             `commission_status = $${queryParams.length + 1}`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           queryParams.push(status);
         }
@@ -13390,11 +12511,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to fetch commission transactions" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create commission transaction
@@ -13480,11 +12598,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ error: "Failed to create commission transaction" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission payments
@@ -13506,38 +12621,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           switch (period) {
             case "current_month":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE)`,
-=======
                 `DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "last_month":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`,
-=======
                 `DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "current_quarter":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('quarter', payment_date) = DATE_TRUNC('quarter', CURRENT_DATE)`,
-=======
                 `DATE_TRUNC('quarter', payment_date) = DATE_TRUNC('quarter', CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
             case "current_year":
               whereConditions.push(
-<<<<<<< HEAD
                 `DATE_TRUNC('year', payment_date) = DATE_TRUNC('year', CURRENT_DATE)`,
-=======
                 `DATE_TRUNC('year', payment_date) = DATE_TRUNC('year', CURRENT_DATE)`
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
               );
               break;
           }
@@ -13556,11 +12659,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching commission payments:", error);
         res.status(500).json({ error: "Failed to fetch commission payments" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Get commission disputes
@@ -13598,11 +12698,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching commission disputes:", error);
         res.status(500).json({ error: "Failed to fetch commission disputes" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Create commission dispute
@@ -13668,11 +12765,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating commission dispute:", error);
         res.status(500).json({ error: "Failed to create commission dispute" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // ===== BUSINESS LOGIC CONSISTENCY FIXES =====
@@ -13685,13 +12779,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .where(
         and(
           eq(businessRecords.tenantId, tenantId),
-<<<<<<< HEAD
           eq(businessRecords.recordType, "customer"),
         ),
-=======
           eq(businessRecords.recordType, "customer")
         )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
       );
 
     const customerCount = count[0]?.count || 0;
@@ -13702,11 +12793,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function calculateTieredAmount(
     copies: number,
     rates: any[],
-<<<<<<< HEAD
     baseRate: number,
-=======
     baseRate: number
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   ): number {
     let totalAmount = 0;
     let remainingCopies = copies;
@@ -13719,11 +12807,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (nextRate) {
         tierCopies = Math.min(
           remainingCopies,
-<<<<<<< HEAD
           nextRate.minimumVolume - rate.minimumVolume,
-=======
           nextRate.minimumVolume - rate.minimumVolume
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
       } else {
         tierCopies = remainingCopies;
@@ -13780,21 +12865,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             billingAddress: billingAddress || lead.address,
             probability: 100,
           },
-<<<<<<< HEAD
           tenantId,
         );
 
         // Create customer conversion activity
         await storage.createBusinessRecordActivity({
           tenantId,
-=======
           tenantId
         );
 
         // Create customer conversion activity
         await storage.createBusinessRecordActivity({
           tenantId,
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           businessRecordId: id,
           activityType: "conversion",
           title: "Lead Converted to Customer",
@@ -13825,11 +12907,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error converting lead to customer:", error);
         res.status(500).json({ message: "Failed to convert lead to customer" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // 2. Business Records Lifecycle Management
@@ -13865,24 +12944,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               and(
                 eq(contracts.customerId, id),
                 eq(contracts.tenantId, tenantId),
-<<<<<<< HEAD
                 eq(contracts.status, "active"),
               ),
-=======
                 eq(contracts.status, "active")
               )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
         }
 
         const updatedRecord = await storage.updateBusinessRecord(
           id,
           updates,
-<<<<<<< HEAD
           tenantId,
-=======
           tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         // Log lifecycle change activity
@@ -13907,11 +12980,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to update business record lifecycle" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // 3. Equipment Lifecycle Integration with Service Workflows
@@ -13953,11 +13023,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: "maintenance_scheduled",
               lastServiceDate: new Date(),
             },
-<<<<<<< HEAD
             tenantId,
-=======
             tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
         }
 
@@ -13984,11 +13051,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (lifecycleError) {
           // If equipment lifecycle doesn't exist, try to create it
           console.warn(
-<<<<<<< HEAD
             "Equipment lifecycle insert failed, continuing with service ticket creation",
-=======
             "Equipment lifecycle insert failed, continuing with service ticket creation"
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
         }
 
@@ -14002,11 +13066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to trigger equipment service" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // 4. Contract Billing Automation Connected to Meter Readings
@@ -14032,13 +13093,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             and(
               eq(meterReadings.contractId, contractId),
               eq(meterReadings.tenantId, tenantId),
-<<<<<<< HEAD
               eq(meterReadings.billingStatus, "pending"),
             ),
-=======
               eq(meterReadings.billingStatus, "pending")
             )
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           )
           .orderBy(desc(meterReadings.readingDate));
 
@@ -14046,14 +13104,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         for (const reading of unprocessedReadings) {
           // Get tiered rates for billing calculation
-<<<<<<< HEAD
           const tieredRates =
             await storage.getContractTieredRatesByContract(contractId);
-=======
           const tieredRates = await storage.getContractTieredRatesByContract(
             contractId
           );
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
 
           let totalAmount = parseFloat(contract.monthlyBase?.toString() || "0");
 
@@ -14065,11 +13120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalAmount += calculateTieredAmount(
               reading.blackCopies,
               blackRates,
-<<<<<<< HEAD
               parseFloat(contract.blackRate?.toString() || "0"),
-=======
               parseFloat(contract.blackRate?.toString() || "0")
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
           }
 
@@ -14081,11 +13133,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalAmount += calculateTieredAmount(
               reading.colorCopies,
               colorRates,
-<<<<<<< HEAD
               parseFloat(contract.colorRate?.toString() || "0"),
-=======
               parseFloat(contract.colorRate?.toString() || "0")
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             );
           }
 
@@ -14102,11 +13151,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: "pending",
             description: `Automated meter billing for ${format(
               new Date(reading.readingDate),
-<<<<<<< HEAD
               "MMMM yyyy",
-=======
               "MMMM yyyy"
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
             )}`,
           });
 
@@ -14118,11 +13164,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               billingAmount: totalAmount.toString(),
               invoiceId: invoice.id,
             },
-<<<<<<< HEAD
             tenantId,
-=======
             tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
 
           processedInvoices.push(invoice);
@@ -14130,11 +13173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update customer current balance
           const customer = await storage.getBusinessRecord(
             contract.customerId,
-<<<<<<< HEAD
             tenantId,
-=======
             tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
           const newBalance =
             parseFloat(customer?.currentBalance || "0") + totalAmount;
@@ -14144,11 +13184,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               currentBalance: newBalance.toString(),
               lastMeterReadingDate: reading.readingDate,
             },
-<<<<<<< HEAD
             tenantId,
-=======
             tenantId
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           );
         }
 
@@ -14157,22 +13194,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           invoices: processedInvoices,
           totalAmount: processedInvoices.reduce(
             (sum, inv) => sum + parseFloat(inv.totalAmount),
-<<<<<<< HEAD
             0,
-=======
             0
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
           ),
         });
       } catch (error) {
         console.error("Error processing meter billing:", error);
         res.status(500).json({ message: "Failed to process meter billing" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   // Security & Compliance routes
@@ -14196,11 +13227,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching security dashboard:", error);
         res.status(500).json({ message: "Failed to fetch security dashboard" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -14228,11 +13256,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ipAddress: "192.168.1.100",
             userAgent: "Mozilla/5.0...",
             success: Math.random() > 0.1,
-<<<<<<< HEAD
           }),
-=======
           })
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
         );
 
         res.json({
@@ -14245,11 +13270,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching audit logs:", error);
         res.status(500).json({ message: "Failed to fetch audit logs" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -14285,11 +13307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching GDPR requests:", error);
         res.status(500).json({ message: "Failed to fetch GDPR requests" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -14319,11 +13338,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching security sessions:", error);
         res.status(500).json({ message: "Failed to fetch security sessions" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   app.get(
@@ -14355,11 +13371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Failed to fetch compliance settings" });
       }
-<<<<<<< HEAD
     },
-=======
     }
->>>>>>> 70cc827d0d5a8307d9dbcad9c154b76a9180bd32
   );
 
   const httpServer = createServer(app);
