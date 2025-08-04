@@ -87,7 +87,6 @@ import {
   Printer,
   Receipt,
   PieChart,
-  FileCheck,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";

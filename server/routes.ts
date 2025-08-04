@@ -549,18 +549,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lowStockItems = await db
         .select({
           id: inventoryItems.id,
-          name: inventoryItems.name,
-          category: inventoryItems.category,
-          currentStock: inventoryItems.currentStock,
+          name: inventoryItems.itemDescription,
+          category: inventoryItems.itemCategory,
+          currentStock: inventoryItems.quantityOnHand,
           minThreshold: inventoryItems.reorderPoint,
           status: sql<string>`'active'`
         })
         .from(inventoryItems)
         .where(and(
           eq(inventoryItems.tenantId, tenantId),
-          sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`
+          sql`${inventoryItems.quantityOnHand} <= ${inventoryItems.reorderPoint}`
         ))
-        .orderBy(asc(inventoryItems.currentStock))
+        .orderBy(asc(inventoryItems.quantityOnHand))
         .limit(20);
       
       res.json({ lowStock: lowStockItems });
@@ -622,11 +622,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName: businessRecords.companyName,
           primaryContactName: businessRecords.primaryContactName,
           phone: businessRecords.phone,
-          email: businessRecords.email,
+          email: businessRecords.primaryContactEmail,
           addressLine1: businessRecords.addressLine1,
           city: businessRecords.city,
           state: businessRecords.state,
-          zipCode: businessRecords.zipCode
+          zipCode: businessRecords.postalCode
         })
         .from(businessRecords)
         .where(and(
