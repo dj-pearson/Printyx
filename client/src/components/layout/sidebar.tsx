@@ -161,6 +161,7 @@ function getNavigationSections(userRole: any) {
           ]
         },
         { name: 'Document Management', href: '/document-management', icon: FolderOpen },
+        { name: 'Process Optimization', href: '/business-process-optimization', icon: Settings },
         { name: 'Inventory', href: '/inventory', icon: Package },
         { name: 'Contracts', href: '/contracts', icon: FileText },
         { name: 'User Management', href: '/user-management', icon: UserCog },

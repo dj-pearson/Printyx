@@ -2188,6 +2188,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Business Process Optimization Routes
+  app.get('/api/business-process/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const processOptimizationData = {
+        processOverview: {
+          totalProcesses: 47,
+          automatedProcesses: 32,
+          manualProcesses: 15,
+          automationRate: 68.1,
+          avgProcessTime: 4.7,
+          processEfficiency: 84.3,
+          costSavings: 127890.50,
+          timeReduction: 32.4
+        },
+        keyMetrics: [
+          { metric: 'Lead to Customer Conversion', currentTime: 5.2, optimizedTime: 3.1, improvement: 40.4, status: 'optimized', automationLevel: 85 },
+          { metric: 'Service Ticket Resolution', currentTime: 6.8, optimizedTime: 4.2, improvement: 38.2, status: 'optimized', automationLevel: 72 }
+        ],
+        workflowTemplates: [
+          {
+            id: 'wf-001', name: 'New Customer Onboarding', description: 'Standardized process for onboarding new customers from lead to active account',
+            steps: 12, avgDuration: 3.5, automationLevel: 85, successRate: 96.8, category: 'Customer Management', status: 'active', usageCount: 156, lastUpdated: new Date('2025-01-15T00:00:00Z')
+          }
+        ],
+        processAnalytics: {
+          bottlenecks: [
+            { process: 'Equipment Installation', step: 'Site Survey Scheduling', avgDelay: 3.2, impact: 'high', frequency: 78, recommendation: 'Implement automated scheduling with customer self-service portal' }
+          ],
+          efficiency: [
+            { department: 'Sales', currentEfficiency: 78.5, targetEfficiency: 90.0, gap: 11.5, improvementAreas: ['Lead qualification', 'Proposal generation'], estimatedROI: 156780.25 }
+          ],
+          trends: [{ month: '2025-01', efficiency: 84.3, automation: 68.1, processes: 47 }]
+        },
+        automationOpportunities: [
+          {
+            id: 'auto-001', process: 'Customer Onboarding Documentation', description: 'Automate generation of welcome packets and setup documentation',
+            currentEffort: 2.5, estimatedReduction: 80, potentialSavings: 45600.00, complexity: 'low', priority: 'high', implementationTime: 2, roi: 456.7, status: 'ready_to_implement'
+          }
+        ]
+      };
+
+      res.json(processOptimizationData);
+    } catch (error) {
+      console.error('Error fetching business process optimization data:', error);
+      res.status(500).json({ message: 'Failed to fetch business process optimization data' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
