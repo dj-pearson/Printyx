@@ -2806,6 +2806,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ERP Integration Hub Routes
+  app.get('/api/erp-integration/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const erpIntegrationData = {
+        integrationOverview: {
+          totalIntegrations: 18, activeIntegrations: 16, failedIntegrations: 2, syncSuccessRate: 98.7, dataPointsSynced: 2.4,
+          syncFrequency: 'real-time', lastSyncCompleted: new Date('2025-02-01T08:15:00Z'), nextScheduledSync: new Date('2025-02-01T08:30:00Z'),
+          averageLatency: 234, systemUptime: 99.94, errorRate: 0.13
+        },
+        erpSystems: [
+          {
+            id: 'sap-001', name: 'SAP Business One', type: 'erp', category: 'financial_management', status: 'active', version: '10.0',
+            lastSync: new Date('2025-02-01T08:15:00Z'), syncFrequency: 'real-time', successRate: 99.2, recordsProcessed: 45672,
+            apiCalls: 234567, dataVolume: 1.2, latency: 187, capabilities: ['accounting', 'financial_reporting', 'inventory', 'procurement', 'sales_orders'],
+            endpoints: [
+              { name: 'Chart of Accounts', url: '/api/ChartOfAccounts', status: 'active', lastCall: new Date('2025-02-01T08:14:00Z') },
+              { name: 'Business Partners', url: '/api/BusinessPartners', status: 'active', lastCall: new Date('2025-02-01T08:13:00Z') }
+            ],
+            authentication: { type: 'oauth2', status: 'authenticated', tokenExpiry: new Date('2025-02-15T00:00:00Z'), lastRefresh: new Date('2025-02-01T06:00:00Z') },
+            recentSync: { recordsCreated: 124, recordsUpdated: 3456, recordsDeleted: 23, errors: 5, warnings: 12, duration: 2.4 }
+          },
+          {
+            id: 'oracle-001', name: 'Oracle NetSuite', type: 'erp', category: 'cloud_erp', status: 'active', version: '2024.2',
+            lastSync: new Date('2025-02-01T08:14:00Z'), syncFrequency: 'hourly', successRate: 97.8, recordsProcessed: 78934,
+            apiCalls: 456789, dataVolume: 2.1, latency: 298, capabilities: ['financial_management', 'crm', 'inventory', 'e_commerce', 'analytics'],
+            endpoints: [
+              { name: 'Customers', url: '/services/rest/record/v1/customer', status: 'active', lastCall: new Date('2025-02-01T08:13:00Z') }
+            ],
+            authentication: { type: 'token_based', status: 'authenticated', tokenExpiry: new Date('2025-03-01T00:00:00Z'), lastRefresh: new Date('2025-02-01T00:00:00Z') },
+            recentSync: { recordsCreated: 89, recordsUpdated: 2134, recordsDeleted: 12, errors: 3, warnings: 8, duration: 3.7 }
+          }
+        ],
+        dataSynchronization: {
+          syncSchedules: [
+            {
+              id: 'schedule-001', name: 'Customer Data Sync', description: 'Synchronize customer records across all ERP systems',
+              systems: ['SAP Business One', 'Oracle NetSuite', 'Microsoft Dynamics 365'], frequency: 'real-time',
+              lastRun: new Date('2025-02-01T08:15:00Z'), nextRun: new Date('2025-02-01T08:30:00Z'), status: 'active',
+              successRate: 99.1, recordsProcessed: 12456, averageDuration: 2.3, conflicts: 3, resolvedConflicts: 3
+            }
+          ],
+          conflictResolution: { totalConflicts: 34, resolvedConflicts: 31, pendingResolution: 3, autoResolutionRate: 91.2, resolutionRules: [{ rule: 'Last Modified Wins', usage: 67, success: 94.1 }] },
+          dataQuality: { overallScore: 96.8, completeness: 98.2, accuracy: 95.7, consistency: 97.1, timeliness: 96.3, duplicates: 23, missingFields: 156, validationErrors: 45 }
+        },
+        businessProcessAutomation: {
+          automatedProcesses: [
+            {
+              id: 'process-001', name: 'Order-to-Cash Automation', description: 'Automated end-to-end order processing from creation to payment',
+              systems: ['Oracle NetSuite', 'SAP Business One', 'Printyx CRM'], status: 'active', executionsToday: 234, successRate: 97.8, averageProcessingTime: 45,
+              steps: [{ step: 'Order Creation', system: 'Printyx CRM', avgTime: 5, successRate: 99.2 }],
+              kpis: { cycleTimeReduction: 67.3, errorReduction: 84.2, costSavings: 45600, customerSatisfaction: 94.7 }
+            }
+          ],
+          workflowOrchestration: { totalWorkflows: 67, activeWorkflows: 64, pausedWorkflows: 2, erroredWorkflows: 1, executionsToday: 2134, successRate: 96.7, averageExecutionTime: 23.4, parallelExecutions: 12, queuedExecutions: 5 }
+        },
+        monitoring: {
+          systemHealth: [
+            { system: 'SAP Business One', status: 'healthy', uptime: 99.8, lastCheck: new Date('2025-02-01T08:14:00Z'), responseTime: 187 },
+            { system: 'Oracle NetSuite', status: 'healthy', uptime: 99.2, lastCheck: new Date('2025-02-01T08:13:00Z'), responseTime: 298 }
+          ],
+          alerts: [
+            { id: 'alert-001', type: 'performance_degradation', severity: 'medium', system: 'Oracle NetSuite', message: 'Response time increased by 25% in last hour', triggeredAt: new Date('2025-02-01T07:45:00Z'), status: 'investigating', assignee: 'integration_team' }
+          ],
+          performanceMetrics: { dataLatency: 234, syncThroughput: 12456, errorRate: 0.13, availabilityScore: 99.7, integrationComplexity: 8.7, maintenanceOverhead: 4.2 }
+        }
+      };
+
+      res.json(erpIntegrationData);
+    } catch (error) {
+      console.error('Error fetching ERP integration dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch ERP integration dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
