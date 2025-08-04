@@ -513,7 +513,7 @@ export default function IntegrationHub() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        {integrationData.apiMarketplace.categories.map((category: any) => (
+                        {(integrationData.apiMarketplace?.categories || []).map((category: any) => (
                           <SelectItem key={category.name} value={category.name.toLowerCase()}>
                             {category.name} ({category.count})
                           </SelectItem>

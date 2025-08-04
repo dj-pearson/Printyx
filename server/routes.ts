@@ -2660,8 +2660,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Predictive Analytics Engine Routes
-  app.get('/api/predictive-analytics/dashboard', requireAuth, async (req: any, res) => {
+  // Import and register the new predictive analytics routes
+  const predictiveAnalyticsRoutes = await import('./routes-predictive-analytics.js');
+  app.use('/api/predictive-analytics', predictiveAnalyticsRoutes.default);
+
+  // Predictive Analytics Engine Routes (Legacy - keeping for backwards compatibility)
+  app.get('/api/predictive-analytics/legacy-dashboard', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
