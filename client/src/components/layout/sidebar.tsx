@@ -176,6 +176,7 @@ function getNavigationSections(userRole: any) {
       name: 'Reports',
       items: [
         { name: 'All Reports', href: '/reports', icon: BarChart3 },
+        { name: 'Advanced Analytics', href: '/advanced-analytics', icon: PieChart },
         { name: 'Custom Reports', href: '/custom-reports', icon: ClipboardList },
       ]
     });
