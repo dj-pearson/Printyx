@@ -75,6 +75,7 @@ import {
   Clock3,
   MapPin2,
   CheckSquare,
+  BookOpen,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -396,15 +397,49 @@ export default function LeadDetailHubspot() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Main Information */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Overview Tab Content */}
+            {/* Lead Management Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="activities">Activities</TabsTrigger>
-                <TabsTrigger value="contacts">Contacts</TabsTrigger>
-                <TabsTrigger value="deals">Deals</TabsTrigger>
-                <TabsTrigger value="files">Files</TabsTrigger>
-              </TabsList>
+              <div className="border-b border-gray-200">
+                <TabsList className="h-auto p-0 bg-transparent space-x-0">
+                  <div className="flex flex-wrap gap-1 p-1">
+                    <TabsTrigger 
+                      value="overview" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span className="hidden sm:inline">Overview</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="activities" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Activity className="h-4 w-4" />
+                      <span className="hidden sm:inline">Activities</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="contacts" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="hidden sm:inline">Contacts</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="deals" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Target className="h-4 w-4" />
+                      <span className="hidden sm:inline">Deals</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="files" 
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="hidden sm:inline">Files</span>
+                    </TabsTrigger>
+                  </div>
+                </TabsList>
+              </div>
 
               <TabsContent value="overview" className="space-y-6 mt-6">
                 {/* Company Information */}
