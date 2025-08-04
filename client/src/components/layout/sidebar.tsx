@@ -103,6 +103,7 @@ function getNavigationSections(userRole: any) {
         { name: 'Dispatch Optimization', href: '/service-dispatch-optimization', icon: Target },
         { name: 'Preventive Maintenance', href: '/preventive-maintenance-automation', icon: Settings },
         { name: 'Remote Monitoring', href: '/remote-monitoring', icon: Wifi },
+        { name: 'Mobile Service App', href: '/mobile-service-app', icon: Smartphone },
         { name: 'Mobile Field Service', href: '/mobile-field-service', icon: Smartphone },
         { 
           name: 'Equipment Lifecycle', 

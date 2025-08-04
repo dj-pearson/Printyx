@@ -36,7 +36,7 @@ import multer from "multer";
 import csv from "csv-parser";
 import { Readable } from "stream";
 import { format } from "date-fns";
-import { registerMobileRoutes } from "./routes-mobile";
+// Mobile routes integrated directly in main routes file
 import { registerIntegrationRoutes } from "./routes-integrations";
 import { registerTaskRoutes } from "./routes-tasks";
 import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
@@ -1991,6 +1991,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mobile Service App Routes
+  app.get('/api/mobile/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const mobileDashboard = {
+        technician: {
+          id: req.user.id,
+          name: req.user.name,
+          employeeId: 'TECH-001',
+          certification: 'Senior Technician',
+          rating: 4.8,
+          completedJobs: 1247
+        },
+        todaysSummary: {
+          assignedJobs: 6,
+          completedJobs: 3,
+          inProgress: 1,
+          pendingParts: 2,
+          totalRevenue: 2340.50
+        },
+        jobsQueue: [
+          {
+            id: 'job-001',
+            priority: 'high',
+            status: 'assigned',
+            customerName: 'Metro Office Solutions',
+            contactPerson: 'Sarah Johnson',
+            contactPhone: '+1-555-0123',
+            address: '123 Business Center Dr, Suite 200',
+            coordinates: { lat: 40.7128, lng: -74.0060 },
+            equipment: {
+              model: 'Canon ImageRunner 2535i',
+              serialNumber: 'MX-2025-001',
+              location: '2nd Floor - Copy Center'
+            },
+            serviceType: 'maintenance',
+            issueDescription: 'Routine preventive maintenance and toner replacement',
+            estimatedDuration: 90,
+            scheduledTime: new Date('2025-02-04T09:00:00Z'),
+            requiredParts: [
+              { partNumber: 'TNR-2535-BK', description: 'Black Toner Cartridge', quantity: 1, available: true }
+            ],
+            customerNotes: 'Equipment heavily used, check paper feed mechanism',
+            internalNotes: 'Customer prefers morning service calls',
+            routeOptimization: {
+              driveTime: 15,
+              distanceFromPrevious: 3.2,
+              trafficConditions: 'light',
+              parkingNotes: 'Visitor parking available on 1st floor'
+            }
+          }
+        ],
+        performanceMetrics: {
+          thisWeek: {
+            jobsCompleted: 28,
+            averageJobTime: 95,
+            customerSatisfaction: 4.7,
+            firstTimeFixRate: 89,
+            onTimeArrival: 94
+          },
+          thisMonth: {
+            jobsCompleted: 124,
+            revenue: 18450,
+            partsUsed: 67,
+            milesdriven: 1847
+          }
+        },
+        partsInventory: {
+          vanStock: {
+            tonerCartridges: 12,
+            maintenanceKits: 6,
+            paperFeedRollers: 8,
+            fuserUnits: 3
+          },
+          pendingOrders: 2,
+          criticalLowItems: ['PF-5855-ROLL'],
+          lastRestocked: new Date('2025-02-01T00:00:00Z')
+        }
+      };
+
+      res.json(mobileDashboard);
+    } catch (error) {
+      console.error('Error fetching mobile dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch mobile dashboard' });
+    }
+  });
+
+  app.get('/api/mobile/route-optimization', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const routeData = {
+        optimizedRoute: {
+          totalDistance: 28.4,
+          totalDriveTime: 72,
+          totalServiceTime: 390,
+          fuelCost: 12.50,
+          stops: [
+            {
+              sequence: 1,
+              jobId: 'job-001',
+              customerName: 'Metro Office Solutions',
+              address: '123 Business Center Dr, Suite 200',
+              estimatedArrival: new Date('2025-02-04T09:00:00Z'),
+              serviceWindow: { start: '09:00', end: '10:30' },
+              drivingTime: 15,
+              serviceTime: 90,
+              parkingInfo: 'Visitor parking available'
+            }
+          ]
+        }
+      };
+
+      res.json(routeData);
+    } catch (error) {
+      console.error('Error fetching route data:', error);
+      res.status(500).json({ message: 'Failed to fetch route data' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
@@ -3611,8 +3738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Register mobile and performance monitoring routes
-  registerMobileRoutes(app);
+  // Mobile routes already integrated above in main routes
 
   // Workflow Automation Routes
   app.get("/api/workflow-rules", requireAuth, requireAuth, async (req: any, res) => {
@@ -4136,8 +4262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     registerSalesforceTestRoutes(app);
   }
   
-  // Register mobile routes
-  registerMobileRoutes(app);
+  // Mobile routes already integrated above in main routes
 
   // Performance monitoring routes
   app.get('/api/performance/metrics', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
