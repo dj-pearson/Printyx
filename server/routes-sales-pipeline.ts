@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { TenantRequest } from './middleware/tenancy';
+import { db } from './db';
 
 // Sales Pipeline Schema
 const pipelineOpportunitySchema = z.object({
@@ -99,7 +100,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       query += ` ORDER BY br."updatedAt" DESC`;
 
-      const result = await storage.db.execute(sql.raw(query, params));
+      const result = await db.execute(sql.raw(query, params));
       
       // Transform the results to match the expected format
       const opportunities = result.rows.map((row: any) => ({
@@ -154,7 +155,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       const notesText = notes ? `\n[${new Date().toISOString()}] Stage moved to ${stage}: ${notes}` : '';
       
-      const result = await storage.db.execute(sql.raw(updateQuery, [stage, notesText, id, tenantId]));
+      const result = await db.execute(sql.raw(updateQuery, [stage, notesText, id, tenantId]));
 
       if (result.rows.length === 0) {
         return res.status(404).json({ message: 'Opportunity not found' });
@@ -173,7 +174,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `;
 
-      await storage.db.execute(sql.raw(activityQuery, [
+      await db.execute(sql.raw(activityQuery, [
         id,
         'stage_change',
         `Stage changed to ${PIPELINE_STAGES.find(s => s.id === stage)?.name || stage}`,
@@ -214,7 +215,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `;
 
-      await storage.db.execute(sql.raw(activityQuery, [
+      await db.execute(sql.raw(activityQuery, [
         id,
         activity_type,
         `${activity_type.charAt(0).toUpperCase() + activity_type.slice(1)} Activity`,
@@ -230,7 +231,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         WHERE id = $1 AND "tenantId" = $2
       `;
 
-      await storage.db.execute(sql.raw(updateQuery, [id, tenantId]));
+      await db.execute(sql.raw(updateQuery, [id, tenantId]));
 
       res.json({ success: true });
     } catch (error) {
@@ -322,7 +323,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ORDER BY rs.rep_name
       `;
 
-      const result = await storage.db.execute(sql.raw(metricsQuery, [tenantId]));
+      const result = await db.execute(sql.raw(metricsQuery, [tenantId]));
       
       const metrics = result.rows.map((row: any) => ({
         rep_id: row.rep_id,
@@ -415,7 +416,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         CROSS JOIN goals_summary gs
       `;
 
-      const result = await storage.db.execute(sql.raw(summaryQuery, [tenantId]));
+      const result = await db.execute(sql.raw(summaryQuery, [tenantId]));
       
       if (result.rows.length === 0) {
         return res.json({
@@ -480,7 +481,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         RETURNING *
       `;
 
-      const result = await storage.db.execute(sql.raw(insertQuery, [
+      const result = await db.execute(sql.raw(insertQuery, [
         tenantId,
         'lead',
         data.company_name,
