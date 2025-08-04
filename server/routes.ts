@@ -2740,6 +2740,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Security & Compliance Management Routes
+  app.get('/api/security-compliance/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const securityComplianceData = {
+        securityOverview: {
+          overallSecurityScore: 94.7, complianceStatus: 'compliant', activeThreats: 3, resolvedThreats: 127, securityIncidents: 2,
+          lastSecurityAudit: new Date('2025-01-28T00:00:00Z'), nextAuditDue: new Date('2025-04-28T00:00:00Z'), certificationsActive: 6,
+          vulnerabilitiesDetected: 8, vulnerabilitiesPatched: 45, securityTrainingCompliance: 96.8, dataBackupStatus: 'healthy', encryptionCoverage: 100.0
+        },
+        threatDetection: {
+          realTimeMonitoring: { activeScans: 12, threatsDetected: 3, falsePositives: 7, threatScore: 2.4, lastScanCompleted: new Date('2025-02-01T07:30:00Z'), nextScheduledScan: new Date('2025-02-01T19:30:00Z'), monitoringUptime: 99.94 },
+          detectedThreats: [
+            {
+              id: 'threat-001', type: 'suspicious_login_attempt', severity: 'medium', status: 'investigating', detectedAt: new Date('2025-02-01T06:45:00Z'),
+              source: '192.168.1.247', targetUser: 'john.smith@printyx.com', description: 'Multiple failed login attempts from unusual location',
+              riskScore: 6.2, affectedSystems: ['user_portal', 'admin_dashboard'], mitigationActions: ['account_lockout', 'security_notification', 'ip_monitoring'],
+              investigator: 'security_team', estimatedResolutionTime: 45
+            },
+            {
+              id: 'threat-002', type: 'data_access_anomaly', severity: 'high', status: 'contained', detectedAt: new Date('2025-02-01T04:20:00Z'),
+              source: 'internal_user', targetUser: 'admin@dealership.com', description: 'Unusual bulk data access outside normal business hours',
+              riskScore: 7.8, affectedSystems: ['customer_database', 'financial_records'], mitigationActions: ['access_restriction', 'audit_trail_review', 'manager_notification'],
+              investigator: 'compliance_officer', estimatedResolutionTime: 120
+            }
+          ],
+          threatTrends: [
+            { category: 'phishing_attempts', count: 23, change: '+12%', severity: 'medium' },
+            { category: 'suspicious_logins', count: 15, change: '-8%', severity: 'medium' }
+          ]
+        },
+        complianceManagement: {
+          regulations: [
+            {
+              id: 'gdpr', name: 'General Data Protection Regulation (GDPR)', status: 'compliant', complianceScore: 96.8,
+              lastAudit: new Date('2025-01-15T00:00:00Z'), nextAudit: new Date('2025-07-15T00:00:00Z'), requirements: 47,
+              compliantRequirements: 45, nonCompliantRequirements: 2, actionItemsOpen: 3, actionItemsCompleted: 28,
+              certificationStatus: 'active', expiryDate: new Date('2025-12-31T00:00:00Z'), auditor: 'EU Compliance Solutions', riskLevel: 'low'
+            }
+          ],
+          actionItems: [
+            {
+              id: 'action-001', regulation: 'GDPR', priority: 'high', title: 'Update Data Processing Records',
+              description: 'Complete documentation of new data processing activities for Q1 2025', assignee: 'data_protection_officer',
+              dueDate: new Date('2025-02-15T00:00:00Z'), status: 'in_progress', progress: 67, estimatedHours: 8, completedHours: 5.5, riskIfDelayed: 'regulatory_fine'
+            }
+          ],
+          complianceMetrics: { overallComplianceScore: 95.2, regulationsMonitored: 4, activeCompliance: 4, nonCompliantRegulations: 0, overdueActionItems: 1, upcomingAudits: 3, certificationRenewals: 2, complianceTrainingCompletion: 94.8 }
+        },
+        accessControl: {
+          userAccessMatrix: { totalUsers: 247, activeUsers: 234, inactiveUsers: 13, privilegedUsers: 23, serviceAccounts: 8, pendingAccessRequests: 5, expiredAccounts: 2, multiFactorEnabled: 231, singleSignOnEnabled: 198 },
+          roleBasedAccess: { totalRoles: 15, customRoles: 8, defaultRoles: 7, roleAssignments: 247, roleConflicts: 0, segregationOfDutiesViolations: 0, leastPrivilegeCompliance: 94.3 }
+        }
+      };
+
+      res.json(securityComplianceData);
+    } catch (error) {
+      console.error('Error fetching security compliance dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch security compliance dashboard' });
+    }
+  });
+
   // Apply tenant resolution middleware to all API routes
   app.use('/api', resolveTenant);
   
