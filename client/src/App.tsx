@@ -86,6 +86,7 @@ import IncidentResponseSystem from "@/pages/IncidentResponseSystem";
 import AIAnalyticsDashboard from "@/pages/AIAnalyticsDashboard";
 import IntegrationHub from "@/pages/IntegrationHub";
 import WorkflowAutomation from "@/pages/WorkflowAutomation";
+import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -202,6 +203,7 @@ function Router() {
           <Route path="/ai-analytics" component={AIAnalyticsDashboard} />
           <Route path="/integration-hub" component={IntegrationHub} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
+          <Route path="/predictive-analytics" component={PredictiveAnalytics} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
