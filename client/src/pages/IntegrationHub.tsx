@@ -942,28 +942,28 @@ export default function IntegrationHub() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-900">
-                        {formatNumber(integrationData.integrationAnalytics?.usageStatistics?.totalApiCalls)}
+                        {formatNumber(integrationData?.integrationAnalytics?.usageStatistics?.totalApiCalls)}
                       </div>
                       <div className="text-sm text-gray-600">Total API Calls</div>
                       <div className="text-xs text-blue-600 mt-1">All time</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-900">
-                        {integrationData.integrationAnalytics?.usageStatistics?.totalDataTransferred || 0}GB
+                        {integrationData?.integrationAnalytics?.usageStatistics?.totalDataTransferred || 0}GB
                       </div>
                       <div className="text-sm text-gray-600">Data Transferred</div>
                       <div className="text-xs text-green-600 mt-1">This month</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-purple-900">
-                        {formatNumber(integrationData.integrationAnalytics?.usageStatistics?.totalWebhooksDelivered)}
+                        {formatNumber(integrationData?.integrationAnalytics?.usageStatistics?.totalWebhooksDelivered)}
                       </div>
                       <div className="text-sm text-gray-600">Webhooks Delivered</div>
                       <div className="text-xs text-purple-600 mt-1">This month</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-orange-900">
-                        {integrationData.integrationAnalytics?.usageStatistics?.averageResponseTime || 0}ms
+                        {integrationData?.integrationAnalytics?.usageStatistics?.averageResponseTime || 0}ms
                       </div>
                       <div className="text-sm text-gray-600">Avg Response Time</div>
                       <div className="text-xs text-orange-600 mt-1">Last 7 days</div>
@@ -975,7 +975,7 @@ export default function IntegrationHub() {
                       <h3 className="font-medium mb-3">Top Integration by Volume</h3>
                       <div className="p-3 bg-blue-50 rounded border border-blue-200">
                         <div className="font-medium text-blue-900">
-                          {integrationData.integrationAnalytics?.usageStatistics?.topIntegrationByVolume || 'None'}
+                          {integrationData?.integrationAnalytics?.usageStatistics?.topIntegrationByVolume || 'None'}
                         </div>
                         <div className="text-sm text-blue-600">Highest data throughput</div>
                       </div>
@@ -984,7 +984,7 @@ export default function IntegrationHub() {
                       <h3 className="font-medium mb-3">Most Used Integration</h3>
                       <div className="p-3 bg-green-50 rounded border border-green-200">
                         <div className="font-medium text-green-900">
-                          {integrationData.integrationAnalytics?.usageStatistics?.topIntegrationByUsage || 'None'}
+                          {integrationData?.integrationAnalytics?.usageStatistics?.topIntegrationByUsage || 'None'}
                         </div>
                         <div className="text-sm text-green-600">Most API calls</div>
                       </div>
@@ -1007,13 +1007,13 @@ export default function IntegrationHub() {
                     <div>
                       <div className="text-center mb-4">
                         <div className="text-3xl font-bold text-red-900">
-                          {formatCurrency(integrationData.integrationAnalytics?.costAnalysis?.totalMonthlyCost)}
+                          {formatCurrency(integrationData?.integrationAnalytics?.costAnalysis?.totalMonthlyCost)}
                         </div>
                         <div className="text-sm text-gray-600">Total Monthly Cost</div>
                       </div>
                       
                       <div className="space-y-2">
-                        {Object.entries(integrationData.integrationAnalytics?.costAnalysis?.costByProvider || {}).map(([provider, cost]: any) => (
+                        {Object.entries(integrationData?.integrationAnalytics?.costAnalysis?.costByProvider || {}).map(([provider, cost]: any) => (
                           <div key={provider} className="flex justify-between items-center p-2 border rounded">
                             <span className="font-medium">{provider}</span>
                             <span>{formatCurrency(cost)}</span>
@@ -1025,7 +1025,7 @@ export default function IntegrationHub() {
                     <div>
                       <div className="text-center mb-4">
                         <div className="text-3xl font-bold text-green-900">
-                          {formatCurrency(integrationData.integrationAnalytics?.costAnalysis?.estimatedMonthlySavings)}
+                          {formatCurrency(integrationData?.integrationAnalytics?.costAnalysis?.estimatedMonthlySavings)}
                         </div>
                         <div className="text-sm text-gray-600">Monthly Savings</div>
                         <div className="text-xs text-green-600">From automation</div>
@@ -1033,7 +1033,7 @@ export default function IntegrationHub() {
                       
                       <div className="p-4 bg-green-50 border border-green-200 rounded">
                         <div className="text-sm text-green-700">
-                          <div className="font-medium">Cost per API call: {formatCurrency(integrationData.integrationAnalytics?.costAnalysis?.costPerApiCall)}</div>
+                          <div className="font-medium">Cost per API call: {formatCurrency(integrationData?.integrationAnalytics?.costAnalysis?.costPerApiCall)}</div>
                           <div className="mt-2 text-xs">
                             Based on current usage patterns and provider pricing
                           </div>

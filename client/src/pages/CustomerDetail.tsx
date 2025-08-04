@@ -20,6 +20,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { MainLayout } from "@/components/layout/main-layout";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -968,7 +969,6 @@ export default function CustomerDetail() {
           </div>
         </DialogContent>
       </Dialog>
-          </div>
       </div>
     </MainLayout>
   );
