@@ -188,6 +188,7 @@ export interface IStorage {
   // Company operations (new primary business entity)
   getCompanies(tenantId: string): Promise<Company[]>;
   getCompany(id: string, tenantId: string): Promise<Company | undefined>;
+  getCompanyByName(name: string, tenantId: string): Promise<Company | undefined>;
   createCompany(company: Omit<Company, "id" | "createdAt" | "updatedAt">): Promise<Company>;
   updateCompany(id: string, company: Partial<Company>, tenantId: string): Promise<Company | undefined>;
   deleteCompany(id: string, tenantId: string): Promise<boolean>;
@@ -690,6 +691,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(companies)
       .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
+    return company;
+  }
+
+  async getCompanyByName(name: string, tenantId: string): Promise<Company | undefined> {
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(and(eq(companies.name, name), eq(companies.tenantId, tenantId)));
     return company;
   }
 
