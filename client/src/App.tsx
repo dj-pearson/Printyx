@@ -68,6 +68,7 @@ import LeadsManagement from "@/pages/LeadsManagement";
 import QuoteProposalGeneration from "@/pages/QuoteProposalGeneration";
 import QuoteBuilderPage from "@/pages/QuoteBuilderPage";
 import QuotesManagement from "@/pages/QuotesManagement";
+import QuoteView from "@/pages/QuoteView";
 import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceScheduling";
 import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
@@ -162,8 +163,8 @@ function Router() {
           />
           <Route path="/quotes" component={QuotesManagement} />
           <Route path="/quotes/new" component={QuoteBuilderPage} />
-          <Route path="/quotes/edit/:quoteId" component={QuoteBuilderPage} />
-          <Route path="/quotes/:quoteId" component={QuotesManagement} />
+          <Route path="/quotes/:quoteId" component={QuoteBuilderPage} />
+          <Route path="/quotes/:quoteId/view" component={QuoteView} />
           <Route
             path="/preventive-maintenance"
             component={PreventiveMaintenanceScheduling}
