@@ -80,17 +80,22 @@ interface ServiceTicket {
   ticketNumber: string;
   title: string;
   description: string;
+  category?: string;
   priority: string;
   status: string;
   assignedTechnicianId?: string;
   technicianName?: string;
   scheduledDate?: string;
   estimatedDuration?: number;
+  actualHours?: number;
   equipmentId?: string;
   equipmentDescription?: string;
   resolutionNotes?: string;
   laborHours?: number;
   partsUsed?: string[];
+  customerSatisfaction?: number;
+  locationId?: string;
+  locationName?: string;
   createdAt: string;
   resolvedAt?: string;
 }
@@ -363,6 +368,7 @@ export function CustomerServiceHistory({
                     <TableRow className="hover:bg-transparent border-b-2">
                       <TableHead className="min-w-[120px]">Ticket #</TableHead>
                       <TableHead className="min-w-[200px]">Title</TableHead>
+                      <TableHead className="min-w-[100px]">Category</TableHead>
                       <TableHead className="min-w-[100px]">Priority</TableHead>
                       <TableHead className="min-w-[100px]">Status</TableHead>
                       <TableHead className="min-w-[150px]">
@@ -371,6 +377,7 @@ export function CustomerServiceHistory({
                       <TableHead className="min-w-[120px]">Created</TableHead>
                       <TableHead className="min-w-[120px]">Scheduled</TableHead>
                       <TableHead className="min-w-[100px]">Duration</TableHead>
+                      <TableHead className="min-w-[100px]">Labor Hours</TableHead>
                       <TableHead className="min-w-[150px]">Equipment</TableHead>
                       <TableHead className="w-20">Actions</TableHead>
                     </TableRow>
@@ -397,6 +404,11 @@ export function CustomerServiceHistory({
                                 {ticket.description}
                               </div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm capitalize">
+                              {ticket.category || '-'}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -442,6 +454,16 @@ export function CustomerServiceHistory({
                             {ticket.estimatedDuration
                               ? formatDuration(ticket.estimatedDuration)
                               : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {ticket.laborHours ? 
+                                `${ticket.laborHours}h` : 
+                                ticket.actualHours ? 
+                                `${ticket.actualHours}h` : 
+                                "-"
+                              }
+                            </div>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm">

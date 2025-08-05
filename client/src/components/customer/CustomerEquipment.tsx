@@ -359,6 +359,12 @@ export function CustomerEquipment({
                       Monthly Payment
                     </TableHead>
                     <TableHead className="min-w-[120px]">
+                      Current Meter
+                    </TableHead>
+                    <TableHead className="min-w-[120px]">
+                      Service Contract
+                    </TableHead>
+                    <TableHead className="min-w-[120px]">
                       Last Service
                     </TableHead>
                     <TableHead className="w-20">Actions</TableHead>
@@ -461,6 +467,19 @@ export function CustomerEquipment({
                           {item.monthlyPayment
                             ? formatCurrency(item.monthlyPayment)
                             : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {item.currentMeterReading ? 
+                              item.currentMeterReading.toLocaleString() : 
+                              "-"
+                            }
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-mono">
+                            {item.serviceContractNumber || "-"}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {item.lastServiceDate

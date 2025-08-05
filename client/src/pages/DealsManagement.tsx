@@ -191,10 +191,10 @@ function DraggableDealCard({ deal }: { deal: Deal }) {
           </div>
         )}
         
-        {deal.primaryContactName && (
+        {deal.ownerName && (
           <div className="flex items-center gap-1">
             <User className="h-3 w-3" />
-            <span>{deal.primaryContactName}</span>
+            <span>{deal.ownerName}</span>
           </div>
         )}
         
@@ -202,6 +202,12 @@ function DraggableDealCard({ deal }: { deal: Deal }) {
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             <span>{format(new Date(deal.expectedCloseDate), "MMM d, yyyy")}</span>
+          </div>
+        )}
+        
+        {deal.source && (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500 capitalize">{deal.source}</span>
           </div>
         )}
       </div>
@@ -275,8 +281,7 @@ export default function DealsManagement() {
       if (companySearchTerm) params.append("search", companySearchTerm);
       
       const response = await apiRequest('GET', `/api/companies?${params}`);
-      const data = await response.json();
-      return data;
+      return response.json();
     },
   });
 
@@ -286,8 +291,7 @@ export default function DealsManagement() {
     queryFn: async () => {
       if (!selectedCompanyId) return [];
       const response = await apiRequest('GET', `/api/companies/${selectedCompanyId}/contacts`);
-      const data = await response.json();
-      return data;
+      return response.json();
     },
     enabled: !!selectedCompanyId,
   });
@@ -300,7 +304,9 @@ export default function DealsManagement() {
       if (selectedStageId && selectedStageId !== "all") params.append("stageId", selectedStageId);
       if (searchTerm) params.append("search", searchTerm);
       
-      const response = await fetch(`/api/deals?${params}`);
+      const response = await fetch(`/api/deals?${params}`, {
+        credentials: "include",
+      });
       if (!response.ok) throw new Error("Failed to fetch deals");
       return response.json();
     },
@@ -337,7 +343,14 @@ export default function DealsManagement() {
         estimatedMonthlyValue: data.estimatedMonthlyValue ? parseFloat(data.estimatedMonthlyValue) : undefined,
       };
       
-      const response = await apiRequest('POST', '/api/deals', dealData);
+      const response = await fetch('/api/deals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(dealData)
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -363,7 +376,14 @@ export default function DealsManagement() {
   // Update deal stage mutation (for drag and drop)
   const updateDealStageMutation = useMutation({
     mutationFn: async ({ dealId, stageId }: { dealId: string; stageId: string }) => {
-      const response = await apiRequest('PUT', `/api/deals/${dealId}/stage`, { stageId });
+      const response = await fetch(`/api/deals/${dealId}/stage`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ stageId })
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -777,8 +797,13 @@ export default function DealsManagement() {
                         <TableHead>Deal Name</TableHead>
                         <TableHead>Stage</TableHead>
                         <TableHead>Amount</TableHead>
+                        <TableHead>Probability</TableHead>
                         <TableHead>Company</TableHead>
+                        <TableHead>Owner</TableHead>
+                        <TableHead>Expected Close</TableHead>
+                        <TableHead>Source</TableHead>
                         <TableHead>Priority</TableHead>
+                        <TableHead>Created</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -814,7 +839,33 @@ export default function DealsManagement() {
                           <TableCell>
                             {deal.amount ? `$${parseFloat(deal.amount.toString()).toLocaleString()}` : "-"}
                           </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={
+                                deal.probability >= 80 ? 'default' :
+                                deal.probability >= 60 ? 'secondary' :
+                                deal.probability >= 40 ? 'outline' :
+                                'destructive'
+                              }>
+                                {deal.probability}%
+                              </Badge>
+                            </div>
+                          </TableCell>
                           <TableCell>{deal.companyName || "-"}</TableCell>
+                          <TableCell>
+                            <span className="text-sm">{deal.ownerName || "Unassigned"}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">
+                              {deal.expectedCloseDate ? 
+                                format(new Date(deal.expectedCloseDate), "MMM d, yyyy") : 
+                                "-"
+                              }
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm capitalize">{deal.source || "-"}</span>
+                          </TableCell>
                           <TableCell>
                             <Badge
                               variant="secondary"
@@ -826,6 +877,11 @@ export default function DealsManagement() {
                             >
                               {deal.priority}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">
+                              {format(new Date(deal.createdAt), "MMM d, yyyy")}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>

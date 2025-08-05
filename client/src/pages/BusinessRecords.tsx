@@ -62,6 +62,26 @@ interface BusinessRecord {
   nextFollowUpDate?: string;
   customerSince?: string;
   accountManagerId?: string;
+  // Additional schema fields
+  leadSource?: string;
+  leadScore?: number;
+  employeeCount?: number;
+  annualRevenue?: number;
+  assignedTo?: string;
+  assignedToName?: string;
+  createdBy?: string;
+  createdByName?: string;
+  externalCustomerId?: string;
+  migrationStatus?: string;
+  notes?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  industry?: string;
+  website?: string;
+  territory?: string;
+  priority?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -292,8 +312,13 @@ export default function BusinessRecords() {
                     <TableHead>Contact</TableHead>
                     <TableHead>Industry</TableHead>
                     <TableHead>Territory</TableHead>
+                    <TableHead>Lead Source</TableHead>
+                    <TableHead>Lead Score</TableHead>
                     <TableHead>Value</TableHead>
+                    <TableHead>Revenue</TableHead>
+                    <TableHead>Employees</TableHead>
                     <TableHead>Priority</TableHead>
+                    <TableHead>Assigned To</TableHead>
                     <TableHead>Last Contact</TableHead>
                     <TableHead>Next Follow-up</TableHead>
                     <TableHead>Actions</TableHead>
@@ -346,10 +371,39 @@ export default function BusinessRecords() {
                         </span>
                       </TableCell>
                       <TableCell>
+                        <span className="text-sm">
+                          {record.leadSource || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {record.leadScore ? (
+                          <div className="flex items-center space-x-2">
+                            <Badge variant={
+                              record.leadScore >= 80 ? 'default' :
+                              record.leadScore >= 60 ? 'secondary' :
+                              'outline'
+                            }>
+                              {record.leadScore}
+                            </Badge>
+                          </div>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell>
                         {record.estimatedDealValue ? 
                           `$${record.estimatedDealValue.toLocaleString()}` : 
                           '-'
                         }
+                      </TableCell>
+                      <TableCell>
+                        {record.annualRevenue ? 
+                          `$${record.annualRevenue.toLocaleString()}` : 
+                          '-'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {record.employeeCount ? record.employeeCount.toLocaleString() : '-'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <Badge variant={
@@ -359,6 +413,11 @@ export default function BusinessRecords() {
                         }>
                           {record.priority || 'medium'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {record.assignedToName || record.assignedTo || 'Unassigned'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {record.lastContactDate ? 
@@ -464,6 +523,24 @@ export default function BusinessRecords() {
                   <p className="mt-1">{selectedRecord.primaryContactPhone}</p>
                 </div>
                 <div>
+                  <Label className="text-sm font-medium">Lead Source</Label>
+                  <p className="mt-1">{selectedRecord.leadSource || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Lead Score</Label>
+                  <p className="mt-1">
+                    {selectedRecord.leadScore ? (
+                      <Badge variant={
+                        selectedRecord.leadScore >= 80 ? 'default' :
+                        selectedRecord.leadScore >= 60 ? 'secondary' :
+                        'outline'
+                      }>
+                        {selectedRecord.leadScore}/100
+                      </Badge>
+                    ) : '-'}
+                  </p>
+                </div>
+                <div>
                   <Label className="text-sm font-medium">Estimated Value</Label>
                   <p className="mt-1">
                     {selectedRecord.estimatedDealValue ? 
@@ -471,6 +548,47 @@ export default function BusinessRecords() {
                       '-'
                     }
                   </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Annual Revenue</Label>
+                  <p className="mt-1">
+                    {selectedRecord.annualRevenue ? 
+                      `$${selectedRecord.annualRevenue.toLocaleString()}` : 
+                      '-'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Employee Count</Label>
+                  <p className="mt-1">
+                    {selectedRecord.employeeCount ? 
+                      selectedRecord.employeeCount.toLocaleString() : 
+                      '-'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Industry</Label>
+                  <p className="mt-1">{selectedRecord.industry || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Territory</Label>
+                  <p className="mt-1">{selectedRecord.territory || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Website</Label>
+                  <p className="mt-1">
+                    {selectedRecord.website ? (
+                      <a href={selectedRecord.website} target="_blank" rel="noopener noreferrer" 
+                         className="text-blue-600 hover:text-blue-800 underline">
+                        {selectedRecord.website}
+                      </a>
+                    ) : '-'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Assigned To</Label>
+                  <p className="mt-1">{selectedRecord.assignedToName || selectedRecord.assignedTo || 'Unassigned'}</p>
                 </div>
               </div>
 

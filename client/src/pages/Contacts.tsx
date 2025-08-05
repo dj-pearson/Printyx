@@ -51,6 +51,8 @@ interface Contact {
   email: string;
   phone: string;
   title: string;
+  department?: string;
+  isPrimary?: boolean;
   companyId: string;
   companyName: string;
   leadStatus: string;
@@ -59,8 +61,16 @@ interface Contact {
   createdAt: string;
   ownerId: string;
   ownerName: string;
-  favoriteContentType: string;
-  preferredChannels: string[];
+  favoriteContentType?: string;
+  preferredChannels?: string[];
+  mobilePhone?: string;
+  workPhone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  linkedinUrl?: string;
+  notes?: string;
 }
 
 export default function Contacts() {
@@ -247,6 +257,12 @@ export default function Contacts() {
                       <Input placeholder="Enter job title" />
                     </div>
                     <div>
+                      <Label>Department</Label>
+                      <Input placeholder="Enter department" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
                       <Label>Company</Label>
                       <Select>
                         <SelectTrigger>
@@ -256,6 +272,10 @@ export default function Contacts() {
                           <SelectItem value="lead-001">Lead #lead-001</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="isPrimary" />
+                      <Label htmlFor="isPrimary">Primary contact</Label>
                     </div>
                   </div>
                   <div>
@@ -498,9 +518,12 @@ export default function Contacts() {
                     <th className="text-left p-4 font-medium text-gray-700">NAME</th>
                     <th className="text-left p-4 font-medium text-gray-700">EMAIL</th>
                     <th className="text-left p-4 font-medium text-gray-700">PHONE NUMBER</th>
+                    <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
+                    <th className="text-left p-4 font-medium text-gray-700">PRIMARY</th>
                     <th className="text-left p-4 font-medium text-gray-700">LEAD STATUS</th>
                     <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
                     <th className="text-left p-4 font-medium text-gray-700">OWNER</th>
+                    <th className="text-left p-4 font-medium text-gray-700">PREFERRED CHANNEL</th>
                     <th className="text-left p-4 font-medium text-gray-700">LAST ACTIVITY</th>
                     <th className="text-left p-4 font-medium text-gray-700">NEXT FOLLOW-UP</th>
                     <th className="w-12"></th>
@@ -537,6 +560,16 @@ export default function Contacts() {
                       </td>
                       <td className="p-4 text-gray-900">{contact.email || '--'}</td>
                       <td className="p-4 text-gray-900">{contact.phone || '--'}</td>
+                      <td className="p-4 text-gray-900">{contact.department || '--'}</td>
+                      <td className="p-4">
+                        {contact.isPrimary ? (
+                          <Badge className="bg-green-100 text-green-800 border-0">
+                            Primary
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-500">--</span>
+                        )}
+                      </td>
                       <td className="p-4">
                         <Badge className={`${getStatusColor(contact.leadStatus)} border-0`}>
                           {contact.leadStatus || 'New'}
@@ -549,6 +582,21 @@ export default function Contacts() {
                         </div>
                       </td>
                       <td className="p-4 text-gray-900">{contact.ownerName || 'Unassigned'}</td>
+                      <td className="p-4">
+                        <div className="text-sm">
+                          {contact.preferredChannels?.length ? (
+                            <div className="flex flex-wrap gap-1">
+                              {contact.preferredChannels.map((channel, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {channel}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">--</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-4 text-gray-900">{formatDate(contact.lastContactDate)}</td>
                       <td className="p-4">
                         <span className={`text-sm ${
