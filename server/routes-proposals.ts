@@ -310,21 +310,32 @@ router.get("/:id", requireAuth, async (req: any, res) => {
 // Create new proposal
 router.post("/", requireAuth, async (req: any, res) => {
   try {
+    console.log("=== PROPOSAL CREATION DEBUG ===");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    console.log("User:", req.user);
+    
     // Generate proposal number
     const proposalNumber = await generateProposalNumber(req.user.tenantId);
+    console.log("Generated proposal number:", proposalNumber);
     
-    const validatedData = insertProposalSchema.parse({
+    const dataToValidate = {
       ...req.body,
       tenantId: req.user.tenantId,
       proposalNumber,
       createdBy: req.user.id,
       assignedTo: req.user.id // Default to creator
-    });
+    };
+    console.log("Data to validate:", JSON.stringify(dataToValidate, null, 2));
+    
+    const validatedData = insertProposalSchema.parse(dataToValidate);
+    console.log("Validated data:", JSON.stringify(validatedData, null, 2));
     
     const [proposal] = await db
       .insert(proposals)
       .values([validatedData])
       .returning();
+    
+    console.log("Created proposal:", proposal);
     
     // If line items provided, add them
     if (req.body.lineItems && req.body.lineItems.length > 0) {
@@ -358,8 +369,13 @@ router.post("/", requireAuth, async (req: any, res) => {
     
     res.status(201).json(proposal);
   } catch (error) {
+    console.error("=== PROPOSAL CREATION ERROR ===");
     console.error("Error creating proposal:", error);
-    res.status(500).json({ error: "Failed to create proposal" });
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    res.status(500).json({ error: "Failed to create proposal", details: error.message });
   }
 });
 
