@@ -95,6 +95,17 @@ export {
 } from "./manufacturer-integration-schema";
 
 export type {
+  MobileServiceSession,
+  TimeTrackingEntry,
+  ServicePhoto,
+  LocationHistory,
+  InsertMobileServiceSession,
+  InsertTimeTrackingEntry,
+  InsertServicePhoto,
+  InsertLocationHistory,
+} from "./mobile-service-schema";
+
+export type {
   ManufacturerIntegration,
   InsertManufacturerIntegration,
   DeviceRegistration,
@@ -105,15 +116,7 @@ export type {
   InsertIntegrationAuditLog,
   ThirdPartyIntegration,
   InsertThirdPartyIntegration,
-  MobileServiceSession,
-  TimeTrackingEntry,
-  ServicePhoto,
-  LocationHistory,
-  InsertMobileServiceSession,
-  InsertTimeTrackingEntry,
-  InsertServicePhoto,
-  InsertLocationHistory,
-} from "./mobile-service-schema";
+} from "./manufacturer-integration-schema";
 
 // Re-export QuickBooks integration schemas
 export {
