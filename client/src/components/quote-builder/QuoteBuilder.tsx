@@ -125,7 +125,7 @@ export default function QuoteBuilder({
   // Load existing quote if editing
   const { data: existingQuote, isLoading: quoteLoading } = useQuery({
     queryKey: [`/api/proposals/${initialQuoteId}`],
-    enabled: !!initialQuoteId,
+    enabled: !!initialQuoteId && initialQuoteId !== 'new',
     queryFn: async () => {
       const response = await apiRequest(`/api/proposals/${initialQuoteId}`, 'GET');
       return response;
@@ -135,7 +135,7 @@ export default function QuoteBuilder({
   // Load quote line items if editing
   const { data: existingLineItems = [] } = useQuery({
     queryKey: [`/api/proposals/${initialQuoteId}/line-items`],
-    enabled: !!initialQuoteId,
+    enabled: !!initialQuoteId && initialQuoteId !== 'new',
     queryFn: async () => {
       const response = await apiRequest(`/api/proposals/${initialQuoteId}/line-items`, 'GET');
       return response;
@@ -166,7 +166,7 @@ export default function QuoteBuilder({
 
       console.log('📤 Submitting quote:', quoteData);
       
-      if (initialQuoteId) {
+      if (initialQuoteId && initialQuoteId !== 'new') {
         return await apiRequest(`/api/proposals/${initialQuoteId}`, 'PATCH', quoteData);
       } else {
         return await apiRequest('/api/proposals', 'POST', quoteData);
