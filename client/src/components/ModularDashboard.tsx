@@ -64,7 +64,12 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: cardConfig } = useQuery({
+  const { data: cardConfig } = useQuery<{
+    role: string;
+    defaultCards: string[];
+    availableCards: string[];
+    allCards: string[];
+  }>({
     queryKey: ['/api/dashboard/card-config'],
     refetchInterval: 300000, // Refresh every 5 minutes
   });
@@ -113,6 +118,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
   const salesModules = modules.filter((m: DashboardModule) => m.category === 'sales');
   const serviceModules = modules.filter((m: DashboardModule) => m.category === 'service');
   const managementModules = modules.filter((m: DashboardModule) => m.category === 'management');
+  const operationsModules = modules.filter((m: DashboardModule) => m.category === 'operations');
 
   const renderMetricCard = (module: DashboardModule) => {
     const IconComponent = IconMap[module.icon] || BarChart3;
@@ -294,6 +300,30 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
           <div className="grid gap-4">
             {managementModules.map(renderMetricCard)}
           </div>
+        </div>
+      )}
+
+      {/* Operations */}
+      {operationsModules.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            Operations
+          </h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {operationsModules.map(renderMetricCard)}
+          </div>
+        </div>
+      )}
+
+      {/* Debug info - will be removed in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-8 p-4 bg-muted rounded-lg text-sm">
+          <strong>Debug Info:</strong>
+          <div>Total modules: {modules.length}</div>
+          <div>Sales: {salesModules.length}, Service: {serviceModules.length}, Management: {managementModules.length}, Operations: {operationsModules.length}</div>
+          <div>Enabled cards: {enabledCards.join(', ') || 'none'}</div>
+          <div>User role: {userRole}</div>
         </div>
       )}
 
