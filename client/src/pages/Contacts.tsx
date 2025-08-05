@@ -59,7 +59,8 @@ const contactFormSchema = z.object({
   title: z.string().optional(),
   department: z.string().optional(),
   reportsTo: z.string().optional(),
-  companyId: z.string().min(1, "Company is required"),
+  companyName: z.string().min(1, "Company is required"),
+  companyId: z.string().optional(),
   isPrimaryContact: z.boolean().default(false),
   leadStatus: z.string().optional(),
   leadSource: z.string().optional(),
@@ -131,6 +132,12 @@ export default function Contacts() {
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
+  // Contact form state  
+  const [companySearchTerm, setCompanySearchTerm] = useState("");
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+  const [showNewCompanyConfirm, setShowNewCompanyConfirm] = useState(false);
+  const [pendingContactData, setPendingContactData] = useState<ContactFormData | null>(null);
+
   // Contact form
   const contactForm = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
@@ -144,6 +151,7 @@ export default function Contacts() {
       title: "",
       department: "",
       reportsTo: "",
+      companyName: "",
       companyId: "",
       isPrimaryContact: false,
       leadStatus: "new",
@@ -168,6 +176,24 @@ export default function Contacts() {
 
   console.log('[COMPANIES DEBUG] Companies state:', { companies, companiesLoading, companiesError });
 
+  // Create company mutation
+  const createCompanyMutation = useMutation({
+    mutationFn: async (companyName: string) => {
+      const result = await apiRequest('/api/business-records', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyName,
+          recordType: 'lead',
+          status: 'new'
+        })
+      });
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
+    }
+  });
+
   // Create contact mutation
   const createContactMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
@@ -183,6 +209,7 @@ export default function Contacts() {
         description: "Contact created successfully",
       });
       contactForm.reset();
+      setCompanySearchTerm("");
       setDialogs(prev => ({ ...prev, createContact: false }));
       queryClient.invalidateQueries({ queryKey: ['/api/company-contacts'] });
     },
@@ -195,9 +222,61 @@ export default function Contacts() {
     },
   });
 
-  const onSubmitContact = (data: ContactFormData) => {
-    createContactMutation.mutate(data);
+  // Enhanced submit handler with company creation logic
+  const onSubmitContact = async (data: ContactFormData) => {
+    // Check if the company exists
+    const existingCompany = companies?.find(
+      (company: any) => company.companyName?.toLowerCase() === data.companyName.toLowerCase()
+    );
+
+    if (existingCompany) {
+      // Company exists, create contact directly
+      createContactMutation.mutate({
+        ...data,
+        companyId: existingCompany.id
+      });
+    } else {
+      // Company doesn't exist, show confirmation dialog
+      setPendingContactData(data);
+      setShowNewCompanyConfirm(true);
+    }
   };
+
+  // Handle creating new company and contact
+  const handleCreateNewCompany = async () => {
+    if (!pendingContactData) return;
+
+    try {
+      // Create company first
+      const newCompany = await createCompanyMutation.mutateAsync(pendingContactData.companyName);
+      
+      // Then create contact with the new company ID
+      createContactMutation.mutate({
+        ...pendingContactData,
+        companyId: newCompany.id
+      });
+      
+      setShowNewCompanyConfirm(false);
+      setPendingContactData(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create company",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle canceling new company creation
+  const handleCancelNewCompany = () => {
+    setShowNewCompanyConfirm(false);
+    setPendingContactData(null);
+  };
+
+  // Filter companies based on search term
+  const filteredCompanies = companies?.filter((company: any) =>
+    company.companyName?.toLowerCase().includes(companySearchTerm.toLowerCase())
+  ) || [];
 
   // Fetch all company contacts directly (since /api/contacts has auth issues)
   const { data: contactsData, isLoading, error } = useQuery({
@@ -535,30 +614,78 @@ export default function Contacts() {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={contactForm.control}
-                        name="companyId"
+                        name="companyName"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Company *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select company" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {companiesLoading && (
-                                  <SelectItem value="loading" disabled>Loading companies...</SelectItem>
-                                )}
-                                {companies && Array.isArray(companies) && companies.map((company: any) => (
-                                  <SelectItem key={company.id} value={company.id}>
-                                    {company.company_name || company.companyName || company.name}
-                                  </SelectItem>
-                                ))}
-                                {!companiesLoading && (!companies || companies.length === 0) && (
-                                  <SelectItem value="no-companies" disabled>No companies available</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
+                            <Popover open={isCompanyDropdownOpen} onOpenChange={setIsCompanyDropdownOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Input
+                                      placeholder="Type to search or enter new company..."
+                                      value={companySearchTerm}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        setCompanySearchTerm(value);
+                                        field.onChange(value);
+                                        setIsCompanyDropdownOpen(value.length > 0);
+                                      }}
+                                      onFocus={() => {
+                                        if (companySearchTerm.length > 0) {
+                                          setIsCompanyDropdownOpen(true);
+                                        }
+                                      }}
+                                      className="pr-10"
+                                    />
+                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                  </div>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                                <div className="max-h-60 overflow-y-auto">
+                                  {companiesLoading ? (
+                                    <div className="p-3 text-sm text-gray-500">Loading companies...</div>
+                                  ) : filteredCompanies.length > 0 ? (
+                                    <>
+                                      {filteredCompanies.map((company: any) => (
+                                        <div
+                                          key={company.id}
+                                          className="p-3 cursor-pointer hover:bg-gray-50 border-b last:border-b-0"
+                                          onClick={() => {
+                                            const companyName = company.companyName || company.name;
+                                            setCompanySearchTerm(companyName);
+                                            field.onChange(companyName);
+                                            contactForm.setValue('companyId', company.id);
+                                            setIsCompanyDropdownOpen(false);
+                                          }}
+                                        >
+                                          <div className="font-medium text-sm">
+                                            {company.companyName || company.name}
+                                          </div>
+                                          <div className="text-xs text-gray-500 capitalize">
+                                            {company.recordType || 'company'} • {company.status || 'active'}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </>
+                                  ) : companySearchTerm.length > 0 ? (
+                                    <div className="p-3">
+                                      <div className="text-sm text-gray-500 mb-2">
+                                        No existing companies found matching "{companySearchTerm}"
+                                      </div>
+                                      <div className="text-xs text-blue-600">
+                                        When you submit, we'll create "{companySearchTerm}" as a new lead company
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="p-3 text-sm text-gray-500">
+                                      Type to search companies or enter a new company name
+                                    </div>
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -693,6 +820,40 @@ export default function Contacts() {
                     </div>
                   </form>
                 </Form>
+              </DialogContent>
+            </Dialog>
+
+            {/* New Company Confirmation Dialog */}
+            <Dialog open={showNewCompanyConfirm} onOpenChange={setShowNewCompanyConfirm}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Create New Company</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    The company "<span className="font-semibold">{pendingContactData?.companyName}</span>" 
+                    doesn't exist in your database.
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Would you like to create this company as a new lead? The contact will be added to this new company.
+                  </p>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      onClick={handleCancelNewCompany}
+                    >
+                      No, let me select a different company
+                    </Button>
+                    <Button 
+                      onClick={handleCreateNewCompany}
+                      className="bg-orange-500 hover:bg-orange-600"
+                      disabled={createCompanyMutation.isPending || createContactMutation.isPending}
+                    >
+                      {(createCompanyMutation.isPending || createContactMutation.isPending) ? "Creating..." : "Yes, create company"}
+                    </Button>
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
