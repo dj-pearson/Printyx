@@ -161,19 +161,25 @@ export default function QuoteView() {
 
   const status = statusConfig[quote.status as keyof typeof statusConfig] || statusConfig.draft;
 
-  // Calculate pricing details correctly
-  const subtotalAmount = parseFloat(quote.subtotal || '0');
+  // Calculate pricing details for client-facing display
+  const rawSubtotalAmount = parseFloat(quote.subtotal || '0');
   const discountAmount = parseFloat(quote.discountAmount || '0');
   const discountPercentage = parseFloat(quote.discountPercentage || '0');
   const taxAmount = parseFloat(quote.taxAmount || '0');
   
-  // Fix calculation: discountAmount should be added to subtotal to get the correct total
-  // For markup (negative percentage), discountAmount is positive
-  // For discount (positive percentage), discountAmount is negative
-  const adjustmentAmount = Math.abs(discountAmount);
-  const isMarkup = discountPercentage < 0;
-  const afterAdjustmentTotal = isMarkup ? subtotalAmount + adjustmentAmount : subtotalAmount - adjustmentAmount;
-  const finalTotal = afterAdjustmentTotal + taxAmount;
+  // Apply markup/discount to line items for client display
+  const adjustmentMultiplier = 1 + (discountPercentage / 100);
+  
+  // Adjust line items with markup/discount applied
+  const adjustedLineItems = lineItems.map(item => ({
+    ...item,
+    adjustedUnitPrice: parseFloat(item.unitPrice) * adjustmentMultiplier,
+    adjustedTotalPrice: parseFloat(item.totalPrice) * adjustmentMultiplier
+  }));
+  
+  // Calculate totals with adjustments applied
+  const adjustedSubtotal = adjustedLineItems.reduce((sum, item) => sum + item.adjustedTotalPrice, 0);
+  const finalTotal = adjustedSubtotal + taxAmount;
 
   return (
     <MainLayout title={`Quote ${quote.proposalNumber}`} description={`View and manage quote for ${company ? getCompanyDisplayName(company) : 'customer'}`}>
@@ -332,7 +338,7 @@ export default function QuoteView() {
               </div>
             ) : (
               <div className="space-y-3">
-                {lineItems.map((item, index) => (
+                {adjustedLineItems.map((item, index) => (
                   <div key={item.id || index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -350,7 +356,7 @@ export default function QuoteView() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <span className="text-sm font-medium text-gray-500">Unit Price:</span>
-                                <span className="text-sm font-semibold">{formatCurrency(item.unitPrice)}</span>
+                                <span className="text-sm font-semibold">{formatCurrency(item.adjustedUnitPrice)}</span>
                               </div>
                               <Badge variant="outline" className="bg-white">
                                 {item.itemType?.replace('_', ' ')}
@@ -360,7 +366,7 @@ export default function QuoteView() {
                         </div>
                       </div>
                       <div className="text-right ml-4">
-                        <p className="text-2xl font-bold text-green-600">{formatCurrency(item.totalPrice)}</p>
+                        <p className="text-2xl font-bold text-green-600">{formatCurrency(item.adjustedTotalPrice)}</p>
                         <p className="text-sm text-gray-500">Line Total</p>
                       </div>
                     </div>
@@ -373,11 +379,11 @@ export default function QuoteView() {
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-sm font-medium text-gray-600">
-                          {lineItems.length} item{lineItems.length !== 1 ? 's' : ''} total
+                          {adjustedLineItems.length} item{adjustedLineItems.length !== 1 ? 's' : ''} total
                         </p>
                         <p className="text-lg font-semibold text-gray-900">Subtotal</p>
                       </div>
-                      <p className="text-2xl font-bold text-blue-600">{formatCurrency(subtotalAmount)}</p>
+                      <p className="text-2xl font-bold text-blue-600">{formatCurrency(adjustedSubtotal)}</p>
                     </div>
                   </div>
                 </div>
@@ -386,44 +392,34 @@ export default function QuoteView() {
           </CardContent>
         </Card>
 
-        {/* Pricing Summary - Moved Below Line Items */}
+        {/* Clean Pricing Summary - Client Facing */}
         <Card className="bg-white shadow-sm border-0 ring-1 ring-gray-200">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-900">
               <DollarSign className="h-5 w-5 text-blue-600" />
-              Pricing Summary
+              Quote Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {/* Subtotal */}
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="text-lg font-semibold">{formatCurrency(subtotalAmount)}</span>
+              <div className="flex justify-between items-center py-3 text-lg">
+                <span className="text-gray-700 font-medium">Subtotal</span>
+                <span className="font-semibold">{formatCurrency(adjustedSubtotal)}</span>
               </div>
-              
-              {/* Markup/Discount - Only show the final adjusted total, not the breakdown */}
-              {adjustmentAmount > 0 && (
-                <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                  <span className="text-gray-600">
-                    {isMarkup ? 'After Markup' : 'After Discount'}
-                  </span>
-                  <span className="text-lg font-semibold">{formatCurrency(afterAdjustmentTotal)}</span>
-                </div>
-              )}
               
               {/* Tax */}
               {taxAmount > 0 && (
-                <div className="flex justify-between items-center py-2 border-t border-gray-100">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="text-lg font-semibold">{formatCurrency(taxAmount)}</span>
+                <div className="flex justify-between items-center py-3 border-t border-gray-100 text-lg">
+                  <span className="text-gray-700 font-medium">Tax</span>
+                  <span className="font-semibold">{formatCurrency(taxAmount)}</span>
                 </div>
               )}
               
               {/* Grand Total */}
               <div className="border-t-2 border-gray-300 pt-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-xl font-bold text-gray-900">Grand Total</span>
+                  <span className="text-2xl font-bold text-gray-900">Total</span>
                   <span className="text-3xl font-bold text-green-600">{formatCurrency(finalTotal)}</span>
                 </div>
               </div>
