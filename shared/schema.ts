@@ -145,6 +145,24 @@ export {
   insertDemoOutcomeSchema,
 } from "../server/demo-scheduling-schema";
 
+// Re-export Manufacturer Integration schemas
+export {
+  manufacturerIntegrations,
+  deviceRegistrations,
+  deviceMetrics,
+  integrationAuditLogs,
+  thirdPartyIntegrations,
+  integrationStatusEnum,
+  manufacturerEnum,
+  integrationMethodEnum,
+  collectionFrequencyEnum,
+  insertManufacturerIntegrationSchema,
+  insertDeviceRegistrationSchema,
+  insertDeviceMetricSchema,
+  insertIntegrationAuditLogSchema,
+  insertThirdPartyIntegrationSchema,
+} from "./manufacturer-integration-schema";
+
 export type {
   DemoSchedule,
   InsertDemoSchedule,
@@ -153,6 +171,19 @@ export type {
   DemoOutcome,
   InsertDemoOutcome,
 } from "../server/demo-scheduling-schema";
+
+export type {
+  ManufacturerIntegration,
+  InsertManufacturerIntegration,
+  DeviceRegistration,
+  InsertDeviceRegistration,
+  DeviceMetric,
+  InsertDeviceMetric,
+  IntegrationAuditLog,
+  InsertIntegrationAuditLog,
+  ThirdPartyIntegration,
+  InsertThirdPartyIntegration,
+} from "./manufacturer-integration-schema";
 
 // Re-export Sales Forecasting schemas
 export {
