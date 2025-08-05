@@ -160,8 +160,8 @@ export default function ProductTypeSelector({
     if (!product.isActive) return false;
     
     const matchesSearch = 
-      product.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.productName && product.productName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.productCode && product.productCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
