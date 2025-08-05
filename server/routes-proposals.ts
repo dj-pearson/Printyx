@@ -346,7 +346,8 @@ router.post("/", requireAuth, async (req: any, res) => {
         ...item,
         tenantId: req.user.tenantId,
         proposalId: proposal.id,
-        lineNumber: index + 1
+        lineNumber: index + 1,
+        itemType: 'equipment' // Default to equipment for now, can be enhanced later
       }));
       
       const lineItems = await db
