@@ -6960,11 +6960,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put(
     "/api/deals/:id",
     requireAuth,
-    requireAuth,
-    requireAuth,
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        // Simple session-based authentication check
+        if (!req.session.userId) {
+          return res.status(401).json({ message: "Not authenticated" });
+        }
+
+        const user = await storage.getUser(req.session.userId);
+        if (!user?.tenantId) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        const tenantId = user.tenantId;
         const dealId = req.params.id;
 
         const deal = await storage.updateDeal(dealId, req.body, tenantId);

@@ -258,6 +258,7 @@ export default function DealsManagement() {
     closeDateTo: ""
   });
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
+  const [editingCloseDate, setEditingCloseDate] = useState<string | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -399,6 +400,40 @@ export default function DealsManagement() {
         description: error.message || "Failed to move deal",
         variant: "destructive",
       });
+    },
+  });
+
+  // Update deal close date mutation (for inline editing)
+  const updateDealCloseDateMutation = useMutation({
+    mutationFn: async ({ dealId, expectedCloseDate }: { dealId: string; expectedCloseDate: string }) => {
+      const response = await fetch(`/api/deals/${dealId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ expectedCloseDate })
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update close date');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      setEditingCloseDate(null);
+      toast({
+        title: "Success", 
+        description: "Close date updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update close date",
+        variant: "destructive",
+      });
+      setEditingCloseDate(null);
     },
   });
 
@@ -861,12 +896,51 @@ export default function DealsManagement() {
                             <span className="text-sm">{deal.ownerName || "Unassigned"}</span>
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm">
-                              {deal.expectedCloseDate ? 
-                                format(new Date(deal.expectedCloseDate), "MMM d, yyyy") : 
-                                "-"
-                              }
-                            </span>
+                            {editingCloseDate === deal.id ? (
+                              <Input
+                                type="date"
+                                defaultValue={deal.expectedCloseDate ? deal.expectedCloseDate.split('T')[0] : ''}
+                                className="w-36 h-8 text-sm"
+                                autoFocus
+                                onBlur={(e) => {
+                                  const newDate = e.target.value;
+                                  if (newDate && newDate !== deal.expectedCloseDate?.split('T')[0]) {
+                                    updateDealCloseDateMutation.mutate({
+                                      dealId: deal.id,
+                                      expectedCloseDate: newDate
+                                    });
+                                  } else {
+                                    setEditingCloseDate(null);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const newDate = (e.target as HTMLInputElement).value;
+                                    if (newDate && newDate !== deal.expectedCloseDate?.split('T')[0]) {
+                                      updateDealCloseDateMutation.mutate({
+                                        dealId: deal.id,
+                                        expectedCloseDate: newDate
+                                      });
+                                    } else {
+                                      setEditingCloseDate(null);
+                                    }
+                                  } else if (e.key === 'Escape') {
+                                    setEditingCloseDate(null);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span 
+                                className="text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+                                onClick={() => setEditingCloseDate(deal.id)}
+                                title="Click to edit close date"
+                              >
+                                {deal.expectedCloseDate ? 
+                                  format(new Date(deal.expectedCloseDate), "MMM d, yyyy") : 
+                                  "Set date"
+                                }
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <span className="text-sm capitalize">{deal.source || "-"}</span>
