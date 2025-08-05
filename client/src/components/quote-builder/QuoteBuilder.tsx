@@ -258,45 +258,9 @@ export default function QuoteBuilder({
     },
   });
 
-  // Load existing data if editing
-  useEffect(() => {
-    if (existingQuote) {
-      form.reset({
-        title: existingQuote.title,
-        businessRecordId: existingQuote.businessRecordId,
-        contactId: existingQuote.contactId || '',
-        pricingType: 'new', // Default, could be enhanced to store this
-        validUntil: existingQuote.validUntil ? new Date(existingQuote.validUntil).toISOString().split('T')[0] : '',
-        customerNotes: existingQuote.customerFeedback || '',
-        internalNotes: existingQuote.internalNotes || '',
-      });
-    }
-  }, [existingQuote, form]);
+  // This is now handled by the earlier useEffect that includes line items
 
-  useEffect(() => {
-    if (existingLineItems.length > 0) {
-      const formattedItems: LineItem[] = existingLineItems.map((item: any, index: number) => ({
-        id: item.id,
-        lineNumber: item.lineNumber || index + 1,
-        parentLineId: item.parentLineId,
-        isSubline: !!item.parentLineId,
-        productType: item.itemType || 'equipment',
-        productId: item.productId || '',
-        productCode: item.productCode || '',
-        productName: item.productName,
-        description: item.description,
-        quantity: item.quantity,
-        msrp: parseFloat(item.unitCost || '0'),
-        listPrice: parseFloat(item.unitPrice || '0'),
-        unitPrice: parseFloat(item.unitPrice || '0'),
-        totalPrice: parseFloat(item.totalPrice || '0'),
-        unitCost: parseFloat(item.unitCost || '0'),
-        margin: parseFloat(item.margin || '0'),
-        notes: item.notes,
-      }));
-      setLineItems(formattedItems);
-    }
-  }, [existingLineItems]);
+  // Line items are now loaded with the quote data in the useEffect above
 
   const handleCompanySelect = (company: any) => {
     setSelectedCompany(company);
