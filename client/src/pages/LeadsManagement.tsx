@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -279,8 +279,14 @@ export default function LeadsManagement() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  // Force cards view on mobile, table view on desktop by default
-  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
+  
+  // Responsive view mode: cards on mobile, table on desktop
+  const [viewMode, setViewMode] = useState<"table" | "cards">(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 768 ? "cards" : "table";
+    }
+    return "cards";
+  });
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
@@ -291,6 +297,23 @@ export default function LeadsManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+
+  // Handle responsive view mode changes
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768;
+      // Only auto-switch to cards on mobile if user hasn't manually selected a view
+      if (isMobile && viewMode === "table") {
+        setViewMode("cards");
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    // Set initial view based on screen size
+    handleResize();
+    
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Fetch leads data from business records
   const {
@@ -304,7 +327,7 @@ export default function LeadsManagement() {
 
   // Filter for leads only
   const leads = useMemo(() => {
-    return allBusinessRecords.filter(
+    return (allBusinessRecords as any[]).filter(
       (record: any) => record.recordType === "lead"
     );
   }, [allBusinessRecords]);
