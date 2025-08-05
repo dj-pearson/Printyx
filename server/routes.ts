@@ -4871,29 +4871,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (!existingCompany) {
-          // It might be a business record ID, try to get the business record
-          const businessRecord = await storage.getBusinessRecord(
-            companyId,
-            tenantId
-          );
-          if (businessRecord) {
-            // Try to find an existing company with the same name
-            const existingCompanyByName = await storage.getCompanyByName(
-              businessRecord.company_name || businessRecord.name,
-              tenantId
-            );
-
-            if (existingCompanyByName) {
-              actualCompanyId = existingCompanyByName.id;
-            } else {
-              // No company exists yet, return empty array
-              return res.json([]);
-            }
-          } else {
-            return res
-              .status(404)
-              .json({ message: "Company or business record not found" });
-          }
+          // Since we no longer use the companies table, just use the business record ID directly
+          // The companyId parameter is actually a business record ID
+          actualCompanyId = companyId;
         }
 
         const contacts = await storage.getCompanyContacts(
@@ -4934,45 +4914,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (!existingCompany) {
-          // It might be a business record ID, try to get the business record
-          const businessRecord = await storage.getBusinessRecord(
-            companyId,
-            tenantId
-          );
-          if (businessRecord) {
-            // Try to find an existing company with the same name
-            const existingCompanyByName = await storage.getCompanyByName(
-              businessRecord.company_name || businessRecord.name,
-              tenantId
-            );
-
-            if (existingCompanyByName) {
-              actualCompanyId = existingCompanyByName.id;
-            } else {
-              // Create a new company based on the business record
-              const newCompany = await storage.createCompany({
-                name:
-                  businessRecord.company_name ||
-                  businessRecord.name ||
-                  "Unknown Company",
-                tenantId: tenantId,
-                businessRecordId: companyId, // Link back to the business record
-                industry: businessRecord.industry,
-                website: businessRecord.website,
-                phone: businessRecord.phone,
-                address: businessRecord.address,
-                city: businessRecord.city,
-                state: businessRecord.state,
-                zipCode: businessRecord.zip_code,
-                country: businessRecord.country || "USA",
-              });
-              actualCompanyId = newCompany.id;
-            }
-          } else {
-            return res
-              .status(404)
-              .json({ message: "Company or business record not found" });
-          }
+          // Since we no longer use the companies table, just use the business record ID directly
+          // The companyId parameter is actually a business record ID
+          actualCompanyId = companyId;
         }
 
         const validatedData = insertCompanyContactSchema.parse({

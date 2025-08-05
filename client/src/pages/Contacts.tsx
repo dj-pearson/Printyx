@@ -511,7 +511,7 @@ export default function Contacts() {
                                 )}
                                 {companies && Array.isArray(companies) && companies.map((company: any) => (
                                   <SelectItem key={company.id} value={company.id}>
-                                    {company.companyName || company.name}
+                                    {company.company_name || company.companyName || company.name}
                                   </SelectItem>
                                 ))}
                                 {!companiesLoading && (!companies || companies.length === 0) && (
