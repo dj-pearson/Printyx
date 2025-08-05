@@ -59,7 +59,6 @@ export const BUSINESS_RECORDS_FIELD_MAP = {
     // Tracking Information
     lastContactDate: 'last_contact_date',
     nextFollowUpDate: 'next_follow_up_date',
-    lastActivityDate: 'last_activity_date',
     
     // Record Management
     recordType: 'record_type',
