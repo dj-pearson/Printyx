@@ -53,6 +53,7 @@ import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
 import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
 import { registerManufacturerIntegrationRoutes } from "./routes-manufacturer-integration";
+import customerPortalRoutes from "./routes-customer-portal";
 import { serviceDispatchRouter } from "./routes-service-dispatch";
 // import { registerCommissionRoutes } from "./routes-commission"; // TODO: Add commission schema tables first
 import {
@@ -12695,6 +12696,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register manufacturer integration routes
   registerManufacturerIntegrationRoutes(app);
+
+  // Register customer portal routes
+  app.use('/api/customer-portal', customerPortalRoutes);
   
   // Register Service Dispatch routes (converted from mock data to database queries)
   app.use(serviceDispatchRouter);
