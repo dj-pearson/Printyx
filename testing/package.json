@@ -1,0 +1,34 @@
+{
+  "name": "printyx-comprehensive-testing",
+  "version": "1.0.0",
+  "description": "Comprehensive testing suite for Printyx React application using Puppeteer",
+  "main": "run-tests.js",
+  "scripts": {
+    "test": "node run-tests.js",
+    "test:desktop": "node run-tests.js --desktop-only",
+    "test:no-server": "node run-tests.js --no-server",
+    "test:no-screenshots": "node run-tests.js --no-screenshots",
+    "test:verbose": "node run-tests.js --verbose",
+    "demo": "node demo-test.js",
+    "demo:simple": "node demo-test-simple.js",
+    "install-deps": "npm install puppeteer --save"
+  },
+  "keywords": [
+    "testing",
+    "puppeteer",
+    "react",
+    "automation",
+    "ui-testing"
+  ],
+  "author": "Printyx Team",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
