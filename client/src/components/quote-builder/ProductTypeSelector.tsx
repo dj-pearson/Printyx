@@ -127,7 +127,10 @@ export default function ProductTypeSelector({
   pricingType,
   parentProductId,
 }: ProductTypeSelectorProps) {
-  const [selectedType, setSelectedType] = useState<ProductType>('product_models');
+  // If we're adding accessories for a parent product, default to accessories
+  const [selectedType, setSelectedType] = useState<ProductType>(
+    parentProductId ? 'product_accessories' : 'product_models'
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [manufacturerFilter, setManufacturerFilter] = useState('all');
@@ -222,7 +225,9 @@ export default function ProductTypeSelector({
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {productTypes.map((type) => (
+              {productTypes
+                .filter(type => !parentProductId || type.value === 'product_accessories')
+                .map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   <div className="flex items-center gap-2">
                     <type.icon className="h-4 w-4" />
