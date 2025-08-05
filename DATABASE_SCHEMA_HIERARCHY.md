@@ -1,10 +1,17 @@
 # Printyx Database Schema Hierarchy & Reference
-*Updated: February 4, 2025*
+*Updated: January 5, 2025*
 
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 124 tables across all business modules
+**Total Tables**: 151 tables across all business modules
+
+## Recent Schema Updates
+- **Customer Self-Service Portal**: Added 8 comprehensive tables for customer portal functionality including access management, service requests, meter submissions, supply orders, payments, notifications, and activity logging
+- **Manufacturer Integration System**: Enhanced device registration and metrics tracking with manufacturer_integrations, device_registrations, device_metrics, and integration_audit_logs tables
+- **Service Dispatch System**: Connected to real database with proper authentication using service_tickets and technicians tables
+- **Multi-tenant Architecture**: Full tenant isolation across all new tables with proper foreign key relationships
+- **Enum Types**: Added customer portal specific enums (customer_portal_status, service_request_status, service_request_priority, service_request_type, supply_order_status, payment_status, payment_method, notification_type, meter_submission_method)
 
 ## Core System Architecture
 
@@ -396,6 +403,231 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_by` (varchar, FK → users.id) - User who made change
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `created_at` (timestamp) - Creation date
+
+## Customer Self-Service Portal System
+
+### Customer Portal Access & Management
+
+#### `customer_portal_access` (Portal Authentication)
+**Purpose**: Manages customer portal user accounts and authentication
+**Function**: Secure customer access to self-service portal with role-based permissions
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Portal user identifier
+- `tenant_id` (uuid, FK → tenants.id) - Dealer's tenant ID
+- `customer_id` (uuid, FK → business_records.id) - Associated customer record
+- `username` (varchar(100), UNIQUE) - Portal login username
+- `password_hash` (varchar(255)) - Encrypted password
+- `email` (varchar(255)) - Portal email address
+- `status` (customer_portal_status) - Account status (active/inactive/suspended/pending_activation)
+- `is_email_verified` (boolean) - Email verification status
+- `email_verification_token` (varchar(255)) - Email verification token
+- `password_reset_token` (varchar(255)) - Password reset token
+- `password_reset_expires` (timestamp) - Password reset expiration
+- `last_login_at` (timestamp) - Last login timestamp
+- `session_token` (varchar(255)) - Active session token
+- `session_expires` (timestamp) - Session expiration
+- `permissions` (jsonb) - Portal permissions (view invoices, submit requests, order supplies, etc.)
+- `preferences` (jsonb) - User preferences (notifications, language, timezone)
+- `created_at` (timestamp) - Account creation date
+- `updated_at` (timestamp) - Last update
+- `created_by` (uuid, FK → users.id) - Staff member who created access
+
+#### `customer_portal_activity_log` (Activity Tracking)
+**Purpose**: Comprehensive audit log of all customer portal activities
+**Function**: Security tracking, compliance monitoring, and user behavior analytics
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Activity log identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `customer_id` (uuid, FK → business_records.id) - Customer reference
+- `customer_portal_user_id` (uuid, FK → customer_portal_access.id) - Portal user
+- `action` (varchar(100)) - Action performed (login, logout, view_invoice, submit_request, etc.)
+- `description` (text) - Activity description
+- `ip_address` (varchar(45)) - User IP address
+- `user_agent` (text) - Browser/device information
+- `related_record_type` (varchar(50)) - Type of related record (invoice, service_request, etc.)
+- `related_record_id` (uuid) - Related record identifier
+- `timestamp` (timestamp) - Activity timestamp
+
+### Service Request Management
+
+#### `customer_service_requests` (Self-Service Requests)
+**Purpose**: Customer-initiated service requests through the portal
+**Function**: Complete service request workflow from submission to completion
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Request identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `customer_id` (uuid, FK → business_records.id) - Customer reference
+- `customer_portal_user_id` (uuid, FK → customer_portal_access.id) - Portal user who submitted
+- `request_number` (varchar(50), UNIQUE) - Auto-generated request number
+- `title` (varchar(255)) - Service request title
+- `description` (text) - Detailed description
+- `type` (service_request_type) - Request type (maintenance/repair/installation/training/supplies/technical_support/other)
+- `priority` (service_request_priority) - Priority level (low/normal/high/urgent/emergency)
+- `status` (service_request_status) - Current status (submitted/acknowledged/assigned/in_progress/on_hold/completed/cancelled)
+- `equipment_id` (uuid, FK → equipment.id) - Related equipment
+- `equipment_serial_number` (varchar(100)) - Equipment serial number
+- `equipment_model` (varchar(100)) - Equipment model
+- `equipment_location` (varchar(255)) - Equipment location
+- `contact_name` (varchar(100)) - Primary contact name
+- `contact_phone` (varchar(20)) - Contact phone
+- `contact_email` (varchar(255)) - Contact email
+- `preferred_date` (timestamp) - Customer preferred service date
+- `preferred_time` (varchar(50)) - Preferred time window
+- `urgency_notes` (text) - Urgency explanation
+- `assigned_technician_id` (uuid, FK → technicians.id) - Assigned technician
+- `service_ticket_id` (uuid, FK → service_tickets.id) - Internal service ticket link
+- `estimated_completion_date` (timestamp) - Estimated completion
+- `actual_completion_date` (timestamp) - Actual completion
+- `customer_notes` (text) - Customer-provided notes
+- `internal_notes` (text) - Internal staff notes
+- `resolution_notes` (text) - Resolution details
+- `attachments` (jsonb) - File attachments array
+- `customer_rating` (integer) - Customer satisfaction rating (1-5)
+- `customer_feedback` (text) - Customer feedback
+- `submitted_at` (timestamp) - Submission timestamp
+- `acknowledged_at` (timestamp) - Staff acknowledgment timestamp
+- `completed_at` (timestamp) - Completion timestamp
+- `updated_at` (timestamp) - Last update
+
+### Meter Reading Submissions
+
+#### `customer_meter_submissions` (Self-Service Meter Readings)
+**Purpose**: Customer-submitted meter readings for billing and monitoring
+**Function**: Multiple submission methods with validation workflow and billing integration
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Submission identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `customer_id` (uuid, FK → business_records.id) - Customer reference
+- `customer_portal_user_id` (uuid, FK → customer_portal_access.id) - Submitting portal user
+- `equipment_id` (uuid, FK → equipment.id) - Equipment reference
+- `equipment_serial_number` (varchar(100)) - Equipment serial number
+- `total_impressions` (integer) - Total impression count
+- `black_white_impressions` (integer) - B&W impression count
+- `color_impressions` (integer) - Color impression count
+- `large_format_impressions` (integer) - Large format count
+- `scan_impressions` (integer) - Scan count
+- `fax_impressions` (integer) - Fax count
+- `submission_method` (meter_submission_method) - Submission method (manual_entry/photo_upload/email/automated)
+- `reading_date` (timestamp) - Date of actual meter reading
+- `submission_date` (timestamp) - Portal submission date
+- `photo_urls` (jsonb) - Array of photo evidence URLs
+- `is_validated` (boolean) - Staff validation status
+- `validated_by` (uuid, FK → users.id) - Staff member who validated
+- `validated_at` (timestamp) - Validation timestamp
+- `validation_notes` (text) - Validation notes
+- `is_billed` (boolean) - Billing integration status
+- `billing_date` (timestamp) - Date processed for billing
+- `invoice_id` (uuid, FK → invoices.id) - Related invoice
+- `customer_notes` (text) - Customer-provided notes
+- `internal_notes` (text) - Internal processing notes
+
+### Supply Ordering System
+
+#### `customer_supply_orders` (Self-Service Supply Orders)
+**Purpose**: Customer-initiated supply orders through portal
+**Function**: Complete ordering workflow from cart to delivery tracking
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Order identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `customer_id` (uuid, FK → business_records.id) - Customer reference
+- `customer_portal_user_id` (uuid, FK → customer_portal_access.id) - Ordering portal user
+- `order_number` (varchar(50), UNIQUE) - Auto-generated order number
+- `status` (supply_order_status) - Order status (draft/submitted/confirmed/processing/shipped/delivered/cancelled)
+- `delivery_address` (jsonb) - Delivery address object
+- `delivery_instructions` (text) - Special delivery instructions
+- `requested_delivery_date` (timestamp) - Customer requested delivery date
+- `actual_delivery_date` (timestamp) - Actual delivery date
+- `subtotal` (decimal(10,2)) - Order subtotal
+- `tax` (decimal(10,2)) - Tax amount
+- `shipping` (decimal(10,2)) - Shipping cost
+- `total` (decimal(10,2)) - Total order amount
+- `is_contract_covered` (boolean) - Contract coverage flag
+- `contract_id` (uuid, FK → contracts.id) - Related service contract
+- `purchase_order_number` (varchar(100)) - Customer PO number
+- `tracking_number` (varchar(100)) - Shipping tracking number
+- `carrier` (varchar(50)) - Shipping carrier
+- `shipped_at` (timestamp) - Ship date
+- `customer_notes` (text) - Customer order notes
+- `internal_notes` (text) - Internal processing notes
+- `created_at` (timestamp) - Order creation
+- `submitted_at` (timestamp) - Order submission
+- `updated_at` (timestamp) - Last update
+
+#### `customer_supply_order_items` (Order Line Items)
+**Purpose**: Individual items within customer supply orders
+**Function**: Detailed product information, pricing, and availability tracking
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Line item identifier
+- `order_id` (uuid, FK → customer_supply_orders.id, CASCADE DELETE) - Parent order
+- `product_id` (uuid, FK → supplies.id) - Product reference
+- `product_sku` (varchar(100)) - Product SKU
+- `product_name` (varchar(255)) - Product name
+- `product_description` (text) - Product description
+- `compatible_equipment_id` (uuid, FK → equipment.id) - Compatible equipment
+- `quantity` (integer) - Ordered quantity
+- `unit_price` (decimal(10,2)) - Unit price
+- `total_price` (decimal(10,2)) - Line total
+- `in_stock` (boolean) - Availability status
+- `estimated_ship_date` (timestamp) - Estimated ship date
+- `customer_notes` (text) - Customer item notes
+
+### Payment Processing
+
+#### `customer_payments` (Self-Service Payments)
+**Purpose**: Customer-initiated payments through portal
+**Function**: Multiple payment methods with processing workflow and integration
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Payment identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `customer_id` (uuid, FK → business_records.id) - Customer reference
+- `customer_portal_user_id` (uuid, FK → customer_portal_access.id) - Portal user making payment
+- `payment_number` (varchar(50), UNIQUE) - Auto-generated payment number
+- `amount` (decimal(10,2)) - Payment amount
+- `payment_method` (payment_method) - Payment method (credit_card/ach/wire_transfer/check/auto_pay)
+- `status` (payment_status) - Payment status (pending/processing/completed/failed/refunded/partially_paid)
+- `invoice_id` (uuid, FK → invoices.id) - Related invoice
+- `invoice_number` (varchar(100)) - Invoice reference number
+- `transaction_id` (varchar(255)) - External payment processor transaction ID
+- `processor_name` (varchar(100)) - Payment processor (Stripe, PayPal, etc.)
+- `processor_response` (jsonb) - Full processor response
+- `payment_method_details` (jsonb) - Encrypted payment method details
+- `payment_date` (timestamp) - Payment date
+- `processed_at` (timestamp) - Processing completion timestamp
+- `customer_notes` (text) - Customer payment notes
+- `internal_notes` (text) - Internal processing notes
+- `failure_reason` (text) - Failure explanation if applicable
+- `retry_count` (integer) - Number of retry attempts
+- `next_retry_at` (timestamp) - Next retry scheduled time
+
+### Notification System
+
+#### `customer_notifications` (Portal Notifications)
+**Purpose**: Multi-channel customer notifications and communication
+**Function**: Email, SMS, and portal notifications with delivery tracking
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Notification identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `customer_id` (uuid, FK → business_records.id) - Customer reference
+- `customer_portal_user_id` (uuid, FK → customer_portal_access.id) - Portal user
+- `type` (notification_type) - Notification type (service_update/invoice_ready/payment_due/supply_low/maintenance_reminder/system_alert)
+- `title` (varchar(255)) - Notification title
+- `message` (text) - Notification content
+- `is_email_sent` (boolean) - Email delivery status
+- `email_sent_at` (timestamp) - Email send timestamp
+- `is_sms_capable` (boolean) - SMS capability flag
+- `is_sms_sent` (boolean) - SMS delivery status
+- `sms_sent_at` (timestamp) - SMS send timestamp
+- `is_portal_read` (boolean) - Portal read status
+- `portal_read_at` (timestamp) - Portal read timestamp
+- `related_service_request_id` (uuid, FK → customer_service_requests.id) - Related service request
+- `related_invoice_id` (uuid, FK → invoices.id) - Related invoice
+- `related_payment_id` (uuid, FK → customer_payments.id) - Related payment
+- `related_supply_order_id` (uuid, FK → customer_supply_orders.id) - Related supply order
+- `priority` (varchar(20)) - Notification priority
+- `scheduled_send_at` (timestamp) - Scheduled delivery time
+- `expires_at` (timestamp) - Notification expiration
+- `created_at` (timestamp) - Creation timestamp
+- `sent_at` (timestamp) - Actual send timestamp
 
 ### Service Management
 
