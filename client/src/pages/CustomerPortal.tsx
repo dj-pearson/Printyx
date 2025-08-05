@@ -139,7 +139,7 @@ const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useCustomerPortal();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -166,7 +166,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const handleLogout = () => {
     logout();
-    navigate('/customer-portal');
+    setLocation('/customer-portal');
   };
 
   return (
@@ -184,7 +184,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                 variant="ghost"
                 size="sm"
                 className="relative"
-                onClick={() => navigate('/customer-portal/notifications')}
+                onClick={() => setLocation('/customer-portal/notifications')}
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -202,7 +202,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/customer-portal/settings')}
+                onClick={() => setLocation('/customer-portal/settings')}
               >
                 <Settings className="h-4 w-4" />
               </Button>
@@ -226,7 +226,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0 border-b-2 border-transparent hover:border-blue-500"
-              onClick={() => navigate('/customer-portal/dashboard')}
+              onClick={() => setLocation('/customer-portal/dashboard')}
             >
               <BarChart3 className="h-4 w-4" />
               <span>Dashboard</span>
@@ -235,7 +235,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
-              onClick={() => navigate('/customer-portal/service-requests')}
+              onClick={() => setLocation('/customer-portal/service-requests')}
             >
               <Wrench className="h-4 w-4" />
               <span>Service Requests</span>
@@ -244,7 +244,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
-              onClick={() => navigate('/customer-portal/meter-readings')}
+              onClick={() => setLocation('/customer-portal/meter-readings')}
             >
               <FileText className="h-4 w-4" />
               <span>Meter Readings</span>
@@ -253,7 +253,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
-              onClick={() => navigate('/customer-portal/supplies')}
+              onClick={() => setLocation('/customer-portal/supplies')}
             >
               <Package className="h-4 w-4" />
               <span>Supplies</span>
@@ -262,7 +262,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
-              onClick={() => navigate('/customer-portal/payments')}
+              onClick={() => setLocation('/customer-portal/payments')}
             >
               <CreditCard className="h-4 w-4" />
               <span>Payments</span>

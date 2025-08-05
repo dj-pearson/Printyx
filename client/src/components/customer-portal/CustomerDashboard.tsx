@@ -85,7 +85,7 @@ export const CustomerDashboard: React.FC = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card 
           className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate('/customer-portal/service-requests')}
+          onClick={() => setLocation('/customer-portal/service-requests')}
         >
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -104,7 +104,7 @@ export const CustomerDashboard: React.FC = () => {
 
         <Card 
           className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate('/customer-portal/meter-readings')}
+          onClick={() => setLocation('/customer-portal/meter-readings')}
         >
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -123,7 +123,7 @@ export const CustomerDashboard: React.FC = () => {
 
         <Card 
           className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate('/customer-portal/supplies')}
+          onClick={() => setLocation('/customer-portal/supplies')}
         >
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -142,7 +142,7 @@ export const CustomerDashboard: React.FC = () => {
 
         <Card 
           className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate('/customer-portal/payments')}
+          onClick={() => setLocation('/customer-portal/payments')}
         >
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -161,7 +161,7 @@ export const CustomerDashboard: React.FC = () => {
 
         <Card 
           className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate('/customer-portal/notifications')}
+          onClick={() => setLocation('/customer-portal/notifications')}
         >
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -190,7 +190,7 @@ export const CustomerDashboard: React.FC = () => {
             <Button 
               className="w-full justify-start" 
               variant="outline"
-              onClick={() => navigate('/customer-portal/service-requests')}
+              onClick={() => setLocation('/customer-portal/service-requests')}
             >
               <Wrench className="h-4 w-4 mr-2" />
               Submit Service Request
@@ -198,7 +198,7 @@ export const CustomerDashboard: React.FC = () => {
             <Button 
               className="w-full justify-start" 
               variant="outline"
-              onClick={() => navigate('/customer-portal/meter-readings')}
+              onClick={() => setLocation('/customer-portal/meter-readings')}
             >
               <FileText className="h-4 w-4 mr-2" />
               Submit Meter Reading
@@ -206,7 +206,7 @@ export const CustomerDashboard: React.FC = () => {
             <Button 
               className="w-full justify-start" 
               variant="outline"
-              onClick={() => navigate('/customer-portal/supplies')}
+              onClick={() => setLocation('/customer-portal/supplies')}
             >
               <Package className="h-4 w-4 mr-2" />
               Order Supplies
@@ -214,7 +214,7 @@ export const CustomerDashboard: React.FC = () => {
             <Button 
               className="w-full justify-start" 
               variant="outline"
-              onClick={() => navigate('/customer-portal/payments')}
+              onClick={() => setLocation('/customer-portal/payments')}
             >
               <CreditCard className="h-4 w-4 mr-2" />
               Make Payment
@@ -312,7 +312,7 @@ export const CustomerDashboard: React.FC = () => {
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => navigate('/customer-portal/notifications')}
+                onClick={() => setLocation('/customer-portal/notifications')}
               >
                 View All Activity
               </Button>
