@@ -121,8 +121,12 @@ export default function CompanyContactSelector({
   };
 
   const handleContactChange = (contactId: string) => {
-    const contact = contacts.find(c => c.id === contactId);
-    onContactSelect(contact || null);
+    if (contactId === "no-contact") {
+      onContactSelect(null);
+    } else {
+      const contact = contacts.find(c => c.id === contactId);
+      onContactSelect(contact || null);
+    }
   };
 
   return (
@@ -257,7 +261,7 @@ export default function CompanyContactSelector({
           <div className="space-y-2">
             <Label>Primary Contact</Label>
             <Select
-              value={selectedContact?.id || ''}
+              value={selectedContact?.id || 'no-contact'}
               onValueChange={handleContactChange}
             >
               <SelectTrigger>
@@ -286,7 +290,7 @@ export default function CompanyContactSelector({
                   </div>
                 ) : (
                   <>
-                    <SelectItem value="">
+                    <SelectItem value="no-contact">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
                         No specific contact
