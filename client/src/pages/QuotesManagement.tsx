@@ -254,15 +254,15 @@ export default function QuotesManagement() {
   };
 
   const handleCreateQuote = () => {
-    navigate('/quotes/new');
+    setLocation('/quotes/new');
   };
 
   const handleEditQuote = (quoteId: string) => {
-    navigate(`/quotes/edit/${quoteId}`);
+    setLocation(`/quotes/edit/${quoteId}`);
   };
 
   const handleViewQuote = (quoteId: string) => {
-    navigate(`/quotes/${quoteId}`);
+    setLocation(`/quotes/${quoteId}`);
   };
 
   const handleDeleteQuote = (quoteId: string) => {
