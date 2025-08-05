@@ -67,11 +67,12 @@ export function registerBusinessRecordRoutes(app: Express) {
       
       const recordData = {
         ...dbData,
-        tenant_id: tenantId,
-        created_by: userId,
-        record_type: recordType,
+        tenantId: tenantId,
+        createdBy: userId,
+        recordType: recordType,
         status: status,
       };
+      console.log('[DEBUG] Final record data:', JSON.stringify(recordData, null, 2));
       
       const newRecord = await storage.createBusinessRecord(recordData);
       // Transform response back to frontend format
