@@ -350,25 +350,26 @@ export default function Contacts() {
     <MainLayout title="Contacts" description="Manage your contacts and leads">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Contacts</h1>
-            <p className="text-gray-600 mt-1">{totalContacts} records</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Contacts</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">{totalContacts} records</p>
           </div>
-          <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <Button variant="outline" size="sm" className="flex-shrink-0">
+              <Download className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
-            <Button variant="outline" size="sm">
-              <Upload className="w-4 h-4 mr-2" />
-              Import
+            <Button variant="outline" size="sm" className="flex-shrink-0">
+              <Upload className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Import</span>
             </Button>
             <Dialog open={dialogs.createContact} onOpenChange={(open) => setDialogs(prev => ({ ...prev, createContact: open }))}>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create contact
+                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 flex-shrink-0">
+                  <Plus className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Create contact</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
@@ -700,12 +701,13 @@ export default function Contacts() {
         {/* Filters and Views */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
                   <Button 
                     variant={filters.view === "all" ? "default" : "outline"} 
                     size="sm"
+                    className="flex-shrink-0"
                     onClick={() => setFilters(prev => ({ ...prev, view: "all" }))}
                   >
                     All contacts
@@ -713,6 +715,7 @@ export default function Contacts() {
                   <Button 
                     variant={filters.view === "my" ? "default" : "outline"} 
                     size="sm"
+                    className="flex-shrink-0"
                     onClick={() => setFilters(prev => ({ ...prev, view: "my" }))}
                   >
                     My contacts
@@ -720,26 +723,27 @@ export default function Contacts() {
                   <Button 
                     variant={filters.view === "unassigned" ? "default" : "outline"} 
                     size="sm"
+                    className="flex-shrink-0"
                     onClick={() => setFilters(prev => ({ ...prev, view: "unassigned" }))}
                   >
                     Unassigned
                   </Button>
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-500 hidden lg:block">
                   <Button variant="ghost" size="sm">
                     <Plus className="w-4 h-4 mr-1" />
                     Add view (4/5)
                   </Button>
                 </div>
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 hidden sm:block">
                 All Views
               </div>
             </div>
 
             {/* Filters Row */}
-            <div className="flex items-center space-x-4">
-              <div className="flex-1 max-w-sm">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -751,42 +755,51 @@ export default function Contacts() {
                 </div>
               </div>
 
-              <Select value={filters.contactOwner} onValueChange={(value) => setFilters(prev => ({ ...prev, contactOwner: value }))}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Contact owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All owners</SelectItem>
-                  {uniqueOwners.map(owner => (
-                    <SelectItem key={owner} value={owner}>{owner}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2 overflow-x-auto">
+                <Select value={filters.contactOwner} onValueChange={(value) => setFilters(prev => ({ ...prev, contactOwner: value }))}>
+                  <SelectTrigger className="w-40 flex-shrink-0">
+                    <SelectValue placeholder="Contact owner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All owners</SelectItem>
+                    {uniqueOwners.map(owner => (
+                      <SelectItem key={owner} value={owner}>{owner}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select value={filters.leadStatus} onValueChange={(value) => setFilters(prev => ({ ...prev, leadStatus: value }))}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Lead status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {uniqueStatuses.map(status => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={filters.leadStatus} onValueChange={(value) => setFilters(prev => ({ ...prev, leadStatus: value }))}>
+                  <SelectTrigger className="w-40 flex-shrink-0">
+                    <SelectValue placeholder="Lead status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    {uniqueStatuses.map(status => (
+                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Button variant="outline" size="sm" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
-                <Filter className="w-4 h-4 mr-2" />
-                Advanced filters
-              </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-shrink-0"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                >
+                  <Filter className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Advanced filters</span>
+                  <span className="sm:hidden">Filters</span>
+                </Button>
 
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
+                <Button variant="ghost" size="sm" className="flex-shrink-0" onClick={clearFilters}>
+                  <span className="hidden sm:inline">Clear filters</span>
+                  <span className="sm:hidden">Clear</span>
+                </Button>
 
-              <Button variant="outline" size="sm">
-                <Settings className="w-4 h-4" />
-              </Button>
+                <Button variant="outline" size="sm" className="flex-shrink-0">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Advanced Filters */}
@@ -848,7 +861,7 @@ export default function Contacts() {
 
         {/* Data Quality Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <CheckCircle2 className="w-5 h-5 text-blue-600" />
               <div>
@@ -856,8 +869,9 @@ export default function Contacts() {
                 <p className="text-sm text-blue-700">Your contact data quality is good. 95% of contacts have complete information.</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-100">
-              Improve data quality
+            <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-100 flex-shrink-0">
+              <span className="hidden sm:inline">Improve data quality</span>
+              <span className="sm:hidden">Improve</span>
             </Button>
           </div>
         </div>
@@ -865,28 +879,28 @@ export default function Contacts() {
         {/* Bulk Actions */}
         {selectedContacts.length > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-3">
                 <span className="font-medium text-blue-900">
                   {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
                 </span>
               </div>
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send email
+              <div className="flex gap-2 overflow-x-auto">
+                <Button variant="outline" size="sm" className="flex-shrink-0">
+                  <Mail className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Send email</span>
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit properties
+                <Button variant="outline" size="sm" className="flex-shrink-0">
+                  <Edit className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Edit properties</span>
                 </Button>
-                <Button variant="outline" size="sm">
-                  <User className="w-4 h-4 mr-2" />
-                  Assign owner
+                <Button variant="outline" size="sm" className="flex-shrink-0">
+                  <User className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Assign owner</span>
                 </Button>
-                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
+                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 flex-shrink-0">
+                  <Trash2 className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Delete</span>
                 </Button>
               </div>
             </div>
@@ -930,34 +944,31 @@ export default function Contacts() {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left p-4 w-12">
-                        <Checkbox 
-                          checked={selectedContacts.length === contacts.length && contacts.length > 0}
-                          onCheckedChange={handleSelectAll}
-                        />
-                      </th>
-                      <th className="text-left p-4 font-medium text-gray-700">NAME</th>
-                      <th className="text-left p-4 font-medium text-gray-700">EMAIL</th>
-                      <th className="text-left p-4 font-medium text-gray-700">PHONE NUMBER</th>
-                      <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
-                      <th className="text-left p-4 font-medium text-gray-700">PRIMARY</th>
-                      <th className="text-left p-4 font-medium text-gray-700">LEAD STATUS</th>
-                      <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
-                      <th className="text-left p-4 font-medium text-gray-700">OWNER</th>
-                      <th className="text-left p-4 font-medium text-gray-700">PREFERRED CHANNEL</th>
-                      <th className="text-left p-4 font-medium text-gray-700">LAST ACTIVITY</th>
-                      <th className="text-left p-4 font-medium text-gray-700">NEXT FOLLOW-UP</th>
-                      <th className="w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {contacts.map((contact: Contact) => (
-                    <tr key={contact.id} className="border-b hover:bg-gray-50">
-                      <td className="p-4">
+              <>
+                {/* Desktop Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-gray-50">
+                        <th className="text-left p-4 w-12">
+                          <Checkbox 
+                            checked={selectedContacts.length === contacts.length && contacts.length > 0}
+                            onCheckedChange={handleSelectAll}
+                          />
+                        </th>
+                        <th className="text-left p-4 font-medium text-gray-700">NAME</th>
+                        <th className="text-left p-4 font-medium text-gray-700">EMAIL</th>
+                        <th className="text-left p-4 font-medium text-gray-700">PHONE</th>
+                        <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
+                        <th className="text-left p-4 font-medium text-gray-700">STATUS</th>
+                        <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
+                        <th className="w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contacts.map((contact: Contact) => (
+                        <tr key={contact.id} className="border-b hover:bg-gray-50">
+                          <td className="p-4">
                         <Checkbox 
                           checked={selectedContacts.includes(contact.id)}
                           onCheckedChange={() => handleSelectContact(contact.id)}
@@ -1078,15 +1089,106 @@ export default function Contacts() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
-                    </tr>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card Layout */}
+                <div className="lg:hidden space-y-4 p-4">
+                  {contacts.map((contact: Contact) => (
+                    <div key={contact.id} className="border rounded-lg p-4 bg-white">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox 
+                            checked={selectedContacts.includes(contact.id)}
+                            onCheckedChange={() => handleSelectContact(contact.id)}
+                          />
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-blue-100 text-blue-600">
+                              {contact.firstName?.charAt(0) || 'C'}{contact.lastName?.charAt(0) || 'C'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <button 
+                              className="font-semibold text-blue-600 hover:text-blue-800 text-left block"
+                              onClick={() => handleViewContact(contact)}
+                            >
+                              {contact.firstName || ''} {contact.lastName}
+                            </button>
+                            <p className="text-sm text-gray-500 truncate">{contact.title || 'No title'}</p>
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewContact(contact)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleLogActivity(contact)}>
+                              <Activity className="w-4 h-4 mr-2" />
+                              Log activity
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Mail className="w-4 h-4 mr-2" />
+                              Email
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Phone className="w-4 h-4 mr-2" />
+                              Call
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Status:</span>
+                          <Badge className={`${getStatusColor(contact.leadStatus)} border-0 text-xs`}>
+                            {contact.leadStatus || 'New'}
+                          </Badge>
+                        </div>
+                        
+                        {contact.email && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Email:</span>
+                            <span className="text-sm text-gray-900 truncate ml-2">{contact.email}</span>
+                          </div>
+                        )}
+                        
+                        {contact.phone && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Phone:</span>
+                            <span className="text-sm text-gray-900">{contact.phone}</span>
+                          </div>
+                        )}
+                        
+                        {contact.department && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-600">Department:</span>
+                            <span className="text-sm text-gray-900">{contact.department}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-600">Company:</span>
+                          <span className="text-sm text-gray-900 truncate ml-2">{contact.companyName || contact.companyId || 'No company'}</span>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                  </tbody>
-                </table>
-              </div>
+                </div>
+              </>
             )}
 
             {/* Pagination */}
-            <div className="flex items-center justify-between p-4 border-t">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t gap-4">
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-500">Rows per page:</span>
                 <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
