@@ -174,6 +174,12 @@ export default function Contacts() {
 
   console.log('[COMPANIES DEBUG] Companies state:', { companies, companiesLoading, companiesError });
 
+  // Helper function to get company name by ID
+  const getCompanyName = (companyId: string) => {
+    const company = companies?.find((c: any) => c.id === companyId);
+    return company?.companyName || '--';
+  };
+
   // Create company mutation
   const createCompanyMutation = useMutation({
     mutationFn: async (companyName: string) => {
@@ -1078,6 +1084,7 @@ export default function Contacts() {
                         <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
                         <th className="text-left p-4 font-medium text-gray-700">STATUS</th>
                         <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
+                        <th className="text-left p-4 font-medium text-gray-700">OWNER</th>
                         <th className="w-12"></th>
                       </tr>
                     </thead>
@@ -1114,15 +1121,6 @@ export default function Contacts() {
                       <td className="p-4 text-gray-900">{contact.phone || '--'}</td>
                       <td className="p-4 text-gray-900">{contact.department || '--'}</td>
                       <td className="p-4">
-                        {contact.isPrimaryContact ? (
-                          <Badge className="bg-green-100 text-green-800 border-0">
-                            Primary
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-500">--</span>
-                        )}
-                      </td>
-                      <td className="p-4">
                         <Badge className={`${getStatusColor(contact.leadStatus)} border-0`}>
                           {contact.leadStatus || 'New'}
                         </Badge>
@@ -1130,42 +1128,15 @@ export default function Contacts() {
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
                           <Building2 className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-900">{contact.companyName || contact.companyId || '--'}</span>
+                          <span className="text-gray-900">
+                            {getCompanyName(contact.companyId)}
+                          </span>
                         </div>
                       </td>
-                      <td className="p-4 text-gray-900">{contact.ownerName || 'Unassigned'}</td>
-                      <td className="p-4">
-                        <div className="text-sm">
-                          {contact.preferredChannels ? (
-                            <div className="flex flex-wrap gap-1">
-                              {contact.preferredChannels.split(',').map((channel, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {channel.trim()}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                                Email
-                              </Badge>
-                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                                Phone
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
+                      <td className="p-4 text-gray-900">
+                        {contact.ownerName || contact.ownerId || 'Unassigned'}
                       </td>
-                      <td className="p-4 text-gray-900">{contact.lastContactDate ? formatDate(contact.lastContactDate) : 'Never'}</td>
-                      <td className="p-4">
-                        <span className={`text-sm ${
-                          contact.nextFollowUpDate && new Date(contact.nextFollowUpDate) < new Date() 
-                            ? 'text-red-600 font-medium' 
-                            : 'text-gray-900'
-                        }`}>
-                          {contact.nextFollowUpDate ? formatDate(contact.nextFollowUpDate) : 'None'}
-                        </span>
-                      </td>
+
                       <td className="p-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1294,7 +1265,7 @@ export default function Contacts() {
                         
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-600">Company:</span>
-                          <span className="text-sm text-gray-900 truncate ml-2">{contact.companyName || contact.companyId || 'No company'}</span>
+                          <span className="text-sm text-gray-900 truncate ml-2">{getCompanyName(contact.companyId) || 'No company'}</span>
                         </div>
                       </div>
                     </div>
