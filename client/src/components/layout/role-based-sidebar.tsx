@@ -163,21 +163,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     sections.push({
       name: "Service",
       items: [
-        { name: "Service Dispatch", href: "/service-dispatch", icon: Calendar },
+        { name: "Service Dispatch", href: "/service-dispatch-optimization", icon: Calendar },
         {
           name: "Manufacturer Integration",
           href: "/manufacturer-integration",
           icon: Plug,
-        },
-        {
-          name: "Service Dispatch Enhanced",
-          href: "/service-dispatch-enhanced",
-          icon: Calendar,
-        },
-        {
-          name: "Service Dispatch Optimization",
-          href: "/service-dispatch-optimization",
-          icon: TrendingUp,
         },
         {
           name: "Mobile Field Service",
