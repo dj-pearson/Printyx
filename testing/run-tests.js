@@ -90,6 +90,11 @@ class TestRunner {
         cwd: projectRoot,
         stdio: ["ignore", "pipe", "pipe"],
         shell: true,
+        env: { 
+          ...process.env,
+          DATABASE_URL: "sqlite://test.db",
+          REPLIT_DOMAINS: "localhost"
+        }
       });
 
       let serverOutput = "";
