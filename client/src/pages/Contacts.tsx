@@ -154,14 +154,21 @@ export default function Contacts() {
   });
 
   // Fetch companies for dropdown
-  const { data: companies } = useQuery({
+  const { data: companies, isLoading: companiesLoading, error: companiesError } = useQuery({
     queryKey: ['/api/business-records'],
     queryFn: async () => {
+      console.log('[COMPANIES DEBUG] Fetching business records...');
       const response = await apiRequest('GET', '/api/business-records');
       if (!response.ok) throw new Error('Failed to fetch companies');
-      return response.json();
+      const data = await response.json();
+      console.log('[COMPANIES DEBUG] Fetched companies:', data);
+      return data;
     },
+    enabled: true,
+    retry: 2,
   });
+
+  console.log('[COMPANIES DEBUG] Companies state:', { companies, companiesLoading, companiesError });
 
   // Create contact mutation
   const createContactMutation = useMutation({
@@ -499,11 +506,17 @@ export default function Contacts() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {companies?.records?.map((company: any) => (
+                                {companiesLoading && (
+                                  <SelectItem value="loading" disabled>Loading companies...</SelectItem>
+                                )}
+                                {companies && Array.isArray(companies) && companies.map((company: any) => (
                                   <SelectItem key={company.id} value={company.id}>
                                     {company.companyName}
                                   </SelectItem>
                                 ))}
+                                {!companiesLoading && (!companies || companies.length === 0) && (
+                                  <SelectItem value="no-companies" disabled>No companies available</SelectItem>
+                                )}
                               </SelectContent>
                             </Select>
                             <FormMessage />
