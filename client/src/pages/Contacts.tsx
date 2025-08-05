@@ -45,32 +45,37 @@ import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 
 interface Contact {
+  // Fields returned by getContacts function
   id: string;
-  firstName: string;
+  firstName?: string;
   lastName: string;
-  email: string;
-  phone: string;
-  title: string;
-  department?: string;
-  isPrimary?: boolean;
+  email?: string;
+  phone?: string;
+  title?: string;
   companyId: string;
-  companyName: string;
-  leadStatus: string;
-  lastContactDate: string;
-  nextFollowUpDate: string;
-  createdAt: string;
-  ownerId: string;
-  ownerName: string;
+  companyName?: string;
+  leadStatus?: string;
+  lastContactDate?: string;
+  nextFollowUpDate?: string;
+  createdAt?: string;
+  ownerId?: string;
+  ownerName?: string;
   favoriteContentType?: string;
-  preferredChannels?: string[];
-  mobilePhone?: string;
-  workPhone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  linkedinUrl?: string;
-  notes?: string;
+  preferredChannels?: string;
+  tenantId: string;
+  
+  // Additional schema fields for create/edit forms
+  salutation?: string;
+  department?: string;
+  mobile?: string;
+  reportsTo?: string;
+  contactRoles?: string;
+  isPrimaryContact?: boolean;
+  leadSource?: string;
+  priority?: string;
+  estimatedDealValue?: number;
+  emailOptOut?: boolean;
+  doNotCall?: boolean;
 }
 
 export default function Contacts() {
@@ -102,7 +107,7 @@ export default function Contacts() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // Fetch contacts with filters
-  const { data: contactsData, isLoading } = useQuery({
+  const { data: contactsData, isLoading, error } = useQuery({
     queryKey: ['/api/contacts', filters, searchQuery, sortBy, sortOrder, currentPage, pageSize],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -113,23 +118,19 @@ export default function Contacts() {
         limit: pageSize.toString(),
         ...filters
       });
+      
       const response = await apiRequest('GET', `/api/contacts?${params}`);
       const data = await response.json();
-      console.log('[CONTACTS UI DEBUG] Raw API response:', response);
-      console.log('[CONTACTS UI DEBUG] Parsed JSON data:', data);
+      
       return data;
-    }
+    },
+    retry: 2,
   });
 
   const contacts = contactsData?.contacts || [];
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
-  
-  // Debug logging
-  console.log('[CONTACTS UI DEBUG] contactsData:', contactsData);
-  console.log('[CONTACTS UI DEBUG] contacts array:', contacts);
-  console.log('[CONTACTS UI DEBUG] totalContacts:', totalContacts);
-  console.log('[CONTACTS UI DEBUG] API Response keys:', contactsData ? Object.keys(contactsData) : 'null');
+
 
   // Get unique values for filters
   const uniqueOwners = [...new Set(contacts.map((c: Contact) => c.ownerName))];
@@ -231,14 +232,29 @@ export default function Contacts() {
                   <DialogTitle>Create new contact</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>Salutation</Label>
+                      <Select>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select salutation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Mr.">Mr.</SelectItem>
+                          <SelectItem value="Mrs.">Mrs.</SelectItem>
+                          <SelectItem value="Ms.">Ms.</SelectItem>
+                          <SelectItem value="Dr.">Dr.</SelectItem>
+                          <SelectItem value="Prof.">Prof.</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div>
                       <Label>First name</Label>
                       <Input placeholder="Enter first name" />
                     </div>
                     <div>
-                      <Label>Last name</Label>
-                      <Input placeholder="Enter last name" />
+                      <Label>Last name *</Label>
+                      <Input placeholder="Enter last name" required />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -253,12 +269,22 @@ export default function Contacts() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <Label>Mobile</Label>
+                      <Input placeholder="Enter mobile number" />
+                    </div>
+                    <div>
                       <Label>Job title</Label>
                       <Input placeholder="Enter job title" />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Department</Label>
                       <Input placeholder="Enter department" />
+                    </div>
+                    <div>
+                      <Label>Reports To</Label>
+                      <Input placeholder="Manager or supervisor" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -274,23 +300,57 @@ export default function Contacts() {
                       </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Checkbox id="isPrimary" />
-                      <Label htmlFor="isPrimary">Primary contact</Label>
+                      <Checkbox id="isPrimaryContact" />
+                      <Label htmlFor="isPrimaryContact">Primary contact</Label>
                     </div>
                   </div>
-                  <div>
-                    <Label>Lead status</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="contacted">Contacted</SelectItem>
-                        <SelectItem value="qualified">Qualified</SelectItem>
-                        <SelectItem value="unqualified">Unqualified</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Lead status</Label>
+                      <Select>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="contacted">Contacted</SelectItem>
+                          <SelectItem value="qualified">Qualified</SelectItem>
+                          <SelectItem value="unqualified">Unqualified</SelectItem>
+                          <SelectItem value="customer">Customer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Lead Source</Label>
+                      <Select>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="website">Website</SelectItem>
+                          <SelectItem value="referral">Referral</SelectItem>
+                          <SelectItem value="cold_call">Cold Call</SelectItem>
+                          <SelectItem value="email_campaign">Email Campaign</SelectItem>
+                          <SelectItem value="trade_show">Trade Show</SelectItem>
+                          <SelectItem value="social_media">Social Media</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Communication Preferences */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium">Communication Preferences</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="emailOptOut" />
+                        <Label htmlFor="emailOptOut">Email Opt-Out</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="doNotCall" />
+                        <Label htmlFor="doNotCall">Do Not Call</Label>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex justify-end space-x-2 pt-4">
                     <Button variant="outline" onClick={() => setDialogs(prev => ({ ...prev, createContact: false }))}>
@@ -502,35 +562,69 @@ export default function Contacts() {
           </div>
         )}
 
+        {/* Error Display */}
+        {error && (
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <div>
+                  <h3 className="font-medium text-red-900">Error Loading Contacts</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    {error.message || 'Failed to load contacts. Please try again.'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+
         {/* Contacts Table */}
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left p-4 w-12">
-                      <Checkbox 
-                        checked={selectedContacts.length === contacts.length && contacts.length > 0}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </th>
-                    <th className="text-left p-4 font-medium text-gray-700">NAME</th>
-                    <th className="text-left p-4 font-medium text-gray-700">EMAIL</th>
-                    <th className="text-left p-4 font-medium text-gray-700">PHONE NUMBER</th>
-                    <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
-                    <th className="text-left p-4 font-medium text-gray-700">PRIMARY</th>
-                    <th className="text-left p-4 font-medium text-gray-700">LEAD STATUS</th>
-                    <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
-                    <th className="text-left p-4 font-medium text-gray-700">OWNER</th>
-                    <th className="text-left p-4 font-medium text-gray-700">PREFERRED CHANNEL</th>
-                    <th className="text-left p-4 font-medium text-gray-700">LAST ACTIVITY</th>
-                    <th className="text-left p-4 font-medium text-gray-700">NEXT FOLLOW-UP</th>
-                    <th className="w-12"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {contacts.map((contact: Contact) => (
+            {contacts.length === 0 && !isLoading && !error ? (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No contacts found</h3>
+                <p className="text-gray-500 mb-6">
+                  {searchQuery || Object.values(filters).some(f => f && f !== 'all') 
+                    ? "No contacts match your current search and filters." 
+                    : "You haven't added any contacts yet. Create your first contact to get started."
+                  }
+                </p>
+                <Button className="bg-orange-500 hover:bg-orange-600" onClick={() => setDialogs(prev => ({ ...prev, createContact: true }))}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create your first contact
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left p-4 w-12">
+                        <Checkbox 
+                          checked={selectedContacts.length === contacts.length && contacts.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </th>
+                      <th className="text-left p-4 font-medium text-gray-700">NAME</th>
+                      <th className="text-left p-4 font-medium text-gray-700">EMAIL</th>
+                      <th className="text-left p-4 font-medium text-gray-700">PHONE NUMBER</th>
+                      <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
+                      <th className="text-left p-4 font-medium text-gray-700">PRIMARY</th>
+                      <th className="text-left p-4 font-medium text-gray-700">LEAD STATUS</th>
+                      <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
+                      <th className="text-left p-4 font-medium text-gray-700">OWNER</th>
+                      <th className="text-left p-4 font-medium text-gray-700">PREFERRED CHANNEL</th>
+                      <th className="text-left p-4 font-medium text-gray-700">LAST ACTIVITY</th>
+                      <th className="text-left p-4 font-medium text-gray-700">NEXT FOLLOW-UP</th>
+                      <th className="w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contacts.map((contact: Contact) => (
                     <tr key={contact.id} className="border-b hover:bg-gray-50">
                       <td className="p-4">
                         <Checkbox 
@@ -542,7 +636,7 @@ export default function Contacts() {
                         <div className="flex items-center space-x-3">
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
-                              {contact.firstName?.charAt(0)}{contact.lastName?.charAt(0)}
+                              {contact.firstName?.charAt(0) || 'C'}{contact.lastName?.charAt(0) || 'C'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
@@ -550,7 +644,7 @@ export default function Contacts() {
                               className="font-medium text-blue-600 hover:text-blue-800 text-left"
                               onClick={() => handleViewContact(contact)}
                             >
-                              {contact.firstName} {contact.lastName}
+                              {contact.salutation ? `${contact.salutation} ` : ''}{contact.firstName || ''} {contact.lastName}
                             </button>
                             {contact.title && (
                               <p className="text-sm text-gray-500">{contact.title}</p>
@@ -562,7 +656,7 @@ export default function Contacts() {
                       <td className="p-4 text-gray-900">{contact.phone || '--'}</td>
                       <td className="p-4 text-gray-900">{contact.department || '--'}</td>
                       <td className="p-4">
-                        {contact.isPrimary ? (
+                        {contact.isPrimaryContact ? (
                           <Badge className="bg-green-100 text-green-800 border-0">
                             Primary
                           </Badge>
@@ -578,33 +672,40 @@ export default function Contacts() {
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
                           <Building2 className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-900">{contact.companyName || '--'}</span>
+                          <span className="text-gray-900">{contact.companyName || contact.companyId || '--'}</span>
                         </div>
                       </td>
                       <td className="p-4 text-gray-900">{contact.ownerName || 'Unassigned'}</td>
                       <td className="p-4">
                         <div className="text-sm">
-                          {contact.preferredChannels?.length ? (
+                          {contact.preferredChannels ? (
                             <div className="flex flex-wrap gap-1">
-                              {contact.preferredChannels.map((channel, index) => (
+                              {contact.preferredChannels.split(',').map((channel, index) => (
                                 <Badge key={index} variant="outline" className="text-xs">
-                                  {channel}
+                                  {channel.trim()}
                                 </Badge>
                               ))}
                             </div>
                           ) : (
-                            <span className="text-gray-500">--</span>
+                            <div className="flex flex-wrap gap-1">
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                Email
+                              </Badge>
+                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                                Phone
+                              </Badge>
+                            </div>
                           )}
                         </div>
                       </td>
-                      <td className="p-4 text-gray-900">{formatDate(contact.lastContactDate)}</td>
+                      <td className="p-4 text-gray-900">{contact.lastContactDate ? formatDate(contact.lastContactDate) : 'Never'}</td>
                       <td className="p-4">
                         <span className={`text-sm ${
                           contact.nextFollowUpDate && new Date(contact.nextFollowUpDate) < new Date() 
                             ? 'text-red-600 font-medium' 
                             : 'text-gray-900'
                         }`}>
-                          {formatDate(contact.nextFollowUpDate)}
+                          {contact.nextFollowUpDate ? formatDate(contact.nextFollowUpDate) : 'None'}
                         </span>
                       </td>
                       <td className="p-4">
@@ -648,9 +749,10 @@ export default function Contacts() {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Pagination */}
             <div className="flex items-center justify-between p-4 border-t">
