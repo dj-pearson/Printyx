@@ -740,6 +740,14 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(companyContacts.companyId, companyId), eq(companyContacts.tenantId, tenantId)));
   }
 
+  async getAllCompanyContacts(tenantId: string): Promise<CompanyContact[]> {
+    return await db
+      .select()
+      .from(companyContacts)
+      .where(eq(companyContacts.tenantId, tenantId))
+      .orderBy(desc(companyContacts.createdAt));
+  }
+
   async getCompanyContact(id: string, tenantId: string): Promise<CompanyContact | undefined> {
     const [contact] = await db
       .select()

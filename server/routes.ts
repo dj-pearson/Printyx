@@ -4845,6 +4845,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Global company contacts route (for contacts page)
+  app.get("/api/company-contacts", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+
+      console.log(`[COMPANY-CONTACTS DEBUG] Fetching all contacts for tenant: ${tenantId}`);
+
+      const contacts = await storage.getAllCompanyContacts(tenantId);
+      console.log(`[COMPANY-CONTACTS DEBUG] Found ${contacts.length} contacts`);
+      
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching all company contacts:", error);
+      res.status(500).json({ message: "Failed to fetch company contacts" });
+    }
+  });
+
   // Company contact routes
   app.get(
     "/api/companies/:companyId/contacts",

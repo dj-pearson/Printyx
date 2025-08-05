@@ -186,7 +186,7 @@ export default function Contacts() {
       });
       contactForm.reset();
       setDialogs(prev => ({ ...prev, createContact: false }));
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/company-contacts'] });
     },
     onError: (error) => {
       toast({
@@ -201,29 +201,42 @@ export default function Contacts() {
     createContactMutation.mutate(data);
   };
 
-  // Fetch contacts with filters
+  // Fetch all company contacts directly (since /api/contacts has auth issues)
   const { data: contactsData, isLoading, error } = useQuery({
-    queryKey: ['/api/contacts', filters, searchQuery, sortBy, sortOrder, currentPage, pageSize],
+    queryKey: ['/api/company-contacts', filters, searchQuery, sortBy, sortOrder, currentPage, pageSize],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        search: searchQuery,
-        sortBy,
-        sortOrder,
-        page: currentPage.toString(),
-        limit: pageSize.toString(),
-        ...filters
-      });
-      
-      const response = await apiRequest('GET', `/api/contacts?${params}`);
+      const response = await apiRequest('GET', '/api/company-contacts');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
       
-      return data;
+      console.log("[CONTACTS UI DEBUG] Raw company-contacts data:", data);
+      
+      // Transform the flat array into the expected format with pagination
+      const allContacts = Array.isArray(data) ? data : [];
+      const filteredContacts = allContacts.filter(contact => {
+        if (searchQuery && !contact.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+            !contact.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+            !contact.email?.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return false;
+        }
+        return true;
+      });
+      
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
+      
+      return {
+        contacts: paginatedContacts,
+        total: filteredContacts.length,
+        page: currentPage,
+        limit: pageSize
+      };
     },
     retry: 2,
-    enabled: true, // Ensure query runs
+    enabled: true,
   });
 
   // Debug logging
