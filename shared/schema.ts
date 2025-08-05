@@ -703,7 +703,6 @@ export const businessRecords = pgTable("business_records", {
   billingCity: varchar("billing_city"), // E-Automate BillingCity / Salesforce BillingCity
   billingState: varchar("billing_state"), // E-Automate BillingState / Salesforce BillingState
   billingPostalCode: varchar("billing_zip_code"), // E-Automate BillingZip / Salesforce BillingPostalCode
-  billingCountry: varchar("billing_country"), // Salesforce BillingCountry
   
   // Shipping Address (Salesforce compatible)
   shippingAddressLine1: varchar("shipping_address_1"), // Salesforce ShippingStreet
