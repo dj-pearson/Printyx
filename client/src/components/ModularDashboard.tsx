@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   DollarSign, 
   Target, 
@@ -13,7 +16,10 @@ import {
   CheckCircle, 
   BarChart3,
   TrendingDown,
-  AlertCircle 
+  AlertCircle,
+  Settings,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const IconMap = {
@@ -45,10 +51,41 @@ interface ModularDashboardProps {
 }
 
 export function ModularDashboard({ className }: ModularDashboardProps) {
-  const { data: dashboardData, isLoading } = useQuery({
-    queryKey: ['/api/dashboard/modules'],
+  const [enabledCards, setEnabledCards] = useState<string[]>([]);
+  const [showCardManager, setShowCardManager] = useState(false);
+
+  const { data: dashboardData, isLoading, refetch } = useQuery({
+    queryKey: ['/api/dashboard/modules', enabledCards.join(',')],
+    queryFn: async () => {
+      const params = enabledCards.length > 0 ? `?enabled=${enabledCards.join(',')}` : '';
+      const response = await fetch(`/api/dashboard/modules${params}`);
+      return response.json();
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  const { data: cardConfig } = useQuery({
+    queryKey: ['/api/dashboard/card-config'],
+    refetchInterval: 300000, // Refresh every 5 minutes
+  });
+
+  useEffect(() => {
+    // Load enabled cards from localStorage
+    const saved = localStorage.getItem('dashboard-enabled-cards');
+    if (saved) {
+      setEnabledCards(JSON.parse(saved));
+    }
+  }, []);
+
+  const toggleCard = (cardId: string) => {
+    const newEnabled = enabledCards.includes(cardId)
+      ? enabledCards.filter(id => id !== cardId)
+      : [...enabledCards, cardId];
+    
+    setEnabledCards(newEnabled);
+    localStorage.setItem('dashboard-enabled-cards', JSON.stringify(newEnabled));
+    setTimeout(() => refetch(), 100); // Refetch data with new cards
+  };
 
   if (isLoading) {
     return (
@@ -71,7 +108,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
     );
   }
 
-  const { modules = [], userRole } = dashboardData || { modules: [], userRole: 'user' };
+  const { modules = [], userRole, roleConfig } = dashboardData || { modules: [], userRole: 'user', roleConfig: {} };
 
   const salesModules = modules.filter((m: DashboardModule) => m.category === 'sales');
   const serviceModules = modules.filter((m: DashboardModule) => m.category === 'service');
@@ -151,7 +188,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Role-based header */}
+      {/* Role-based header with card management */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
@@ -161,10 +198,65 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
              'Business overview and key metrics'}
           </p>
         </div>
-        <Badge variant="outline" className="capitalize">
-          {userRole?.replace('_', ' ') || 'User'}
-        </Badge>
+        <div className="flex items-center gap-3">
+          {cardConfig?.availableCards?.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCardManager(!showCardManager)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Customize Cards
+            </Button>
+          )}
+          <Badge variant="outline" className="capitalize">
+            {userRole?.replace('_', ' ') || 'User'}
+          </Badge>
+        </div>
       </div>
+
+      {/* Card Management Panel */}
+      {showCardManager && cardConfig?.availableCards?.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Available Dashboard Cards
+            </CardTitle>
+            <CardDescription>
+              Enable additional cards to see more business insights relevant to your role.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2">
+              {cardConfig.availableCards.map((cardId: string) => (
+                <div key={cardId} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {enabledCards.includes(cardId) ? (
+                      <Eye className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <div>
+                      <Label className="capitalize font-medium">
+                        {cardId.replace(/_/g, ' ')}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {getCardDescription(cardId)}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={enabledCards.includes(cardId)}
+                    onCheckedChange={() => toggleCard(cardId)}
+                  />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sales Metrics */}
       {salesModules.length > 0 && (
@@ -219,6 +311,22 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
       )}
     </div>
   );
+}
+
+// Helper function to get card descriptions
+function getCardDescription(cardId: string): string {
+  const descriptions: Record<string, string> = {
+    'team_revenue': 'View your team\'s total revenue performance',
+    'company_customers': 'See total customer count across the company',
+    'inventory_alerts': 'Monitor low stock items that need reordering',
+    'service_overview': 'View service department performance metrics',
+    'revenue_overview': 'See company-wide revenue trends',
+    'team_tickets': 'Monitor service tickets for your team',
+    'company_revenue': 'View total company revenue metrics',
+    'technician_performance': 'Track team performance metrics'
+  };
+  
+  return descriptions[cardId] || 'Additional business insight card';
 }
 
 export default ModularDashboard;
