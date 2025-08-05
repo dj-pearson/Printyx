@@ -29,7 +29,6 @@ export const BUSINESS_RECORDS_FIELD_MAP = {
     billingCity: 'billing_city',
     billingState: 'billing_state',
     billingPostalCode: 'billing_zip_code',
-    billingCountry: 'billing_country',
     
     // Financial Information
     estimatedDealValue: 'estimated_amount',
