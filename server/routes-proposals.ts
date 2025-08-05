@@ -315,8 +315,8 @@ router.post("/", requireAuth, async (req: any, res) => {
         ...item,
         tenantId: req.user.tenantId,
         proposalId: proposal.id,
-        lineNumber: index + 1,
-        itemType: 'equipment' // Default to equipment for now, can be enhanced later
+        lineNumber: item.lineNumber || (index + 1),
+        itemType: item.itemType || 'equipment', // Use provided itemType or default to equipment
       }));
       
       const lineItems = await db
@@ -357,6 +357,7 @@ router.put("/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body, updatedAt: new Date() };
+    const lineItemsToUpdate = updateData.lineItems;
     delete updateData.lineItems; // Handle line items separately
     
     const [proposal] = await db
@@ -370,6 +371,93 @@ router.put("/:id", requireAuth, async (req: any, res) => {
     
     if (!proposal) {
       return res.status(404).json({ error: "Proposal not found" });
+    }
+
+    // Handle line items if provided
+    if (lineItemsToUpdate && lineItemsToUpdate.length > 0) {
+      // Delete existing line items
+      await db
+        .delete(proposalLineItems)
+        .where(and(
+          eq(proposalLineItems.proposalId, id),
+          eq(proposalLineItems.tenantId, req.user.tenantId)
+        ));
+
+      // Insert new line items
+      const lineItemsData = lineItemsToUpdate.map((item: any, index: number) => ({
+        ...item,
+        tenantId: req.user.tenantId,
+        proposalId: id,
+        lineNumber: item.lineNumber || (index + 1),
+        itemType: item.itemType || 'equipment',
+      }));
+      
+      await db
+        .insert(proposalLineItems)
+        .values(lineItemsData);
+    }
+    
+    res.json(proposal);
+  } catch (error) {
+    console.error("Error updating proposal:", error);
+    res.status(500).json({ error: "Failed to update proposal" });
+  }
+});
+
+// Update proposal (PATCH) - handles partial updates including line items
+router.patch("/:id", requireAuth, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body, updatedAt: new Date() };
+    const lineItemsToUpdate = updateData.lineItems;
+    delete updateData.lineItems; // Handle line items separately
+    
+    console.log('📝 PATCH /api/proposals/:id - Updating proposal:', id);
+    console.log('📝 Update data:', updateData);
+    console.log('📝 Line items to update:', lineItemsToUpdate);
+    
+    const [proposal] = await db
+      .update(proposals)
+      .set(updateData)
+      .where(and(
+        eq(proposals.id, id),
+        eq(proposals.tenantId, req.user.tenantId)
+      ))
+      .returning();
+    
+    if (!proposal) {
+      return res.status(404).json({ error: "Proposal not found" });
+    }
+
+    // Handle line items if provided
+    if (lineItemsToUpdate && lineItemsToUpdate.length > 0) {
+      console.log('📦 Updating line items...');
+      
+      // Delete existing line items
+      await db
+        .delete(proposalLineItems)
+        .where(and(
+          eq(proposalLineItems.proposalId, id),
+          eq(proposalLineItems.tenantId, req.user.tenantId)
+        ));
+
+      // Insert new line items
+      const lineItemsData = lineItemsToUpdate.map((item: any, index: number) => ({
+        ...item,
+        tenantId: req.user.tenantId,
+        proposalId: id,
+        lineNumber: item.lineNumber || (index + 1),
+        itemType: item.itemType || 'equipment',
+      }));
+      
+      console.log('📦 Inserting line items:', lineItemsData);
+      
+      const insertedLineItems = await db
+        .insert(proposalLineItems)
+        .values(lineItemsData)
+        .returning();
+        
+      console.log('✅ Inserted line items:', insertedLineItems);
     }
     
     res.json(proposal);
