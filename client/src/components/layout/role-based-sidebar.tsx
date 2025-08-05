@@ -483,7 +483,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   return sections;
 }
 
-export default function Sidebar() {
+export default function RoleBasedSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
