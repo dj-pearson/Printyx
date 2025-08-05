@@ -240,41 +240,21 @@ router.get("/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
     
-    // Get proposal with customer info
-    const [proposal] = await db
-      .select({
-        id: proposals.id,
-        tenantId: proposals.tenantId,
-        proposalNumber: proposals.proposalNumber,
-        version: proposals.version,
-        title: proposals.title,
-        businessRecordId: proposals.businessRecordId,
-        contactId: proposals.contactId,
-        proposalType: proposals.proposalType,
-        status: proposals.status,
-        subtotal: proposals.subtotal,
-        totalAmount: proposals.totalAmount,
-        validUntil: proposals.validUntil,
-        sentAt: proposals.sentAt,
-        viewedAt: proposals.viewedAt,
-        acceptedAt: proposals.acceptedAt,
-        createdBy: proposals.createdBy,
-        assignedTo: proposals.assignedTo,
-        createdAt: proposals.createdAt,
-        updatedAt: proposals.updatedAt,
-        description: proposals.description,
-        customerNotes: proposals.customerNotes,
-        internalNotes: proposals.internalNotes
-      })
+    // Get proposal - select all fields directly
+    const proposalResult = await db
+      .select()
       .from(proposals)
       .where(and(
         eq(proposals.id, id),
         eq(proposals.tenantId, req.user.tenantId)
-      ));
+      ))
+      .limit(1);
     
-    if (!proposal) {
+    if (proposalResult.length === 0) {
       return res.status(404).json({ error: "Proposal not found" });
     }
+    
+    const proposal = proposalResult[0];
     
     // Get line items
     const lineItems = await db
