@@ -51,6 +51,7 @@ import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
+import manufacturerIntegrationRoutes from "./routes-manufacturer-integration";
 import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
 // import { registerCommissionRoutes } from "./routes-commission"; // TODO: Add commission schema tables first
 import {
@@ -7389,6 +7390,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register QuickBooks integration routes
   registerQuickBooksRoutes(app);
+
+  // Register manufacturer integration routes
+  app.use('/api/manufacturer-integrations', manufacturerIntegrationRoutes);
 
   // Register Sales Pipeline Workflow routes
   setupSalesPipelineRoutes(app, storage, requireAuth);
