@@ -7486,6 +7486,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const rootAdminRoutes = await import("./routes-root-admin");
   app.use("/api/root-admin", rootAdminRoutes.default);
 
+  // Customer Number Management Routes
+  const customerNumberRoutes = await import("./routes-customer-numbers");
+  app.use("/api/customer-numbers", customerNumberRoutes.customerNumberRoutes);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
