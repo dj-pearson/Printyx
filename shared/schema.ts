@@ -772,7 +772,6 @@ export const businessRecords = pgTable("business_records", {
   // Timestamps (E-Automate + Salesforce compatible)
   createdAt: timestamp("created_at").defaultNow(), // E-Automate DateCreated / Salesforce CreatedDate
   updatedAt: timestamp("updated_at").defaultNow(), // E-Automate LastModified / Salesforce LastModifiedDate
-  lastActivityDate: timestamp("last_activity_date"), // Salesforce LastActivityDate
 });
 
 // For backward compatibility during migration
