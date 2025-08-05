@@ -44,10 +44,16 @@ export function registerBusinessRecordRoutes(app: Express) {
   });
 
   // Create new business record (can be lead or customer)
-  app.post("/api/business-records", resolveTenant, requireTenant, isAuthenticated, async (req: TenantRequest, res) => {
+  app.post("/api/business-records", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
+      // Check for session-based auth (current approach)
+      const session = req.session as any;
+      const userId = session?.userId;
       const tenantId = req.tenantId!;
-      const userId = req.user?.id || 'system';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
       
       // Transform frontend data to database format
       const frontendData = req.body;
@@ -76,10 +82,17 @@ export function registerBusinessRecordRoutes(app: Express) {
   });
 
   // Update business record
-  app.put("/api/business-records/:id", resolveTenant, requireTenant, isAuthenticated, async (req: TenantRequest, res) => {
+  app.put("/api/business-records/:id", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
+      // Check for session-based auth (current approach)
+      const session = req.session as any;
+      const userId = session?.userId;
       const tenantId = req.tenantId!;
       const { id } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
       
       // Transform frontend data to database format
       const frontendData = req.body;
@@ -95,7 +108,7 @@ export function registerBusinessRecordRoutes(app: Express) {
         // Set conversion timestamp if converting lead to customer
         if (recordType === 'customer' && !dbData.customer_since) {
           dbData.customer_since = new Date().toISOString();
-          dbData.converted_by = req.user?.id || 'system';
+          dbData.converted_by = userId || 'system';
         }
       }
       
@@ -114,9 +127,9 @@ export function registerBusinessRecordRoutes(app: Express) {
   });
 
   // Lead-specific endpoints (filtered views)
-  app.get("/api/leads", isAuthenticated, async (req: any, res) => {
+  app.get("/api/leads", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.tenantId!;
       const leads = await storage.getLeads(tenantId);
       res.json(leads);
     } catch (error) {
