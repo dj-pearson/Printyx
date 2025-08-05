@@ -132,15 +132,55 @@ export default function QuoteBuilder({
     },
   });
 
-  // Load quote line items if editing
-  const { data: existingLineItems = [] } = useQuery({
-    queryKey: [`/api/proposals/${initialQuoteId}/line-items`],
-    enabled: !!initialQuoteId && initialQuoteId !== 'new',
-    queryFn: async () => {
-      const response = await apiRequest(`/api/proposals/${initialQuoteId}/line-items`, 'GET');
-      return response;
-    },
-  });
+  // Populate form when existing quote is loaded
+  useEffect(() => {
+    if (existingQuote && !quoteLoading) {
+      console.log('📝 Populating form with existing quote:', existingQuote);
+      
+      // Update form with existing data
+      form.reset({
+        title: existingQuote.title || '',
+        businessRecordId: existingQuote.businessRecordId || '',
+        contactId: existingQuote.contactId || '',
+        billingAddress: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: 'US',
+        },
+        pricingType: 'new',
+        validUntil: existingQuote.validUntil ? existingQuote.validUntil.split('T')[0] : '',
+        customerNotes: existingQuote.customerNotes || '',
+        internalNotes: existingQuote.internalNotes || '',
+      });
+
+      // Update line items if they exist
+      if (existingQuote.lineItems && existingQuote.lineItems.length > 0) {
+        const transformedLineItems = existingQuote.lineItems.map((item: any, index: number) => ({
+          id: item.id,
+          lineNumber: index + 1,
+          parentLineId: undefined,
+          isSubline: false,
+          productType: item.itemType || 'equipment',
+          productId: item.productId || '',
+          productCode: '',
+          productName: item.productName || '',
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          msrp: 0,
+          listPrice: 0,
+          unitPrice: parseFloat(item.unitPrice || '0'),
+          totalPrice: parseFloat(item.totalPrice || '0'),
+          unitCost: 0,
+          margin: item.margin || 0,
+          notes: item.notes || '',
+        }));
+        setLineItems(transformedLineItems);
+        console.log('📦 Set line items:', transformedLineItems);
+      }
+    }
+  }, [existingQuote, quoteLoading, form]);
 
   // Create or update quote mutation
   const saveQuoteMutation = useMutation({
