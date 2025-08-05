@@ -149,9 +149,10 @@ export default function QuoteBuilder({
         ...data.quote,
         proposalType: 'quote',
         status: 'draft',
-        customEquipment: data.lineItems.map((item, index) => ({
-          type: item.productType as 'equipment' | 'accessory' | 'service' | 'supply',
-          itemId: item.productId,
+        lineItems: data.lineItems.map((item, index) => ({
+          lineNumber: index + 1,
+          productId: item.productId,
+          productName: item.productName,
           description: item.description || item.productName,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -170,7 +171,9 @@ export default function QuoteBuilder({
       }
     },
     onSuccess: (data) => {
+      // Force clear all related cache
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      queryClient.removeQueries({ queryKey: ['/api/proposals'] });
       toast({
         title: 'Success',
         description: `Quote ${initialQuoteId ? 'updated' : 'created'} successfully`,
@@ -196,7 +199,9 @@ export default function QuoteBuilder({
       });
     },
     onSuccess: () => {
+      // Force clear all related cache
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      queryClient.removeQueries({ queryKey: ['/api/proposals'] });
       toast({
         title: 'Success',
         description: 'Quote submitted successfully',
