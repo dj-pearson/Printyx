@@ -97,59 +97,56 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
   const adminPrefix = useAdminRoutes ? "/admin" : "";
 
-  // Dashboard - always available
+  // Dashboard and core universal items - always available
   sections.push({
     name: "Overview",
-    items: [{ name: "Dashboard", href: "/", icon: LayoutDashboard }],
+    items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard },
+      { name: "Customers", href: "/customers", icon: Building2 },
+    ],
   });
 
-  // Sales & CRM section
+  // Sales & CRM section - organized by workflow progression
   if (permissions.sales || isPlatformRole || isCompanyAdmin) {
     sections.push({
       name: "Sales & CRM",
       items: [
+        { name: "CRM", href: "/crm-enhanced", icon: Target },
         { name: "Leads Management", href: "/leads-management", icon: UserPlus },
-        { name: "CRM Enhanced", href: "/crm-enhanced", icon: Target },
-        {
-          name: "Sales Pipeline Workflow",
-          href: "/sales-pipeline",
-          icon: Target,
-        },
-        {
-          name: "CRM Goals Dashboard",
-          href: "/crm-goals-dashboard",
-          icon: Target,
-        },
         { name: "Contacts", href: "/contacts", icon: Users },
-        {
-          name: "Company Contacts",
-          href: "/company-contacts",
-          icon: Building2,
-        },
         { name: "Deals Management", href: "/deals-management", icon: Target },
         {
-          name: "Sales Pipeline Forecasting",
-          href: "/sales-pipeline-forecasting",
+          name: "Sales Pipeline",
+          href: "/sales-pipeline",
           icon: TrendingUp,
         },
-        { name: "Customers", href: "/customers", icon: Building2 },
         {
-          name: "Customer Success Management",
-          href: "/customer-success-management",
-          icon: UserCheck,
+          name: "Pipeline Forecasting",
+          href: "/sales-pipeline-forecasting",
+          icon: BarChart3,
         },
-        { name: "Contracts", href: "/contracts", icon: ClipboardList },
         {
-          name: "Quote & Proposal Generation",
+          name: "Quotes & Proposals",
           href: "/quote-proposal-generation",
           icon: FileText,
+        },
+        { name: "Demo Scheduling", href: "/demo-scheduling", icon: Calendar },
+        { name: "Contracts", href: "/contracts", icon: ClipboardList },
+        {
+          name: "Customer Success",
+          href: "/customer-success-management",
+          icon: UserCheck,
         },
         {
           name: "Commission Management",
           href: "/commission-management",
           icon: DollarSign,
         },
-        { name: "Demo Scheduling", href: "/demo-scheduling", icon: Calendar },
+        {
+          name: "CRM Goals Dashboard",
+          href: "/crm-goals-dashboard",
+          icon: PieChart,
+        },
         {
           name: "Task Management",
           href: "/task-management",
@@ -159,17 +156,12 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     });
   }
 
-  // Service section - also show for sales users (for manufacturer integrations)
+  // Service section - organized by service workflow progression
   if (permissions.service || permissions.sales || isPlatformRole || isCompanyAdmin) {
     sections.push({
       name: "Service",
       items: [
         { name: "Service Dispatch", href: "/service-dispatch-optimization", icon: Calendar },
-        {
-          name: "Manufacturer Integration",
-          href: "/manufacturer-integration",
-          icon: Plug,
-        },
         {
           name: "Mobile Field Service",
           href: "/mobile-field-service",
@@ -181,42 +173,42 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           icon: MapPin,
         },
         {
-          name: "Mobile Service App",
-          href: "/mobile-service-app",
-          icon: Smartphone,
-        },
-        {
           name: "Service Analytics",
           href: "/service-analytics",
           icon: BarChart3,
         },
-        { name: "Service Products", href: "/service-products", icon: Package },
         {
           name: "Remote Monitoring",
           href: "/remote-monitoring",
           icon: Monitor,
         },
         {
-          name: "Preventive Maintenance Scheduling",
+          name: "Preventive Maintenance",
           href: "/preventive-maintenance-scheduling",
           icon: Calendar,
         },
         {
-          name: "Preventive Maintenance Automation",
+          name: "Maintenance Automation",
           href: "/preventive-maintenance-automation",
           icon: Cog,
         },
         { name: "Meter Readings", href: "/meter-readings", icon: Calculator },
         {
-          name: "Incident Response System",
+          name: "Incident Response",
           href: "/incident-response-system",
           icon: AlertTriangle,
+        },
+        { name: "Service Products", href: "/service-products", icon: Package },
+        {
+          name: "Manufacturer Integration",
+          href: "/manufacturer-integration",
+          icon: Plug,
         },
       ],
     });
   }
 
-  // Product Management section
+  // Product Management section - organized by product workflow progression
   if (permissions.inventory || isPlatformRole || isCompanyAdmin) {
     sections.push({
       name: "Product Management",
@@ -226,33 +218,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           href: `${adminPrefix}/product-hub`,
           icon: Package,
         },
-        {
-          name: "Product Management Hub",
-          href: `${adminPrefix}/product-management-hub`,
-          icon: Package,
-        },
-        {
-          name: "Equipment Lifecycle",
-          href: `${adminPrefix}/equipment-lifecycle`,
-          icon: Settings,
-        },
-        {
-          name: "Equipment Lifecycle Management",
-          href: `${adminPrefix}/equipment-lifecycle-management`,
-          icon: Settings,
-        },
-        {
-          name: "Purchase Orders",
-          href: `${adminPrefix}/purchase-orders`,
-          icon: ShoppingCart,
-        },
-        {
-          name: "Warehouse Operations",
-          href: `${adminPrefix}/warehouse-operations`,
-          icon: Truck,
-        },
         { name: "Inventory", href: "/inventory", icon: Package },
-        { name: "Supplies", href: `${adminPrefix}/supplies`, icon: Package },
         {
           name: "Product Models",
           href: `${adminPrefix}/product-models`,
@@ -269,6 +235,22 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           icon: Layers,
         },
         {
+          name: "Equipment Lifecycle",
+          href: `${adminPrefix}/equipment-lifecycle-management`,
+          icon: Settings,
+        },
+        {
+          name: "Purchase Orders",
+          href: `${adminPrefix}/purchase-orders`,
+          icon: ShoppingCart,
+        },
+        {
+          name: "Warehouse Operations",
+          href: `${adminPrefix}/warehouse-operations`,
+          icon: Truck,
+        },
+        { name: "Supplies", href: `${adminPrefix}/supplies`, icon: Package },
+        {
           name: "Vendor Management",
           href: `${adminPrefix}/vendor-management`,
           icon: Building2,
@@ -277,7 +259,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     });
   }
 
-  // Finance section
+  // Finance section - organized by financial workflow progression
   if (permissions.finance || isPlatformRole || isCompanyAdmin) {
     sections.push({
       name: "Billing & Finance",
@@ -290,26 +272,26 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         },
         { name: "Meter Billing", href: "/meter-billing", icon: Calculator },
         {
-          name: "Chart of Accounts",
-          href: "/chart-of-accounts",
-          icon: BookOpen,
+          name: "Accounts Receivable",
+          href: "/accounts-receivable",
+          icon: DollarSign,
         },
-        { name: "Journal Entries", href: "/journal-entries", icon: FileText },
-        {
-          name: "Financial Forecasting",
-          href: "/financial-forecasting",
-          icon: TrendingUp,
-        },
-        { name: "Vendors", href: "/vendors", icon: Building2 },
         {
           name: "Accounts Payable",
           href: "/accounts-payable",
           icon: DollarSign,
         },
+        { name: "Vendors", href: "/vendors", icon: Building2 },
+        { name: "Journal Entries", href: "/journal-entries", icon: FileText },
         {
-          name: "Accounts Receivable",
-          href: "/accounts-receivable",
-          icon: DollarSign,
+          name: "Chart of Accounts",
+          href: "/chart-of-accounts",
+          icon: BookOpen,
+        },
+        {
+          name: "Financial Forecasting",
+          href: "/financial-forecasting",
+          icon: TrendingUp,
         },
       ],
     });
@@ -501,7 +483,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   return sections;
 }
 
-export default function RoleBasedSidebar() {
+export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
