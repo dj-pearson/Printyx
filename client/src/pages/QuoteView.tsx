@@ -27,6 +27,7 @@ interface Quote {
   description?: string;
   customerNotes?: string;
   internalNotes?: string;
+  lineItems?: LineItem[];
 }
 
 interface LineItem {
@@ -54,14 +55,8 @@ export default function QuoteView() {
     },
   });
 
-  // Fetch line items
-  const { data: lineItems = [], isLoading: lineItemsLoading } = useQuery<LineItem[]>({
-    queryKey: [`/api/proposals/${quoteId}/line-items`],
-    enabled: !!quoteId,
-    queryFn: async () => {
-      return await apiRequest(`/api/proposals/${quoteId}/line-items`, 'GET');
-    },
-  });
+  // Line items come from the quote response
+  const lineItems = quote?.lineItems || [];
 
   const formatCurrency = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -78,7 +73,7 @@ export default function QuoteView() {
     closed_lost: { label: 'Closed Lost', variant: 'destructive' as const, color: 'text-red-600' },
   };
 
-  if (quoteLoading || lineItemsLoading) {
+  if (quoteLoading) {
     return (
       <div className="container mx-auto py-6">
         <div className="flex items-center justify-center p-8">
