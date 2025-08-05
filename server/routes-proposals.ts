@@ -249,8 +249,10 @@ router.get("/:id", requireAuth, async (req: any, res) => {
         version: proposals.version,
         title: proposals.title,
         businessRecordId: proposals.businessRecordId,
+        contactId: proposals.contactId,
         proposalType: proposals.proposalType,
         status: proposals.status,
+        subtotal: proposals.subtotal,
         totalAmount: proposals.totalAmount,
         validUntil: proposals.validUntil,
         sentAt: proposals.sentAt,
@@ -260,13 +262,11 @@ router.get("/:id", requireAuth, async (req: any, res) => {
         assignedTo: proposals.assignedTo,
         createdAt: proposals.createdAt,
         updatedAt: proposals.updatedAt,
-        customerName: businessRecords.companyName,
-        customerEmail: businessRecords.primaryContactEmail,
-        customerPhone: businessRecords.primaryContactPhone,
-        customerAddress: businessRecords.businessAddress
+        description: proposals.description,
+        customerNotes: proposals.customerNotes,
+        internalNotes: proposals.internalNotes
       })
       .from(proposals)
-      .leftJoin(businessRecords, eq(proposals.businessRecordId, businessRecords.id))
       .where(and(
         eq(proposals.id, id),
         eq(proposals.tenantId, req.user.tenantId)
@@ -286,20 +286,9 @@ router.get("/:id", requireAuth, async (req: any, res) => {
       ))
       .orderBy(proposalLineItems.lineNumber);
     
-    // Get comments
-    const comments = await db
-      .select()
-      .from(proposalComments)
-      .where(and(
-        eq(proposalComments.proposalId, id),
-        eq(proposalComments.tenantId, req.user.tenantId)
-      ))
-      .orderBy(proposalComments.createdAt);
-    
     res.json({
       ...proposal,
-      lineItems,
-      comments
+      lineItems
     });
   } catch (error) {
     console.error("Error fetching proposal:", error);
