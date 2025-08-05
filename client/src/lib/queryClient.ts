@@ -9,27 +9,24 @@ async function throwIfResNotOk(res: Response) {
 
 export async function apiRequest(
   url: string,
-  options?: {
-    method?: string;
-    body?: string;
-    headers?: Record<string, string>;
-  }
+  method: string = "GET",
+  body?: any,
+  headers?: Record<string, string>
 ): Promise<any> {
-  const method = options?.method || "GET";
-  const headers: HeadersInit = {
+  const requestHeaders: HeadersInit = {
     "Content-Type": "application/json",
-    ...options?.headers,
+    ...headers,
   };
   
   // Add demo auth header if localStorage flag is set
   if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
-    headers['X-Demo-Auth'] = 'true';
+    requestHeaders['X-Demo-Auth'] = 'true';
   }
 
   const res = await fetch(url, {
     method,
-    headers,
-    body: options?.body,
+    headers: requestHeaders,
+    body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
   });
 
