@@ -199,17 +199,17 @@ export default function ProductTypeSelector({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <div className="flex flex-col h-full max-h-full overflow-hidden">
+      <div className="flex-shrink-0 p-6 border-b">
+        <div className="flex items-center gap-2 mb-2">
           <Package className="h-5 w-5" />
-          Product Selection
-        </CardTitle>
-        <CardDescription>
+          <h3 className="text-lg font-semibold">Product Selection</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
           Select the type of product and choose from available options
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </p>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {/* Product Type Selection */}
         <div className="space-y-2">
           <Label>Product Type</Label>
@@ -245,7 +245,7 @@ export default function ProductTypeSelector({
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -301,7 +301,7 @@ export default function ProductTypeSelector({
         </div>
 
         {/* Product List */}
-        <div className="border rounded-lg">
+        <div className="border rounded-lg flex-1 min-h-0 flex flex-col">
           {isLoading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -313,64 +313,110 @@ export default function ProductTypeSelector({
               <p>No products found matching your criteria</p>
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Code</TableHead>
+            <div className="flex-1 overflow-y-auto">
+              {/* Mobile Card View */}
+              <div className="sm:hidden space-y-3 p-3">
+                {filteredProducts.map((product) => (
+                  <div key={product.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-sm">{product.productName}</h4>
+                        {product.description && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {product.description}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="ml-2 text-xs shrink-0">
+                        {product.productCode}
+                      </Badge>
+                    </div>
+                    
                     {selectedType === 'product_models' && (
-                      <>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Manufacturer</TableHead>
-                      </>
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>{product.category || 'N/A'}</span>
+                        <span>{product.manufacturer || 'N/A'}</span>
+                      </div>
                     )}
-                    <TableHead>MSRP</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{product.productName}</div>
-                          {product.description && (
-                            <div className="text-xs text-muted-foreground line-clamp-2">
-                              {product.description}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{product.productCode}</Badge>
-                      </TableCell>
+                    
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm">
+                        <div className="text-muted-foreground">MSRP: {formatPrice(product.msrp)}</div>
+                        <div className="font-medium">Your Price: {formatPrice(getPrice(product))}</div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleProductSelect(product)}
+                        className="shrink-0"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Desktop Table View */}
+              <div className="hidden sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Code</TableHead>
                       {selectedType === 'product_models' && (
                         <>
-                          <TableCell>{product.category || 'N/A'}</TableCell>
-                          <TableCell>{product.manufacturer || 'N/A'}</TableCell>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Manufacturer</TableHead>
                         </>
                       )}
-                      <TableCell>{formatPrice(product.msrp)}</TableCell>
-                      <TableCell>
-                        <span className="font-medium">
-                          {formatPrice(getPrice(product))}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handleProductSelect(product)}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add
-                        </Button>
-                      </TableCell>
+                      <TableHead>MSRP</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Action</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{product.productName}</div>
+                            {product.description && (
+                              <div className="text-xs text-muted-foreground line-clamp-2">
+                                {product.description}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{product.productCode}</Badge>
+                        </TableCell>
+                        {selectedType === 'product_models' && (
+                          <>
+                            <TableCell>{product.category || 'N/A'}</TableCell>
+                            <TableCell>{product.manufacturer || 'N/A'}</TableCell>
+                          </>
+                        )}
+                        <TableCell>{formatPrice(product.msrp)}</TableCell>
+                        <TableCell>
+                          <span className="font-medium">
+                            {formatPrice(getPrice(product))}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            onClick={() => handleProductSelect(product)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </div>
@@ -386,7 +432,7 @@ export default function ProductTypeSelector({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
