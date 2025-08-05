@@ -675,17 +675,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const lowStockItems = await db
           .select({
             id: inventoryItems.id,
-            name: inventoryItems.name,
-            category: inventoryItems.category,
-            currentStock: inventoryItems.currentStock,
+            name: inventoryItems.itemDescription,
+            category: inventoryItems.itemCategory,
+            currentStock: inventoryItems.quantityOnHand,
             minThreshold: inventoryItems.reorderPoint,
           })
           .from(inventoryItems)
           .where(and(
             eq(inventoryItems.tenantId, tenantId),
-            sql`current_stock <= reorder_point`
+            sql`quantity_on_hand <= reorder_point`
           ))
-          .orderBy(asc(inventoryItems.currentStock))
+          .orderBy(asc(inventoryItems.quantityOnHand))
           .limit(20);
 
         const alerts = lowStockItems.map(item => ({

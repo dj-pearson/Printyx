@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCustomerPortal } from '@/pages/CustomerPortal';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { 
   FileText, 
   Wrench, 
@@ -27,7 +27,7 @@ interface DashboardSummary {
 
 export const CustomerDashboard: React.FC = () => {
   const { sessionToken } = useCustomerPortal();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);

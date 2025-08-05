@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,7 +98,7 @@ export default function QuoteProposalGeneration() {
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   // Fetch proposals
   const { data: proposals = [], isLoading: proposalsLoading } = useQuery<any[]>({
@@ -122,7 +122,7 @@ export default function QuoteProposalGeneration() {
 
   // Create proposal mutation
   const createProposalMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/proposals', 'POST', data),
+    mutationFn: (data: any) => apiRequest('/api/proposals', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
       setIsNewProposalOpen(false);
@@ -142,7 +142,7 @@ export default function QuoteProposalGeneration() {
 
   // Create template mutation
   const createTemplateMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/proposals/proposal-templates', 'POST', data),
+    mutationFn: (data: any) => apiRequest('/api/proposals/proposal-templates', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals/proposal-templates'] });
       setIsNewTemplateOpen(false);
@@ -163,7 +163,7 @@ export default function QuoteProposalGeneration() {
   // Update proposal status mutation
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status, previousStatus }: { id: string, status: string, previousStatus: string }) => 
-      apiRequest(`/api/proposals/${id}/status`, 'PATCH', { status, previousStatus }),
+      apiRequest(`/api/proposals/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, previousStatus }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
       toast({
@@ -256,7 +256,7 @@ export default function QuoteProposalGeneration() {
         
         <div className="flex gap-2">
           <Button 
-            onClick={() => navigate('/quotes/new')}
+            onClick={() => setLocation('/quotes/new')}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
           >
             <Calculator className="h-4 w-4 mr-2" />
@@ -522,7 +522,7 @@ export default function QuoteProposalGeneration() {
                       </li>
                     </ul>
                     <Button 
-                      onClick={() => navigate('/quotes/new')}
+                      onClick={() => setLocation('/quotes/new')}
                       className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       <Calculator className="h-4 w-4 mr-2" />
@@ -561,7 +561,7 @@ export default function QuoteProposalGeneration() {
                       </li>
                     </ul>
                     <Button 
-                      onClick={() => navigate('/quotes')}
+                      onClick={() => setLocation('/quotes')}
                       className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
                     >
                       <FileText className="h-4 w-4 mr-2" />
@@ -581,7 +581,7 @@ export default function QuoteProposalGeneration() {
                   <Button 
                     variant="outline" 
                     className="justify-start h-auto p-4"
-                    onClick={() => navigate('/quotes/new')}
+                    onClick={() => setLocation('/quotes/new')}
                   >
                     <div className="text-left">
                       <div className="flex items-center gap-2 font-medium">
@@ -597,7 +597,7 @@ export default function QuoteProposalGeneration() {
                   <Button 
                     variant="outline" 
                     className="justify-start h-auto p-4"
-                    onClick={() => navigate('/quotes')}
+                    onClick={() => setLocation('/quotes')}
                   >
                     <div className="text-left">
                       <div className="flex items-center gap-2 font-medium">
