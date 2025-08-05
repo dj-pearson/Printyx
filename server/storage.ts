@@ -753,6 +753,22 @@ export class DatabaseStorage implements IStorage {
     return newContact;
   }
 
+  async updateCompanyContact(id: string, contactData: Partial<CompanyContact>, tenantId: string): Promise<CompanyContact | undefined> {
+    const [updated] = await db
+      .update(companyContacts)
+      .set({ ...contactData, updatedAt: new Date() })
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCompanyContact(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(companyContacts)
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
   async updateCompanyContact(id: string, contact: Partial<CompanyContact>, tenantId: string): Promise<CompanyContact | undefined> {
     const [updatedContact] = await db
       .update(companyContacts)
