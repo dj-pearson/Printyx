@@ -198,6 +198,43 @@ router.get("/", requireAuth, async (req: any, res) => {
   }
 });
 
+// Get new proposal template
+router.get("/new", requireAuth, async (req: any, res) => {
+  try {
+    // Return a new proposal template
+    const newProposal = {
+      id: "new",
+      tenantId: req.user.tenantId,
+      proposalNumber: "", // Will be generated on save
+      version: 1,
+      title: "",
+      businessRecordId: null,
+      proposalType: "quote",
+      status: "draft",
+      totalAmount: "0",
+      validUntil: null,
+      sentAt: null,
+      viewedAt: null,
+      acceptedAt: null,
+      createdBy: req.user.id,
+      assignedTo: req.user.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      customerName: null,
+      customerEmail: null,
+      customerPhone: null,
+      customerAddress: null,
+      lineItems: [],
+      comments: []
+    };
+    
+    res.json(newProposal);
+  } catch (error) {
+    console.error("Error creating new proposal template:", error);
+    res.status(500).json({ error: "Failed to create new proposal template" });
+  }
+});
+
 // Get proposal by ID with line items
 router.get("/:id", requireAuth, async (req: any, res) => {
   try {
@@ -226,7 +263,7 @@ router.get("/:id", requireAuth, async (req: any, res) => {
         customerName: businessRecords.companyName,
         customerEmail: businessRecords.primaryContactEmail,
         customerPhone: businessRecords.primaryContactPhone,
-        customerAddress: businessRecords.address
+        customerAddress: businessRecords.businessAddress
       })
       .from(proposals)
       .leftJoin(businessRecords, eq(proposals.businessRecordId, businessRecords.id))
