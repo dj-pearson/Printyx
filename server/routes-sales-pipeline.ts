@@ -100,7 +100,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       query += ` ORDER BY br.updated_at DESC`;
 
-      const result = await db.execute(sql.raw(query, params));
+      const result = await db.execute(sql.raw(query.replace(/\$(\d+)/g, (match, num) => `'${params[parseInt(num) - 1]}'`)));
       
       // Transform the results to match the expected format
       const opportunities = result.rows.map((row: any) => ({
@@ -155,7 +155,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       const notesText = notes ? `\n[${new Date().toISOString()}] Stage moved to ${stage}: ${notes}` : '';
       
-      const result = await db.execute(sql.raw(updateQuery, [stage, notesText, id, tenantId]));
+      const result = await db.execute(sql.raw(updateQuery.replace('$1', `'${stage}'`).replace('$2', `'${notesText}'`).replace('$3', `'${id}'`).replace('$4', `'${tenantId}'`)));
 
       if (result.rows.length === 0) {
         return res.status(404).json({ message: 'Opportunity not found' });
@@ -174,14 +174,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `;
 
-      await db.execute(sql.raw(activityQuery, [
-        id,
-        'stage_change',
-        `Stage changed to ${PIPELINE_STAGES.find(s => s.id === stage)?.name || stage}`,
-        notes || `Moved to ${stage} stage`,
-        userId,
-        tenantId
-      ]));
+      await db.execute(sql.raw(activityQuery.replace('$1', `'${id}'`).replace('$2', `'stage_change'`).replace('$3', `'Stage changed to ${PIPELINE_STAGES.find(s => s.id === stage)?.name || stage}'`).replace('$4', `'${notes || `Moved to ${stage} stage`}'`).replace('$5', `'${userId}'`).replace('$6', `'${tenantId}'`)));
 
       res.json({ success: true, opportunity: result.rows[0] });
     } catch (error) {
@@ -323,7 +316,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ORDER BY rs.rep_name
       `;
 
-      const result = await db.execute(sql.raw(metricsQuery, [tenantId, tenantId]));
+      const result = await db.execute(sql.raw(metricsQuery.replace('$1', `'${tenantId}'`).replace('$2', `'${tenantId}'`)));
       
       const metrics = result.rows.map((row: any) => ({
         rep_id: row.rep_id,

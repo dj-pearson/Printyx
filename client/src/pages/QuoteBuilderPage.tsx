@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useRoute } from 'wouter';
 import MainLayout from '@/components/layout/main-layout';
 import QuoteBuilder from '@/components/quote-builder/QuoteBuilder';
 import {
@@ -16,16 +16,17 @@ import {
 import { Button } from '@/components/ui/button';
 
 export default function QuoteBuilderPage() {
-  const navigate = useNavigate();
-  const { quoteId } = useParams();
+  const [, setLocation] = useLocation();
+  const [match, params] = useRoute('/quotes/:quoteId');
+  const quoteId = params?.quoteId;
   const isEditing = !!quoteId;
 
   const handleSave = (savedQuoteId: string) => {
-    navigate(`/quotes/${savedQuoteId}`);
+    setLocation(`/quotes/${savedQuoteId}`);
   };
 
   const handleCancel = () => {
-    navigate('/quotes');
+    setLocation('/quotes');
   };
 
   return (
