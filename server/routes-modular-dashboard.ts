@@ -222,6 +222,54 @@ export function registerModularDashboardRoutes(app: Express) {
           });
         }
 
+        // Service Overview (optional for sales and other roles)
+        if (activeCards.includes('service_overview')) {
+          const [totalTickets, openTickets] = await Promise.all([
+            db.select({ count: count() })
+              .from(serviceTickets)
+              .where(eq(serviceTickets.tenantId, tenantId)),
+              
+            db.select({ count: count() })
+              .from(serviceTickets)
+              .where(and(
+                eq(serviceTickets.tenantId, tenantId),
+                sql`status IN ('open', 'in_progress')`
+              ))
+          ]);
+
+          modules.push({
+            id: 'service_overview',
+            category: 'service',
+            title: 'Service Overview',
+            value: openTickets[0]?.count || 0,
+            subtitle: `${totalTickets[0]?.count || 0} total tickets`,
+            icon: 'Wrench',
+            cardType: 'departmental',
+            enabled: enabledCards.includes('service_overview')
+          });
+        }
+
+        // Revenue Overview (for technicians and other roles)
+        if (activeCards.includes('revenue_overview')) {
+          const revenueResult = await db.select({ total: sum(invoices.totalAmount) })
+            .from(invoices)
+            .where(and(
+              eq(invoices.tenantId, tenantId),
+              sql`created_at::text LIKE ${currentMonth}`
+            ));
+
+          modules.push({
+            id: 'revenue_overview',
+            category: 'management',
+            title: 'Company Revenue',
+            value: `$${Number(revenueResult[0]?.total || 0).toLocaleString()}`,
+            subtitle: 'This month',
+            icon: 'DollarSign',
+            cardType: 'company',
+            enabled: enabledCards.includes('revenue_overview')
+          });
+        }
+
         // Business Overview for Management
         if (activeCards.includes('business_overview')) {
           const [customers, contracts_data, revenue, tickets] = await Promise.all([
