@@ -161,13 +161,19 @@ export default function QuoteView() {
 
   const status = statusConfig[quote.status as keyof typeof statusConfig] || statusConfig.draft;
 
-  // Calculate pricing details
+  // Calculate pricing details correctly
   const subtotalAmount = parseFloat(quote.subtotal || '0');
   const discountAmount = parseFloat(quote.discountAmount || '0');
   const discountPercentage = parseFloat(quote.discountPercentage || '0');
   const taxAmount = parseFloat(quote.taxAmount || '0');
-  const afterDiscountTotal = subtotalAmount + discountAmount; // discountAmount is negative for discounts
-  const finalTotal = parseFloat(quote.totalAmount || '0');
+  
+  // Fix calculation: discountAmount should be added to subtotal to get the correct total
+  // For markup (negative percentage), discountAmount is positive
+  // For discount (positive percentage), discountAmount is negative
+  const adjustmentAmount = Math.abs(discountAmount);
+  const isMarkup = discountPercentage < 0;
+  const afterAdjustmentTotal = isMarkup ? subtotalAmount + adjustmentAmount : subtotalAmount - adjustmentAmount;
+  const finalTotal = afterAdjustmentTotal + taxAmount;
 
   return (
     <MainLayout title={`Quote ${quote.proposalNumber}`} description={`View and manage quote for ${company ? getCompanyDisplayName(company) : 'customer'}`}>
@@ -225,7 +231,7 @@ export default function QuoteView() {
         </div>
 
         {/* Quote Details Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Quote Information */}
           <Card className="bg-white shadow-sm border-0 ring-1 ring-gray-200">
             <CardHeader>
@@ -306,47 +312,6 @@ export default function QuoteView() {
               )}
             </CardContent>
           </Card>
-
-          {/* Pricing Summary */}
-          <Card className="bg-white shadow-sm border-0 ring-1 ring-gray-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900">
-                <DollarSign className="h-5 w-5 text-blue-600" />
-                Pricing Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Subtotal</p>
-                <p className="text-lg font-semibold">{formatCurrency(subtotalAmount)}</p>
-              </div>
-              
-              {discountAmount !== 0 && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    {discountPercentage < 0 ? 'Markup' : 'Discount'} ({formatPercentage(discountPercentage)})
-                  </p>
-                  <p className={`text-lg font-semibold ${discountPercentage < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {discountPercentage < 0 ? '+' : ''}{formatCurrency(Math.abs(discountAmount))}
-                  </p>
-                </div>
-              )}
-              
-              {taxAmount > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Tax</p>
-                  <p className="text-lg font-semibold">{formatCurrency(taxAmount)}</p>
-                </div>
-              )}
-              
-              <Separator />
-              
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Amount</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(finalTotal)}</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Professional Line Items */}
@@ -418,6 +383,51 @@ export default function QuoteView() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Pricing Summary - Moved Below Line Items */}
+        <Card className="bg-white shadow-sm border-0 ring-1 ring-gray-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <DollarSign className="h-5 w-5 text-blue-600" />
+              Pricing Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Subtotal */}
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600">Subtotal</span>
+                <span className="text-lg font-semibold">{formatCurrency(subtotalAmount)}</span>
+              </div>
+              
+              {/* Markup/Discount - Only show the final adjusted total, not the breakdown */}
+              {adjustmentAmount > 0 && (
+                <div className="flex justify-between items-center py-2 border-t border-gray-100">
+                  <span className="text-gray-600">
+                    {isMarkup ? 'After Markup' : 'After Discount'}
+                  </span>
+                  <span className="text-lg font-semibold">{formatCurrency(afterAdjustmentTotal)}</span>
+                </div>
+              )}
+              
+              {/* Tax */}
+              {taxAmount > 0 && (
+                <div className="flex justify-between items-center py-2 border-t border-gray-100">
+                  <span className="text-gray-600">Tax</span>
+                  <span className="text-lg font-semibold">{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
+              
+              {/* Grand Total */}
+              <div className="border-t-2 border-gray-300 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-xl font-bold text-gray-900">Grand Total</span>
+                  <span className="text-3xl font-bold text-green-600">{formatCurrency(finalTotal)}</span>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
