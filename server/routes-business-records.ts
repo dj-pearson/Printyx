@@ -71,6 +71,7 @@ export function registerBusinessRecordRoutes(app: Express) {
         createdBy: userId,
         recordType: recordType,
         status: status,
+        companyName: frontendData.companyName, // Ensure company name is properly set
       };
       console.log('[DEBUG] Final record data:', JSON.stringify(recordData, null, 2));
       
