@@ -65,16 +65,20 @@ const quoteSchema = z.object({
   discountAmount: z.string().optional(),
   discountPercentage: z.string().optional(),
   taxAmount: z.string().optional(),
+  subtotal: z.string().optional(),
+  totalAmount: z.string().optional(),
 });
 
 type QuoteFormData = z.infer<typeof quoteSchema>;
+
+type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'supplies' | 'managed_services';
 
 interface LineItem {
   id?: string;
   lineNumber: number;
   parentLineId?: string;
   isSubline: boolean;
-  productType: string;
+  productType: ProductType;
   productId: string;
   productCode: string;
   productName: string;
@@ -129,6 +133,8 @@ export default function QuoteBuilder({
       discountAmount: '0',
       discountPercentage: '0',
       taxAmount: '0',
+      subtotal: '0',
+      totalAmount: '0',
     },
   });
 
@@ -180,7 +186,7 @@ export default function QuoteBuilder({
           lineNumber: index + 1,
           parentLineId: undefined,
           isSubline: false,
-          productType: item.itemType || 'equipment',
+          productType: (item.itemType as ProductType) || 'product_models',
           productId: item.productId || '',
           productCode: '',
           productName: item.productName || '',
@@ -343,6 +349,15 @@ export default function QuoteBuilder({
     form.setValue('taxAmount', taxAmt.toString());
   };
 
+  // Update form totals when line items, discount, or tax change
+  useEffect(() => {
+    const subtotalAmount = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalAmount = subtotalAmount - discountAmount + taxAmount;
+    
+    form.setValue('subtotal', subtotalAmount.toString());
+    form.setValue('totalAmount', totalAmount.toString());
+  }, [lineItems, discountAmount, taxAmount, form]);
+
   const onSubmit = (data: QuoteFormData) => {
     if (lineItems.length === 0) {
       toast({
@@ -490,6 +505,9 @@ export default function QuoteBuilder({
         lineItems={lineItems}
         subtotal={totals.subtotal}
         total={totals.total}
+        initialDiscountAmount={discountAmount}
+        initialDiscountPercentage={discountPercentage}
+        initialTaxAmount={taxAmount}
         onDiscountChange={handleDiscountChange}
         onTaxChange={handleTaxChange}
       />

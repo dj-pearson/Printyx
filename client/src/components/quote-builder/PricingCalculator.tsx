@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -52,6 +52,9 @@ interface PricingCalculatorProps {
   lineItems: LineItem[];
   subtotal: number;
   total: number;
+  initialDiscountAmount?: number;
+  initialDiscountPercentage?: number;
+  initialTaxAmount?: number;
   onDiscountChange?: (discountAmount: number, discountPercentage: number) => void;
   onTaxChange?: (taxAmount: number) => void;
 }
@@ -60,14 +63,24 @@ export default function PricingCalculator({
   lineItems,
   subtotal,
   total,
+  initialDiscountAmount = 0,
+  initialDiscountPercentage = 0,
+  initialTaxAmount = 0,
   onDiscountChange,
   onTaxChange,
 }: PricingCalculatorProps) {
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(initialDiscountAmount);
+  const [discountPercentage, setDiscountPercentage] = useState(initialDiscountPercentage);
   const [taxRate, setTaxRate] = useState(8.25); // Default tax rate
-  const [taxAmount, setTaxAmount] = useState(0);
+  const [taxAmount, setTaxAmount] = useState(initialTaxAmount);
+
+  // Update local state when initial values change (for editing existing quotes)
+  useEffect(() => {
+    setDiscountAmount(initialDiscountAmount);
+    setDiscountPercentage(initialDiscountPercentage);
+    setTaxAmount(initialTaxAmount);
+  }, [initialDiscountAmount, initialDiscountPercentage, initialTaxAmount]);
 
   // Calculate totals
   const itemsSubtotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.totalPrice.toString()) || 0), 0);
