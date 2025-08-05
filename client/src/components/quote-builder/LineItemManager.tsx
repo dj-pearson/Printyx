@@ -232,7 +232,7 @@ export default function LineItemManager({
         index,
         sublines: lineItems
           .map((subItem, subIndex) => ({ item: subItem, index: subIndex }))
-          .filter(sub => sub.item.parentLineId === item.id),
+          .filter(sub => sub.item.parentLineId === item.productId),
       });
     }
     return acc;
@@ -300,42 +300,8 @@ export default function LineItemManager({
               
               return (
               <div key={mainItem.id || mainIndex} className="border rounded-lg">
-                {/* Total Summary Line */}
-                <div className="p-4 bg-slate-100 dark:bg-slate-800 border-b">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Hash className="h-3 w-3" />
-                        {mainItem.lineNumber}
-                      </Badge>
-                      <div className="flex items-center gap-2">
-                        {getProductTypeIcon(mainItem.productType)}
-                        <div className="font-semibold">
-                          {mainItem.productName}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {mainItem.productType === 'product_models' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAddAccessory(mainIndex)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Wrench className="h-4 w-4 mr-1" />
-                          Add Accessory
-                        </Button>
-                      )}
-                      <div className="font-bold text-lg">
-                        {formatCurrency(lineTotal)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Main Product Details */}
-                <div className="p-4 bg-muted/20">
+                {/* Main Item with darker background to show it's the total line */}
+                <div className="p-4 bg-slate-100 dark:bg-slate-800">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Badge variant="outline" className="flex items-center gap-1">
@@ -349,7 +315,7 @@ export default function LineItemManager({
                         </Badge>
                       </div>
                       <div>
-                        <div className="font-medium">{mainItem.productName}</div>
+                        <div className="font-semibold">{mainItem.productName}</div>
                         <div className="text-sm text-muted-foreground">
                           {mainItem.productCode}
                         </div>
@@ -385,8 +351,8 @@ export default function LineItemManager({
                             step="0.01"
                           />
                           <span className="text-sm text-muted-foreground">=</span>
-                          <div className="font-medium w-20 text-right">
-                            {formatCurrency(mainItem.totalPrice)}
+                          <div className="font-bold text-lg w-24 text-right">
+                            {formatCurrency(lineTotal)}
                           </div>
                         </div>
                         {mainItem.msrp && mainItem.msrp !== mainItem.unitPrice && (
