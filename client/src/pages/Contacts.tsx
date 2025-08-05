@@ -133,8 +133,6 @@ export default function Contacts() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // Contact form state  
-  const [companySearchTerm, setCompanySearchTerm] = useState("");
-  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [showNewCompanyConfirm, setShowNewCompanyConfirm] = useState(false);
   const [pendingContactData, setPendingContactData] = useState<ContactFormData | null>(null);
 
@@ -223,9 +221,9 @@ export default function Contacts() {
 
   // Enhanced submit handler with company creation logic
   const onSubmitContact = async (data: ContactFormData) => {
-    // Check if the company exists
+    // Check if the company exists (case-insensitive)
     const existingCompany = companies?.find(
-      (company: any) => company.companyName?.toLowerCase() === data.companyName.toLowerCase()
+      (company: any) => (company.companyName || company.name)?.toLowerCase() === data.companyName.toLowerCase()
     );
 
     if (existingCompany) {
@@ -618,73 +616,31 @@ export default function Contacts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Company *</FormLabel>
-                            <Popover open={isCompanyDropdownOpen} onOpenChange={setIsCompanyDropdownOpen}>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <div className="relative">
-                                    <Input
-                                      placeholder="Type to search or enter new company..."
-                                      value={field.value || ""}
-                                      onChange={(e) => {
-                                        const value = e.target.value;
-                                        field.onChange(value);
-                                        setCompanySearchTerm(value);
-                                        setIsCompanyDropdownOpen(value.length > 0);
-                                      }}
-                                      onFocus={() => {
-                                        if (field.value && field.value.length > 0) {
-                                          setIsCompanyDropdownOpen(true);
-                                        }
-                                      }}
-                                      className="pr-10"
-                                    />
-                                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                  </div>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                                <div className="max-h-60 overflow-y-auto">
-                                  {companiesLoading ? (
-                                    <div className="p-3 text-sm text-gray-500">Loading companies...</div>
-                                  ) : filteredCompanies.length > 0 ? (
-                                    <>
-                                      {filteredCompanies.map((company: any) => (
-                                        <div
-                                          key={company.id}
-                                          className="p-3 cursor-pointer hover:bg-gray-50 border-b last:border-b-0"
-                                          onClick={() => {
-                                            const companyName = company.companyName || company.name;
-                                            field.onChange(companyName);
-                                            contactForm.setValue('companyId', company.id);
-                                            setIsCompanyDropdownOpen(false);
-                                          }}
-                                        >
-                                          <div className="font-medium text-sm">
-                                            {company.companyName || company.name}
-                                          </div>
-                                          <div className="text-xs text-gray-500 capitalize">
-                                            {company.recordType || 'company'} • {company.status || 'active'}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </>
-                                  ) : currentCompanyName.length > 0 ? (
-                                    <div className="p-3">
-                                      <div className="text-sm text-gray-500 mb-2">
-                                        No existing companies found matching "{currentCompanyName}"
-                                      </div>
-                                      <div className="text-xs text-blue-600">
-                                        When you submit, we'll create "{currentCompanyName}" as a new lead company
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="p-3 text-sm text-gray-500">
-                                      Type to search companies or enter a new company name
-                                    </div>
-                                  )}
-                                </div>
-                              </PopoverContent>
-                            </Popover>
+                            <div className="relative">
+                              <FormControl>
+                                <Input
+                                  placeholder="Type company name..."
+                                  {...field}
+                                  value={field.value || ""}
+                                  list="companies-datalist"
+                                  autoComplete="off"
+                                />
+                              </FormControl>
+                              <datalist id="companies-datalist">
+                                {companies?.map((company: any) => (
+                                  <option key={company.id} value={company.companyName || company.name}>
+                                    {company.companyName || company.name} ({company.recordType || 'company'})
+                                  </option>
+                                ))}
+                              </datalist>
+                            </div>
+                            {currentCompanyName && !filteredCompanies.some((c: any) => 
+                              (c.companyName || c.name)?.toLowerCase() === currentCompanyName.toLowerCase()
+                            ) && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                ✨ New company "{currentCompanyName}" will be created as a lead
+                              </div>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
