@@ -178,7 +178,34 @@ export {
   insertDemoOutcomeSchema,
 } from "../server/demo-scheduling-schema";
 
-
+// Re-export Customer Portal schemas
+export {
+  customerPortalAccess,
+  customerServiceRequests,
+  customerMeterSubmissions,
+  customerSupplyOrders,
+  customerSupplyOrderItems,
+  customerPayments,
+  customerNotifications,
+  customerPortalActivityLog,
+  customerPortalStatusEnum,
+  serviceRequestStatusEnum,
+  serviceRequestPriorityEnum,
+  serviceRequestTypeEnum,
+  supplyOrderStatusEnum,
+  paymentStatusEnum,
+  paymentMethodEnum,
+  notificationTypeEnum,
+  meterSubmissionMethodEnum,
+  insertCustomerPortalAccessSchema,
+  insertCustomerServiceRequestSchema,
+  insertCustomerMeterSubmissionSchema,
+  insertCustomerSupplyOrderSchema,
+  insertCustomerSupplyOrderItemSchema,
+  insertCustomerPaymentSchema,
+  insertCustomerNotificationSchema,
+  insertCustomerPortalActivityLogSchema,
+} from "./customer-portal-schema";
 
 export type {
   DemoSchedule,
@@ -188,6 +215,25 @@ export type {
   DemoOutcome,
   InsertDemoOutcome,
 } from "../server/demo-scheduling-schema";
+
+export type {
+  CustomerPortalAccess,
+  InsertCustomerPortalAccess,
+  CustomerServiceRequest,
+  InsertCustomerServiceRequest,
+  CustomerMeterSubmission,
+  InsertCustomerMeterSubmission,
+  CustomerSupplyOrder,
+  InsertCustomerSupplyOrder,
+  CustomerSupplyOrderItem,
+  InsertCustomerSupplyOrderItem,
+  CustomerPayment,
+  InsertCustomerPayment,
+  CustomerNotification,
+  InsertCustomerNotification,
+  CustomerPortalActivityLog,
+  InsertCustomerPortalActivityLog,
+} from "./customer-portal-schema";
 
 
 
