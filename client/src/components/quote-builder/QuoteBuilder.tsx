@@ -189,6 +189,21 @@ export default function QuoteBuilder({
         const company = businessRecords.find((record: any) => record.id === existingQuote.businessRecordId);
         if (company) {
           setSelectedCompany(company);
+          
+          // Also fetch and set the contact if contactId exists
+          if (existingQuote.contactId) {
+            // Fetch contacts for this company
+            apiRequest(`/api/business-records/${existingQuote.businessRecordId}/contacts`, 'GET')
+              .then((contacts: any[]) => {
+                const contact = contacts.find((c: any) => c.id === existingQuote.contactId);
+                if (contact) {
+                  setSelectedContact(contact);
+                }
+              })
+              .catch((error) => {
+                console.warn('Failed to fetch contacts for company:', error);
+              });
+          }
         }
       }
 
