@@ -309,6 +309,7 @@ router.get("/:id", requireAuth, async (req: any, res) => {
 
 // Create new proposal
 router.post("/", requireAuth, async (req: any, res) => {
+  console.log("🚀 POST /api/proposals endpoint hit!");
   try {
     console.log("=== PROPOSAL CREATION DEBUG ===");
     console.log("Request body:", JSON.stringify(req.body, null, 2));

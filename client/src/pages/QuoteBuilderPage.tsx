@@ -22,7 +22,11 @@ export default function QuoteBuilderPage() {
   const isEditing = !!quoteId;
 
   const handleSave = (savedQuoteId: string) => {
-    setLocation(`/quotes/${savedQuoteId}`);
+    if (savedQuoteId === 'redirect-to-management') {
+      setLocation('/quotes');
+    } else {
+      setLocation(`/quotes/${savedQuoteId}`);
+    }
   };
 
   const handleCancel = () => {

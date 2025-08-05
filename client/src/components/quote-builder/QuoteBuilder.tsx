@@ -164,6 +164,8 @@ export default function QuoteBuilder({
         totalAmount: data.lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
       };
 
+      console.log('📤 Submitting quote:', quoteData);
+      
       if (initialQuoteId) {
         return await apiRequest(`/api/proposals/${initialQuoteId}`, 'PATCH', quoteData);
       } else {
@@ -182,10 +184,11 @@ export default function QuoteBuilder({
         onSave(data.id);
       }
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('❌ Quote save error:', error);
       toast({
         title: 'Error',
-        description: `Failed to ${initialQuoteId ? 'update' : 'create'} quote`,
+        description: `Failed to ${initialQuoteId ? 'update' : 'create'} quote: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     },
@@ -206,6 +209,10 @@ export default function QuoteBuilder({
         title: 'Success',
         description: 'Quote submitted successfully',
       });
+      // Redirect to quotes management after successful submission
+      if (onSave) {
+        onSave('redirect-to-management');
+      }
     },
   });
 
