@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,7 +57,9 @@ import {
   Building2,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Calculator,
+  Zap
 } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -95,6 +98,7 @@ export default function QuoteProposalGeneration() {
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch proposals
   const { data: proposals = [], isLoading: proposalsLoading } = useQuery<any[]>({
@@ -251,6 +255,13 @@ export default function QuoteProposalGeneration() {
         </div>
         
         <div className="flex gap-2">
+          <Button 
+            onClick={() => navigate('/quotes/new')}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          >
+            <Calculator className="h-4 w-4 mr-2" />
+            Quote Builder
+          </Button>
           <Dialog open={isNewTemplateOpen} onOpenChange={setIsNewTemplateOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -459,12 +470,166 @@ export default function QuoteProposalGeneration() {
         </div>
       </div>
 
-      <Tabs defaultValue="proposals" className="space-y-4">
+      <Tabs defaultValue="quotes" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="quotes">Quotes</TabsTrigger>
           <TabsTrigger value="proposals">Proposals</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="packages">Equipment Packages</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="quotes" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Quote Builder System
+              </CardTitle>
+              <CardDescription>
+                Create detailed quotes with line-by-line product selection
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Quote Builder Feature Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Calculator className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">Line-by-Line Quote Builder</h3>
+                        <p className="text-sm text-muted-foreground">Build comprehensive quotes with detailed product selection</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-2 text-sm mb-4">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Select from Product Models, Accessories, Services
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        MSRP, New, and Upgrade pricing options
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Automatic margin calculations
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Add accessories as sub-lines
+                      </li>
+                    </ul>
+                    <Button 
+                      onClick={() => navigate('/quotes/new')}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Calculator className="h-4 w-4 mr-2" />
+                      Start Quote Builder
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-teal-50 border-green-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <FileText className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">Quotes Management</h3>
+                        <p className="text-sm text-muted-foreground">Manage all your quotes and track their progress</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-2 text-sm mb-4">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        View all quotes with status tracking
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Edit and update existing quotes
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Track win rates and total values
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Convert to proposals when accepted
+                      </li>
+                    </ul>
+                    <Button 
+                      onClick={() => navigate('/quotes')}
+                      className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Manage Quotes
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-muted/50 rounded-lg p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  Quick Actions
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="justify-start h-auto p-4"
+                    onClick={() => navigate('/quotes/new')}
+                  >
+                    <div className="text-left">
+                      <div className="flex items-center gap-2 font-medium">
+                        <Calculator className="h-4 w-4" />
+                        New Quote
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Start building a new quote
+                      </div>
+                    </div>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="justify-start h-auto p-4"
+                    onClick={() => navigate('/quotes')}
+                  >
+                    <div className="text-left">
+                      <div className="flex items-center gap-2 font-medium">
+                        <FileText className="h-4 w-4" />
+                        View All Quotes
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Manage existing quotes
+                      </div>
+                    </div>
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="justify-start h-auto p-4"
+                    onClick={() => setIsNewTemplateOpen(true)}
+                  >
+                    <div className="text-left">
+                      <div className="flex items-center gap-2 font-medium">
+                        <Package className="h-4 w-4" />
+                        Create Template
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Build reusable templates
+                      </div>
+                    </div>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="proposals" className="space-y-4">
           <Card>
