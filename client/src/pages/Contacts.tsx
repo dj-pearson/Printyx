@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,6 +47,27 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
+
+// Contact form schema
+const contactFormSchema = z.object({
+  salutation: z.string().optional(),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"), 
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  phone: z.string().optional(),
+  mobile: z.string().optional(),
+  title: z.string().optional(),
+  department: z.string().optional(),
+  reportsTo: z.string().optional(),
+  companyId: z.string().min(1, "Company is required"),
+  isPrimaryContact: z.boolean().default(false),
+  leadStatus: z.string().optional(),
+  leadSource: z.string().optional(),
+  emailOptOut: z.boolean().default(false),
+  doNotCall: z.boolean().default(false),
+});
+
+type ContactFormData = z.infer<typeof contactFormSchema>;
 
 interface Contact {
   // Fields returned by getContacts function
@@ -106,6 +131,69 @@ export default function Contacts() {
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
+  // Contact form
+  const contactForm = useForm<ContactFormData>({
+    resolver: zodResolver(contactFormSchema),
+    defaultValues: {
+      salutation: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      mobile: "",
+      title: "",
+      department: "",
+      reportsTo: "",
+      companyId: "",
+      isPrimaryContact: false,
+      leadStatus: "new",
+      leadSource: "",
+      emailOptOut: false,
+      doNotCall: false,
+    },
+  });
+
+  // Fetch companies for dropdown
+  const { data: companies } = useQuery({
+    queryKey: ['/api/business-records'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/business-records');
+      if (!response.ok) throw new Error('Failed to fetch companies');
+      return response.json();
+    },
+  });
+
+  // Create contact mutation
+  const createContactMutation = useMutation({
+    mutationFn: async (data: ContactFormData) => {
+      const response = await apiRequest('POST', '/api/company-contacts', data);
+      if (!response.ok) {
+        throw new Error('Failed to create contact');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Contact created successfully",
+      });
+      contactForm.reset();
+      setDialogs(prev => ({ ...prev, createContact: false }));
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create contact",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitContact = (data: ContactFormData) => {
+    createContactMutation.mutate(data);
+  };
+
   // Fetch contacts with filters
   const { data: contactsData, isLoading, error } = useQuery({
     queryKey: ['/api/contacts', filters, searchQuery, sortBy, sortOrder, currentPage, pageSize],
@@ -120,11 +208,15 @@ export default function Contacts() {
       });
       
       const response = await apiRequest('GET', `/api/contacts?${params}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       const data = await response.json();
       
       return data;
     },
     retry: 2,
+    enabled: true, // Ensure query runs
   });
 
   // Debug logging
@@ -237,136 +329,317 @@ export default function Contacts() {
                 <DialogHeader>
                   <DialogTitle>Create new contact</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>Salutation</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select salutation" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Mr.">Mr.</SelectItem>
-                          <SelectItem value="Mrs.">Mrs.</SelectItem>
-                          <SelectItem value="Ms.">Ms.</SelectItem>
-                          <SelectItem value="Dr.">Dr.</SelectItem>
-                          <SelectItem value="Prof.">Prof.</SelectItem>
-                        </SelectContent>
-                      </Select>
+                <Form {...contactForm}>
+                  <form onSubmit={contactForm.handleSubmit(onSubmitContact)} className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={contactForm.control}
+                        name="salutation"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Salutation</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select salutation" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Mr.">Mr.</SelectItem>
+                                <SelectItem value="Mrs.">Mrs.</SelectItem>
+                                <SelectItem value="Ms.">Ms.</SelectItem>
+                                <SelectItem value="Dr.">Dr.</SelectItem>
+                                <SelectItem value="Prof.">Prof.</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First name *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter first name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last name *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter last name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                    <div>
-                      <Label>First name</Label>
-                      <Input placeholder="Enter first name" />
-                    </div>
-                    <div>
-                      <Label>Last name *</Label>
-                      <Input placeholder="Enter last name" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Email</Label>
-                      <Input type="email" placeholder="Enter email address" />
-                    </div>
-                    <div>
-                      <Label>Phone</Label>
-                      <Input placeholder="Enter phone number" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Mobile</Label>
-                      <Input placeholder="Enter mobile number" />
-                    </div>
-                    <div>
-                      <Label>Job title</Label>
-                      <Input placeholder="Enter job title" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Department</Label>
-                      <Input placeholder="Enter department" />
-                    </div>
-                    <div>
-                      <Label>Reports To</Label>
-                      <Input placeholder="Manager or supervisor" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Company</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select company" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="lead-001">Lead #lead-001</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox id="isPrimaryContact" />
-                      <Label htmlFor="isPrimaryContact">Primary contact</Label>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Lead status</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="contacted">Contacted</SelectItem>
-                          <SelectItem value="qualified">Qualified</SelectItem>
-                          <SelectItem value="unqualified">Unqualified</SelectItem>
-                          <SelectItem value="customer">Customer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Lead Source</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select source" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="website">Website</SelectItem>
-                          <SelectItem value="referral">Referral</SelectItem>
-                          <SelectItem value="cold_call">Cold Call</SelectItem>
-                          <SelectItem value="email_campaign">Email Campaign</SelectItem>
-                          <SelectItem value="trade_show">Trade Show</SelectItem>
-                          <SelectItem value="social_media">Social Media</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  {/* Communication Preferences */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium">Communication Preferences</Label>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="emailOptOut" />
-                        <Label htmlFor="emailOptOut">Email Opt-Out</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox id="doNotCall" />
-                        <Label htmlFor="doNotCall">Do Not Call</Label>
+                      <FormField
+                        control={contactForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="Enter email address" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter phone number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={contactForm.control}
+                        name="mobile"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Mobile</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter mobile number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Job title</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter job title" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={contactForm.control}
+                        name="department"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Department</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="sales">Sales</SelectItem>
+                                <SelectItem value="marketing">Marketing</SelectItem>
+                                <SelectItem value="finance">Finance</SelectItem>
+                                <SelectItem value="operations">Operations</SelectItem>
+                                <SelectItem value="hr">Human Resources</SelectItem>
+                                <SelectItem value="it">IT</SelectItem>
+                                <SelectItem value="purchasing">Purchasing</SelectItem>
+                                <SelectItem value="management">Management</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="reportsTo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Reports To</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Manager or supervisor" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={contactForm.control}
+                        name="companyId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Company *</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select company" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {companies?.records?.map((company: any) => (
+                                  <SelectItem key={company.id} value={company.id}>
+                                    {company.companyName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="isPrimaryContact"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>Primary contact</FormLabel>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={contactForm.control}
+                        name="leadStatus"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Lead status</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="contacted">Contacted</SelectItem>
+                                <SelectItem value="qualified">Qualified</SelectItem>
+                                <SelectItem value="unqualified">Unqualified</SelectItem>
+                                <SelectItem value="customer">Customer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="leadSource"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Lead Source</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select source" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="website">Website</SelectItem>
+                                <SelectItem value="referral">Referral</SelectItem>
+                                <SelectItem value="cold_call">Cold Call</SelectItem>
+                                <SelectItem value="email_campaign">Email Campaign</SelectItem>
+                                <SelectItem value="trade_show">Trade Show</SelectItem>
+                                <SelectItem value="social_media">Social Media</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    {/* Communication Preferences */}
+                    <div className="space-y-3">
+                      <FormLabel className="text-base font-medium">Communication Preferences</FormLabel>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={contactForm.control}
+                          name="emailOptOut"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Email Opt-Out</FormLabel>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={contactForm.control}
+                          name="doNotCall"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Do Not Call</FormLabel>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
                       </div>
                     </div>
-                  </div>
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button variant="outline" onClick={() => setDialogs(prev => ({ ...prev, createContact: false }))}>
-                      Cancel
-                    </Button>
-                    <Button className="bg-orange-500 hover:bg-orange-600">
-                      Create contact
-                    </Button>
-                  </div>
-                </div>
+                    
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        onClick={() => setDialogs(prev => ({ ...prev, createContact: false }))}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        type="submit"
+                        className="bg-orange-500 hover:bg-orange-600"
+                        disabled={createContactMutation.isPending}
+                      >
+                        {createContactMutation.isPending ? "Creating..." : "Create contact"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
           </div>
