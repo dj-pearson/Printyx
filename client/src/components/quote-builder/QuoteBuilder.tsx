@@ -148,6 +148,11 @@ export default function QuoteBuilder({
     },
   });
 
+  // Fetch business records for company/contact selection
+  const { data: businessRecords } = useQuery({
+    queryKey: ['/api/business-records'],
+  });
+
   // Populate form when existing quote is loaded
   useEffect(() => {
     if (existingQuote && !quoteLoading) {
@@ -179,6 +184,14 @@ export default function QuoteBuilder({
       setDiscountPercentage(parseFloat(existingQuote.discountPercentage || '0'));
       setTaxAmount(parseFloat(existingQuote.taxAmount || '0'));
 
+      // Find and set the selected company
+      if (existingQuote.businessRecordId && businessRecords) {
+        const company = businessRecords.find((record: any) => record.id === existingQuote.businessRecordId);
+        if (company) {
+          setSelectedCompany(company);
+        }
+      }
+
       // Update line items if they exist
       if (existingQuote.lineItems && existingQuote.lineItems.length > 0) {
         const transformedLineItems = existingQuote.lineItems.map((item: any, index: number) => ({
@@ -204,7 +217,7 @@ export default function QuoteBuilder({
         console.log('📦 Set line items:', transformedLineItems);
       }
     }
-  }, [existingQuote, quoteLoading, form]);
+  }, [existingQuote, quoteLoading, businessRecords, form]);
 
   // Create or update quote mutation
   const saveQuoteMutation = useMutation({
