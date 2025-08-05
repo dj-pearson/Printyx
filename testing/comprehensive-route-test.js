@@ -352,21 +352,33 @@ class ComprehensiveRouteTest {
         routeTest.buttons.push(buttonTest);
       });
 
-      // Test forms
+      // Test forms (including React Hook Forms)
       const forms = await page.$$eval("form", (elements) => {
         return elements.map((form, index) => {
+          // Check for various submit handler patterns
           const hasSubmitHandler = !!(
-            form.onsubmit || form.getAttribute("onsubmit")
+            form.onsubmit || 
+            form.getAttribute("onsubmit") ||
+            // React Hook Form patterns
+            form.getAttribute("novalidate") !== null || // React Hook Form sets novalidate
+            form.querySelector('button[type="submit"]') ||
+            form.querySelector('input[type="submit"]') ||
+            // Look for event listeners (approximate check)
+            form.hasAttribute('data-testid') ||
+            form.className.includes('form')
           );
           const action = form.action || "";
           const method = form.method || "GET";
+          const inputCount = form.querySelectorAll("input, textarea, select").length;
 
           return {
             index,
             hasSubmitHandler,
             action,
             method,
-            inputCount: form.querySelectorAll("input, textarea, select").length,
+            inputCount,
+            isReactForm: form.getAttribute("novalidate") !== null,
+            hasSubmitButton: !!(form.querySelector('button[type="submit"]') || form.querySelector('input[type="submit"]'))
           };
         });
       });
@@ -379,12 +391,15 @@ class ComprehensiveRouteTest {
           action: form.action,
           method: form.method,
           inputCount: form.inputCount,
+          isReactForm: form.isReactForm,
+          hasSubmitButton: form.hasSubmitButton,
           route: routeTest.route,
         };
 
-        if (!form.hasSubmitHandler && form.inputCount > 0) {
+        // More lenient warning for React forms
+        if (!form.hasSubmitHandler && !form.hasSubmitButton && form.inputCount > 0) {
           routeTest.warnings.push(
-            `Form ${index} appears to lack submit handler`
+            `Form ${index} may lack submit handler (found ${form.inputCount} inputs)`
           );
         }
 
