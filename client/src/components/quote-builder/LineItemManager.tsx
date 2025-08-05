@@ -294,9 +294,47 @@ export default function LineItemManager({
           </div>
         ) : (
           <div className="space-y-4">
-            {groupedItems.map(({ item: mainItem, index: mainIndex, sublines }) => (
+            {groupedItems.map(({ item: mainItem, index: mainIndex, sublines }) => {
+              // Calculate total for this line including sublines
+              const lineTotal = mainItem.totalPrice + sublines.reduce((sum, sub) => sum + sub.item.totalPrice, 0);
+              
+              return (
               <div key={mainItem.id || mainIndex} className="border rounded-lg">
-                {/* Main Item */}
+                {/* Total Summary Line */}
+                <div className="p-4 bg-slate-100 dark:bg-slate-800 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Hash className="h-3 w-3" />
+                        {mainItem.lineNumber}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {getProductTypeIcon(mainItem.productType)}
+                        <div className="font-semibold">
+                          {mainItem.productName}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {mainItem.productType === 'product_models' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddAccessory(mainIndex)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Wrench className="h-4 w-4 mr-1" />
+                          Add Accessory
+                        </Button>
+                      )}
+                      <div className="font-bold text-lg">
+                        {formatCurrency(lineTotal)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main Product Details */}
                 <div className="p-4 bg-muted/20">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -423,7 +461,7 @@ export default function LineItemManager({
                               <MoveDown className="h-4 w-4" />
                               {getProductTypeIcon(subItem.productType)}
                               <Badge variant="outline" size="sm">
-                                Accessory
+                                {productTypeLabels[subItem.productType]}
                               </Badge>
                             </div>
                             <div>
@@ -503,7 +541,8 @@ export default function LineItemManager({
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 
