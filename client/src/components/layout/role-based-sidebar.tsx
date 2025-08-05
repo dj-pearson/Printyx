@@ -68,6 +68,7 @@ import {
   MapPin,
   Crown,
   Database,
+  Hash,
 } from "lucide-react";
 
 // Navigation structure based on role permissions
@@ -407,6 +408,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           icon: Activity,
         },
         { name: "Data Enrichment", href: "/data-enrichment", icon: Brain },
+        { name: "Customer Number Settings", href: "/customer-number-settings", icon: Hash }
       ],
     });
   }

@@ -70,6 +70,7 @@ import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceSchedu
 import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
 import VendorManagement from "@/pages/VendorManagement";
+import CustomerNumberSettings from "@/pages/CustomerNumberSettings";
 import FinancialForecasting from "@/pages/FinancialForecasting";
 import EquipmentLifecycleManagement from "@/pages/EquipmentLifecycleManagement";
 import CommissionManagement from "@/pages/CommissionManagement";
@@ -287,6 +288,7 @@ function Router() {
           />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
+          <Route path="/customer-number-settings" component={CustomerNumberSettings} />
           <Route path="/demo-scheduling" component={DemoScheduling} />
           <Route
             path="/sales-pipeline-forecasting"

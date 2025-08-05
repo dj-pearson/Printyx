@@ -482,6 +482,38 @@ export const userSettings = pgTable("user_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Customer Number Configuration - Configurable prefixes for customer number generation
+export const customerNumberConfig = pgTable("customer_number_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Configuration Settings
+  prefix: varchar("prefix", { length: 10 }).notNull().default("CUST"), // e.g., "CUST", "CLI", "ABC"
+  currentSequence: integer("current_sequence").notNull().default(1000), // Starting number
+  sequenceLength: integer("sequence_length").notNull().default(4), // Minimum digits (padded with zeros)
+  separatorChar: varchar("separator_char", { length: 1 }).default("-"), // e.g., "-", "_", ""
+  isActive: boolean("is_active").default(true),
+  
+  // Examples: 
+  // prefix="CUST", sequence=1001, length=4, separator="-" → "CUST-1001"
+  // prefix="ABC", sequence=5, length=6, separator="" → "ABC000005"
+  // prefix="CLI", sequence=12345, length=4, separator="_" → "CLI_12345"
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Customer Number History - Track all generated customer numbers for auditing
+export const customerNumberHistory = pgTable("customer_number_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  customerId: varchar("customer_id").notNull(), // references business_records.id or companies.id
+  customerNumber: varchar("customer_number").notNull(),
+  configId: varchar("config_id").notNull(), // references customer_number_config.id
+  generatedAt: timestamp("generated_at").defaultNow(),
+  generatedBy: varchar("generated_by"), // references users.id
+});
+
 // User-Location assignments for multi-location access control
 export const userLocationAssignments = pgTable("user_location_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2785,6 +2817,12 @@ export type InsertConversionFunnel = typeof conversionFunnel.$inferInsert;
 export type ManagerInsight = typeof managerInsights.$inferSelect;
 export type InsertManagerInsight = typeof managerInsights.$inferInsert;
 
+// Customer Number Configuration Types
+export type CustomerNumberConfig = typeof customerNumberConfig.$inferSelect;
+export type InsertCustomerNumberConfig = typeof customerNumberConfig.$inferInsert;
+export type CustomerNumberHistory = typeof customerNumberHistory.$inferSelect;
+export type InsertCustomerNumberHistory = typeof customerNumberHistory.$inferInsert;
+
 // CRM Goal Management Zod Schemas
 export const insertSalesGoalSchema = createInsertSchema(salesGoals).omit({
   id: true,
@@ -2831,6 +2869,18 @@ export const insertManagerInsightsSchema = createInsertSchema(managerInsights).o
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+// Customer Number Configuration Schemas
+export const insertCustomerNumberConfigSchema = createInsertSchema(customerNumberConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomerNumberHistorySchema = createInsertSchema(customerNumberHistory).omit({
+  id: true,
+  generatedAt: true,
 });
 
 // Legacy types for backward compatibility - moved to main exports
