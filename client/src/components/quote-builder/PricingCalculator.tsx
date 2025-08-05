@@ -232,8 +232,12 @@ export default function PricingCalculator({
                 <div className="relative">
                   <Input
                     type="number"
-                    value={discountPercentage}
-                    onChange={(e) => handleDiscountPercentageChange(parseFloat(e.target.value) || 0)}
+                    value={Math.abs(discountPercentage)}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      // Make it negative for discounts (positive values), positive for markup (negative values)
+                      handleDiscountPercentageChange(value);
+                    }}
                     step="0.01"
                     min="0"
                     max="100"
@@ -248,8 +252,11 @@ export default function PricingCalculator({
                 <div className="relative">
                   <Input
                     type="number"
-                    value={discountAmount}
-                    onChange={(e) => handleDiscountAmountChange(parseFloat(e.target.value) || 0)}
+                    value={Math.abs(discountAmount)}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      handleDiscountAmountChange(value);
+                    }}
                     step="0.01"
                     min="0"
                     className="pl-8"
@@ -261,8 +268,10 @@ export default function PricingCalculator({
 
             <div className="space-y-2">
               <Label>Value</Label>
-              <div className="p-2 bg-muted rounded border text-center font-medium">
-                {formatCurrency(discountValue)}
+              <div className={`p-2 bg-muted rounded border text-center font-medium ${
+                discountPercentage < 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {discountPercentage < 0 ? '+' : '-'}{formatCurrency(Math.abs(discountValue))}
               </div>
             </div>
           </div>
@@ -326,10 +335,16 @@ export default function PricingCalculator({
                 <span className="font-bold">{formatCurrency(itemsSubtotal)}</span>
               </div>
               
-              {discountValue > 0 && (
-                <div className="flex justify-between items-center text-sm text-green-600">
-                  <span>Discount ({formatPercentage(discountPercentage)}):</span>
-                  <span>-{formatCurrency(discountValue)}</span>
+              {discountValue !== 0 && (
+                <div className={`flex justify-between items-center text-sm ${
+                  discountPercentage < 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  <span>
+                    {discountPercentage < 0 ? 'Markup' : 'Discount'} ({formatPercentage(Math.abs(discountPercentage))}):
+                  </span>
+                  <span>
+                    {discountPercentage < 0 ? '+' : '-'}{formatCurrency(Math.abs(discountValue))}
+                  </span>
                 </div>
               )}
               
