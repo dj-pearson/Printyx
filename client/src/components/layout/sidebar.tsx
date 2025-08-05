@@ -97,8 +97,8 @@ function getNavigationSections(userRole: any) {
     });
   }
 
-  // Service section - show if user has service permissions or is admin/director level
-  if (permissions.service || isPlatformRole || isCompanyAdmin || level >= 4) {
+  // Service section - show if user has service permissions or is admin/director level, or has sales permissions (for manufacturer integrations)
+  if (permissions.service || permissions.sales || isPlatformRole || isCompanyAdmin || level >= 4) {
     sections.push({
       name: 'Service',
       items: [
