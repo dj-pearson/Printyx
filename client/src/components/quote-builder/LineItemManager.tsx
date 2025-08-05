@@ -123,16 +123,20 @@ export default function LineItemManager({
   const [parentProductForAccessory, setParentProductForAccessory] = useState<string | undefined>();
 
   const handleProductSelect = (product: any) => {
+    // Ensure product name is not empty or undefined
+    const productName = product.productName || product.name || product.description || 'Unnamed Product';
+    const productCode = product.productCode || product.code || product.sku || '';
+    
     const newItem: Omit<LineItem, 'lineNumber'> = {
       isSubline: !!parentProductForAccessory,
       parentLineId: parentProductForAccessory,
       productType: product.type,
       productId: product.id,
-      productCode: product.productCode,
-      productName: product.productName,
-      description: product.description,
+      productCode: productCode,
+      productName: productName,
+      description: product.description || '',
       quantity: 1,
-      msrp: product.msrp,
+      msrp: product.msrp || 0,
       listPrice: getProductPrice(product, pricingType),
       unitPrice: getProductPrice(product, pricingType),
       totalPrice: parseFloat(getProductPrice(product, pricingType).toString()),
@@ -314,6 +318,17 @@ export default function LineItemManager({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {mainItem.productType === 'product_models' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddAccessory(mainIndex)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Wrench className="h-4 w-4 mr-1" />
+                          Add Accessory
+                        </Button>
+                      )}
                       <div className="text-right">
                         <div className="flex items-center gap-1">
                           <Input
