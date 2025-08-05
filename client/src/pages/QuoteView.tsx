@@ -167,19 +167,47 @@ export default function QuoteView() {
   const discountPercentage = parseFloat(quote.discountPercentage || '0');
   const taxAmount = parseFloat(quote.taxAmount || '0');
   
+  // Debug log to understand the data
+  console.log('Debug pricing data:', {
+    rawSubtotal: rawSubtotalAmount,
+    discountAmount,
+    discountPercentage,
+    taxAmount
+  });
+  
   // Apply markup/discount to line items for client display
-  const adjustmentMultiplier = 1 + (discountPercentage / 100);
+  // For markup: discountPercentage is negative (e.g., -10 means 10% markup)
+  // For discount: discountPercentage is positive (e.g., 10 means 10% discount)
+  // Multiplier should be: 1 - (discountPercentage / 100)
+  // So -10% becomes 1 - (-10/100) = 1.1 (markup)
+  // And +10% becomes 1 - (10/100) = 0.9 (discount)
+  const adjustmentMultiplier = 1 - (discountPercentage / 100);
+  
+  console.log('Adjustment multiplier:', adjustmentMultiplier);
   
   // Adjust line items with markup/discount applied
-  const adjustedLineItems = lineItems.map(item => ({
-    ...item,
-    adjustedUnitPrice: parseFloat(item.unitPrice) * adjustmentMultiplier,
-    adjustedTotalPrice: parseFloat(item.totalPrice) * adjustmentMultiplier
-  }));
+  const adjustedLineItems = lineItems.map(item => {
+    const adjustedUnitPrice = parseFloat(item.unitPrice) * adjustmentMultiplier;
+    const adjustedTotalPrice = parseFloat(item.totalPrice) * adjustmentMultiplier;
+    
+    console.log(`Item ${item.productName}: ${item.unitPrice} * ${adjustmentMultiplier} = ${adjustedUnitPrice}`);
+    
+    return {
+      ...item,
+      adjustedUnitPrice,
+      adjustedTotalPrice
+    };
+  });
   
   // Calculate totals with adjustments applied
   const adjustedSubtotal = adjustedLineItems.reduce((sum, item) => sum + item.adjustedTotalPrice, 0);
   const finalTotal = adjustedSubtotal + taxAmount;
+  
+  console.log('Final calculations:', {
+    adjustedSubtotal,
+    taxAmount,
+    finalTotal
+  });
 
   return (
     <MainLayout title={`Quote ${quote.proposalNumber}`} description={`View and manage quote for ${company ? getCompanyDisplayName(company) : 'customer'}`}>
