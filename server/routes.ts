@@ -6975,7 +6975,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tenantId = user.tenantId;
         const dealId = req.params.id;
 
-        const deal = await storage.updateDeal(dealId, req.body, tenantId);
+        // Convert date strings to Date objects for Drizzle
+        const updateData = { ...req.body };
+        if (updateData.expectedCloseDate && typeof updateData.expectedCloseDate === 'string') {
+          updateData.expectedCloseDate = new Date(updateData.expectedCloseDate);
+        }
+
+        const deal = await storage.updateDeal(dealId, updateData, tenantId);
         if (!deal) {
           return res.status(404).json({ message: "Deal not found" });
         }
