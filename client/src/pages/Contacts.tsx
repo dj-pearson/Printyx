@@ -155,10 +155,10 @@ export default function Contacts() {
 
   // Fetch companies for dropdown
   const { data: companies, isLoading: companiesLoading, error: companiesError } = useQuery({
-    queryKey: ['/api/business-records'],
+    queryKey: ['/api/companies'],
     queryFn: async () => {
-      console.log('[COMPANIES DEBUG] Fetching business records...');
-      const response = await apiRequest('GET', '/api/business-records');
+      console.log('[COMPANIES DEBUG] Fetching companies...');
+      const response = await apiRequest('GET', '/api/companies');
       if (!response.ok) throw new Error('Failed to fetch companies');
       const data = await response.json();
       console.log('[COMPANIES DEBUG] Fetched companies:', data);
@@ -511,7 +511,7 @@ export default function Contacts() {
                                 )}
                                 {companies && Array.isArray(companies) && companies.map((company: any) => (
                                   <SelectItem key={company.id} value={company.id}>
-                                    {company.companyName}
+                                    {company.name || company.companyName}
                                   </SelectItem>
                                 ))}
                                 {!companiesLoading && (!companies || companies.length === 0) && (
