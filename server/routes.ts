@@ -4925,8 +4925,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If so, try to find or create the corresponding company
         let actualCompanyId = companyId;
 
-        // First check if it's a valid company ID
-        const existingCompany = await storage.getCompany(companyId, tenantId);
+        // First check if it's a valid UUID and company ID
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId);
+        let existingCompany = null;
+        
+        if (isUuid) {
+          existingCompany = await storage.getCompany(companyId, tenantId);
+        }
 
         if (!existingCompany) {
           // It might be a business record ID, try to get the business record
