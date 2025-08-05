@@ -158,9 +158,7 @@ export default function Contacts() {
     queryKey: ['/api/business-records'],
     queryFn: async () => {
       console.log('[COMPANIES DEBUG] Fetching business records...');
-      const response = await apiRequest('GET', '/api/business-records');
-      if (!response.ok) throw new Error('Failed to fetch business records');
-      const data = await response.json();
+      const data = await apiRequest('/api/business-records');
       console.log('[COMPANIES DEBUG] Fetched business records:', data);
       return data;
     },
@@ -173,11 +171,11 @@ export default function Contacts() {
   // Create contact mutation
   const createContactMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
-      const response = await apiRequest('POST', '/api/company-contacts', data);
-      if (!response.ok) {
-        throw new Error('Failed to create contact');
-      }
-      return response.json();
+      const result = await apiRequest('/api/company-contacts', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -205,19 +203,15 @@ export default function Contacts() {
   const { data: contactsData, isLoading, error } = useQuery({
     queryKey: ['/api/company-contacts', filters, searchQuery, sortBy, sortOrder, currentPage, pageSize],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/company-contacts');
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const data = await response.json();
+      const data = await apiRequest('/api/company-contacts');
       
       console.log("[CONTACTS UI DEBUG] Raw company-contacts data:", data);
       
       // Transform the flat array into the expected format with pagination
       const allContacts = Array.isArray(data) ? data : [];
       const filteredContacts = allContacts.filter(contact => {
-        if (searchQuery && !contact.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            !contact.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        if (searchQuery && !contact.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+            !contact.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) &&
             !contact.email?.toLowerCase().includes(searchQuery.toLowerCase())) {
           return false;
         }
@@ -251,8 +245,8 @@ export default function Contacts() {
 
 
   // Get unique values for filters
-  const uniqueOwners = [...new Set(contacts.map((c: Contact) => c.ownerName))];
-  const uniqueStatuses = [...new Set(contacts.map((c: Contact) => c.leadStatus))];
+  const uniqueOwners = [...new Set(contacts.map((c: Contact) => c.ownerName).filter(Boolean))];
+  const uniqueStatuses = [...new Set(contacts.map((c: Contact) => c.leadStatus).filter(Boolean))];
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Never';

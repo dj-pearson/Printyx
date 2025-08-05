@@ -4848,9 +4848,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Global company contacts route (for contacts page)
   app.get("/api/company-contacts", requireAuth, async (req: any, res) => {
     try {
+      console.log(`[COMPANY-CONTACTS DEBUG] Route hit. Session:`, req.session);
+      console.log(`[COMPANY-CONTACTS DEBUG] User:`, req.user);
+      
       const user = req.user as User;
+      if (!user || !user.tenantId) {
+        console.log(`[COMPANY-CONTACTS DEBUG] No user or tenantId found`);
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const tenantId = user.tenantId;
-
       console.log(`[COMPANY-CONTACTS DEBUG] Fetching all contacts for tenant: ${tenantId}`);
 
       const contacts = await storage.getAllCompanyContacts(tenantId);
