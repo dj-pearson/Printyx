@@ -2017,6 +2017,23 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
+  // Business Record Contacts operations
+  async getBusinessRecordContacts(businessRecordId: string, tenantId: string): Promise<CompanyContact[]> {
+    return await db
+      .select()
+      .from(companyContacts)
+      .where(and(
+        eq(companyContacts.companyId, businessRecordId),
+        eq(companyContacts.tenantId, tenantId)
+      ))
+      .orderBy(companyContacts.firstName, companyContacts.lastName);
+  }
+
+  async createBusinessRecordContact(contact: InsertCompanyContact): Promise<CompanyContact> {
+    const [newContact] = await db.insert(companyContacts).values(contact).returning();
+    return newContact;
+  }
+
   // Deal management operations
   async getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]> {
     let query = db
