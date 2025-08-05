@@ -51,6 +51,7 @@ import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
+import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
 // import { registerCommissionRoutes } from "./routes-commission"; // TODO: Add commission schema tables first
 import {
   getCompanyPricingSettings,
@@ -659,10 +660,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(
     "/api/dashboard/alerts",
     requireAuth,
-    requireAuth,
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user?.tenantId;
+        
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
 
         // Real alerts from database - low stock items
         const lowStockItems = await db
@@ -672,19 +676,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             category: inventoryItems.category,
             currentStock: inventoryItems.currentStock,
             minThreshold: inventoryItems.reorderPoint,
-            status: sql<string>`'active'`,
           })
           .from(inventoryItems)
-          .where(
-            and(
-              eq(inventoryItems.tenantId, tenantId),
-              sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`
-            )
-          )
+          .where(and(
+            eq(inventoryItems.tenantId, tenantId),
+            sql`current_stock <= reorder_point`
+          ))
           .orderBy(asc(inventoryItems.currentStock))
           .limit(20);
 
-        res.json({ lowStock: lowStockItems });
+        const alerts = lowStockItems.map(item => ({
+          id: item.id,
+          type: 'low_stock',
+          severity: 'medium',
+          title: `Low Stock: ${item.name}`,
+          message: `${item.name} is running low (${item.currentStock} remaining, reorder at ${item.minThreshold})`,
+          category: item.category,
+          timestamp: new Date().toISOString(),
+        }));
+
+        res.json(alerts);
       } catch (error) {
         console.error("Error fetching alerts:", error);
         res.status(500).json({ message: "Failed to fetch alerts" });
@@ -12910,6 +12921,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   );
+
+  // Register modular dashboard routes
+  registerModularDashboardRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

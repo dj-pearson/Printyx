@@ -2,12 +2,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
-import MetricsCards from "@/components/dashboard/metrics-cards";
-import ServiceTickets from "@/components/dashboard/service-tickets";
-import QuickActions from "@/components/dashboard/quick-actions";
-import Alerts from "@/components/dashboard/alerts";
-import RevenueChart from "@/components/dashboard/revenue-chart";
-import TopCustomers from "@/components/dashboard/top-customers";
+import ModularDashboard from "@/components/ModularDashboard";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -39,24 +34,8 @@ export default function Dashboard() {
   }
 
   return (
-    <MainLayout title="Dashboard" description="Overview of your business metrics and activities">
-      <MetricsCards />
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="lg:col-span-2">
-          <ServiceTickets />
-        </div>
-        
-        <div className="space-y-4 sm:space-y-6">
-          <QuickActions />
-          <Alerts />
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <RevenueChart />
-        <TopCustomers />
-      </div>
+    <MainLayout title="Dashboard" description="Role-based metrics and business insights">
+      <ModularDashboard />
     </MainLayout>
   );
 }
