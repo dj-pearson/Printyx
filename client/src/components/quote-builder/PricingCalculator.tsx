@@ -70,7 +70,7 @@ export default function PricingCalculator({
   const [taxAmount, setTaxAmount] = useState(0);
 
   // Calculate totals
-  const itemsSubtotal = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  const itemsSubtotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.totalPrice.toString()) || 0), 0);
   const discountValue = discountType === 'percentage' 
     ? (itemsSubtotal * discountPercentage / 100)
     : discountAmount;
@@ -173,12 +173,32 @@ export default function PricingCalculator({
           </div>
         </div>
 
-        {/* Discount Section */}
+        {/* Markup/Discount Section */}
         <div className="space-y-3">
-          <h4 className="font-semibold flex items-center gap-2">
-            <Percent className="h-4 w-4" />
-            Discount
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold flex items-center gap-2">
+              <Percent className="h-4 w-4" />
+              Markup & Discount
+            </h4>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDiscountPercentageChange(-10)}
+                className="text-green-600 hover:text-green-700"
+              >
+                +10% Markup
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDiscountPercentageChange(10)}
+                className="text-red-600 hover:text-red-700"
+              >
+                10% Discount
+              </Button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label>Discount Type</Label>
