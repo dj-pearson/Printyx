@@ -135,7 +135,7 @@ export default function LineItemManager({
       msrp: product.msrp,
       listPrice: getProductPrice(product, pricingType),
       unitPrice: getProductPrice(product, pricingType),
-      totalPrice: getProductPrice(product, pricingType),
+      totalPrice: parseFloat(getProductPrice(product, pricingType).toString()),
       unitCost: product.unitCost || 0,
       margin: calculateMargin(getProductPrice(product, pricingType), product.unitCost || 0),
     };
@@ -161,7 +161,7 @@ export default function LineItemManager({
     const updatedItem = {
       ...item,
       quantity: newQuantity,
-      totalPrice: newQuantity * item.unitPrice,
+      totalPrice: newQuantity * parseFloat(item.unitPrice.toString()),
     };
     onUpdateItem(index, updatedItem);
   };
@@ -171,7 +171,7 @@ export default function LineItemManager({
     const updatedItem = {
       ...item,
       unitPrice: newPrice,
-      totalPrice: item.quantity * newPrice,
+      totalPrice: parseFloat(item.quantity.toString()) * parseFloat(newPrice.toString()),
       margin: calculateMargin(newPrice, item.unitCost || 0),
     };
     onUpdateItem(index, updatedItem);

@@ -38,7 +38,7 @@ export default function QuoteBuilderPage() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => navigate('/quotes')}
+              onClick={() => setLocation('/quotes')}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Quotes
