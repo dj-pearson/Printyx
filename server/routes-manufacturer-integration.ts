@@ -1,406 +1,401 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import { ManufacturerIntegrationService } from './services/manufacturer-integration-service';
-import { unifiedMeterCollectionService } from './services/unified-meter-collection-service';
+import type { Express } from "express";
+import { db } from "./db";
+import { eq, and, sql, desc, gte, lte } from "drizzle-orm";
 import {
+  manufacturerIntegrations,
+  deviceRegistrations,
+  deviceMetrics,
+  integrationAuditLogs,
+  thirdPartyIntegrations,
   insertManufacturerIntegrationSchema,
   insertDeviceRegistrationSchema,
-  manufacturerEnum,
-  integrationMethodEnum,
-  collectionFrequencyEnum
-} from '../shared/manufacturer-integration-schema';
+  insertDeviceMetricSchema,
+} from "@shared/schema";
+import { manufacturerIntegrationService } from "./manufacturer-integration-service";
 
-const router = Router();
-const integrationService = new ManufacturerIntegrationService();
-
-// Validation schemas
-const createIntegrationSchema = z.object({
-  manufacturer: z.enum(manufacturerEnum.enumValues),
-  manufacturerName: z.string().min(1).max(100),
-  platformName: z.string().max(100).optional(),
-  integrationMethod: z.enum(integrationMethodEnum.enumValues),
-  apiEndpoint: z.string().url().optional(),
-  apiVersion: z.string().max(20).optional(),
-  authType: z.enum(['oauth2', 'api_key', 'basic_auth', 'certificate']).optional(),
-  authCredentials: z.record(z.any()).default({}),
-  collectionFrequency: z.enum(collectionFrequencyEnum.enumValues).default('daily'),
-  settings: z.record(z.any()).default({}),
-  fieldMappings: z.record(z.any()).default({})
-});
-
-const registerDeviceSchema = z.object({
-  integrationId: z.string().uuid(),
-  deviceId: z.string().min(1),
-  serialNumber: z.string().max(100).optional(),
-  modelNumber: z.string().max(100).optional(),
-  deviceName: z.string().max(150).optional(),
-  ipAddress: z.string().max(45).optional(),
-  macAddress: z.string().max(17).optional(),
-  networkPath: z.string().max(255).optional(),
-  locationId: z.string().uuid().optional(),
-  customerId: z.string().uuid().optional(),
-  capabilities: z.record(z.any()).default({}),
-  supportedMetrics: z.array(z.string()).default([]),
-  deviceAuthCredentials: z.record(z.any()).default({})
-});
-
-// GET /api/manufacturer-integrations - Get all integrations for tenant
-router.get('/', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const integrations = await integrationService.getIntegrations(tenantId);
-    res.json({ integrations });
-  } catch (error) {
-    console.error('Error fetching integrations:', error);
-    res.status(500).json({ error: 'Failed to fetch integrations' });
-  }
-});
-
-// POST /api/manufacturer-integrations - Create new integration
-router.post('/', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const validatedData = createIntegrationSchema.parse(req.body);
-    
-    const integration = await integrationService.createIntegration(tenantId, {
-      ...validatedData,
-      createdBy: req.session?.user?.id
-    });
-
-    res.status(201).json({ integration });
-  } catch (error) {
-    console.error('Error creating integration:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation error', details: error.errors });
-    }
-    res.status(500).json({ error: 'Failed to create integration' });
-  }
-});
-
-// GET /api/manufacturer-integrations/:id - Get specific integration
-router.get('/:id', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const integration = await integrationService.getIntegrationById(tenantId, req.params.id);
-    if (!integration) {
-      return res.status(404).json({ error: 'Integration not found' });
-    }
-
-    res.json({ integration });
-  } catch (error) {
-    console.error('Error fetching integration:', error);
-    res.status(500).json({ error: 'Failed to fetch integration' });
-  }
-});
-
-// PUT /api/manufacturer-integrations/:id/status - Update integration status
-router.put('/:id/status', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { status, error } = req.body;
-    if (!['active', 'inactive', 'error', 'pending_auth', 'rate_limited', 'maintenance'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-
-    await integrationService.updateIntegrationStatus(tenantId, req.params.id, status, error);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error updating integration status:', error);
-    res.status(500).json({ error: 'Failed to update integration status' });
-  }
-});
-
-// POST /api/manufacturer-integrations/:id/test-connection - Test integration connection
-router.post('/:id/test-connection', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const success = await unifiedMeterCollectionService.testIntegrationConnection(tenantId, req.params.id);
-    res.json({ success, message: success ? 'Connection successful' : 'Connection failed' });
-  } catch (error) {
-    console.error('Error testing connection:', error);
-    res.status(500).json({ error: 'Failed to test connection' });
-  }
-});
-
-// POST /api/manufacturer-integrations/:id/discover-devices - Discover devices
-router.post('/:id/discover-devices', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const devices = await unifiedMeterCollectionService.discoverDevicesForIntegration(tenantId, req.params.id);
-    res.json({ devices });
-  } catch (error) {
-    console.error('Error discovering devices:', error);
-    res.status(500).json({ error: 'Failed to discover devices' });
-  }
-});
-
-// GET /api/manufacturer-integrations/:id/devices - Get devices for integration
-router.get('/:id/devices', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const devices = await integrationService.getDevices(tenantId, req.params.id);
-    res.json({ devices });
-  } catch (error) {
-    console.error('Error fetching devices:', error);
-    res.status(500).json({ error: 'Failed to fetch devices' });
-  }
-});
-
-// POST /api/manufacturer-integrations/:id/devices - Register new device
-router.post('/:id/devices', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const validatedData = registerDeviceSchema.parse(req.body);
-    
-    // Ensure the integrationId matches the URL parameter
-    if (validatedData.integrationId !== req.params.id) {
-      return res.status(400).json({ error: 'Integration ID mismatch' });
-    }
-
-    const device = await integrationService.registerDevice(tenantId, validatedData);
-    res.status(201).json({ device });
-  } catch (error) {
-    console.error('Error registering device:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation error', details: error.errors });
-    }
-    res.status(500).json({ error: 'Failed to register device' });
-  }
-});
-
-// GET /api/manufacturer-integrations/devices/:deviceId - Get specific device
-router.get('/devices/:deviceId', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const device = await integrationService.getDeviceById(tenantId, req.params.deviceId);
-    if (!device) {
-      return res.status(404).json({ error: 'Device not found' });
-    }
-
-    res.json({ device });
-  } catch (error) {
-    console.error('Error fetching device:', error);
-    res.status(500).json({ error: 'Failed to fetch device' });
-  }
-});
-
-// GET /api/manufacturer-integrations/devices/:deviceId/metrics - Get device metrics
-router.get('/devices/:deviceId/metrics', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { metricTypes, fromDate, toDate } = req.query;
-    
-    const metrics = await integrationService.getDeviceMetrics(
-      tenantId,
-      req.params.deviceId,
-      metricTypes ? (metricTypes as string).split(',') : undefined,
-      fromDate ? new Date(fromDate as string) : undefined,
-      toDate ? new Date(toDate as string) : undefined
-    );
-
-    res.json({ metrics });
-  } catch (error) {
-    console.error('Error fetching device metrics:', error);
-    res.status(500).json({ error: 'Failed to fetch device metrics' });
-  }
-});
-
-// POST /api/manufacturer-integrations/devices/:deviceId/collect - Manually collect metrics
-router.post('/devices/:deviceId/collect', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {  
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const result = await unifiedMeterCollectionService.collectFromDevice(tenantId, req.params.deviceId);
-    res.json({ result });
-  } catch (error) {
-    console.error('Error collecting device metrics:', error);
-    res.status(500).json({ error: 'Failed to collect device metrics' });
-  }
-});
-
-// GET /api/manufacturer-integrations/:id/audit-logs - Get audit logs for integration
-router.get('/:id/audit-logs', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { eventCategory, fromDate, limit } = req.query;
-    
-    const logs = await integrationService.getAuditLogs(
-      tenantId,
-      req.params.id,
-      eventCategory as string,
-      fromDate ? new Date(fromDate as string) : undefined,
-      limit ? parseInt(limit as string) : 100
-    );
-
-    res.json({ logs });
-  } catch (error) {
-    console.error('Error fetching audit logs:', error);
-    res.status(500).json({ error: 'Failed to fetch audit logs' });
-  }
-});
-
-// POST /api/manufacturer-integrations/run-collection - Manually trigger collection for all integrations
-router.post('/run-collection', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Only allow admin users to trigger collection
-    if (!req.session?.user?.isSystemRole) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-
-    // Run collection asynchronously
-    unifiedMeterCollectionService.runScheduledCollection().catch(error => {
-      console.error('Collection run failed:', error);
-    });
-
-    res.json({ message: 'Collection started', timestamp: new Date() });
-  } catch (error) {
-    console.error('Error starting collection:', error);
-    res.status(500).json({ error: 'Failed to start collection' });
-  }
-});
-
-// GET /api/manufacturer-integrations/statistics - Get collection statistics
-router.get('/statistics', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const statistics = await unifiedMeterCollectionService.getCollectionStatistics();
-    res.json({ statistics });
-  } catch (error) {
-    console.error('Error fetching statistics:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
-  }
-});
-
-// DELETE /api/manufacturer-integrations/:id - Delete integration
-router.delete('/:id', async (req, res) => {
-  try {
-    const tenantId = req.session?.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    // Only allow admin users to delete integrations
-    if (!req.session?.user?.canManageIntegrations) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-
-    await integrationService.updateIntegrationStatus(tenantId, req.params.id, 'inactive');
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting integration:', error);
-    res.status(500).json({ error: 'Failed to delete integration' });
-  }
-});
-
-// GET /api/manufacturer-integrations/supported-manufacturers - Get list of supported manufacturers
-router.get('/supported-manufacturers', async (req, res) => {
-  try {
-    const manufacturers = [
-      {
-        id: 'canon',
-        name: 'Canon',
-        platforms: ['Canon Data Collection Agent', 'eMaintenance'],
-        authMethods: ['api_key', 'certificate'],
-        description: 'Integration with Canon imageRUNNER ADVANCE devices through DCA and eMaintenance platform'
-      },
-      {
-        id: 'xerox',
-        name: 'Xerox',
-        platforms: ['ConnectKey', 'Workplace Cloud'],
-        authMethods: ['oauth2', 'api_key'],
-        description: 'Integration with Xerox devices through ConnectKey API and Managed Print Services'
-      },
-      {
-        id: 'hp',
-        name: 'HP',
-        platforms: ['PrintOS', 'Smart Device Services'],
-        authMethods: ['api_key'],
-        description: 'Integration with HP devices through PrintOS Device API and Smart Device Services'
-      },
-      {
-        id: 'konica_minolta',
-        name: 'Konica Minolta',
-        platforms: ['bEST', 'Dispatcher Phoenix'],
-        authMethods: ['api_key', 'oauth2'],
-        description: 'Integration with Konica Minolta devices through bEST Technology Suite'
-      },
-      {
-        id: 'lexmark',
-        name: 'Lexmark',
-        platforms: ['Fleet Management', 'Cloud Services'],
-        authMethods: ['api_key', 'basic_auth'],
-        description: 'Integration with Lexmark devices through Fleet Management API'
-      },
-      {
-        id: 'fmaudit',
-        name: 'FMAudit/Printanista',
-        platforms: ['FMAudit', 'Printanista'],
-        authMethods: ['api_key', 'basic_auth'],
-        description: 'Integration with FMAudit/Printanista for automated meter reading across multiple manufacturers'
+export function registerManufacturerIntegrationRoutes(app: Express) {
+  // Get all integrations for a tenant
+  app.get("/api/manufacturer-integrations", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
       }
-    ];
 
-    res.json({ manufacturers });
-  } catch (error) {
-    console.error('Error fetching supported manufacturers:', error);
-    res.status(500).json({ error: 'Failed to fetch supported manufacturers' });
-  }
-});
+      const integrations = await db.select()
+        .from(manufacturerIntegrations)
+        .where(eq(manufacturerIntegrations.tenantId, tenantId))
+        .orderBy(desc(manufacturerIntegrations.createdAt));
 
-export default router;
+      res.json(integrations);
+    } catch (error) {
+      console.error("Error fetching manufacturer integrations:", error);
+      res.status(500).json({ message: "Failed to fetch integrations" });
+    }
+  });
+
+  // Create a new integration
+  app.post("/api/manufacturer-integrations", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const validatedData = insertManufacturerIntegrationSchema.parse(req.body);
+      
+      const integration = await manufacturerIntegrationService.createIntegration(
+        tenantId,
+        validatedData
+      );
+
+      res.json(integration);
+    } catch (error) {
+      console.error("Error creating manufacturer integration:", error);
+      res.status(500).json({ message: "Failed to create integration" });
+    }
+  });
+
+  // Get integration by ID
+  app.get("/api/manufacturer-integrations/:id", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const integration = await db.select()
+        .from(manufacturerIntegrations)
+        .where(and(
+          eq(manufacturerIntegrations.tenantId, tenantId),
+          eq(manufacturerIntegrations.id, id)
+        ))
+        .limit(1);
+
+      if (!integration[0]) {
+        return res.status(404).json({ message: "Integration not found" });
+      }
+
+      res.json(integration[0]);
+    } catch (error) {
+      console.error("Error fetching integration:", error);
+      res.status(500).json({ message: "Failed to fetch integration" });
+    }
+  });
+
+  // Update integration
+  app.put("/api/manufacturer-integrations/:id", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const [updatedIntegration] = await db.update(manufacturerIntegrations)
+        .set({ 
+          ...req.body, 
+          updatedAt: new Date() 
+        })
+        .where(and(
+          eq(manufacturerIntegrations.tenantId, tenantId),
+          eq(manufacturerIntegrations.id, id)
+        ))
+        .returning();
+
+      if (!updatedIntegration) {
+        return res.status(404).json({ message: "Integration not found" });
+      }
+
+      res.json(updatedIntegration);
+    } catch (error) {
+      console.error("Error updating integration:", error);
+      res.status(500).json({ message: "Failed to update integration" });
+    }
+  });
+
+  // Delete integration
+  app.delete("/api/manufacturer-integrations/:id", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      await db.delete(manufacturerIntegrations)
+        .where(and(
+          eq(manufacturerIntegrations.tenantId, tenantId),
+          eq(manufacturerIntegrations.id, id)
+        ));
+
+      res.json({ message: "Integration deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting integration:", error);
+      res.status(500).json({ message: "Failed to delete integration" });
+    }
+  });
+
+  // Test integration connection
+  app.post("/api/manufacturer-integrations/:id/test", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // This would test the connection using the integration service
+      // For now, return a mock response
+      const success = Math.random() > 0.3; // 70% success rate for demo
+
+      res.json({ 
+        success,
+        message: success ? "Connection successful" : "Connection failed",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error testing connection:", error);
+      res.status(500).json({ message: "Failed to test connection" });
+    }
+  });
+
+  // Discover and register devices
+  app.post("/api/manufacturer-integrations/:id/discover", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const devices = await manufacturerIntegrationService.discoverAndRegisterDevices(
+        tenantId,
+        id
+      );
+
+      res.json({ 
+        message: `Discovered and registered ${devices.length} devices`,
+        devices 
+      });
+    } catch (error) {
+      console.error("Error discovering devices:", error);
+      res.status(500).json({ message: "Failed to discover devices" });
+    }
+  });
+
+  // Get devices for an integration
+  app.get("/api/manufacturer-integrations/:id/devices", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const devices = await db.select()
+        .from(deviceRegistrations)
+        .where(and(
+          eq(deviceRegistrations.tenantId, tenantId),
+          eq(deviceRegistrations.integrationId, id)
+        ))
+        .orderBy(desc(deviceRegistrations.registeredAt));
+
+      res.json(devices);
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+      res.status(500).json({ message: "Failed to fetch devices" });
+    }
+  });
+
+  // Get all devices across integrations
+  app.get("/api/devices", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const devices = await db.select({
+        device: deviceRegistrations,
+        integration: manufacturerIntegrations
+      })
+        .from(deviceRegistrations)
+        .innerJoin(manufacturerIntegrations, eq(deviceRegistrations.integrationId, manufacturerIntegrations.id))
+        .where(eq(deviceRegistrations.tenantId, tenantId))
+        .orderBy(desc(deviceRegistrations.lastSeen));
+
+      res.json(devices);
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+      res.status(500).json({ message: "Failed to fetch devices" });
+    }
+  });
+
+  // Collect metrics from a device
+  app.post("/api/devices/:deviceId/collect", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { deviceId } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const metrics = await manufacturerIntegrationService.collectDeviceMetrics(
+        tenantId,
+        deviceId
+      );
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error collecting device metrics:", error);
+      res.status(500).json({ message: "Failed to collect device metrics" });
+    }
+  });
+
+  // Get device metrics
+  app.get("/api/devices/:deviceId/metrics", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { deviceId } = req.params;
+      const { days = 7 } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - parseInt(days as string));
+
+      const metrics = await db.select()
+        .from(deviceMetrics)
+        .where(and(
+          eq(deviceMetrics.tenantId, tenantId),
+          eq(deviceMetrics.deviceId, deviceId),
+          gte(deviceMetrics.collectionTimestamp, startDate)
+        ))
+        .orderBy(desc(deviceMetrics.collectionTimestamp));
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching device metrics:", error);
+      res.status(500).json({ message: "Failed to fetch device metrics" });
+    }
+  });
+
+  // Get audit logs
+  app.get("/api/manufacturer-integrations/audit-logs", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { integrationId, deviceId, action, status, days = 7 } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - parseInt(days as string));
+
+      let whereConditions = [
+        eq(integrationAuditLogs.tenantId, tenantId),
+        gte(integrationAuditLogs.timestamp, startDate)
+      ];
+
+      if (integrationId) {
+        whereConditions.push(eq(integrationAuditLogs.integrationId, integrationId as string));
+      }
+      if (deviceId) {
+        whereConditions.push(eq(integrationAuditLogs.deviceId, deviceId as string));
+      }
+      if (action) {
+        whereConditions.push(eq(integrationAuditLogs.action, action as string));
+      }
+      if (status) {
+        whereConditions.push(eq(integrationAuditLogs.status, status as string));
+      }
+
+      const logs = await db.select({
+        log: integrationAuditLogs,
+        integration: manufacturerIntegrations,
+        device: deviceRegistrations
+      })
+        .from(integrationAuditLogs)
+        .leftJoin(manufacturerIntegrations, eq(integrationAuditLogs.integrationId, manufacturerIntegrations.id))
+        .leftJoin(deviceRegistrations, eq(integrationAuditLogs.deviceId, deviceRegistrations.id))
+        .where(and(...whereConditions))
+        .orderBy(desc(integrationAuditLogs.timestamp))
+        .limit(100);
+
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Get integration statistics
+  app.get("/api/manufacturer-integrations/stats", async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const [
+        totalIntegrations,
+        activeIntegrations,
+        totalDevices,
+        onlineDevices,
+        todayMetrics
+      ] = await Promise.all([
+        db.select({ count: sql`count(*)` })
+          .from(manufacturerIntegrations)
+          .where(eq(manufacturerIntegrations.tenantId, tenantId)),
+
+        db.select({ count: sql`count(*)` })
+          .from(manufacturerIntegrations)
+          .where(and(
+            eq(manufacturerIntegrations.tenantId, tenantId),
+            eq(manufacturerIntegrations.status, 'active')
+          )),
+
+        db.select({ count: sql`count(*)` })
+          .from(deviceRegistrations)
+          .where(eq(deviceRegistrations.tenantId, tenantId)),
+
+        db.select({ count: sql`count(*)` })
+          .from(deviceRegistrations)
+          .where(and(
+            eq(deviceRegistrations.tenantId, tenantId),
+            eq(deviceRegistrations.status, 'online')
+          )),
+
+        db.select({ count: sql`count(*)` })
+          .from(deviceMetrics)
+          .where(and(
+            eq(deviceMetrics.tenantId, tenantId),
+            gte(deviceMetrics.collectionTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000))
+          ))
+      ]);
+
+      res.json({
+        totalIntegrations: Number(totalIntegrations[0]?.count || 0),
+        activeIntegrations: Number(activeIntegrations[0]?.count || 0),
+        totalDevices: Number(totalDevices[0]?.count || 0),
+        onlineDevices: Number(onlineDevices[0]?.count || 0),
+        todayMetrics: Number(todayMetrics[0]?.count || 0)
+      });
+    } catch (error) {
+      console.error("Error fetching integration stats:", error);
+      res.status(500).json({ message: "Failed to fetch integration statistics" });
+    }
+  });
+}

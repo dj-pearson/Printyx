@@ -123,6 +123,21 @@ function getNavigationSections(userRole: any) {
           ]
         },
         { name: 'Meter Readings', href: '/meter-readings', icon: Calculator },
+        {
+          name: 'Manufacturer Integration',
+          href: '/manufacturer-integration',
+          icon: Network,
+          isExpandable: true,
+          subItems: [
+            { name: 'Integration Hub', href: '/manufacturer-integration', icon: Network },
+            { name: 'Canon Integration', href: '/manufacturer-integration/canon', icon: Printer },
+            { name: 'Xerox Integration', href: '/manufacturer-integration/xerox', icon: Printer },
+            { name: 'HP Integration', href: '/manufacturer-integration/hp', icon: Printer },
+            { name: 'FMAudit Integration', href: '/manufacturer-integration/fmaudit', icon: Printer },
+            { name: 'Device Management', href: '/manufacturer-integration/devices', icon: Smartphone },
+            { name: 'Audit Logs', href: '/manufacturer-integration/audit', icon: ClipboardList },
+          ]
+        },
         { name: 'Service Reports', href: '/service-reports', icon: ClipboardList },
       ]
     });

@@ -71,7 +71,40 @@ export {
   insertLocationHistorySchema,
 } from "./mobile-service-schema";
 
+// Re-export manufacturer integration schemas
+export {
+  manufacturerIntegrations,
+  deviceRegistrations,
+  deviceMetrics,
+  integrationAuditLogs,
+  thirdPartyIntegrations,
+  manufacturerEnum,
+  integrationStatusEnum,
+  collectionFrequencyEnum,
+  deviceStatusEnum,
+  authMethodEnum,
+  insertManufacturerIntegrationSchema,
+  insertDeviceRegistrationSchema,
+  insertDeviceMetricSchema,
+  insertIntegrationAuditLogSchema,
+  insertThirdPartyIntegrationSchema,
+  manufacturerIntegrationsRelations,
+  deviceRegistrationsRelations,
+  deviceMetricsRelations,
+  integrationAuditLogsRelations,
+} from "./manufacturer-integration-schema";
+
 export type {
+  ManufacturerIntegration,
+  InsertManufacturerIntegration,
+  DeviceRegistration,
+  InsertDeviceRegistration,
+  DeviceMetric,
+  InsertDeviceMetric,
+  IntegrationAuditLog,
+  InsertIntegrationAuditLog,
+  ThirdPartyIntegration,
+  InsertThirdPartyIntegration,
   MobileServiceSession,
   TimeTrackingEntry,
   ServicePhoto,
@@ -145,23 +178,7 @@ export {
   insertDemoOutcomeSchema,
 } from "../server/demo-scheduling-schema";
 
-// Re-export Manufacturer Integration schemas
-export {
-  manufacturerIntegrations,
-  deviceRegistrations,
-  deviceMetrics,
-  integrationAuditLogs,
-  thirdPartyIntegrations,
-  integrationStatusEnum,
-  manufacturerEnum,
-  integrationMethodEnum,
-  collectionFrequencyEnum,
-  insertManufacturerIntegrationSchema,
-  insertDeviceRegistrationSchema,
-  insertDeviceMetricSchema,
-  insertIntegrationAuditLogSchema,
-  insertThirdPartyIntegrationSchema,
-} from "./manufacturer-integration-schema";
+
 
 export type {
   DemoSchedule,
@@ -172,18 +189,7 @@ export type {
   InsertDemoOutcome,
 } from "../server/demo-scheduling-schema";
 
-export type {
-  ManufacturerIntegration,
-  InsertManufacturerIntegration,
-  DeviceRegistration,
-  InsertDeviceRegistration,
-  DeviceMetric,
-  InsertDeviceMetric,
-  IntegrationAuditLog,
-  InsertIntegrationAuditLog,
-  ThirdPartyIntegration,
-  InsertThirdPartyIntegration,
-} from "./manufacturer-integration-schema";
+
 
 // Re-export Sales Forecasting schemas
 export {

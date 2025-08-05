@@ -15,240 +15,175 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Manufacturer integration status enum
-export const integrationStatusEnum = pgEnum('integration_status', [
-  'active',
-  'inactive', 
-  'error',
-  'pending_auth',
-  'rate_limited',
-  'maintenance'
-]);
-
-// Supported manufacturers enum
+// Enums for manufacturer integration
 export const manufacturerEnum = pgEnum('manufacturer', [
   'canon',
   'xerox', 
   'hp',
   'konica_minolta',
   'lexmark',
-  'ricoh',
-  'sharp',
-  'toshiba',
-  'other'
+  'fmaudit',
+  'printanista'
 ]);
 
-// Integration method enum
-export const integrationMethodEnum = pgEnum('integration_method', [
-  'api',           // Direct API integration
-  'snmp',          // SNMP polling
-  'email',         // Email-based meter reading
-  'manual',        // Manual data entry
-  'csv_import',    // CSV file import
-  'third_party'    // Through services like FMAudit/Printanista
+export const integrationStatusEnum = pgEnum('integration_status', [
+  'active',
+  'inactive',
+  'error',
+  'pending'
 ]);
 
-// Data collection frequency enum
 export const collectionFrequencyEnum = pgEnum('collection_frequency', [
-  'real_time',     // Real-time updates
-  'hourly',        // Every hour
-  'daily',         // Once per day
-  'weekly',        // Once per week
-  'monthly',       // Once per month
-  'on_demand'      // Manual trigger only
+  'real_time',
+  'hourly',
+  'daily',
+  'weekly',
+  'monthly'
 ]);
 
-// Manufacturer API configurations table
-export const manufacturerIntegrations = pgTable("manufacturer_integrations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  
-  // Manufacturer details
-  manufacturer: manufacturerEnum("manufacturer").notNull(),
-  manufacturerName: varchar("manufacturer_name", { length: 100 }).notNull(),
-  platformName: varchar("platform_name", { length: 100 }), // e.g., "ConnectKey", "PrintOS", "bEST"
-  
-  // Integration configuration
-  integrationMethod: integrationMethodEnum("integration_method").notNull(),
-  apiEndpoint: varchar("api_endpoint", { length: 500 }),
-  apiVersion: varchar("api_version", { length: 20 }),
-  
-  // Authentication details (encrypted)
-  authType: varchar("auth_type", { length: 50 }), // oauth2, api_key, basic_auth, certificate
-  authCredentials: jsonb("auth_credentials").default('{}'), // Encrypted credentials
-  
-  // Collection settings
-  collectionFrequency: collectionFrequencyEnum("collection_frequency").default('daily'),
-  lastCollectionAt: timestamp("last_collection_at"),
-  nextCollectionAt: timestamp("next_collection_at"),
-  
-  // Status and monitoring
-  status: integrationStatusEnum("status").default('inactive'),
-  lastError: text("last_error"),
-  errorCount: integer("error_count").default(0),
-  successfulCollections: integer("successful_collections").default(0),
-  
-  // Rate limiting
-  rateLimitRequests: integer("rate_limit_requests").default(100), // per hour
-  rateLimitWindow: integer("rate_limit_window").default(3600), // seconds
-  currentRequests: integer("current_requests").default(0),
-  rateLimitResetAt: timestamp("rate_limit_reset_at"),
-  
-  // Configuration settings
-  settings: jsonb("settings").default('{}'), // Manufacturer-specific settings
-  fieldMappings: jsonb("field_mappings").default('{}'), // Field mapping configuration
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  createdBy: varchar("created_by"),
-  isActive: boolean("is_active").default(true),
-});
+export const deviceStatusEnum = pgEnum('device_status', [
+  'online',
+  'offline',
+  'error',
+  'maintenance',
+  'unknown'
+]);
 
-// Device registrations for each manufacturer integration
-export const deviceRegistrations = pgTable("device_registrations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  integrationId: varchar("integration_id").notNull(), // references manufacturer_integrations.id
-  
-  // Device identification
-  deviceId: varchar("device_id").notNull(), // Manufacturer's device ID
-  serialNumber: varchar("serial_number", { length: 100 }),
-  modelNumber: varchar("model_number", { length: 100 }),
-  deviceName: varchar("device_name", { length: 150 }),
-  
-  // Network information
-  ipAddress: varchar("ip_address", { length: 45 }), // IPv4 or IPv6
-  macAddress: varchar("mac_address", { length: 17 }),
-  networkPath: varchar("network_path", { length: 255 }),
-  
-  // Location and assignment
-  locationId: varchar("location_id"), // references locations.id
-  customerId: varchar("customer_id"), // references customers.id if customer equipment
-  
-  // Device capabilities
-  capabilities: jsonb("capabilities").default('{}'), // What meters/data this device can provide
-  supportedMetrics: jsonb("supported_metrics").default('[]'), // Array of metric types
-  
-  // Collection status
-  status: integrationStatusEnum("status").default('active'),
-  lastDataCollectedAt: timestamp("last_data_collected_at"),
-  nextCollectionAt: timestamp("next_collection_at"),
-  
-  // Authentication for device-specific access
-  deviceAuthCredentials: jsonb("device_auth_credentials").default('{}'), // Encrypted device-specific auth
-  
-  // Metadata
-  registeredAt: timestamp("registered_at").defaultNow(),
-  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
-  isActive: boolean("is_active").default(true),
-});
+export const authMethodEnum = pgEnum('auth_method', [
+  'api_key',
+  'oauth2',
+  'basic_auth',
+  'certificate',
+  'hmac'
+]);
 
-// Collected meter data and device metrics
-export const deviceMetrics = pgTable("device_metrics", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  deviceRegistrationId: varchar("device_registration_id").notNull(), // references device_registrations.id
-  integrationId: varchar("integration_id").notNull(), // references manufacturer_integrations.id
-  
-  // Metric identification
-  metricType: varchar("metric_type", { length: 50 }).notNull(), // e.g., "total_prints", "color_prints", "toner_level"
-  metricName: varchar("metric_name", { length: 100 }).notNull(),
-  metricCategory: varchar("metric_category", { length: 50 }), // e.g., "usage", "supply", "maintenance", "error"
-  
-  // Metric values
-  numericValue: decimal("numeric_value", { precision: 15, scale: 4 }),
-  stringValue: varchar("string_value", { length: 255 }),
-  booleanValue: boolean("boolean_value"),
-  jsonValue: jsonb("json_value"), // For complex data structures
-  
-  // Measurement details
-  unit: varchar("unit", { length: 20 }), // e.g., "pages", "percent", "ml", "count"
-  measurementTimestamp: timestamp("measurement_timestamp").notNull(),
-  collectedAt: timestamp("collected_at").defaultNow(),
-  
-  // Data quality and validation
-  isValid: boolean("is_valid").default(true),
-  validationNotes: text("validation_notes"),
-  
-  // Raw data preservation
-  rawData: jsonb("raw_data").default('{}'), // Original data from manufacturer API
-  
-  // Metadata
-  collectionMethod: integrationMethodEnum("collection_method").notNull(),
-  dataSource: varchar("data_source", { length: 100 }), // Specific API endpoint or method
-});
+// Manufacturer Integration Configuration
+export const manufacturerIntegrations = pgTable('manufacturer_integrations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  manufacturer: manufacturerEnum('manufacturer').notNull(),
+  integrationName: varchar('integration_name', { length: 255 }).notNull(),
+  status: integrationStatusEnum('status').default('pending').notNull(),
+  authMethod: authMethodEnum('auth_method').notNull(),
+  credentials: jsonb('credentials').notNull(), // Encrypted storage
+  apiEndpoint: varchar('api_endpoint', { length: 500 }),
+  collectionFrequency: collectionFrequencyEnum('collection_frequency').default('daily').notNull(),
+  lastSync: timestamp('last_sync'),
+  nextSync: timestamp('next_sync'),
+  configuration: jsonb('configuration').default({}),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantManufacturerIdx: index('tenant_manufacturer_idx').on(table.tenantId, table.manufacturer),
+  statusIdx: index('integration_status_idx').on(table.status),
+  nextSyncIdx: index('next_sync_idx').on(table.nextSync),
+}));
 
-// Integration audit logs for troubleshooting and monitoring
-export const integrationAuditLogs = pgTable("integration_audit_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  integrationId: varchar("integration_id"), // references manufacturer_integrations.id
-  deviceRegistrationId: varchar("device_registration_id"), // references device_registrations.id
+// Device Registration and Management
+export const deviceRegistrations = pgTable('device_registrations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  integrationId: uuid('integration_id').notNull().references(() => manufacturerIntegrations.id, { onDelete: 'cascade' }),
+  deviceId: varchar('device_id', { length: 255 }).notNull(), // Manufacturer device ID
+  deviceName: varchar('device_name', { length: 255 }),
+  model: varchar('model', { length: 255 }),
+  serialNumber: varchar('serial_number', { length: 255 }),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  macAddress: varchar('mac_address', { length: 17 }),
+  location: varchar('location', { length: 255 }),
+  department: varchar('department', { length: 255 }),
+  status: deviceStatusEnum('status').default('unknown').notNull(),
+  capabilities: jsonb('capabilities').default([]), // Supported features
+  lastSeen: timestamp('last_seen'),
+  registeredAt: timestamp('registered_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantDeviceIdx: index('tenant_device_idx').on(table.tenantId, table.deviceId),
+  integrationIdx: index('device_integration_idx').on(table.integrationId),
+  statusIdx: index('device_status_idx').on(table.status),
+  lastSeenIdx: index('device_last_seen_idx').on(table.lastSeen),
+}));
+
+// Device Metrics and Meter Readings
+export const deviceMetrics = pgTable('device_metrics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  deviceId: uuid('device_id').notNull().references(() => deviceRegistrations.id, { onDelete: 'cascade' }),
+  integrationId: uuid('integration_id').notNull().references(() => manufacturerIntegrations.id, { onDelete: 'cascade' }),
+  collectionTimestamp: timestamp('collection_timestamp').notNull(),
   
-  // Event details
-  eventType: varchar("event_type", { length: 50 }).notNull(), // e.g., "data_collection", "auth_error", "rate_limit"
-  eventCategory: varchar("event_category", { length: 30 }).notNull(), // success, error, warning, info
-  message: text("message").notNull(),
+  // Meter readings
+  totalImpressions: integer('total_impressions'),
+  bwImpressions: integer('bw_impressions'),
+  colorImpressions: integer('color_impressions'),
+  largeImpressions: integer('large_impressions'),
   
-  // Request/Response data
-  requestData: jsonb("request_data").default('{}'),
-  responseData: jsonb("response_data").default('{}'),
-  httpStatusCode: integer("http_status_code"),
+  // Device status
+  deviceStatus: deviceStatusEnum('device_status').default('unknown'),
+  tonerLevels: jsonb('toner_levels').default({}), // {cyan: 75, magenta: 80, yellow: 65, black: 90}
+  paperLevels: jsonb('paper_levels').default({}), // {tray1: 80, tray2: 45}
+  errorCodes: text('error_codes').array(),
   
   // Performance metrics
-  responseTimeMs: integer("response_time_ms"),
-  dataPointsCollected: integer("data_points_collected").default(0),
+  responseTime: integer('response_time'), // milliseconds
+  uptime: decimal('uptime', { precision: 5, scale: 2 }), // percentage
   
-  // Error information
-  errorCode: varchar("error_code", { length: 100 }),
-  errorDetails: jsonb("error_details").default('{}'),
+  // Raw data for debugging
+  rawData: jsonb('raw_data'),
   
-  // Metadata
-  timestamp: timestamp("timestamp").defaultNow(),
-  userAgent: varchar("user_agent"),
-  ipAddress: varchar("ip_address", { length: 45 }),
-});
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantDeviceTimeIdx: index('tenant_device_time_idx').on(table.tenantId, table.deviceId, table.collectionTimestamp),
+  collectionTimeIdx: index('collection_timestamp_idx').on(table.collectionTimestamp),
+  deviceIdx: index('metrics_device_idx').on(table.deviceId),
+}));
 
-// Third-party service integrations (FMAudit, Printanista, etc.)
-export const thirdPartyIntegrations = pgTable("third_party_integrations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  
-  // Service details
-  serviceName: varchar("service_name", { length: 100 }).notNull(), // e.g., "FMAudit", "Printanista", "Print Audit"
-  serviceType: varchar("service_type", { length: 50 }).notNull(), // e.g., "meter_reading", "fleet_management", "monitoring"
-  providerName: varchar("provider_name", { length: 100 }), // e.g., "ECI Solutions", "Printanista"
-  
-  // Integration configuration
-  apiEndpoint: varchar("api_endpoint", { length: 500 }),
-  apiVersion: varchar("api_version", { length: 20 }),
-  authCredentials: jsonb("auth_credentials").default('{}'), // Encrypted credentials
-  
-  // Data mapping and synchronization
-  dataMapping: jsonb("data_mapping").default('{}'), // How to map third-party data to our schema
-  syncFrequency: collectionFrequencyEnum("sync_frequency").default('daily'),
-  lastSyncAt: timestamp("last_sync_at"),
-  nextSyncAt: timestamp("next_sync_at"),
-  
-  // Status and monitoring
-  status: integrationStatusEnum("status").default('inactive'),
-  lastError: text("last_error"),
-  errorCount: integer("error_count").default(0),
-  successfulSyncs: integer("successful_syncs").default(0),
-  
-  // Settings
-  settings: jsonb("settings").default('{}'),
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  isActive: boolean("is_active").default(true),
-});
+// Integration Audit Logs
+export const integrationAuditLogs = pgTable('integration_audit_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  integrationId: uuid('integration_id').references(() => manufacturerIntegrations.id, { onDelete: 'cascade' }),
+  deviceId: uuid('device_id').references(() => deviceRegistrations.id, { onDelete: 'cascade' }),
+  action: varchar('action', { length: 100 }).notNull(), // 'sync', 'register', 'error', 'config_change'
+  status: varchar('status', { length: 50 }).notNull(), // 'success', 'error', 'warning'
+  message: text('message'),
+  details: jsonb('details').default({}),
+  responseTime: integer('response_time'), // milliseconds
+  errorCode: varchar('error_code', { length: 50 }),
+  userId: uuid('user_id'), // Who initiated the action
+  timestamp: timestamp('timestamp').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantTimeIdx: index('tenant_time_idx').on(table.tenantId, table.timestamp),
+  integrationTimeIdx: index('integration_time_idx').on(table.integrationId, table.timestamp),
+  statusIdx: index('audit_status_idx').on(table.status),
+  actionIdx: index('audit_action_idx').on(table.action),
+}));
+
+// Third-Party Integration Support (FMAudit/Printanista)
+export const thirdPartyIntegrations = pgTable('third_party_integrations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  providerName: varchar('provider_name', { length: 100 }).notNull(), // 'FMAudit', 'Printanista'
+  integrationName: varchar('integration_name', { length: 255 }).notNull(),
+  status: integrationStatusEnum('status').default('pending').notNull(),
+  credentials: jsonb('credentials').notNull(), // Encrypted storage
+  configuration: jsonb('configuration').default({}),
+  supportedManufacturers: manufacturerEnum('supported_manufacturers').array(),
+  lastSync: timestamp('last_sync'),
+  nextSync: timestamp('next_sync'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantProviderIdx: index('tenant_provider_idx').on(table.tenantId, table.providerName),
+  statusIdx: index('third_party_status_idx').on(table.status),
+}));
 
 // Relations
 export const manufacturerIntegrationsRelations = relations(manufacturerIntegrations, ({ many }) => ({
-  deviceRegistrations: many(deviceRegistrations),
+  devices: many(deviceRegistrations),
+  metrics: many(deviceMetrics),
   auditLogs: many(integrationAuditLogs),
 }));
 
@@ -262,8 +197,8 @@ export const deviceRegistrationsRelations = relations(deviceRegistrations, ({ on
 }));
 
 export const deviceMetricsRelations = relations(deviceMetrics, ({ one }) => ({
-  deviceRegistration: one(deviceRegistrations, {
-    fields: [deviceMetrics.deviceRegistrationId],
+  device: one(deviceRegistrations, {
+    fields: [deviceMetrics.deviceId],
     references: [deviceRegistrations.id],
   }),
   integration: one(manufacturerIntegrations, {
@@ -277,27 +212,27 @@ export const integrationAuditLogsRelations = relations(integrationAuditLogs, ({ 
     fields: [integrationAuditLogs.integrationId],
     references: [manufacturerIntegrations.id],
   }),
-  deviceRegistration: one(deviceRegistrations, {
-    fields: [integrationAuditLogs.deviceRegistrationId],
+  device: one(deviceRegistrations, {
+    fields: [integrationAuditLogs.deviceId],
     references: [deviceRegistrations.id],
   }),
 }));
 
-// Zod schemas for validation
+// Insert schemas
 export const insertManufacturerIntegrationSchema = createInsertSchema(manufacturerIntegrations);
 export const insertDeviceRegistrationSchema = createInsertSchema(deviceRegistrations);
 export const insertDeviceMetricSchema = createInsertSchema(deviceMetrics);
 export const insertIntegrationAuditLogSchema = createInsertSchema(integrationAuditLogs);
 export const insertThirdPartyIntegrationSchema = createInsertSchema(thirdPartyIntegrations);
 
-// TypeScript types
+// Types
 export type ManufacturerIntegration = typeof manufacturerIntegrations.$inferSelect;
-export type InsertManufacturerIntegration = typeof manufacturerIntegrations.$inferInsert;
+export type InsertManufacturerIntegration = z.infer<typeof insertManufacturerIntegrationSchema>;
 export type DeviceRegistration = typeof deviceRegistrations.$inferSelect;
-export type InsertDeviceRegistration = typeof deviceRegistrations.$inferInsert;
+export type InsertDeviceRegistration = z.infer<typeof insertDeviceRegistrationSchema>;
 export type DeviceMetric = typeof deviceMetrics.$inferSelect;
-export type InsertDeviceMetric = typeof deviceMetrics.$inferInsert;
+export type InsertDeviceMetric = z.infer<typeof insertDeviceMetricSchema>;
 export type IntegrationAuditLog = typeof integrationAuditLogs.$inferSelect;
-export type InsertIntegrationAuditLog = typeof integrationAuditLogs.$inferInsert;
+export type InsertIntegrationAuditLog = z.infer<typeof insertIntegrationAuditLogSchema>;
 export type ThirdPartyIntegration = typeof thirdPartyIntegrations.$inferSelect;
-export type InsertThirdPartyIntegration = typeof thirdPartyIntegrations.$inferInsert;
+export type InsertThirdPartyIntegration = z.infer<typeof insertThirdPartyIntegrationSchema>;

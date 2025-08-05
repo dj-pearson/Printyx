@@ -51,8 +51,8 @@ import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
-import manufacturerIntegrationRoutes from "./routes-manufacturer-integration";
 import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
+import { registerManufacturerIntegrationRoutes } from "./routes-manufacturer-integration";
 // import { registerCommissionRoutes } from "./routes-commission"; // TODO: Add commission schema tables first
 import {
   getCompanyPricingSettings,
@@ -7392,7 +7392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerQuickBooksRoutes(app);
 
   // Register manufacturer integration routes
-  app.use('/api/manufacturer-integrations', manufacturerIntegrationRoutes);
+
 
   // Register Sales Pipeline Workflow routes
   setupSalesPipelineRoutes(app, storage, requireAuth);
@@ -12928,6 +12928,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register modular dashboard routes
   registerModularDashboardRoutes(app);
+
+  // Register manufacturer integration routes
+  registerManufacturerIntegrationRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
