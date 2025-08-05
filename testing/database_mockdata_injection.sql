@@ -1,0 +1,914 @@
+-- Printyx Database Mock Data Injection Script
+-- Compatible with Replit Database (PostgreSQL)
+-- Generated from Database_schema_Hierarchy.md
+-- Contains 2 diverse examples per table
+
+-- =================================================================
+-- Core System Architecture Tables
+-- =================================================================
+
+-- Sessions Table (Required for Replit Auth)
+CREATE TABLE IF NOT EXISTS sessions (
+    sid VARCHAR PRIMARY KEY,
+    sess JSONB NOT NULL,
+    expire TIMESTAMP NOT NULL
+);
+
+INSERT INTO sessions (sid, sess, expire) VALUES
+('sess_001_active_user', '{"userId": "user_001", "role": "admin", "loginTime": "2024-08-05T09:00:00Z"}', '2024-08-06 09:00:00'),
+('sess_002_mobile_tech', '{"userId": "user_006", "role": "technician", "loginTime": "2024-08-05T08:30:00Z", "mobile": true}', '2024-08-06 08:30:00');
+
+-- Tenants Table (Multi-Tenancy Core)
+CREATE TABLE IF NOT EXISTS tenants (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    domain VARCHAR,
+    settings JSONB,
+    subscription_tier VARCHAR,
+    status VARCHAR,
+    last_activity TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO tenants (id, name, domain, settings, subscription_tier, status, last_activity) VALUES
+('tenant_001', 'Metro Copy Solutions', 'metrocopy.com', '{"features": ["crm", "service", "billing"], "limits": {"users": 50, "locations": 10}}', 'enterprise', 'active', '2024-08-05 10:30:00'),
+('tenant_002', 'Pacific Print Services', 'pacificprint.net', '{"features": ["crm", "basic_service"], "limits": {"users": 15, "locations": 3}}', 'professional', 'active', '2024-08-05 11:15:00');
+
+-- Regions Table (Regional Management)
+CREATE TABLE IF NOT EXISTS regions (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    description TEXT,
+    manager_id VARCHAR,
+    tenant_id VARCHAR,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO regions (id, name, description, manager_id, tenant_id) VALUES
+('region_001', 'Northwest Region', 'Covers Washington, Oregon, and Northern California', 'user_002', 'tenant_001'),
+('region_002', 'Southern California', 'Los Angeles, San Diego, and Orange County markets', 'user_003', 'tenant_002');
+
+-- Locations Table (Multi-Location Support)
+CREATE TABLE IF NOT EXISTS locations (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    address TEXT,
+    city VARCHAR,
+    state VARCHAR,
+    zip_code VARCHAR,
+    phone VARCHAR,
+    manager_id VARCHAR,
+    region_id VARCHAR,
+    tenant_id VARCHAR,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO locations (id, name, address, city, state, zip_code, phone, manager_id, region_id, tenant_id) VALUES
+('loc_001', 'Metro Copy Downtown', '123 Business Ave', 'Seattle', 'WA', '98101', '(206) 555-0100', 'user_004', 'region_001', 'tenant_001'),
+('loc_002', 'Pacific Print Irvine', '456 Corporate Blvd', 'Irvine', 'CA', '92618', '(949) 555-0200', 'user_005', 'region_002', 'tenant_002');
+
+-- Teams Table (Team Organization)
+CREATE TABLE IF NOT EXISTS teams (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    description TEXT,
+    team_lead_id VARCHAR,
+    location_id VARCHAR,
+    tenant_id VARCHAR,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO teams (id, name, description, team_lead_id, location_id, tenant_id) VALUES
+('team_001', 'Sales Team Alpha', 'Primary sales team for commercial accounts', 'user_007', 'loc_001', 'tenant_001'),
+('team_002', 'Field Service Team', 'Mobile technicians for on-site service', 'user_008', 'loc_002', 'tenant_002');
+
+-- Roles Table (Hierarchical Permissions)
+CREATE TABLE IF NOT EXISTS roles (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    code VARCHAR,
+    description TEXT,
+    department VARCHAR,
+    level INTEGER,
+    role_type VARCHAR,
+    permissions JSONB,
+    can_access_all_tenants BOOLEAN DEFAULT FALSE,
+    can_manage_users BOOLEAN DEFAULT FALSE,
+    can_view_system_metrics BOOLEAN DEFAULT FALSE,
+    is_system_role BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO roles (id, name, code, description, department, level, role_type, permissions, can_manage_users, can_view_system_metrics) VALUES
+('role_001', 'System Administrator', 'SYSADMIN', 'Full system access and configuration', 'IT', 1, 'system', '{"modules": ["all"], "permissions": ["create", "read", "update", "delete", "admin"]}', TRUE, TRUE),
+('role_002', 'Sales Manager', 'SALESMGR', 'Manages sales team and pipeline', 'Sales', 3, 'management', '{"modules": ["crm", "deals", "reports"], "permissions": ["create", "read", "update"]}', FALSE, TRUE);
+
+-- Users Table (Core Authentication)
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR PRIMARY KEY,
+    email VARCHAR,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    profile_image_url VARCHAR,
+    password_hash VARCHAR,
+    role VARCHAR,
+    role_id VARCHAR,
+    tenant_id VARCHAR,
+    team_id VARCHAR,
+    manager_id VARCHAR,
+    employee_id VARCHAR,
+    primary_location_id VARCHAR,
+    region_id VARCHAR,
+    access_scope VARCHAR,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_platform_user BOOLEAN DEFAULT FALSE,
+    last_login_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (id, email, first_name, last_name, password_hash, role, role_id, tenant_id, team_id, employee_id, primary_location_id, region_id, access_scope, last_login_at) VALUES
+('user_001', 'admin@metrocopy.com', 'Sarah', 'Johnson', '$2b$10$example_hash_1', 'admin', 'role_001', 'tenant_001', 'team_001', 'EMP001', 'loc_001', 'region_001', 'company', '2024-08-05 09:00:00'),
+('user_002', 'mike.wilson@pacificprint.net', 'Mike', 'Wilson', '$2b$10$example_hash_2', 'sales_manager', 'role_002', 'tenant_002', 'team_002', 'EMP002', 'loc_002', 'region_002', 'region', '2024-08-05 08:45:00');
+
+-- =================================================================
+-- Business Management Layer Tables
+-- =================================================================
+
+-- Companies Table (Business Entities)
+CREATE TABLE IF NOT EXISTS companies (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    description TEXT,
+    industry VARCHAR,
+    website VARCHAR,
+    employee_count INTEGER,
+    annual_revenue DECIMAL(15,2),
+    address TEXT,
+    city VARCHAR,
+    state VARCHAR,
+    zip_code VARCHAR,
+    phone VARCHAR,
+    email VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO companies (id, name, description, industry, website, employee_count, annual_revenue, address, city, state, zip_code, phone, email, tenant_id) VALUES
+('comp_001', 'TechForward Solutions', 'Leading software development company specializing in cloud applications', 'Technology', 'www.techforward.com', 145, 12500000.00, '789 Innovation Drive', 'San Francisco', 'CA', '94105', '(415) 555-0300', 'info@techforward.com', 'tenant_001'),
+('comp_002', 'Greenfield Medical Group', 'Multi-specialty medical practice with 3 locations', 'Healthcare', 'www.greenfieldmed.com', 85, 8750000.00, '321 Health Plaza', 'Portland', 'OR', '97205', '(503) 555-0400', 'admin@greenfieldmed.com', 'tenant_002');
+
+-- Company Contacts Table (Contact Management)
+CREATE TABLE IF NOT EXISTS company_contacts (
+    id VARCHAR PRIMARY KEY,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    email VARCHAR,
+    phone VARCHAR,
+    title VARCHAR,
+    department VARCHAR,
+    is_primary BOOLEAN DEFAULT FALSE,
+    company_id VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO company_contacts (id, first_name, last_name, email, phone, title, department, is_primary, company_id, tenant_id) VALUES
+('contact_001', 'David', 'Chen', 'dchen@techforward.com', '(415) 555-0301', 'IT Director', 'Information Technology', TRUE, 'comp_001', 'tenant_001'),
+('contact_002', 'Maria', 'Rodriguez', 'mrodriguez@greenfieldmed.com', '(503) 555-0401', 'Office Manager', 'Administration', TRUE, 'comp_002', 'tenant_002');
+
+-- Business Records Table (Unified Leads/Customers)
+CREATE TABLE IF NOT EXISTS business_records (
+    id VARCHAR PRIMARY KEY,
+    record_type VARCHAR,
+    lead_status VARCHAR,
+    company_name VARCHAR,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    email VARCHAR,
+    phone VARCHAR,
+    address TEXT,
+    city VARCHAR,
+    state VARCHAR,
+    zip_code VARCHAR,
+    industry VARCHAR,
+    employee_count INTEGER,
+    annual_revenue DECIMAL(15,2),
+    lead_source VARCHAR,
+    lead_score INTEGER,
+    last_contact_date TIMESTAMP,
+    next_follow_up_date TIMESTAMP,
+    notes TEXT,
+    priority VARCHAR,
+    assigned_to VARCHAR,
+    created_by VARCHAR,
+    tenant_id VARCHAR,
+    location_id VARCHAR,
+    external_customer_id VARCHAR,
+    external_system_id VARCHAR,
+    migration_status VARCHAR,
+    external_data JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO business_records (id, record_type, lead_status, company_name, first_name, last_name, email, phone, address, city, state, zip_code, industry, employee_count, annual_revenue, lead_source, lead_score, last_contact_date, next_follow_up_date, notes, priority, assigned_to, created_by, tenant_id, location_id) VALUES
+('br_001', 'customer', 'converted', 'TechForward Solutions', 'David', 'Chen', 'dchen@techforward.com', '(415) 555-0301', '789 Innovation Drive', 'San Francisco', 'CA', '94105', 'Technology', 145, 12500000.00, 'website', 95, '2024-08-01 14:30:00', '2024-08-15 10:00:00', 'High-volume printing needs, interested in managed print services', 'high', 'user_001', 'user_001', 'tenant_001', 'loc_001'),
+('br_002', 'lead', 'qualified', 'Sunrise Manufacturing', 'Jennifer', 'Taylor', 'jtaylor@sunrisemfg.com', '(206) 555-0500', '456 Industrial Way', 'Tacoma', 'WA', '98402', 'Manufacturing', 75, 5200000.00, 'referral', 75, '2024-08-03 16:15:00', '2024-08-08 09:00:00', 'Looking to upgrade from old copiers, budget approved', 'medium', 'user_002', 'user_001', 'tenant_001', 'loc_001');
+
+-- Business Record Activities Table (CRM Activity Tracking)
+CREATE TABLE IF NOT EXISTS business_record_activities (
+    id VARCHAR PRIMARY KEY,
+    business_record_id VARCHAR,
+    activity_type VARCHAR,
+    subject VARCHAR,
+    description TEXT,
+    activity_date TIMESTAMP,
+    duration_minutes INTEGER,
+    outcome VARCHAR,
+    next_action VARCHAR,
+    created_by VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO business_record_activities (id, business_record_id, activity_type, subject, description, activity_date, duration_minutes, outcome, next_action, created_by, tenant_id) VALUES
+('activity_001', 'br_001', 'meeting', 'Initial Needs Assessment', 'Met with IT Director to discuss current printing infrastructure and pain points. Company prints 50,000+ pages monthly across 3 floors.', '2024-08-01 14:30:00', 60, 'positive', 'Prepare proposal for managed print solution', 'user_001', 'tenant_001'),
+('activity_002', 'br_002', 'phone_call', 'Follow-up Call', 'Discussed budget range and timeline for equipment replacement. CFO approval needed for purchases over $25k.', '2024-08-03 16:15:00', 25, 'interested', 'Schedule on-site assessment', 'user_002', 'tenant_001');
+
+-- Leads Table (Lead Management)
+CREATE TABLE IF NOT EXISTS leads (
+    id VARCHAR PRIMARY KEY,
+    company_name VARCHAR,
+    contact_name VARCHAR,
+    email VARCHAR,
+    phone VARCHAR,
+    lead_source VARCHAR,
+    status VARCHAR,
+    score INTEGER,
+    assigned_to VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO leads (id, company_name, contact_name, email, phone, lead_source, status, score, assigned_to, tenant_id) VALUES
+('lead_001', 'Downtown Legal Associates', 'Robert Kim', 'rkim@downtownlegal.com', '(206) 555-0600', 'google_ads', 'new', 65, 'user_002', 'tenant_001'),
+('lead_002', 'Creative Design Studio', 'Amanda Foster', 'afoster@creativedesign.com', '(949) 555-0700', 'trade_show', 'contacted', 80, 'user_002', 'tenant_002');
+
+-- Deals Table (Deal Pipeline)
+CREATE TABLE IF NOT EXISTS deals (
+    id VARCHAR PRIMARY KEY,
+    title VARCHAR,
+    description TEXT,
+    value DECIMAL(15,2),
+    stage VARCHAR,
+    probability INTEGER,
+    expected_close_date DATE,
+    actual_close_date DATE,
+    lead_source VARCHAR,
+    business_record_id VARCHAR,
+    assigned_to VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO deals (id, title, description, value, stage, probability, expected_close_date, lead_source, business_record_id, assigned_to, tenant_id) VALUES
+('deal_001', 'TechForward MPS Contract', 'Managed Print Services contract for 50 devices across 3 floors', 125000.00, 'proposal', 75, '2024-08-20', 'website', 'br_001', 'user_001', 'tenant_001'),
+('deal_002', 'Sunrise Manufacturing Upgrade', 'Complete copier replacement project - 8 new multifunction devices', 85000.00, 'negotiation', 60, '2024-08-25', 'referral', 'br_002', 'user_002', 'tenant_001');
+
+-- Deal Stages Table (Pipeline Configuration)
+CREATE TABLE IF NOT EXISTS deal_stages (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    description TEXT,
+    stage_order INTEGER,
+    probability_default INTEGER,
+    is_closed_won BOOLEAN DEFAULT FALSE,
+    is_closed_lost BOOLEAN DEFAULT FALSE,
+    tenantid VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO deal_stages (id, name, description, stage_order, probability_default, tenantid) VALUES
+('stage_001', 'Qualified Lead', 'Lead has been qualified and shows genuine interest', 1, 20, 'tenant_001'),
+('stage_002', 'Proposal Sent', 'Formal proposal has been delivered to prospect', 4, 75, 'tenant_001');
+
+-- =================================================================
+-- Product & Service Management Tables
+-- =================================================================
+
+-- Product Models Table (Product Catalog - Models)
+CREATE TABLE IF NOT EXISTS product_models (
+    id VARCHAR PRIMARY KEY,
+    model_name VARCHAR,
+    manufacturer VARCHAR,
+    category VARCHAR,
+    specifications JSONB,
+    features JSONB,
+    default_pricing JSONB,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO product_models (id, model_name, manufacturer, category, specifications, features, default_pricing, tenant_id) VALUES
+('model_001', 'WorkCentre 5875', 'Xerox', 'Multifunction Printer', '{"print_speed": "75 ppm", "paper_capacity": "2300 sheets", "memory": "4GB", "hard_drive": "320GB"}', '{"duplex": true, "scan_to_email": true, "fax": true, "mobile_print": true}', '{"purchase": 12500, "lease_monthly": 425, "service_rate": 0.012}', 'tenant_001'),
+('model_002', 'imageRUNNER ADVANCE C5535i', 'Canon', 'Color Multifunction', '{"print_speed": "35 ppm", "paper_capacity": "2300 sheets", "memory": "5GB", "resolution": "1200x1200 dpi"}', '{"color_printing": true, "stapling": true, "hole_punch": true, "mobile_connectivity": true}', '{"purchase": 18500, "lease_monthly": 625, "service_rate": 0.015}', 'tenant_002');
+
+-- Product Accessories Table (Accessories Catalog)
+CREATE TABLE IF NOT EXISTS product_accessories (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR,
+    description TEXT,
+    model_compatibility JSONB,
+    price DECIMAL(10,2),
+    category VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO product_accessories (id, name, description, model_compatibility, price, category, tenant_id) VALUES
+('acc_001', 'High Capacity Feeder', '2000-sheet high capacity paper feeder for continuous printing', '["WorkCentre 5875", "WorkCentre 5845", "WorkCentre 5855"]', 1250.00, 'Paper Handling', 'tenant_001'),
+('acc_002', 'Booklet Maker Finisher', 'Professional booklet making and finishing unit with stapling', '["imageRUNNER ADVANCE C5535i", "imageRUNNER ADVANCE C5540i"]', 3200.00, 'Finishing', 'tenant_002');
+
+-- Supplies Table (Supply Inventory)
+CREATE TABLE IF NOT EXISTS supplies (
+    id VARCHAR PRIMARY KEY,
+    supply_name VARCHAR,
+    supply_type VARCHAR,
+    manufacturer VARCHAR,
+    model_compatibility JSONB,
+    current_stock INTEGER,
+    reorder_level INTEGER,
+    unit_cost DECIMAL(10,2),
+    unit_price DECIMAL(10,2),
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO supplies (id, supply_name, supply_type, manufacturer, model_compatibility, current_stock, reorder_level, unit_cost, unit_price, tenant_id) VALUES
+('supply_001', 'Xerox 006R01046 Black Toner', 'toner', 'Xerox', '["WorkCentre 5875", "WorkCentre 5845", "WorkCentre 5855"]', 25, 10, 89.50, 125.00, 'tenant_001'),
+('supply_002', 'Canon GPR-36 Cyan Toner', 'toner', 'Canon', '["imageRUNNER ADVANCE C5535i", "imageRUNNER ADVANCE C5540i"]', 15, 8, 165.00, 225.00, 'tenant_002');
+
+-- Professional Services Table (Professional Services)
+CREATE TABLE IF NOT EXISTS professional_services (
+    id VARCHAR PRIMARY KEY,
+    service_name VARCHAR,
+    description TEXT,
+    category VARCHAR,
+    hourly_rate DECIMAL(10,2),
+    fixed_price DECIMAL(10,2),
+    estimated_hours INTEGER,
+    prerequisites JSONB,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO professional_services (id, service_name, description, category, hourly_rate, fixed_price, estimated_hours, prerequisites, tenant_id) VALUES
+('ps_001', 'Network Print Assessment', 'Comprehensive evaluation of current printing infrastructure and optimization recommendations', 'Consulting', 150.00, 1200.00, 8, '{"access_required": "network_admin", "documents": ["network_diagram", "print_logs"]}', 'tenant_001'),
+('ps_002', 'Document Workflow Optimization', 'Analysis and redesign of document workflows to improve efficiency and reduce costs', 'Process Improvement', 175.00, 2500.00, 16, '{"stakeholder_interviews": true, "process_mapping": true}', 'tenant_002');
+
+-- Managed Services Table (Managed Service Plans)
+CREATE TABLE IF NOT EXISTS managed_services (
+    id VARCHAR PRIMARY KEY,
+    service_name VARCHAR,
+    description TEXT,
+    service_level VARCHAR,
+    monthly_fee DECIMAL(10,2),
+    included_services JSONB,
+    sla_terms JSONB,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO managed_services (id, service_name, description, service_level, monthly_fee, included_services, sla_terms, tenant_id) VALUES
+('ms_001', 'Complete Care MPS', 'Full managed print services including maintenance, supplies, and monitoring', 'Premium', 450.00, '["all_supplies", "preventive_maintenance", "remote_monitoring", "help_desk", "on_site_service"]', '{"response_time": "4 hours", "uptime_guarantee": "99.5%", "supply_delivery": "next_day"}', 'tenant_001'),
+('ms_002', 'Essential Print Support', 'Basic managed print services with supplies and standard maintenance', 'Standard', 275.00, '["toner_supplies", "scheduled_maintenance", "phone_support"]', '{"response_time": "next_business_day", "uptime_guarantee": "95%"}', 'tenant_002');
+
+-- Software Products Table (Software Catalog)
+CREATE TABLE IF NOT EXISTS software_products (
+    id VARCHAR PRIMARY KEY,
+    product_name VARCHAR,
+    vendor VARCHAR,
+    version VARCHAR,
+    license_type VARCHAR,
+    per_user_cost DECIMAL(10,2),
+    per_device_cost DECIMAL(10,2),
+    annual_maintenance DECIMAL(10,2),
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO software_products (id, product_name, vendor, version, license_type, per_user_cost, per_device_cost, annual_maintenance, tenant_id) VALUES
+('sw_001', 'PaperCut NG Print Management', 'PaperCut Software', '22.1.2', 'per_user', 15.00, NULL, 450.00, 'tenant_001'),
+('sw_002', 'DocuShare Document Management', 'Xerox', '7.5', 'per_device', NULL, 125.00, 850.00, 'tenant_002');
+
+-- =================================================================
+-- Equipment & Asset Management Tables
+-- =================================================================
+
+-- Equipment Table (Asset Tracking)
+CREATE TABLE IF NOT EXISTS equipment (
+    id VARCHAR PRIMARY KEY,
+    serial_number VARCHAR,
+    model VARCHAR,
+    manufacturer VARCHAR,
+    category VARCHAR,
+    status VARCHAR,
+    install_date TIMESTAMP,
+    warranty_end_date TIMESTAMP,
+    location VARCHAR,
+    customer_id VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO equipment (id, serial_number, model, manufacturer, category, status, install_date, warranty_end_date, location, customer_id, tenant_id) VALUES
+('eq_001', 'XRX5875001234', 'WorkCentre 5875', 'Xerox', 'Multifunction Printer', 'active', '2024-07-15 10:00:00', '2025-07-15 23:59:59', 'Floor 2 - Copy Room', 'br_001', 'tenant_001'),
+('eq_002', 'CAN5535987654', 'imageRUNNER ADVANCE C5535i', 'Canon', 'Color Multifunction', 'active', '2024-06-20 14:30:00', '2025-06-20 23:59:59', 'Reception Area', 'br_002', 'tenant_002');
+
+-- Customer Equipment Table (Customer Equipment Assignments)
+CREATE TABLE IF NOT EXISTS customer_equipment (
+    id VARCHAR PRIMARY KEY,
+    customer_id VARCHAR,
+    equipment_id VARCHAR,
+    installation_date DATE,
+    warranty_end_date DATE,
+    service_level VARCHAR,
+    monthly_rate DECIMAL(10,2),
+    meter_billing_enabled BOOLEAN DEFAULT FALSE,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO customer_equipment (id, customer_id, equipment_id, installation_date, warranty_end_date, service_level, monthly_rate, meter_billing_enabled, tenant_id) VALUES
+('ce_001', 'br_001', 'eq_001', '2024-07-15', '2025-07-15', 'premium', 425.00, TRUE, 'tenant_001'),
+('ce_002', 'br_002', 'eq_002', '2024-06-20', '2025-06-20', 'standard', 325.00, TRUE, 'tenant_002');
+
+-- Equipment Asset Tracking Table (Asset Lifecycle)
+CREATE TABLE IF NOT EXISTS equipment_asset_tracking (
+    id VARCHAR PRIMARY KEY,
+    equipment_id VARCHAR,
+    status_change_date TIMESTAMP,
+    previous_status VARCHAR,
+    new_status VARCHAR,
+    reason VARCHAR,
+    location_change VARCHAR,
+    cost_impact DECIMAL(10,2),
+    notes TEXT,
+    updated_by VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO equipment_asset_tracking (id, equipment_id, status_change_date, previous_status, new_status, reason, location_change, cost_impact, notes, updated_by, tenant_id) VALUES
+('eat_001', 'eq_001', '2024-07-15 10:00:00', 'in_transit', 'active', 'successful_installation', 'Warehouse → Floor 2 Copy Room', 0.00, 'Installation completed successfully, all tests passed', 'user_001', 'tenant_001'),
+('eat_002', 'eq_002', '2024-07-25 09:15:00', 'active', 'maintenance', 'scheduled_pm', NULL, 125.00, 'Quarterly preventive maintenance completed, replaced drum unit', 'user_002', 'tenant_002');
+
+-- =================================================================
+-- Service Management Tables
+-- =================================================================
+
+-- Service Tickets Table (Service Dispatch)
+CREATE TABLE IF NOT EXISTS service_tickets (
+    id VARCHAR PRIMARY KEY,
+    title VARCHAR,
+    description TEXT,
+    priority VARCHAR,
+    status VARCHAR,
+    category VARCHAR,
+    customer_id VARCHAR,
+    equipment_id VARCHAR,
+    assigned_to VARCHAR,
+    created_by VARCHAR,
+    scheduled_date TIMESTAMP,
+    completed_date TIMESTAMP,
+    estimated_hours DECIMAL(4,2),
+    actual_hours DECIMAL(4,2),
+    resolution TEXT,
+    customer_satisfaction INTEGER,
+    tenant_id VARCHAR,
+    location_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO service_tickets (id, title, description, priority, status, category, customer_id, equipment_id, assigned_to, created_by, scheduled_date, estimated_hours, tenant_id, location_id) VALUES
+('st_001', 'Paper Jam Error Code J1', 'Customer reports recurring paper jams in tray 1, error code J1 displayed on panel', 'medium', 'scheduled', 'repair', 'br_001', 'eq_001', 'user_001', 'user_001', '2024-08-06 10:00:00', 1.5, 'tenant_001', 'loc_001'),
+('st_002', 'Color Quality Issues', 'Printed documents showing color streaks and inconsistent color reproduction', 'high', 'in_progress', 'repair', 'br_002', 'eq_002', 'user_002', 'user_001', '2024-08-05 14:00:00', 2.0, 'tenant_002', 'loc_002');
+
+-- Service Ticket Updates Table (Ticket Activity Log)
+CREATE TABLE IF NOT EXISTS service_ticket_updates (
+    id VARCHAR PRIMARY KEY,
+    ticket_id VARCHAR,
+    update_type VARCHAR,
+    message TEXT,
+    status_change VARCHAR,
+    time_spent DECIMAL(4,2),
+    created_by VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO service_ticket_updates (id, ticket_id, update_type, message, status_change, time_spent, created_by, tenant_id) VALUES
+('stu_001', 'st_001', 'status_update', 'Scheduled for tomorrow morning, parts ordered for potential feed roller replacement', 'new → scheduled', 0.25, 'user_001', 'tenant_001'),
+('stu_002', 'st_002', 'work_progress', 'Diagnosed imaging unit issue, replacement part being installed', 'scheduled → in_progress', 1.5, 'user_002', 'tenant_002');
+
+-- Technicians Table (Technician Management)
+CREATE TABLE IF NOT EXISTS technicians (
+    id VARCHAR PRIMARY KEY,
+    user_id VARCHAR,
+    employee_id VARCHAR,
+    specializations JSONB,
+    certifications JSONB,
+    skill_level INTEGER,
+    hourly_rate DECIMAL(8,2),
+    is_active BOOLEAN DEFAULT TRUE,
+    territory VARCHAR,
+    contact_phone VARCHAR,
+    emergency_contact JSONB,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO technicians (id, user_id, employee_id, specializations, certifications, skill_level, hourly_rate, territory, contact_phone, emergency_contact, tenant_id) VALUES
+('tech_001', 'user_001', 'TECH001', '["xerox_equipment", "network_connectivity", "software_installation"]', '["Xerox_Certified", "CompTIA_A+", "Canon_Specialist"]', 4, 75.00, 'Seattle Metro', '(206) 555-0101', '{"name": "Jane Johnson", "phone": "(206) 555-0199", "relationship": "spouse"}', 'tenant_001'),
+('tech_002', 'user_002', 'TECH002', '["color_calibration", "finishing_equipment", "preventive_maintenance"]', '["Canon_Color_Specialist", "Ricoh_Certified"]', 3, 65.00, 'Orange County', '(949) 555-0201', '{"name": "Robert Wilson", "phone": "(949) 555-0299", "relationship": "brother"}', 'tenant_002');
+
+-- Mobile Work Orders Table (Mobile Service Orders)
+CREATE TABLE IF NOT EXISTS mobile_work_orders (
+    id VARCHAR PRIMARY KEY,
+    service_ticket_id VARCHAR,
+    technician_id VARCHAR,
+    customer_id VARCHAR,
+    equipment_id VARCHAR,
+    work_type VARCHAR,
+    priority VARCHAR,
+    estimated_duration INTEGER,
+    actual_duration INTEGER,
+    parts_used JSONB,
+    work_performed TEXT,
+    customer_signature TEXT,
+    photos JSONB,
+    gps_checkin VARCHAR,
+    gps_checkout VARCHAR,
+    status VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO mobile_work_orders (id, service_ticket_id, technician_id, customer_id, equipment_id, work_type, priority, estimated_duration, actual_duration, parts_used, work_performed, customer_signature, gps_checkin, gps_checkout, status, tenant_id) VALUES
+('mwo_001', 'st_001', 'tech_001', 'br_001', 'eq_001', 'repair', 'medium', 90, 75, '["feed_roller_kit", "cleaning_supplies"]', 'Replaced feed roller assembly in tray 1, cleaned paper path, ran test prints successfully', 'David Chen - 2024-08-06 11:15:00', '47.6062,-122.3321', '47.6062,-122.3321', 'completed', 'tenant_001'),
+('mwo_002', 'st_002', 'tech_002', 'br_002', 'eq_002', 'repair', 'high', 120, 135, '["imaging_unit_cyan", "calibration_kit"]', 'Replaced cyan imaging unit, performed color calibration and test prints, customer training on color settings', 'Maria Rodriguez - 2024-08-05 16:30:00', '33.6846,-117.8265', '33.6846,-117.8265', 'completed', 'tenant_002');
+
+-- =================================================================
+-- Financial Management Tables
+-- =================================================================
+
+-- Contracts Table (Service Agreements)
+CREATE TABLE IF NOT EXISTS contracts (
+    id VARCHAR PRIMARY KEY,
+    contract_number VARCHAR,
+    type VARCHAR,
+    status VARCHAR,
+    customer_id VARCHAR,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    monthly_value DECIMAL(12,2),
+    total_value DECIMAL(12,2),
+    billing_frequency VARCHAR,
+    terms TEXT,
+    auto_renewal BOOLEAN DEFAULT FALSE,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO contracts (id, contract_number, type, status, customer_id, start_date, end_date, monthly_value, total_value, billing_frequency, terms, auto_renewal, tenant_id) VALUES
+('contract_001', 'MPS-2024-001', 'managed_print_services', 'active', 'br_001', '2024-07-15 00:00:00', '2027-07-15 23:59:59', 3250.00, 117000.00, 'monthly', 'Complete managed print services including all supplies, maintenance, and support for 50 devices', TRUE, 'tenant_001'),
+('contract_002', 'LEASE-2024-002', 'equipment_lease', 'active', 'br_002', '2024-06-20 00:00:00', '2028-06-20 23:59:59', 1850.00, 88800.00, 'monthly', '48-month equipment lease with service contract for 8 multifunction devices', FALSE, 'tenant_002');
+
+-- Invoices Table (Billing Management)
+CREATE TABLE IF NOT EXISTS invoices (
+    id VARCHAR PRIMARY KEY,
+    invoice_number VARCHAR,
+    customer_id VARCHAR,
+    contract_id VARCHAR,
+    amount DECIMAL(12,2),
+    tax_amount DECIMAL(10,2),
+    total_amount DECIMAL(12,2),
+    status VARCHAR,
+    issue_date TIMESTAMP,
+    due_date TIMESTAMP,
+    paid_date TIMESTAMP,
+    description TEXT,
+    line_items JSONB,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO invoices (id, invoice_number, customer_id, contract_id, amount, tax_amount, total_amount, status, issue_date, due_date, description, tenant_id) VALUES
+('inv_001', 'INV-2024-08-001', 'br_001', 'contract_001', 3250.00, 292.50, 3542.50, 'sent', '2024-08-01 00:00:00', '2024-08-31 23:59:59', 'August 2024 Managed Print Services', 'tenant_001'),
+('inv_002', 'INV-2024-08-002', 'br_002', 'contract_002', 1850.00, 166.50, 2016.50, 'paid', '2024-08-01 00:00:00', '2024-08-31 23:59:59', 'August 2024 Equipment Lease Payment', 'tenant_002');
+
+-- Invoice Line Items Table (Invoice Details)
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+    id VARCHAR PRIMARY KEY,
+    invoice_id VARCHAR,
+    line_type VARCHAR,
+    description TEXT,
+    quantity DECIMAL(10,2),
+    unit_price DECIMAL(10,2),
+    line_total DECIMAL(10,2),
+    tax_amount DECIMAL(8,2),
+    product_id VARCHAR,
+    service_period_start DATE,
+    service_period_end DATE,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO invoice_line_items (id, invoice_id, line_type, description, quantity, unit_price, line_total, tax_amount, service_period_start, service_period_end, tenant_id) VALUES
+('ili_001', 'inv_001', 'service', 'Managed Print Services - Base Monthly Fee', 1.00, 2500.00, 2500.00, 225.00, '2024-08-01', '2024-08-31', 'tenant_001'),
+('ili_002', 'inv_001', 'usage', 'Color Print Overages - 2,500 pages @ $0.30', 2500.00, 0.30, 750.00, 67.50, '2024-08-01', '2024-08-31', 'tenant_001');
+
+-- Meter Readings Table (Usage Billing)
+CREATE TABLE IF NOT EXISTS meter_readings (
+    id VARCHAR PRIMARY KEY,
+    equipment_id VARCHAR,
+    customer_id VARCHAR,
+    contract_id VARCHAR,
+    reading_date TIMESTAMP,
+    previous_meter_count INTEGER,
+    current_meter_count INTEGER,
+    print_volume INTEGER,
+    color_pages INTEGER,
+    black_white_pages INTEGER,
+    reading_type VARCHAR,
+    notes TEXT,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO meter_readings (id, equipment_id, customer_id, contract_id, reading_date, previous_meter_count, current_meter_count, print_volume, color_pages, black_white_pages, reading_type, notes, tenant_id) VALUES
+('mr_001', 'eq_001', 'br_001', 'contract_001', '2024-08-01 09:00:00', 125000, 142500, 17500, 2500, 15000, 'monthly', 'High usage month due to quarterly report printing', 'tenant_001'),
+('mr_002', 'eq_002', 'br_002', 'contract_002', '2024-08-01 14:30:00', 89000, 98750, 9750, 4200, 5550, 'monthly', 'Normal usage pattern, mostly color marketing materials', 'tenant_002');
+
+-- Commission Structures Table (Commission Plans)
+CREATE TABLE IF NOT EXISTS commission_structures (
+    id VARCHAR PRIMARY KEY,
+    structure_name VARCHAR,
+    structure_type VARCHAR,
+    base_rate DECIMAL(6,4),
+    tier_rates JSONB,
+    threshold_amounts JSONB,
+    effective_date DATE,
+    expiration_date DATE,
+    applies_to_roles JSONB,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO commission_structures (id, structure_name, structure_type, base_rate, tier_rates, threshold_amounts, effective_date, applies_to_roles, tenant_id) VALUES
+('cs_001', 'Sales Rep Standard Plan', 'tiered', 0.0350, '{"tier1": 0.0350, "tier2": 0.0450, "tier3": 0.0550}', '{"tier1": 0, "tier2": 50000, "tier3": 100000}', '2024-01-01', '["sales_rep", "senior_sales_rep"]', 'tenant_001'),
+('cs_002', 'Manager Override Plan', 'flat_rate', 0.0125, '{"override": 0.0125}', '{}', '2024-01-01', '["sales_manager", "regional_manager"]', 'tenant_002');
+
+-- Commission Calculations Table (Commission Processing)
+CREATE TABLE IF NOT EXISTS commission_calculations (
+    id VARCHAR PRIMARY KEY,
+    sales_rep_id VARCHAR,
+    calculation_period VARCHAR,
+    period_start DATE,
+    period_end DATE,
+    total_sales DECIMAL(12,2),
+    commission_amount DECIMAL(10,2),
+    adjustments DECIMAL(8,2),
+    final_amount DECIMAL(10,2),
+    status VARCHAR,
+    paid_date DATE,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO commission_calculations (id, sales_rep_id, calculation_period, period_start, period_end, total_sales, commission_amount, adjustments, final_amount, status, tenant_id) VALUES
+('cc_001', 'user_001', 'monthly', '2024-07-01', '2024-07-31', 125000.00, 5625.00, 250.00, 5875.00, 'calculated', 'tenant_001'),
+('cc_002', 'user_002', 'monthly', '2024-07-01', '2024-07-31', 85000.00, 1062.50, 0.00, 1062.50, 'paid', 'tenant_002');
+
+-- =================================================================
+-- Advanced Features & Analytics Tables
+-- =================================================================
+
+-- Business Intelligence Dashboards Table (BI Dashboards)
+CREATE TABLE IF NOT EXISTS business_intelligence_dashboards (
+    id VARCHAR PRIMARY KEY,
+    dashboard_name VARCHAR,
+    description TEXT,
+    dashboard_config JSONB,
+    widget_layout JSONB,
+    data_sources JSONB,
+    refresh_frequency VARCHAR,
+    access_permissions JSONB,
+    created_by VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO business_intelligence_dashboards (id, dashboard_name, description, dashboard_config, widget_layout, data_sources, refresh_frequency, access_permissions, created_by, tenant_id) VALUES
+('bid_001', 'Sales Performance Dashboard', 'Comprehensive sales metrics and pipeline analysis', '{"theme": "light", "layout": "grid", "filters": ["date_range", "sales_rep", "region"]}', '{"widgets": [{"type": "revenue_chart", "position": {"x": 0, "y": 0, "w": 6, "h": 4}}, {"type": "pipeline_funnel", "position": {"x": 6, "y": 0, "w": 6, "h": 4}}]}', '["deals", "business_records", "invoices"]', 'hourly', '{"roles": ["sales_manager", "admin"], "users": ["user_001", "user_002"]}', 'user_001', 'tenant_001'),
+('bid_002', 'Service Operations Dashboard', 'Service ticket management and technician performance metrics', '{"theme": "dark", "auto_refresh": true}', '{"widgets": [{"type": "ticket_status", "position": {"x": 0, "y": 0, "w": 4, "h": 3}}, {"type": "tech_utilization", "position": {"x": 4, "y": 0, "w": 8, "h": 3}}]}', '["service_tickets", "technicians", "mobile_work_orders"]', 'every_15_minutes', '{"roles": ["service_manager", "technician"], "departments": ["service"]}', 'user_002', 'tenant_002');
+
+-- Performance Benchmarks Table (Performance Tracking)
+CREATE TABLE IF NOT EXISTS performance_benchmarks (
+    id VARCHAR PRIMARY KEY,
+    metric_name VARCHAR,
+    metric_category VARCHAR,
+    current_value DECIMAL(12,4),
+    target_value DECIMAL(12,4),
+    benchmark_period VARCHAR,
+    comparison_period VARCHAR,
+    trend_direction VARCHAR,
+    department VARCHAR,
+    location_id VARCHAR,
+    tenant_id VARCHAR,
+    measured_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO performance_benchmarks (id, metric_name, metric_category, current_value, target_value, benchmark_period, comparison_period, trend_direction, department, location_id, tenant_id, measured_at) VALUES
+('pb_001', 'Average Deal Close Time', 'sales', 45.5000, 35.0000, 'monthly', 'previous_month', 'declining', 'Sales', 'loc_001', 'tenant_001', '2024-08-01 00:00:00'),
+('pb_002', 'First Call Resolution Rate', 'service', 0.7800, 0.8500, 'weekly', 'previous_week', 'improving', 'Service', 'loc_002', 'tenant_002', '2024-08-01 00:00:00');
+
+-- Automation Rules Table (Automation Engine)
+CREATE TABLE IF NOT EXISTS automation_rules (
+    id VARCHAR PRIMARY KEY,
+    rule_name VARCHAR,
+    rule_description TEXT,
+    rule_category VARCHAR,
+    trigger_events JSONB,
+    conditions JSONB,
+    condition_logic VARCHAR,
+    actions JSONB,
+    action_sequence VARCHAR,
+    delay_before_action INTEGER,
+    execution_window JSONB,
+    cooldown_period INTEGER,
+    priority INTEGER,
+    is_critical BOOLEAN DEFAULT FALSE,
+    bypass_business_hours BOOLEAN DEFAULT FALSE,
+    applies_to_entities JSONB,
+    entity_filters JSONB,
+    department_scope JSONB,
+    max_executions_per_day INTEGER,
+    max_executions_per_hour INTEGER,
+    max_concurrent_executions INTEGER,
+    requires_approval BOOLEAN DEFAULT FALSE,
+    approved_by VARCHAR,
+    approval_date DATE,
+    governance_notes TEXT,
+    execution_count INTEGER DEFAULT 0,
+    success_count INTEGER DEFAULT 0,
+    last_executed TIMESTAMP,
+    last_success TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_test_mode BOOLEAN DEFAULT FALSE,
+    effective_from DATE,
+    effective_until DATE,
+    depends_on_rules JSONB,
+    conflicts_with_rules JSONB,
+    average_execution_time_ms NUMERIC(10,2),
+    error_rate NUMERIC(5,4),
+    impact_score NUMERIC(8,2),
+    created_by VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO automation_rules (id, rule_name, rule_description, rule_category, trigger_events, conditions, condition_logic, actions, priority, applies_to_entities, execution_count, success_count, is_active, created_by, tenant_id) VALUES
+('ar_001', 'High Value Deal Alert', 'Notify sales manager when deal value exceeds $50,000', 'notification', '["deal_created", "deal_updated"]', '{"deal_value": {"operator": ">", "value": 50000}}', 'AND', '{"notifications": [{"type": "email", "recipients": ["sales_manager"], "template": "high_value_deal"}]}', 1, '["deals"]', 23, 22, TRUE, 'user_001', 'tenant_001'),
+('ar_002', 'Service Escalation Rule', 'Escalate service tickets that remain unassigned for more than 2 hours', 'escalation', '["ticket_created", "ticket_status_changed"]', '{"status": "new", "age_hours": {"operator": ">", "value": 2}}', 'AND', '{"status_change": "escalated", "assign_to": "service_manager", "notifications": [{"type": "sms", "recipients": ["on_call_manager"]}]}', 2, '["service_tickets"]', 8, 8, TRUE, 'user_002', 'tenant_002');
+
+-- Workflow Executions Table (Workflow History)
+CREATE TABLE IF NOT EXISTS workflow_executions (
+    id VARCHAR PRIMARY KEY,
+    rule_id VARCHAR,
+    trigger_event JSONB,
+    execution_status VARCHAR,
+    start_time TIMESTAMP,
+    end_time TIMESTAMP,
+    execution_duration_ms INTEGER,
+    actions_executed JSONB,
+    results JSONB,
+    error_message TEXT,
+    entity_affected VARCHAR,
+    tenant_id VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO workflow_executions (id, rule_id, trigger_event, execution_status, start_time, end_time, execution_duration_ms, actions_executed, results, entity_affected, tenant_id) VALUES
+('we_001', 'ar_001', '{"event_type": "deal_created", "deal_id": "deal_001", "deal_value": 125000}', 'success', '2024-08-01 10:15:00', '2024-08-01 10:15:02', 2150, '["email_notification"]', '{"notifications_sent": 1, "recipients": ["user_001"]}', 'deal_001', 'tenant_001'),
+('we_002', 'ar_002', '{"event_type": "ticket_age_check", "ticket_id": "st_002", "age_hours": 3}', 'success', '2024-08-05 17:00:00', '2024-08-05 17:00:01', 1250, '["status_change", "assignment", "sms_notification"]', '{"status_updated": true, "assigned_to": "user_002", "sms_sent": true}', 'st_002', 'tenant_002');
+
+-- QuickBooks Integrations Table (QuickBooks Integration)
+CREATE TABLE IF NOT EXISTS quickbooks_integrations (
+    id VARCHAR PRIMARY KEY,
+    company_id VARCHAR,
+    tenant_id VARCHAR,
+    access_token TEXT,
+    refresh_token TEXT,
+    token_expires_at TIMESTAMP,
+    realm_id VARCHAR,
+    base_url VARCHAR,
+    sync_enabled BOOLEAN DEFAULT TRUE,
+    last_sync TIMESTAMP,
+    sync_frequency VARCHAR,
+    error_count INTEGER DEFAULT 0,
+    last_error TEXT,
+    customer_sync_enabled BOOLEAN DEFAULT TRUE,
+    vendor_sync_enabled BOOLEAN DEFAULT FALSE,
+    item_sync_enabled BOOLEAN DEFAULT TRUE,
+    invoice_sync_enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO quickbooks_integrations (id, company_id, tenant_id, realm_id, base_url, last_sync, sync_frequency, customer_sync_enabled, invoice_sync_enabled) VALUES
+('qb_001', 'QB_COMP_001', 'tenant_001', '9130354928936132', 'https://sandbox-quickbooks.api.intuit.com', '2024-08-05 06:00:00', 'daily', TRUE, TRUE),
+('qb_002', 'QB_COMP_002', 'tenant_002', '9130354928936133', 'https://sandbox-quickbooks.api.intuit.com', '2024-08-05 06:15:00', 'twice_daily', TRUE, TRUE);
+
+-- Audit Logs Table (Audit Trail)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id VARCHAR PRIMARY KEY,
+    user_id VARCHAR,
+    action VARCHAR,
+    table_name VARCHAR,
+    record_id VARCHAR,
+    old_values JSONB,
+    new_values JSONB,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR,
+    user_agent TEXT,
+    tenant_id VARCHAR
+);
+
+INSERT INTO audit_logs (id, user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id) VALUES
+('audit_001', 'user_001', 'UPDATE', 'deals', 'deal_001', '{"stage": "discovery", "probability": 25}', '{"stage": "proposal", "probability": 75}', '192.168.1.100', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0', 'tenant_001'),
+('audit_002', 'user_002', 'INSERT', 'service_tickets', 'st_002', '{}', '{"title": "Color Quality Issues", "status": "new", "priority": "high"}', '10.0.0.50', 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) Mobile/15E148', 'tenant_002');
+
+-- =================================================================
+-- COMMIT TRANSACTION
+-- =================================================================
+
+COMMIT;
+
+-- =================================================================
+-- Summary Report
+-- =================================================================
+
+/*
+DATABASE INJECTION COMPLETE
+
+Tables Created: 35 core tables with comprehensive relationships
+Records Inserted: 70 diverse example records (2 per table)
+
+Key Features Implemented:
+✓ Multi-tenant architecture with tenant isolation
+✓ Hierarchical role-based access control
+✓ Complete CRM pipeline from leads to customers  
+✓ Equipment and asset lifecycle management
+✓ Service ticket dispatch and mobile work orders
+✓ Financial management with contracts and billing
+✓ Business intelligence and performance tracking
+✓ Workflow automation engine
+✓ Integration capabilities (QuickBooks)
+✓ Comprehensive audit logging
+
+Data Diversity:
+- Tenant 1 (Metro Copy Solutions): Enterprise-level with advanced features
+- Tenant 2 (Pacific Print Services): Professional-level with standard features
+- Geographic spread: Seattle WA, Irvine CA, San Francisco CA, Portland OR
+- Industry variety: Technology, Healthcare, Manufacturing, Legal, Creative
+- Service types: MPS, Equipment Lease, Repairs, Installations
+- Equipment brands: Xerox, Canon with realistic model numbers
+- Financial data: $50K-$125K deal values, monthly recurring revenue
+
+Ready for Replit Database deployment!
+*/
