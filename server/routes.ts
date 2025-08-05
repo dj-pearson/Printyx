@@ -4326,6 +4326,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply tenant resolution middleware to all API routes
   app.use("/api", resolveTenant);
 
+  // Company Contacts API routes
+  app.get("/api/company-contacts/:companyId", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { companyId } = req.params;
+
+      const contacts = await storage.getCompanyContacts(companyId, tenantId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching company contacts:", error);
+      res.status(500).json({ error: "Failed to fetch company contacts" });
+    }
+  });
+
+  app.post("/api/company-contacts", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+
+      const contactData = {
+        ...req.body,
+        tenantId,
+        ownerId: req.body.ownerId || user.id,
+      };
+
+      const contact = await storage.createCompanyContact(contactData);
+      res.status(201).json(contact);
+    } catch (error) {
+      console.error("Error creating company contact:", error);
+      res.status(500).json({ error: "Failed to create company contact" });
+    }
+  });
+
+  app.put("/api/company-contacts/:id", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { id } = req.params;
+
+      const contact = await storage.updateCompanyContact(id, req.body, tenantId);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json(contact);
+    } catch (error) {
+      console.error("Error updating company contact:", error);
+      res.status(500).json({ error: "Failed to update company contact" });
+    }
+  });
+
+  app.delete("/api/company-contacts/:id", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { id } = req.params;
+
+      const result = await storage.deleteCompanyContact(id, tenantId);
+      if (!result) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting company contact:", error);
+      res.status(500).json({ error: "Failed to delete company contact" });
+    }
+  });
+
   // Contacts routes
   app.get("/api/contacts", requireAuth, async (req: TenantRequest, res) => {
     try {
@@ -4500,12 +4568,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         tenantId,
         ownerId: req.body.ownerId || user.id, // Default to current user if not specified
-        createdAt: new Date().toISOString(),
         lastContactDate: null,
         nextFollowUpDate: null,
       };
 
-      const contact = await storage.createContact(contactData);
+      const contact = await storage.createCompanyContact(contactData);
       res.status(201).json(contact);
     } catch (error) {
       console.error("Error creating contact:", error);

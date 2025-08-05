@@ -127,6 +127,12 @@ export default function Contacts() {
     retry: 2,
   });
 
+  // Debug logging
+  console.log("[CONTACTS UI DEBUG] contactsData:", contactsData);
+  console.log("[CONTACTS UI DEBUG] contacts array:", contactsData?.contacts || []);
+  console.log("[CONTACTS UI DEBUG] totalContacts:", contactsData?.total || 0);
+  console.log("[CONTACTS UI DEBUG] API Response keys:", contactsData ? Object.keys(contactsData) : "null");
+
   const contacts = contactsData?.contacts || [];
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
