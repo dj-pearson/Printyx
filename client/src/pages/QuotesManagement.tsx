@@ -225,7 +225,7 @@ export default function QuotesManagement() {
     sent: quotes.filter(q => q.status === 'sent').length,
     accepted: quotes.filter(q => q.status === 'accepted').length,
     closedLost: quotes.filter(q => q.status === 'closed_lost').length,
-    totalValue: quotes.reduce((sum, q) => sum + (q.totalAmount || 0), 0),
+    totalValue: quotes.reduce((sum, q) => sum + (parseFloat(q.totalAmount?.toString() || '0') || 0), 0),
     winRate: quotes.length > 0 ? (quotes.filter(q => q.status === 'accepted').length / quotes.length) * 100 : 0,
   };
 
@@ -258,11 +258,11 @@ export default function QuotesManagement() {
   };
 
   const handleEditQuote = (quoteId: string) => {
-    setLocation(`/quotes/edit/${quoteId}`);
+    setLocation(`/quotes/${quoteId}`);
   };
 
   const handleViewQuote = (quoteId: string) => {
-    setLocation(`/quotes/${quoteId}`);
+    setLocation(`/quotes/${quoteId}/view`);
   };
 
   const handleDeleteQuote = (quoteId: string) => {
