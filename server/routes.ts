@@ -53,6 +53,7 @@ import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
 import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
 import { registerManufacturerIntegrationRoutes } from "./routes-manufacturer-integration";
+import { serviceDispatchRouter } from "./routes-service-dispatch";
 // import { registerCommissionRoutes } from "./routes-commission"; // TODO: Add commission schema tables first
 import {
   getCompanyPricingSettings,
@@ -1003,246 +1004,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Advanced Service Dispatch Optimization Routes
-  app.get(
-    "/api/dispatch/recommendations",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  // NOTE: Service Dispatch routes moved to routes-service-dispatch.ts (converted from mock to database)
 
-        // Sample dispatch recommendations with AI optimization
-        const recommendations = [
-          {
-            id: "rec-1",
-            ticketId: "ticket-001",
-            ticketTitle: "Printer Jam - ABC Corp",
-            customerName: "ABC Corporation",
-            customerAddress: "123 Business Way, Downtown",
-            priority: "high",
-            estimatedDuration: 90,
-            requiredSkills: ["printer_repair", "mechanical"],
-            recommendedTechnician: {
-              id: "tech-1",
-              name: "Mike Johnson",
-              currentLocation: "456 Service Ave",
-              distanceToCustomer: 2.3,
-              travelTime: 12,
-              skillMatch: 95,
-              availabilityScore: 100,
-              workloadScore: 75,
-              overallScore: 90.5,
-              reasons: [
-                "Closest available technician",
-                "Perfect skill match for printer repair",
-                "Light current workload",
-              ],
-            },
-            alternatives: [
-              {
-                id: "tech-2",
-                name: "Sarah Wilson",
-                distanceToCustomer: 4.1,
-                travelTime: 18,
-                skillMatch: 85,
-                availabilityScore: 100,
-                workloadScore: 60,
-                overallScore: 82.3,
-              },
-            ],
-            suggestedTimeSlot: "10:30 AM - 12:00 PM",
-            routeOptimization: {
-              beforeThisCall: {
-                ticketId: "ticket-002",
-                customer: "XYZ Industries",
-                endTime: "10:15 AM",
-              },
-              afterThisCall: {
-                ticketId: "ticket-003",
-                customer: "Tech Solutions",
-                startTime: "1:00 PM",
-              },
-              totalTravelTime: 45,
-              fuelSavings: 12.5,
-            },
-          },
-        ];
-
-        res.json(recommendations);
-      } catch (error) {
-        console.error("Error fetching dispatch recommendations:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch dispatch recommendations" });
-      }
-    }
-  );
-
-  app.get(
-    "/api/dispatch/technicians/availability",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        // Sample technician availability data
-        const technicianAvailability = [
-          {
-            id: "tech-1",
-            name: "Mike Johnson",
-            email: "mike.johnson@company.com",
-            phone: "(555) 123-4567",
-            currentLocation: "456 Service Ave",
-            skills: ["printer_repair", "mechanical", "electrical"],
-            certifications: ["Canon Certified", "HP Specialist"],
-            availability: {
-              totalHours: 8,
-              bookedHours: 5.5,
-              availableHours: 2.5,
-              utilizationRate: 68.8,
-            },
-            currentAssignments: [
-              {
-                ticketId: "ticket-101",
-                customer: "Alpha Corp",
-                startTime: "9:00 AM",
-                endTime: "10:30 AM",
-                status: "in_progress",
-              },
-            ],
-            performance: {
-              completionRate: 94.2,
-              averageCallTime: 105,
-              customerSatisfaction: 4.6,
-              onTimeArrival: 92.3,
-            },
-            status: "available",
-            nextAvailableSlot: "12:45 PM",
-            endOfDayAvailable: "4:45 PM",
-          },
-        ];
-
-        res.json(technicianAvailability);
-      } catch (error) {
-        console.error("Error fetching technician availability:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch technician availability" });
-      }
-    }
-  );
-
-  app.get("/api/dispatch/analytics", requireAuth, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
-      }
-
-      // Sample dispatch analytics
-      const analytics = {
-        summary: {
-          totalTickets: 156,
-          completedTickets: 142,
-          pendingTickets: 14,
-          averageResponseTime: 4.2,
-          firstCallResolution: 78.5,
-          customerSatisfaction: 4.6,
-          technicianUtilization: 73.2,
-        },
-        efficiency: {
-          averageTravelTime: 18.5,
-          fuelCostPerCall: 8.75,
-          totalMilesDriven: 2847,
-          routeOptimizationSavings: 425.5,
-          onTimeArrivalRate: 92.3,
-        },
-        technician_performance: [
-          {
-            technicianId: "tech-1",
-            name: "Mike Johnson",
-            ticketsCompleted: 48,
-            averageCallTime: 105,
-            completionRate: 94.2,
-            customerRating: 4.6,
-            utilizationRate: 68.8,
-          },
-        ],
-        daily_trends: [
-          {
-            day: "Monday",
-            tickets: 28,
-            avgResponseTime: 3.8,
-            satisfaction: 4.5,
-          },
-          {
-            day: "Tuesday",
-            tickets: 32,
-            avgResponseTime: 4.1,
-            satisfaction: 4.6,
-          },
-          {
-            day: "Wednesday",
-            tickets: 35,
-            avgResponseTime: 4.5,
-            satisfaction: 4.7,
-          },
-        ],
-        priority_distribution: {
-          urgent: { count: 12, avgResponseTime: 1.2 },
-          high: { count: 34, avgResponseTime: 2.8 },
-          medium: { count: 78, avgResponseTime: 5.1 },
-          low: { count: 32, avgResponseTime: 8.7 },
-        },
-      };
-
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching dispatch analytics:", error);
-      res.status(500).json({ message: "Failed to fetch dispatch analytics" });
-    }
-  });
-
-  app.get("/api/dispatch/tracking", requireAuth, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
-      }
-
-      // Sample real-time tracking data
-      const trackingData = [
-        {
-          technicianId: "tech-1",
-          name: "Mike Johnson",
-          currentStatus: "on_route",
-          currentLocation: {
-            latitude: 40.7128,
-            longitude: -74.006,
-            address: "En route to ABC Corporation",
-          },
-          currentTicket: {
-            id: "ticket-101",
-            customer: "ABC Corporation",
-            estimatedArrival: "10:15 AM",
-            actualETA: "10:18 AM",
-          },
-          lastUpdate: new Date().toISOString(),
-        },
-      ];
-
-      res.json(trackingData);
-    } catch (error) {
-      console.error("Error fetching tracking data:", error);
-      res.status(500).json({ message: "Failed to fetch tracking data" });
-    }
-  });
+  // NOTE: All dispatch routes moved to routes-service-dispatch.ts
 
   // Preventive Maintenance Automation Routes
   app.get("/api/maintenance/schedules", requireAuth, async (req: any, res) => {
@@ -12931,6 +12695,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register manufacturer integration routes
   registerManufacturerIntegrationRoutes(app);
+  
+  // Register Service Dispatch routes (converted from mock data to database queries)
+  app.use(serviceDispatchRouter);
 
   const httpServer = createServer(app);
   return httpServer;
