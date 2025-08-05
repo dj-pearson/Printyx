@@ -296,6 +296,47 @@ export function registerBusinessRecordRoutes(app: Express) {
     }
   });
 
+  // Get contacts for a business record
+  app.get("/api/business-records/:id/contacts", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const { id } = req.params;
+      
+      const contacts = await storage.getBusinessRecordContacts(id, tenantId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching business record contacts:", error);
+      res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  // Create new contact for a business record
+  app.post("/api/business-records/:id/contacts", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const session = req.session as any;
+      const userId = session?.userId;
+      const tenantId = req.tenantId!;
+      const { id } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const contactData = {
+        ...req.body,
+        tenantId,
+        businessRecordId: id,
+        createdBy: userId,
+      };
+      
+      const newContact = await storage.createBusinessRecordContact(contactData);
+      res.status(201).json(newContact);
+    } catch (error) {
+      console.error("Error creating business record contact:", error);
+      res.status(500).json({ message: "Failed to create contact" });
+    }
+  });
+
   // Business Record Activities - Unified activity system
   app.get("/api/business-records/:id/activities", async (req: any, res) => {
     try {

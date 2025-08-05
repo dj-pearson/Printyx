@@ -187,7 +187,7 @@ export default function PricingCalculator({
                 onClick={() => handleDiscountPercentageChange(-10)}
                 className="text-green-600 hover:text-green-700"
               >
-                +10% Markup
+                Markup
               </Button>
               <Button
                 variant="outline"
@@ -195,13 +195,13 @@ export default function PricingCalculator({
                 onClick={() => handleDiscountPercentageChange(10)}
                 className="text-red-600 hover:text-red-700"
               >
-                10% Discount
+                Discount
               </Button>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-2">
-              <Label>Discount Type</Label>
+              <Label>Type</Label>
               <Select value={discountType} onValueChange={(value: 'amount' | 'percentage') => setDiscountType(value)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -215,7 +215,7 @@ export default function PricingCalculator({
             
             {discountType === 'percentage' ? (
               <div className="space-y-2">
-                <Label>Discount Percentage</Label>
+                <Label>Percentage</Label>
                 <div className="relative">
                   <Input
                     type="number"
@@ -231,7 +231,7 @@ export default function PricingCalculator({
               </div>
             ) : (
               <div className="space-y-2">
-                <Label>Discount Amount</Label>
+                <Label>Amount</Label>
                 <div className="relative">
                   <Input
                     type="number"
@@ -247,7 +247,7 @@ export default function PricingCalculator({
             )}
 
             <div className="space-y-2">
-              <Label>Discount Value</Label>
+              <Label>Value</Label>
               <div className="p-2 bg-muted rounded border text-center font-medium">
                 {formatCurrency(discountValue)}
               </div>
