@@ -209,14 +209,46 @@ export default function Contacts() {
       
       // Transform the flat array into the expected format with pagination
       const allContacts = Array.isArray(data) ? data : [];
+      
+      console.log("[CONTACTS DEBUG] All contacts before filtering:", allContacts.length);
+      console.log("[CONTACTS DEBUG] Search query:", searchQuery);
+      console.log("[CONTACTS DEBUG] Filters:", filters);
+      
       const filteredContacts = allContacts.filter(contact => {
-        if (searchQuery && !contact.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            !contact.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            !contact.email?.toLowerCase().includes(searchQuery.toLowerCase())) {
+        // Only apply search filter if there's actually a search query
+        if (searchQuery && searchQuery.trim() !== "") {
+          const matchesSearch = contact.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                               contact.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                               contact.email?.toLowerCase().includes(searchQuery.toLowerCase());
+          if (!matchesSearch) {
+            return false;
+          }
+        }
+        
+        // Apply view filter first
+        if (filters.view === "my" && !contact.ownerId) {
+          console.log("[CONTACTS DEBUG] Filtering out contact without owner:", contact.firstName, contact.lastName);
           return false;
         }
+        
+        if (filters.view === "unassigned" && contact.ownerId) {
+          console.log("[CONTACTS DEBUG] Filtering out assigned contact:", contact.firstName, contact.lastName);
+          return false;
+        }
+        
+        // Apply other filters
+        if (filters.leadStatus && contact.leadStatus !== filters.leadStatus) {
+          return false;
+        }
+        
+        if (filters.contactOwner && contact.ownerId !== filters.contactOwner) {
+          return false;
+        }
+        
         return true;
       });
+      
+      console.log("[CONTACTS DEBUG] Filtered contacts:", filteredContacts.length);
       
       const startIndex = (currentPage - 1) * pageSize;
       const endIndex = startIndex + pageSize;
