@@ -145,10 +145,12 @@ export default function QuoteBuilder({
   // Create or update quote mutation
   const saveQuoteMutation = useMutation({
     mutationFn: async (data: { quote: QuoteFormData; lineItems: LineItem[] }) => {
+      const subtotalAmount = data.lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const quoteData = {
         ...data.quote,
         proposalType: 'quote',
         status: 'draft',
+        validUntil: data.quote.validUntil ? new Date(data.quote.validUntil) : undefined,
         lineItems: data.lineItems.map((item, index) => ({
           lineNumber: index + 1,
           productId: item.productId,
@@ -160,8 +162,8 @@ export default function QuoteBuilder({
           margin: item.margin,
           notes: item.notes,
         })),
-        subtotal: data.lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
-        totalAmount: data.lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
+        subtotal: subtotalAmount.toString(),
+        totalAmount: subtotalAmount.toString(),
       };
 
       console.log('📤 Submitting quote:', quoteData);
