@@ -8,6 +8,10 @@ The platform has successfully implemented a Root Admin security suite with Socia
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+- **Enhanced Contact Form (Aug 5, 2025)**: Implemented intelligent company field with predictive dropdown and automatic company creation. Users can now type company names with real-time search and create new companies seamlessly during contact creation.
+- **Mobile Optimization (Aug 5, 2025)**: Comprehensive mobile optimization for deals management including responsive Kanban board, mobile card view for table data, and optimized dialog layouts for mobile devices.
+
 ## System Architecture
 
 ### Frontend

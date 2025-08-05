@@ -209,7 +209,6 @@ export default function Contacts() {
         description: "Contact created successfully",
       });
       contactForm.reset();
-      setCompanySearchTerm("");
       setDialogs(prev => ({ ...prev, createContact: false }));
       queryClient.invalidateQueries({ queryKey: ['/api/company-contacts'] });
     },
@@ -273,9 +272,10 @@ export default function Contacts() {
     setPendingContactData(null);
   };
 
-  // Filter companies based on search term
+  // Filter companies based on search term from form field
+  const currentCompanyName = contactForm.watch('companyName') || '';
   const filteredCompanies = companies?.filter((company: any) =>
-    company.companyName?.toLowerCase().includes(companySearchTerm.toLowerCase())
+    company.companyName?.toLowerCase().includes(currentCompanyName.toLowerCase())
   ) || [];
 
   // Fetch all company contacts directly (since /api/contacts has auth issues)
@@ -624,15 +624,15 @@ export default function Contacts() {
                                   <div className="relative">
                                     <Input
                                       placeholder="Type to search or enter new company..."
-                                      value={companySearchTerm}
+                                      value={field.value || ""}
                                       onChange={(e) => {
                                         const value = e.target.value;
-                                        setCompanySearchTerm(value);
                                         field.onChange(value);
+                                        setCompanySearchTerm(value);
                                         setIsCompanyDropdownOpen(value.length > 0);
                                       }}
                                       onFocus={() => {
-                                        if (companySearchTerm.length > 0) {
+                                        if (field.value && field.value.length > 0) {
                                           setIsCompanyDropdownOpen(true);
                                         }
                                       }}
@@ -654,7 +654,6 @@ export default function Contacts() {
                                           className="p-3 cursor-pointer hover:bg-gray-50 border-b last:border-b-0"
                                           onClick={() => {
                                             const companyName = company.companyName || company.name;
-                                            setCompanySearchTerm(companyName);
                                             field.onChange(companyName);
                                             contactForm.setValue('companyId', company.id);
                                             setIsCompanyDropdownOpen(false);
@@ -669,13 +668,13 @@ export default function Contacts() {
                                         </div>
                                       ))}
                                     </>
-                                  ) : companySearchTerm.length > 0 ? (
+                                  ) : currentCompanyName.length > 0 ? (
                                     <div className="p-3">
                                       <div className="text-sm text-gray-500 mb-2">
-                                        No existing companies found matching "{companySearchTerm}"
+                                        No existing companies found matching "{currentCompanyName}"
                                       </div>
                                       <div className="text-xs text-blue-600">
-                                        When you submit, we'll create "{companySearchTerm}" as a new lead company
+                                        When you submit, we'll create "{currentCompanyName}" as a new lead company
                                       </div>
                                     </div>
                                   ) : (
