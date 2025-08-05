@@ -150,7 +150,7 @@ export default function QuoteBuilder({
         ...data.quote,
         proposalType: 'quote',
         status: 'draft',
-        validUntil: data.quote.validUntil ? new Date(data.quote.validUntil) : undefined,
+        // Keep validUntil as string - backend will convert to Date
         lineItems: data.lineItems.map((item, index) => ({
           lineNumber: index + 1,
           productId: item.productId,

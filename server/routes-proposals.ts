@@ -324,7 +324,9 @@ router.post("/", requireAuth, async (req: any, res) => {
       tenantId: req.user.tenantId,
       proposalNumber,
       createdBy: req.user.id,
-      assignedTo: req.user.id // Default to creator
+      assignedTo: req.user.id, // Default to creator
+      // Convert ISO date string to Date object if validUntil exists
+      validUntil: req.body.validUntil ? new Date(req.body.validUntil) : undefined
     };
     console.log("Data to validate:", JSON.stringify(dataToValidate, null, 2));
     
