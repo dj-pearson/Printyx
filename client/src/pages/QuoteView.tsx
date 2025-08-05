@@ -57,10 +57,6 @@ export default function QuoteView() {
 
   // Line items come from the quote response
   const lineItems = quote?.lineItems || [];
-  
-  // Debug logging
-  console.log('🔍 QuoteView - Quote data:', quote);
-  console.log('🔍 QuoteView - Line items:', lineItems);
 
   const formatCurrency = (amount: string | number) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;

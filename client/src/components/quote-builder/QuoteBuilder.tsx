@@ -193,6 +193,7 @@ export default function QuoteBuilder({
         // Keep validUntil as string - backend will convert to Date
         lineItems: data.lineItems.map((item, index) => ({
           lineNumber: index + 1,
+          itemType: item.productType || 'equipment', // Map productType to itemType
           productId: item.productId,
           productName: item.productName,
           description: item.description || item.productName,
