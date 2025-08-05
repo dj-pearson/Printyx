@@ -57,7 +57,9 @@ export function registerBusinessRecordRoutes(app: Express) {
       
       // Transform frontend data to database format
       const frontendData = req.body;
+      console.log('[DEBUG] Frontend data received:', JSON.stringify(frontendData, null, 2));
       const dbData = BusinessRecordsTransformer.toDb(frontendData);
+      console.log('[DEBUG] Transformed db data:', JSON.stringify(dbData, null, 2));
       
       // Normalize record type and status
       const recordType = BusinessRecordsTransformer.normalizeRecordType(frontendData.recordType || 'lead');
