@@ -58,6 +58,9 @@ import TenantSetup from "@/pages/TenantSetup";
 import Settings from "@/pages/Settings";
 import DataEnrichment from "@/pages/DataEnrichment";
 import QuickBooksIntegration from "@/pages/QuickBooksIntegration";
+import ManufacturerIntegration from "@/pages/ManufacturerIntegration";
+import ManufacturerIntegrationDevices from "@/pages/ManufacturerIntegrationDevices";
+import ManufacturerIntegrationAudit from "@/pages/ManufacturerIntegrationAudit";
 import EndUserLicenseAgreement from "@/pages/legal/EndUserLicenseAgreement";
 import PrivacyPolicy from "@/pages/legal/PrivacyPolicy";
 import TermsAndConditions from "@/pages/legal/TermsAndConditions";
@@ -369,6 +372,9 @@ function Router() {
             path="/customer-access-management"
             component={CustomerAccessManagement}
           />
+          <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
+          <Route path="/manufacturer-integration/devices" component={ManufacturerIntegrationDevices} />
+          <Route path="/manufacturer-integration/audit" component={ManufacturerIntegrationAudit} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
