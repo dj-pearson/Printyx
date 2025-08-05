@@ -158,12 +158,17 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     });
   }
 
-  // Service section
-  if (permissions.service || isPlatformRole || isCompanyAdmin) {
+  // Service section - also show for sales users (for manufacturer integrations)
+  if (permissions.service || permissions.sales || isPlatformRole || isCompanyAdmin) {
     sections.push({
       name: "Service",
       items: [
         { name: "Service Dispatch", href: "/service-dispatch", icon: Calendar },
+        {
+          name: "Manufacturer Integration",
+          href: "/manufacturer-integration",
+          icon: Plug,
+        },
         {
           name: "Service Dispatch Enhanced",
           href: "/service-dispatch-enhanced",
