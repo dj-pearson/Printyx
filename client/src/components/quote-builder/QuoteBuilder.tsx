@@ -61,6 +61,10 @@ const quoteSchema = z.object({
   validUntil: z.string().optional(),
   customerNotes: z.string().optional(),
   internalNotes: z.string().optional(),
+  // Pricing fields
+  discountAmount: z.string().optional(),
+  discountPercentage: z.string().optional(),
+  taxAmount: z.string().optional(),
 });
 
 type QuoteFormData = z.infer<typeof quoteSchema>;
@@ -99,6 +103,9 @@ export default function QuoteBuilder({
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [taxAmount, setTaxAmount] = useState<number>(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -119,6 +126,9 @@ export default function QuoteBuilder({
       validUntil: '',
       customerNotes: '',
       internalNotes: '',
+      discountAmount: '0',
+      discountPercentage: '0',
+      taxAmount: '0',
     },
   });
 
@@ -153,7 +163,15 @@ export default function QuoteBuilder({
         validUntil: existingQuote.validUntil ? existingQuote.validUntil.split('T')[0] : '',
         customerNotes: existingQuote.customerNotes || '',
         internalNotes: existingQuote.internalNotes || '',
+        discountAmount: existingQuote.discountAmount || '0',
+        discountPercentage: existingQuote.discountPercentage || '0',
+        taxAmount: existingQuote.taxAmount || '0',
       });
+
+      // Set local state for pricing calculator
+      setDiscountAmount(parseFloat(existingQuote.discountAmount || '0'));
+      setDiscountPercentage(parseFloat(existingQuote.discountPercentage || '0'));
+      setTaxAmount(parseFloat(existingQuote.taxAmount || '0'));
 
       // Update line items if they exist
       if (existingQuote.lineItems && existingQuote.lineItems.length > 0) {
@@ -186,6 +204,10 @@ export default function QuoteBuilder({
   const saveQuoteMutation = useMutation({
     mutationFn: async (data: { quote: QuoteFormData; lineItems: LineItem[] }) => {
       const subtotalAmount = data.lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const discountAmt = parseFloat(data.quote.discountAmount || '0');
+      const taxAmt = parseFloat(data.quote.taxAmount || '0');
+      const totalAmount = subtotalAmount - discountAmt + taxAmt;
+      
       const quoteData = {
         ...data.quote,
         proposalType: 'quote',
@@ -204,7 +226,10 @@ export default function QuoteBuilder({
           notes: item.notes,
         })),
         subtotal: subtotalAmount.toString(),
-        totalAmount: subtotalAmount.toString(),
+        discountAmount: discountAmt.toString(),
+        discountPercentage: data.quote.discountPercentage || '0',
+        taxAmount: taxAmt.toString(),
+        totalAmount: totalAmount.toString(),
       };
 
       console.log('📤 Submitting quote:', quoteData);
@@ -306,6 +331,18 @@ export default function QuoteBuilder({
     setLineItems(filtered);
   };
 
+  const handleDiscountChange = (discountAmt: number, discountPct: number) => {
+    setDiscountAmount(discountAmt);
+    setDiscountPercentage(discountPct);
+    form.setValue('discountAmount', discountAmt.toString());
+    form.setValue('discountPercentage', discountPct.toString());
+  };
+
+  const handleTaxChange = (taxAmt: number) => {
+    setTaxAmount(taxAmt);
+    form.setValue('taxAmount', taxAmt.toString());
+  };
+
   const onSubmit = (data: QuoteFormData) => {
     if (lineItems.length === 0) {
       toast({
@@ -346,7 +383,7 @@ export default function QuoteBuilder({
 
   const totals = {
     subtotal: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
-    total: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
+    total: lineItems.reduce((sum, item) => sum + item.totalPrice, 0) - discountAmount + taxAmount,
   };
 
   if (quoteLoading) {
@@ -453,6 +490,8 @@ export default function QuoteBuilder({
         lineItems={lineItems}
         subtotal={totals.subtotal}
         total={totals.total}
+        onDiscountChange={handleDiscountChange}
+        onTaxChange={handleTaxChange}
       />
 
       {/* Notes Section */}
