@@ -5820,8 +5820,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const contactData of contacts) {
           const contact = await storage.createContact({
             ...contactData,
-            leadId: companyId, // Using leadId to store companyId for now
+            companyId: companyId, // Use companyId field for company_contacts table
             tenantId: user.tenantId,
+            ownerId: user.id, // Set the current user as owner
+            leadStatus: 'new', // Set default lead status
           });
           createdContacts.push(contact);
         }
