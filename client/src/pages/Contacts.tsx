@@ -174,10 +174,25 @@ export default function Contacts() {
 
   console.log('[COMPANIES DEBUG] Companies state:', { companies, companiesLoading, companiesError });
 
+  // Fetch users for owner lookup
+  const { data: users } = useQuery({
+    queryKey: ['/api/users'],
+    queryFn: async () => {
+      return await apiRequest('/api/users');
+    }
+  });
+
   // Helper function to get company name by ID
   const getCompanyName = (companyId: string) => {
     const company = companies?.find((c: any) => c.id === companyId);
     return company?.companyName || '--';
+  };
+
+  // Helper function to get user name by ID
+  const getUserName = (userId: string) => {
+    const user = users?.find((u: any) => u.id === userId);
+    if (!user) return 'Unassigned';
+    return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unassigned';
   };
 
   // Create company mutation
@@ -1134,7 +1149,7 @@ export default function Contacts() {
                         </div>
                       </td>
                       <td className="p-4 text-gray-900">
-                        {contact.ownerName || contact.ownerId || 'Unassigned'}
+                        {getUserName(contact.ownerId)}
                       </td>
 
                       <td className="p-4">

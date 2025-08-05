@@ -160,6 +160,7 @@ import bcrypt from "bcrypt";
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+  getUsers(tenantId: string): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Authentication operations
@@ -369,6 +370,20 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  async getUsers(tenantId: string): Promise<User[]> {
+    return await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        roleId: users.roleId,
+        isActive: users.isActive
+      })
+      .from(users)
+      .where(eq(users.tenantId, tenantId));
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
