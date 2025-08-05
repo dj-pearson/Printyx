@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
 import {
   Network,
   Printer,
@@ -191,14 +192,23 @@ export default function ManufacturerIntegration() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <MainLayout
+        title="Manufacturer Integration"
+        description="Loading manufacturer integrations..."
+      >
+        <div className="flex items-center justify-center min-h-96">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout
+      title="Manufacturer Integration"
+      description="Automated meter reading and device management across all major copier manufacturers"
+    >
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -453,6 +463,7 @@ export default function ManufacturerIntegration() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
