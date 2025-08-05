@@ -480,67 +480,69 @@ export default function DealsManagement() {
     <MainLayout>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Deals</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Deals</h1>
             <p className="text-sm text-gray-600">{filteredDeals.length} deals</p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* View Mode Toggle */}
             <div className="flex items-center border rounded-lg p-1">
               <Button
                 variant={viewMode === "kanban" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("kanban")}
-                className="h-8"
+                className="h-8 flex-1 sm:flex-none"
               >
-                <LayoutGrid className="h-4 w-4 mr-1" />
-                Board
+                <LayoutGrid className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Board</span>
               </Button>
               <Button
                 variant={viewMode === "table" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("table")}
-                className="h-8"
+                className="h-8 flex-1 sm:flex-none"
               >
-                <List className="h-4 w-4 mr-1" />
-                Table
+                <List className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Table</span>
               </Button>
             </div>
 
-            {/* Filters Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className={cn("gap-2", showFilters && "bg-gray-100")}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Filters
-            </Button>
+            <div className="flex gap-2">
+              {/* Filters Toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn("gap-2 flex-1 sm:flex-none", showFilters && "bg-gray-100")}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="sm:inline">Filters</span>
+              </Button>
             
-            {/* Create Deal Button */}
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Deal
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              {/* Create Deal Button */}
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2 flex-1 sm:flex-none">
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Create Deal</span>
+                    <span className="sm:hidden">New</span>
+                  </Button>
+                </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-lg lg:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Create New Deal</DialogTitle>
+                  <DialogTitle className="text-lg sm:text-xl">Create New Deal</DialogTitle>
                 </DialogHeader>
                 
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="title"
                         render={({ field }) => (
-                          <FormItem className="col-span-2">
+                          <FormItem className="sm:col-span-2">
                             <FormLabel>Deal Title *</FormLabel>
                             <FormControl>
                               <Input placeholder="Enter deal title" {...field} />
@@ -592,7 +594,7 @@ export default function DealsManagement() {
                         control={form.control}
                         name="companyName"
                         render={({ field }) => (
-                          <FormItem className="col-span-2">
+                          <FormItem className="sm:col-span-2">
                             <FormLabel>Company *</FormLabel>
                             <Popover open={isCompanySelectOpen} onOpenChange={setIsCompanySelectOpen}>
                               <PopoverTrigger asChild>
@@ -692,7 +694,7 @@ export default function DealsManagement() {
                         control={form.control}
                         name="description"
                         render={({ field }) => (
-                          <FormItem className="col-span-2">
+                          <FormItem className="sm:col-span-2">
                             <FormLabel>Description</FormLabel>
                             <FormControl>
                               <Textarea placeholder="Deal description..." {...field} />
@@ -703,15 +705,16 @@ export default function DealsManagement() {
                       />
                     </div>
 
-                    <div className="flex justify-end space-x-2 pt-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-2 pt-4">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsCreateDialogOpen(false)}
+                        className="order-2 sm:order-1"
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={createDealMutation.isPending}>
+                      <Button type="submit" disabled={createDealMutation.isPending} className="order-1 sm:order-2">
                         {createDealMutation.isPending ? "Creating..." : "Create Deal"}
                       </Button>
                     </div>
@@ -719,6 +722,7 @@ export default function DealsManagement() {
                 </Form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </div>
 
@@ -732,20 +736,20 @@ export default function DealsManagement() {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex gap-6 h-full overflow-x-auto pb-6">
+              <div className="flex gap-3 sm:gap-6 h-full overflow-x-auto pb-6">
                 {stages.map((stage) => (
-                  <div key={stage.id} className="flex-shrink-0 w-80">
+                  <div key={stage.id} className="flex-shrink-0 w-72 sm:w-80">
                     <div className="bg-gray-50 rounded-lg h-full flex flex-col min-h-96">
-                      <div className="p-4 border-b border-gray-200">
+                      <div className="p-3 sm:p-4 border-b border-gray-200">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             <div
-                              className="w-3 h-3 rounded-full"
+                              className="w-3 h-3 rounded-full flex-shrink-0"
                               style={{ backgroundColor: stage.color }}
                             />
-                            <h3 className="font-medium text-gray-900">{stage.name}</h3>
+                            <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{stage.name}</h3>
                           </div>
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">
                             {(dealsByStage[stage.id] || []).length}
                           </Badge>
                         </div>
@@ -756,7 +760,7 @@ export default function DealsManagement() {
                         strategy={verticalListSortingStrategy}
                       >
                         <DroppableStageArea stageId={stage.id}>
-                          <div className="flex-1 p-4 space-y-3 overflow-y-auto min-h-0">
+                          <div className="flex-1 p-3 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto min-h-0">
                             {(dealsByStage[stage.id] || []).map((deal) => (
                               <DraggableDealCard key={deal.id} deal={deal} />
                             ))}
@@ -790,7 +794,8 @@ export default function DealsManagement() {
             /* Table View */
             <Card className="h-full">
               <CardContent className="p-0">
-                <div className="overflow-auto h-full">
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-auto h-full">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -907,6 +912,125 @@ export default function DealsManagement() {
                       <p className="text-gray-500">No deals found.</p>
                     </div>
                   )}
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="lg:hidden h-full overflow-y-auto">
+                  <div className="p-4 space-y-4">
+                    {filteredDeals.length > 0 ? (
+                      filteredDeals.map((deal) => (
+                        <div key={deal.id} className="border rounded-lg p-4 bg-white">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 text-base mb-1 truncate">
+                                {deal.title}
+                              </h3>
+                              <p className="text-sm text-gray-600 truncate">
+                                {deal.companyName || "No company"}
+                              </p>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Edit Deal</DropdownMenuItem>
+                                <DropdownMenuItem>View Details</DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-600">Stage:</span>
+                              <Select
+                                value={deal.stageId}
+                                onValueChange={(stageId) => {
+                                  updateDealStageMutation.mutate({ dealId: deal.id, stageId });
+                                }}
+                              >
+                                <SelectTrigger className="w-32 h-7 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {stages.map((stage) => (
+                                    <SelectItem key={stage.id} value={stage.id}>
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className="w-2 h-2 rounded-full"
+                                          style={{ backgroundColor: stage.color }}
+                                        />
+                                        {stage.name}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            {deal.amount && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-600">Amount:</span>
+                                <span className="text-sm font-semibold text-green-600">
+                                  ${parseFloat(deal.amount.toString()).toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-600">Probability:</span>
+                              <Badge variant={
+                                deal.probability >= 80 ? 'default' :
+                                deal.probability >= 60 ? 'secondary' :
+                                deal.probability >= 40 ? 'outline' :
+                                'destructive'
+                              } className="text-xs">
+                                {deal.probability}%
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-600">Priority:</span>
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  "text-xs",
+                                  deal.priority === "high" && "bg-red-100 text-red-800",
+                                  deal.priority === "medium" && "bg-yellow-100 text-yellow-800",
+                                  deal.priority === "low" && "bg-green-100 text-green-800"
+                                )}
+                              >
+                                {deal.priority}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-600">Owner:</span>
+                              <span className="text-sm text-gray-900 truncate ml-2">
+                                {deal.ownerName || "Unassigned"}
+                              </span>
+                            </div>
+                            
+                            {deal.expectedCloseDate && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-600">Close Date:</span>
+                                <span className="text-sm text-gray-900">
+                                  {format(new Date(deal.expectedCloseDate), "MMM d, yyyy")}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-gray-500">No deals found.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
