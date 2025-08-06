@@ -127,6 +127,19 @@ export default function PricingCalculator({
     }
   };
 
+  // Auto-calculate tax when afterDiscountTotal or taxRate changes (unless tax amount is manually overridden)
+  useEffect(() => {
+    if (taxAmount === 0 || taxAmount === initialTaxAmount) {
+      const calculatedTax = (afterDiscountTotal * taxRate) / 100;
+      if (calculatedTax !== taxAmount) {
+        setTaxAmount(calculatedTax);
+        if (onTaxChange) {
+          onTaxChange(calculatedTax);
+        }
+      }
+    }
+  }, [afterDiscountTotal, taxRate, taxAmount, initialTaxAmount, onTaxChange]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
