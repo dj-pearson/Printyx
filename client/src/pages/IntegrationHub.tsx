@@ -351,6 +351,25 @@ export default function IntegrationHub() {
     refetchInterval: 30000 // Refresh every 30 seconds
   });
 
+  // Fetch real integrations from database
+  const { data: realIntegrations, isLoading: integrationsLoading, refetch: refetchIntegrations } = useQuery({
+    queryKey: ['/api/integrations'],
+    select: (data: any) => {
+      if (!data) return [];
+      return data.map((integration: any) => ({
+        ...integration,
+        createdAt: integration.createdAt ? new Date(integration.createdAt) : new Date(),
+        updatedAt: integration.updatedAt ? new Date(integration.updatedAt) : new Date(),
+        lastSync: integration.lastSync ? new Date(integration.lastSync) : null
+      }));
+    }
+  });
+
+  // Fetch webhooks
+  const { data: webhooks, isLoading: webhooksLoading } = useQuery({
+    queryKey: ['/api/webhooks']
+  });
+
   // Check for OAuth callback success/error
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -711,10 +730,123 @@ export default function IntegrationHub() {
             </TabsContent>
 
             <TabsContent value="active" className="space-y-6">
-              {/* Active Integrations */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {(integrationData.activeIntegrations || []).map((integration: any, idx: number) => (
-                  <Card key={idx} className="hover:shadow-lg transition-shadow">
+              {/* Real Active Integrations from Database */}
+              {integrationsLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading integrations...</p>
+                  </div>
+                </div>
+              ) : realIntegrations && realIntegrations.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {realIntegrations.map((integration: any, idx: number) => (
+                    <Card key={integration.id || idx} className="hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 flex items-center gap-3">
+                            {getProviderIcon(integration.provider)}
+                            <div>
+                              <CardTitle className="text-lg">{integration.name}</CardTitle>
+                              <CardDescription className="mt-1">
+                                {integration.provider} • {integration.type.toUpperCase()} • Created {format(integration.createdAt, 'MMM dd, yyyy')}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <Badge className={getStatusColor(integration.status)}>
+                            {integration.status}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Integration Details */}
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">Type:</span>
+                              <div className="font-medium capitalize">{integration.type}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Provider:</span>
+                              <div className="font-medium capitalize">{integration.provider}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Last Sync:</span>
+                              <div className="font-medium">
+                                {integration.lastSync ? format(integration.lastSync, 'MMM dd, HH:mm') : 'Never'}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Updated:</span>
+                              <div className="font-medium">{format(integration.updatedAt, 'MMM dd, HH:mm')}</div>
+                            </div>
+                          </div>
+
+                          {/* Configuration Preview */}
+                          {integration.configuration && (
+                            <div>
+                              <div className="text-sm text-gray-600 mb-2">Configuration:</div>
+                              <div className="text-xs p-2 bg-gray-50 rounded border">
+                                <pre className="text-gray-700 whitespace-pre-wrap">
+                                  {JSON.stringify(integration.configuration, null, 2).substring(0, 200)}...
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Error Message */}
+                          {integration.errorMessage && (
+                            <div className="p-2 bg-red-50 border border-red-200 rounded">
+                              <div className="text-sm text-red-600 font-medium">Error:</div>
+                              <div className="text-xs text-red-600 mt-1">{integration.errorMessage}</div>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <div className="text-xs text-gray-500">
+                              ID: {integration.id?.substring(0, 8)}...
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm">
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Network className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Integrations</h3>
+                    <p className="text-gray-600 mb-4">
+                      You don't have any active integrations yet. Add integrations from the API Marketplace to get started.
+                    </p>
+                    <Button onClick={() => setSelectedTab('marketplace')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Browse API Marketplace
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Legacy Mock Data Section */}
+              {integrationData && integrationData.activeIntegrations && integrationData.activeIntegrations.length > 0 && (
+                <>
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Demo Mock Integrations (Example Data)</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {(integrationData.activeIntegrations || []).map((integration: any, idx: number) => (
+                        <Card key={idx} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -823,7 +955,10 @@ export default function IntegrationHub() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="webhooks" className="space-y-6">
