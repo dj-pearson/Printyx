@@ -34,6 +34,9 @@ import { CustomerEquipment } from "@/components/customer/CustomerEquipment";
 import { CustomerSupplies } from "@/components/customer/CustomerSupplies";
 import { CustomerFinancials } from "@/components/customer/CustomerFinancials";
 import { CustomerProposals } from "@/components/customer/CustomerProposals";
+import { CustomerContracts } from "@/components/customer/CustomerContracts";
+import { CustomerQuotes } from "@/components/customer/CustomerQuotes";
+import { CustomerMeterReadings } from "@/components/customer/CustomerMeterReadings";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -87,6 +90,9 @@ import {
   Printer,
   Receipt,
   PieChart,
+  FileContract,
+  Quote,
+  Gauge,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -487,6 +493,27 @@ export default function CustomerDetailHubspot() {
                     >
                       <PieChart className="h-4 w-4" />
                       <span className="hidden sm:inline">Financials</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="contracts"
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <FileContract className="h-4 w-4" />
+                      <span className="hidden sm:inline">Contracts</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="quotes"
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Quote className="h-4 w-4" />
+                      <span className="hidden sm:inline">Quotes</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="meter-readings"
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Gauge className="h-4 w-4" />
+                      <span className="hidden sm:inline">Meter Reads</span>
                     </TabsTrigger>
                   </div>
                 </TabsList>
@@ -2006,6 +2033,27 @@ export default function CustomerDetailHubspot() {
 
               <TabsContent value="financials" className="mt-6">
                 <CustomerFinancials
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
+              </TabsContent>
+
+              <TabsContent value="contracts" className="mt-6">
+                <CustomerContracts
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
+              </TabsContent>
+
+              <TabsContent value="quotes" className="mt-6">
+                <CustomerQuotes
+                  customerId={customer?.id || ""}
+                  customerName={customer?.companyName || "Unknown Customer"}
+                />
+              </TabsContent>
+
+              <TabsContent value="meter-readings" className="mt-6">
+                <CustomerMeterReadings
                   customerId={customer?.id || ""}
                   customerName={customer?.companyName || "Unknown Customer"}
                 />
