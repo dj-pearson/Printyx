@@ -107,6 +107,7 @@ import WorkflowAutomation from "@/pages/WorkflowAutomation";
 import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
 import ERPIntegration from "@/pages/ERPIntegration";
 import CustomerAccessManagement from "@/pages/CustomerAccessManagement";
+import EnhancedServiceSystem from "@/pages/EnhancedServiceSystem";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -315,6 +316,10 @@ function Router() {
           <Route
             path="/service-dispatch-optimization"
             component={ServiceDispatchOptimization}
+          />
+          <Route
+            path="/enhanced-service-system"
+            component={EnhancedServiceSystem}
           />
           <Route
             path="/preventive-maintenance-automation"

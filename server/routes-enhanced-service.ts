@@ -1,7 +1,6 @@
 import express from "express";
-import { drizzle } from "drizzle-orm/postgres-js";
 import { eq, and, desc, sql } from "drizzle-orm";
-import postgres from "postgres";
+import { db } from "./db";
 import { 
   phoneInTickets, 
   technicianTicketSessions, 
@@ -18,11 +17,6 @@ import {
 import { serviceTickets, customers } from "@shared/schema";
 
 const router = express.Router();
-
-// Database connection
-const connectionString = process.env.DATABASE_URL!;
-const client = postgres(connectionString);
-const db = drizzle(client);
 
 // Create phone-in ticket
 router.post("/phone-in-tickets", async (req, res) => {
