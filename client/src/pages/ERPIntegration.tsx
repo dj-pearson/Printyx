@@ -468,13 +468,13 @@ export default function ERPIntegration() {
           </div>
 
           <Tabs defaultValue="systems" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="systems">ERP Systems</TabsTrigger>
-              <TabsTrigger value="synchronization">Data Sync</TabsTrigger>
-              <TabsTrigger value="automation">Process Automation</TabsTrigger>
-              <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-              <TabsTrigger value="mapping">Data Mapping</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+              <TabsTrigger value="systems" className="text-xs sm:text-sm px-2 py-2">ERP</TabsTrigger>
+              <TabsTrigger value="synchronization" className="text-xs sm:text-sm px-2 py-2">Sync</TabsTrigger>
+              <TabsTrigger value="automation" className="text-xs sm:text-sm px-2 py-2">Auto</TabsTrigger>
+              <TabsTrigger value="monitoring" className="text-xs sm:text-sm px-2 py-2">Monitor</TabsTrigger>
+              <TabsTrigger value="mapping" className="text-xs sm:text-sm px-2 py-2">Mapping</TabsTrigger>
+              <TabsTrigger value="security" className="text-xs sm:text-sm px-2 py-2">Security</TabsTrigger>
             </TabsList>
 
             <TabsContent value="systems" className="space-y-6">

@@ -501,7 +501,7 @@ export default function AIAnalyticsDashboard() {
       {aiData && (
         <>
           {/* AI Overview KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <Card className="border-purple-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -605,15 +605,15 @@ export default function AIAnalyticsDashboard() {
           </div>
 
           <Tabs defaultValue="predictions" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="predictions">
-                Customer Predictions
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+              <TabsTrigger value="predictions" className="text-xs sm:text-sm px-2 py-2">
+                Predictions
               </TabsTrigger>
-              <TabsTrigger value="sales">Sales Forecasting</TabsTrigger>
-              <TabsTrigger value="service">Service Intelligence</TabsTrigger>
-              <TabsTrigger value="sentiment">NLP Insights</TabsTrigger>
-              <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
-              <TabsTrigger value="models">Model Management</TabsTrigger>
+              <TabsTrigger value="sales" className="text-xs sm:text-sm px-2 py-2">Sales</TabsTrigger>
+              <TabsTrigger value="service" className="text-xs sm:text-sm px-2 py-2">Service</TabsTrigger>
+              <TabsTrigger value="sentiment" className="text-xs sm:text-sm px-2 py-2">NLP</TabsTrigger>
+              <TabsTrigger value="recommendations" className="text-xs sm:text-sm px-2 py-2">Recs</TabsTrigger>
+              <TabsTrigger value="models" className="text-xs sm:text-sm px-2 py-2">Models</TabsTrigger>
             </TabsList>
 
             <TabsContent value="predictions" className="space-y-6">
@@ -630,7 +630,7 @@ export default function AIAnalyticsDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div className="text-center p-3 bg-red-50 border border-red-200 rounded">
@@ -901,7 +901,7 @@ export default function AIAnalyticsDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <h4 className="font-medium mb-4">
                         Current vs Predicted Performance
@@ -1316,7 +1316,7 @@ export default function AIAnalyticsDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <div className="text-center p-6 bg-gray-50 rounded-lg mb-6">
                         <div

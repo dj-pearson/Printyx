@@ -293,13 +293,13 @@ export default function BusinessRecords() {
         </CardHeader>
         <CardContent>
           <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="all">All Records</TabsTrigger>
-              <TabsTrigger value="leads">Leads</TabsTrigger>
-              <TabsTrigger value="prospects">Prospects</TabsTrigger>
-              <TabsTrigger value="customers">All Customers</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="inactive">Inactive</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+              <TabsTrigger value="all" className="text-xs sm:text-sm px-2 py-2">All</TabsTrigger>
+              <TabsTrigger value="leads" className="text-xs sm:text-sm px-2 py-2">Leads</TabsTrigger>
+              <TabsTrigger value="prospects" className="text-xs sm:text-sm px-2 py-2">Prospects</TabsTrigger>
+              <TabsTrigger value="customers" className="text-xs sm:text-sm px-2 py-2">Customers</TabsTrigger>
+              <TabsTrigger value="active" className="text-xs sm:text-sm px-2 py-2">Active</TabsTrigger>
+              <TabsTrigger value="inactive" className="text-xs sm:text-sm px-2 py-2">Inactive</TabsTrigger>
             </TabsList>
 
             <TabsContent value={selectedTab} className="mt-4">

@@ -479,7 +479,7 @@ export default function WorkflowAutomation() {
       {workflowData && (
         <>
           {/* Automation Overview KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <Card className="border-purple-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -570,12 +570,12 @@ export default function WorkflowAutomation() {
           </div>
 
           <Tabs defaultValue="workflows" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="workflows">Active Workflows</TabsTrigger>
-              <TabsTrigger value="rules">Rules Engine</TabsTrigger>
-              <TabsTrigger value="analytics">Performance</TabsTrigger>
-              <TabsTrigger value="templates">Templates</TabsTrigger>
-              <TabsTrigger value="builder">Builder</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 sm:gap-0">
+              <TabsTrigger value="workflows" className="text-xs sm:text-sm px-2 py-2">Workflows</TabsTrigger>
+              <TabsTrigger value="rules" className="text-xs sm:text-sm px-2 py-2">Rules</TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 py-2">Performance</TabsTrigger>
+              <TabsTrigger value="templates" className="text-xs sm:text-sm px-2 py-2">Templates</TabsTrigger>
+              <TabsTrigger value="builder" className="text-xs sm:text-sm px-2 py-2">Builder</TabsTrigger>
             </TabsList>
 
             <TabsContent value="workflows" className="space-y-6">

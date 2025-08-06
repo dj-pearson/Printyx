@@ -195,7 +195,7 @@ export default function ManagedServices() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <span className="text-sm font-medium">New Price</span>
               <p className="text-lg font-bold text-green-600">
@@ -267,7 +267,7 @@ export default function ManagedServices() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={form.control}
                         name="productName"
@@ -310,7 +310,7 @@ export default function ManagedServices() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={form.control}
                         name="productCode"
@@ -392,7 +392,7 @@ export default function ManagedServices() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={form.control}
                         name="salesRepCredit"
@@ -422,7 +422,7 @@ export default function ManagedServices() {
                     </div>
 
                     {/* IT-specific Fields */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={form.control}
                         name="supportHours"
@@ -638,7 +638,7 @@ export default function ManagedServices() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Pricing Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={form.control}
                         name="lease"
@@ -680,7 +680,7 @@ export default function ManagedServices() {
                     </div>
 
                     {/* Pricing Tiers */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <div className="space-y-2">
                         <FormField
                           control={form.control}
@@ -752,7 +752,7 @@ export default function ManagedServices() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <div className="space-y-2">
                         <FormField
                           control={form.control}
@@ -831,7 +831,7 @@ export default function ManagedServices() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">System Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={form.control}
                         name="priceBookId"

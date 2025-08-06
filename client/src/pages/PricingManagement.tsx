@@ -337,7 +337,7 @@ export default function PricingManagement() {
                 </DialogHeader>
                 <Form {...productForm}>
                   <form onSubmit={productForm.handleSubmit(onProductSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={productForm.control}
                         name="productType"
@@ -378,7 +378,7 @@ export default function PricingManagement() {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={productForm.control}
                         name="dealerCost"
@@ -408,7 +408,7 @@ export default function PricingManagement() {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={productForm.control}
                         name="minimumSalePrice"

@@ -327,7 +327,7 @@ export default function EquipmentLifecycleManagement() {
               </DialogHeader>
               <Form {...poForm}>
                 <form onSubmit={poForm.handleSubmit(onPOSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={poForm.control}
                       name="vendor_name"
@@ -367,7 +367,7 @@ export default function EquipmentLifecycleManagement() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={poForm.control}
                       name="order_date"
@@ -573,7 +573,7 @@ export default function EquipmentLifecycleManagement() {
                     )}
                   />
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
                     <FormField
                       control={deliveryForm.control}
                       name="scheduled_date"
@@ -639,7 +639,7 @@ export default function EquipmentLifecycleManagement() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={deliveryForm.control}
                       name="contact_person"
@@ -764,7 +764,7 @@ export default function EquipmentLifecycleManagement() {
                     )}
                   />
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
                     <FormField
                       control={installationForm.control}
                       name="scheduled_date"
@@ -820,7 +820,7 @@ export default function EquipmentLifecycleManagement() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={installationForm.control}
                       name="site_contact_person"
@@ -874,7 +874,7 @@ export default function EquipmentLifecycleManagement() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={installationForm.control}
                       name="power_requirements"
@@ -941,18 +941,18 @@ export default function EquipmentLifecycleManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
-          <TabsTrigger value="orders">Purchase Orders</TabsTrigger>
-          <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
-          <TabsTrigger value="installations">Installations</TabsTrigger>
-          <TabsTrigger value="assets">Asset Tracking</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 py-2">Overview</TabsTrigger>
+          <TabsTrigger value="lifecycle" className="text-xs sm:text-sm px-2 py-2">Lifecycle</TabsTrigger>
+          <TabsTrigger value="orders" className="text-xs sm:text-sm px-2 py-2">Orders</TabsTrigger>
+          <TabsTrigger value="deliveries" className="text-xs sm:text-sm px-2 py-2">Deliveries</TabsTrigger>
+          <TabsTrigger value="installations" className="text-xs sm:text-sm px-2 py-2">Installs</TabsTrigger>
+          <TabsTrigger value="assets" className="text-xs sm:text-sm px-2 py-2">Assets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           {/* Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Equipment in Process</CardTitle>

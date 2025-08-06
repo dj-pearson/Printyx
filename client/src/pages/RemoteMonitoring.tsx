@@ -257,7 +257,7 @@ export default function RemoteMonitoring() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Online Equipment</CardTitle>
@@ -378,7 +378,7 @@ export default function RemoteMonitoring() {
                           )}
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-3">
                           <div>
                             <span className="font-medium">Customer:</span>
                             <br />
@@ -404,7 +404,7 @@ export default function RemoteMonitoring() {
                         {/* Performance metrics */}
                         <div className="bg-blue-50 rounded-lg p-4 mb-4">
                           <h5 className="font-medium text-blue-800 mb-3">Performance Metrics</h5>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
                             <div>
                               <div className="text-lg font-bold text-blue-700">{equipment.uptime.toFixed(1)}%</div>
                               <div className="text-blue-600">Uptime</div>
@@ -431,7 +431,7 @@ export default function RemoteMonitoring() {
                         {/* Supply levels */}
                         <div className="bg-gray-50 rounded-lg p-3 mb-4">
                           <h5 className="font-medium text-gray-800 mb-2">Supply Levels</h5>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
                             {Object.entries(equipment.currentMetrics.tonerLevels).map(([color, level]) => (
                               <div key={color} className="space-y-1">
                                 <div className="flex justify-between">
@@ -466,7 +466,7 @@ export default function RemoteMonitoring() {
                         {equipment.currentMetrics.temperature && (
                           <div className="bg-green-50 rounded-lg p-3 mb-4">
                             <h5 className="font-medium text-green-800 mb-2">Environmental Conditions</h5>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
                               <div className="flex items-center gap-2">
                                 <Thermometer className="h-4 w-4 text-green-600" />
                                 <span>{equipment.currentMetrics.temperature}°C</span>
@@ -603,7 +603,7 @@ export default function RemoteMonitoring() {
         <TabsContent value="fleet-overview" className="space-y-6">
           {fleetOverview && (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Fleet Status Distribution</CardTitle>
@@ -658,7 +658,7 @@ export default function RemoteMonitoring() {
                 </Card>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Top Performers</CardTitle>
@@ -745,7 +745,7 @@ export default function RemoteMonitoring() {
                   <CardDescription>Equipment ID: {selectedEquipment}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <h4 className="font-medium mb-3">Temperature Trends</h4>
                       <ResponsiveContainer width="100%" height={200}>

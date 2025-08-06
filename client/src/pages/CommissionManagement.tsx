@@ -294,7 +294,7 @@ export default function CommissionManagement() {
       </div>
 
       {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Commissions</CardTitle>
@@ -395,7 +395,7 @@ export default function CommissionManagement() {
                           </Badge>
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-3">
                           <div>
                             <span className="font-medium">Period:</span>
                             <br />
@@ -506,7 +506,7 @@ export default function CommissionManagement() {
         </TabsContent>
 
         <TabsContent value="plans" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {plans.map((plan) => (
               <Card key={plan.id}>
                 <CardHeader>
@@ -610,7 +610,7 @@ export default function CommissionManagement() {
                           <Badge variant="outline">{dispute.priority}</Badge>
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-3">
                           <div>
                             <span className="font-medium">Employee:</span>
                             <br />
@@ -691,7 +691,7 @@ export default function CommissionManagement() {
         <TabsContent value="analytics" className="space-y-6">
           {analytics && (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Commission Trends</CardTitle>

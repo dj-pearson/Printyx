@@ -216,7 +216,7 @@ export default function ServiceDispatchOptimization() {
       </div>
 
       {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Response Time</CardTitle>
@@ -320,12 +320,12 @@ export default function ServiceDispatchOptimization() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                       {/* Recommended Technician */}
                       <div className="border rounded-lg p-4 bg-green-50">
                         <h5 className="font-medium text-green-800 mb-2">Recommended: {rec.recommendedTechnician.name}</h5>
                         
-                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm mb-3">
                           <div>
                             <span className="text-gray-600">Distance:</span>
                             <span className="ml-2 font-medium">{rec.recommendedTechnician.distanceToCustomer} mi</span>
@@ -385,7 +385,7 @@ export default function ServiceDispatchOptimization() {
                           </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                           <div>
                             <span className="text-gray-600">Time Saved:</span>
                             <span className="ml-2 font-medium text-green-600">{rec.routeOptimization.totalTravelTime} min</span>
@@ -401,7 +401,7 @@ export default function ServiceDispatchOptimization() {
                     {rec.alternatives.length > 0 && (
                       <div className="mt-4 pt-4 border-t">
                         <h6 className="text-sm font-medium text-gray-700 mb-2">Alternative Technicians:</h6>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                           {rec.alternatives.map((alt, idx) => (
                             <div key={idx} className="text-xs border rounded p-2 bg-gray-50">
                               <div className="font-medium">{alt.name}</div>
@@ -429,7 +429,7 @@ export default function ServiceDispatchOptimization() {
         </TabsContent>
 
         <TabsContent value="technicians" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {technicians.map((tech) => (
               <Card key={tech.id}>
                 <CardHeader>
@@ -457,7 +457,7 @@ export default function ServiceDispatchOptimization() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                     <div>
                       <div className="text-gray-600">Completion Rate</div>
                       <div className="font-medium">{tech.performance.completionRate}%</div>
@@ -510,7 +510,7 @@ export default function ServiceDispatchOptimization() {
         </TabsContent>
 
         <TabsContent value="tracking" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {tracking.map((tech: any) => (
               <Card key={tech.technicianId}>
                 <CardHeader>
@@ -567,7 +567,7 @@ export default function ServiceDispatchOptimization() {
         <TabsContent value="analytics" className="space-y-6">
           {analytics && (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Daily Performance Trends</CardTitle>

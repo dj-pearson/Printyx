@@ -466,7 +466,7 @@ export default function IntegrationHub() {
       {integrationData && (
         <>
           {/* Integration Overview KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <Card className="border-blue-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -557,13 +557,13 @@ export default function IntegrationHub() {
           </div>
 
           <Tabs defaultValue="marketplace" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="marketplace">API Marketplace</TabsTrigger>
-              <TabsTrigger value="active">Active Integrations</TabsTrigger>
-              <TabsTrigger value="webhooks">Webhook Management</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="transformations">Data Transformation</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+              <TabsTrigger value="marketplace" className="text-xs sm:text-sm px-2 py-2">API</TabsTrigger>
+              <TabsTrigger value="active" className="text-xs sm:text-sm px-2 py-2">Active</TabsTrigger>
+              <TabsTrigger value="webhooks" className="text-xs sm:text-sm px-2 py-2">Webhooks</TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 py-2">Analytics</TabsTrigger>
+              <TabsTrigger value="transformations" className="text-xs sm:text-sm px-2 py-2">Transform</TabsTrigger>
+              <TabsTrigger value="security" className="text-xs sm:text-sm px-2 py-2">Security</TabsTrigger>
             </TabsList>
 
             <TabsContent value="marketplace" className="space-y-6">
@@ -1143,7 +1143,7 @@ export default function IntegrationHub() {
                   <CardDescription>Performance metrics and usage statistics</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-900">
                         {formatNumber(integrationData?.integrationAnalytics?.usageStatistics?.totalApiCalls)}

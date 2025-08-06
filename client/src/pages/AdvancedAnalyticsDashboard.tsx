@@ -330,7 +330,7 @@ export default function AdvancedAnalyticsDashboard() {
       {analyticsData && (
         <>
           {/* Executive Summary KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -497,17 +497,17 @@ export default function AdvancedAnalyticsDashboard() {
           </div>
 
           <Tabs defaultValue="revenue" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="revenue">Revenue</TabsTrigger>
-              <TabsTrigger value="customers">Customers</TabsTrigger>
-              <TabsTrigger value="service">Service</TabsTrigger>
-              <TabsTrigger value="equipment">Equipment</TabsTrigger>
-              <TabsTrigger value="financial">Financial</TabsTrigger>
-              <TabsTrigger value="predictive">Predictive</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+              <TabsTrigger value="revenue" className="text-xs sm:text-sm px-2 py-2">Revenue</TabsTrigger>
+              <TabsTrigger value="customers" className="text-xs sm:text-sm px-2 py-2">Customers</TabsTrigger>
+              <TabsTrigger value="service" className="text-xs sm:text-sm px-2 py-2">Service</TabsTrigger>
+              <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">Equipment</TabsTrigger>
+              <TabsTrigger value="financial" className="text-xs sm:text-sm px-2 py-2">Financial</TabsTrigger>
+              <TabsTrigger value="predictive" className="text-xs sm:text-sm px-2 py-2">Predictive</TabsTrigger>
             </TabsList>
 
             <TabsContent value="revenue" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Revenue by Category */}
                 <Card>
                   <CardHeader>
@@ -642,7 +642,7 @@ export default function AdvancedAnalyticsDashboard() {
             </TabsContent>
 
             <TabsContent value="customers" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Customer Segmentation */}
                 <Card>
                   <CardHeader>
@@ -793,7 +793,7 @@ export default function AdvancedAnalyticsDashboard() {
             </TabsContent>
 
             <TabsContent value="service" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Service Metrics */}
                 <Card>
                   <CardHeader>
@@ -949,7 +949,7 @@ export default function AdvancedAnalyticsDashboard() {
             </TabsContent>
 
             <TabsContent value="equipment" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Fleet Overview */}
                 <Card>
                   <CardHeader>
@@ -1127,7 +1127,7 @@ export default function AdvancedAnalyticsDashboard() {
             </TabsContent>
 
             <TabsContent value="financial" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Profitability */}
                 <Card>
                   <CardHeader>
@@ -1257,7 +1257,7 @@ export default function AdvancedAnalyticsDashboard() {
             </TabsContent>
 
             <TabsContent value="predictive" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Revenue Forecast */}
                 <Card>
                   <CardHeader>
@@ -1394,7 +1394,7 @@ export default function AdvancedAnalyticsDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <h4 className="font-medium mb-3">Market Share</h4>
                       <div className="space-y-2">

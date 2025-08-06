@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import MainLayout from "@/components/layout/main-layout";
 
 // Form schemas
 const createGoalSchema = z.object({
@@ -175,14 +176,15 @@ export default function CrmGoalsDashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">CRM Goals & Reporting</h1>
-          <p className="text-muted-foreground">
-            Manage sales goals, track activity, and analyze performance across teams and reps
-          </p>
-        </div>
+    <MainLayout>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">CRM Goals & Reporting</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Manage sales goals, track activity, and analyze performance across teams and reps
+            </p>
+          </div>
         <div className="flex gap-2">
           <Dialog open={showCreateTeamDialog} onOpenChange={setShowCreateTeamDialog}>
             <DialogTrigger asChild>
@@ -1077,6 +1079,7 @@ function ActivityCalculator() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </MainLayout>
   );
 }

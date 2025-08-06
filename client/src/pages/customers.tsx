@@ -34,7 +34,7 @@ export default function Customers() {
               className="pl-10 min-h-11 text-base sm:text-sm"
             />
           </div>
-          <Button size="mobile" className="flex items-center gap-2 sm:size-default">
+          <Button size="default" className="flex items-center gap-2 min-h-11 px-4 py-2">
             <Plus className="h-4 w-4" />
             Add Customer
           </Button>
@@ -104,8 +104,8 @@ export default function Customers() {
                     <div className="mt-4 pt-4 border-t border-border">
                       <Button 
                         variant="outline" 
-                        size="mobile" 
-                        className="w-full flex items-center gap-2 sm:size-sm"
+                        size="sm" 
+                        className="w-full flex items-center gap-2 min-h-11 sm:h-9"
                         onClick={() => navigate(`/customers/${customer.id}`)}
                       >
                         <Eye className="h-4 w-4" />
@@ -124,7 +124,7 @@ export default function Customers() {
                 <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">No customers found</h3>
                 <p className="text-sm sm:text-base text-muted-foreground mb-6">Get started by adding your first customer.</p>
-                <Button size="mobile" className="flex items-center gap-2 sm:size-default">
+                <Button size="default" className="flex items-center gap-2 min-h-11 px-4 py-2">
                   <Plus className="h-4 w-4" />
                   Add Customer
                 </Button>

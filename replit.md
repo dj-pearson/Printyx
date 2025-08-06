@@ -139,13 +139,17 @@ className="pb-safe-bottom pt-safe-top"
 
 #### Button Component Usage
 ```typescript
-// ✅ Mobile-optimized button usage
-<Button size="mobile" className="w-full sm:w-auto">
+// ✅ Mobile-optimized button usage (Replit-compatible)
+<Button size="default" className="min-h-11 px-4 py-2 w-full sm:w-auto">
   Action Button
 </Button>
 
-// Available sizes in order of mobile-friendliness:
-// "mobile" (best for mobile) → "default" → "lg" → "sm" (avoid on mobile)
+// ✅ Responsive mobile-friendly button
+<Button size="sm" className="min-h-11 sm:h-9 px-4 sm:px-3">
+  Responsive Button
+</Button>
+
+// Available sizes: "default" → "lg" → "sm" (ensure min-h-11 for mobile)
 ```
 
 #### Form Field Best Practices
@@ -180,10 +184,13 @@ className="pb-safe-bottom pt-safe-top"
 
 #### Bottom Navigation (Fixed Mobile Nav)
 ```typescript
-// ✅ Mobile bottom navigation with safe area support
-<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur pb-safe-bottom">
+// ✅ Mobile bottom navigation (Replit-compatible)
+<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border">
   <nav className="flex items-center justify-around py-1 px-2 min-h-16">
-    {/* Navigation items with proper touch targets */}
+    <Button size="sm" className="min-h-12 min-w-12 flex flex-col">
+      <Icon className="h-5 w-5" />
+      <span className="text-xs">Label</span>
+    </Button>
   </nav>
 </div>
 ```
