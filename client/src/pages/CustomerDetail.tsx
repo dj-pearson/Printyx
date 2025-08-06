@@ -90,7 +90,6 @@ import {
   Printer,
   Receipt,
   PieChart,
-  FileContract,
   Quote,
   Gauge,
 } from "lucide-react";
@@ -498,7 +497,7 @@ export default function CustomerDetailHubspot() {
                       value="contracts"
                       className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
                     >
-                      <FileContract className="h-4 w-4" />
+                      <FileText className="h-4 w-4" />
                       <span className="hidden sm:inline">Contracts</span>
                     </TabsTrigger>
                     <TabsTrigger
