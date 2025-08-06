@@ -4002,14 +4002,12 @@ export const systemIntegrations = pgTable("system_integrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id"),
   name: varchar("name").notNull(),
-  category: varchar("category").notNull(), // Device Management, Accounting, CRM, etc.
   provider: varchar("provider").notNull(),
-  description: text("description"),
-  status: varchar("status").notNull().default("disconnected"), // connected, disconnected, error, pending
-  config: jsonb("config"), // API keys, endpoints, etc.
+  type: varchar("type").notNull(), // oauth, api, webhook
+  status: varchar("status").notNull().default("disconnected"), // active, inactive, error, pending
+  configuration: jsonb("configuration"), // API keys, endpoints, etc.
+  credentials: jsonb("credentials"), // OAuth tokens, API keys, etc.
   lastSync: timestamp("last_sync"),
-  syncFrequency: varchar("sync_frequency"), // hourly, daily, weekly
-  isActive: boolean("is_active").default(true),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
