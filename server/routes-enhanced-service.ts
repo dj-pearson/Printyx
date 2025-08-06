@@ -89,7 +89,23 @@ router.get("/phone-in-tickets", async (req, res) => {
     const { limit = "50", offset = "0", converted } = req.query;
 
     let query = db
-      .select()
+      .select({
+        id: phoneInTickets.id,
+        tenantId: phoneInTickets.tenantId,
+        callerName: phoneInTickets.callerName,
+        callerPhone: phoneInTickets.callerPhone,
+        callerEmail: phoneInTickets.callerEmail,
+        customerName: phoneInTickets.customerName,
+        locationAddress: phoneInTickets.locationAddress,
+        issueCategory: phoneInTickets.issueCategory,
+        issueDescription: phoneInTickets.issueDescription,
+        urgencyLevel: phoneInTickets.urgencyLevel,
+        handledBy: phoneInTickets.handledBy,
+        convertedToTicketId: phoneInTickets.convertedToTicketId,
+        convertedAt: phoneInTickets.convertedAt,
+        createdAt: phoneInTickets.createdAt,
+        updatedAt: phoneInTickets.updatedAt,
+      })
       .from(phoneInTickets)
       .where(eq(phoneInTickets.tenantId, tenantId));
 

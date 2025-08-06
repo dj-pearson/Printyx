@@ -269,16 +269,20 @@ export default function QuoteProposalGeneration() {
                 New Template
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Create Proposal Template</DialogTitle>
-                <DialogDescription>
-                  Create a reusable template for consistent proposal formatting
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...templateForm}>
-                <form onSubmit={templateForm.handleSubmit(onCreateTemplate)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+            <DialogContent className="w-[95vw] h-[95vh] max-w-none max-h-none p-0 gap-0 overflow-hidden">
+              <div className="flex flex-col h-full">
+                <div className="p-4 sm:p-6 border-b flex-shrink-0">
+                  <DialogHeader>
+                    <DialogTitle>Create Proposal Template</DialogTitle>
+                    <DialogDescription>
+                      Create a reusable template for consistent proposal formatting
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
+                <div className="flex-1 overflow-auto p-4 sm:p-6">
+                  <Form {...templateForm}>
+                    <form onSubmit={templateForm.handleSubmit(onCreateTemplate)} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={templateForm.control}
                       name="templateName"
@@ -332,16 +336,18 @@ export default function QuoteProposalGeneration() {
                     )}
                   />
 
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsNewTemplateOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={createTemplateMutation.isPending}>
-                      {createTemplateMutation.isPending ? "Creating..." : "Create Template"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
+                    <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                      <Button type="button" variant="outline" onClick={() => setIsNewTemplateOpen(false)} className="w-full sm:w-auto">
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={createTemplateMutation.isPending} className="w-full sm:w-auto">
+                        {createTemplateMutation.isPending ? "Creating..." : "Create Template"}
+                      </Button>
+                    </div>
+                    </form>
+                  </Form>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
 
@@ -352,16 +358,20 @@ export default function QuoteProposalGeneration() {
                 New Proposal
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Create New Proposal</DialogTitle>
-                <DialogDescription>
-                  Create a professional proposal for your customer
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...proposalForm}>
-                <form onSubmit={proposalForm.handleSubmit(onCreateProposal)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+            <DialogContent className="w-[95vw] h-[95vh] max-w-none max-h-none p-0 gap-0 overflow-hidden">
+              <div className="flex flex-col h-full">
+                <div className="p-4 sm:p-6 border-b flex-shrink-0">
+                  <DialogHeader>
+                    <DialogTitle>Create New Proposal</DialogTitle>
+                    <DialogDescription>
+                      Create a professional proposal for your customer
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
+                <div className="flex-1 overflow-auto p-4 sm:p-6">
+                  <Form {...proposalForm}>
+                    <form onSubmit={proposalForm.handleSubmit(onCreateProposal)} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={proposalForm.control}
                       name="title"
@@ -455,16 +465,18 @@ export default function QuoteProposalGeneration() {
                     )}
                   />
 
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsNewProposalOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={createProposalMutation.isPending}>
-                      {createProposalMutation.isPending ? "Creating..." : "Create Proposal"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
+                      <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
+                        <Button type="button" variant="outline" onClick={() => setIsNewProposalOpen(false)} className="w-full sm:w-auto">
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={createProposalMutation.isPending} className="w-full sm:w-auto">
+                          {createProposalMutation.isPending ? "Creating..." : "Create Proposal"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
@@ -755,7 +767,7 @@ export default function QuoteProposalGeneration() {
                   <p>No templates found. Create your first template to get started.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {templates.map((template: any) => (
                     <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow">
                       <CardHeader>
