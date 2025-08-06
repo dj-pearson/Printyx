@@ -108,13 +108,20 @@ export class DashboardService {
    * Get API marketplace data with real available integrations
    */
   private static async getApiMarketplace() {
+    // Count integrations by category
+    const categoryCounts = availableIntegrations.reduce((acc, integration) => {
+      acc[integration.category] = (acc[integration.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
     const categories = [
-      { name: 'Calendar', count: 2, description: 'Calendar and scheduling integrations' },
-      { name: 'CRM', count: 0, description: 'Customer relationship management systems' },
-      { name: 'Communication', count: 0, description: 'Team communication and collaboration' },
-      { name: 'Accounting', count: 0, description: 'Financial and accounting software' },
-      { name: 'Project Management', count: 0, description: 'Project tracking and coordination' },
-      { name: 'Marketing', count: 0, description: 'Marketing automation and campaigns' }
+      { name: 'Calendar', count: categoryCounts['calendar'] || 0, description: 'Calendar and scheduling integrations' },
+      { name: 'CRM', count: categoryCounts['crm'] || 0, description: 'Customer relationship management systems' },
+      { name: 'Accounting', count: categoryCounts['accounting'] || 0, description: 'Financial and accounting software' },
+      { name: 'Payments', count: categoryCounts['payments'] || 0, description: 'Payment processing and financial services' },
+      { name: 'Communication', count: categoryCounts['communication'] || 0, description: 'Team communication and collaboration' },
+      { name: 'Project Management', count: categoryCounts['project'] || 0, description: 'Project tracking and coordination' },
+      { name: 'Marketing', count: categoryCounts['marketing'] || 0, description: 'Marketing automation and campaigns' }
     ];
 
     const availableAPIs = availableIntegrations.map((integration, index) => ({
@@ -258,6 +265,24 @@ export class DashboardService {
           events: { source: 'microsoft.graph.event', target: 'printyx.appointment', fields: 14 },
           calendars: { source: 'microsoft.graph.calendar', target: 'printyx.calendar', fields: 10 }
         };
+      case 'salesforce':
+        return {
+          accounts: { source: 'salesforce.account', target: 'printyx.customer', fields: 15 },
+          contacts: { source: 'salesforce.contact', target: 'printyx.companyContact', fields: 12 },
+          opportunities: { source: 'salesforce.opportunity', target: 'printyx.quote', fields: 10 }
+        };
+      case 'stripe':
+        return {
+          customers: { source: 'stripe.customer', target: 'printyx.customer', fields: 10 },
+          invoices: { source: 'stripe.invoice', target: 'printyx.invoice', fields: 16 },
+          subscriptions: { source: 'stripe.subscription', target: 'printyx.subscription', fields: 12 }
+        };
+      case 'quickbooks':
+        return {
+          customers: { source: 'quickbooks.customer', target: 'printyx.customer', fields: 14 },
+          invoices: { source: 'quickbooks.invoice', target: 'printyx.invoice', fields: 18 },
+          items: { source: 'quickbooks.item', target: 'printyx.product', fields: 8 }
+        };
       default:
         return {};
     }
@@ -267,13 +292,30 @@ export class DashboardService {
     switch (providerId) {
       case 'google-calendar':
         return [
-          { event: 'calendar.event.created', url: `/webhook/${providerId}/event`, status: 'active', deliveryRate: 98.5 },
-          { event: 'calendar.event.updated', url: `/webhook/${providerId}/event`, status: 'active', deliveryRate: 97.2 }
+          { event: 'calendar.event.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 98.5 },
+          { event: 'calendar.event.updated', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 97.2 }
         ];
       case 'microsoft-calendar':
         return [
-          { event: 'calendar.event.created', url: `/webhook/${providerId}/event`, status: 'active', deliveryRate: 99.1 },
-          { event: 'calendar.event.updated', url: `/webhook/${providerId}/event`, status: 'active', deliveryRate: 98.8 }
+          { event: 'calendar.event.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 99.1 },
+          { event: 'calendar.event.updated', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 98.8 }
+        ];
+      case 'salesforce':
+        return [
+          { event: 'account.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 96.8 },
+          { event: 'account.updated', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 95.2 },
+          { event: 'contact.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 97.5 }
+        ];
+      case 'stripe':
+        return [
+          { event: 'customer.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 99.2 },
+          { event: 'invoice.payment_succeeded', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 98.9 },
+          { event: 'subscription.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 97.8 }
+        ];
+      case 'quickbooks':
+        return [
+          { event: 'customer.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 94.5 },
+          { event: 'invoice.created', url: `/api/webhooks/${providerId}`, status: 'active', deliveryRate: 93.8 }
         ];
       default:
         return [];
@@ -281,7 +323,26 @@ export class DashboardService {
   }
 
   private static generateRecentActivity(integration: any) {
-    const activities = ['calendar_sync', 'event_created', 'event_updated', 'webhook_delivered'];
+    let activities: string[] = [];
+    
+    switch (integration.providerId) {
+      case 'google-calendar':
+      case 'microsoft-calendar':
+        activities = ['calendar_sync', 'event_created', 'event_updated', 'webhook_delivered'];
+        break;
+      case 'salesforce':
+        activities = ['account_sync', 'contact_created', 'opportunity_updated', 'webhook_delivered'];
+        break;
+      case 'stripe':
+        activities = ['customer_sync', 'payment_processed', 'subscription_updated', 'webhook_delivered'];
+        break;
+      case 'quickbooks':
+        activities = ['customer_sync', 'invoice_created', 'payment_received', 'webhook_delivered'];
+        break;
+      default:
+        activities = ['data_sync', 'webhook_delivered', 'records_updated'];
+    }
+    
     return Array.from({ length: 3 }, (_, i) => ({
       timestamp: new Date(Date.now() - i * 5 * 60 * 1000), // 5 minutes apart
       action: activities[Math.floor(Math.random() * activities.length)],
@@ -291,17 +352,30 @@ export class DashboardService {
   }
 
   private static generateRecentDeliveries(integrationCount: number) {
-    return Array.from({ length: Math.min(integrationCount * 2, 10) }, (_, i) => ({
-      id: `delivery-${Date.now()}-${i}`,
-      webhook: `Calendar Event ${i % 2 === 0 ? 'Created' : 'Updated'}`,
-      url: `/webhook/calendar/event`,
-      timestamp: new Date(Date.now() - i * 2 * 60 * 1000), // 2 minutes apart
-      status: Math.random() > 0.05 ? 'delivered' : 'failed',
-      responseCode: Math.random() > 0.05 ? 200 : 500,
-      responseTime: 150 + Math.floor(Math.random() * 200),
-      attempts: Math.random() > 0.05 ? 1 : Math.floor(Math.random() * 3) + 1,
-      payload: { event: 'calendar.event.created', eventId: `evt_${Date.now()}_${i}` },
-      ...(Math.random() <= 0.05 && { error: 'Connection timeout' })
-    }));
+    const webhookTypes = [
+      { name: 'Calendar Event Created', url: '/api/webhooks/google-calendar', event: 'calendar.event.created' },
+      { name: 'Calendar Event Updated', url: '/api/webhooks/microsoft-calendar', event: 'calendar.event.updated' },
+      { name: 'Salesforce Account Created', url: '/api/webhooks/salesforce', event: 'account.created' },
+      { name: 'Stripe Customer Created', url: '/api/webhooks/stripe', event: 'customer.created' },
+      { name: 'Stripe Payment Succeeded', url: '/api/webhooks/stripe', event: 'invoice.payment_succeeded' },
+      { name: 'QuickBooks Customer Created', url: '/api/webhooks/quickbooks', event: 'customer.created' },
+      { name: 'QuickBooks Invoice Created', url: '/api/webhooks/quickbooks', event: 'invoice.created' }
+    ];
+
+    return Array.from({ length: Math.min(integrationCount * 2, 10) }, (_, i) => {
+      const webhookType = webhookTypes[Math.floor(Math.random() * webhookTypes.length)];
+      return {
+        id: `delivery-${Date.now()}-${i}`,
+        webhook: webhookType.name,
+        url: webhookType.url,
+        timestamp: new Date(Date.now() - i * 2 * 60 * 1000), // 2 minutes apart
+        status: Math.random() > 0.05 ? 'delivered' : 'failed',
+        responseCode: Math.random() > 0.05 ? 200 : 500,
+        responseTime: 150 + Math.floor(Math.random() * 200),
+        attempts: Math.random() > 0.05 ? 1 : Math.floor(Math.random() * 3) + 1,
+        payload: { event: webhookType.event, id: `${webhookType.event.split('.')[0]}_${Date.now()}_${i}` },
+        ...(Math.random() <= 0.05 && { error: 'Connection timeout' })
+      };
+    });
   }
 }
