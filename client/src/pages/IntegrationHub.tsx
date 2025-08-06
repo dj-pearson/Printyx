@@ -255,8 +255,11 @@ const getProviderIcon = (provider: string) => {
   switch (provider.toLowerCase()) {
     case 'salesforce': return <Building className="h-6 w-6 text-blue-600" />;
     case 'stripe': return <CreditCard className="h-6 w-6 text-indigo-600" />;
-    case 'hubspot': return <Megaphone className="h-6 w-6 text-orange-600" />;
+    case 'quickbooks': return <DollarSign className="h-6 w-6 text-green-600" />;
     case 'intuit': return <DollarSign className="h-6 w-6 text-blue-600" />;
+    case 'google': return <Calendar className="h-6 w-6 text-red-600" />;
+    case 'microsoft': return <Calendar className="h-6 w-6 text-blue-600" />;
+    case 'hubspot': return <Megaphone className="h-6 w-6 text-orange-600" />;
     case 'mailchimp': return <Mail className="h-6 w-6 text-yellow-600" />;
     case 'slack technologies': return <MessageSquare className="h-6 w-6 text-purple-600" />;
     default: return <Globe className="h-6 w-6 text-gray-600" />;
