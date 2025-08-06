@@ -31,6 +31,9 @@ import {
   insertDealSchema,
   insertDealStageSchema,
   insertDealActivitySchema,
+  companyContacts,
+  equipment,
+  customers,
 } from "@shared/schema";
 import multer from "multer";
 import csv from "csv-parser";
@@ -50,6 +53,8 @@ import { registerSalesforceRoutes } from "./routes-salesforce-integration";
 import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { DashboardService } from "./integrations/dashboard-service";
+import { db } from "./db";
+import { and, eq, sql, desc } from "drizzle-orm";
 import integrationRoutes from "./integrations/routes";
 import integrationHubRoutes from "./routes-integration-hub";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
@@ -12600,6 +12605,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register enhanced service routes
   app.use("/api", enhancedServiceRoutes);
+
+  // Company search endpoint for phone tickets
+  app.get("/api/companies/search-for-phone-tickets", async (req, res) => {
+    try {
+      const { q: searchTerm } = req.query;
+      const tenantId = req.headers["x-tenant-id"] as string;
+
+      if (!searchTerm || (searchTerm as string).length < 2) {
+        return res.json([]);
+      }
+
+      const searchResults = await db
+        .select({
+          id: customers.id,
+          name: customers.name,
+          phone: customers.phone,
+          email: customers.email,
+          address: customers.address,
+        })
+        .from(customers)
+        .where(
+          and(
+            eq(customers.tenantId, tenantId),
+            sql`LOWER(${customers.name}) LIKE LOWER(${'%' + searchTerm + '%'})`
+          )
+        )
+        .limit(10);
+
+      res.json(searchResults);
+    } catch (error) {
+      console.error("Error searching companies:", error);
+      res.status(500).json({ error: "Failed to search companies" });
+    }
+  });
+
+  // Contact search endpoint for phone tickets
+  app.get("/api/contacts/search/:companyId", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const { q: searchTerm } = req.query;
+      const tenantId = req.headers["x-tenant-id"] as string;
+
+      if (!searchTerm || (searchTerm as string).length < 2) {
+        return res.json([]);
+      }
+
+      const searchResults = await db
+        .select({
+          id: companyContacts.id,
+          name: companyContacts.name,
+          phone: companyContacts.phone,
+          email: companyContacts.email,
+          role: companyContacts.role,
+        })
+        .from(companyContacts)
+        .where(
+          and(
+            eq(companyContacts.tenantId, tenantId),
+            eq(companyContacts.companyId, companyId),
+            sql`LOWER(${companyContacts.name}) LIKE LOWER(${'%' + searchTerm + '%'})`
+          )
+        )
+        .limit(10);
+
+      res.json(searchResults);
+    } catch (error) {
+      console.error("Error searching contacts:", error);
+      res.status(500).json({ error: "Failed to search contacts" });
+    }
+  });
+
+  // Equipment search endpoint for phone tickets
+  app.get("/api/equipment/:companyId", async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const tenantId = req.headers["x-tenant-id"] as string;
+
+      const equipmentResults = await db
+        .select({
+          id: equipment.id,
+          assetNumber: equipment.assetNumber,
+          brand: equipment.brand,
+          model: equipment.model,
+          serialNumber: equipment.serialNumber,
+          status: equipment.status,
+        })
+        .from(equipment)
+        .where(
+          and(
+            eq(equipment.tenantId, tenantId),
+            eq(equipment.customerId, companyId),
+            eq(equipment.status, 'active')
+          )
+        )
+        .orderBy(equipment.assetNumber);
+
+      res.json(equipmentResults);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+      res.status(500).json({ error: "Failed to fetch equipment" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
