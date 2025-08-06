@@ -24,11 +24,54 @@ div:has([class*="runtime-error"]) {
   display: none !important;
 }
 
+/* Modern mobile optimizations */
+@supports (padding: env(safe-area-inset-top)) {
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .pt-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .pl-safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .pr-safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 /* Mobile-specific overrides for better scrolling */
 @media (max-width: 768px) {
   /* Smooth scrolling for mobile */
   * {
     -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent iOS zoom on form inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Better touch targets */
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
   }
   
   /* Fix dialog content scrolling */
@@ -46,6 +89,12 @@ div:has([class*="runtime-error"]) {
   /* Ensure scroll areas work properly on mobile */
   [data-radix-scroll-area-viewport] {
     -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Improve mobile focus styles */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 }
 
