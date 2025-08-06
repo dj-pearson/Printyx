@@ -669,7 +669,7 @@ export default function MobileFieldOperations() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Auto-assign</SelectItem>
+                              <SelectItem value="auto">Auto-assign</SelectItem>
                               {(technicians as FieldTechnician[]).map((tech) => (
                                 <SelectItem key={tech.id} value={tech.id}>
                                   {tech.technician_name} ({tech.employee_id})
@@ -807,7 +807,7 @@ export default function MobileFieldOperations() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No work order</SelectItem>
+                            <SelectItem value="none">No work order</SelectItem>
                             {(workOrders as FieldWorkOrder[]).slice(0, 10).map((wo) => (
                               <SelectItem key={wo.id} value={wo.id}>
                                 {wo.work_order_number} - {wo.customer_name}

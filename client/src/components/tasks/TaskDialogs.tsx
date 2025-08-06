@@ -214,7 +214,7 @@ export function CreateTaskDialog({
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Project</SelectItem>
+                      <SelectItem value="none">No Project</SelectItem>
                       {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
@@ -236,7 +236,7 @@ export function CreateTaskDialog({
                       <SelectValue placeholder="Assign to..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {teamMembers.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           <div className="flex items-center space-x-2">

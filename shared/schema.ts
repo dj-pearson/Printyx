@@ -519,6 +519,7 @@ export const users = pgTable("users", {
 // User Settings - Store user preferences, accessibility settings, and profile data
 export const userSettings = pgTable("user_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(), // references tenants.id
   userId: varchar("user_id").notNull().unique(), // references users.id
   
   // Profile Information

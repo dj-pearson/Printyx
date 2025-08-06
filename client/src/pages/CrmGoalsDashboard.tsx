@@ -791,7 +791,8 @@ export default function CrmGoalsDashboard() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
 
@@ -1079,7 +1080,6 @@ function ActivityCalculator() {
           </div>
         </div>
       )}
-      </div>
-    </MainLayout>
+    </div>
   );
 }
