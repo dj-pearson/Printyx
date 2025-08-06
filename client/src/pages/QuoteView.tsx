@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Send, Eye, FileText, Building2, User, Calendar, DollarSign, Download, Percent, TrendingUp, Phone, Mail, MapPin, Hash, Clock } from 'lucide-react';
+import { ArrowLeft, Edit, Send, Eye, FileText, Building2, User, Calendar, DollarSign, Download, Percent, TrendingUp, Phone, Mail, MapPin, Hash, Clock, Wand2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
@@ -239,6 +239,13 @@ export default function QuoteView() {
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Quote
+              </Button>
+              <Button 
+                onClick={() => setLocation(`/proposal-builder?quoteId=${quote.id}`)}
+                className="bg-blue-500 text-white hover:bg-blue-400 border-white/30"
+              >
+                <Wand2 className="h-4 w-4 mr-2" />
+                Create Proposal
               </Button>
               <Button 
                 variant="outline"
