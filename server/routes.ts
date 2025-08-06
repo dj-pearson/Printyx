@@ -59,6 +59,7 @@ import { registerManufacturerIntegrationRoutes } from "./routes-manufacturer-int
 import customerPortalRoutes from "./routes-customer-portal";
 import { serviceDispatchRouter } from "./routes-service-dispatch";
 import commissionRoutes from "./routes-commission";
+import enhancedServiceRoutes from "./routes-enhanced-service";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -12596,6 +12597,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Service Dispatch routes (converted from mock data to database queries)
   app.use(serviceDispatchRouter);
+
+  // Register enhanced service routes
+  app.use("/api", enhancedServiceRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
