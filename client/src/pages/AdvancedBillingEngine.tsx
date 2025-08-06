@@ -975,12 +975,12 @@ export default function AdvancedBillingEngine() {
                         <div className="text-sm">
                           <p><strong>Type:</strong> {config.billing_type.replace('_', ' ')}</p>
                           <p><strong>Frequency:</strong> {config.billing_frequency}</p>
-                          <p><strong>Base Rate:</strong> ${config.base_rate.toFixed(2)}</p>
-                          <p><strong>Min Charge:</strong> ${config.minimum_charge.toFixed(2)}</p>
+                          <p><strong>Base Rate:</strong> ${(config.base_rate || 0).toFixed(2)}</p>
+                          <p><strong>Min Charge:</strong> ${(config.minimum_charge || 0).toFixed(2)}</p>
                           {config.maximum_charge && (
                             <p><strong>Max Charge:</strong> ${config.maximum_charge.toFixed(2)}</p>
                           )}
-                          <p><strong>Tax Rate:</strong> {(config.tax_rate * 100).toFixed(2)}%</p>
+                          <p><strong>Tax Rate:</strong> {((config.tax_rate || 0) * 100).toFixed(2)}%</p>
                           <p><strong>Currency:</strong> {config.currency}</p>
                         </div>
                       </CardContent>

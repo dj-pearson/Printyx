@@ -20,6 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import MainLayout from "@/components/layout/main-layout";
 
 // Types
 type ServiceRequest = {
@@ -231,14 +232,15 @@ export default function CustomerSelfServicePortal() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Customer Self-Service Portal</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your service requests, supply orders, and equipment information
-          </p>
-        </div>
+    <MainLayout>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Customer Self-Service Portal</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">
+              Manage your service requests, supply orders, and equipment information
+            </p>
+          </div>
         <div className="flex space-x-2">
           <Dialog open={isServiceRequestDialogOpen} onOpenChange={setIsServiceRequestDialogOpen}>
             <DialogTrigger asChild>
@@ -253,7 +255,7 @@ export default function CustomerSelfServicePortal() {
               </DialogHeader>
               <Form {...serviceRequestForm}>
                 <form onSubmit={serviceRequestForm.handleSubmit(onServiceRequestSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={serviceRequestForm.control}
                       name="request_type"
@@ -334,7 +336,7 @@ export default function CustomerSelfServicePortal() {
                     )}
                   />
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <FormField
                       control={serviceRequestForm.control}
                       name="equipment_make"
@@ -376,7 +378,7 @@ export default function CustomerSelfServicePortal() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={serviceRequestForm.control}
                       name="preferred_contact_method"
@@ -468,17 +470,17 @@ export default function CustomerSelfServicePortal() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="service-requests">Service Requests</TabsTrigger>
-          <TabsTrigger value="equipment">My Equipment</TabsTrigger>
-          <TabsTrigger value="knowledge-base">Help Center</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 sm:gap-0">
+          <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Dashboard</TabsTrigger>
+          <TabsTrigger value="service-requests" className="text-xs sm:text-sm px-2 py-2">Requests</TabsTrigger>
+          <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">Equipment</TabsTrigger>
+          <TabsTrigger value="knowledge-base" className="text-xs sm:text-sm px-2 py-2">Help</TabsTrigger>
+          <TabsTrigger value="profile" className="text-xs sm:text-sm px-2 py-2">Profile</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
           {/* Dashboard Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
@@ -522,7 +524,7 @@ export default function CustomerSelfServicePortal() {
           </div>
 
           {/* Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Recent Service Requests</CardTitle>
@@ -669,7 +671,7 @@ export default function CustomerSelfServicePortal() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {equipment.map((item) => (
                     <Card key={item.id}>
                       <CardHeader className="pb-3">
@@ -709,7 +711,7 @@ export default function CustomerSelfServicePortal() {
 
         <TabsContent value="knowledge-base" className="space-y-6">
           {/* Search and Filter */}
-          <div className="flex space-x-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -722,7 +724,7 @@ export default function CustomerSelfServicePortal() {
               </div>
             </div>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -801,6 +803,7 @@ export default function CustomerSelfServicePortal() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

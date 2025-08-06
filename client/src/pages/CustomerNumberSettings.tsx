@@ -138,7 +138,13 @@ export default function CustomerNumberSettings() {
   });
 
   const handleFormChange = (field: string, value: any) => {
-    const newFormData = { ...formData, [field]: value };
+    let processedValue = value;
+    // Convert "none" separator to empty string
+    if (field === "separatorChar" && value === "none") {
+      processedValue = "";
+    }
+    
+    const newFormData = { ...formData, [field]: processedValue };
     setFormData(newFormData);
     
     // Auto-preview on changes
@@ -199,7 +205,7 @@ export default function CustomerNumberSettings() {
                 <div className="space-y-2">
                   <Label htmlFor="separator">Separator</Label>
                   <Select
-                    value={formData.separatorChar}
+                    value={formData.separatorChar === "" ? "none" : formData.separatorChar}
                     onValueChange={(value) => handleFormChange("separatorChar", value)}
                   >
                     <SelectTrigger>
@@ -208,7 +214,7 @@ export default function CustomerNumberSettings() {
                     <SelectContent>
                       <SelectItem value="-">Dash (-)</SelectItem>
                       <SelectItem value="_">Underscore (_)</SelectItem>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

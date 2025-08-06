@@ -32,7 +32,7 @@ import {
   Timer,
 } from "lucide-react";
 
-export default function EnhancedServiceSystem() {
+export default function ServiceHub() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showPhoneInCreator, setShowPhoneInCreator] = useState(false);
   const [showTechWorkflow, setShowTechWorkflow] = useState(false);

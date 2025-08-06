@@ -254,7 +254,7 @@ export default function PreventiveMaintenanceAutomation() {
       </div>
 
       {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Maintenance Compliance</CardTitle>
@@ -358,7 +358,7 @@ export default function PreventiveMaintenanceAutomation() {
                           </Badge>
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-3">
                           <div>
                             <span className="font-medium">Customer:</span>
                             <br />
@@ -484,7 +484,7 @@ export default function PreventiveMaintenanceAutomation() {
         </TabsContent>
 
         <TabsContent value="predictive" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {predictions.map((prediction: any) => (
               <Card key={prediction.equipmentId} className="border-l-4 border-l-red-500">
                 <CardHeader>
@@ -558,7 +558,7 @@ export default function PreventiveMaintenanceAutomation() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {templates.map((template) => (
               <Card key={template.id}>
                 <CardHeader>

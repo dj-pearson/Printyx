@@ -212,7 +212,7 @@ export default function PredictiveAnalytics() {
       </div>
 
       {/* AI/ML Overview KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
         <Card className="border-blue-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -301,13 +301,13 @@ export default function PredictiveAnalytics() {
       </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="dashboard">AI Insights</TabsTrigger>
-          <TabsTrigger value="models">ML Models</TabsTrigger>
-          <TabsTrigger value="customer">Customer Analytics</TabsTrigger>
-          <TabsTrigger value="business">Business Intelligence</TabsTrigger>
-          <TabsTrigger value="data">Data Sources</TabsTrigger>
-          <TabsTrigger value="recommendations">AI Recommendations</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+          <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Insights</TabsTrigger>
+          <TabsTrigger value="models" className="text-xs sm:text-sm px-2 py-2">Models</TabsTrigger>
+          <TabsTrigger value="customer" className="text-xs sm:text-sm px-2 py-2">Customer</TabsTrigger>
+          <TabsTrigger value="business" className="text-xs sm:text-sm px-2 py-2">Business</TabsTrigger>
+          <TabsTrigger value="data" className="text-xs sm:text-sm px-2 py-2">Data</TabsTrigger>
+          <TabsTrigger value="recommendations" className="text-xs sm:text-sm px-2 py-2">AI Recs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">

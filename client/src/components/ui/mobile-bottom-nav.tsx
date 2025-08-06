@@ -42,7 +42,6 @@ export default function MobileBottomNav({ className }: MobileBottomNavProps) {
   return (
     <div className={cn(
       "fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border md:hidden",
-      "pb-safe-bottom",
       className
     )}>
       <nav 
@@ -58,7 +57,7 @@ export default function MobileBottomNav({ className }: MobileBottomNavProps) {
             <Link key={item.path} href={item.path} className="flex-1">
               <Button
                 variant="ghost"
-                size="mobile"
+                size="sm"
                 role="tab"
                 aria-selected={isActive}
                 aria-label={`Navigate to ${item.label}`}

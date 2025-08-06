@@ -374,7 +374,7 @@ export default function IncidentResponseSystem() {
       {responseData && (
         <>
           {/* Response Overview KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <Card className="border-red-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -465,13 +465,13 @@ export default function IncidentResponseSystem() {
           </div>
 
           <Tabs defaultValue="active" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="active">Active Incidents</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="teams">Response Teams</TabsTrigger>
-              <TabsTrigger value="threats">Threat Intel</TabsTrigger>
-              <TabsTrigger value="automation">Automation</TabsTrigger>
-              <TabsTrigger value="playbooks">Playbooks</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+              <TabsTrigger value="active" className="text-xs sm:text-sm px-2 py-2">Active</TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 py-2">Analytics</TabsTrigger>
+              <TabsTrigger value="teams" className="text-xs sm:text-sm px-2 py-2">Teams</TabsTrigger>
+              <TabsTrigger value="threats" className="text-xs sm:text-sm px-2 py-2">Threats</TabsTrigger>
+              <TabsTrigger value="automation" className="text-xs sm:text-sm px-2 py-2">Automation</TabsTrigger>
+              <TabsTrigger value="playbooks" className="text-xs sm:text-sm px-2 py-2">Playbooks</TabsTrigger>
             </TabsList>
 
             <TabsContent value="active" className="space-y-6">
@@ -598,7 +598,7 @@ export default function IncidentResponseSystem() {
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Category Breakdown */}
                 <Card>
                   <CardHeader>
@@ -698,7 +698,7 @@ export default function IncidentResponseSystem() {
             </TabsContent>
 
             <TabsContent value="teams" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {responseData.teamPerformance.teams.map((team: any, idx: number) => (
                   <Card key={idx}>
                     <CardHeader>
@@ -973,7 +973,7 @@ export default function IncidentResponseSystem() {
             </TabsContent>
 
             <TabsContent value="playbooks" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {responseData.automatedResponse.playbooks.map((playbook: any, idx: number) => (
                   <Card key={idx} className="hover:shadow-lg transition-shadow">
                     <CardHeader>

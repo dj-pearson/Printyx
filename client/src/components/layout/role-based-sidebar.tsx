@@ -167,7 +167,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     sections.push({
       name: "Service",
       items: [
-        { name: "Enhanced Service Hub", href: "/enhanced-service-system", icon: Headphones },
+        { name: "Service Hub", href: "/service-hub", icon: Headphones },
         { name: "Service Dispatch", href: "/service-dispatch-optimization", icon: Calendar },
         {
           name: "Mobile Field Service",

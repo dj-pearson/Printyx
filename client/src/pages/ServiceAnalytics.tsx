@@ -723,13 +723,13 @@ export default function ServiceAnalytics() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="technicians">Technicians</TabsTrigger>
-          <TabsTrigger value="customers">Customers</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 py-2">Overview</TabsTrigger>
+          <TabsTrigger value="performance" className="text-xs sm:text-sm px-2 py-2">Performance</TabsTrigger>
+          <TabsTrigger value="technicians" className="text-xs sm:text-sm px-2 py-2">Technicians</TabsTrigger>
+          <TabsTrigger value="customers" className="text-xs sm:text-sm px-2 py-2">Customers</TabsTrigger>
+          <TabsTrigger value="trends" className="text-xs sm:text-sm px-2 py-2">Trends</TabsTrigger>
+          <TabsTrigger value="benchmarks" className="text-xs sm:text-sm px-2 py-2">Benchmarks</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

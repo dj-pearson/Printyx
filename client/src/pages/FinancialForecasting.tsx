@@ -281,7 +281,7 @@ export default function FinancialForecasting() {
               </DialogHeader>
               <Form {...forecastForm}>
                 <form onSubmit={forecastForm.handleSubmit(onForecastSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={forecastForm.control}
                       name="forecast_name"
@@ -320,7 +320,7 @@ export default function FinancialForecasting() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={forecastForm.control}
                       name="forecast_period"
@@ -367,7 +367,7 @@ export default function FinancialForecasting() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={forecastForm.control}
                       name="start_date"
@@ -396,7 +396,7 @@ export default function FinancialForecasting() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={forecastForm.control}
                       name="base_amount"
@@ -484,7 +484,7 @@ export default function FinancialForecasting() {
               </DialogHeader>
               <Form {...cashFlowForm}>
                 <form onSubmit={cashFlowForm.handleSubmit(onCashFlowSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <FormField
                       control={cashFlowForm.control}
                       name="projection_name"
@@ -515,7 +515,7 @@ export default function FinancialForecasting() {
 
                   <div className="space-y-3">
                     <h4 className="font-medium text-sm">Cash Inflows</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={cashFlowForm.control}
                         name="beginning_cash"
@@ -557,7 +557,7 @@ export default function FinancialForecasting() {
 
                   <div className="space-y-3">
                     <h4 className="font-medium text-sm">Cash Outflows</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={cashFlowForm.control}
                         name="payroll_expenses"
@@ -676,17 +676,17 @@ export default function FinancialForecasting() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
-          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="profitability">Profitability</TabsTrigger>
-          <TabsTrigger value="kpis">KPIs</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 sm:gap-0">
+          <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Dashboard</TabsTrigger>
+          <TabsTrigger value="forecasts" className="text-xs sm:text-sm px-2 py-2">Forecasts</TabsTrigger>
+          <TabsTrigger value="cashflow" className="text-xs sm:text-sm px-2 py-2">Cash Flow</TabsTrigger>
+          <TabsTrigger value="profitability" className="text-xs sm:text-sm px-2 py-2">Profit</TabsTrigger>
+          <TabsTrigger value="kpis" className="text-xs sm:text-sm px-2 py-2">KPIs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
           {/* Financial Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Revenue Forecast</CardTitle>
