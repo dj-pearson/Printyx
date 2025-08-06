@@ -165,7 +165,7 @@ export default function QuoteView() {
   const rawSubtotalAmount = parseFloat(quote.subtotal || '0');
   const discountAmount = parseFloat(quote.discountAmount || '0');
   const discountPercentage = parseFloat(quote.discountPercentage || '0');
-  const taxAmount = parseFloat(quote.taxAmount || '0');
+  const storedTaxAmount = parseFloat(quote.taxAmount || '0');
   
   // Apply markup/discount to line items for client display
   // For markup: discountPercentage is negative (e.g., -10 means 10% markup)
@@ -189,7 +189,12 @@ export default function QuoteView() {
   
   // Calculate totals with adjustments applied
   const adjustedSubtotal = adjustedLineItems.reduce((sum, item) => sum + item.adjustedTotalPrice, 0);
-  const finalTotal = adjustedSubtotal + taxAmount;
+  
+  // Calculate tax properly - if stored tax is 0, calculate based on 8.25% default rate
+  const taxRate = 8.25; // This should match the default in PricingCalculator
+  const calculatedTaxAmount = storedTaxAmount > 0 ? storedTaxAmount : (adjustedSubtotal * taxRate) / 100;
+  
+  const finalTotal = adjustedSubtotal + calculatedTaxAmount;
 
   return (
     <MainLayout title={`Quote ${quote.proposalNumber}`} description={`View and manage quote for ${company ? getCompanyDisplayName(company) : 'customer'}`}>
@@ -420,8 +425,8 @@ export default function QuoteView() {
               
               {/* Tax - Always show */}
               <div className="flex justify-between items-center py-3 border-t border-gray-100 text-lg">
-                <span className="text-gray-700 font-medium">Tax</span>
-                <span className="font-semibold">{formatCurrency(taxAmount)}</span>
+                <span className="text-gray-700 font-medium">Tax ({taxRate}%)</span>
+                <span className="font-semibold">{formatCurrency(calculatedTaxAmount)}</span>
               </div>
               
               {/* Grand Total */}
