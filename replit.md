@@ -11,6 +11,7 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 - **Enhanced Contact Form (Aug 5, 2025)**: Implemented intelligent company field with predictive dropdown and automatic company creation. Users can now type company names with real-time search and create new companies seamlessly during contact creation.
 - **Mobile Optimization (Aug 5, 2025)**: Comprehensive mobile optimization for deals management including responsive Kanban board, mobile card view for table data, and optimized dialog layouts for mobile devices.
+- **Proposal Builder System (Aug 6, 2025)**: Built comprehensive proposal builder that integrates with existing quotes. Sales reps can now select existing quotes, choose professional templates, configure sections, and transform quotes into polished proposals. The system includes a 5-step workflow: Quote Selection → Template Selection → Section Configuration → Content Management → Preview & Send.
 
 ## System Architecture
 
@@ -57,6 +58,7 @@ Preferred communication style: Simple, everyday language.
 - **Meter Billing System**: Automated invoice generation and tiered billing.
 - **Service Dispatch**: Smart technician assignment and work order optimization.
 - **CRM System**: Lead pipeline, quote generation, customer interaction, and equipment tracking.
+- **Proposal Builder**: Quote-to-proposal conversion system with professional templates, customizable sections, and company branding integration.
 - **Product Management System**: Seven-category product catalog.
 - **Task Management System**: Personal and multi-step project tracking.
 - **Equipment Lifecycle Management**: Purchase orders, warehouse, delivery, installation, and asset tracking.

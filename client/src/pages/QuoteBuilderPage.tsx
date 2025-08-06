@@ -21,6 +21,12 @@ export default function QuoteBuilderPage() {
   const quoteId = params?.quoteId;
   const isEditing = !!quoteId;
 
+  // Check for proposal creation mode
+  const urlParams = new URLSearchParams(window.location.search);
+  const isProposalMode = urlParams.get('type') === 'proposal';
+  const sourceQuoteId = urlParams.get('quoteId');
+  const templateId = urlParams.get('templateId');
+
   const handleSave = (savedQuoteId: string) => {
     if (savedQuoteId === 'redirect-to-management') {
       setLocation('/quotes');
@@ -50,9 +56,12 @@ export default function QuoteBuilderPage() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                 <Calculator className="h-8 w-8" />
-                {isEditing ? 'Edit Quote' : 'Quote Builder'}
+                {isProposalMode ? 'Create Proposal' : (isEditing ? 'Edit Quote' : 'Quote Builder')}
               </h1>
               <p className="text-muted-foreground">
+                {isProposalMode 
+                  ? `Creating proposal from quote ${sourceQuoteId} with template ${templateId}` 
+                  : ''}
                 {isEditing 
                   ? 'Modify your existing quote with line-by-line product selection'
                   : 'Create a comprehensive quote with line-by-line product selection'
