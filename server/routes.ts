@@ -49,6 +49,8 @@ import { registerBusinessRecordRoutes } from "./routes-business-records";
 import { registerSalesforceRoutes } from "./routes-salesforce-integration";
 import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
+import { DashboardService } from "./integrations/dashboard-service";
+import integrationRoutes from "./integrations/routes";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
 import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
@@ -4099,7 +4101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  // Advanced Integration Hub Routes
+  // Advanced Integration Hub Routes - Real Implementation
   app.get(
     "/api/integration-hub/dashboard",
     requireAuth,
@@ -4110,209 +4112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
 
-        const integrationHubData = {
-          integrationOverview: {
-            totalIntegrations: 42,
-            activeIntegrations: 39,
-            pendingIntegrations: 2,
-            failedIntegrations: 1,
-            integrationSuccessRate: 97.4,
-            apiCallsToday: 1245678,
-            dataTransferred: 15.7,
-            webhooksDelivered: 34567,
-            integrationUptime: 99.8,
-            averageLatency: 189,
-            errorRate: 0.8,
-            rateLimitHits: 23,
-          },
-          apiMarketplace: {
-            availableAPIs: [
-              {
-                id: "api-salesforce",
-                name: "Salesforce CRM",
-                category: "CRM",
-                provider: "Salesforce",
-                version: "v59.0",
-                status: "active",
-                popularity: 94.7,
-                integrations: 1247,
-                ratingAverage: 4.8,
-                ratingCount: 356,
-                description:
-                  "Complete CRM integration for sales, marketing, and customer service",
-                endpoints: 15,
-                authentication: "OAuth2",
-                pricing: "freemium",
-                documentation: "https://developer.salesforce.com/docs",
-                capabilities: [
-                  "lead_management",
-                  "opportunity_tracking",
-                  "contact_sync",
-                  "activity_logging",
-                ],
-                lastUpdated: new Date("2025-01-15T00:00:00Z"),
-                supportLevel: "enterprise",
-                setupComplexity: "medium",
-              },
-              {
-                id: "api-stripe",
-                name: "Stripe Payments",
-                category: "Payments",
-                provider: "Stripe",
-                version: "2023-10-16",
-                status: "active",
-                popularity: 92.1,
-                integrations: 2134,
-                ratingAverage: 4.9,
-                ratingCount: 567,
-                description:
-                  "Complete payment processing and subscription management",
-                endpoints: 18,
-                authentication: "API Key",
-                pricing: "usage_based",
-                documentation: "https://stripe.com/docs/api",
-                capabilities: [
-                  "payment_processing",
-                  "subscription_billing",
-                  "fraud_detection",
-                  "reporting",
-                ],
-                lastUpdated: new Date("2025-01-25T00:00:00Z"),
-                supportLevel: "enterprise",
-                setupComplexity: "medium",
-              },
-            ],
-            categories: [
-              {
-                name: "CRM",
-                count: 8,
-                description: "Customer relationship management systems",
-              },
-              {
-                name: "Marketing",
-                count: 6,
-                description: "Marketing automation and campaign tools",
-              },
-              {
-                name: "Payments",
-                count: 4,
-                description: "Payment processing and billing systems",
-              },
-            ],
-            featuredIntegrations: [
-              { id: "api-salesforce", reason: "Most popular CRM integration" },
-            ],
-          },
-          activeIntegrations: [
-            {
-              id: "integration-001",
-              apiId: "api-salesforce",
-              name: "Salesforce CRM Integration",
-              status: "active",
-              configuredAt: new Date("2024-12-15T00:00:00Z"),
-              lastSync: new Date("2025-02-01T08:20:00Z"),
-              syncFrequency: "real-time",
-              recordsSynced: 45678,
-              apiCallsToday: 12456,
-              successRate: 98.7,
-              averageLatency: 234,
-              dataVolume: 2.3,
-              errorCount: 5,
-              configuration: {
-                environment: "production",
-                instanceUrl: "https://company.my.salesforce.com",
-                apiVersion: "v59.0",
-              },
-              dataMapping: {
-                contacts: {
-                  source: "salesforce.Contact",
-                  target: "printyx.BusinessRecord",
-                  fields: 23,
-                },
-              },
-              webhooks: [
-                {
-                  event: "contact.created",
-                  url: "/webhook/salesforce/contact",
-                  status: "active",
-                  deliveryRate: 99.2,
-                },
-              ],
-              recentActivity: [
-                {
-                  timestamp: new Date("2025-02-01T08:20:00Z"),
-                  action: "contact_sync",
-                  records: 234,
-                  status: "success",
-                },
-              ],
-            },
-          ],
-          webhookManagement: {
-            totalWebhooks: 67,
-            activeWebhooks: 64,
-            pausedWebhooks: 2,
-            failedWebhooks: 1,
-            deliverySuccessRate: 98.3,
-            averageDeliveryTime: 234,
-            retryAttempts: 1567,
-            successfulRetries: 1456,
-            recentDeliveries: [
-              {
-                id: "delivery-001",
-                webhook: "Salesforce Contact Created",
-                url: "/webhook/salesforce/contact",
-                timestamp: new Date("2025-02-01T08:20:00Z"),
-                status: "delivered",
-                responseCode: 200,
-                responseTime: 187,
-                attempts: 1,
-                payload: { event: "contact.created", objectId: "SF001234" },
-              },
-            ],
-            deliveryMetrics: {
-              last24Hours: { delivered: 2345, failed: 67, successRate: 97.2 },
-              last7Days: { delivered: 16789, failed: 456, successRate: 97.3 },
-              last30Days: { delivered: 78456, failed: 2134, successRate: 97.4 },
-            },
-          },
-          integrationAnalytics: {
-            usageStatistics: {
-              totalApiCalls: 1245678,
-              totalDataTransferred: 15.7,
-              totalWebhooksDelivered: 34567,
-              averageResponseTime: 189,
-              peakUsageHour: "10:00-11:00",
-              topIntegrationByVolume: "Salesforce CRM",
-              topIntegrationByUsage: "Stripe Payments",
-            },
-            performanceMetrics: {
-              responseTimePercentiles: { p50: 156, p95: 789, p99: 2345 },
-              errorRateByCategory: {
-                authentication: 0.2,
-                rateLimiting: 0.3,
-                timeout: 0.1,
-                serverError: 0.2,
-              },
-              uptimeByIntegration: {
-                "Salesforce CRM": 99.8,
-                "Stripe Payments": 99.9,
-              },
-            },
-            costAnalysis: {
-              totalMonthlyCost: 2345.67,
-              costByProvider: {
-                Salesforce: 890.0,
-                Stripe: 567.89,
-                HubSpot: 234.56,
-                Others: 653.22,
-              },
-              costPerApiCall: 0.0019,
-              estimatedMonthlySavings: 1234.56,
-            },
-          },
-        };
-
+        // Use real dashboard service instead of mock data
+        const integrationHubData = await DashboardService.getDashboardData(tenantId);
         res.json(integrationHubData);
       } catch (error) {
         console.error("Error fetching integration hub dashboard:", error);
@@ -7209,6 +7010,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register integration and deployment routes
   registerIntegrationRoutes(app);
+
+  // Register OAuth integration routes (Google Calendar, Microsoft, etc.)
+  app.use(integrationRoutes);
 
   // Register task management routes
   registerTaskRoutes(app);
