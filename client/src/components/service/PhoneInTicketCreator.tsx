@@ -102,23 +102,23 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
 
   // Company search query
   const { data: companies = [], isLoading: companiesLoading } = useQuery({
-    queryKey: ["/api/companies/search-for-phone-tickets", companySearchTerm],
+    queryKey: ["/api/phone-tickets/search-companies", companySearchTerm],
     enabled: companySearchTerm.length >= 2,
-    queryFn: () => fetch(`/api/companies/search-for-phone-tickets?q=${companySearchTerm}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/phone-tickets/search-companies?q=${companySearchTerm}`).then(r => r.json()),
   });
 
   // Contact search query (when company is selected)
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
-    queryKey: ["/api/contacts/search", selectedCompany?.id, contactSearchTerm],
+    queryKey: ["/api/phone-tickets/search-contacts", selectedCompany?.id, contactSearchTerm],
     enabled: !!selectedCompany && contactSearchTerm.length >= 2,
-    queryFn: () => fetch(`/api/contacts/search/${selectedCompany.id}?q=${contactSearchTerm}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/phone-tickets/search-contacts/${selectedCompany.id}?q=${contactSearchTerm}`).then(r => r.json()),
   });
 
   // Equipment query (when company is selected)
   const { data: equipment = [], isLoading: equipmentLoading } = useQuery({
-    queryKey: ["/api/equipment", selectedCompany?.id, equipmentSearchTerm],
+    queryKey: ["/api/phone-tickets/equipment", selectedCompany?.id, equipmentSearchTerm],
     enabled: !!selectedCompany,
-    queryFn: () => fetch(`/api/equipment/${selectedCompany.id}`).then(r => r.json()),
+    queryFn: () => fetch(`/api/phone-tickets/equipment/${selectedCompany.id}`).then(r => r.json()),
   });
 
   // Create phone-in ticket mutation

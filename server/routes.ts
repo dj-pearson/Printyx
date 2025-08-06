@@ -33,7 +33,7 @@ import {
   insertDealActivitySchema,
   companyContacts,
   equipment,
-  customers,
+  businessRecords,
 } from "@shared/schema";
 import multer from "multer";
 import csv from "csv-parser";
@@ -12606,8 +12606,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register enhanced service routes
   app.use("/api", enhancedServiceRoutes);
 
-  // Company search endpoint for phone tickets
-  app.get("/api/companies/search-for-phone-tickets", async (req, res) => {
+  // Company search endpoint for phone tickets (placed before other company routes)
+  app.get("/api/phone-tickets/search-companies", async (req, res) => {
     try {
       const { q: searchTerm } = req.query;
       const tenantId = req.headers["x-tenant-id"] as string;
@@ -12618,17 +12618,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const searchResults = await db
         .select({
-          id: customers.id,
-          name: customers.name,
-          phone: customers.phone,
-          email: customers.email,
-          address: customers.address,
+          id: businessRecords.id,
+          name: businessRecords.name,
+          phone: businessRecords.phone,
+          email: businessRecords.email,
+          address: businessRecords.address,
         })
-        .from(customers)
+        .from(businessRecords)
         .where(
           and(
-            eq(customers.tenantId, tenantId),
-            sql`LOWER(${customers.name}) LIKE LOWER(${'%' + searchTerm + '%'})`
+            eq(businessRecords.tenantId, tenantId),
+            eq(businessRecords.recordType, 'customer'),
+            sql`LOWER(${businessRecords.name}) LIKE LOWER(${'%' + searchTerm + '%'})`
           )
         )
         .limit(10);
@@ -12641,7 +12642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contact search endpoint for phone tickets
-  app.get("/api/contacts/search/:companyId", async (req, res) => {
+  app.get("/api/phone-tickets/search-contacts/:companyId", async (req, res) => {
     try {
       const { companyId } = req.params;
       const { q: searchTerm } = req.query;
@@ -12663,7 +12664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(companyContacts.tenantId, tenantId),
-            eq(companyContacts.companyId, companyId),
+            eq(companyContacts.businessRecordId, companyId),
             sql`LOWER(${companyContacts.name}) LIKE LOWER(${'%' + searchTerm + '%'})`
           )
         )
@@ -12677,7 +12678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Equipment search endpoint for phone tickets
-  app.get("/api/equipment/:companyId", async (req, res) => {
+  app.get("/api/phone-tickets/equipment/:companyId", async (req, res) => {
     try {
       const { companyId } = req.params;
       const tenantId = req.headers["x-tenant-id"] as string;
@@ -12695,7 +12696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(equipment.tenantId, tenantId),
-            eq(equipment.customerId, companyId),
+            eq(equipment.businessRecordId, companyId),
             eq(equipment.status, 'active')
           )
         )
