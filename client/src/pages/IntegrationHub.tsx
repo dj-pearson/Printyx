@@ -313,6 +313,41 @@ export default function IntegrationHub() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isConfiguring, setIsConfiguring] = useState<string | null>(null);
 
+  // Fetch integration hub data
+  const { data: integrationData, isLoading, refetch } = useQuery({
+    queryKey: ['/api/integration-hub/dashboard'],
+    select: (data: any) => {
+      if (!data) return null;
+      return {
+        ...data,
+        apiMarketplace: {
+          ...data.apiMarketplace,
+          availableAPIs: data.apiMarketplace?.availableAPIs?.map((api: any) => ({
+            ...api,
+            lastUpdated: api.lastUpdated ? new Date(api.lastUpdated) : new Date()
+          })) || []
+        },
+        activeIntegrations: data.activeIntegrations?.map((integration: any) => ({
+          ...integration,
+          configuredAt: integration.configuredAt ? new Date(integration.configuredAt) : new Date(),
+          lastSync: integration.lastSync ? new Date(integration.lastSync) : new Date(),
+          recentActivity: integration.recentActivity?.map((activity: any) => ({
+            ...activity,
+            timestamp: activity.timestamp ? new Date(activity.timestamp) : new Date()
+          })) || []
+        })) || [],
+        webhookManagement: {
+          ...data.webhookManagement,
+          recentDeliveries: data.webhookManagement?.recentDeliveries?.map((delivery: any) => ({
+            ...delivery,
+            timestamp: delivery.timestamp ? new Date(delivery.timestamp) : new Date()
+          })) || []
+        }
+      };
+    },
+    refetchInterval: 30000 // Refresh every 30 seconds
+  });
+
   // Check for OAuth callback success/error
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -360,41 +395,6 @@ export default function IntegrationHub() {
       // You might want to show an error toast here
     }
   };
-
-  // Fetch integration hub data
-  const { data: integrationData, isLoading, refetch } = useQuery({
-    queryKey: ['/api/integration-hub/dashboard'],
-    select: (data: any) => {
-      if (!data) return null;
-      return {
-        ...data,
-        apiMarketplace: {
-          ...data.apiMarketplace,
-          availableAPIs: data.apiMarketplace?.availableAPIs?.map((api: any) => ({
-            ...api,
-            lastUpdated: api.lastUpdated ? new Date(api.lastUpdated) : new Date()
-          })) || []
-        },
-        activeIntegrations: data.activeIntegrations?.map((integration: any) => ({
-          ...integration,
-          configuredAt: integration.configuredAt ? new Date(integration.configuredAt) : new Date(),
-          lastSync: integration.lastSync ? new Date(integration.lastSync) : new Date(),
-          recentActivity: integration.recentActivity?.map((activity: any) => ({
-            ...activity,
-            timestamp: activity.timestamp ? new Date(activity.timestamp) : new Date()
-          })) || []
-        })) || [],
-        webhookManagement: {
-          ...data.webhookManagement,
-          recentDeliveries: data.webhookManagement?.recentDeliveries?.map((delivery: any) => ({
-            ...delivery,
-            timestamp: delivery.timestamp ? new Date(delivery.timestamp) : new Date()
-          })) || []
-        }
-      };
-    },
-    refetchInterval: 30000 // Refresh every 30 seconds
-  });
 
   if (isLoading) {
     return (
