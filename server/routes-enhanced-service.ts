@@ -44,7 +44,7 @@ router.post("/phone-in-tickets", async (req, res) => {
           ticketNumber,
           title: `${phoneTicket.issueCategory.replace('_', ' ')} - ${phoneTicket.customerName}`,
           description: phoneTicket.issueDescription,
-          priority: phoneTicket.urgencyLevel,
+          priority: phoneTicket.priority,
           status: 'new',
           customerAddress: phoneTicket.locationAddress,
           customerPhone: phoneTicket.callerPhone,
