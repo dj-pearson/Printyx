@@ -94,8 +94,8 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
 
   if (isLoading) {
     return (
-      <div className={`space-y-6 ${className}`}>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className={`space-y-4 sm:space-y-6 ${className}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -133,22 +133,22 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <p className="text-sm font-medium">Customers</p>
-                <p className="text-2xl font-bold">{module.data.customers}</p>
+                <p className="text-xl sm:text-2xl font-bold">{module.data.customers}</p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Active Contracts</p>
-                <p className="text-2xl font-bold">{module.data.activeContracts}</p>
+                <p className="text-xl sm:text-2xl font-bold">{module.data.activeContracts}</p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Monthly Revenue</p>
-                <p className="text-2xl font-bold">${module.data.monthlyRevenue.toLocaleString()}</p>
+                <p className="text-xl sm:text-2xl font-bold">${module.data.monthlyRevenue.toLocaleString()}</p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Pending Tickets</p>
-                <p className="text-2xl font-bold">{module.data.pendingTickets}</p>
+                <p className="text-xl sm:text-2xl font-bold">{module.data.pendingTickets}</p>
               </div>
             </div>
           </CardContent>
@@ -163,7 +163,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
           <IconComponent className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{module.value}</div>
+          <div className="text-xl sm:text-2xl font-bold">{module.value}</div>
           
           {module.change && (
             <div className="flex items-center text-xs text-muted-foreground mt-1">
@@ -193,30 +193,31 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
   };
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-4 sm:space-y-6 ${className}`}>
       {/* Role-based header with card management */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
             {userRole === 'sales' || userRole === 'sales_rep' ? 'Your sales performance metrics' :
              userRole === 'technician' || userRole === 'service_manager' ? 'Your service metrics' :
              'Business overview and key metrics'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {cardConfig?.availableCards?.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowCardManager(!showCardManager)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-xs sm:text-sm"
             >
-              <Settings className="h-4 w-4" />
-              Customize Cards
+              <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Customize Cards</span>
+              <span className="sm:hidden">Customize</span>
             </Button>
           )}
-          <Badge variant="outline" className="capitalize">
+          <Badge variant="outline" className="capitalize text-xs">
             {userRole?.replace('_', ' ') || 'User'}
           </Badge>
         </div>
@@ -235,7 +236,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {cardConfig.availableCards.map((cardId: string) => (
                 <div key={cardId} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
@@ -271,7 +272,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             <Target className="h-5 w-5" />
             Sales Performance
           </h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {salesModules.map(renderMetricCard)}
           </div>
         </div>
@@ -284,7 +285,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             <Wrench className="h-5 w-5" />
             Service Operations
           </h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {serviceModules.map(renderMetricCard)}
           </div>
         </div>
@@ -310,7 +311,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             <AlertCircle className="h-5 w-5" />
             Operations
           </h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {operationsModules.map(renderMetricCard)}
           </div>
         </div>

@@ -34,6 +34,7 @@ interface TextFieldProps<T extends FieldValues> extends BaseFormFieldProps<T> {
   disabled?: boolean;
   maxLength?: number;
   autoComplete?: string;
+  inputMode?: "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url";
 }
 
 export function TextField<T extends FieldValues>({
@@ -48,6 +49,7 @@ export function TextField<T extends FieldValues>({
   disabled,
   maxLength,
   autoComplete,
+  inputMode,
 }: TextFieldProps<T>) {
   return (
     <ShadcnFormField
@@ -67,7 +69,9 @@ export function TextField<T extends FieldValues>({
               disabled={disabled}
               maxLength={maxLength}
               autoComplete={autoComplete}
+              inputMode={inputMode || (type === "email" ? "email" : type === "tel" ? "tel" : type === "number" ? "numeric" : "text")}
               className={cn(
+                "min-h-11 text-base sm:text-sm touch-manipulation",
                 fieldState.error && "border-destructive focus:border-destructive"
               )}
             />
@@ -117,6 +121,7 @@ export function TextAreaField<T extends FieldValues>({
               rows={rows}
               maxLength={maxLength}
               className={cn(
+                "min-h-20 text-base sm:text-sm touch-manipulation resize-y",
                 fieldState.error && "border-destructive focus:border-destructive"
               )}
             />
@@ -168,7 +173,7 @@ export function SelectField<T extends FieldValues>({
             disabled={disabled}
           >
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className="min-h-11 text-base sm:text-sm touch-manipulation">
                 <SelectValue placeholder={placeholder} />
               </SelectTrigger>
             </FormControl>
@@ -209,16 +214,17 @@ export function CheckboxField<T extends FieldValues>({
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className={cn("flex flex-row items-start space-x-3 space-y-0", className)}>
+        <FormItem className={cn("flex flex-row items-start space-x-3 space-y-0 py-2", className)}>
           <FormControl>
             <Checkbox
               checked={field.value}
               onCheckedChange={field.onChange}
               disabled={disabled}
+              className="mt-0.5 h-5 w-5 touch-manipulation"
             />
           </FormControl>
           <div className="space-y-1 leading-none">
-            <FormLabel className="cursor-pointer">{label}</FormLabel>
+            <FormLabel className="cursor-pointer text-base sm:text-sm leading-relaxed">{label}</FormLabel>
             {description && <FormDescription>{description}</FormDescription>}
           </div>
           <FormMessage />
@@ -272,15 +278,16 @@ export function RadioField<T extends FieldValues>({
               disabled={disabled}
             >
               {options.map((option) => (
-                <div key={option.value} className="flex items-center space-x-2">
+                <div key={option.value} className="flex items-center space-x-3 py-2">
                   <RadioGroupItem
                     value={option.value}
                     id={`${String(name)}-${option.value}`}
                     disabled={option.disabled}
+                    className="h-5 w-5 touch-manipulation"
                   />
                   <label
                     htmlFor={`${String(name)}-${option.value}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    className="text-base sm:text-sm font-medium leading-relaxed peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer min-h-11 flex items-center"
                   >
                     {option.label}
                   </label>
@@ -339,6 +346,7 @@ export function DateField<T extends FieldValues>({
               min={min}
               max={max}
               className={cn(
+                "min-h-11 text-base sm:text-sm touch-manipulation",
                 fieldState.error && "border-destructive focus:border-destructive"
               )}
             />
@@ -390,13 +398,14 @@ export function CurrencyField<T extends FieldValues>({
               <Input
                 {...field}
                 type="number"
+                inputMode="decimal"
                 placeholder={placeholder}
                 disabled={disabled}
                 min={min}
                 max={max}
                 step="0.01"
                 className={cn(
-                  "pl-8",
+                  "pl-8 min-h-11 text-base sm:text-sm touch-manipulation",
                   fieldState.error && "border-destructive focus:border-destructive"
                 )}
               />
