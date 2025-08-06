@@ -6,6 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   FileText, 
   FileSignature, 
@@ -22,7 +26,12 @@ import {
   Award,
   Calendar,
   DollarSign,
-  CheckCircle
+  CheckCircle,
+  Search,
+  SortAsc,
+  SortDesc,
+  Grid,
+  Table as TableIcon
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
 
@@ -137,12 +146,73 @@ export default function ProposalBuilder() {
   const [selectedTemplate, setSelectedTemplate] = useState<ProposalTemplate | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<'quote' | 'template' | 'sections' | 'content' | 'preview'>('quote');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'customer' | 'amount' | 'date'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [proposalContent, setProposalContent] = useState({
+    coverLetter: '',
+    executiveSummary: '',
+    companyIntroduction: '',
+    solutionOverview: '',
+    pricingDetails: '',
+    termsAndConditions: '',
+    nextSteps: ''
+  });
 
   // Fetch existing quotes that can be converted to proposals
   const { data: quotes, isLoading: quotesLoading } = useQuery({
     queryKey: ['/api/proposals'],
     enabled: true,
   });
+
+  // Fetch business records for customer mapping
+  const { data: businessRecords } = useQuery({
+    queryKey: ['/api/business-records'],
+    enabled: true,
+  });
+
+  // Filter and sort quotes
+  const filteredAndSortedQuotes = (quotes || [])
+    .filter((quote: any) => {
+      if (!searchTerm) return true;
+      const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId)?.name || 'Unknown';
+      return (
+        quote.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.proposalNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    })
+    .sort((a: any, b: any) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'name':
+          aValue = a.title || '';
+          bValue = b.title || '';
+          break;
+        case 'customer':
+          aValue = businessRecords?.find((br: any) => br.id === a.businessRecordId)?.name || '';
+          bValue = businessRecords?.find((br: any) => br.id === b.businessRecordId)?.name || '';
+          break;
+        case 'amount':
+          aValue = parseFloat(a.totalAmount) || 0;
+          bValue = parseFloat(b.totalAmount) || 0;
+          break;
+        case 'date':
+          aValue = new Date(a.createdAt).getTime();
+          bValue = new Date(b.createdAt).getTime();
+          break;
+        default:
+          return 0;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
 
   const handleQuoteSelect = (quoteId: string) => {
     setSelectedQuote(quoteId);
@@ -191,7 +261,7 @@ export default function ProposalBuilder() {
             <div className="flex items-center gap-2">
               {selectedQuote && (
                 <Badge variant="outline">
-                  Quote: {quotes?.find(q => q.id === selectedQuote)?.proposalNumber || selectedQuote}
+                  Quote: {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber || selectedQuote}
                 </Badge>
               )}
               {selectedTemplate && (
@@ -251,52 +321,162 @@ export default function ProposalBuilder() {
               <p className="text-muted-foreground">Choose an existing quote to transform into a professional proposal</p>
             </div>
 
+            {/* Search and Filter Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search quotes, customers, or quote numbers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Sort by Name</SelectItem>
+                    <SelectItem value="customer">Sort by Customer</SelectItem>
+                    <SelectItem value="amount">Sort by Amount</SelectItem>
+                    <SelectItem value="date">Sort by Date</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                >
+                  {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                </Button>
+                
+                <div className="flex border rounded">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="rounded-r-none"
+                  >
+                    <Grid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'table' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('table')}
+                    className="rounded-l-none"
+                  >
+                    <TableIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {quotesLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                 <p className="text-muted-foreground mt-2">Loading quotes...</p>
               </div>
-            ) : quotes && quotes.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {quotes.map((quote: any) => (
-                  <Card 
-                    key={quote.id} 
-                    className={`cursor-pointer transition-all hover:shadow-lg ${
-                      selectedQuote === quote.id ? 'ring-2 ring-primary' : ''
-                    }`}
-                    onClick={() => handleQuoteSelect(quote.id)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{quote.proposalNumber}</CardTitle>
-                        <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'}>
-                          {quote.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm font-medium">{quote.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Customer: {quotes.find((br: any) => br.id === quote.businessRecordId)?.name || 'Unknown'}
-                          </p>
+            ) : filteredAndSortedQuotes.length > 0 ? (
+              viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredAndSortedQuotes.map((quote: any) => {
+                    const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId);
+                    return (
+                    <Card 
+                      key={quote.id} 
+                      className={`cursor-pointer transition-all hover:shadow-lg ${
+                        selectedQuote === quote.id ? 'ring-2 ring-primary' : ''
+                      }`}
+                      onClick={() => handleQuoteSelect(quote.id)}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">{quote.proposalNumber}</CardTitle>
+                          <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'}>
+                            {quote.status}
+                          </Badge>
                         </div>
-                        
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Total Amount:</span>
-                          <span className="font-semibold">${quote.totalAmount}</span>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div>
+                            <h3 className="text-lg font-semibold text-primary">{quote.title}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Customer: {customer?.name || 'Unknown Customer'}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Total Amount:</span>
+                            <span className="font-semibold text-lg">${quote.totalAmount}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span>Created {new Date(quote.createdAt).toLocaleDateString()}</span>
+                          </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          <span>Created {new Date(quote.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Card>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Quote Number</TableHead>
+                        <TableHead>Quote Name</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Total Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAndSortedQuotes.map((quote: any) => {
+                        const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId);
+                        return (
+                          <TableRow 
+                            key={quote.id}
+                            className={`cursor-pointer ${selectedQuote === quote.id ? 'bg-primary/10' : ''}`}
+                            onClick={() => handleQuoteSelect(quote.id)}
+                          >
+                            <TableCell className="font-medium">{quote.proposalNumber}</TableCell>
+                            <TableCell className="font-semibold text-primary">{quote.title}</TableCell>
+                            <TableCell>{customer?.name || 'Unknown Customer'}</TableCell>
+                            <TableCell className="font-semibold">${quote.totalAmount}</TableCell>
+                            <TableCell>
+                              <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'}>
+                                {quote.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{new Date(quote.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <Button 
+                                size="sm" 
+                                variant={selectedQuote === quote.id ? 'default' : 'outline'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleQuoteSelect(quote.id);
+                                }}
+                              >
+                                {selectedQuote === quote.id ? 'Selected' : 'Select'}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Card>
+              )
             ) : (
               <Card>
                 <CardContent className="text-center py-12">
@@ -326,7 +506,7 @@ export default function ProposalBuilder() {
               <h2 className="text-xl font-semibold">Choose a Proposal Template</h2>
               <p className="text-muted-foreground">
                 {selectedQuote && (
-                  <>Selected Quote: {quotes?.find(q => q.id === selectedQuote)?.proposalNumber} - </>
+                  <>Selected Quote: {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber} - </>
                 )}
                 Start with a professional template tailored to your proposal type
               </p>
@@ -457,33 +637,164 @@ export default function ProposalBuilder() {
           </div>
         )}
 
-        {/* Coming Soon Steps */}
-        {(activeStep === 'content' || activeStep === 'preview') && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <div className="space-y-4">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <Settings className="h-8 w-8 text-primary" />
+        {/* Content Management Step */}
+        {activeStep === 'content' && selectedTemplate && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold">Add Content to Your Proposal</h2>
+              <p className="text-muted-foreground">
+                Customize the content for each section of your {selectedTemplate.name.toLowerCase()} proposal
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {selectedTemplate.sections
+                .filter(section => section.isVisible)
+                .map((section) => {
+                  const Icon = section.icon;
+                  const fieldKey = section.title.toLowerCase().replace(/\s+/g, '').replace(/&/g, 'And') as keyof typeof proposalContent;
+                  
+                  return (
+                    <Card key={section.id}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <Icon className="h-4 w-4 text-primary" />
+                          </div>
+                          {section.title}
+                          {section.isRequired && (
+                            <Badge variant="destructive" className="text-xs ml-auto">Required</Badge>
+                          )}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <p className="text-sm text-muted-foreground">{section.description}</p>
+                          <div>
+                            <Label htmlFor={fieldKey}>Content</Label>
+                            <Textarea
+                              id={fieldKey}
+                              placeholder={`Enter content for ${section.title.toLowerCase()}...`}
+                              value={proposalContent[fieldKey] || ''}
+                              onChange={(e) => setProposalContent(prev => ({
+                                ...prev,
+                                [fieldKey]: e.target.value
+                              }))}
+                              className="min-h-24"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+
+            <div className="flex justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => setActiveStep('sections')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Sections
+              </Button>
+              <Button onClick={() => setActiveStep('preview')}>
+                Continue to Preview
+                <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Preview Step */}
+        {activeStep === 'preview' && selectedTemplate && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold">Preview Your Proposal</h2>
+              <p className="text-muted-foreground">
+                Review your proposal before sending to {businessRecords?.find((br: any) => br.id === (quotes || []).find((q: any) => q.id === selectedQuote)?.businessRecordId)?.name || 'the customer'}
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Proposal Preview</span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview PDF
+                    </Button>
+                    <Button size="sm">
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Proposal
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Quote Information */}
+                  {selectedQuote && (
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <h3 className="font-semibold mb-2">Source Quote Information</h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Quote:</span> {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Quote Name:</span> {(quotes || []).find((q: any) => q.id === selectedQuote)?.title}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Customer:</span> {businessRecords?.find((br: any) => br.id === (quotes || []).find((q: any) => q.id === selectedQuote)?.businessRecordId)?.name}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Amount:</span> ${(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content Sections */}
+                  {selectedTemplate.sections
+                    .filter(section => section.isVisible)
+                    .map((section) => {
+                      const Icon = section.icon;
+                      const fieldKey = section.title.toLowerCase().replace(/\s+/g, '').replace(/&/g, 'And') as keyof typeof proposalContent;
+                      const content = proposalContent[fieldKey];
+                      
+                      return (
+                        <div key={section.id} className="border-l-4 border-primary/20 pl-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Icon className="h-5 w-5 text-primary" />
+                            <h3 className="font-semibold">{section.title}</h3>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {content || (
+                              <span className="italic">No content added for this section</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
-                <h3 className="text-lg font-semibold">Coming Soon</h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  This step is part of the comprehensive proposal builder system. 
-                  The template selection and section configuration demonstrate the foundation for the full system.
-                </p>
-                <div className="flex gap-2 justify-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setActiveStep('quote')}
-                  >
-                    Back to Quote Selection
-                  </Button>
-                  <Button onClick={handleCreateProposal}>
-                    Create Proposal with Current Quote Builder
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => setActiveStep('content')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Content
+              </Button>
+              <Button onClick={handleCreateProposal}>
+                <Send className="h-4 w-4 mr-2" />
+                Create Final Proposal
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </MainLayout>
