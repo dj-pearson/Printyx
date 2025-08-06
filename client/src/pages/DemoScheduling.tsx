@@ -71,7 +71,7 @@ const getConfirmationColor = (status: string) => {
 export default function DemoScheduling() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
-  const form = useValidatedForm({
+  const form = useForm({
     schema: demoSchedulingSchema,
     onSubmit: (data) => {
       createDemoMutation.mutate({

@@ -281,8 +281,7 @@ export default function DealsManagement() {
       const params = new URLSearchParams();
       if (companySearchTerm) params.append("search", companySearchTerm);
       
-      const response = await apiRequest('GET', `/api/companies?${params}`);
-      return response.json();
+      return await apiRequest('/api/companies?' + params.toString());
     },
   });
 
@@ -291,8 +290,7 @@ export default function DealsManagement() {
     queryKey: ["/api/companies", selectedCompanyId, "contacts"],
     queryFn: async () => {
       if (!selectedCompanyId) return [];
-      const response = await apiRequest('GET', `/api/companies/${selectedCompanyId}/contacts`);
-      return response.json();
+      return await apiRequest(`/api/companies/${selectedCompanyId}/contacts`);
     },
     enabled: !!selectedCompanyId,
   });
