@@ -154,84 +154,87 @@ export default function EnhancedServiceSystem() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Enhanced Service System</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Enhanced Service System</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">
               Comprehensive service management with phone-in tickets and guided technician workflows
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-col sm:flex-row">
             <Button
               onClick={() => setShowPhoneInCreator(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full sm:w-auto"
+              size="default"
             >
               <Phone className="h-4 w-4" />
-              New Phone-In Ticket
+              <span className="hidden sm:inline">New Phone-In Ticket</span>
+              <span className="sm:hidden">New Ticket</span>
             </Button>
             <Button
               variant="outline"
               onClick={() => refetch()}
               disabled={ticketsLoading}
+              className="w-full sm:w-auto"
             >
               <RefreshCw className={`h-4 w-4 ${ticketsLoading ? 'animate-spin' : ''}`} />
-              Refresh
+              <span className="hidden sm:inline ml-2">Refresh</span>
             </Button>
           </div>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Active Tickets</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-600">Active Tickets</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">
                     {tickets.filter((t: any) => !['completed', 'cancelled'].includes(t.status)).length}
                   </p>
                 </div>
-                <Activity className="h-8 w-8 text-blue-600" />
+                <Activity className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Phone-In Queue</p>
-                  <p className="text-2xl font-bold text-gray-900">{phoneInTickets.length}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Phone-In Queue</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">{phoneInTickets.length}</p>
                 </div>
-                <Phone className="h-8 w-8 text-green-600" />
+                <Phone className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">On-Site Techs</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-600">On-Site Techs</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">
                     {tickets.filter((t: any) => t.status === 'on_site').length}
                   </p>
                 </div>
-                <MapPin className="h-8 w-8 text-orange-600" />
+                <MapPin className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Completed Today</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xs md:text-sm text-gray-600">Completed Today</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">
                     {tickets.filter((t: any) => t.status === 'completed' && 
                       new Date(t.updatedAt).toDateString() === new Date().toDateString()).length}
                   </p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-600" />
+                <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
@@ -239,15 +242,15 @@ export default function EnhancedServiceSystem() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="phone-in">Phone-In Queue</TabsTrigger>
-            <TabsTrigger value="active-tickets">Active Tickets</TabsTrigger>
-            <TabsTrigger value="technician-view">Technician View</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+            <TabsTrigger value="overview" className="text-xs md:text-sm py-2">Overview</TabsTrigger>
+            <TabsTrigger value="phone-in" className="text-xs md:text-sm py-2">Phone-In Queue</TabsTrigger>
+            <TabsTrigger value="active-tickets" className="text-xs md:text-sm py-2">Active Tickets</TabsTrigger>
+            <TabsTrigger value="technician-view" className="text-xs md:text-sm py-2">Technician View</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -261,23 +264,24 @@ export default function EnhancedServiceSystem() {
                 <CardContent>
                   <div className="space-y-3">
                     {phoneInTickets.slice(0, 5).map((ticket: any) => (
-                      <div key={ticket.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg space-y-2 sm:space-y-0">
                         <div className="flex-1">
-                          <p className="font-medium">{ticket.customerName}</p>
-                          <p className="text-sm text-gray-600">{ticket.issueCategory}</p>
+                          <p className="font-medium text-sm md:text-base">{ticket.customerName}</p>
+                          <p className="text-xs md:text-sm text-gray-600">{ticket.issueCategory}</p>
                           <p className="text-xs text-gray-500">
                             <Clock className="h-3 w-3 inline mr-1" />
                             {new Date(ticket.createdAt).toLocaleTimeString()}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <Badge variant={getPriorityBadgeVariant(ticket.priority)}>
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge variant={getPriorityBadgeVariant(ticket.priority)} className="text-xs">
                             {ticket.priority}
                           </Badge>
                           <Button
                             size="sm"
                             onClick={() => convertToServiceTicket.mutate(ticket.id)}
                             disabled={convertToServiceTicket.isPending}
+                            className="text-xs"
                           >
                             Convert
                           </Button>
@@ -285,7 +289,7 @@ export default function EnhancedServiceSystem() {
                       </div>
                     ))}
                     {phoneInTickets.length === 0 && (
-                      <p className="text-center text-gray-500 py-4">No phone-in tickets</p>
+                      <p className="text-center text-gray-500 py-4 text-sm">No phone-in tickets</p>
                     )}
                   </div>
                 </CardContent>
@@ -306,17 +310,17 @@ export default function EnhancedServiceSystem() {
                     {tickets.filter((t: any) => ['assigned', 'en_route', 'on_site', 'in_progress'].includes(t.status))
                            .slice(0, 5)
                            .map((ticket: any) => (
-                      <div key={ticket.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg space-y-2 sm:space-y-0">
                         <div className="flex-1">
-                          <p className="font-medium">{ticket.customerName || 'Unknown Customer'}</p>
-                          <p className="text-sm text-gray-600">{ticket.description}</p>
+                          <p className="font-medium text-sm md:text-base">{ticket.customerName || 'Unknown Customer'}</p>
+                          <p className="text-xs md:text-sm text-gray-600">{ticket.description}</p>
                           <p className="text-xs text-gray-500">
                             <User className="h-3 w-3 inline mr-1" />
                             {ticket.assignedTechnician || 'Unassigned'}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <Badge variant={getStatusBadgeVariant(ticket.status)}>
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge variant={getStatusBadgeVariant(ticket.status)} className="text-xs">
                             {ticket.status?.replace('_', ' ')}
                           </Badge>
                           <Button
@@ -326,6 +330,7 @@ export default function EnhancedServiceSystem() {
                               setSelectedTicket(ticket);
                               setShowTechWorkflow(true);
                             }}
+                            className="text-xs"
                           >
                             View
                           </Button>
@@ -333,7 +338,7 @@ export default function EnhancedServiceSystem() {
                       </div>
                     ))}
                     {tickets.filter((t: any) => ['assigned', 'en_route', 'on_site', 'in_progress'].includes(t.status)).length === 0 && (
-                      <p className="text-center text-gray-500 py-4">No active service tickets</p>
+                      <p className="text-center text-gray-500 py-4 text-sm">No active service tickets</p>
                     )}
                   </div>
                 </CardContent>
@@ -350,13 +355,13 @@ export default function EnhancedServiceSystem() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
                   <div className="flex-1">
                     <Input
                       placeholder="Search phone-in tickets..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="max-w-sm"
+                      className="w-full sm:max-w-sm"
                     />
                   </div>
                 </div>
@@ -422,17 +427,17 @@ export default function EnhancedServiceSystem() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
                   <div className="flex-1">
                     <Input
                       placeholder="Search tickets..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="max-w-sm"
+                      className="w-full sm:max-w-sm"
                     />
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full sm:w-40">
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -589,29 +594,35 @@ export default function EnhancedServiceSystem() {
 
         {/* Phone-In Ticket Creator Dialog */}
         <Dialog open={showPhoneInCreator} onOpenChange={setShowPhoneInCreator}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Phone-In Ticket</DialogTitle>
+          <DialogContent className="w-[95vw] max-w-6xl h-[95vh] max-h-[95vh] overflow-hidden flex flex-col p-0">
+            <DialogHeader className="px-6 py-4 border-b bg-gray-50">
+              <DialogTitle className="text-xl font-semibold">Create Phone-In Ticket</DialogTitle>
             </DialogHeader>
-            <PhoneInTicketCreator 
-              isOpen={showPhoneInCreator} 
-              onClose={() => setShowPhoneInCreator(false)} 
-            />
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <PhoneInTicketCreator 
+                isOpen={showPhoneInCreator} 
+                onClose={() => setShowPhoneInCreator(false)} 
+              />
+            </div>
           </DialogContent>
         </Dialog>
 
         {/* Technician Workflow Dialog */}
         <Dialog open={showTechWorkflow} onOpenChange={setShowTechWorkflow}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Technician Workflow - Ticket #{selectedTicket?.id?.slice(0, 8)}</DialogTitle>
+          <DialogContent className="w-[95vw] max-w-6xl h-[95vh] max-h-[95vh] overflow-hidden flex flex-col p-0">
+            <DialogHeader className="px-6 py-4 border-b bg-gray-50">
+              <DialogTitle className="text-xl font-semibold">
+                Technician Workflow - Ticket #{selectedTicket?.id?.slice(0, 8)}
+              </DialogTitle>
             </DialogHeader>
-            {selectedTicket && (
-              <TechnicianTicketWorkflow 
-                ticket={selectedTicket}
-                onClose={() => setShowTechWorkflow(false)} 
-              />
-            )}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {selectedTicket && (
+                <TechnicianTicketWorkflow 
+                  ticket={selectedTicket}
+                  onClose={() => setShowTechWorkflow(false)} 
+                />
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
