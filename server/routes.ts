@@ -51,6 +51,7 @@ import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { DashboardService } from "./integrations/dashboard-service";
 import integrationRoutes from "./integrations/routes";
+import integrationHubRoutes from "./routes-integration-hub";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
 import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
@@ -7013,6 +7014,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register OAuth integration routes (Google Calendar, Microsoft, etc.)
   app.use(integrationRoutes);
+  
+  // Register integration hub dashboard routes
+  app.use(integrationHubRoutes);
 
   // Register task management routes
   registerTaskRoutes(app);
