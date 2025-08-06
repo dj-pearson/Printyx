@@ -4,6 +4,9 @@
  */
 import { GoogleAuth, OAuth2Client } from 'google-auth-library';
 import { Client, AuthenticationProvider } from '@microsoft/microsoft-graph-client';
+import jsforce from 'jsforce';
+import Stripe from 'stripe';
+import QuickBooks from 'node-quickbooks';
 
 export interface OAuthConfig {
   clientId: string;
@@ -60,10 +63,65 @@ export const microsoftCalendarConfig: IntegrationProvider = {
   tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
 };
 
+// Salesforce CRM Configuration
+export const salesforceConfig: IntegrationProvider = {
+  id: 'salesforce',
+  name: 'Salesforce CRM',
+  description: 'Sync customers, leads, opportunities, and activities with Salesforce',
+  category: 'crm',
+  config: {
+    clientId: process.env.SALESFORCE_CLIENT_ID || '',
+    clientSecret: process.env.SALESFORCE_CLIENT_SECRET || '',
+    redirectUri: process.env.SALESFORCE_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/salesforce/callback`,
+    scopes: [
+      'api',
+      'refresh_token',
+      'offline_access'
+    ]
+  },
+  authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
+  tokenUrl: 'https://login.salesforce.com/services/oauth2/token'
+};
+
+// QuickBooks Online Configuration
+export const quickbooksConfig: IntegrationProvider = {
+  id: 'quickbooks',
+  name: 'QuickBooks Online',
+  description: 'Sync customers, invoices, and financial data with QuickBooks Online',
+  category: 'accounting',
+  config: {
+    clientId: process.env.QUICKBOOKS_CLIENT_ID || '',
+    clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET || '',
+    redirectUri: process.env.QUICKBOOKS_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/quickbooks/callback`,
+    scopes: ['com.intuit.quickbooks.accounting']
+  },
+  authUrl: 'https://appcenter.intuit.com/connect/oauth2',
+  tokenUrl: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
+};
+
+// Stripe Payments Configuration
+export const stripeConfig: IntegrationProvider = {
+  id: 'stripe',
+  name: 'Stripe Payments',
+  description: 'Process payments and manage subscriptions with Stripe',
+  category: 'payments',
+  config: {
+    clientId: process.env.STRIPE_CLIENT_ID || '',
+    clientSecret: process.env.STRIPE_SECRET_KEY || '',
+    redirectUri: process.env.STRIPE_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/stripe/callback`,
+    scopes: ['read_write']
+  },
+  authUrl: 'https://connect.stripe.com/oauth/authorize',
+  tokenUrl: 'https://connect.stripe.com/oauth/token'
+};
+
 // Additional integration configs for future expansion
 export const availableIntegrations: IntegrationProvider[] = [
   googleCalendarConfig,
   microsoftCalendarConfig,
+  salesforceConfig,
+  quickbooksConfig,
+  stripeConfig,
   // Future integrations can be added here
 ];
 
@@ -140,6 +198,54 @@ export function createMicrosoftGraphClient(accessToken: string): Client {
 }
 
 /**
+ * Create Salesforce client
+ */
+export function createSalesforceClient(accessToken: string, instanceUrl?: string): jsforce.Connection {
+  const conn = new jsforce.Connection({
+    oauth2: {
+      clientId: salesforceConfig.config.clientId,
+      clientSecret: salesforceConfig.config.clientSecret,
+      redirectUri: salesforceConfig.config.redirectUri
+    },
+    instanceUrl: instanceUrl || 'https://login.salesforce.com',
+    accessToken: accessToken
+  });
+
+  return conn;
+}
+
+/**
+ * Create Stripe client
+ */
+export function createStripeClient(accessToken?: string): Stripe {
+  // For Stripe, we typically use the secret key for server-side operations
+  // accessToken would be for Stripe Connect applications
+  const apiKey = accessToken || process.env.STRIPE_SECRET_KEY;
+  
+  return new Stripe(apiKey!, {
+    apiVersion: '2024-06-20'
+  });
+}
+
+/**
+ * Create QuickBooks client
+ */
+export function createQuickBooksClient(accessToken: string, refreshToken: string, companyId: string): QuickBooks {
+  return new QuickBooks(
+    quickbooksConfig.config.clientId,
+    quickbooksConfig.config.clientSecret,
+    accessToken,
+    false, // not sandbox
+    companyId,
+    true, // use the sandbox flag, but set to false for production
+    true, // debug mode
+    null, // minor_version
+    '2.0', // oauth_version
+    refreshToken
+  );
+}
+
+/**
  * Validate OAuth configuration
  */
 export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
@@ -159,6 +265,30 @@ export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
   }
   if (!microsoftCalendarConfig.config.clientSecret) {
     errors.push('MICROSOFT_CLIENT_SECRET environment variable not set');
+  }
+  
+  // Check Salesforce config
+  if (!salesforceConfig.config.clientId) {
+    errors.push('SALESFORCE_CLIENT_ID environment variable not set');
+  }
+  if (!salesforceConfig.config.clientSecret) {
+    errors.push('SALESFORCE_CLIENT_SECRET environment variable not set');
+  }
+  
+  // Check QuickBooks config
+  if (!quickbooksConfig.config.clientId) {
+    errors.push('QUICKBOOKS_CLIENT_ID environment variable not set');
+  }
+  if (!quickbooksConfig.config.clientSecret) {
+    errors.push('QUICKBOOKS_CLIENT_SECRET environment variable not set');
+  }
+  
+  // Check Stripe config
+  if (!stripeConfig.config.clientId) {
+    errors.push('STRIPE_CLIENT_ID environment variable not set');
+  }
+  if (!stripeConfig.config.clientSecret) {
+    errors.push('STRIPE_SECRET_KEY environment variable not set');
   }
   
   return {
