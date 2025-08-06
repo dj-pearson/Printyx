@@ -287,14 +287,14 @@ export default function ManagedServices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Service Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || "none"} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Network Management">Network Management</SelectItem>
                                 <SelectItem value="Server Management">Server Management</SelectItem>
                                 <SelectItem value="Cloud Services">Cloud Services</SelectItem>
@@ -330,14 +330,14 @@ export default function ManagedServices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Service Level</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || "none"} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Basic">Basic</SelectItem>
                                 <SelectItem value="Standard">Standard</SelectItem>
                                 <SelectItem value="Premium">Premium</SelectItem>
@@ -429,14 +429,14 @@ export default function ManagedServices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Support Hours</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || "none"} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="8x5">8x5 (Business Hours)</SelectItem>
                                 <SelectItem value="12x5">12x5 (Extended Hours)</SelectItem>
                                 <SelectItem value="24x7">24x7 (Round the Clock)</SelectItem>
@@ -453,14 +453,14 @@ export default function ManagedServices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Response Time</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || "none"} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="15 minutes">15 minutes</SelectItem>
                                 <SelectItem value="1 hour">1 hour</SelectItem>
                                 <SelectItem value="4 hours">4 hours</SelectItem>
@@ -658,14 +658,14 @@ export default function ManagedServices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Payment Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || "none"} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Monthly">Monthly</SelectItem>
                                 <SelectItem value="Annual">Annual</SelectItem>
                                 <SelectItem value="Per-device">Per-device</SelectItem>

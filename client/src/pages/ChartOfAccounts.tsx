@@ -394,7 +394,7 @@ export default function ChartOfAccounts() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">None (Main Account)</SelectItem>
+                            <SelectItem value="none">None (Main Account)</SelectItem>
                             {accounts
                               .filter((acc: ChartOfAccount) => !acc.parentAccountId)
                               .map((account: ChartOfAccount) => (

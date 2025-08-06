@@ -518,14 +518,14 @@ export default function Supplies() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Payment Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || "none"} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="One-time">One-time</SelectItem>
                                 <SelectItem value="Per-unit">Per-unit</SelectItem>
                                 <SelectItem value="Bulk">Bulk</SelectItem>
