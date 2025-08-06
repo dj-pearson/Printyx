@@ -5,6 +5,7 @@
 import express from 'express';
 import { IntegrationService } from './integration-service';
 import { availableIntegrations, validateOAuthConfig } from './oauth-config';
+import webhookRoutes from './webhook-routes';
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -265,5 +266,8 @@ router.post('/api/integrations/:integrationId/test', requireAuth, async (req: an
     });
   }
 });
+
+// Include webhook routes
+router.use('/', webhookRoutes);
 
 export default router;
