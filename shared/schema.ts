@@ -156,6 +156,49 @@ export {
   insertComplianceSettingsSchema,
 } from "./security-schema";
 
+// Re-export Commission Management schemas
+export {
+  commissionPlans,
+  commissionPlanTiers,
+  commissionProductRates,
+  employeeCommissionAssignments,
+  commissionCalculations,
+  commissionCalculationDetails,
+  commissionBonuses,
+  commissionAdjustments,
+  commissionDisputes,
+  commissionDisputeHistory,
+  commissionSalesTransactions,
+  planTypeEnum,
+  paymentFrequencyEnum,
+  calculationStatusEnum,
+  disputeStatusEnum,
+  disputeTypeEnum,
+  adjustmentTypeEnum,
+  insertCommissionPlanSchema,
+  insertCommissionPlanTierSchema,
+  insertCommissionProductRateSchema,
+  insertEmployeeCommissionAssignmentSchema,
+  insertCommissionCalculationSchema,
+  insertCommissionCalculationDetailSchema,
+  insertCommissionBonusSchema,
+  insertCommissionAdjustmentSchema,
+  insertCommissionDisputeSchema,
+  insertCommissionDisputeHistorySchema,
+  insertCommissionSalesTransactionSchema,
+  commissionPlansRelations,
+  commissionPlanTiersRelations,
+  commissionProductRatesRelations,
+  employeeCommissionAssignmentsRelations,
+  commissionCalculationsRelations,
+  commissionCalculationDetailsRelations,
+  commissionBonusesRelations,
+  commissionAdjustmentsRelations,
+  commissionDisputesRelations,
+  commissionDisputeHistoryRelations,
+  commissionSalesTransactionsRelations,
+} from "./commission-schema";
+
 export type {
   AuditLog,
   InsertAuditLog,
@@ -170,6 +213,31 @@ export type {
   ComplianceSettings,
   InsertComplianceSettings,
 } from "./security-schema";
+
+export type {
+  CommissionPlan,
+  InsertCommissionPlan,
+  CommissionPlanTier,
+  InsertCommissionPlanTier,
+  CommissionProductRate,
+  InsertCommissionProductRate,
+  EmployeeCommissionAssignment,
+  InsertEmployeeCommissionAssignment,
+  CommissionCalculation,
+  InsertCommissionCalculation,
+  CommissionCalculationDetail,
+  InsertCommissionCalculationDetail,
+  CommissionBonus,
+  InsertCommissionBonus,
+  CommissionAdjustment,
+  InsertCommissionAdjustment,
+  CommissionDispute,
+  InsertCommissionDispute,
+  CommissionDisputeHistory,
+  InsertCommissionDisputeHistory,
+  CommissionSalesTransaction,
+  InsertCommissionSalesTransaction,
+} from "./commission-schema";
 
 // Re-export Demo Scheduling schemas
 export {

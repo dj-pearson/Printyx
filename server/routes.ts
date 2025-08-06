@@ -58,7 +58,7 @@ import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
 import { registerManufacturerIntegrationRoutes } from "./routes-manufacturer-integration";
 import customerPortalRoutes from "./routes-customer-portal";
 import { serviceDispatchRouter } from "./routes-service-dispatch";
-// import { registerCommissionRoutes } from "./routes-commission"; // TODO: Add commission schema tables first
+import commissionRoutes from "./routes-commission";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -7053,7 +7053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupSalesPipelineRoutes(app, storage, requireAuth);
 
   // Register Commission Management routes
-  // registerCommissionRoutes(app); // TODO: Add commission schema tables first
+  app.use(commissionRoutes);
 
   // Register Salesforce test routes (development only)
   if (process.env.NODE_ENV === "development") {

@@ -2,7 +2,22 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
-import { businessRecords, users, contracts } from '../shared/schema';
+import { 
+  businessRecords, 
+  users, 
+  contracts,
+  commissionPlans,
+  commissionPlanTiers,
+  commissionProductRates,
+  employeeCommissionAssignments,
+  commissionCalculations,
+  commissionCalculationDetails,
+  commissionBonuses,
+  commissionAdjustments,
+  commissionDisputes,
+  commissionDisputeHistory,
+  commissionSalesTransactions
+} from '../shared/schema';
 
 const router = express.Router();
 
@@ -674,5 +689,9 @@ router.put('/api/commission/disputes/:id', requireAuth, async (req: any, res) =>
     res.status(500).json({ message: 'Failed to update commission dispute' });
   }
 });
+
+export function registerCommissionRoutes(app: any) {
+  app.use('/', router);
+}
 
 export default router;
