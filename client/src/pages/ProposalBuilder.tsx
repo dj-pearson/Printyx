@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   FileText, 
   FileSignature, 
@@ -19,7 +21,8 @@ import {
   Users,
   Award,
   Calendar,
-  DollarSign
+  DollarSign,
+  CheckCircle
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
 
@@ -132,7 +135,19 @@ const proposalTemplates: ProposalTemplate[] = [
 export default function ProposalBuilder() {
   const [, setLocation] = useLocation();
   const [selectedTemplate, setSelectedTemplate] = useState<ProposalTemplate | null>(null);
-  const [activeStep, setActiveStep] = useState<'template' | 'sections' | 'content' | 'preview'>('template');
+  const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState<'quote' | 'template' | 'sections' | 'content' | 'preview'>('quote');
+
+  // Fetch existing quotes that can be converted to proposals
+  const { data: quotes, isLoading: quotesLoading } = useQuery({
+    queryKey: ['/api/proposals'],
+    enabled: true,
+  });
+
+  const handleQuoteSelect = (quoteId: string) => {
+    setSelectedQuote(quoteId);
+    setActiveStep('template');
+  };
 
   const handleTemplateSelect = (template: ProposalTemplate) => {
     setSelectedTemplate(template);
@@ -140,8 +155,13 @@ export default function ProposalBuilder() {
   };
 
   const handleCreateProposal = () => {
-    // Navigate to actual proposal creation with selected template
-    setLocation('/quotes/new?type=proposal&templateId=' + selectedTemplate?.id);
+    // Navigate to actual proposal creation with selected quote and template
+    const params = new URLSearchParams();
+    if (selectedQuote) params.set('quoteId', selectedQuote);
+    if (selectedTemplate?.id) params.set('templateId', selectedTemplate.id);
+    params.set('type', 'proposal');
+    
+    setLocation('/quotes/new?' + params.toString());
   };
 
   return (
@@ -167,15 +187,24 @@ export default function ProposalBuilder() {
             </div>
           </div>
           
-          {selectedTemplate && (
+          {(selectedQuote || selectedTemplate) && (
             <div className="flex items-center gap-2">
-              <Badge variant="outline">
-                Template: {selectedTemplate.name}
-              </Badge>
-              <Button onClick={handleCreateProposal}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Proposal
-              </Button>
+              {selectedQuote && (
+                <Badge variant="outline">
+                  Quote: {quotes?.find(q => q.id === selectedQuote)?.proposalNumber || selectedQuote}
+                </Badge>
+              )}
+              {selectedTemplate && (
+                <Badge variant="outline">
+                  Template: {selectedTemplate.name}
+                </Badge>
+              )}
+              {selectedQuote && selectedTemplate && (
+                <Button onClick={handleCreateProposal}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Proposal
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -183,6 +212,7 @@ export default function ProposalBuilder() {
         {/* Progress Steps */}
         <div className="flex items-center justify-center space-x-8">
           {[
+            { key: 'quote', label: 'Select Quote', icon: FileText },
             { key: 'template', label: 'Select Template', icon: FileSignature },
             { key: 'sections', label: 'Configure Sections', icon: Layout },
             { key: 'content', label: 'Add Content', icon: Type },
@@ -190,8 +220,8 @@ export default function ProposalBuilder() {
           ].map((step, index) => {
             const Icon = step.icon;
             const isActive = step.key === activeStep;
-            const isCompleted = ['template', 'sections', 'content', 'preview'].indexOf(activeStep) > 
-                              ['template', 'sections', 'content', 'preview'].indexOf(step.key);
+            const isCompleted = ['quote', 'template', 'sections', 'content', 'preview'].indexOf(activeStep) > 
+                              ['quote', 'template', 'sections', 'content', 'preview'].indexOf(step.key);
             
             return (
               <div key={step.key} className="flex items-center">
@@ -205,7 +235,7 @@ export default function ProposalBuilder() {
                   </div>
                   <span className="font-medium">{step.label}</span>
                 </div>
-                {index < 3 && <div className="w-8 h-px bg-border ml-4" />}
+                {index < 4 && <div className="w-8 h-px bg-border ml-4" />}
               </div>
             );
           })}
@@ -213,12 +243,93 @@ export default function ProposalBuilder() {
 
         <Separator />
 
+        {/* Quote Selection */}
+        {activeStep === 'quote' && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold">Select a Quote to Convert</h2>
+              <p className="text-muted-foreground">Choose an existing quote to transform into a professional proposal</p>
+            </div>
+
+            {quotesLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-muted-foreground mt-2">Loading quotes...</p>
+              </div>
+            ) : quotes && quotes.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {quotes.map((quote: any) => (
+                  <Card 
+                    key={quote.id} 
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      selectedQuote === quote.id ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => handleQuoteSelect(quote.id)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{quote.proposalNumber}</CardTitle>
+                        <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'}>
+                          {quote.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm font-medium">{quote.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Customer: {quotes.find((br: any) => br.id === quote.businessRecordId)?.name || 'Unknown'}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Total Amount:</span>
+                          <span className="font-semibold">${quote.totalAmount}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Created {new Date(quote.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                      <FileText className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold">No Quotes Available</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      You need to create a quote first before building a proposal. Quotes contain the pricing and product information that form the foundation of your proposal.
+                    </p>
+                    <Button onClick={() => setLocation('/quotes/new')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Quote
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
         {/* Template Selection */}
         {activeStep === 'template' && (
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-xl font-semibold">Choose a Proposal Template</h2>
-              <p className="text-muted-foreground">Start with a professional template tailored to your proposal type</p>
+              <p className="text-muted-foreground">
+                {selectedQuote && (
+                  <>Selected Quote: {quotes?.find(q => q.id === selectedQuote)?.proposalNumber} - </>
+                )}
+                Start with a professional template tailored to your proposal type
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -266,7 +377,14 @@ export default function ProposalBuilder() {
               ))}
             </div>
 
-            <div className="text-center">
+            <div className="flex justify-between items-center">
+              <Button 
+                variant="outline" 
+                onClick={() => setActiveStep('quote')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Quote Selection
+              </Button>
               <Button variant="outline" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Create Custom Template
@@ -355,9 +473,9 @@ export default function ProposalBuilder() {
                 <div className="flex gap-2 justify-center">
                   <Button 
                     variant="outline" 
-                    onClick={() => setActiveStep('template')}
+                    onClick={() => setActiveStep('quote')}
                   >
-                    Back to Templates
+                    Back to Quote Selection
                   </Button>
                   <Button onClick={handleCreateProposal}>
                     Create Proposal with Current Quote Builder
