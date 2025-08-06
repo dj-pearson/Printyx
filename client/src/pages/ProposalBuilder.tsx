@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   FileText, 
   FileSignature, 
@@ -31,9 +32,19 @@ import {
   SortAsc,
   SortDesc,
   Grid,
-  Table as TableIcon
+  Table as TableIcon,
+  Wand2,
+  Brush,
+  Download,
+  Save,
+  Copy,
+  Layers
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
+import ProposalVisualBuilder from '@/components/proposal-builder/ProposalVisualBuilder';
+import QuoteTransformer from '@/components/proposal-builder/QuoteTransformer';
+import BrandManager from '@/components/proposal-builder/BrandManager';
+import RichTextEditor from '@/components/proposal-builder/RichTextEditor';
 
 interface ProposalTemplate {
   id: string;
@@ -145,11 +156,27 @@ export default function ProposalBuilder() {
   const [, setLocation] = useLocation();
   const [selectedTemplate, setSelectedTemplate] = useState<ProposalTemplate | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState<'quote' | 'template' | 'sections' | 'content' | 'preview'>('quote');
+  const [activeStep, setActiveStep] = useState<'quote' | 'template' | 'transform' | 'visual' | 'preview'>('quote');
+
+  // Check for quote ID in URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const quoteIdFromUrl = urlParams.get('quoteId');
+    
+    if (quoteIdFromUrl) {
+      setSelectedQuote(quoteIdFromUrl);
+      // If quote is pre-selected from URL, skip to template selection
+      setActiveStep('template');
+    }
+  }, []);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'customer' | 'amount' | 'date'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showBrandManager, setShowBrandManager] = useState(false);
+  const [showVisualBuilder, setShowVisualBuilder] = useState(false);
+  const [showQuoteTransformer, setShowQuoteTransformer] = useState(false);
+  const [transformedProposal, setTransformedProposal] = useState<any>(null);
   const [proposalContent, setProposalContent] = useState({
     coverLetter: '',
     executiveSummary: '',
@@ -221,7 +248,39 @@ export default function ProposalBuilder() {
 
   const handleTemplateSelect = (template: ProposalTemplate) => {
     setSelectedTemplate(template);
-    setActiveStep('sections');
+    setActiveStep('transform');
+  };
+
+  const handleTransformQuote = () => {
+    if (selectedQuote) {
+      setShowQuoteTransformer(true);
+    }
+  };
+
+  const handleTransformComplete = (proposalData: any) => {
+    setTransformedProposal(proposalData);
+    setShowQuoteTransformer(false);
+    setActiveStep('visual');
+  };
+
+  const handleOpenVisualBuilder = () => {
+    setShowVisualBuilder(true);
+  };
+
+  const handleOpenBrandManager = () => {
+    setShowBrandManager(true);
+  };
+
+  const handleSaveBrand = (brandProfile: any) => {
+    console.log('Brand profile saved:', brandProfile);
+    setShowBrandManager(false);
+    // In a real implementation, save to backend
+  };
+
+  const handleSaveProposal = (proposalData: any) => {
+    console.log('Proposal saved:', proposalData);
+    setShowVisualBuilder(false);
+    // In a real implementation, save to backend and redirect
   };
 
   const handleCreateProposal = () => {
@@ -252,6 +311,17 @@ export default function ProposalBuilder() {
               Back to Quotes
             </Button>
             <div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <span>Quotes</span>
+                <ArrowLeft className="h-3 w-3 rotate-180" />
+                <span className="text-primary font-medium">Proposal Builder</span>
+                {selectedQuote && (
+                  <>
+                    <ArrowLeft className="h-3 w-3 rotate-180" />
+                    <span>Quote #{(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}</span>
+                  </>
+                )}
+              </div>
               <h1 className="text-2xl font-bold">Proposal Builder</h1>
               <p className="text-muted-foreground">Create professional proposals with customizable templates</p>
             </div>
@@ -284,14 +354,14 @@ export default function ProposalBuilder() {
           {[
             { key: 'quote', label: 'Select Quote', icon: FileText },
             { key: 'template', label: 'Select Template', icon: FileSignature },
-            { key: 'sections', label: 'Configure Sections', icon: Layout },
-            { key: 'content', label: 'Add Content', icon: Type },
-            { key: 'preview', label: 'Preview & Send', icon: Eye },
+            { key: 'transform', label: 'Transform Quote', icon: Wand2 },
+            { key: 'visual', label: 'Visual Builder', icon: Brush },
+            { key: 'preview', label: 'Preview & Export', icon: Eye },
           ].map((step, index) => {
             const Icon = step.icon;
             const isActive = step.key === activeStep;
-            const isCompleted = ['quote', 'template', 'sections', 'content', 'preview'].indexOf(activeStep) > 
-                              ['quote', 'template', 'sections', 'content', 'preview'].indexOf(step.key);
+            const isCompleted = ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(activeStep) > 
+                              ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(step.key);
             
             return (
               <div key={step.key} className="flex items-center">
@@ -311,6 +381,22 @@ export default function ProposalBuilder() {
           })}
         </div>
 
+        {/* Quick Actions */}
+        <div className="flex justify-center gap-2">
+          <Button variant="outline" onClick={handleOpenBrandManager}>
+            <Palette className="h-4 w-4 mr-2" />
+            Brand Manager
+          </Button>
+          <Button variant="outline" onClick={handleOpenVisualBuilder}>
+            <Layers className="h-4 w-4 mr-2" />
+            Visual Builder
+          </Button>
+          <Button variant="outline">
+            <Copy className="h-4 w-4 mr-2" />
+            Templates
+          </Button>
+        </div>
+
         <Separator />
 
         {/* Quote Selection */}
@@ -318,7 +404,12 @@ export default function ProposalBuilder() {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-xl font-semibold">Select a Quote to Convert</h2>
-              <p className="text-muted-foreground">Choose an existing quote to transform into a professional proposal</p>
+              <p className="text-muted-foreground">
+                {selectedQuote ? 
+                  'You can change your quote selection or continue with the pre-selected quote' :
+                  'Choose an existing quote to transform into a professional proposal'
+                }
+              </p>
             </div>
 
             {/* Search and Filter Controls */}
@@ -502,12 +593,35 @@ export default function ProposalBuilder() {
         {/* Template Selection */}
         {activeStep === 'template' && (
           <div className="space-y-6">
+            {/* Selected Quote Banner */}
+            {selectedQuote && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <h4 className="font-medium text-blue-900">
+                          Selected Quote: {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
+                        </h4>
+                        <p className="text-sm text-blue-700">
+                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.title} - 
+                          ${(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setActiveStep('quote')}>
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Change Quote
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <div className="text-center">
               <h2 className="text-xl font-semibold">Choose a Proposal Template</h2>
               <p className="text-muted-foreground">
-                {selectedQuote && (
-                  <>Selected Quote: {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber} - </>
-                )}
                 Start with a professional template tailored to your proposal type
               </p>
             </div>
@@ -565,138 +679,183 @@ export default function ProposalBuilder() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Quote Selection
               </Button>
-              <Button variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Custom Template
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Custom Template
+                </Button>
+                {selectedTemplate && (
+                  <Button onClick={() => setActiveStep('transform')}>
+                    Continue to Transform
+                    <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Transform Step */}
+        {activeStep === 'transform' && selectedQuote && selectedTemplate && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold">Transform Quote to Proposal</h2>
+              <p className="text-muted-foreground">
+                Convert your quote data into a professional proposal with intelligent content generation
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Source Quote Preview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Source Quote</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Quote:</span>
+                      <span className="font-medium">
+                        {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Title:</span>
+                      <span className="font-medium">
+                        {(quotes || []).find((q: any) => q.id === selectedQuote)?.title}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Amount:</span>
+                      <span className="font-medium text-lg">
+                        ${(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Target Template Preview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Target Template</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Template:</span>
+                      <span className="font-medium">{selectedTemplate.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Category:</span>
+                      <span className="font-medium">{selectedTemplate.category}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Sections:</span>
+                      <span className="font-medium">{selectedTemplate.sections.length}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Transformation Features */}
+            <Card>
+              <CardHeader>
+                <CardTitle>AI-Powered Transformation Features</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-blue-50">
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <h4 className="font-medium">Auto-populate pricing</h4>
+                      <p className="text-sm text-muted-foreground">Import all line items and totals</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-green-50">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div>
+                      <h4 className="font-medium">Generate content</h4>
+                      <p className="text-sm text-muted-foreground">AI-written sections and descriptions</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-purple-50">
+                    <CheckCircle className="h-5 w-5 text-purple-600" />
+                    <div>
+                      <h4 className="font-medium">Brand consistency</h4>
+                      <p className="text-sm text-muted-foreground">Apply your brand styling automatically</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => setActiveStep('template')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Template
+              </Button>
+              <Button onClick={handleTransformQuote}>
+                <Wand2 className="h-4 w-4 mr-2" />
+                Transform Quote
               </Button>
             </div>
           </div>
         )}
 
-        {/* Section Configuration */}
-        {activeStep === 'sections' && selectedTemplate && (
+        {/* Visual Builder Step */}
+        {activeStep === 'visual' && (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-xl font-semibold">Configure Proposal Sections</h2>
-              <p className="text-muted-foreground">Customize which sections to include in your proposal</p>
+              <h2 className="text-xl font-semibold">Visual Proposal Builder</h2>
+              <p className="text-muted-foreground">
+                Use the advanced visual editor to create a stunning professional proposal
+              </p>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileSignature className="h-5 w-5" />
-                  {selectedTemplate.name} Sections
-                </CardTitle>
+                <CardTitle>Drag & Drop Visual Editor</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedTemplate.sections.map((section, index) => {
-                    const Icon = section.icon;
-                    return (
-                      <div 
-                        key={section.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <Icon className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{section.title}</h4>
-                            <p className="text-sm text-muted-foreground">{section.description}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {section.isRequired && (
-                            <Badge variant="destructive" className="text-xs">Required</Badge>
-                          )}
-                          <Badge variant={section.isVisible ? "default" : "secondary"} className="text-xs">
-                            {section.isVisible ? "Included" : "Hidden"}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg text-center">
+                    <Layers className="h-8 w-8 mx-auto mb-2 text-primary" />
+                    <h4 className="font-medium">Drag & Drop Sections</h4>
+                    <p className="text-sm text-muted-foreground">Reorder sections with intuitive drag-and-drop</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <Type className="h-8 w-8 mx-auto mb-2 text-primary" />
+                    <h4 className="font-medium">Rich Text Editor</h4>
+                    <p className="text-sm text-muted-foreground">Professional formatting with real-time preview</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <Palette className="h-8 w-8 mx-auto mb-2 text-primary" />
+                    <h4 className="font-medium">Brand Customization</h4>
+                    <p className="text-sm text-muted-foreground">Apply colors, fonts, and styling to match your brand</p>
+                  </div>
                 </div>
 
-                <div className="flex justify-between mt-6">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setActiveStep('template')}
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Templates
-                  </Button>
-                  <Button onClick={() => setActiveStep('content')}>
-                    Continue to Content
-                    <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                <div className="flex justify-center">
+                  <Button onClick={handleOpenVisualBuilder} size="lg">
+                    <Brush className="h-5 w-5 mr-2" />
+                    Open Visual Builder
                   </Button>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        )}
-
-        {/* Content Management Step */}
-        {activeStep === 'content' && selectedTemplate && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold">Add Content to Your Proposal</h2>
-              <p className="text-muted-foreground">
-                Customize the content for each section of your {selectedTemplate.name.toLowerCase()} proposal
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {selectedTemplate.sections
-                .filter(section => section.isVisible)
-                .map((section) => {
-                  const Icon = section.icon;
-                  const fieldKey = section.title.toLowerCase().replace(/\s+/g, '').replace(/&/g, 'And') as keyof typeof proposalContent;
-                  
-                  return (
-                    <Card key={section.id}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <Icon className="h-4 w-4 text-primary" />
-                          </div>
-                          {section.title}
-                          {section.isRequired && (
-                            <Badge variant="destructive" className="text-xs ml-auto">Required</Badge>
-                          )}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <p className="text-sm text-muted-foreground">{section.description}</p>
-                          <div>
-                            <Label htmlFor={fieldKey}>Content</Label>
-                            <Textarea
-                              id={fieldKey}
-                              placeholder={`Enter content for ${section.title.toLowerCase()}...`}
-                              value={proposalContent[fieldKey] || ''}
-                              onChange={(e) => setProposalContent(prev => ({
-                                ...prev,
-                                [fieldKey]: e.target.value
-                              }))}
-                              className="min-h-24"
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-            </div>
 
             <div className="flex justify-between">
               <Button 
                 variant="outline" 
-                onClick={() => setActiveStep('sections')}
+                onClick={() => setActiveStep('transform')}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Sections
+                Back to Transform
               </Button>
               <Button onClick={() => setActiveStep('preview')}>
                 Continue to Preview
@@ -784,19 +943,61 @@ export default function ProposalBuilder() {
             <div className="flex justify-between">
               <Button 
                 variant="outline" 
-                onClick={() => setActiveStep('content')}
+                onClick={() => setActiveStep('visual')}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Content
+                Back to Visual Builder
               </Button>
-              <Button onClick={handleCreateProposal}>
-                <Send className="h-4 w-4 mr-2" />
-                Create Final Proposal
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export PDF
+                </Button>
+                <Button onClick={handleCreateProposal}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Create Final Proposal
+                </Button>
+              </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Brand Manager Dialog */}
+      <Dialog open={showBrandManager} onOpenChange={setShowBrandManager}>
+        <DialogContent className="max-w-full max-h-full w-screen h-screen p-0">
+          <BrandManager
+            onSave={handleSaveBrand}
+            onClose={() => setShowBrandManager(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Visual Builder Dialog */}
+      <Dialog open={showVisualBuilder} onOpenChange={setShowVisualBuilder}>
+        <DialogContent className="max-w-full max-h-full w-screen h-screen p-0">
+          <ProposalVisualBuilder
+            quoteData={selectedQuote ? (quotes || []).find((q: any) => q.id === selectedQuote) : undefined}
+            onSave={handleSaveProposal}
+            onPreview={() => console.log('Preview')}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Quote Transformer Dialog */}
+      <Dialog open={showQuoteTransformer} onOpenChange={setShowQuoteTransformer}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Transform Quote to Proposal</DialogTitle>
+          </DialogHeader>
+          {selectedQuote && (
+            <QuoteTransformer
+              quoteId={selectedQuote}
+              onTransformComplete={handleTransformComplete}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

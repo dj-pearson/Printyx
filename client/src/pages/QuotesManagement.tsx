@@ -65,6 +65,7 @@ import {
   Calendar,
   User,
   TrendingUp,
+  Wand2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
@@ -263,6 +264,10 @@ export default function QuotesManagement() {
 
   const handleViewQuote = (quoteId: string) => {
     setLocation(`/quotes/${quoteId}/view`);
+  };
+
+  const handleCreateProposal = (quoteId: string) => {
+    setLocation(`/proposal-builder?quoteId=${quoteId}`);
   };
 
   const handleDeleteQuote = (quoteId: string) => {
@@ -510,6 +515,10 @@ export default function QuotesManagement() {
                               <DropdownMenuItem onClick={() => handleEditQuote(quote.id)}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Quote
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCreateProposal(quote.id)}>
+                                <Wand2 className="h-4 w-4 mr-2" />
+                                Create Proposal
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               

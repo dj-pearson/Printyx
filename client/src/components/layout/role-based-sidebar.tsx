@@ -69,6 +69,7 @@ import {
   Crown,
   Database,
   Hash,
+  Wand2,
 } from "lucide-react";
 
 // Navigation structure based on role permissions
@@ -133,7 +134,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         {
           name: "Proposal Builder",
           href: "/proposal-builder",
-          icon: FileSignature,
+          icon: Wand2,
         },
         { name: "Demo Scheduling", href: "/demo-scheduling", icon: Calendar },
         { name: "Contracts", href: "/contracts", icon: ClipboardList },
