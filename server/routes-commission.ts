@@ -1,7 +1,24 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
-import { requireAuth } from './auth-setup';
+
+// Authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  
+  if (!req.user) {
+    req.user = {
+      id: req.session.userId,
+      tenantId: req.session.tenantId || req.user?.tenantId
+    };
+  }
+  
+  next();
+};
 import { 
   businessRecords, 
   users, 
