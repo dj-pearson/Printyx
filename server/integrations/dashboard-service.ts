@@ -124,12 +124,20 @@ export class DashboardService {
       { name: 'Marketing', count: categoryCounts['marketing'] || 0, description: 'Marketing automation and campaigns' }
     ];
 
+    const providerDetails = {
+      'google-calendar': { provider: 'Google', version: 'v3', pricing: 'free', complexity: 'easy' },
+      'microsoft-calendar': { provider: 'Microsoft', version: 'v1.0', pricing: 'free', complexity: 'easy' },
+      'salesforce': { provider: 'Salesforce', version: 'v59.0', pricing: 'freemium', complexity: 'medium' },
+      'stripe': { provider: 'Stripe', version: '2023-10-16', pricing: 'usage_based', complexity: 'medium' },
+      'quickbooks': { provider: 'Intuit', version: 'v3', pricing: 'subscription', complexity: 'hard' }
+    };
+
     const availableAPIs = availableIntegrations.map((integration, index) => ({
       id: integration.id,
       name: integration.name,
       category: integration.category,
-      provider: integration.name.split(' ')[0], // Extract provider name
-      version: 'v1.0',
+      provider: providerDetails[integration.id as keyof typeof providerDetails]?.provider || integration.name.split(' ')[0],
+      version: providerDetails[integration.id as keyof typeof providerDetails]?.version || 'v1.0',
       status: 'active',
       popularity: 85 + Math.random() * 10,
       integrations: Math.floor(Math.random() * 1000) + 100,
@@ -138,14 +146,14 @@ export class DashboardService {
       description: integration.description,
       endpoints: integration.config.scopes.length * 3,
       authentication: 'OAuth2',
-      pricing: 'free',
+      pricing: providerDetails[integration.id as keyof typeof providerDetails]?.pricing || 'free',
       documentation: `https://docs.${integration.id.split('-')[0]}.com`,
       capabilities: integration.config.scopes.map(scope => 
         scope.split('/').pop()?.replace('.', '_') || 'api_access'
       ),
       lastUpdated: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
       supportLevel: 'standard',
-      setupComplexity: 'medium'
+      setupComplexity: providerDetails[integration.id as keyof typeof providerDetails]?.complexity || 'medium'
     }));
 
     return {
