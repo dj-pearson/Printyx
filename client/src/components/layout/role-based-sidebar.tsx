@@ -130,6 +130,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           href: "/quote-proposal-generation",
           icon: FileText,
         },
+        {
+          name: "Proposal Builder",
+          href: "/proposal-builder",
+          icon: FileSignature,
+        },
         { name: "Demo Scheduling", href: "/demo-scheduling", icon: Calendar },
         { name: "Contracts", href: "/contracts", icon: ClipboardList },
         {

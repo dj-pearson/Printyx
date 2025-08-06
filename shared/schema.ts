@@ -4070,51 +4070,7 @@ export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;
 export type InsertProfessionalService = z.infer<typeof insertProfessionalServiceSchema>;
 
 // ============= QUOTE/PROPOSAL GENERATION SYSTEM =============
-// Inline implementation to avoid module import issues
-
-// Proposal Templates for consistent branding and standardization
-export const proposalTemplates = pgTable("proposal_templates", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").notNull(),
-  
-  // Template Details
-  templateName: varchar("template_name").notNull(),
-  templateType: varchar("template_type").notNull(), // equipment_lease, service_contract, maintenance_agreement, etc.
-  description: text("description"),
-  
-  // Template Content
-  headerContent: jsonb("header_content").$type<{
-    companyLogo?: string;
-    letterhead?: string;
-    contactInfo?: string;
-  }>(),
-  
-  coverPageTemplate: text("cover_page_template"), // HTML template
-  executiveSummaryTemplate: text("executive_summary_template"),
-  proposalBodyTemplate: text("proposal_body_template"),
-  termsAndConditionsTemplate: text("terms_conditions_template"),
-  footerTemplate: text("footer_template"),
-  
-  // Styling and Branding
-  brandingColors: jsonb("branding_colors").$type<{
-    primary?: string;
-    secondary?: string;
-    accent?: string;
-  }>(),
-  fontSettings: jsonb("font_settings").$type<{
-    headerFont?: string;
-    bodyFont?: string;
-    fontSize?: number;
-  }>(),
-  
-  // Template Settings
-  isActive: boolean("is_active").default(true),
-  isDefault: boolean("is_default").default(false),
-  createdBy: varchar("created_by").notNull(),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// Note: proposals table is defined above with comprehensive fields for quote and proposal management
 
 // Equipment Packages - Pre-configured equipment bundles
 export const equipmentPackages = pgTable("equipment_packages", {
@@ -4208,6 +4164,10 @@ export const proposals = pgTable("proposals", {
   estimatedStartDate: timestamp("estimated_start_date"),
   estimatedEndDate: timestamp("estimated_end_date"),
   
+  // Template and Customization
+  templateId: varchar("template_id"), // references proposal_templates.id
+  customStyling: jsonb("custom_styling").default('{}'), // Company branding, colors, fonts
+  
   // Status and Tracking
   status: varchar("status").default("draft"), // draft, sent, viewed, accepted, rejected, expired
   priority: varchar("priority").default("medium"), // low, medium, high, urgent
@@ -4221,10 +4181,6 @@ export const proposals = pgTable("proposals", {
   // Analytics and Tracking
   openCount: integer("open_count").default(0),
   lastOpenedAt: timestamp("last_opened_at"),
-  
-  // Template and Customization
-  templateId: varchar("template_id"), // Reference to proposal template used
-  customStyling: jsonb("custom_styling"),
   
   // Internal Notes and Comments
   internalNotes: text("internal_notes"),
@@ -4308,6 +4264,170 @@ export const proposalComments = pgTable("proposal_comments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Proposal Templates - Reusable proposal templates for different scenarios
+export const proposalTemplates = pgTable("proposal_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Template Identification
+  name: varchar("name").notNull(), // e.g., "Enterprise Equipment Lease", "Service Contract Standard"
+  description: text("description"),
+  category: varchar("category").notNull(), // equipment_lease, service_contract, managed_services, hybrid
+  
+  // Template Settings
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false), // Default template for category
+  accessLevel: varchar("access_level").default("company"), // company, team, user - who can use this template
+  
+  // Styling and Branding
+  styling: jsonb("styling").default('{}').$type<{
+    primaryColor?: string;
+    secondaryColor?: string;
+    logoUrl?: string;
+    fontFamily?: string;
+    headerStyle?: string;
+    footerContent?: string;
+  }>(),
+  
+  // Created by and ownership
+  createdBy: varchar("created_by").notNull(),
+  teamId: varchar("team_id"), // If team-specific template
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposal Template Sections - Configurable sections that can be reordered and customized
+export const proposalTemplateSections = pgTable("proposal_template_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  templateId: varchar("template_id").notNull(), // references proposal_templates.id
+  
+  // Section Configuration
+  sectionType: varchar("section_type").notNull(), // cover_page, executive_summary, company_intro, solution_overview, pricing, terms, team, guarantees, next_steps, custom
+  sectionTitle: varchar("section_title").notNull(),
+  displayOrder: integer("display_order").notNull(),
+  
+  // Content and Behavior
+  isRequired: boolean("is_required").default(false),
+  isVisible: boolean("is_visible").default(true),
+  isEditable: boolean("is_editable").default(true),
+  defaultContent: text("default_content"), // Default text content for this section
+  
+  // Section Settings
+  settings: jsonb("settings").default('{}').$type<{
+    showInTOC?: boolean; // Show in table of contents
+    pageBreakBefore?: boolean;
+    pageBreakAfter?: boolean;
+    backgroundImage?: string;
+    customStyling?: Record<string, any>;
+  }>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposal Content Blocks - Reusable content blocks that can be inserted into proposals
+export const proposalContentBlocks = pgTable("proposal_content_blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Block Identification
+  name: varchar("name").notNull(),
+  blockType: varchar("block_type").notNull(), // company_intro, value_prop, guarantee, team_bio, testimonial, case_study, technical_specs
+  category: varchar("category"), // Optional grouping
+  
+  // Content
+  title: varchar("title"),
+  content: text("content").notNull(),
+  htmlContent: text("html_content"), // Rich formatted version
+  
+  // Usage and Access
+  isGlobal: boolean("is_global").default(false), // Available to all users in tenant
+  createdBy: varchar("created_by").notNull(),
+  teamId: varchar("team_id"), // If team-specific
+  
+  // Metadata
+  tags: jsonb("tags").default('[]').$type<string[]>(), // For filtering and search
+  usageCount: integer("usage_count").default(0),
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposal Sections - Actual sections in a specific proposal (generated from template)
+export const proposalSections = pgTable("proposal_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  proposalId: varchar("proposal_id").notNull(), // references proposals.id
+  
+  // Section Details
+  sectionType: varchar("section_type").notNull(),
+  sectionTitle: varchar("section_title").notNull(),
+  displayOrder: integer("display_order").notNull(),
+  
+  // Content
+  content: text("content"),
+  htmlContent: text("html_content"),
+  
+  // Status and Settings
+  isVisible: boolean("is_visible").default(true),
+  isCompleted: boolean("is_completed").default(false), // Has content been added
+  
+  // Template Reference
+  templateSectionId: varchar("template_section_id"), // references proposal_template_sections.id
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Company Branding Profiles - Store company-specific branding for proposals
+export const companyBrandingProfiles = pgTable("company_branding_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Profile Details
+  name: varchar("name").notNull(), // e.g., "Main Brand", "Enterprise Division"
+  isDefault: boolean("is_default").default(false),
+  
+  // Branding Elements
+  companyName: varchar("company_name").notNull(),
+  tagline: varchar("tagline"),
+  logoUrl: varchar("logo_url"),
+  websiteUrl: varchar("website_url"),
+  
+  // Color Scheme
+  primaryColor: varchar("primary_color").default("#0066CC"),
+  secondaryColor: varchar("secondary_color").default("#F8F9FA"),
+  accentColor: varchar("accent_color").default("#28A745"),
+  textColor: varchar("text_color").default("#212529"),
+  
+  // Typography
+  headingFont: varchar("heading_font").default("Inter"),
+  bodyFont: varchar("body_font").default("Inter"),
+  
+  // Contact Information
+  address: text("address"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  
+  // Social Media
+  socialLinks: jsonb("social_links").default('{}').$type<{
+    linkedin?: string;
+    twitter?: string;
+    facebook?: string;
+    instagram?: string;
+  }>(),
+  
+  // Additional Styling
+  customCSS: text("custom_css"), // Custom CSS for advanced styling
+  
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Proposal Analytics and Tracking
 export const proposalAnalytics = pgTable("proposal_analytics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -4356,12 +4476,6 @@ export const proposalApprovals = pgTable("proposal_approvals", {
 });
 
 // Insert schemas
-export const insertProposalTemplateSchema = createInsertSchema(proposalTemplates).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export const insertEquipmentPackageSchema = createInsertSchema(equipmentPackages).omit({
   id: true,
   createdAt: true,
@@ -4908,3 +5022,48 @@ export type SocialMediaPost = typeof socialMediaPosts.$inferSelect;
 export type InsertSocialMediaPost = z.infer<typeof insertSocialMediaPostSchema>;
 export type SocialMediaCronJob = typeof socialMediaCronJobs.$inferSelect;
 export type InsertSocialMediaCronJob = z.infer<typeof insertSocialMediaCronJobSchema>;
+
+// ============= PROPOSAL SYSTEM SCHEMAS =============
+
+// Proposal Template Schemas
+export const insertProposalTemplateSchema = createInsertSchema(proposalTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProposalTemplateSectionSchema = createInsertSchema(proposalTemplateSections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProposalContentBlockSchema = createInsertSchema(proposalContentBlocks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProposalSectionSchema = createInsertSchema(proposalSections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCompanyBrandingProfileSchema = createInsertSchema(companyBrandingProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Proposal System Types
+export type ProposalTemplate = typeof proposalTemplates.$inferSelect;
+export type InsertProposalTemplate = z.infer<typeof insertProposalTemplateSchema>;
+export type ProposalTemplateSection = typeof proposalTemplateSections.$inferSelect;
+export type InsertProposalTemplateSection = z.infer<typeof insertProposalTemplateSectionSchema>;
+export type ProposalContentBlock = typeof proposalContentBlocks.$inferSelect;
+export type InsertProposalContentBlock = z.infer<typeof insertProposalContentBlockSchema>;
+export type ProposalSection = typeof proposalSections.$inferSelect;
+export type InsertProposalSection = z.infer<typeof insertProposalSectionSchema>;
+export type CompanyBrandingProfile = typeof companyBrandingProfiles.$inferSelect;
+export type InsertCompanyBrandingProfile = z.infer<typeof insertCompanyBrandingProfileSchema>;

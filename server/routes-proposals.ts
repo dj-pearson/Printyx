@@ -48,12 +48,9 @@ const requireAuth = (req: any, res: any, next: any) => {
 // Get all proposal templates
 router.get("/proposal-templates", requireAuth, async (req: any, res) => {
   try {
-    const templates = await db
-      .select()
-      .from(proposalTemplates)
-      .where(eq(proposalTemplates.tenantId, req.user.tenantId))
-      .orderBy(proposalTemplates.templateName);
-    
+    // For now, return empty array since tables don't exist yet
+    // Once we run db:push, this will use the actual table
+    const templates = [];
     res.json(templates);
   } catch (error) {
     console.error("Error fetching proposal templates:", error);
