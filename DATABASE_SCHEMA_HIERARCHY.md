@@ -1,12 +1,13 @@
 # Printyx Database Schema Hierarchy & Reference
-*Updated: January 5, 2025*
+*Updated: August 6, 2025*
 
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 151 tables across all business modules
+**Total Tables**: 156 tables across all business modules
 
 ## Recent Schema Updates
+- **Proposal Builder System (Aug 6, 2025)**: Enhanced proposals and quotes system with comprehensive quote-to-proposal conversion, template management, section configuration, and content management
 - **Customer Self-Service Portal**: Added 8 comprehensive tables for customer portal functionality including access management, service requests, meter submissions, supply orders, payments, notifications, and activity logging
 - **Manufacturer Integration System**: Enhanced device registration and metrics tracking with manufacturer_integrations, device_registrations, device_metrics, and integration_audit_logs tables
 - **Service Dispatch System**: Connected to real database with proper authentication using service_tickets and technicians tables
@@ -797,6 +798,157 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `paid_date` (date) - Payment date
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `created_at` (timestamp) - Creation date
+
+### Sales & CRM Management
+
+#### `quotes` (Quote Management) 
+**Purpose**: Comprehensive quote management system for sales process
+**Function**: Quote generation, pricing calculations, status tracking, and quote-to-proposal conversion
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Quote identifier
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `lead_id` (varchar, FK → business_records.id) - Lead reference (legacy)
+- `customer_id` (varchar, FK → business_records.id) - Customer reference (legacy)
+- `quote_number` (varchar, UNIQUE) - Auto-generated quote number
+- `title` (varchar) - Quote title/name
+- `status` (varchar) - Quote status (draft, sent, accepted, rejected, expired)
+- `total_amount` (decimal(10,2)) - Total quote amount
+- `valid_until` (timestamp) - Quote expiration date
+- `terms` (text) - Quote terms and conditions
+- `notes` (text) - Internal notes
+- `created_by` (varchar, FK → users.id) - Quote creator
+- `sent_date` (timestamp) - Date quote was sent
+- `accepted_date` (timestamp) - Date quote was accepted
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `quote_line_items` (Quote Product Details)
+**Purpose**: Individual line items and products within quotes
+**Function**: Product specification, pricing, quantities for each quote line
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Line item identifier
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `quote_id` (varchar, FK → quotes.id) - Parent quote
+- `line_number` (integer) - Line item sequence
+- `product_id` (varchar, FK → products.id) - Product reference
+- `product_name` (varchar) - Product name
+- `product_description` (text) - Product description
+- `quantity` (integer) - Quantity ordered
+- `unit_price` (decimal(10,2)) - Price per unit
+- `line_total` (decimal(10,2)) - Total for this line
+- `product_category` (varchar) - Product category
+- `product_sku` (varchar) - Product SKU
+- `created_at` (timestamp) - Creation timestamp
+
+#### `proposals` (Professional Proposal System)
+**Purpose**: Comprehensive proposal management with template system and content sections
+**Function**: Quote-to-proposal conversion, professional document generation, customer presentation
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Proposal identifier
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `proposal_number` (varchar, UNIQUE) - Auto-generated proposal number
+- `version` (varchar) - Proposal version (default: "1.0")
+- `title` (varchar) - Proposal title
+- `business_record_id` (varchar, FK → business_records.id) - Customer reference
+- `contact_id` (varchar, FK → enhanced_contacts.id) - Primary contact
+- `created_by` (varchar, FK → users.id) - Proposal creator
+- `assigned_to` (varchar, FK → users.id) - Assigned sales rep
+- `team_id` (varchar, FK → teams.id) - Sales team responsible
+- `proposal_type` (varchar) - Proposal type (equipment_lease, service_contract, etc.)
+- `description` (text) - Proposal description
+- `executive_summary` (text) - Executive summary content
+- `company_introduction` (text) - Company introduction content
+- `solution_overview` (text) - Solution overview content
+- `terms_and_conditions` (text) - Terms and conditions content
+- `investment_summary` (text) - Investment summary content
+- `next_steps` (text) - Next steps content
+- `subtotal_amount` (decimal(12,2)) - Subtotal before taxes
+- `tax_amount` (decimal(12,2)) - Tax amount
+- `total_amount` (decimal(12,2)) - Total amount including tax
+- `status` (varchar) - Proposal status (draft, sent, viewed, accepted, rejected)
+- `valid_until` (timestamp) - Proposal expiration date
+- `template_id` (varchar) - Template used for proposal
+- `template_name` (varchar) - Template name
+- `sent_date` (timestamp) - Date proposal was sent
+- `viewed_date` (timestamp) - Date proposal was viewed by customer
+- `accepted_date` (timestamp) - Date proposal was accepted
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `proposal_line_items` (Proposal Product Details)
+**Purpose**: Individual line items and products within proposals
+**Function**: Product specification, pricing, quantities for each proposal line with service details
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Line item identifier
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `proposal_id` (varchar, FK → proposals.id) - Parent proposal
+- `line_number` (integer) - Line item sequence
+- `item_type` (varchar) - Item type (equipment, accessory, service, software, supply)
+- `product_id` (varchar, FK → products.id) - Product reference
+- `product_name` (varchar) - Product name
+- `description` (text) - Product description
+- `quantity` (integer) - Quantity (default: 1)
+- `unit_price` (decimal(10,2)) - Price per unit
+- `unit_cost` (decimal(10,2)) - Internal cost per unit
+- `total_price` (decimal(10,2)) - Total line amount
+- `service_frequency` (varchar) - Service frequency (monthly, quarterly, annually)
+- `service_duration` (varchar) - Contract duration
+- `equipment_condition` (varchar) - Equipment condition (new, refurbished, demo)
+- `warranty_info` (text) - Warranty information
+- `is_optional` (boolean) - Optional item flag (default: false)
+- `is_alternative` (boolean) - Alternative option flag (default: false)
+- `package_id` (varchar) - Equipment package reference
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `proposal_comments` (Proposal Communication)
+**Purpose**: Internal and customer communication threads for proposals
+**Function**: Comment tracking, communication history, collaboration
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Comment identifier
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `proposal_id` (varchar, FK → proposals.id) - Parent proposal
+- `comment_type` (varchar) - Comment type (internal, customer, revision_request)
+- `author_id` (varchar, FK → users.id) - Comment author
+- `author_name` (varchar) - Author display name
+- `comment_text` (text) - Comment content
+- `is_internal` (boolean) - Internal comment flag (default: true)
+- `is_urgent` (boolean) - Urgent flag (default: false)
+- `replied_to_id` (varchar, FK → proposal_comments.id) - Reply thread reference
+- `created_at` (timestamp) - Creation timestamp
+
+#### `proposal_analytics` (Proposal Performance Tracking)
+**Purpose**: Track proposal engagement and performance metrics
+**Function**: View tracking, engagement analytics, conversion metrics
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Analytics identifier
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `proposal_id` (varchar, FK → proposals.id) - Parent proposal
+- `metric_name` (varchar) - Metric name (views, downloads, time_spent, etc.)
+- `metric_value` (decimal(10,2)) - Metric value
+- `recorded_date` (timestamp) - Metric recording date
+- `customer_ip` (varchar) - Customer IP address
+- `user_agent` (text) - Browser user agent
+- `referrer_url` (varchar) - Referrer URL
+- `session_id` (varchar) - Session identifier
+- `created_at` (timestamp) - Creation timestamp
+
+#### `proposal_approvals` (Approval Workflow)
+**Purpose**: Proposal approval workflow and authorization tracking
+**Function**: Multi-level approval process, authorization management
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Approval identifier
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `proposal_id` (varchar, FK → proposals.id) - Parent proposal
+- `approval_level` (integer) - Approval level (1, 2, 3, etc.)
+- `approver_id` (varchar, FK → users.id) - Approver user
+- `approver_name` (varchar) - Approver display name
+- `approval_status` (varchar) - Status (pending, approved, rejected, escalated)
+- `approval_notes` (text) - Approval notes/comments
+- `requested_date` (timestamp) - Approval request date
+- `approved_date` (timestamp) - Approval completion date
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
 
 ### Business Intelligence & Analytics
 
