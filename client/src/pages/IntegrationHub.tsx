@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -311,6 +311,55 @@ export default function IntegrationHub() {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isConfiguring, setIsConfiguring] = useState<string | null>(null);
+
+  // Check for OAuth callback success/error
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    const integrationId = urlParams.get('integration');
+
+    if (success && integrationId) {
+      // Show success message and refresh data
+      console.log('Integration configured successfully:', integrationId);
+      refetch();
+      // Clean up URL parameters
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (error) {
+      console.error('Integration configuration failed:', error);
+      // Clean up URL parameters
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [refetch]);
+
+  // Handle OAuth configuration
+  const handleConfigureIntegration = async (apiId: string) => {
+    try {
+      setIsConfiguring(apiId);
+      
+      const response = await fetch('/api/integrations/oauth/init', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ providerId: apiId })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to initialize OAuth');
+      }
+      
+      const { authUrl } = await response.json();
+      
+      // Redirect to OAuth provider
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Error configuring integration:', error);
+      setIsConfiguring(null);
+      // You might want to show an error toast here
+    }
+  };
 
   // Fetch integration hub data
   const { data: integrationData, isLoading, refetch } = useQuery({
@@ -632,9 +681,22 @@ export default function IntegrationHub() {
                               <ExternalLink className="h-4 w-4 mr-2" />
                               Docs
                             </Button>
-                            <Button size="sm">
-                              <Plus className="h-4 w-4 mr-2" />
-                              Configure
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleConfigureIntegration(api.id)}
+                              disabled={isConfiguring === api.id}
+                            >
+                              {isConfiguring === api.id ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  Connecting...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Configure
+                                </>
+                              )}
                             </Button>
                           </div>
                         </div>

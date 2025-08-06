@@ -1,6 +1,7 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+import { DashboardService } from './integrations/dashboard-service';
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -16,6 +17,26 @@ const router = express.Router();
 
 // Get integration hub dashboard
 router.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    // Use real dashboard service instead of mock data
+    const integrationHubData = await DashboardService.getDashboardData(tenantId);
+
+    res.json(integrationHubData);
+    
+  } catch (error) {
+    console.error('Error fetching integration hub dashboard:', error);
+    res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
+  }
+});
+
+// Legacy mock data endpoint (kept for backward compatibility during transition)
+router.get('/api/integration-hub/dashboard-mock', requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
