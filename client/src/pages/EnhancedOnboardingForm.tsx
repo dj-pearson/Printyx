@@ -57,6 +57,17 @@ import {
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";
+// Add combobox and helpers for predictive search
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Enhanced onboarding schema with auto-population and machine replacement
 const enhancedOnboardingSchema = z.object({
@@ -98,10 +109,10 @@ const enhancedOnboardingSchema = z.object({
     specialRequirements: z.string().optional(),
   }),
 
-  // Scheduling
-  scheduledInstallDate: z.string().min(1, "Scheduled install date is required"),
-  preferredTimeSlot: z.enum(["morning", "afternoon", "evening", "all_day"]),
-  estimatedDuration: z.string().min(1, "Estimated duration is required"),
+  // Scheduling (now optional and editable later)
+  scheduledInstallDate: z.string().optional(),
+  preferredTimeSlot: z.enum(["morning", "afternoon", "evening", "all_day"]).optional().default("all_day"),
+  estimatedDuration: z.string().optional(),
 
   // Equipment Details with Machine Replacement Tracking
   equipment: z
@@ -119,6 +130,7 @@ const enhancedOnboardingSchema = z.object({
         model: z.string().min(1, "Model is required"),
         serialNumber: z.string().min(1, "Serial number is required"),
         macAddress: z.string().optional(),
+        assetTag: z.string().optional(),
         location: z.string().min(1, "Location is required"),
         features: z.array(z.string()).default([]),
         accessories: z.array(z.string()).default([]),
@@ -140,14 +152,17 @@ const enhancedOnboardingSchema = z.object({
           })
           .optional(),
 
-        // New Equipment Network Configuration
+        // New Equipment Network & Location Configuration
         networkConfiguration: z
           .object({
             targetIPAddress: z.string().optional(),
             newHostname: z.string().optional(),
             customerNumber: z.string().optional(),
             buildingLocation: z.string().optional(),
+            roomLocation: z.string().optional(),
             specificLocation: z.string().optional(),
+            locationAddress: z.string().optional(),
+            locationContact: z.string().optional(),
             smtpName: z.string().optional(),
             vlanId: z.string().optional(),
             networkSegment: z.string().optional(),
@@ -296,6 +311,7 @@ export default function EnhancedOnboardingForm() {
       model: "",
       serialNumber: "",
       macAddress: "",
+      assetTag: "",
       location: "",
       features: [],
       accessories: [],
@@ -304,7 +320,11 @@ export default function EnhancedOnboardingForm() {
       networkConfiguration: {},
     },
   ]);
-  const [dynamicSections, setDynamicSections] = useState<any[]>([]);
+  // Product catalog search
+  const [productSearch, setProductSearch] = useState("");
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [isCompanySelectOpen, setIsCompanySelectOpen] = useState(false);
+  const [companySearchTerm, setCompanySearchTerm] = useState("");
   const queryClient = useQueryClient();
 
   // Fetch business records for auto-population
@@ -338,6 +358,12 @@ export default function EnhancedOnboardingForm() {
     queryKey: ["/api/quote-line-items", selectedQuote?.id],
     queryFn: () => apiRequest(`/api/quotes/${selectedQuote.id}/line-items`),
     enabled: !!selectedQuote?.id,
+  });
+
+  // Product catalog with pricing
+  const { data: catalogProducts = [] } = useQuery({
+    queryKey: ["/api/products/with-pricing"],
+    queryFn: () => apiRequest("/api/products/with-pricing", "GET"),
   });
 
   // Fetch company contacts when business record is selected
@@ -520,11 +546,8 @@ export default function EnhancedOnboardingForm() {
   }, [selectedQuote, quoteLineItems, selectedBusinessRecord, form]);
 
   const createChecklistMutation = useMutation({
-    mutationFn: (data: EnhancedOnboardingFormData) =>
-      apiRequest("/api/onboarding/checklists", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: (data: any) =>
+      apiRequest("/api/onboarding/checklists", "POST", data),
     onSuccess: () => {
       toast({
         title: "Success",
@@ -545,7 +568,27 @@ export default function EnhancedOnboardingForm() {
   });
 
   const onSubmit = (data: EnhancedOnboardingFormData) => {
-    createChecklistMutation.mutate(data);
+    const installationType = data.equipment?.some((e) => e.isReplacement)
+      ? "replacement"
+      : "new_installation";
+
+    const payload = {
+      checklistTitle: data.checklistTitle,
+      description: undefined,
+      status: "draft",
+      installationType,
+      customerId: selectedBusinessRecord?.id || data.businessRecordId || "",
+      quoteId: data.quoteId || undefined,
+      orderId: data.orderId || undefined,
+      customerData: data.customerData,
+      siteInformation: data.siteInformation,
+      equipmentDetails: data.equipment,
+      scheduledInstallDate: data.scheduledInstallDate || undefined,
+      estimatedDuration: data.estimatedDuration ? Number(data.estimatedDuration) : undefined,
+      specialInstructions: undefined,
+    };
+
+    createChecklistMutation.mutate(payload);
   };
 
   // Helper functions for equipment management
@@ -605,6 +648,7 @@ export default function EnhancedOnboardingForm() {
       model: "",
       serialNumber: "",
       macAddress: "",
+      assetTag: "",
       location: "",
       features: [],
       accessories: [],
@@ -629,7 +673,7 @@ export default function EnhancedOnboardingForm() {
     { number: 1, title: "Customer Selection", icon: Search },
     { number: 2, title: "Basic Information", icon: Building2 },
     { number: 3, title: "Site Details", icon: MapPin },
-    { number: 4, title: "Scheduling", icon: Calendar },
+    { number: 4, title: "Scheduling (Optional)", icon: Calendar },
     { number: 5, title: "Equipment & Replacement", icon: Printer },
     { number: 6, title: "Network Setup", icon: Network },
     { number: 7, title: "Print Management", icon: Settings },
@@ -653,7 +697,7 @@ export default function EnhancedOnboardingForm() {
               </p>
             </div>
 
-            {/* Business Record Search */}
+            {/* Business Record Search - predictive combobox */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -666,40 +710,46 @@ export default function EnhancedOnboardingForm() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">
-                    Search Customers
-                  </label>
-                  <Input
-                    placeholder="Type customer/company name..."
-                    value={businessRecordSearch}
-                    onChange={(e) => setBusinessRecordSearch(e.target.value)}
-                  />
-                </div>
-
-                {businessRecords.length > 0 && (
-                  <div className="border rounded-lg max-h-40 overflow-y-auto">
-                    {businessRecords.map((record: any) => (
-                      <div
-                        key={record.id}
-                        className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                        onClick={() => {
-                          setSelectedBusinessRecord(record);
-                          setBusinessRecordSearch("");
-                        }}
-                      >
-                        <div className="font-medium">{record.company_name}</div>
-                        <div className="text-sm text-gray-600">
-                          {record.first_name} {record.last_name} •{" "}
-                          {record.phone}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {record.city}, {record.state}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <Popover open={isCompanySelectOpen} onOpenChange={setIsCompanySelectOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      {companySearchTerm || "Start typing company name..."}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[600px] p-0">
+                    <Command>
+                      <CommandInput
+                        placeholder="Type to search companies..."
+                        value={businessRecordSearch}
+                        onValueChange={(v) => setBusinessRecordSearch(v)}
+                      />
+                      <CommandEmpty>No companies found.</CommandEmpty>
+                      <CommandList>
+                        <CommandGroup>
+                          {businessRecords.map((record: any) => (
+                            <CommandItem
+                              key={record.id}
+                              value={record.company_name}
+                              onSelect={() => {
+                                setSelectedBusinessRecord(record);
+                                setCompanySearchTerm(record.company_name);
+                                setBusinessRecordSearch("");
+                                setIsCompanySelectOpen(false);
+                              }}
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium">{record.company_name}</span>
+                                <span className="text-sm text-gray-500">
+                                  {record.city}, {record.state} • {record.phone}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
 
                 {selectedBusinessRecord && (
                   <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -714,12 +764,10 @@ export default function EnhancedOnboardingForm() {
                         {selectedBusinessRecord.company_name}
                       </div>
                       <div>
-                        {selectedBusinessRecord.first_name}{" "}
-                        {selectedBusinessRecord.last_name}
+                        {selectedBusinessRecord.first_name} {selectedBusinessRecord.last_name}
                       </div>
                       <div>
-                        {selectedBusinessRecord.phone} •{" "}
-                        {selectedBusinessRecord.email}
+                        {selectedBusinessRecord.phone} • {selectedBusinessRecord.email}
                       </div>
                     </div>
                   </div>
@@ -760,42 +808,10 @@ export default function EnhancedOnboardingForm() {
                             setQuoteSearch("");
                           }}
                         >
-                          <div className="font-medium">
-                            {quote.quote_number}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {quote.title} • ${quote.total_amount}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Status: {quote.status} •{" "}
-                            {new Date(quote.created_at).toLocaleDateString()}
-                          </div>
+                          <div className="font-medium">{quote.title || quote.quoteNumber}</div>
+                          <div className="text-sm text-gray-600">Created {new Date(quote.createdAt || quote.created_at).toLocaleDateString()}</div>
                         </div>
                       ))}
-                    </div>
-                  )}
-
-                  {selectedQuote && (
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle className="h-5 w-5 text-blue-600" />
-                        <span className="font-medium text-blue-800">
-                          Selected Quote
-                        </span>
-                      </div>
-                      <div className="text-sm">
-                        <div className="font-medium">
-                          {selectedQuote.quote_number}
-                        </div>
-                        <div>{selectedQuote.title}</div>
-                        <div>Total: ${selectedQuote.total_amount}</div>
-                        {quoteLineItems.length > 0 && (
-                          <div className="mt-2 text-xs">
-                            {quoteLineItems.length} line items available for
-                            import
-                          </div>
-                        )}
-                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -987,454 +1003,268 @@ export default function EnhancedOnboardingForm() {
       case 5:
         return (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">
-                Equipment Configuration & Machine Replacement
-              </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Equipment & Replacement</h3>
               <div className="flex gap-2">
-                {selectedQuote && (
-                  <Button
-                    type="button"
-                    onClick={importEquipmentFromQuote}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Import from Quote
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  onClick={addEquipmentItem}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Equipment
+                <Button variant="outline" onClick={() => setShowCatalog((s) => !s)}>
+                  {showCatalog ? "Hide Catalog" : "Browse Catalog"}
                 </Button>
+                <Button variant="outline" onClick={addEquipmentItem}>Add Manual Line</Button>
+                <Button onClick={importEquipmentFromQuote} variant="default">Import From Quote</Button>
               </div>
             </div>
+
+            {showCatalog && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Product Catalog</CardTitle>
+                  <CardDescription>
+                    Search products by name or filter as you type, then add as device lines
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Input
+                    placeholder="Search products..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                  />
+                  <ScrollArea className="h-56 border rounded-md">
+                    <div className="p-2 space-y-1">
+                      {catalogProducts
+                        .filter((p: any) =>
+                          !productSearch
+                            ? true
+                            : (p.name || p.modelName || p.description || "")
+                                .toLowerCase()
+                                .includes(productSearch.toLowerCase())
+                        )
+                        .slice(0, 50)
+                        .map((p: any) => (
+                          <div key={p.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{p.modelName || p.name}</span>
+                              <span className="text-xs text-gray-500">{p.category}</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                const newItem = {
+                                  equipmentType: (p.category?.toLowerCase().includes("copier") ? "copier" : "printer") as const,
+                                  manufacturer: p.brand || p.manufacturer || "",
+                                  model: p.modelName || p.name || "",
+                                  serialNumber: "",
+                                  macAddress: "",
+                                  assetTag: "",
+                                  location: "",
+                                  features: [],
+                                  accessories: [],
+                                  isReplacement: false,
+                                  replacedEquipment: {},
+                                  networkConfiguration: {
+                                    customerNumber: selectedBusinessRecord?.customer_number || "",
+                                  },
+                                };
+                                const updated = [...equipmentItems, newItem];
+                                setEquipmentItems(updated);
+                                form.setValue("equipment", updated);
+                                toast({ title: "Added", description: `${p.modelName || p.name} added to equipment` });
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
 
             {equipmentItems.map((item, index) => (
               <Card key={index} className="relative">
                 <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-2">
-                      <Printer className="h-5 w-5" />
-                      Equipment {index + 1}
-                      {item.isReplacement && (
-                        <Badge variant="secondary">Replacement</Badge>
-                      )}
-                    </CardTitle>
-                    {equipmentItems.length > 1 && (
-                      <Button
-                        type="button"
-                        onClick={() => removeEquipmentItem(index)}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Device {index + 1}</span>
+                    <Button variant="ghost" size="sm" onClick={() => removeEquipmentItem(index)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Basic Equipment Information */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-sm text-gray-700">
-                      Basic Information
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.equipmentType`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Equipment Type</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="printer">Printer</SelectItem>
-                                <SelectItem value="copier">Copier</SelectItem>
-                                <SelectItem value="scanner">Scanner</SelectItem>
-                                <SelectItem value="fax">Fax Machine</SelectItem>
-                                <SelectItem value="mfp">
-                                  Multi-Function Printer
-                                </SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.manufacturer`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Manufacturer</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter manufacturer"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.model`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Model</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter model" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.location`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Installation Location</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter location" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.serialNumber`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Serial Number</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter serial number"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.macAddress`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>MAC Address</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="XX:XX:XX:XX:XX:XX"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Machine Replacement Section */}
-                  <div className="border-t pt-4">
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Identity */}
                     <FormField
                       control={form.control}
-                      name={`equipment.${index}.isReplacement`}
+                      name={`equipment.${index}.manufacturer` as const}
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormItem>
+                          <FormLabel>Manufacturer</FormLabel>
                           <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Input placeholder="Canon, HP, Toshiba..." {...field} />
                           </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              This is a replacement installation
-                            </FormLabel>
-                            <p className="text-sm text-gray-600">
-                              Check this if you are replacing existing equipment
-                            </p>
-                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`equipment.${index}.model` as const}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Model</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 6855i" {...field} />
+                          </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    {item.isReplacement && (
-                      <Card className="mt-4 bg-yellow-50">
-                        <CardHeader>
-                          <CardTitle className="text-sm flex items-center gap-2">
-                            <Monitor className="h-4 w-4" />
-                            Equipment Being Replaced
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                              control={form.control}
-                              name={`equipment.${index}.replacedEquipment.oldHostname`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Old Hostname</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="e.g., CROFFICE-LASER"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                    <FormField
+                      control={form.control}
+                      name={`equipment.${index}.serialNumber` as const}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Serial Number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter serial #" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`equipment.${index}.assetTag` as const}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Asset Tag</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Company asset tag" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                            <FormField
-                              control={form.control}
-                              name={`equipment.${index}.replacedEquipment.oldIPAddress`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Old IP Address</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="e.g., 10.36.20.51"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name={`equipment.${index}.replacedEquipment.oldMake`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Old Make</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="e.g., HP" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name={`equipment.${index}.replacedEquipment.oldModel`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Old Model</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="e.g., LaserJet P401"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name={`equipment.${index}.replacedEquipment.oldSerialNumber`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Old Serial Number</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="e.g., CND249877"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name={`equipment.${index}.replacedEquipment.oldMacAddress`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Old MAC Address</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="e.g., 786C77196385"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-
-                          <FormField
-                            control={form.control}
-                            name={`equipment.${index}.replacedEquipment.oldLocationNotes`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Old Location Notes</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="e.g., Crossroads crlab-laser"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name={`equipment.${index}.replacedEquipment.migrationNotes`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Migration Notes</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    placeholder="Notes about data migration, settings transfer, etc."
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </CardContent>
-                      </Card>
-                    )}
+                    <FormField
+                      control={form.control}
+                      name={`equipment.${index}.location` as const}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location Description</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 1st floor admin" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                  {/* Network Configuration Section */}
+                  {/* Replacement Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium text-sm text-gray-700 mb-4 flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      Replacement Details (if replacing)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField control={form.control} name={`equipment.${index}.replacedEquipment.oldIPAddress` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old IP</FormLabel>
+                          <FormControl><Input placeholder="e.g., 10.209.20.82" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.replacedEquipment.oldHostname` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old Hostname</FormLabel>
+                          <FormControl><Input placeholder="e.g., VHS-PEOFFICE" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.replacedEquipment.oldSerialNumber` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old Serial #</FormLabel>
+                          <FormControl><Input placeholder="Enter old serial" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField control={form.control} name={`equipment.${index}.replacedEquipment.oldMake` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old Make</FormLabel>
+                          <FormControl><Input placeholder="HP, Lexmark..." {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.replacedEquipment.oldModel` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old Model</FormLabel>
+                          <FormControl><Input placeholder="LaserJet P401..." {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.replacedEquipment.oldAssetTag` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Old Asset Tag</FormLabel>
+                          <FormControl><Input placeholder="Old asset tag" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+
+                  {/* Network & Location Section */}
                   <div className="border-t pt-4">
                     <h4 className="font-medium text-sm text-gray-700 mb-4 flex items-center gap-2">
                       <Router className="h-4 w-4" />
-                      Network Configuration
+                      Network & Location Configuration
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.networkConfiguration.targetIPAddress`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Target IP Address</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., 10.36.20.52"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.networkConfiguration.newHostname`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>New Hostname</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., CR12POD-LASER"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.networkConfiguration.buildingLocation`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Building Location</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., Crossroads"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.networkConfiguration.specificLocation`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Specific Location</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., croffice-laser"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.networkConfiguration.smtpName`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>SMTP Name</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., @wdmcs.org"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`equipment.${index}.networkConfiguration.vlanId`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>VLAN ID</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., 100" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormField control={form.control} name={`equipment.${index}.networkConfiguration.targetIPAddress` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Target IP Address</FormLabel>
+                          <FormControl><Input placeholder="e.g., 10.36.20.52" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.networkConfiguration.newHostname` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Hostname</FormLabel>
+                          <FormControl><Input placeholder="e.g., CR12POD-LASER" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.networkConfiguration.locationAddress` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location Address</FormLabel>
+                          <FormControl><Input placeholder="Street, City, State" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.networkConfiguration.buildingLocation` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Building</FormLabel>
+                          <FormControl><Input placeholder="e.g., Valley High School" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.networkConfiguration.roomLocation` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Room</FormLabel>
+                          <FormControl><Input placeholder="e.g., 1st floor TW Science" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`equipment.${index}.networkConfiguration.locationContact` as const} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location Contact</FormLabel>
+                          <FormControl><Input placeholder="Name / Phone" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                     </div>
                   </div>
                 </CardContent>
@@ -1444,7 +1274,7 @@ export default function EnhancedOnboardingForm() {
         );
 
       default:
-        return <div>Step content for step {currentStep}</div>;
+        return null;
     }
   };
 
