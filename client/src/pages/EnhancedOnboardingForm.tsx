@@ -1065,6 +1065,9 @@ export default function EnhancedOnboardingForm() {
                                   Created: {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString() : 'Unknown'}
                                 </p>
                                 <p className="text-xs text-blue-500">Status: {quote.status || 'Draft'}</p>
+                                {quote.notes && (
+                                  <p className="text-xs text-gray-500">{quote.notes}</p>
+                                )}
                               </div>
                               {quote.totalAmount && (
                                 <p className="text-sm font-medium text-green-600">
