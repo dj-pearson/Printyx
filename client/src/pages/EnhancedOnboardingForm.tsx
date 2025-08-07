@@ -730,18 +730,18 @@ export default function EnhancedOnboardingForm() {
                           {businessRecords.map((record: any) => (
                             <CommandItem
                               key={record.id}
-                              value={record.company_name}
+                              value={record.companyName || record.company_name}
                               onSelect={() => {
                                 setSelectedBusinessRecord(record);
-                                setCompanySearchTerm(record.company_name);
+                                setCompanySearchTerm(record.companyName || record.company_name);
                                 setBusinessRecordSearch("");
                                 setIsCompanySelectOpen(false);
                               }}
                             >
                               <div className="flex flex-col">
-                                <span className="font-medium">{record.company_name}</span>
+                                <span className="font-medium">{record.companyName || record.company_name}</span>
                                 <span className="text-sm text-gray-500">
-                                  {record.city}, {record.state} • {record.phone}
+                                  {record.city || 'N/A'}, {record.state || 'N/A'} • {record.phone || record.primaryContactPhone || 'N/A'}
                                 </span>
                               </div>
                             </CommandItem>
@@ -762,13 +762,13 @@ export default function EnhancedOnboardingForm() {
                     </div>
                     <div className="text-sm">
                       <div className="font-medium">
-                        {selectedBusinessRecord.company_name}
+                        {selectedBusinessRecord.companyName || selectedBusinessRecord.company_name}
                       </div>
                       <div>
-                        {selectedBusinessRecord.first_name} {selectedBusinessRecord.last_name}
+                        {selectedBusinessRecord.primaryContactName || selectedBusinessRecord.first_name} {selectedBusinessRecord.last_name}
                       </div>
                       <div>
-                        {selectedBusinessRecord.phone} • {selectedBusinessRecord.email}
+                        {selectedBusinessRecord.phone || selectedBusinessRecord.primaryContactPhone} • {selectedBusinessRecord.email || selectedBusinessRecord.primaryContactEmail}
                       </div>
                     </div>
                   </div>
