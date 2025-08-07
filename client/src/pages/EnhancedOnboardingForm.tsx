@@ -598,41 +598,84 @@ export default function EnhancedOnboardingForm() {
 
   // Helper functions for equipment management
   const importEquipmentFromQuote = () => {
-    if (!selectedQuote || !quoteLineItems.length) {
+    if (!selectedQuote) {
       toast({
         title: "No Quote Selected",
-        description: "Please select a quote first to import equipment.",
+        description: "Please select a quote first.",
         variant: "destructive",
       });
       return;
     }
 
+    if (!quoteLineItems || quoteLineItems.length === 0) {
+      toast({
+        title: "No Line Items",
+        description: "This quote has no line items to import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Function to determine equipment type from description
+    const getEquipmentType = (description: string): "printer" | "copier" | "scanner" | "fax" | "mfp" => {
+      const desc = description.toLowerCase();
+      if (desc.includes("mfp") || desc.includes("multifunction") || desc.includes("imagerunner") || desc.includes("advance")) return "mfp";
+      if (desc.includes("copier")) return "copier";
+      if (desc.includes("scanner")) return "scanner";
+      if (desc.includes("fax")) return "fax";
+      return "printer";
+    };
+
+    // Function to extract manufacturer from description
+    const getManufacturer = (description: string): string => {
+      const desc = description.toLowerCase();
+      if (desc.includes("canon")) return "Canon";
+      if (desc.includes("hp") || desc.includes("hewlett")) return "HP";
+      if (desc.includes("brother")) return "Brother";
+      if (desc.includes("epson")) return "Epson";
+      if (desc.includes("xerox")) return "Xerox";
+      if (desc.includes("lexmark")) return "Lexmark";
+      if (desc.includes("ricoh")) return "Ricoh";
+      if (desc.includes("sharp")) return "Sharp";
+      if (desc.includes("konica")) return "Konica Minolta";
+      return "";
+    };
+
+    // Filter for equipment items (exclude services, supplies, etc.)
     const equipmentFromQuote = quoteLineItems
-      .filter(
-        (item: any) =>
-          item.product_category &&
-          ["printer", "copier", "scanner", "fax", "mfp"].includes(
-            item.product_category.toLowerCase()
-          )
-      )
-      .map((item: any) => ({
-        equipmentType: (item.product_category?.toLowerCase() || "printer") as
-          | "printer"
-          | "copier"
-          | "scanner"
-          | "fax"
-          | "mfp",
-        manufacturer: item.product_name?.split(" ")[0] || "",
-        model: item.product_name || "",
+      .filter((item: any) => {
+        const desc = item.description?.toLowerCase() || "";
+        // Include items that look like equipment (not services, toner, etc.)
+        return !desc.includes("service") && 
+               !desc.includes("toner") && 
+               !desc.includes("cartridge") && 
+               !desc.includes("installation") && 
+               !desc.includes("training") && 
+               !desc.includes("contract") &&
+               !desc.includes("monthly") &&
+               (desc.includes("printer") || 
+                desc.includes("copier") || 
+                desc.includes("scanner") || 
+                desc.includes("mfp") || 
+                desc.includes("imagerunner") || 
+                desc.includes("laserjet") ||
+                desc.includes("advance") ||
+                item.description?.match(/^[A-Za-z]+ [A-Za-z0-9-]+ [A-Za-z0-9-]+/)); // Pattern for model names
+      })
+      .map((item: any, index: number) => ({
+        equipmentType: getEquipmentType(item.description),
+        manufacturer: getManufacturer(item.description),
+        model: item.description || `Imported Item ${index + 1}`,
         serialNumber: "",
         macAddress: "",
+        assetTag: "",
         location: "",
         features: [],
         accessories: [],
         isReplacement: false,
         replacedEquipment: {},
         networkConfiguration: {
-          customerNumber: selectedBusinessRecord?.customer_number || "",
+          customerNumber: selectedBusinessRecord?.customerNumber || "",
         },
       }));
 
@@ -641,7 +684,13 @@ export default function EnhancedOnboardingForm() {
       form.setValue("equipment", equipmentFromQuote);
       toast({
         title: "Equipment Imported",
-        description: `Successfully imported ${equipmentFromQuote.length} equipment items from quote.`,
+        description: `Successfully imported ${equipmentFromQuote.length} equipment items from quote "${selectedQuote.quoteNumber}".`,
+      });
+    } else {
+      toast({
+        title: "No Equipment Found",
+        description: "This quote contains no recognizable equipment items.",
+        variant: "destructive",
       });
     }
   };
