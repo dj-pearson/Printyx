@@ -107,6 +107,8 @@ export default function BusinessRecords() {
   const [selectedRecord, setSelectedRecord] = useState<BusinessRecord | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<BusinessRecord | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -167,6 +169,29 @@ export default function BusinessRecords() {
         description: "Customer successfully reactivated",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+    },
+  });
+
+  // Edit business record mutation
+  const editBusinessRecordMutation = useMutation({
+    mutationFn: async (data: { id: string; record: Partial<BusinessRecord> }) => {
+      return await apiRequest(`/api/business-records/${data.id}`, "PUT", data.record);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Business record updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+      setIsEditDialogOpen(false);
+      setEditingRecord(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update business record",
+        variant: "destructive",
+      });
     },
   });
 
@@ -440,6 +465,16 @@ export default function BusinessRecords() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setEditingRecord(record);
+                              setIsEditDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
                           
                           {record.recordType === 'lead' && (
                             <Button
@@ -633,7 +668,206 @@ export default function BusinessRecords() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Business Record Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Business Record</DialogTitle>
+          </DialogHeader>
+          
+          {editingRecord && (
+            <EditBusinessRecordForm 
+              record={editingRecord}
+              onSubmit={(data) => {
+                editBusinessRecordMutation.mutate({
+                  id: editingRecord.id,
+                  record: data
+                });
+              }}
+              isLoading={editBusinessRecordMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       </div>
     </MainLayout>
+  );
+}
+
+// Edit Business Record Form Component
+function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
+  record: BusinessRecord;
+  onSubmit: (data: Partial<BusinessRecord>) => void;
+  isLoading: boolean;
+}) {
+  const [formData, setFormData] = useState<Partial<BusinessRecord>>({
+    companyName: record.companyName || '',
+    primaryContactName: record.primaryContactName || '',
+    primaryContactEmail: record.primaryContactEmail || '',
+    primaryContactPhone: record.primaryContactPhone || '',
+    address: record.address || '',
+    city: record.city || '',
+    state: record.state || '',
+    zipCode: record.zipCode || '',
+    industry: record.industry || '',
+    website: record.website || '',
+    notes: record.notes || '',
+    employeeCount: record.employeeCount || undefined,
+    annualRevenue: record.annualRevenue || undefined,
+    estimatedDealValue: record.estimatedDealValue || undefined,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="companyName">Company Name *</Label>
+          <Input
+            id="companyName"
+            value={formData.companyName}
+            onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+            required
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="primaryContactName">Primary Contact *</Label>
+          <Input
+            id="primaryContactName"
+            value={formData.primaryContactName}
+            onChange={(e) => setFormData(prev => ({ ...prev, primaryContactName: e.target.value }))}
+            required
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="primaryContactEmail">Email</Label>
+          <Input
+            id="primaryContactEmail"
+            type="email"
+            value={formData.primaryContactEmail}
+            onChange={(e) => setFormData(prev => ({ ...prev, primaryContactEmail: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="primaryContactPhone">Phone</Label>
+          <Input
+            id="primaryContactPhone"
+            value={formData.primaryContactPhone}
+            onChange={(e) => setFormData(prev => ({ ...prev, primaryContactPhone: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="address">Address</Label>
+          <Input
+            id="address"
+            value={formData.address}
+            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="city">City</Label>
+          <Input
+            id="city"
+            value={formData.city}
+            onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="state">State</Label>
+          <Input
+            id="state"
+            value={formData.state}
+            onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="zipCode">ZIP Code</Label>
+          <Input
+            id="zipCode"
+            value={formData.zipCode}
+            onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="industry">Industry</Label>
+          <Input
+            id="industry"
+            value={formData.industry}
+            onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="website">Website</Label>
+          <Input
+            id="website"
+            value={formData.website}
+            onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="employeeCount">Employee Count</Label>
+          <Input
+            id="employeeCount"
+            type="number"
+            value={formData.employeeCount || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, employeeCount: e.target.value ? parseInt(e.target.value) : undefined }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="annualRevenue">Annual Revenue ($)</Label>
+          <Input
+            id="annualRevenue"
+            type="number"
+            value={formData.annualRevenue || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, annualRevenue: e.target.value ? parseFloat(e.target.value) : undefined }))}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="estimatedDealValue">Estimated Deal Value ($)</Label>
+          <Input
+            id="estimatedDealValue"
+            type="number"
+            value={formData.estimatedDealValue || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, estimatedDealValue: e.target.value ? parseFloat(e.target.value) : undefined }))}
+          />
+        </div>
+      </div>
+      
+      <div>
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+          rows={3}
+        />
+      </div>
+      
+      <div className="flex justify-end space-x-2 pt-4">
+        <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
+    </form>
   );
 }
