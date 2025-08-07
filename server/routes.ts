@@ -12725,6 +12725,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register all route modules
+  registerOnboardingRoutes(app);
+  registerBusinessRecordRoutes(app);
+  registerIntegrationRoutes(app);
+  registerTaskRoutes(app);
+  registerEnhancedTaskRoutes(app);
+  registerPurchaseOrderRoutes(app);
+  registerWarehouseRoutes(app);
+  registerServiceAnalysisRoutes(app);
+  registerCrmGoalRoutes(app);
+  registerSalesforceRoutes(app);
+  registerSalesforceTestRoutes(app);
+  registerDataEnrichmentRoutes(app);
+  registerQuickBooksRoutes(app);
+  // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
+  registerModularDashboardRoutes(app);
+  registerManufacturerIntegrationRoutes(app);
+
   const httpServer = createServer(app);
   return httpServer;
 }
