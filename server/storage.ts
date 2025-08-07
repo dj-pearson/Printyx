@@ -151,6 +151,25 @@ import {
   type InsertTimeTrackingEntry,
   type InsertServicePhoto,  
   type InsertLocationHistory,
+  // Onboarding schemas
+  onboardingChecklists,
+  onboardingEquipment,
+  onboardingNetworkConfig,
+  onboardingPrintManagement,
+  onboardingDynamicSections,
+  onboardingTasks,
+  type OnboardingChecklist,
+  type InsertOnboardingChecklist,
+  type OnboardingEquipment,
+  type InsertOnboardingEquipment,
+  type OnboardingNetworkConfig,
+  type InsertOnboardingNetworkConfig,
+  type OnboardingPrintManagement,
+  type InsertOnboardingPrintManagement,
+  type OnboardingDynamicSection,
+  type InsertOnboardingDynamicSection,
+  type OnboardingTask,
+  type InsertOnboardingTask,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, lt, ne, count, isNull, isNotNull } from "drizzle-orm";
@@ -363,6 +382,35 @@ export interface IStorage {
   
   getLocationHistory(params: { tenantId: string; technicianId?: string; sessionId?: string; startDate?: Date; endDate?: Date }): Promise<LocationHistory[]>;
   createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory>;
+
+  // Onboarding operations
+  getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]>;
+  getOnboardingChecklist(id: string, tenantId: string): Promise<OnboardingChecklist | undefined>;
+  createOnboardingChecklist(checklist: InsertOnboardingChecklist): Promise<OnboardingChecklist>;
+  updateOnboardingChecklist(id: string, tenantId: string, checklist: Partial<OnboardingChecklist>): Promise<OnboardingChecklist | undefined>;
+  deleteOnboardingChecklist(id: string, tenantId: string): Promise<void>;
+  
+  getOnboardingEquipment(checklistId: string, tenantId: string): Promise<OnboardingEquipment[]>;
+  createOnboardingEquipment(equipment: InsertOnboardingEquipment): Promise<OnboardingEquipment>;
+  updateOnboardingEquipment(id: string, tenantId: string, equipment: Partial<OnboardingEquipment>): Promise<OnboardingEquipment | undefined>;
+  
+  getOnboardingNetworkConfig(checklistId: string, tenantId: string): Promise<OnboardingNetworkConfig[]>;
+  createOnboardingNetworkConfig(config: InsertOnboardingNetworkConfig): Promise<OnboardingNetworkConfig>;
+  updateOnboardingNetworkConfig(id: string, tenantId: string, config: Partial<OnboardingNetworkConfig>): Promise<OnboardingNetworkConfig | undefined>;
+  
+  getOnboardingPrintManagement(checklistId: string, tenantId: string): Promise<OnboardingPrintManagement[]>;
+  createOnboardingPrintManagement(config: InsertOnboardingPrintManagement): Promise<OnboardingPrintManagement>;
+  updateOnboardingPrintManagement(id: string, tenantId: string, config: Partial<OnboardingPrintManagement>): Promise<OnboardingPrintManagement | undefined>;
+  
+  getOnboardingDynamicSections(checklistId: string, tenantId: string): Promise<OnboardingDynamicSection[]>;
+  createOnboardingDynamicSection(section: InsertOnboardingDynamicSection): Promise<OnboardingDynamicSection>;
+  updateOnboardingDynamicSection(id: string, tenantId: string, section: Partial<OnboardingDynamicSection>): Promise<OnboardingDynamicSection | undefined>;
+  deleteOnboardingDynamicSection(id: string, tenantId: string): Promise<void>;
+  
+  getOnboardingTasks(checklistId: string, tenantId: string): Promise<OnboardingTask[]>;
+  createOnboardingTask(task: InsertOnboardingTask): Promise<OnboardingTask>;
+  updateOnboardingTask(id: string, tenantId: string, task: Partial<OnboardingTask>): Promise<OnboardingTask | undefined>;
+  deleteOnboardingTask(id: string, tenantId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3021,6 +3069,165 @@ export class DatabaseStorage implements IStorage {
   async createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory> {
     const [newLocation] = await db.insert(locationHistory).values(location).returning();
     return newLocation;
+  }
+
+  // Onboarding operations
+  async getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]> {
+    return await db
+      .select()
+      .from(onboardingChecklists)
+      .where(eq(onboardingChecklists.tenantId, tenantId))
+      .orderBy(desc(onboardingChecklists.createdAt));
+  }
+
+  async getOnboardingChecklist(id: string, tenantId: string): Promise<OnboardingChecklist | undefined> {
+    const [checklist] = await db
+      .select()
+      .from(onboardingChecklists)
+      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+    return checklist;
+  }
+
+  async createOnboardingChecklist(checklist: InsertOnboardingChecklist): Promise<OnboardingChecklist> {
+    const [newChecklist] = await db.insert(onboardingChecklists).values(checklist).returning();
+    return newChecklist;
+  }
+
+  async updateOnboardingChecklist(id: string, tenantId: string, checklist: Partial<OnboardingChecklist>): Promise<OnboardingChecklist | undefined> {
+    const [updatedChecklist] = await db
+      .update(onboardingChecklists)
+      .set({ ...checklist, updatedAt: new Date() })
+      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)))
+      .returning();
+    return updatedChecklist;
+  }
+
+  async deleteOnboardingChecklist(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(onboardingChecklists)
+      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+  }
+
+  async getOnboardingEquipment(checklistId: string, tenantId: string): Promise<OnboardingEquipment[]> {
+    return await db
+      .select()
+      .from(onboardingEquipment)
+      .where(and(eq(onboardingEquipment.checklistId, checklistId), eq(onboardingEquipment.tenantId, tenantId)))
+      .orderBy(onboardingEquipment.createdAt);
+  }
+
+  async createOnboardingEquipment(equipment: InsertOnboardingEquipment): Promise<OnboardingEquipment> {
+    const [newEquipment] = await db.insert(onboardingEquipment).values(equipment).returning();
+    return newEquipment;
+  }
+
+  async updateOnboardingEquipment(id: string, tenantId: string, equipment: Partial<OnboardingEquipment>): Promise<OnboardingEquipment | undefined> {
+    const [updatedEquipment] = await db
+      .update(onboardingEquipment)
+      .set({ ...equipment, updatedAt: new Date() })
+      .where(and(eq(onboardingEquipment.id, id), eq(onboardingEquipment.tenantId, tenantId)))
+      .returning();
+    return updatedEquipment;
+  }
+
+  async getOnboardingNetworkConfig(checklistId: string, tenantId: string): Promise<OnboardingNetworkConfig[]> {
+    return await db
+      .select()
+      .from(onboardingNetworkConfig)
+      .where(and(eq(onboardingNetworkConfig.checklistId, checklistId), eq(onboardingNetworkConfig.tenantId, tenantId)))
+      .orderBy(onboardingNetworkConfig.createdAt);
+  }
+
+  async createOnboardingNetworkConfig(config: InsertOnboardingNetworkConfig): Promise<OnboardingNetworkConfig> {
+    const [newConfig] = await db.insert(onboardingNetworkConfig).values(config).returning();
+    return newConfig;
+  }
+
+  async updateOnboardingNetworkConfig(id: string, tenantId: string, config: Partial<OnboardingNetworkConfig>): Promise<OnboardingNetworkConfig | undefined> {
+    const [updatedConfig] = await db
+      .update(onboardingNetworkConfig)
+      .set({ ...config, updatedAt: new Date() })
+      .where(and(eq(onboardingNetworkConfig.id, id), eq(onboardingNetworkConfig.tenantId, tenantId)))
+      .returning();
+    return updatedConfig;
+  }
+
+  async getOnboardingPrintManagement(checklistId: string, tenantId: string): Promise<OnboardingPrintManagement[]> {
+    return await db
+      .select()
+      .from(onboardingPrintManagement)
+      .where(and(eq(onboardingPrintManagement.checklistId, checklistId), eq(onboardingPrintManagement.tenantId, tenantId)))
+      .orderBy(onboardingPrintManagement.createdAt);
+  }
+
+  async createOnboardingPrintManagement(config: InsertOnboardingPrintManagement): Promise<OnboardingPrintManagement> {
+    const [newConfig] = await db.insert(onboardingPrintManagement).values(config).returning();
+    return newConfig;
+  }
+
+  async updateOnboardingPrintManagement(id: string, tenantId: string, config: Partial<OnboardingPrintManagement>): Promise<OnboardingPrintManagement | undefined> {
+    const [updatedConfig] = await db
+      .update(onboardingPrintManagement)
+      .set({ ...config, updatedAt: new Date() })
+      .where(and(eq(onboardingPrintManagement.id, id), eq(onboardingPrintManagement.tenantId, tenantId)))
+      .returning();
+    return updatedConfig;
+  }
+
+  async getOnboardingDynamicSections(checklistId: string, tenantId: string): Promise<OnboardingDynamicSection[]> {
+    return await db
+      .select()
+      .from(onboardingDynamicSections)
+      .where(and(eq(onboardingDynamicSections.checklistId, checklistId), eq(onboardingDynamicSections.tenantId, tenantId)))
+      .orderBy(onboardingDynamicSections.sectionOrder);
+  }
+
+  async createOnboardingDynamicSection(section: InsertOnboardingDynamicSection): Promise<OnboardingDynamicSection> {
+    const [newSection] = await db.insert(onboardingDynamicSections).values(section).returning();
+    return newSection;
+  }
+
+  async updateOnboardingDynamicSection(id: string, tenantId: string, section: Partial<OnboardingDynamicSection>): Promise<OnboardingDynamicSection | undefined> {
+    const [updatedSection] = await db
+      .update(onboardingDynamicSections)
+      .set({ ...section, updatedAt: new Date() })
+      .where(and(eq(onboardingDynamicSections.id, id), eq(onboardingDynamicSections.tenantId, tenantId)))
+      .returning();
+    return updatedSection;
+  }
+
+  async deleteOnboardingDynamicSection(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(onboardingDynamicSections)
+      .where(and(eq(onboardingDynamicSections.id, id), eq(onboardingDynamicSections.tenantId, tenantId)));
+  }
+
+  async getOnboardingTasks(checklistId: string, tenantId: string): Promise<OnboardingTask[]> {
+    return await db
+      .select()
+      .from(onboardingTasks)
+      .where(and(eq(onboardingTasks.checklistId, checklistId), eq(onboardingTasks.tenantId, tenantId)))
+      .orderBy(onboardingTasks.createdAt);
+  }
+
+  async createOnboardingTask(task: InsertOnboardingTask): Promise<OnboardingTask> {
+    const [newTask] = await db.insert(onboardingTasks).values(task).returning();
+    return newTask;
+  }
+
+  async updateOnboardingTask(id: string, tenantId: string, task: Partial<OnboardingTask>): Promise<OnboardingTask | undefined> {
+    const [updatedTask] = await db
+      .update(onboardingTasks)
+      .set({ ...task, updatedAt: new Date() })
+      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId)))
+      .returning();
+    return updatedTask;
+  }
+
+  async deleteOnboardingTask(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(onboardingTasks)
+      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId)));
   }
 }
 

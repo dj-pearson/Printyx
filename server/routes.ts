@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { registerOnboardingRoutes } from "./routes-onboarding";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
@@ -12593,6 +12594,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register modular dashboard routes
   registerModularDashboardRoutes(app);
+  
+  // Register onboarding routes
+  registerOnboardingRoutes(app);
 
   // Register manufacturer integration routes
   registerManufacturerIntegrationRoutes(app);

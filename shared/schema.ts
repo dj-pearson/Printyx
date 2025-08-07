@@ -2261,6 +2261,324 @@ export const managerInsights = pgTable("manager_insights", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Onboarding Checklist Status Enum
+export const onboardingStatusEnum = pgEnum("onboarding_status", [
+  "draft",
+  "in_progress", 
+  "pending_review",
+  "completed",
+  "on_hold"
+]);
+
+// Onboarding Installation Type Enum
+export const installationTypeEnum = pgEnum("installation_type", [
+  "new_installation",
+  "replacement",
+  "relocation",
+  "upgrade"
+]);
+
+// Network Assignment Type Enum
+export const networkAssignmentEnum = pgEnum("network_assignment", [
+  "static", 
+  "dhcp",
+  "reserved_dhcp"
+]);
+
+// Print Management System Enum
+export const printManagementEnum = pgEnum("print_management_system", [
+  "papercut",
+  "equitrac", 
+  "ysoft",
+  "other",
+  "none"
+]);
+
+// Onboarding Checklists - Main checklist container
+export const onboardingChecklists = pgTable("onboarding_checklists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Reference Data
+  customerId: varchar("customer_id").notNull(), // Links to businessRecords
+  quoteId: varchar("quote_id"), // Auto-populates from quote if available
+  orderId: varchar("order_id"), // Links to purchase order if available
+  
+  // Basic Information
+  checklistTitle: varchar("checklist_title").notNull(),
+  description: text("description"),
+  status: onboardingStatusEnum("status").default("draft"),
+  installationType: installationTypeEnum("installation_type").notNull(),
+  
+  // Customer Information (auto-populated from quote/order)
+  customerData: jsonb("customer_data"), // Company, contacts, billing info
+  siteInformation: jsonb("site_information"), // Installation location details
+  
+  // Equipment Information (auto-populated from quote/order)
+  equipmentDetails: jsonb("equipment_details"), // Equipment list, models, quantities
+  
+  // Installation Planning
+  scheduledInstallDate: timestamp("scheduled_install_date"),
+  actualInstallDate: timestamp("actual_install_date"),
+  assignedTechnicianId: varchar("assigned_technician_id"),
+  estimatedDuration: integer("estimated_duration"), // hours
+  
+  // Special Requirements
+  accessRequirements: text("access_requirements"),
+  businessHours: jsonb("business_hours"), // Working hours, timezone
+  specialInstructions: text("special_instructions"),
+  
+  // Generated Documents
+  pdfUrl: varchar("pdf_url"), // Object storage path to generated PDF
+  pdfGeneratedAt: timestamp("pdf_generated_at"),
+  
+  // Tracking
+  completedSections: integer("completed_sections").default(0),
+  totalSections: integer("total_sections").default(0),
+  progressPercentage: decimal("progress_percentage", { precision: 5, scale: 2 }).default("0"),
+  
+  // Metadata
+  createdBy: varchar("created_by").notNull(),
+  lastModifiedBy: varchar("last_modified_by"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Onboarding Equipment Records - Individual equipment items
+export const onboardingEquipment = pgTable("onboarding_equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  checklistId: varchar("checklist_id").notNull(),
+  
+  // Equipment Identity
+  equipmentId: varchar("equipment_id"), // Links to main equipment table if exists
+  manufacturer: varchar("manufacturer").notNull(),
+  model: varchar("model").notNull(),
+  serialNumber: varchar("serial_number"),
+  assetTag: varchar("asset_tag"),
+  
+  // Network Configuration
+  targetIpAddress: varchar("target_ip_address"),
+  hostname: varchar("hostname"),
+  macAddress: varchar("mac_address"),
+  networkAssignment: networkAssignmentEnum("network_assignment"),
+  
+  // Location Information
+  buildingLocation: varchar("building_location"),
+  roomLocation: varchar("room_location"),
+  specificLocation: text("specific_location"),
+  
+  // Replacement Information (if applicable)
+  isReplacement: boolean("is_replacement").default(false),
+  oldEquipmentData: jsonb("old_equipment_data"), // Old device details for replacement
+  
+  // Installation Details
+  isInstalled: boolean("is_installed").default(false),
+  installDate: timestamp("install_date"),
+  installNotes: text("install_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Onboarding Network Configuration - Detailed network setup
+export const onboardingNetworkConfig = pgTable("onboarding_network_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  checklistId: varchar("checklist_id").notNull(),
+  equipmentId: varchar("equipment_id"), // Links to onboardingEquipment
+  
+  // IP Configuration
+  ipAddress: varchar("ip_address"),
+  subnetMask: varchar("subnet_mask"),
+  gateway: varchar("gateway"),
+  dnsServers: text("dns_servers").array(),
+  
+  // Network Infrastructure
+  vlanId: integer("vlan_id"),
+  switchPort: varchar("switch_port"),
+  switchLocation: varchar("switch_location"),
+  
+  // Hostname/DNS
+  domainName: varchar("domain_name"),
+  hostnameConvention: varchar("hostname_convention"),
+  dnsUpdateRequired: boolean("dns_update_required").default(false),
+  
+  // Firewall & Security
+  firewallRules: jsonb("firewall_rules"),
+  qosSettings: jsonb("qos_settings"),
+  
+  isConfigured: boolean("is_configured").default(false),
+  configurationNotes: text("configuration_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Onboarding Print Management Configuration
+export const onboardingPrintManagement = pgTable("onboarding_print_management", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  checklistId: varchar("checklist_id").notNull(),
+  equipmentId: varchar("equipment_id"), // Links to onboardingEquipment
+  
+  // Print Management System
+  system: printManagementEnum("system").notNull(),
+  systemVersion: varchar("system_version"),
+  serverAddress: varchar("server_address"),
+  
+  // Queue Configuration
+  queueName: varchar("queue_name"),
+  costCenter: varchar("cost_center"),
+  locationCode: varchar("location_code"),
+  deviceType: varchar("device_type"), // printer, mfp, copier
+  
+  // User Access & Permissions
+  authorizedGroups: text("authorized_groups").array(),
+  printQuotas: jsonb("print_quotas"), // Daily/monthly limits, cost per page
+  printRestrictions: jsonb("print_restrictions"), // Color, duplex, time restrictions
+  
+  // Account Codes
+  accountCodesRequired: boolean("account_codes_required").default(false),
+  validAccountCodes: text("valid_account_codes").array(),
+  defaultAccountCode: varchar("default_account_code"),
+  
+  isConfigured: boolean("is_configured").default(false),
+  configurationNotes: text("configuration_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Onboarding Dynamic Sections - Free-form customizable sections
+export const onboardingDynamicSections = pgTable("onboarding_dynamic_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  checklistId: varchar("checklist_id").notNull(),
+  
+  // Section Configuration
+  sectionTitle: varchar("section_title").notNull(),
+  sectionDescription: text("section_description"),
+  sectionOrder: integer("section_order").default(0),
+  sectionType: varchar("section_type").notNull(), // custom_form, checklist, documentation, requirements
+  
+  // Dynamic Fields Configuration
+  fieldsConfig: jsonb("fields_config"), // Array of field definitions
+  formData: jsonb("form_data"), // User-entered data
+  
+  // Section Status
+  isRequired: boolean("is_required").default(false),
+  isCompleted: boolean("is_completed").default(false),
+  completedBy: varchar("completed_by"),
+  completedAt: timestamp("completed_at"),
+  
+  // Notes & Documentation
+  notes: text("notes"),
+  attachments: text("attachments").array(), // File paths for attachments
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Onboarding Tasks - Individual action items
+export const onboardingTasks = pgTable("onboarding_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  checklistId: varchar("checklist_id").notNull(),
+  sectionId: varchar("section_id"), // Links to onboardingDynamicSections if applicable
+  
+  // Task Details
+  taskTitle: varchar("task_title").notNull(),
+  taskDescription: text("task_description"),
+  taskType: varchar("task_type").notNull(), // installation, configuration, testing, documentation, training
+  priority: varchar("priority").default("medium"), // high, medium, low
+  
+  // Assignment
+  assignedTo: varchar("assigned_to"), // User ID
+  assignedTeam: varchar("assigned_team"), // Team ID
+  estimatedHours: decimal("estimated_hours", { precision: 4, scale: 2 }),
+  
+  // Scheduling
+  dueDate: timestamp("due_date"),
+  scheduledDate: timestamp("scheduled_date"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  
+  // Dependencies
+  dependsOn: text("depends_on").array(), // Array of task IDs that must be completed first
+  blockedBy: text("blocked_by").array(), // Array of task IDs that are blocking this task
+  
+  // Status Tracking
+  status: varchar("status").default("pending"), // pending, in_progress, completed, blocked, cancelled
+  progressNotes: text("progress_notes"),
+  
+  // Results & Documentation
+  completionNotes: text("completion_notes"),
+  attachments: text("attachments").array(),
+  verifiedBy: varchar("verified_by"),
+  verificationDate: timestamp("verification_date"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Zod schemas for onboarding system
+export const insertOnboardingChecklistSchema = createInsertSchema(onboardingChecklists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOnboardingEquipmentSchema = createInsertSchema(onboardingEquipment).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOnboardingNetworkConfigSchema = createInsertSchema(onboardingNetworkConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOnboardingPrintManagementSchema = createInsertSchema(onboardingPrintManagement).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOnboardingDynamicSectionSchema = createInsertSchema(onboardingDynamicSections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOnboardingTaskSchema = createInsertSchema(onboardingTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types for onboarding system
+export type OnboardingChecklist = typeof onboardingChecklists.$inferSelect;
+export type InsertOnboardingChecklist = z.infer<typeof insertOnboardingChecklistSchema>;
+
+export type OnboardingEquipment = typeof onboardingEquipment.$inferSelect;
+export type InsertOnboardingEquipment = z.infer<typeof insertOnboardingEquipmentSchema>;
+
+export type OnboardingNetworkConfig = typeof onboardingNetworkConfig.$inferSelect;
+export type InsertOnboardingNetworkConfig = z.infer<typeof insertOnboardingNetworkConfigSchema>;
+
+export type OnboardingPrintManagement = typeof onboardingPrintManagement.$inferSelect;
+export type InsertOnboardingPrintManagement = z.infer<typeof insertOnboardingPrintManagementSchema>;
+
+export type OnboardingDynamicSection = typeof onboardingDynamicSections.$inferSelect;
+export type InsertOnboardingDynamicSection = z.infer<typeof insertOnboardingDynamicSectionSchema>;
+
+export type OnboardingTask = typeof onboardingTasks.$inferSelect;
+export type InsertOnboardingTask = z.infer<typeof insertOnboardingTaskSchema>;
+
 // Relations
 export const rolesRelations = relations(roles, ({ many }) => ({
   users: many(users),
