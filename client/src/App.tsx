@@ -108,6 +108,8 @@ import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
 import ERPIntegration from "@/pages/ERPIntegration";
 import CustomerAccessManagement from "@/pages/CustomerAccessManagement";
 import ServiceHub from "@/pages/ServiceHub";
+import OnboardingDashboard from "@/pages/OnboardingDashboard";
+import OnboardingDetails from "@/pages/OnboardingDetails";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -394,6 +396,8 @@ function Router() {
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
+          <Route path="/onboarding" component={OnboardingDashboard} />
+          <Route path="/onboarding/:id" component={OnboardingDetails} />
         </>
       )}
       <Route component={NotFound} />

@@ -168,6 +168,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       name: "Service",
       items: [
         { name: "Service Hub", href: "/service-hub", icon: Headphones },
+        { name: "Onboarding Checklists", href: "/onboarding", icon: CheckSquare },
         { name: "Service Dispatch", href: "/service-dispatch-optimization", icon: Calendar },
         {
           name: "Mobile Field Service",
