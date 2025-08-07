@@ -66,6 +66,7 @@ import customerPortalRoutes from "./routes-customer-portal";
 import { serviceDispatchRouter } from "./routes-service-dispatch";
 import commissionRoutes from "./routes-commission";
 import enhancedServiceRoutes from "./routes-enhanced-service";
+import { enhancedRBACRoutes } from "./routes-enhanced-rbac";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -7386,6 +7387,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer Number Management Routes
   const customerNumberRoutes = await import("./routes-customer-numbers");
   app.use("/api/customer-numbers", customerNumberRoutes.customerNumberRoutes);
+
+  // Enhanced RBAC Routes
+  app.use("/api/rbac", enhancedRBACRoutes);
 
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
