@@ -709,8 +709,8 @@ export default function EnhancedOnboardingForm() {
     const payload = {
       checklistTitle: data.checklistTitle,
       description: undefined,
-      status: "draft",
-      installationType,
+      status: "draft" as const,
+      installationType: installationType as "new_installation" | "replacement" | "relocation" | "upgrade",
       customerId: selectedBusinessRecord?.id || data.businessRecordId || "",
       quoteId: data.quoteId || undefined,
       orderId: data.orderId || undefined,
