@@ -4,9 +4,10 @@
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 162 tables across all business modules
+**Total Tables**: 168 tables across all business modules
 
 ## Recent Schema Updates
+- **Enhanced RBAC System (Aug 7, 2025)**: Implemented enterprise-grade Role-Based Access Control with 4-tier organizational structure (Platform/Company/Regional/Location) and 8-level role hierarchy. Added 6 new tables: `organizational_units`, `enhanced_roles`, `permissions`, `role_permissions`, `user_role_assignments`, `permission_overrides`, `permission_cache`. Includes nested set model for efficient hierarchy queries, permission inheritance, customizable roles for company admins, and multi-level caching for performance.
 - **Comprehensive Onboarding System (Aug 7, 2025)**: Added comprehensive onboarding checklist system with `onboarding_checklists`, `onboarding_checklist_sections`, and `onboarding_checklist_items` tables for managing equipment installation and customer onboarding processes. Includes multi-step workflow with equipment details, network configuration, security setup, and dynamic sections
 - **Database Schema Alignment (Aug 7, 2025)**: Fixed schema inconsistencies by adding missing columns to onboarding_checklists table (customer_id, equipment_details, assigned_technician_id, estimated_duration, business_hours, description, quote_id, order_id)
 - **Proposal Builder System (Aug 6, 2025)**: Enhanced proposals and quotes system with comprehensive quote-to-proposal conversion, template management, section configuration, and content management
