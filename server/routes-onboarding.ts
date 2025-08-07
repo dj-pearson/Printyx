@@ -22,26 +22,42 @@ import { ObjectStorageService } from "./objectStorage";
 import { eq, and, or, ilike } from "drizzle-orm";
 import puppeteer from "puppeteer";
 // Authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+const requireAuth = async (req: any, res: any, next: any) => {
+  try {
+    const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+    
+    if (!isAuthenticated) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    
+    // If we have session userId, get user details from storage
+    if (req.session?.userId && !req.user) {
+      const user = await storage.getUser(req.session.userId);
+      if (user) {
+        req.user = {
+          id: user.id,
+          tenantId: user.tenantId,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        };
+      }
+    }
+    
+    // Ensure tenantId is available
+    if (!req.user?.tenantId && req.session?.tenantId) {
+      req.user = { ...req.user, tenantId: req.session.tenantId };
+    }
+    
+    if (!req.user?.tenantId) {
+      return res.status(400).json({ error: "Tenant ID is required" });
+    }
+    
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    return res.status(500).json({ message: "Authentication error" });
   }
-  
-  if (!req.user) {
-    req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId
-    };
-  } else if (!req.user.tenantId && !req.user.id) {
-    req.user = {
-      id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId
-    };
-  }
-  
-  next();
 };
 
 // PDF Generation Service

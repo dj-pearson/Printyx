@@ -1024,6 +1024,76 @@ export default function EnhancedOnboardingForm() {
               </div>
             </div>
 
+            {/* Quote Selection Section */}
+            {selectedBusinessRecord && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Select Quote to Import</CardTitle>
+                  <CardDescription>
+                    Choose a quote from {selectedBusinessRecord.companyName || selectedBusinessRecord.firstName + ' ' + selectedBusinessRecord.lastName} to import equipment
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Search Quotes</Label>
+                    <Input
+                      placeholder="Search by quote number or title..."
+                      value={quoteSearch}
+                      onChange={(e) => setQuoteSearch(e.target.value)}
+                    />
+                  </div>
+                  
+                  {quotes.length > 0 && (
+                    <ScrollArea className="h-40 border rounded-md">
+                      <div className="p-2 space-y-2">
+                        {quotes.map((quote: any) => (
+                          <div
+                            key={quote.id}
+                            className={`p-3 border rounded cursor-pointer transition-colors ${
+                              selectedQuote?.id === quote.id
+                                ? "bg-blue-50 border-blue-200"
+                                : "hover:bg-gray-50"
+                            }`}
+                            onClick={() => setSelectedQuote(quote)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium">{quote.quoteNumber || `Quote #${quote.id.slice(-6)}`}</p>
+                                <p className="text-sm text-gray-600">{quote.title || 'Untitled Quote'}</p>
+                                <p className="text-xs text-gray-500">
+                                  Created: {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString() : 'Unknown'}
+                                </p>
+                              </div>
+                              {quote.total && (
+                                <p className="text-sm font-medium text-green-600">
+                                  ${parseFloat(quote.total).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                  
+                  {selectedQuote && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded">
+                      <p className="font-medium text-green-800">Selected Quote:</p>
+                      <p className="text-sm text-green-700">
+                        {selectedQuote.quoteNumber || `Quote #${selectedQuote.id.slice(-6)}`} - {selectedQuote.title || 'Untitled'}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {quoteSearch.length > 2 && quotes.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No quotes found matching your search.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {showCatalog && (
               <Card>
                 <CardHeader>
@@ -1044,7 +1114,7 @@ export default function EnhancedOnboardingForm() {
 
                   {catalogStep === 1 && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {["Printers", "Copiers", "Scanners", "MFPs", "Software", "Supplies", "Services"].map((type) => (
+                      {["Product Models", "Product Accessories", "Professional Services", "Service Products", "Supplies", "IT & Managed Services"].map((type) => (
                         <Button
                           key={type}
                           variant="outline"
@@ -1073,7 +1143,7 @@ export default function EnhancedOnboardingForm() {
                         ← Back to Product Types
                       </Button>
                       <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                        {selectedProductType === "Printers" && ["Canon", "HP", "Brother", "Epson", "Xerox", "Lexmark"].map((brand) => (
+                        {selectedProductType === "Product Models" && ["Canon", "HP", "Brother", "Epson", "Xerox", "Lexmark", "Toshiba", "Sharp", "Ricoh", "Konica Minolta"].map((brand) => (
                           <Button
                             key={brand}
                             variant="outline"
@@ -1085,7 +1155,7 @@ export default function EnhancedOnboardingForm() {
                             {brand}
                           </Button>
                         ))}
-                        {selectedProductType === "Copiers" && ["Canon", "Xerox", "Toshiba", "Sharp", "Ricoh", "Konica Minolta"].map((brand) => (
+                        {selectedProductType === "Product Accessories" && ["Canon", "HP", "Brother", "Epson", "Xerox", "Lexmark", "Toshiba", "Sharp", "Ricoh", "Generic"].map((brand) => (
                           <Button
                             key={brand}
                             variant="outline"
@@ -1097,7 +1167,7 @@ export default function EnhancedOnboardingForm() {
                             {brand}
                           </Button>
                         ))}
-                        {selectedProductType === "MFPs" && ["Canon", "HP", "Xerox", "Brother", "Sharp", "Ricoh"].map((brand) => (
+                        {selectedProductType === "Professional Services" && ["Installation", "Training", "Consulting", "Project Management", "Custom Development"].map((brand) => (
                           <Button
                             key={brand}
                             variant="outline"
@@ -1109,7 +1179,31 @@ export default function EnhancedOnboardingForm() {
                             {brand}
                           </Button>
                         ))}
-                        {selectedProductType === "Software" && ["Microsoft", "Adobe", "Citrix", "VMware", "PaperTrail"].map((brand) => (
+                        {selectedProductType === "Service Products" && ["Maintenance", "Support", "Repair", "Warranty", "Extended Coverage"].map((brand) => (
+                          <Button
+                            key={brand}
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setCatalogStep(3);
+                            }}
+                          >
+                            {brand}
+                          </Button>
+                        ))}
+                        {selectedProductType === "Supplies" && ["Canon", "HP", "Brother", "Epson", "Xerox", "Lexmark", "Toshiba", "Sharp", "Ricoh", "Generic"].map((brand) => (
+                          <Button
+                            key={brand}
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setCatalogStep(3);
+                            }}
+                          >
+                            {brand}
+                          </Button>
+                        ))}
+                        {selectedProductType === "IT & Managed Services" && ["Microsoft", "Adobe", "Citrix", "VMware", "PaperTrail", "Custom Solutions"].map((brand) => (
                           <Button
                             key={brand}
                             variant="outline"
