@@ -20,6 +20,7 @@ import {
 import { storage } from "./storage";
 import { ObjectStorageService } from "./objectStorage";
 import { eq, and, or, ilike } from "drizzle-orm";
+import { db } from "./db";
 import puppeteer from "puppeteer";
 // Authentication middleware
 const requireAuth = async (req: any, res: any, next: any) => {
@@ -435,7 +436,7 @@ async function searchBusinessRecords(req: Request, res: Response) {
       return res.status(400).json({ error: "Tenant ID is required" });
     }
 
-    let query = storage.db
+    let query = db
       .select()
       .from(businessRecords)
       .where(eq(businessRecords.tenantId, tenantId))
@@ -470,7 +471,7 @@ async function searchQuotes(req: Request, res: Response) {
 
     const tenantId = user.tenantId;
 
-    let query = storage.db
+    let query = db
       .select()
       .from(quotes)
       .where(eq(quotes.tenantId, tenantId))
@@ -513,7 +514,7 @@ async function getQuoteLineItems(req: Request, res: Response) {
 
     const tenantId = user.tenantId;
 
-    const lineItems = await storage.db
+    const lineItems = await db
       .select()
       .from(quoteLineItems)
       .where(
@@ -543,7 +544,7 @@ async function getCompanyContacts(req: Request, res: Response) {
     const tenantId = user.tenantId;
 
     // First get the business record to find the company
-    const businessRecord = await storage.db
+    const businessRecord = await db
       .select()
       .from(businessRecords)
       .where(
