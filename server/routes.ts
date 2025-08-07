@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { registerOnboardingRoutes } from "./routes-onboarding";
+import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from "./routes-export";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
@@ -12603,6 +12604,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register onboarding routes
   registerOnboardingRoutes(app);
+  
+  // Export checklist routes
+  app.get("/api/onboarding/export/:id/pdf", requireAuth, exportChecklistPDF);
+  app.get("/api/onboarding/export/:id/excel", requireAuth, exportChecklistExcel);
+  app.get("/api/onboarding/export/:id/csv", requireAuth, exportChecklistCSV);
 
   // Register manufacturer integration routes
   registerManufacturerIntegrationRoutes(app);
