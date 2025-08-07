@@ -69,6 +69,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
 
 // Enhanced onboarding schema with auto-population and machine replacement
 const enhancedOnboardingSchema = z.object({
