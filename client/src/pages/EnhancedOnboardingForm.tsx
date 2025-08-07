@@ -321,9 +321,12 @@ export default function EnhancedOnboardingForm() {
       networkConfiguration: {},
     },
   ]);
-  // Product catalog search
-  const [productSearch, setProductSearch] = useState("");
+  // Hierarchical product catalog browsing
   const [showCatalog, setShowCatalog] = useState(false);
+  const [selectedProductType, setSelectedProductType] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [catalogStep, setCatalogStep] = useState(1); // 1: type, 2: brand, 3: model
   const [isCompanySelectOpen, setIsCompanySelectOpen] = useState(false);
   const [companySearchTerm, setCompanySearchTerm] = useState("");
   const queryClient = useQueryClient();
@@ -1007,8 +1010,14 @@ export default function EnhancedOnboardingForm() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Equipment & Replacement</h3>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowCatalog((s) => !s)}>
-                  {showCatalog ? "Hide Catalog" : "Browse Catalog"}
+                <Button variant="outline" onClick={() => {
+                  setShowCatalog(true);
+                  setCatalogStep(1);
+                  setSelectedProductType("");
+                  setSelectedBrand("");
+                  setSelectedModel("");
+                }}>
+                  Browse Catalog
                 </Button>
                 <Button variant="outline" onClick={addEquipmentItem}>Add Manual Line</Button>
                 <Button onClick={importEquipmentFromQuote} variant="default">Import From Quote</Button>
@@ -1018,65 +1027,173 @@ export default function EnhancedOnboardingForm() {
             {showCatalog && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Product Catalog</CardTitle>
+                  <CardTitle>Hierarchical Product Catalog</CardTitle>
                   <CardDescription>
-                    Search products by name or filter as you type, then add as device lines
+                    Browse by Product Type → Brand → Model for easier navigation
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Input
-                    placeholder="Search products..."
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                  />
-                  <ScrollArea className="h-56 border rounded-md">
-                    <div className="p-2 space-y-1">
-                      {catalogProducts
-                        .filter((p: any) =>
-                          !productSearch
-                            ? true
-                            : (p.name || p.modelName || p.description || "")
-                                .toLowerCase()
-                                .includes(productSearch.toLowerCase())
-                        )
-                        .slice(0, 50)
-                        .map((p: any) => (
-                          <div key={p.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                            <div className="flex flex-col">
-                              <span className="font-medium">{p.modelName || p.name}</span>
-                              <span className="text-xs text-gray-500">{p.category}</span>
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                const newItem = {
-                                  equipmentType: (p.category?.toLowerCase().includes("copier") ? "copier" : "printer") as const,
-                                  manufacturer: p.brand || p.manufacturer || "",
-                                  model: p.modelName || p.name || "",
-                                  serialNumber: "",
-                                  macAddress: "",
-                                  assetTag: "",
-                                  location: "",
-                                  features: [],
-                                  accessories: [],
-                                  isReplacement: false,
-                                  replacedEquipment: {},
-                                  networkConfiguration: {
-                                    customerNumber: selectedBusinessRecord?.customer_number || "",
-                                  },
-                                };
-                                const updated = [...equipmentItems, newItem];
-                                setEquipmentItems(updated);
-                                form.setValue("equipment", updated);
-                                toast({ title: "Added", description: `${p.modelName || p.name} added to equipment` });
-                              }}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        ))}
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-4 p-2 bg-gray-50 rounded">
+                    <span className="font-medium">Step {catalogStep}/3:</span>
+                    <span className="text-sm">
+                      {catalogStep === 1 && "Select Product Type"}
+                      {catalogStep === 2 && `Select Brand for ${selectedProductType}`}
+                      {catalogStep === 3 && `Select Model from ${selectedBrand}`}
+                    </span>
+                  </div>
+
+                  {catalogStep === 1 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {["Printers", "Copiers", "Scanners", "MFPs", "Software", "Supplies", "Services"].map((type) => (
+                        <Button
+                          key={type}
+                          variant="outline"
+                          className="h-16 flex flex-col items-center justify-center"
+                          onClick={() => {
+                            setSelectedProductType(type);
+                            setCatalogStep(2);
+                          }}
+                        >
+                          <span className="font-medium">{type}</span>
+                        </Button>
+                      ))}
                     </div>
-                  </ScrollArea>
+                  )}
+
+                  {catalogStep === 2 && (
+                    <div className="space-y-3">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setCatalogStep(1);
+                          setSelectedProductType("");
+                        }}
+                      >
+                        ← Back to Product Types
+                      </Button>
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                        {selectedProductType === "Printers" && ["Canon", "HP", "Brother", "Epson", "Xerox", "Lexmark"].map((brand) => (
+                          <Button
+                            key={brand}
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setCatalogStep(3);
+                            }}
+                          >
+                            {brand}
+                          </Button>
+                        ))}
+                        {selectedProductType === "Copiers" && ["Canon", "Xerox", "Toshiba", "Sharp", "Ricoh", "Konica Minolta"].map((brand) => (
+                          <Button
+                            key={brand}
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setCatalogStep(3);
+                            }}
+                          >
+                            {brand}
+                          </Button>
+                        ))}
+                        {selectedProductType === "MFPs" && ["Canon", "HP", "Xerox", "Brother", "Sharp", "Ricoh"].map((brand) => (
+                          <Button
+                            key={brand}
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setCatalogStep(3);
+                            }}
+                          >
+                            {brand}
+                          </Button>
+                        ))}
+                        {selectedProductType === "Software" && ["Microsoft", "Adobe", "Citrix", "VMware", "PaperTrail"].map((brand) => (
+                          <Button
+                            key={brand}
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedBrand(brand);
+                              setCatalogStep(3);
+                            }}
+                          >
+                            {brand}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {catalogStep === 3 && (
+                    <div className="space-y-3">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setCatalogStep(2);
+                          setSelectedBrand("");
+                        }}
+                      >
+                        ← Back to {selectedProductType} Brands
+                      </Button>
+                      <ScrollArea className="h-56 border rounded-md">
+                        <div className="p-2 space-y-2">
+                          {catalogProducts
+                            .filter((p: any) => 
+                              p.category?.toLowerCase().includes(selectedProductType.toLowerCase().slice(0, -1)) &&
+                              (p.brand || p.manufacturer || "").toLowerCase().includes(selectedBrand.toLowerCase())
+                            )
+                            .slice(0, 20)
+                            .map((p: any) => (
+                              <div key={p.id} className="flex items-center justify-between p-3 border rounded hover:bg-gray-50">
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{p.modelName || p.name}</span>
+                                  <span className="text-sm text-gray-600">{p.brand || p.manufacturer} - {p.category}</span>
+                                  {p.price && <span className="text-sm text-blue-600">${p.price}</span>}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    const newItem = {
+                                      equipmentType: (selectedProductType.toLowerCase().includes("copier") ? "copier" : "printer") as const,
+                                      manufacturer: p.brand || p.manufacturer || selectedBrand,
+                                      model: p.modelName || p.name || "",
+                                      serialNumber: "",
+                                      macAddress: "",
+                                      assetTag: "",
+                                      location: "",
+                                      features: [],
+                                      accessories: [],
+                                      isReplacement: false,
+                                      replacedEquipment: {},
+                                      networkConfiguration: {
+                                        customerNumber: selectedBusinessRecord?.customer_number || "",
+                                      },
+                                    };
+                                    const updated = [...equipmentItems, newItem];
+                                    setEquipmentItems(updated);
+                                    form.setValue("equipment", updated);
+                                    toast({ title: "Added", description: `${p.modelName || p.name} added to equipment` });
+                                    setShowCatalog(false);
+                                  }}
+                                >
+                                  Add
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                  
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => setShowCatalog(false)}
+                    className="w-full"
+                  >
+                    Close Catalog
+                  </Button>
                 </CardContent>
               </Card>
             )}
