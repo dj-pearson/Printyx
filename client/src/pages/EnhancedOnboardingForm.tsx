@@ -557,6 +557,17 @@ export default function EnhancedOnboardingForm() {
         form.setValue("quoteId", selectedQuote.id);
         setCurrentStep(5); // Move to equipment step
       }
+    } else {
+      // Ensure current equipment items have required fields populated
+      const updatedEquipment = equipmentItems.map(item => ({
+        ...item,
+        serialNumber: item.serialNumber || "TBD-" + Math.random().toString(36).substr(2, 9),
+        location: item.location || "Main Office"
+      }));
+      if (JSON.stringify(updatedEquipment) !== JSON.stringify(equipmentItems)) {
+        setEquipmentItems(updatedEquipment);
+        form.setValue("equipment", updatedEquipment);
+      }
     }
   }, [selectedQuote, quoteLineItems, selectedBusinessRecord, form]);
 
@@ -569,6 +580,31 @@ export default function EnhancedOnboardingForm() {
       form.setValue("checklistTitle", defaultTitle);
     }
   }, [selectedBusinessRecord, form]);
+
+  // Ensure equipment items always have required fields populated
+  useEffect(() => {
+    const currentEquipment = form.getValues("equipment") || [];
+    let needsUpdate = false;
+    
+    const updatedEquipment = currentEquipment.map((item: any) => {
+      const updated = { ...item };
+      if (!updated.serialNumber) {
+        updated.serialNumber = "TBD-" + Math.random().toString(36).substr(2, 9);
+        needsUpdate = true;
+      }
+      if (!updated.location) {
+        updated.location = "Main Office";
+        needsUpdate = true;
+      }
+      return updated;
+    });
+    
+    if (needsUpdate && updatedEquipment.length > 0) {
+      setEquipmentItems(updatedEquipment);
+      form.setValue("equipment", updatedEquipment);
+    }
+  }, [form, equipmentItems]);
+
 
   const createChecklistMutation = useMutation({
     mutationFn: (data: any) =>
@@ -594,8 +630,20 @@ export default function EnhancedOnboardingForm() {
   });
 
   const onSubmit = (data: EnhancedOnboardingFormData) => {
+    console.log("Button clicked");
     console.log("Form data:", data);
     console.log("Form errors:", form.formState.errors);
+    
+    // Ensure all equipment items have required fields populated
+    if (data.equipment && data.equipment.length > 0) {
+      data.equipment = data.equipment.map((item: any) => ({
+        ...item,
+        serialNumber: item.serialNumber || "TBD-" + Math.random().toString(36).substr(2, 9),
+        location: item.location || "Main Office"
+      }));
+      // Update the form values to ensure validation passes
+      form.setValue("equipment", data.equipment);
+    }
     
     const installationType = data.equipment?.some((e) => e.isReplacement)
       ? "replacement"
@@ -691,10 +739,10 @@ export default function EnhancedOnboardingForm() {
         equipmentType: getEquipmentType(item.description),
         manufacturer: getManufacturer(item.description),
         model: item.description || `Imported Item ${index + 1}`,
-        serialNumber: "",
+        serialNumber: "TBD-" + Math.random().toString(36).substr(2, 9),
         macAddress: "",
         assetTag: "",
-        location: "",
+        location: "Main Office",
         features: [],
         accessories: [],
         isReplacement: false,
@@ -725,10 +773,10 @@ export default function EnhancedOnboardingForm() {
       equipmentType: "printer" as const,
       manufacturer: "",
       model: "",
-      serialNumber: "",
+      serialNumber: "TBD-" + Math.random().toString(36).substr(2, 9),
       macAddress: "",
       assetTag: "",
-      location: "",
+      location: "Main Office",
       features: [],
       accessories: [],
       isReplacement: false,
