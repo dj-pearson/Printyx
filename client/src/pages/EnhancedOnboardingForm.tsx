@@ -467,8 +467,20 @@ export default function EnhancedOnboardingForm() {
 
       form.setValue("businessRecordId", selectedBusinessRecord.id);
       const companyName = selectedBusinessRecord.company_name || selectedBusinessRecord.companyName || `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Customer Company";
-      const primaryContactName = primaryContact ? `${primaryContact.first_name || ""} ${primaryContact.last_name || ""}`.trim() : 
-        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Primary Contact";
+      
+      // Handle primary contact name more robustly
+      let primaryContactName = "Primary Contact";
+      if (primaryContact && primaryContact.first_name && primaryContact.last_name) {
+        primaryContactName = `${primaryContact.first_name} ${primaryContact.last_name}`;
+      } else if (primaryContact && (primaryContact.first_name || primaryContact.last_name)) {
+        primaryContactName = `${primaryContact.first_name || ""} ${primaryContact.last_name || ""}`.trim();
+      } else if (selectedBusinessRecord.firstName && selectedBusinessRecord.lastName) {
+        primaryContactName = `${selectedBusinessRecord.firstName} ${selectedBusinessRecord.lastName}`;
+      } else if (selectedBusinessRecord.firstName || selectedBusinessRecord.lastName) {
+        primaryContactName = `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim();
+      } else if (selectedBusinessRecord.primaryContactName) {
+        primaryContactName = selectedBusinessRecord.primaryContactName;
+      }
       
       form.setValue("customerData.companyName", companyName);
       form.setValue("customerData.primaryContact", primaryContactName);
@@ -513,9 +525,19 @@ export default function EnhancedOnboardingForm() {
         .join(", ");
       form.setValue("siteInformation.installationAddress", fullAddress || "123 Main Street, City, State 12345");
       
-      // Set required site information fields
-      const siteContactName = primaryContact ? `${primaryContact.first_name || ""} ${primaryContact.last_name || ""}`.trim() : 
-        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Site Contact";
+      // Set required site information fields with robust contact name handling
+      let siteContactName = "Site Contact";
+      if (primaryContact && primaryContact.first_name && primaryContact.last_name) {
+        siteContactName = `${primaryContact.first_name} ${primaryContact.last_name}`;
+      } else if (primaryContact && (primaryContact.first_name || primaryContact.last_name)) {
+        siteContactName = `${primaryContact.first_name || ""} ${primaryContact.last_name || ""}`.trim();
+      } else if (selectedBusinessRecord.firstName && selectedBusinessRecord.lastName) {
+        siteContactName = `${selectedBusinessRecord.firstName} ${selectedBusinessRecord.lastName}`;
+      } else if (selectedBusinessRecord.firstName || selectedBusinessRecord.lastName) {
+        siteContactName = `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim();
+      } else if (selectedBusinessRecord.primaryContactName) {
+        siteContactName = selectedBusinessRecord.primaryContactName;
+      }
       form.setValue("siteInformation.contactPerson", siteContactName);
       form.setValue("siteInformation.phoneNumber", selectedBusinessRecord.phone || primaryContact?.phone || "555-0123");
 
@@ -650,20 +672,34 @@ export default function EnhancedOnboardingForm() {
       form.setValue("equipment", data.equipment);
     }
     
-    // Ensure primary contact is populated
-    if (!data.customerData.primaryContact || data.customerData.primaryContact.trim() === "" || data.customerData.primaryContact === "undefined undefined") {
-      const primaryContactName = selectedBusinessRecord ? 
-        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Primary Contact" : "Primary Contact";
-      data.customerData.primaryContact = primaryContactName;
-      form.setValue("customerData.primaryContact", primaryContactName);
+    // Ensure primary contact is populated and handle "undefined undefined" cases
+    if (!data.customerData.primaryContact || data.customerData.primaryContact.trim() === "" || 
+        data.customerData.primaryContact === "undefined undefined" || data.customerData.primaryContact.includes("undefined")) {
+      let fallbackContactName = "Primary Contact";
+      if (selectedBusinessRecord?.firstName && selectedBusinessRecord?.lastName) {
+        fallbackContactName = `${selectedBusinessRecord.firstName} ${selectedBusinessRecord.lastName}`;
+      } else if (selectedBusinessRecord?.firstName || selectedBusinessRecord?.lastName) {
+        fallbackContactName = `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Primary Contact";
+      } else if (selectedBusinessRecord?.primaryContactName && !selectedBusinessRecord.primaryContactName.includes("undefined")) {
+        fallbackContactName = selectedBusinessRecord.primaryContactName;
+      }
+      data.customerData.primaryContact = fallbackContactName;
+      form.setValue("customerData.primaryContact", fallbackContactName);
     }
     
-    // Ensure site contact person is populated  
-    if (!data.siteInformation.contactPerson || data.siteInformation.contactPerson.trim() === "" || data.siteInformation.contactPerson === "undefined undefined") {
-      const siteContactName = selectedBusinessRecord ? 
-        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Site Contact" : "Site Contact";
-      data.siteInformation.contactPerson = siteContactName;
-      form.setValue("siteInformation.contactPerson", siteContactName);
+    // Ensure site contact person is populated and handle "undefined undefined" cases
+    if (!data.siteInformation.contactPerson || data.siteInformation.contactPerson.trim() === "" || 
+        data.siteInformation.contactPerson === "undefined undefined" || data.siteInformation.contactPerson.includes("undefined")) {
+      let fallbackSiteContactName = "Site Contact";
+      if (selectedBusinessRecord?.firstName && selectedBusinessRecord?.lastName) {
+        fallbackSiteContactName = `${selectedBusinessRecord.firstName} ${selectedBusinessRecord.lastName}`;
+      } else if (selectedBusinessRecord?.firstName || selectedBusinessRecord?.lastName) {
+        fallbackSiteContactName = `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Site Contact";
+      } else if (selectedBusinessRecord?.primaryContactName && !selectedBusinessRecord.primaryContactName.includes("undefined")) {
+        fallbackSiteContactName = selectedBusinessRecord.primaryContactName;
+      }
+      data.siteInformation.contactPerson = fallbackSiteContactName;
+      form.setValue("siteInformation.contactPerson", fallbackSiteContactName);
     }
     
     const installationType = data.equipment?.some((e) => e.isReplacement)
