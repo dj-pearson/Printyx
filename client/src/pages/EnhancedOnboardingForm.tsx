@@ -349,13 +349,13 @@ export default function EnhancedOnboardingForm() {
     queryKey: ["/api/quotes", quoteSearch, selectedBusinessRecord?.id],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (quoteSearch) params.append("search", quoteSearch);
+      if (quoteSearch.trim()) params.append("search", quoteSearch);
       if (selectedBusinessRecord?.id)
         params.append("businessRecordId", selectedBusinessRecord.id);
-      params.append("limit", "10");
+      params.append("limit", "20");
       return apiRequest(`/api/quotes?${params.toString()}`);
     },
-    enabled: quoteSearch.length > 2 || !!selectedBusinessRecord?.id,
+    enabled: !!selectedBusinessRecord?.id,
   });
 
   // Fetch quote line items when quote is selected
@@ -1064,10 +1064,11 @@ export default function EnhancedOnboardingForm() {
                                 <p className="text-xs text-gray-500">
                                   Created: {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString() : 'Unknown'}
                                 </p>
+                                <p className="text-xs text-blue-500">Status: {quote.status || 'Draft'}</p>
                               </div>
-                              {quote.total && (
+                              {quote.totalAmount && (
                                 <p className="text-sm font-medium text-green-600">
-                                  ${parseFloat(quote.total).toLocaleString()}
+                                  ${parseFloat(quote.totalAmount).toLocaleString()}
                                 </p>
                               )}
                             </div>

@@ -479,18 +479,25 @@ async function searchQuotes(req: Request, res: Response) {
 
     if (businessRecordId && typeof businessRecordId === "string") {
       query = query.where(
-        or(
-          eq(quotes.leadId, businessRecordId),
-          eq(quotes.customerId, businessRecordId)
+        and(
+          eq(quotes.tenantId, tenantId),
+          or(
+            eq(quotes.leadId, businessRecordId),
+            eq(quotes.customerId, businessRecordId)
+          )
         )
       );
     }
 
     if (search && typeof search === "string") {
       query = query.where(
-        or(
-          ilike(quotes.quoteNumber, `%${search}%`),
-          ilike(quotes.title, `%${search}%`)
+        and(
+          eq(quotes.tenantId, tenantId),
+          or(
+            ilike(quotes.quoteNumber, `%${search}%`),
+            ilike(quotes.title, `%${search}%`),
+            ilike(quotes.description, `%${search}%`)
+          )
         )
       );
     }
