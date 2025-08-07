@@ -110,6 +110,7 @@ import CustomerAccessManagement from "@/pages/CustomerAccessManagement";
 import ServiceHub from "@/pages/ServiceHub";
 import OnboardingDashboard from "@/pages/OnboardingDashboard";
 import OnboardingDetails from "@/pages/OnboardingDetails";
+import ComprehensiveOnboardingForm from "@/pages/ComprehensiveOnboardingForm";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -397,6 +398,7 @@ function Router() {
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
           <Route path="/onboarding" component={OnboardingDashboard} />
+          <Route path="/onboarding/new" component={ComprehensiveOnboardingForm} />
           <Route path="/onboarding/:id" component={OnboardingDetails} />
         </>
       )}
