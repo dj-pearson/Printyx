@@ -475,6 +475,7 @@ async function searchQuotes(req: Request, res: Response) {
       .select()
       .from(quotes)
       .where(eq(quotes.tenantId, tenantId))
+      .orderBy(sql`${quotes.createdAt} DESC`)
       .limit(Number(limit));
 
     if (businessRecordId && typeof businessRecordId === "string") {
@@ -496,7 +497,7 @@ async function searchQuotes(req: Request, res: Response) {
           or(
             ilike(quotes.quoteNumber, `%${search}%`),
             ilike(quotes.title, `%${search}%`),
-            ilike(quotes.description, `%${search}%`)
+            ilike(quotes.notes, `%${search}%`)
           )
         )
       );
