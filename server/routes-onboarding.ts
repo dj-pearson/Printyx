@@ -21,6 +21,28 @@ import { storage } from "./storage";
 import { ObjectStorageService } from "./objectStorage";
 import { eq, and, or, ilike } from "drizzle-orm";
 import puppeteer from "puppeteer";
+// Authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  
+  if (!req.user) {
+    req.user = {
+      id: req.session.userId,
+      tenantId: req.session.tenantId || req.user?.tenantId
+    };
+  } else if (!req.user.tenantId && !req.user.id) {
+    req.user = {
+      id: req.user.claims?.sub || req.user.id,
+      tenantId: req.user.tenantId || req.session?.tenantId
+    };
+  }
+  
+  next();
+};
 
 // PDF Generation Service
 class OnboardingPDFService {
@@ -423,12 +445,14 @@ async function searchBusinessRecords(req: Request, res: Response) {
 
 async function searchQuotes(req: Request, res: Response) {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const user = req.user as any;
     const { search, businessRecordId, limit = 10 } = req.query;
 
-    if (!tenantId) {
+    if (!user?.tenantId) {
       return res.status(400).json({ error: "Tenant ID is required" });
     }
+
+    const tenantId = user.tenantId;
 
     let query = storage.db
       .select()
@@ -464,12 +488,14 @@ async function searchQuotes(req: Request, res: Response) {
 
 async function getQuoteLineItems(req: Request, res: Response) {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const user = req.user as any;
     const { quoteId } = req.params;
 
-    if (!tenantId) {
+    if (!user?.tenantId) {
       return res.status(400).json({ error: "Tenant ID is required" });
     }
+
+    const tenantId = user.tenantId;
 
     const lineItems = await storage.db
       .select()
@@ -491,12 +517,14 @@ async function getQuoteLineItems(req: Request, res: Response) {
 
 async function getCompanyContacts(req: Request, res: Response) {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const user = req.user as any;
     const { businessRecordId } = req.params;
 
-    if (!tenantId) {
+    if (!user?.tenantId) {
       return res.status(400).json({ error: "Tenant ID is required" });
     }
+
+    const tenantId = user.tenantId;
 
     // First get the business record to find the company
     const businessRecord = await storage.db
@@ -924,7 +952,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
   // Enhanced API endpoints for auto-population
   app.get("/api/business-records", searchBusinessRecords);
-  app.get("/api/quotes", searchQuotes);
-  app.get("/api/quotes/:quoteId/line-items", getQuoteLineItems);
-  app.get("/api/companies/:businessRecordId/contacts", getCompanyContacts);
+  app.get("/api/quotes", requireAuth, searchQuotes);
+  app.get("/api/quotes/:quoteId/line-items", requireAuth, getQuoteLineItems);
+  app.get("/api/companies/:businessRecordId/contacts", requireAuth, getCompanyContacts);
 }
