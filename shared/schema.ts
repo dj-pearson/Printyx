@@ -199,6 +199,31 @@ export {
   commissionSalesTransactionsRelations,
 } from "./commission-schema";
 
+// Re-export Enhanced RBAC schemas
+export {
+  organizationalUnits,
+  enhancedRoles,
+  permissions,
+  rolePermissions,
+  userRoleAssignments,
+  permissionOverrides,
+  permissionCache,
+  organizationalTierEnum,
+  roleHierarchyLevelEnum,
+  permissionEffectEnum,
+  organizationalUnitsRelations,
+  enhancedRolesRelations,
+  permissionsRelations,
+  rolePermissionsRelations,
+  userRoleAssignmentsRelations,
+  insertOrganizationalUnitSchema,
+  insertEnhancedRoleSchema,
+  insertPermissionSchema,
+  insertRolePermissionSchema,
+  insertUserRoleAssignmentSchema,
+  insertPermissionOverrideSchema,
+} from "../server/enhanced-rbac-schema";
+
 export type {
   AuditLog,
   InsertAuditLog,
@@ -238,6 +263,21 @@ export type {
   CommissionSalesTransaction,
   InsertCommissionSalesTransaction,
 } from "./commission-schema";
+
+export type {
+  OrganizationalUnit,
+  InsertOrganizationalUnit,
+  EnhancedRole,
+  InsertEnhancedRole,
+  Permission,
+  InsertPermission,
+  RolePermission,
+  InsertRolePermission,
+  UserRoleAssignment,
+  InsertUserRoleAssignment,
+  PermissionOverride,
+  InsertPermissionOverride,
+} from "../server/enhanced-rbac-schema";
 
 // Re-export Demo Scheduling schemas
 export {

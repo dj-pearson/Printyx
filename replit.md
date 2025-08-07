@@ -8,6 +8,11 @@ The platform includes AI-powered analytics (customer churn, CLV, predictive main
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+- **Enhanced RBAC System (Aug 7, 2025)**: Implemented enterprise-grade Role-Based Access Control system based on RBAC.md research. Features 4-tier organizational structure (Platform/Company/Regional/Location) with 8-level role hierarchy, 6 new database tables with nested set models for efficient queries, granular permission system with 35+ business-specific permissions, customizable roles for company admins, permission overrides for exceptions, and multi-level caching for performance. Supports both small single-location dealers ($500K) and large multi-location enterprises ($300M) with specialized role templates.
+- **Comprehensive Onboarding System (Aug 7, 2025)**: Built complete customer onboarding and equipment installation management system with 6 dedicated database tables (`onboarding_checklists`, `onboarding_dynamic_sections`, `onboarding_equipment`, `onboarding_tasks`, `onboarding_network_config`, `onboarding_print_management`). Features 9-step multi-workflow for equipment deployment including customer info, site details, scheduling, equipment tracking, network configuration, print management, security setup, and dynamic custom sections. Includes progress tracking, PDF generation, technician assignment, and comprehensive task management.
+- **Database Schema Alignment (Aug 7, 2025)**: Fixed critical schema inconsistencies by adding missing columns to onboarding_checklists table and aligned database structure with schema definitions. All onboarding API endpoints now properly authenticated and functional.
+
 ## System Architecture
 
 ### Frontend
@@ -43,6 +48,7 @@ Preferred communication style: Simple, everyday language.
 - **Triple-Platform Integration System**: E-Automate, Salesforce, and QuickBooks Online integration with isolated field mapping architecture.
 - **Unified Data Enrichment System**: Lead prospecting with ZoomInfo and Apollo.io integration.
 - **Root Admin Security Suite**: Comprehensive security platform including Social Media Generation, Security Management, System Monitoring, and Access Control, restricted to platform and root admins.
+- **Enhanced RBAC System**: Enterprise-grade Role-Based Access Control with 4-tier organizational structure (Platform/Company/Regional/Location) and 8-level role hierarchy. Includes nested set models for efficient hierarchy queries, permission inheritance, customizable roles for company admins, and multi-level caching for performance.
 - **Multi-Tenant Architecture**: Replaced hardcoded tenant IDs with session-based tenant resolution and comprehensive tenant middleware.
 - **Performance Optimization**: Standardized polling, smart cache strategies, pagination, optimistic updates, and grouped cache invalidation.
 - **Form Validation**: Unified validation library with comprehensive schemas.
