@@ -9,6 +9,8 @@ The platform has successfully implemented a Root Admin security suite with Socia
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **Comprehensive Onboarding System (Aug 7, 2025)**: Built complete customer onboarding and equipment installation management system with 6 dedicated database tables (`onboarding_checklists`, `onboarding_dynamic_sections`, `onboarding_equipment`, `onboarding_tasks`, `onboarding_network_config`, `onboarding_print_management`). Features 9-step multi-workflow for equipment deployment including customer info, site details, scheduling, equipment tracking, network configuration, print management, security setup, and dynamic custom sections. Includes progress tracking, PDF generation, technician assignment, and comprehensive task management.
+- **Database Schema Alignment (Aug 7, 2025)**: Fixed critical schema inconsistencies by adding missing columns to onboarding_checklists table and aligned database structure with schema definitions. All onboarding API endpoints now properly authenticated and functional.
 - **Enhanced Contact Form (Aug 5, 2025)**: Implemented intelligent company field with predictive dropdown and automatic company creation. Users can now type company names with real-time search and create new companies seamlessly during contact creation.
 - **Mobile Optimization (Aug 5, 2025)**: Comprehensive mobile optimization for deals management including responsive Kanban board, mobile card view for table data, and optimized dialog layouts for mobile devices.
 - **Proposal Builder System (Aug 6, 2025)**: Built comprehensive proposal builder that integrates with existing quotes. Sales reps can now select existing quotes, choose professional templates, configure sections, and transform quotes into polished proposals. The system includes a 5-step workflow: Quote Selection → Template Selection → Section Configuration → Content Management → Preview & Send.
@@ -35,7 +37,7 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Neon serverless hosting.
 - **ORM**: Drizzle ORM for type-safe operations and migrations.
 - **Schema Design**: Multi-tenant architecture with tenant isolation and comprehensive role-based access control (RBAC).
-- **Key Entities**: Users, Roles, Tenants, Business Records (leads/customers), Equipment, Contracts, Service Tickets, Inventory, Technicians, Meter Readings, Invoices, Tasks, Projects, Service Call Analysis, Parts Orders, Warehouse Operations.
+- **Key Entities**: Users, Roles, Tenants, Business Records (leads/customers), Equipment, Contracts, Service Tickets, Inventory, Technicians, Meter Readings, Invoices, Tasks, Projects, Service Call Analysis, Parts Orders, Warehouse Operations, Onboarding Checklists, Installation Management.
 
 ### Multi-Tenancy & Multi-Location Role-Based Access Control
 - **Tenant Isolation**: Row-level security with `tenantId` filtering.
@@ -60,6 +62,7 @@ Preferred communication style: Simple, everyday language.
 - **Service Dispatch**: Smart technician assignment and work order optimization.
 - **CRM System**: Lead pipeline, quote generation, customer interaction, and equipment tracking.
 - **Proposal Builder**: Quote-to-proposal conversion system with professional templates, customizable sections, and company branding integration.
+- **Comprehensive Onboarding System**: Multi-step customer onboarding and equipment installation management with 6 dedicated tables. Features 9-step workflow covering customer information, site details, equipment tracking, network configuration, security setup, and dynamic custom sections. Includes progress tracking, PDF generation, technician assignment, and granular task management.
 - **Product Management System**: Seven-category product catalog.
 - **Task Management System**: Personal and multi-step project tracking.
 - **Equipment Lifecycle Management**: Purchase orders, warehouse, delivery, installation, and asset tracking.

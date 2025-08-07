@@ -4,9 +4,11 @@
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 156 tables across all business modules
+**Total Tables**: 162 tables across all business modules
 
 ## Recent Schema Updates
+- **Comprehensive Onboarding System (Aug 7, 2025)**: Added comprehensive onboarding checklist system with `onboarding_checklists`, `onboarding_checklist_sections`, and `onboarding_checklist_items` tables for managing equipment installation and customer onboarding processes. Includes multi-step workflow with equipment details, network configuration, security setup, and dynamic sections
+- **Database Schema Alignment (Aug 7, 2025)**: Fixed schema inconsistencies by adding missing columns to onboarding_checklists table (customer_id, equipment_details, assigned_technician_id, estimated_duration, business_hours, description, quote_id, order_id)
 - **Proposal Builder System (Aug 6, 2025)**: Enhanced proposals and quotes system with comprehensive quote-to-proposal conversion, template management, section configuration, and content management
 - **Customer Self-Service Portal**: Added 8 comprehensive tables for customer portal functionality including access management, service requests, meter submissions, supply orders, payments, notifications, and activity logging
 - **Manufacturer Integration System**: Enhanced device registration and metrics tracking with manufacturer_integrations, device_registrations, device_metrics, and integration_audit_logs tables
@@ -686,6 +688,174 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `created_at` (timestamp) - Creation date
 - `updated_at` (timestamp) - Last update
+
+### Customer Onboarding & Installation Management
+
+#### `onboarding_checklists` (Installation Checklists)
+**Purpose**: Comprehensive customer onboarding and equipment installation management
+**Function**: Multi-step workflow for managing equipment deployment, configuration, and customer training
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Checklist identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `customer_id` (varchar, FK → business_records.id) - Customer reference
+- `quote_id` (varchar, FK → quotes.id) - Associated quote
+- `order_id` (varchar, FK → purchase_orders.id) - Associated order
+- `checklist_title` (varchar) - Checklist title/name
+- `description` (text) - Checklist description
+- `installation_type` (varchar) - Installation type (new_site/equipment_upgrade/relocation/expansion)
+- `status` (varchar) - Checklist status (draft/in_progress/completed/cancelled)
+- `customer_data` (jsonb) - Customer information (company, contacts, billing)
+- `site_information` (jsonb) - Installation site details (address, access, requirements)
+- `equipment_details` (jsonb) - Equipment specifications and configuration
+- `scheduled_install_date` (date) - Planned installation date
+- `actual_install_date` (date) - Actual installation date
+- `assigned_technician_id` (varchar, FK → technicians.id) - Assigned technician
+- `estimated_duration` (integer) - Estimated duration in hours
+- `access_requirements` (text) - Site access instructions
+- `business_hours` (jsonb) - Customer business hours and timezone
+- `special_instructions` (text) - Special installation notes
+- `progress_percentage` (decimal) - Completion percentage (0-100)
+- `total_sections` (integer) - Total checklist sections
+- `completed_sections` (integer) - Completed sections count
+- `pdf_url` (varchar) - Generated PDF checklist URL
+- `pdf_generated_at` (timestamp) - PDF generation timestamp
+- `created_by` (uuid, FK → users.id) - Checklist creator
+- `last_modified_by` (uuid, FK → users.id) - Last modifier
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `onboarding_dynamic_sections` (Custom Checklist Sections)
+**Purpose**: Configurable sections for specialized installation requirements
+**Function**: Dynamic checklist sections for custom workflows, training modules, and special configurations
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Section identifier
+- `checklist_id` (uuid, FK → onboarding_checklists.id) - Parent checklist
+- `section_title` (varchar) - Section title
+- `section_type` (varchar) - Section type (installation/training/maintenance/configuration/other)
+- `description` (text) - Section description
+- `sort_order` (integer) - Section display order
+- `is_required` (boolean) - Required section flag
+- `completion_criteria` (text) - Completion requirements
+- `assigned_to` (uuid, FK → users.id) - Section assignee
+- `estimated_duration` (integer) - Estimated completion time (minutes)
+- `actual_duration` (integer) - Actual completion time (minutes)
+- `status` (varchar) - Section status (pending/in_progress/completed/skipped)
+- `completed_at` (timestamp) - Completion timestamp
+- `completed_by` (uuid, FK → users.id) - Section completer
+- `notes` (text) - Section notes and comments
+- `attachments` (jsonb) - Related files and documents
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `onboarding_equipment` (Equipment Installation Tracking)
+**Purpose**: Detailed tracking of individual equipment items during installation
+**Function**: Equipment-specific configuration, network setup, and testing verification
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Equipment record identifier
+- `checklist_id` (uuid, FK → onboarding_checklists.id) - Parent checklist
+- `equipment_type` (varchar) - Equipment type (printer/copier/scanner/fax/mfp/other)
+- `manufacturer` (varchar) - Equipment manufacturer
+- `model` (varchar) - Equipment model number
+- `serial_number` (varchar) - Equipment serial number
+- `installation_location` (varchar) - Physical installation location
+- `network_configuration` (jsonb) - Network settings (IP, WIFI, etc.)
+- `print_configuration` (jsonb) - Print settings and drivers
+- `security_configuration` (jsonb) - Security settings and access codes
+- `features_enabled` (jsonb) - Enabled features list
+- `accessories_installed` (jsonb) - Installed accessories list
+- `testing_completed` (boolean) - Installation testing status
+- `testing_notes` (text) - Testing results and notes
+- `warranty_information` (jsonb) - Warranty details and registration
+- `maintenance_schedule` (jsonb) - Maintenance schedule setup
+- `user_training_completed` (boolean) - User training status
+- `installation_status` (varchar) - Equipment status (pending/installing/configured/testing/completed/failed)
+- `installed_by` (uuid, FK → technicians.id) - Installing technician
+- `installed_at` (timestamp) - Installation completion timestamp
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `onboarding_tasks` (Installation Task Management)
+**Purpose**: Granular task tracking within onboarding checklists
+**Function**: Individual task assignment, progress tracking, and quality control
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Task identifier
+- `checklist_id` (uuid, FK → onboarding_checklists.id) - Parent checklist
+- `section_id` (uuid, FK → onboarding_dynamic_sections.id) - Parent section
+- `equipment_id` (uuid, FK → onboarding_equipment.id) - Related equipment
+- `task_title` (varchar) - Task title
+- `task_description` (text) - Detailed task description
+- `task_type` (varchar) - Task category (hardware/software/network/training/testing/documentation)
+- `priority` (varchar) - Task priority (low/medium/high/critical)
+- `sort_order` (integer) - Task sequence order
+- `is_required` (boolean) - Required task flag
+- `prerequisites` (jsonb) - Task dependencies
+- `estimated_duration` (integer) - Estimated completion time (minutes)
+- `actual_duration` (integer) - Actual completion time (minutes)
+- `instructions` (text) - Task instructions and procedures
+- `completion_criteria` (text) - Task completion requirements
+- `assigned_to` (uuid, FK → users.id) - Task assignee
+- `status` (varchar) - Task status (pending/in_progress/completed/failed/skipped)
+- `started_at` (timestamp) - Task start timestamp
+- `completed_at` (timestamp) - Task completion timestamp
+- `verification_required` (boolean) - Quality verification flag
+- `verified_by` (uuid, FK → users.id) - Task verifier
+- `verified_at` (timestamp) - Verification timestamp
+- `notes` (text) - Task notes and comments
+- `attachments` (jsonb) - Task-related files and photos
+- `issues_encountered` (text) - Problems and resolutions
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `onboarding_network_config` (Network Configuration Templates)
+**Purpose**: Standardized network configuration templates and settings
+**Function**: Reusable network configurations for different customer environments
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Configuration identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `template_name` (varchar) - Configuration template name
+- `description` (text) - Template description
+- `network_type` (varchar) - Network type (wired/wireless/both)
+- `ip_assignment` (varchar) - IP assignment method (static/dhcp)
+- `subnet_configuration` (jsonb) - Subnet and VLAN settings
+- `dns_configuration` (jsonb) - DNS server settings
+- `security_settings` (jsonb) - Network security configuration
+- `printer_ports` (jsonb) - Required port configurations
+- `protocol_settings` (jsonb) - Network protocol settings
+- `bandwidth_requirements` (jsonb) - Bandwidth and QoS settings
+- `firewall_rules` (jsonb) - Required firewall configurations
+- `is_template` (boolean) - Template flag
+- `is_active` (boolean) - Active configuration flag
+- `created_by` (uuid, FK → users.id) - Template creator
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
+
+#### `onboarding_print_management` (Print Management Templates)
+**Purpose**: Print management configuration templates and policies
+**Function**: Standardized print settings, user permissions, and management policies
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Configuration identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
+- `template_name` (varchar) - Template name
+- `description` (text) - Template description
+- `driver_configuration` (jsonb) - Printer driver settings
+- `print_queues` (jsonb) - Print queue configuration
+- `user_permissions` (jsonb) - User access permissions
+- `default_settings` (jsonb) - Default print settings
+- `color_management` (jsonb) - Color management policies
+- `paper_settings` (jsonb) - Paper and media settings
+- `finishing_options` (jsonb) - Finishing and stapling options
+- `cost_tracking` (jsonb) - Print cost tracking settings
+- `security_policies` (jsonb) - Print security policies
+- `quota_management` (jsonb) - Print quota and limits
+- `reporting_settings` (jsonb) - Print reporting configuration
+- `is_template` (boolean) - Template flag
+- `is_active` (boolean) - Active configuration flag
+- `created_by` (uuid, FK → users.id) - Template creator
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update timestamp
 
 ### Financial Management
 
