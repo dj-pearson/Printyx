@@ -20,6 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +34,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -53,6 +55,8 @@ import {
   Download,
   Search,
   Router,
+  FileText,
+  FileSpreadsheet,
   Monitor,
   HardDrive,
   ArrowLeft,
@@ -306,6 +310,8 @@ export default function EnhancedOnboardingForm() {
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [businessRecordSearch, setBusinessRecordSearch] = useState("");
   const [quoteSearch, setQuoteSearch] = useState("");
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [createdChecklistId, setCreatedChecklistId] = useState<string | null>(null);
   const [equipmentItems, setEquipmentItems] = useState([
     {
       equipmentType: "printer" as const,
@@ -553,15 +559,16 @@ export default function EnhancedOnboardingForm() {
   const createChecklistMutation = useMutation({
     mutationFn: (data: any) =>
       apiRequest("/api/onboarding/checklists", "POST", data),
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       toast({
         title: "Success",
-        description: "Enhanced onboarding checklist created successfully",
+        description: "Enhanced onboarding checklist created successfully! You can now export it.",
       });
       queryClient.invalidateQueries({
         queryKey: ["/api/onboarding/checklists"],
       });
-      setLocation("/onboarding");
+      setCreatedChecklistId(result.id);
+      setShowExportModal(true);
     },
     onError: (error: any) => {
       toast({
@@ -723,6 +730,24 @@ export default function EnhancedOnboardingForm() {
     form.setValue("equipment", updatedItems);
   };
 
+  // Export functions
+  const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
+    if (!createdChecklistId) return;
+    
+    const exportUrl = `/api/onboarding/export/${createdChecklistId}/${format}`;
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = `checklist-${createdChecklistId}.${format === 'excel' ? 'xlsx' : format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export Started",
+      description: `Your ${format.toUpperCase()} export is downloading...`,
+    });
+  };
+
   const steps = [
     { number: 1, title: "Customer Selection", icon: Search },
     { number: 2, title: "Basic Information", icon: Building2 },
@@ -733,7 +758,7 @@ export default function EnhancedOnboardingForm() {
     { number: 7, title: "Print Management", icon: Settings },
     { number: 8, title: "Security", icon: Shield },
     { number: 9, title: "Custom Sections", icon: Plus },
-    { number: 10, title: "Additional Services", icon: CheckCircle },
+    { number: 10, title: "Summary & Review", icon: CheckCircle },
   ];
 
   const renderStepContent = () => {
@@ -1539,6 +1564,162 @@ export default function EnhancedOnboardingForm() {
           </div>
         );
 
+      case 10:
+        return (
+          <div className="space-y-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-green-800 mb-4 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Summary & Final Review
+              </h3>
+              <p className="text-green-700 mb-4">
+                Review all information before creating your checklist. You can export this as PDF or Excel after creation.
+              </p>
+              
+              {/* Customer Information Summary */}
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Customer Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div><strong>Company:</strong> {form.watch("customerData.companyName") || "Not specified"}</div>
+                  <div><strong>Contact:</strong> {form.watch("customerData.primaryContact") || "Not specified"}</div>
+                  <div><strong>Phone:</strong> {form.watch("customerData.phone") || "Not specified"}</div>
+                  <div><strong>Email:</strong> {form.watch("customerData.email") || "Not specified"}</div>
+                  <div><strong>Address:</strong> {form.watch("customerData.address") || "Not specified"}</div>
+                  <div><strong>Industry:</strong> {form.watch("customerData.industry") || "Not specified"}</div>
+                </div>
+              </div>
+
+              {/* Installation Details Summary */}
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Installation Details
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div><strong>Installation Address:</strong> {form.watch("siteInformation.installationAddress") || "Not specified"}</div>
+                  <div><strong>Contact Person:</strong> {form.watch("siteInformation.contactPerson") || "Not specified"}</div>
+                  <div><strong>Phone:</strong> {form.watch("siteInformation.phoneNumber") || "Not specified"}</div>
+                  <div><strong>Building Type:</strong> {form.watch("siteInformation.buildingType") || "office"}</div>
+                  <div><strong>Scheduled Date:</strong> {form.watch("scheduledInstallDate") ? new Date(form.watch("scheduledInstallDate")).toLocaleDateString() : "Not scheduled"}</div>
+                  <div><strong>Time Slot:</strong> {form.watch("preferredTimeSlot") || "morning"}</div>
+                </div>
+                {form.watch("siteInformation.specialRequirements") && (
+                  <div className="mt-3 text-sm">
+                    <strong>Special Requirements:</strong> {form.watch("siteInformation.specialRequirements")}
+                  </div>
+                )}
+              </div>
+
+              {/* Equipment Summary */}
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <Printer className="h-4 w-4" />
+                  Equipment ({equipmentItems.length} items)
+                </h4>
+                {equipmentItems.length > 0 ? (
+                  <div className="space-y-3">
+                    {equipmentItems.map((item, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-3">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                          <div><strong>Type:</strong> {item.equipmentType}</div>
+                          <div><strong>Manufacturer:</strong> {item.manufacturer || "Not specified"}</div>
+                          <div><strong>Model:</strong> {item.model || "Not specified"}</div>
+                          {item.serialNumber && <div><strong>Serial:</strong> {item.serialNumber}</div>}
+                          {item.location && <div><strong>Location:</strong> {item.location}</div>}
+                          {item.isReplacement && (
+                            <div className="md:col-span-3 text-orange-600">
+                              <strong>Replacement for:</strong> {item.replacedEquipment?.oldMake} {item.replacedEquipment?.oldModel}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No equipment added yet.</p>
+                )}
+              </div>
+
+              {/* Quote Information */}
+              {selectedQuote && (
+                <div className="bg-white rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Associated Quote
+                  </h4>
+                  <div className="text-sm">
+                    <div><strong>Quote Number:</strong> {selectedQuote.quoteNumber}</div>
+                    <div><strong>Title:</strong> {selectedQuote.title}</div>
+                    <div><strong>Total Amount:</strong> ${parseFloat(selectedQuote.totalAmount).toLocaleString()}</div>
+                    <div><strong>Status:</strong> {selectedQuote.status}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Network Configuration Summary */}
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <Network className="h-4 w-4" />
+                  Network Configuration
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div><strong>Customer Number:</strong> {form.watch("networkConfig.customerNumber") || "Not specified"}</div>
+                  <div><strong>DHCP:</strong> {form.watch("networkConfig.dhcpEnabled") ? "Enabled" : "Disabled"}</div>
+                  <div><strong>DNS Primary:</strong> {form.watch("networkConfig.dnsServers") || "Not specified"}</div>
+                  <div><strong>Gateway:</strong> {form.watch("networkConfig.defaultGateway") || "Not specified"}</div>
+                </div>
+              </div>
+
+              {/* Export Options */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-3">Export Options</h4>
+                <p className="text-blue-700 text-sm mb-3">
+                  After creating the checklist, you'll be able to export it in multiple formats:
+                </p>
+                <div className="flex gap-2">
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <FileText className="h-4 w-4" />
+                    PDF Report
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Excel Spreadsheet
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <Download className="h-4 w-4" />
+                    CSV Data
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Checklist Title Field */}
+            <FormField
+              control={form.control}
+              name="checklistTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Checklist Title *</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter a descriptive title for this checklist" 
+                      {...field} 
+                      value={field.value || `${form.watch("customerData.companyName") || "Customer"} - ${equipmentItems.length} Equipment Installation`}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    This title will appear on all exported documents and reports.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        );
+
       default:
         return null;
     }
@@ -1663,6 +1844,91 @@ export default function EnhancedOnboardingForm() {
             </div>
           </form>
         </Form>
+
+        {/* Export Success Modal */}
+        <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Checklist Created Successfully!
+              </DialogTitle>
+              <DialogDescription>
+                Your onboarding checklist has been created. You can now export it in multiple formats or continue managing your checklists.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3">
+                <Button 
+                  onClick={() => handleExport('pdf')} 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Export as PDF
+                </Button>
+                <Button 
+                  onClick={() => handleExport('excel')} 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export as Excel
+                </Button>
+                <Button 
+                  onClick={() => handleExport('csv')} 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export as CSV
+                </Button>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    setShowExportModal(false);
+                    setLocation("/onboarding");
+                  }}
+                  className="flex-1"
+                >
+                  View All Checklists
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowExportModal(false);
+                    setCurrentStep(1);
+                    form.reset();
+                    setSelectedBusinessRecord(null);
+                    setSelectedQuote(null);
+                    setEquipmentItems([{
+                      equipmentType: "printer" as const,
+                      manufacturer: "",
+                      model: "",
+                      serialNumber: "",
+                      macAddress: "",
+                      assetTag: "",
+                      location: "",
+                      features: [],
+                      accessories: [],
+                      isReplacement: false,
+                      replacedEquipment: {},
+                      networkConfiguration: {},
+                    }]);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Create Another
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
     </MainLayout>
