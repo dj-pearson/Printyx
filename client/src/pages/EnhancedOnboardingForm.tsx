@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { MainLayout } from '@/components/layout/main-layout';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -1291,20 +1292,21 @@ export default function EnhancedOnboardingForm() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Enhanced Onboarding Checklist</h1>
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Enhanced Onboarding Checklist</h1>
           <p className="text-gray-600 mt-2">
             Create a comprehensive equipment installation and customer
             onboarding checklist with auto-population and machine replacement
             tracking.
           </p>
-        </div>
+          </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
                 <div
@@ -1345,10 +1347,10 @@ export default function EnhancedOnboardingForm() {
                 )}
               </div>
             ))}
+            </div>
           </div>
-        </div>
 
-        <Form {...form}>
+          <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <Card>
               <CardHeader>
@@ -1396,7 +1398,8 @@ export default function EnhancedOnboardingForm() {
             </div>
           </form>
         </Form>
+        </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }
