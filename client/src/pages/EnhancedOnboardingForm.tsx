@@ -315,7 +315,7 @@ export default function EnhancedOnboardingForm() {
   const [equipmentItems, setEquipmentItems] = useState([
     {
       equipmentType: "printer" as const,
-      manufacturer: "",
+      manufacturer: "Unknown",
       model: "",
       serialNumber: "TBD-" + Math.random().toString(36).substr(2, 9),
       macAddress: "",
@@ -394,7 +394,7 @@ export default function EnhancedOnboardingForm() {
       orderId: "",
       customerData: {
         companyName: "Customer Company",
-        primaryContact: "Contact Person",
+        primaryContact: "Primary Contact",
         phone: "555-0123",
         email: "contact@company.com",
         address: "123 Main Street",
@@ -466,10 +466,12 @@ export default function EnhancedOnboardingForm() {
         companyContacts.find((c: any) => c.is_primary) || companyContacts[0];
 
       form.setValue("businessRecordId", selectedBusinessRecord.id);
-      form.setValue(
-        "customerData.companyName",
-        selectedBusinessRecord.company_name || selectedBusinessRecord.companyName || `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Customer Company"
-      );
+      const companyName = selectedBusinessRecord.company_name || selectedBusinessRecord.companyName || `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Customer Company";
+      const primaryContactName = primaryContact ? `${primaryContact.first_name || ""} ${primaryContact.last_name || ""}`.trim() : 
+        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Primary Contact";
+      
+      form.setValue("customerData.companyName", companyName);
+      form.setValue("customerData.primaryContact", primaryContactName);
       form.setValue("customerData.phone", selectedBusinessRecord.phone || "555-0123");
       form.setValue("customerData.email", selectedBusinessRecord.email || "contact@company.com");
       form.setValue(
@@ -512,7 +514,9 @@ export default function EnhancedOnboardingForm() {
       form.setValue("siteInformation.installationAddress", fullAddress || "123 Main Street, City, State 12345");
       
       // Set required site information fields
-      form.setValue("siteInformation.contactPerson", primaryContact ? `${primaryContact.first_name} ${primaryContact.last_name}` : "Site Contact");
+      const siteContactName = primaryContact ? `${primaryContact.first_name || ""} ${primaryContact.last_name || ""}`.trim() : 
+        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Site Contact";
+      form.setValue("siteInformation.contactPerson", siteContactName);
       form.setValue("siteInformation.phoneNumber", selectedBusinessRecord.phone || primaryContact?.phone || "555-0123");
 
       setCurrentStep(2); // Move to basic information step
@@ -638,11 +642,28 @@ export default function EnhancedOnboardingForm() {
     if (data.equipment && data.equipment.length > 0) {
       data.equipment = data.equipment.map((item: any) => ({
         ...item,
+        manufacturer: item.manufacturer || (item.model ? item.model.split(" ")[0] : "Unknown"),
         serialNumber: item.serialNumber || "TBD-" + Math.random().toString(36).substr(2, 9),
         location: item.location || "Main Office"
       }));
       // Update the form values to ensure validation passes
       form.setValue("equipment", data.equipment);
+    }
+    
+    // Ensure primary contact is populated
+    if (!data.customerData.primaryContact || data.customerData.primaryContact.trim() === "" || data.customerData.primaryContact === "undefined undefined") {
+      const primaryContactName = selectedBusinessRecord ? 
+        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Primary Contact" : "Primary Contact";
+      data.customerData.primaryContact = primaryContactName;
+      form.setValue("customerData.primaryContact", primaryContactName);
+    }
+    
+    // Ensure site contact person is populated  
+    if (!data.siteInformation.contactPerson || data.siteInformation.contactPerson.trim() === "" || data.siteInformation.contactPerson === "undefined undefined") {
+      const siteContactName = selectedBusinessRecord ? 
+        `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Site Contact" : "Site Contact";
+      data.siteInformation.contactPerson = siteContactName;
+      form.setValue("siteInformation.contactPerson", siteContactName);
     }
     
     const installationType = data.equipment?.some((e) => e.isReplacement)
@@ -771,7 +792,7 @@ export default function EnhancedOnboardingForm() {
   const addEquipmentItem = () => {
     const newItem = {
       equipmentType: "printer" as const,
-      manufacturer: "",
+      manufacturer: "Unknown",
       model: "",
       serialNumber: "TBD-" + Math.random().toString(36).substr(2, 9),
       macAddress: "",
