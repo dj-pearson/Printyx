@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -12,17 +11,15 @@ import {
   Shield, 
   Settings, 
   Plus, 
-  Search, 
-  Filter,
+  Search,
   ChevronRight,
-  AlertTriangle,
   CheckCircle,
-  Clock,
   Building2,
   UserCheck,
-  Key,
-  Zap
+  Key
 } from 'lucide-react';
+// Use simpler layout without sidebar for now
+// import RoleBasedSidebar from "@/components/RoleBasedSidebar";
 import {
   Select,
   SelectContent,
@@ -296,19 +293,30 @@ export default function RoleManagement() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Role Management</h1>
-          <p className="text-gray-600">Manage roles, permissions, and organizational access</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Role
-          </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-4 md:px-6">
+          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">Role Management</h1>
+              <p className="text-gray-600 text-sm md:text-base">Manage roles, permissions, and organizational access</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button 
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Role
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto p-4 md:p-6">
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -363,13 +371,13 @@ export default function RoleManagement() {
         </Card>
       </div>
 
-      <Tabs defaultValue="roles" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="roles">Roles</TabsTrigger>
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
-          <TabsTrigger value="organization">Organization</TabsTrigger>
-          <TabsTrigger value="assignments">User Assignments</TabsTrigger>
-        </TabsList>
+          <Tabs defaultValue="roles" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+              <TabsTrigger value="roles" className="text-xs md:text-sm p-2">Roles</TabsTrigger>
+              <TabsTrigger value="permissions" className="text-xs md:text-sm p-2">Permissions</TabsTrigger>
+              <TabsTrigger value="organization" className="text-xs md:text-sm p-2">Organization</TabsTrigger>
+              <TabsTrigger value="assignments" className="text-xs md:text-sm p-2">Assignments</TabsTrigger>
+            </TabsList>
 
         <TabsContent value="roles" className="space-y-4">
           {/* Filters */}
@@ -571,7 +579,8 @@ export default function RoleManagement() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+          </Tabs>
+      </div>
     </div>
   );
 }
