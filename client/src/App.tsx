@@ -110,6 +110,7 @@ import CustomerAccessManagement from "@/pages/CustomerAccessManagement";
 import ServiceHub from "@/pages/ServiceHub";
 import OnboardingDashboard from "@/pages/OnboardingDashboard";
 import OnboardingDetails from "@/pages/OnboardingDetails";
+import EnhancedOnboardingForm from "@/pages/EnhancedOnboardingForm";
 import ComprehensiveOnboardingForm from "@/pages/ComprehensiveOnboardingForm";
 
 function Router() {
@@ -301,7 +302,10 @@ function Router() {
           />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
-          <Route path="/customer-number-settings" component={CustomerNumberSettings} />
+          <Route
+            path="/customer-number-settings"
+            component={CustomerNumberSettings}
+          />
           <Route path="/demo-scheduling" component={DemoScheduling} />
           <Route
             path="/sales-pipeline-forecasting"
@@ -320,10 +324,7 @@ function Router() {
             path="/service-dispatch-optimization"
             component={ServiceDispatchOptimization}
           />
-          <Route
-            path="/service-hub"
-            component={ServiceHub}
-          />
+          <Route path="/service-hub" component={ServiceHub} />
           <Route
             path="/preventive-maintenance-automation"
             component={PreventiveMaintenanceAutomation}
@@ -391,14 +392,31 @@ function Router() {
             path="/customer-access-management"
             component={CustomerAccessManagement}
           />
-          <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
-          <Route path="/manufacturer-integration/devices" component={ManufacturerIntegrationDevices} />
-          <Route path="/manufacturer-integration/audit" component={ManufacturerIntegrationAudit} />
+          <Route
+            path="/manufacturer-integration"
+            component={ManufacturerIntegration}
+          />
+          <Route
+            path="/manufacturer-integration/devices"
+            component={ManufacturerIntegrationDevices}
+          />
+          <Route
+            path="/manufacturer-integration/audit"
+            component={ManufacturerIntegrationAudit}
+          />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
           <Route path="/onboarding" component={OnboardingDashboard} />
-          <Route path="/onboarding/new" component={ComprehensiveOnboardingForm} />
+          <Route path="/onboarding/new" component={EnhancedOnboardingForm} />
+          <Route
+            path="/onboarding/enhanced"
+            component={EnhancedOnboardingForm}
+          />
+          <Route
+            path="/onboarding/original"
+            component={ComprehensiveOnboardingForm}
+          />
           <Route path="/onboarding/:id" component={OnboardingDetails} />
         </>
       )}
