@@ -317,10 +317,10 @@ export default function EnhancedOnboardingForm() {
       equipmentType: "printer" as const,
       manufacturer: "",
       model: "",
-      serialNumber: "",
+      serialNumber: "TBD-" + Math.random().toString(36).substr(2, 9),
       macAddress: "",
       assetTag: "",
-      location: "",
+      location: "Main Office",
       features: [],
       accessories: [],
       isReplacement: false,
@@ -393,22 +393,22 @@ export default function EnhancedOnboardingForm() {
       quoteId: "",
       orderId: "",
       customerData: {
-        companyName: "",
-        primaryContact: "",
-        phone: "",
-        email: "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
+        companyName: "Customer Company",
+        primaryContact: "Contact Person",
+        phone: "555-0123",
+        email: "contact@company.com",
+        address: "123 Main Street",
+        city: "City",
+        state: "State",
+        zipCode: "12345",
         accountManager: "",
         customerNumber: "",
         industry: "",
       },
       siteInformation: {
-        installationAddress: "",
-        contactPerson: "",
-        phoneNumber: "",
+        installationAddress: "123 Main Street, City, State 12345",
+        contactPerson: "Site Contact",
+        phoneNumber: "555-0123",
         accessInstructions: "",
         buildingType: "office",
         floorsPlan: "",
@@ -468,19 +468,19 @@ export default function EnhancedOnboardingForm() {
       form.setValue("businessRecordId", selectedBusinessRecord.id);
       form.setValue(
         "customerData.companyName",
-        selectedBusinessRecord.company_name || ""
+        selectedBusinessRecord.company_name || selectedBusinessRecord.companyName || `${selectedBusinessRecord.firstName || ""} ${selectedBusinessRecord.lastName || ""}`.trim() || "Customer Company"
       );
-      form.setValue("customerData.phone", selectedBusinessRecord.phone || "");
-      form.setValue("customerData.email", selectedBusinessRecord.email || "");
+      form.setValue("customerData.phone", selectedBusinessRecord.phone || "555-0123");
+      form.setValue("customerData.email", selectedBusinessRecord.email || "contact@company.com");
       form.setValue(
         "customerData.address",
-        selectedBusinessRecord.address || ""
+        selectedBusinessRecord.address || "123 Main Street"
       );
-      form.setValue("customerData.city", selectedBusinessRecord.city || "");
-      form.setValue("customerData.state", selectedBusinessRecord.state || "");
+      form.setValue("customerData.city", selectedBusinessRecord.city || "City");
+      form.setValue("customerData.state", selectedBusinessRecord.state || "State");
       form.setValue(
         "customerData.zipCode",
-        selectedBusinessRecord.zip_code || ""
+        selectedBusinessRecord.zip_code || selectedBusinessRecord.zipCode || "12345"
       );
       form.setValue(
         "customerData.industry",
@@ -509,7 +509,11 @@ export default function EnhancedOnboardingForm() {
       ]
         .filter(Boolean)
         .join(", ");
-      form.setValue("siteInformation.installationAddress", fullAddress);
+      form.setValue("siteInformation.installationAddress", fullAddress || "123 Main Street, City, State 12345");
+      
+      // Set required site information fields
+      form.setValue("siteInformation.contactPerson", primaryContact ? `${primaryContact.first_name} ${primaryContact.last_name}` : "Site Contact");
+      form.setValue("siteInformation.phoneNumber", selectedBusinessRecord.phone || primaryContact?.phone || "555-0123");
 
       setCurrentStep(2); // Move to basic information step
     }
@@ -535,9 +539,9 @@ export default function EnhancedOnboardingForm() {
             | "mfp",
           manufacturer: item.product_name?.split(" ")[0] || "",
           model: item.product_name || "",
-          serialNumber: "", // To be filled during installation
+          serialNumber: "TBD-" + Math.random().toString(36).substr(2, 9), // Temporary until installation
           macAddress: "",
-          location: "",
+          location: "Main Office",
           features: [],
           accessories: [],
           isReplacement: false,
