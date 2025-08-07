@@ -67,6 +67,7 @@ import { serviceDispatchRouter } from "./routes-service-dispatch";
 import commissionRoutes from "./routes-commission";
 import enhancedServiceRoutes from "./routes-enhanced-service";
 import { enhancedRBACRoutes } from "./routes-enhanced-rbac";
+import gpt5Routes from "./routes-ai-gpt5";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -7390,6 +7391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Enhanced RBAC Routes
   app.use("/api/rbac", enhancedRBACRoutes);
+  app.use("/api/ai/gpt5", gpt5Routes);
 
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 

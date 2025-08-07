@@ -113,6 +113,7 @@ import OnboardingDetails from "@/pages/OnboardingDetails";
 import EnhancedOnboardingForm from "@/pages/EnhancedOnboardingForm";
 import ComprehensiveOnboardingForm from "@/pages/ComprehensiveOnboardingForm";
 import RoleManagement from "@/pages/RoleManagement";
+import GPT5Dashboard from "@/pages/GPT5Dashboard";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -383,6 +384,7 @@ function Router() {
           <Route path="/system-monitoring" component={SystemMonitoring} />
           <Route path="/access-control" component={AccessControl} />
           <Route path="/role-management" component={RoleManagement} />
+          <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
           <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
           <Route
             path="/platform-configuration"

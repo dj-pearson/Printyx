@@ -443,6 +443,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           href: "/database-management",
           icon: Database,
         },
+        {
+          name: "GPT-5 AI Dashboard",
+          href: "/gpt5-dashboard",
+          icon: Brain,
+        },
       ],
     });
   }
