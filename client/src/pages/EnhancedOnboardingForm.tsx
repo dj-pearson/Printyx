@@ -556,6 +556,16 @@ export default function EnhancedOnboardingForm() {
     }
   }, [selectedQuote, quoteLineItems, selectedBusinessRecord, form]);
 
+  // Auto-populate checklist title when business record is selected
+  useEffect(() => {
+    if (selectedBusinessRecord && !form.getValues("checklistTitle")) {
+      const companyName = selectedBusinessRecord.companyName || 
+        `${selectedBusinessRecord.firstName} ${selectedBusinessRecord.lastName}`;
+      const defaultTitle = `${companyName} - Equipment Installation`;
+      form.setValue("checklistTitle", defaultTitle);
+    }
+  }, [selectedBusinessRecord, form]);
+
   const createChecklistMutation = useMutation({
     mutationFn: (data: any) =>
       apiRequest("/api/onboarding/checklists", "POST", data),
@@ -580,6 +590,9 @@ export default function EnhancedOnboardingForm() {
   });
 
   const onSubmit = (data: EnhancedOnboardingFormData) => {
+    console.log("Form data:", data);
+    console.log("Form errors:", form.formState.errors);
+    
     const installationType = data.equipment?.some((e) => e.isReplacement)
       ? "replacement"
       : "new_installation";
@@ -600,6 +613,7 @@ export default function EnhancedOnboardingForm() {
       specialInstructions: undefined,
     };
 
+    console.log("Payload to submit:", payload);
     createChecklistMutation.mutate(payload);
   };
 
@@ -1707,7 +1721,6 @@ export default function EnhancedOnboardingForm() {
                     <Input 
                       placeholder="Enter a descriptive title for this checklist" 
                       {...field} 
-                      value={field.value || `${form.watch("customerData.companyName") || "Customer"} - ${equipmentItems.length} Equipment Installation`}
                     />
                   </FormControl>
                   <FormDescription>
@@ -1827,7 +1840,14 @@ export default function EnhancedOnboardingForm() {
                   </Button>
                 ) : (
                   <Button
-                    type="submit"
+                    type="button"
+                    onClick={() => {
+                      console.log("Button clicked");
+                      console.log("Form errors:", form.formState.errors);
+                      console.log("Form values:", form.getValues());
+                      console.log("Form is valid:", form.formState.isValid);
+                      form.handleSubmit(onSubmit)();
+                    }}
                     disabled={createChecklistMutation.isPending}
                   >
                     {createChecklistMutation.isPending ? (
