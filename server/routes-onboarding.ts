@@ -19,7 +19,7 @@ import {
 } from "@shared/schema";
 import { storage } from "./storage";
 import { ObjectStorageService } from "./objectStorage";
-import { eq, and, or, ilike } from "drizzle-orm";
+import { eq, and, or, ilike, sql, desc } from "drizzle-orm";
 import { db } from "./db";
 import puppeteer from "puppeteer";
 // Authentication middleware
@@ -475,7 +475,6 @@ async function searchQuotes(req: Request, res: Response) {
       .select()
       .from(quotes)
       .where(eq(quotes.tenantId, tenantId))
-      .orderBy(sql`${quotes.createdAt} DESC`)
       .limit(Number(limit));
 
     if (businessRecordId && typeof businessRecordId === "string") {
