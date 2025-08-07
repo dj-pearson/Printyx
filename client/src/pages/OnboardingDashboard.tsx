@@ -212,13 +212,23 @@ export default function OnboardingDashboard() {
           </p>
         </div>
 
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="default" className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              New Checklist
-            </Button>
-          </DialogTrigger>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button 
+            onClick={() => window.location.href = '/onboarding/new'} 
+            size="default" 
+            className="w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Comprehensive Checklist
+          </Button>
+          
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="default" variant="outline" className="w-full sm:w-auto">
+                <Plus className="w-4 h-4 mr-2" />
+                Quick Checklist
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Onboarding Checklist</DialogTitle>
@@ -366,6 +376,7 @@ export default function OnboardingDashboard() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
