@@ -432,7 +432,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           href: "/system-monitoring",
           icon: Monitor,
         },
-        { name: "Access Control", href: "/access-control", icon: UserCheck },
+        { name: "Role Management", href: "/role-management", icon: UserCheck },
         {
           name: "Platform Configuration",
           href: "/platform-configuration",
