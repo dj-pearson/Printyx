@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -235,7 +235,7 @@ export default function CustomerDetailHubspot() {
   });
 
   // Initialize form when customer data loads
-  useState(() => {
+  useEffect(() => {
     if (customer) {
       setEditForm(customer);
     }
@@ -244,7 +244,7 @@ export default function CustomerDetailHubspot() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("PUT", `/api/business-records/${id}`, data);
+      return await apiRequest(`/api/business-records/${id}`, "PUT", data);
     },
     onSuccess: () => {
       toast({
