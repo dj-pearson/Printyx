@@ -469,6 +469,7 @@ export default function BusinessRecords() {
                             size="sm" 
                             variant="outline"
                             onClick={() => {
+                              console.log('Edit button clicked for record:', record);
                               setEditingRecord(record);
                               setIsEditDialogOpen(true);
                             }}
@@ -680,6 +681,8 @@ export default function BusinessRecords() {
             <EditBusinessRecordForm 
               record={editingRecord}
               onSubmit={(data) => {
+                console.log('Dialog onSubmit called with data:', data);
+                console.log('editingRecord.id:', editingRecord.id);
                 editBusinessRecordMutation.mutate({
                   id: editingRecord.id,
                   record: data
@@ -720,7 +723,8 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
 
   // Update form data when record changes
   useEffect(() => {
-    setFormData({
+    console.log('EditBusinessRecordForm: useEffect triggered with record:', record);
+    const newFormData = {
       companyName: record.companyName || '',
       primaryContactName: record.primaryContactName || '',
       primaryContactEmail: record.primaryContactEmail || '',
@@ -735,11 +739,14 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
       employeeCount: record.employeeCount || undefined,
       annualRevenue: record.annualRevenue || undefined,
       estimatedDealValue: record.estimatedDealValue || undefined,
-    });
+    };
+    console.log('EditBusinessRecordForm: setting formData to:', newFormData);
+    setFormData(newFormData);
   }, [record]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('EditBusinessRecordForm: handleSubmit called with formData:', formData);
     onSubmit(formData);
   };
 
