@@ -101,8 +101,21 @@ export function registerBusinessRecordRoutes(app: Express) {
       // Transform frontend data to database format
       const frontendData = req.body;
       console.log('[DEBUG] UPDATE - Frontend data received:', JSON.stringify(frontendData, null, 2));
-      const dbData = BusinessRecordsTransformer.toDb(frontendData);
-      console.log('[DEBUG] UPDATE - Transformed DB data:', JSON.stringify(dbData, null, 2));
+      
+      // TEMPORARILY BYPASS TRANSFORMATION - test direct data
+      const dbData = {
+        companyName: frontendData.companyName,
+        website: frontendData.website,
+        industry: frontendData.industry,
+        customerSince: frontendData.customerSince,
+        employeeCount: frontendData.employeeCount,
+        annualRevenue: frontendData.annualRevenue,
+        priority: frontendData.priority,
+        customerTier: frontendData.customerTier,
+        accountNumber: frontendData.accountNumber,
+        customerNumber: frontendData.customerNumber,
+      };
+      console.log('[DEBUG] UPDATE - Direct DB data (no transformation):', JSON.stringify(dbData, null, 2));
       
       // Handle record type changes (lead to customer conversion)
       if (frontendData.recordType) {
