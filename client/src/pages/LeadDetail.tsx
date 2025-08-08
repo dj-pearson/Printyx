@@ -83,10 +83,14 @@ import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 
 export default function LeadDetailHubspot() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Extract ID from URL query parameters
+  const searchParams = new URLSearchParams(window.location.search);
+  const id = searchParams.get('id');
   const [isEditing, setIsEditing] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     company: true,

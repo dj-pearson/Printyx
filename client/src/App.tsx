@@ -142,7 +142,6 @@ function Router() {
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:id" component={CustomerDetail} />
           <Route path="/crm" component={CRMEnhanced} />
-          <Route path="/crm-enhanced" component={CRMEnhanced} />
           <Route path="/business-records" component={BusinessRecords} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
@@ -223,7 +222,7 @@ function Router() {
             path="/admin/warehouse-operations"
             component={WarehouseOperations}
           />
-          <Route path="/leads/:id" component={LeadDetail} />
+          <Route path="/leads/:slug" component={LeadDetail} />
           <Route
             path="/companies/:companyId/contacts"
             component={CompanyContacts}
