@@ -164,7 +164,7 @@ export default function SalesCommandCenter() {
                           </div>
                           <span className="text-sm text-gray-600">Target: {g.targetCount ?? g.targetValue}</span>
                         </div>
-                        <Progress value={Math.min(100, Math.round((g.currentCount ?? g.currentValue) / (g.targetCount ?? g.targetValue || 1) * 100))} />
+                        <Progress value={Math.min(100, Math.round((g.currentCount ?? g.currentValue) / ((g.targetCount ?? g.targetValue) || 1) * 100))} />
                       </div>
                     ))
                   ) : (

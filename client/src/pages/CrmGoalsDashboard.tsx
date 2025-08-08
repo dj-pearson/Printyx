@@ -235,7 +235,7 @@ export default function CrmGoalsDashboard() {
                     <Badge variant="secondary">{row.goalType}</Badge>
                   </div>
                   <div className="text-xs text-gray-500 mb-2">{row.period || ""}</div>
-                  <Progress value={Math.min(100, Math.round(((row.currentCount ?? row.currentValue) / (row.targetCount ?? row.targetValue || 1)) * 100))} />
+                  <Progress value={Math.min(100, Math.round(((row.currentCount ?? row.currentValue) / ((row.targetCount ?? row.targetValue) || 1)) * 100))} />
                   <div className="text-xs text-gray-600 mt-1">
                     {row.currentCount ?? row.currentValue} / {row.targetCount ?? row.targetValue}
                   </div>

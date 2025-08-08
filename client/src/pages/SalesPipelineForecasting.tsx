@@ -53,8 +53,8 @@ export default function SalesPipelineForecasting() {
     queryFn: () => fetch("/api/sales-forecasts").then(res => res.json())
   });
 
-  // Get selected forecast data
-  const selectedForecastData = forecasts?.find((f: any) => f.id === selectedForecast);
+  // Get selected forecast data safely
+  const selectedForecastData = forecasts?.find((f: any) => f.id === selectedForecast) || null;
 
   // Fetch pipeline forecast data
   const { data: forecastData, isLoading } = useQuery({
