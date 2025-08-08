@@ -184,10 +184,20 @@ export default function BusinessRecords() {
         title: "Success",
         description: "Business record updated successfully",
       });
-      // Invalidate all related queries
-      queryClient.invalidateQueries();
-      // Force immediate refetch of business records
+      
+      // Optimistic update: immediately update the cache with new data
+      queryClient.setQueryData(["/api/business-records"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((record: BusinessRecord) => 
+          record.id === editingRecord?.id ? { ...record, ...updatedData } : record
+        );
+      });
+      
+      // Also invalidate and refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       refetch();
+      
       setIsEditDialogOpen(false);
       setEditingRecord(null);
     },
