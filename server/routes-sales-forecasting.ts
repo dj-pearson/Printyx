@@ -1,5 +1,5 @@
 import express from "express";
-import { desc, eq, and, sql, asc, gte, lte, between } from "drizzle-orm";
+import { desc, eq, and, sql, asc, gte, lte, between , isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import { isAuthenticated } from "./replitAuth";
 import {
@@ -138,8 +138,9 @@ router.get(
           .where(
             and(
               eq(deals.tenantId, tenantId),
-              gte(deals.expectedCloseDate, dateStart.toISOString()),
-              lte(deals.expectedCloseDate, dateEnd.toISOString()),
+              isNotNull(deals.expectedCloseDate),
+              gte(deals.expectedCloseDate, dateStart.toISOString().split('T')[0]),
+              lte(deals.expectedCloseDate, dateEnd.toISOString().split('T')[0]),
               sql`${deals.status} NOT IN ('closed_won', 'closed_lost')`
             )
           ),
@@ -160,8 +161,9 @@ router.get(
           .where(
             and(
               eq(quotes.tenantId, tenantId),
-              gte(quotes.validUntil, dateStart.toISOString()),
-              lte(quotes.validUntil, dateEnd.toISOString()),
+              isNotNull(quotes.validUntil),
+              gte(quotes.validUntil, dateStart.toISOString().split('T')[0]),
+              lte(quotes.validUntil, dateEnd.toISOString().split('T')[0]),
               sql`${quotes.status} IN ('sent', 'viewed', 'pending')`
             )
           ),
@@ -182,8 +184,9 @@ router.get(
           .where(
             and(
               eq(proposals.tenantId, tenantId),
-              gte(proposals.validUntil, dateStart.toISOString()),
-              lte(proposals.validUntil, dateEnd.toISOString()),
+              isNotNull(proposals.validUntil),
+              gte(proposals.validUntil, dateStart.toISOString().split('T')[0]),
+              lte(proposals.validUntil, dateEnd.toISOString().split('T')[0]),
               sql`${proposals.status} IN ('sent', 'viewed', 'pending', 'under_review')`
             )
           ),
@@ -195,8 +198,8 @@ router.get(
           .where(
             and(
               eq(salesGoals.tenantId, tenantId),
-              gte(salesGoals.startDate, dateStart.toISOString()),
-              lte(salesGoals.endDate, dateEnd.toISOString()),
+              gte(salesGoals.startDate, dateStart.toISOString().split('T')[0]),
+              lte(salesGoals.endDate, dateEnd.toISOString().split('T')[0]),
               eq(salesGoals.isActive, true)
             )
           )
