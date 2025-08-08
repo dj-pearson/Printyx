@@ -112,6 +112,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     sections.push({
       name: "Sales & CRM",
       items: [
+        { name: "Sales Command Center", href: "/sales/command-center", icon: TrendingUp },
         { name: "CRM", href: "/crm", icon: Target },
         { name: "Leads Management", href: "/leads-management", icon: UserPlus },
         { name: "Contacts", href: "/contacts", icon: Users },
@@ -126,7 +127,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           href: "/sales-pipeline-forecasting",
           icon: BarChart3,
         },
-
+        {
+          name: "CRM Goals Dashboard",
+          href: "/crm-goals-dashboard",
+          icon: PieChart,
+        },
         {
           name: "Quotes & Proposals",
           href: "/quote-proposal-generation",
@@ -148,11 +153,6 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           name: "Commission Management",
           href: "/commission-management",
           icon: DollarSign,
-        },
-        {
-          name: "CRM Goals Dashboard",
-          href: "/crm-goals-dashboard",
-          icon: PieChart,
         },
         {
           name: "Task Management",
