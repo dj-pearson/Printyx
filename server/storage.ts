@@ -1035,10 +1035,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBusinessRecord(id: string, tenantId: string, updates: any): Promise<any | undefined> {
+    console.log('[DEBUG] STORAGE - Updating business record:', { id, tenantId, updates: JSON.stringify(updates, null, 2) });
     const [updatedRecord] = await db.update(businessRecords)
       .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
       .returning();
+    console.log('[DEBUG] STORAGE - Updated record returned:', JSON.stringify(updatedRecord, null, 2));
     return updatedRecord;
   }
 
