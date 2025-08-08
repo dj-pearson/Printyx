@@ -1,14 +1,15 @@
 # Printyx Database Schema Hierarchy & Reference
-*Updated: August 6, 2025*
+*Updated: August 8, 2025*
 
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 168 tables across all business modules
+**Total Tables**: 148 tables across all business modules
 
 ## Recent Schema Updates
+- **Sales Forecasting System (Aug 8, 2025)**: Implemented comprehensive sales forecasting with real database integration. Added `sales_forecasts`, `forecast_pipeline_items`, `forecast_metrics`, and `forecast_rules` tables with 37, 37, 25, and 18 columns respectively. Features tenant-based filtering, forecasting analytics, pipeline management, and performance tracking with full API endpoints.
 - **Enhanced RBAC System (Aug 7, 2025)**: Implemented enterprise-grade Role-Based Access Control with 4-tier organizational structure (Platform/Company/Regional/Location) and 8-level role hierarchy. Added 6 new tables: `organizational_units`, `enhanced_roles`, `permissions`, `role_permissions`, `user_role_assignments`, `permission_overrides`, `permission_cache`. Includes nested set model for efficient hierarchy queries, permission inheritance, customizable roles for company admins, and multi-level caching for performance.
-- **Comprehensive Onboarding System (Aug 7, 2025)**: Added comprehensive onboarding checklist system with `onboarding_checklists`, `onboarding_checklist_sections`, and `onboarding_checklist_items` tables for managing equipment installation and customer onboarding processes. Includes multi-step workflow with equipment details, network configuration, security setup, and dynamic sections
+- **Comprehensive Onboarding System (Aug 7, 2025)**: Added comprehensive onboarding checklist system with `onboarding_checklists`, `onboarding_dynamic_sections`, `onboarding_equipment`, `onboarding_tasks`, `onboarding_network_config`, and `onboarding_print_management` tables for managing equipment installation and customer onboarding processes. Includes multi-step workflow with equipment details, network configuration, security setup, and dynamic sections.
 - **Database Schema Alignment (Aug 7, 2025)**: Fixed schema inconsistencies by adding missing columns to onboarding_checklists table (customer_id, equipment_details, assigned_technician_id, estimated_duration, business_hours, description, quote_id, order_id)
 - **Proposal Builder System (Aug 6, 2025)**: Enhanced proposals and quotes system with comprehensive quote-to-proposal conversion, template management, section configuration, and content management
 - **Customer Self-Service Portal**: Added 8 comprehensive tables for customer portal functionality including access management, service requests, meter submissions, supply orders, payments, notifications, and activity logging
@@ -269,6 +270,150 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `is_closed_lost` (boolean) - Closed lost stage flag
 - `tenantid` (varchar, FK → tenants.id) - Tenant assignment
 - `created_at` (timestamp) - Creation date
+
+### Sales Forecasting & Analytics
+
+#### `sales_forecasts` (Forecasting Management) ⭐ **New Aug 8, 2025**
+**Purpose**: Master sales forecasting records with comprehensive tracking and analytics
+**Function**: Sales forecasting, territory management, goal tracking, performance analysis
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Forecast identifier
+- `forecast_name` (varchar) - Forecast name/title
+- `description` (text) - Forecast description
+- `period_start` (timestamp) - Forecast period start
+- `period_end` (timestamp) - Forecast period end
+- `forecast_type` (varchar) - Type: 'quarterly', 'monthly', 'annual'
+- `status` (varchar) - Status: 'draft', 'active', 'completed', 'archived'
+- `target_amount` (decimal) - Target revenue amount
+- `committed_amount` (decimal) - Committed pipeline amount
+- `best_case_amount` (decimal) - Best case scenario amount
+- `worst_case_amount` (decimal) - Worst case scenario amount
+- `probability_weighted_amount` (decimal) - Probability-weighted forecast
+- `actual_amount` (decimal) - Actual achieved amount
+- `variance_amount` (decimal) - Variance from target
+- `variance_percentage` (decimal) - Variance percentage
+- `accuracy_score` (decimal) - Forecast accuracy score
+- `confidence_level` (varchar) - Confidence level: 'high', 'medium', 'low'
+- `methodology` (varchar) - Forecasting methodology used
+- `assumptions` (text) - Key forecast assumptions
+- `risk_factors` (text) - Identified risk factors
+- `territories` (jsonb) - Covered territories
+- `product_lines` (jsonb) - Product line breakdown
+- `market_conditions` (jsonb) - Market condition analysis
+- `sales_cycle_data` (jsonb) - Sales cycle metrics
+- `historical_performance` (jsonb) - Historical performance data
+- `seasonality_factors` (jsonb) - Seasonality adjustments
+- `external_factors` (jsonb) - External market factors
+- `revision_history` (jsonb) - Forecast revision tracking
+- `approval_status` (varchar) - Approval status
+- `approved_by` (varchar, FK → users.id) - Approving manager
+- `approved_at` (timestamp) - Approval timestamp
+- `created_by` (varchar, FK → users.id) - Forecast creator
+- `assigned_manager` (varchar, FK → users.id) - Responsible manager
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `location_id` (varchar, FK → locations.id) - Location assignment
+- `region_id` (varchar, FK → regions.id) - Region assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `forecast_pipeline_items` (Pipeline Tracking) ⭐ **New Aug 8, 2025**
+**Purpose**: Individual pipeline opportunities within forecasts
+**Function**: Opportunity tracking, stage progression, probability management
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Pipeline item identifier
+- `forecast_id` (varchar, FK → sales_forecasts.id) - Parent forecast
+- `opportunity_name` (varchar) - Opportunity name
+- `business_record_id` (varchar, FK → business_records.id) - Associated customer/lead
+- `deal_id` (varchar, FK → deals.id) - Associated deal
+- `stage` (varchar) - Current pipeline stage
+- `stage_progression` (jsonb) - Stage progression history
+- `amount` (decimal) - Opportunity amount
+- `weighted_amount` (decimal) - Probability-weighted amount
+- `close_probability` (decimal) - Probability of closing (0-100)
+- `expected_close_date` (timestamp) - Expected close date
+- `actual_close_date` (timestamp) - Actual close date
+- `days_in_stage` (integer) - Days in current stage
+- `total_cycle_days` (integer) - Total sales cycle days
+- `product_category` (varchar) - Product category
+- `lead_source` (varchar) - Lead source
+- `competition` (varchar) - Competitive situation
+- `decision_criteria` (text) - Customer decision criteria
+- `next_steps` (text) - Next action steps
+- `win_probability_factors` (jsonb) - Win probability factors
+- `risk_assessment` (jsonb) - Risk assessment data
+- `sales_activity_score` (decimal) - Sales activity intensity score
+- `customer_engagement_score` (decimal) - Customer engagement level
+- `proposal_submitted` (boolean) - Proposal submitted flag
+- `proposal_date` (timestamp) - Proposal submission date
+- `demo_completed` (boolean) - Demo completed flag
+- `demo_date` (timestamp) - Demo completion date
+- `contract_sent` (boolean) - Contract sent flag
+- `contract_date` (timestamp) - Contract send date
+- `decision_maker_identified` (boolean) - Decision maker identified
+- `budget_confirmed` (boolean) - Budget confirmed flag
+- `timeline_confirmed` (boolean) - Timeline confirmed flag
+- `authority_confirmed` (boolean) - Authority confirmed flag
+- `need_confirmed` (boolean) - Need confirmed flag
+- `bant_score` (integer) - BANT qualification score
+- `forecast_category` (varchar) - Forecast category: 'commit', 'best_case', 'pipeline'
+- `assigned_rep` (varchar, FK → users.id) - Assigned sales rep
+- `sales_manager` (varchar, FK → users.id) - Sales manager
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `location_id` (varchar, FK → locations.id) - Location assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `forecast_metrics` (Performance Analytics) ⭐ **New Aug 8, 2025**
+**Purpose**: Forecast performance metrics and KPI tracking
+**Function**: Performance analysis, accuracy tracking, goal monitoring
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Metric identifier
+- `forecast_id` (varchar, FK → sales_forecasts.id) - Parent forecast
+- `metric_type` (varchar) - Metric type: 'accuracy', 'coverage', 'velocity'
+- `metric_name` (varchar) - Metric name
+- `metric_value` (decimal) - Metric value
+- `target_value` (decimal) - Target value
+- `benchmark_value` (decimal) - Benchmark value
+- `variance_from_target` (decimal) - Variance from target
+- `performance_rating` (varchar) - Performance rating: 'excellent', 'good', 'needs_improvement'
+- `calculation_method` (varchar) - Calculation methodology
+- `data_sources` (jsonb) - Data sources used
+- `measurement_period` (varchar) - Measurement period
+- `trend_direction` (varchar) - Trend direction: 'improving', 'stable', 'declining'
+- `rolling_average` (decimal) - Rolling average value
+- `seasonal_adjustment` (decimal) - Seasonal adjustment factor
+- `confidence_interval` (jsonb) - Statistical confidence interval
+- `sample_size` (integer) - Sample size for calculation
+- `significance_level` (decimal) - Statistical significance level
+- `peer_comparison` (jsonb) - Peer group comparison
+- `historical_trend` (jsonb) - Historical trend data
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `region_id` (varchar, FK → regions.id) - Region assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
+
+#### `forecast_rules` (Forecasting Rules) ⭐ **New Aug 8, 2025**
+**Purpose**: Automated forecasting rules and business logic
+**Function**: Rule-based forecasting, automation, consistency enforcement
+**Fields**:
+- `id` (varchar, PRIMARY KEY) - Rule identifier
+- `rule_name` (varchar) - Rule name
+- `rule_type` (varchar) - Rule type: 'probability', 'stage', 'amount', 'timeline'
+- `description` (text) - Rule description
+- `conditions` (jsonb) - Rule conditions
+- `actions` (jsonb) - Rule actions
+- `priority` (integer) - Rule priority/order
+- `is_active` (boolean) - Rule active status
+- `applies_to` (varchar) - Application scope: 'all', 'territory', 'product', 'rep'
+- `scope_criteria` (jsonb) - Scope criteria details
+- `probability_adjustments` (jsonb) - Probability adjustment rules
+- `stage_progression_rules` (jsonb) - Stage progression rules
+- `amount_validation_rules` (jsonb) - Amount validation rules
+- `timeline_validation_rules` (jsonb) - Timeline validation rules
+- `created_by` (varchar, FK → users.id) - Rule creator
+- `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
+- `created_at` (timestamp) - Creation date
+- `updated_at` (timestamp) - Last update
 
 ### Product & Service Management
 
@@ -1301,7 +1446,22 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - **Integration Tables**: 12 (QuickBooks, Salesforce, E-Automate, external systems)
 - **Compliance Tables**: 4 (audit_logs, security, compliance tracking)
 
-**Total: 124 database tables** supporting comprehensive copier dealer management operations.
+**Total: 148 database tables** supporting comprehensive copier dealer management operations.
+
+## Recent Table Additions (August 8, 2025)
+
+### Sales Forecasting System (4 new tables)
+- `sales_forecasts` (37 columns) - Master sales forecasting with comprehensive analytics
+- `forecast_pipeline_items` (37 columns) - Individual pipeline opportunities 
+- `forecast_metrics` (25 columns) - Forecast performance analytics and KPIs
+- `forecast_rules` (18 columns) - Automated forecasting rules and business logic
+
+These tables provide enterprise-grade sales forecasting capabilities including:
+- Territory-based forecasting with multi-period support
+- Pipeline opportunity tracking with BANT qualification
+- Performance analytics and accuracy measurement
+- Rule-based automation for consistency and efficiency
+- Comprehensive tenant-based filtering and security
 
 ---
-*This schema represents a production-ready multi-tenant SaaS platform with enterprise-grade features for copier dealer management, CRM, service dispatch, financial management, and business intelligence.*
+*This schema represents a production-ready multi-tenant SaaS platform with enterprise-grade features for copier dealer management, CRM, service dispatch, financial management, sales forecasting, and business intelligence.*
