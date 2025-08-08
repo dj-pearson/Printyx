@@ -126,11 +126,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           href: "/sales-pipeline-forecasting",
           icon: BarChart3,
         },
-        {
-          name: "Pipeline Forecast",
-          href: "/pipeline-forecast",
-          icon: TrendingUp,
-        },
+
         {
           name: "Quotes & Proposals",
           href: "/quote-proposal-generation",
