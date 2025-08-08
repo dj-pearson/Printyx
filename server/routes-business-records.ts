@@ -255,7 +255,12 @@ export function registerBusinessRecordRoutes(app: Express) {
         const updates: Record<string, any> = {};
         for (const key of allowedKeys) {
           if (Object.prototype.hasOwnProperty.call(frontendData, key)) {
-            updates[key] = frontendData[key];
+            // Convert date strings to Date objects for timestamp fields
+            if (key === 'customerSince' && frontendData[key]) {
+              updates[key] = new Date(frontendData[key]);
+            } else {
+              updates[key] = frontendData[key];
+            }
           }
         }
 
@@ -270,7 +275,7 @@ export function registerBusinessRecordRoutes(app: Express) {
           );
           updates.recordType = normalizedType;
           updates.status = normalizedStatus;
-          if (normalizedType === "customer" && !updates.customerSince) {
+          if (normalizedType === "customer" && !updates.customerSince && !frontendData.customerSince) {
             updates.customerSince = new Date();
             updates.convertedBy = userId || "system";
           }
