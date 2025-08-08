@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MainLayout } from '@/components/layout/main-layout';
 import { apiRequest } from "@/lib/queryClient";
@@ -717,6 +717,26 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
     annualRevenue: record.annualRevenue || undefined,
     estimatedDealValue: record.estimatedDealValue || undefined,
   });
+
+  // Update form data when record changes
+  useEffect(() => {
+    setFormData({
+      companyName: record.companyName || '',
+      primaryContactName: record.primaryContactName || '',
+      primaryContactEmail: record.primaryContactEmail || '',
+      primaryContactPhone: record.primaryContactPhone || '',
+      address: record.address || '',
+      city: record.city || '',
+      state: record.state || '',
+      zipCode: record.zipCode || '',
+      industry: record.industry || '',
+      website: record.website || '',
+      notes: record.notes || '',
+      employeeCount: record.employeeCount || undefined,
+      annualRevenue: record.annualRevenue || undefined,
+      estimatedDealValue: record.estimatedDealValue || undefined,
+    });
+  }, [record]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
