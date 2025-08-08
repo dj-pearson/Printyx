@@ -7,7 +7,15 @@ import {
   requireTenant,
   TenantRequest,
 } from "./middleware/tenancy";
-import { businessRecords } from "../shared/schema";
+import { 
+  businessRecords, 
+  deals, 
+  quotes, 
+  proposals, 
+  salesGoals,
+  goalProgress,
+  dealStages 
+} from "../shared/schema";
 import {
   salesForecasts,
   forecastPipelineItems,
@@ -66,6 +74,217 @@ router.get(
     } catch (error) {
       console.error("Error fetching pipeline items:", error);
       res.status(500).json({ message: "Failed to fetch pipeline items" });
+    }
+  }
+);
+
+// Get comprehensive pipeline forecast data
+router.get(
+  "/api/pipeline-forecast/:forecastId?",
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const { forecastId } = req.params;
+      const { period = "monthly", startDate, endDate } = req.query;
+
+      // Get the forecast data if specific forecast requested
+      let forecast = null;
+      if (forecastId) {
+        const forecastData = await db
+          .select()
+          .from(salesForecasts)
+          .where(
+            and(
+              eq(salesForecasts.tenantId, tenantId),
+              eq(salesForecasts.id, forecastId)
+            )
+          )
+          .limit(1);
+        forecast = forecastData[0] || null;
+      }
+
+      // Determine date range
+      let dateStart, dateEnd;
+      if (startDate && endDate) {
+        dateStart = new Date(startDate as string);
+        dateEnd = new Date(endDate as string);
+      } else if (forecast) {
+        dateStart = new Date(forecast.startDate);
+        dateEnd = new Date(forecast.endDate);
+      } else {
+        // Default to current month
+        const now = new Date();
+        dateStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      }
+
+      // Get all pipeline data within the time period
+      const [dealsData, quotesData, proposalsData, crmGoalsData] = await Promise.all([
+        // Active deals in the time period
+        db
+          .select({
+            id: deals.id,
+            title: deals.title,
+            value: deals.value,
+            probability: deals.probability,
+            expectedCloseDate: deals.expectedCloseDate,
+            stageId: deals.stageId,
+            status: deals.status,
+            type: sql`'deal'`.as('type')
+          })
+          .from(deals)
+          .where(
+            and(
+              eq(deals.tenantId, tenantId),
+              gte(deals.expectedCloseDate, dateStart.toISOString()),
+              lte(deals.expectedCloseDate, dateEnd.toISOString()),
+              sql`${deals.status} NOT IN ('closed_won', 'closed_lost')`
+            )
+          ),
+        
+        // Active quotes in the time period
+        db
+          .select({
+            id: quotes.id,
+            title: sql`COALESCE(${quotes.title}, 'Quote #' || ${quotes.quoteNumber})`.as('title'),
+            value: quotes.totalAmount,
+            probability: sql`50`.as('probability'), // Default probability for quotes
+            expectedCloseDate: quotes.validUntil,
+            stageId: sql`null`.as('stageId'),
+            status: quotes.status,
+            type: sql`'quote'`.as('type')
+          })
+          .from(quotes)
+          .where(
+            and(
+              eq(quotes.tenantId, tenantId),
+              gte(quotes.validUntil, dateStart.toISOString()),
+              lte(quotes.validUntil, dateEnd.toISOString()),
+              sql`${quotes.status} IN ('sent', 'viewed', 'pending')`
+            )
+          ),
+        
+        // Active proposals in the time period
+        db
+          .select({
+            id: proposals.id,
+            title: proposals.title,
+            value: proposals.totalValue,
+            probability: sql`70`.as('probability'), // Default probability for proposals
+            expectedCloseDate: proposals.validUntil,
+            stageId: sql`null`.as('stageId'),
+            status: proposals.status,
+            type: sql`'proposal'`.as('type')
+          })
+          .from(proposals)
+          .where(
+            and(
+              eq(proposals.tenantId, tenantId),
+              gte(proposals.validUntil, dateStart.toISOString()),
+              lte(proposals.validUntil, dateEnd.toISOString()),
+              sql`${proposals.status} IN ('sent', 'viewed', 'pending', 'under_review')`
+            )
+          ),
+        
+        // CRM Goals for the period
+        db
+          .select()
+          .from(salesGoals)
+          .where(
+            and(
+              eq(salesGoals.tenantId, tenantId),
+              gte(salesGoals.startDate, dateStart.toISOString()),
+              lte(salesGoals.endDate, dateEnd.toISOString()),
+              eq(salesGoals.isActive, true)
+            )
+          )
+      ]);
+
+      // Calculate pipeline totals
+      const pipelineItems = [...dealsData, ...quotesData, ...proposalsData];
+      const totalPipelineValue = pipelineItems.reduce((sum, item) => {
+        const value = parseFloat(item.value?.toString() || '0');
+        const probability = parseFloat(item.probability?.toString() || '0') / 100;
+        return sum + (value * probability);
+      }, 0);
+
+      const totalPipelineCount = pipelineItems.length;
+
+      // Calculate goal targets
+      const totalGoalValue = crmGoalsData
+        .filter(goal => goal.goalType === 'revenue')
+        .reduce((sum, goal) => sum + parseFloat(goal.targetValue?.toString() || '0'), 0);
+
+      const totalGoalCount = crmGoalsData
+        .filter(goal => goal.goalType !== 'revenue')
+        .reduce((sum, goal) => sum + parseInt(goal.targetCount?.toString() || '0'), 0);
+
+      // Calculate remaining to goal
+      const remainingToGoalValue = Math.max(0, totalGoalValue - totalPipelineValue);
+      const remainingToGoalCount = Math.max(0, totalGoalCount - totalPipelineCount);
+
+      // Group by type for breakdown
+      const breakdown = {
+        deals: {
+          count: dealsData.length,
+          value: dealsData.reduce((sum, deal) => sum + parseFloat(deal.value?.toString() || '0'), 0),
+          weightedValue: dealsData.reduce((sum, deal) => {
+            const value = parseFloat(deal.value?.toString() || '0');
+            const probability = parseFloat(deal.probability?.toString() || '0') / 100;
+            return sum + (value * probability);
+          }, 0)
+        },
+        quotes: {
+          count: quotesData.length,
+          value: quotesData.reduce((sum, quote) => sum + parseFloat(quote.value?.toString() || '0'), 0),
+          weightedValue: quotesData.reduce((sum, quote) => {
+            const value = parseFloat(quote.value?.toString() || '0');
+            const probability = 0.5; // 50% default for quotes
+            return sum + (value * probability);
+          }, 0)
+        },
+        proposals: {
+          count: proposalsData.length,
+          value: proposalsData.reduce((sum, proposal) => sum + parseFloat(proposal.value?.toString() || '0'), 0),
+          weightedValue: proposalsData.reduce((sum, proposal) => {
+            const value = parseFloat(proposal.value?.toString() || '0');
+            const probability = 0.7; // 70% default for proposals
+            return sum + (value * probability);
+          }, 0)
+        }
+      };
+
+      const responseData = {
+        forecast,
+        period: {
+          type: period,
+          startDate: dateStart,
+          endDate: dateEnd
+        },
+        pipeline: {
+          items: pipelineItems,
+          totalValue: totalPipelineValue,
+          totalCount: totalPipelineCount,
+          breakdown
+        },
+        goals: {
+          items: crmGoalsData,
+          totalValue: totalGoalValue,
+          totalCount: totalGoalCount
+        },
+        remaining: {
+          toGoalValue: remainingToGoalValue,
+          toGoalCount: remainingToGoalCount,
+          progressPercent: totalGoalValue > 0 ? Math.min(100, (totalPipelineValue / totalGoalValue) * 100) : 0
+        }
+      };
+
+      res.json(responseData);
+    } catch (error) {
+      console.error("Error fetching pipeline forecast:", error);
+      res.status(500).json({ message: "Failed to fetch pipeline forecast data" });
     }
   }
 );

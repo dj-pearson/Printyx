@@ -90,6 +90,7 @@ import RootAdminDashboard from "@/pages/RootAdminDashboard";
 import PlatformConfiguration from "@/pages/PlatformConfiguration";
 import DatabaseManagement from "@/pages/DatabaseManagement";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
+import PipelineForecast from "@/pages/PipelineForecast";
 import SalesPipelineWorkflow from "@/pages/SalesPipelineWorkflow";
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
@@ -311,6 +312,10 @@ function Router() {
           <Route
             path="/sales-pipeline-forecasting"
             component={SalesPipelineForecasting}
+          />
+          <Route 
+            path="/pipeline-forecast" 
+            component={PipelineForecast}
           />
           <Route
             path="/sales-pipeline-workflow"
