@@ -119,7 +119,7 @@ export default function BusinessRecords() {
 
   // Fetch specific record details
   const { data: recordDetails } = useQuery({
-    queryKey: ["/api/business-records", selectedRecord?.id],
+    queryKey: [`/api/business-records/${selectedRecord?.id}`],
     enabled: !!selectedRecord?.id,
   });
 
