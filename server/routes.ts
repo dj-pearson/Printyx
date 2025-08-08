@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { registerOnboardingRoutes } from "./routes-onboarding";
+import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from "./routes-export";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
@@ -12578,6 +12579,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register onboarding routes
   registerOnboardingRoutes(app);
+  
+  // Export checklist routes
+  app.get("/api/onboarding/export/:id/pdf", requireAuth, exportChecklistPDF);
+  app.get("/api/onboarding/export/:id/excel", requireAuth, exportChecklistExcel);
+  app.get("/api/onboarding/export/:id/csv", requireAuth, exportChecklistCSV);
 
   // Register manufacturer integration routes
   registerManufacturerIntegrationRoutes(app);
@@ -12697,6 +12703,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch equipment" });
     }
   });
+
+  // Register all route modules
+  registerOnboardingRoutes(app);
+  registerBusinessRecordRoutes(app);
+  registerIntegrationRoutes(app);
+  registerTaskRoutes(app);
+  registerEnhancedTaskRoutes(app);
+  registerPurchaseOrderRoutes(app);
+  registerWarehouseRoutes(app);
+  registerServiceAnalysisRoutes(app);
+  registerCrmGoalRoutes(app);
+  registerSalesforceRoutes(app);
+  registerSalesforceTestRoutes(app);
+  registerDataEnrichmentRoutes(app);
+  registerQuickBooksRoutes(app);
+  // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
+  registerModularDashboardRoutes(app);
+  registerManufacturerIntegrationRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

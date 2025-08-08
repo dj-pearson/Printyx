@@ -350,6 +350,15 @@ export interface IStorage {
   updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined>;
   deleteVendor(id: string, tenantId: string): Promise<boolean>;
 
+  // Product catalog operations
+  getAllProductModels(tenantId: string): Promise<ProductModel[]>;
+  getAllProductAccessories(tenantId: string): Promise<ProductAccessory[]>;
+  getAllServiceProducts(tenantId: string): Promise<ServiceProduct[]>;
+  getAllSoftwareProducts(tenantId: string): Promise<SoftwareProduct[]>;
+  getAllProfessionalServices(tenantId: string): Promise<ProfessionalService[]>;
+  getAllSupplies(tenantId: string): Promise<Supply[]>;
+  getAllManagedServices(tenantId: string): Promise<ManagedService[]>;
+
   // Pricing System
   getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSetting | undefined>;
   updateCompanyPricingSettings(tenantId: string, settings: InsertCompanyPricingSetting): Promise<CompanyPricingSetting>;
@@ -382,6 +391,12 @@ export interface IStorage {
   
   getLocationHistory(params: { tenantId: string; technicianId?: string; sessionId?: string; startDate?: Date; endDate?: Date }): Promise<LocationHistory[]>;
   createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory>;
+
+  // Business Records operations (unified lead-to-customer lifecycle)
+  getBusinessRecords(tenantId: string, recordType?: string, status?: string, search?: string, limit?: number): Promise<any[]>;
+  getBusinessRecord(id: string, tenantId: string): Promise<any | undefined>;
+  createBusinessRecord(record: any): Promise<any>;
+  updateBusinessRecord(id: string, tenantId: string, record: Partial<any>): Promise<any | undefined>;
 
   // Onboarding operations
   getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]>;
@@ -916,14 +931,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Unified Business Records operations - handles entire lead-to-customer lifecycle
-  async getBusinessRecords(tenantId: string, recordType?: string, status?: string): Promise<any[]> {
+  async getBusinessRecords(tenantId: string, recordType?: string, status?: string, search?: string, limit?: number): Promise<any[]> {
     try {
       // Use raw SQL to avoid Drizzle schema mapping issues
       const conditions = [`tenant_id = '${tenantId}'`];
       if (recordType) conditions.push(`record_type = '${recordType}'`);
       if (status) conditions.push(`status = '${status}'`);
       
+      // Add search functionality across company name and contact info
+      if (search && search.length > 0) {
+        const searchTerm = search.toLowerCase();
+        conditions.push(`(
+          LOWER(company_name) LIKE '%${searchTerm}%' OR
+          LOWER(primary_contact_name) LIKE '%${searchTerm}%' OR
+          LOWER(primary_contact_email) LIKE '%${searchTerm}%' OR
+          LOWER(industry) LIKE '%${searchTerm}%' OR
+          LOWER(city) LIKE '%${searchTerm}%'
+        )`);
+      }
+      
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const limitClause = limit ? `LIMIT ${limit}` : '';
       
       const result = await db.execute(sql`
         SELECT 
@@ -947,6 +975,7 @@ export class DatabaseStorage implements IStorage {
         FROM business_records 
         ${sql.raw(whereClause)}
         ORDER BY created_at DESC
+        ${sql.raw(limitClause)}
       `);
       
       return result.rows.map((row: any) => ({
@@ -1757,6 +1786,37 @@ export class DatabaseStorage implements IStorage {
       .values(product)
       .returning();
     return result;
+  }
+
+  // Product Models - fallback implementation
+  async getAllProductModels(tenantId: string): Promise<any[]> {
+    try {
+      // For now, return empty array until product models table is properly set up
+      return [];
+    } catch (error) {
+      console.error('Error in getAllProductModels:', error);
+      return [];
+    }
+  }
+
+  // Product Accessories - fallback implementation  
+  async getAllProductAccessories(tenantId: string): Promise<any[]> {
+    try {
+      // For now, return empty array until product accessories table is properly set up
+      return [];
+    } catch (error) {
+      console.error('Error in getAllProductAccessories:', error);
+      return [];
+    }
+  }
+
+  // Managed Services
+  async getAllManagedServices(tenantId: string): Promise<ManagedService[]> {
+    return await db
+      .select()
+      .from(managedServices)
+      .where(eq(managedServices.tenantId, tenantId))
+      .orderBy(managedServices.productName);
   }
 
   // Supplies

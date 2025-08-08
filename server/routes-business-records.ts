@@ -11,9 +11,9 @@ export function registerBusinessRecordRoutes(app: Express) {
   app.get("/api/business-records", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
     try {
       const tenantId = req.tenantId!;
-      const { recordType, status } = req.query;
+      const { recordType, status, search, limit } = req.query;
       
-      const records = await storage.getBusinessRecords(tenantId, recordType, status);
+      const records = await storage.getBusinessRecords(tenantId, recordType as string, status as string, search as string, limit ? parseInt(limit as string) : undefined);
       // Transform database fields to frontend format
       const transformedRecords = records.map(record => BusinessRecordsTransformer.toFrontend(record));
       res.json(transformedRecords);
