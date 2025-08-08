@@ -129,7 +129,7 @@ router.get(
           .where(
             and(
               eq(deals.tenantId, tenantId),
-              sql`${deals.status} NOT IN ('closed_won', 'closed_lost')`
+              sql`${deals.status} NOT IN ('won', 'lost')`
             )
           ),
         
@@ -140,7 +140,7 @@ router.get(
           .where(
             and(
               eq(quotes.tenantId, tenantId),
-              sql`${quotes.status} IN ('sent', 'viewed', 'pending')`
+              sql`${quotes.status} IN ('Sent', 'Draft', 'Pending')`
             )
           ),
         
@@ -151,7 +151,7 @@ router.get(
           .where(
             and(
               eq(proposals.tenantId, tenantId),
-              sql`${proposals.status} IN ('sent', 'viewed', 'pending', 'under_review')`
+              sql`${proposals.status} IN ('sent', 'draft', 'pending', 'under_review')`
             )
           ),
         
@@ -178,7 +178,7 @@ router.get(
       const transformedDeals = dealsData.map(deal => ({
         id: deal.id,
         title: deal.title || `Deal ${deal.id}`,
-        value: deal.value || 0,
+        value: parseFloat(deal.amount?.toString() || '0'),
         probability: deal.probability || 50,
         expectedCloseDate: deal.expectedCloseDate || new Date().toISOString(),
         status: deal.status || 'open',
@@ -188,7 +188,7 @@ router.get(
       const transformedQuotes = quotesData.map(quote => ({
         id: quote.id,
         title: quote.title || `Quote #${quote.quoteNumber || quote.id}`,
-        value: quote.totalAmount || 0,
+        value: parseFloat(quote.totalAmount?.toString() || '0'),
         probability: 50, // Default probability for quotes
         expectedCloseDate: quote.validUntil || new Date().toISOString(),
         status: quote.status || 'sent',
@@ -198,7 +198,7 @@ router.get(
       const transformedProposals = proposalsData.map(proposal => ({
         id: proposal.id,
         title: proposal.title || `Proposal ${proposal.id}`,
-        value: proposal.totalValue || 0,
+        value: parseFloat(proposal.totalAmount?.toString() || '0'),
         probability: 70, // Default probability for proposals
         expectedCloseDate: proposal.validUntil || new Date().toISOString(),
         status: proposal.status || 'sent',
