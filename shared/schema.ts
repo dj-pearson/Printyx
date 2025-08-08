@@ -5492,3 +5492,4 @@ export type ProposalSection = typeof proposalSections.$inferSelect;
 export type InsertProposalSection = z.infer<typeof insertProposalSectionSchema>;
 export type CompanyBrandingProfile = typeof companyBrandingProfiles.$inferSelect;
 export type InsertCompanyBrandingProfile = z.infer<typeof insertCompanyBrandingProfileSchema>;
+

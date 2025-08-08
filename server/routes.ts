@@ -69,6 +69,7 @@ import commissionRoutes from "./routes-commission";
 import enhancedServiceRoutes from "./routes-enhanced-service";
 import { enhancedRBACRoutes } from "./routes-enhanced-rbac";
 import gpt5Routes from "./routes-ai-gpt5";
+import salesForecastingRoutes from "./routes-sales-forecasting";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -12721,6 +12722,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
   registerModularDashboardRoutes(app);
   registerManufacturerIntegrationRoutes(app);
+  
+  // Register Sales Forecasting routes
+  app.use(salesForecastingRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
