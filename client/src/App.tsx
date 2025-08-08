@@ -90,8 +90,9 @@ import RootAdminDashboard from "@/pages/RootAdminDashboard";
 import PlatformConfiguration from "@/pages/PlatformConfiguration";
 import DatabaseManagement from "@/pages/DatabaseManagement";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
-
 import SalesPipelineWorkflow from "@/pages/SalesPipelineWorkflow";
+import SalesCommandCenter from "@/pages/SalesCommandCenter";
+
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
 import CustomerSuccessManagement from "@/pages/CustomerSuccessManagement";
@@ -423,6 +424,7 @@ function Router() {
             component={ComprehensiveOnboardingForm}
           />
           <Route path="/onboarding/:id" component={OnboardingDetails} />
+          <Route path="/sales/command-center" component={SalesCommandCenter} />
         </>
       )}
       <Route component={NotFound} />
