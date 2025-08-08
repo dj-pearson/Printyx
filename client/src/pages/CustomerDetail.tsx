@@ -246,14 +246,34 @@ export default function CustomerDetailHubspot() {
     mutationFn: async (data: any) => {
       return await apiRequest(`/api/business-records/${id}`, "PUT", data);
     },
-    onSuccess: () => {
+    onSuccess: (updatedData) => {
       toast({
         title: "Customer Updated",
         description: "Customer information has been successfully updated.",
       });
+      
+      // Optimistic update for main business records list
+      queryClient.setQueryData(["/api/business-records"], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((record: any) => 
+          record.id === id ? { ...record, ...updatedData } : record
+        );
+      });
+      
+      // Optimistic update for individual record
+      queryClient.setQueryData(["/api/business-records", id], updatedData);
+      
+      // Invalidate all related caches to ensure consistency
       queryClient.invalidateQueries({
         queryKey: ["/api/business-records", id],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/business-records"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/customers"],
+      });
+      
       setIsEditing(false);
     },
     onError: (error: any) => {
