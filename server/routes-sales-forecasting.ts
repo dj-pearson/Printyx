@@ -124,89 +124,89 @@ router.get(
       const [dealsData, quotesData, proposalsData, crmGoalsData] = await Promise.all([
         // Active deals in the time period
         db
-          .select({
-            id: deals.id,
-            title: deals.title,
-            value: deals.value,
-            probability: deals.probability,
-            expectedCloseDate: deals.expectedCloseDate,
-            stageId: deals.stageId,
-            status: deals.status,
-            type: sql`'deal'`.as('type')
-          })
+          .select()
           .from(deals)
           .where(
             and(
               eq(deals.tenantId, tenantId),
-              isNotNull(deals.expectedCloseDate),
-              gte(deals.expectedCloseDate, dateStart.toISOString().split('T')[0]),
-              lte(deals.expectedCloseDate, dateEnd.toISOString().split('T')[0]),
               sql`${deals.status} NOT IN ('closed_won', 'closed_lost')`
             )
           ),
         
         // Active quotes in the time period
         db
-          .select({
-            id: quotes.id,
-            title: sql`COALESCE(${quotes.title}, 'Quote #' || ${quotes.quoteNumber})`.as('title'),
-            value: quotes.totalAmount,
-            probability: sql`50`.as('probability'), // Default probability for quotes
-            expectedCloseDate: quotes.validUntil,
-            stageId: sql`null`.as('stageId'),
-            status: quotes.status,
-            type: sql`'quote'`.as('type')
-          })
+          .select()
           .from(quotes)
           .where(
             and(
               eq(quotes.tenantId, tenantId),
-              isNotNull(quotes.validUntil),
-              gte(quotes.validUntil, dateStart.toISOString().split('T')[0]),
-              lte(quotes.validUntil, dateEnd.toISOString().split('T')[0]),
               sql`${quotes.status} IN ('sent', 'viewed', 'pending')`
             )
           ),
         
         // Active proposals in the time period
         db
-          .select({
-            id: proposals.id,
-            title: proposals.title,
-            value: proposals.totalValue,
-            probability: sql`70`.as('probability'), // Default probability for proposals
-            expectedCloseDate: proposals.validUntil,
-            stageId: sql`null`.as('stageId'),
-            status: proposals.status,
-            type: sql`'proposal'`.as('type')
-          })
+          .select()
           .from(proposals)
           .where(
             and(
               eq(proposals.tenantId, tenantId),
-              isNotNull(proposals.validUntil),
-              gte(proposals.validUntil, dateStart.toISOString().split('T')[0]),
-              lte(proposals.validUntil, dateEnd.toISOString().split('T')[0]),
               sql`${proposals.status} IN ('sent', 'viewed', 'pending', 'under_review')`
             )
           ),
         
         // CRM Goals for the period
         db
-          .select()
+          .select({
+            id: salesGoals.id,
+            goalType: salesGoals.goalType,
+            targetValue: salesGoals.targetValue,
+            targetCount: salesGoals.targetCount,
+            startDate: salesGoals.startDate,
+            endDate: salesGoals.endDate
+          })
           .from(salesGoals)
           .where(
             and(
               eq(salesGoals.tenantId, tenantId),
-              gte(salesGoals.startDate, dateStart.toISOString().split('T')[0]),
-              lte(salesGoals.endDate, dateEnd.toISOString().split('T')[0]),
               eq(salesGoals.isActive, true)
             )
           )
       ]);
 
+      // Transform data with type and default probabilities
+      const transformedDeals = dealsData.map(deal => ({
+        id: deal.id,
+        title: deal.title || `Deal ${deal.id}`,
+        value: deal.value || 0,
+        probability: deal.probability || 50,
+        expectedCloseDate: deal.expectedCloseDate || new Date().toISOString(),
+        status: deal.status || 'open',
+        type: 'deal'
+      }));
+
+      const transformedQuotes = quotesData.map(quote => ({
+        id: quote.id,
+        title: quote.title || `Quote #${quote.quoteNumber || quote.id}`,
+        value: quote.totalAmount || 0,
+        probability: 50, // Default probability for quotes
+        expectedCloseDate: quote.validUntil || new Date().toISOString(),
+        status: quote.status || 'sent',
+        type: 'quote'
+      }));
+
+      const transformedProposals = proposalsData.map(proposal => ({
+        id: proposal.id,
+        title: proposal.title || `Proposal ${proposal.id}`,
+        value: proposal.totalValue || 0,
+        probability: 70, // Default probability for proposals
+        expectedCloseDate: proposal.validUntil || new Date().toISOString(),
+        status: proposal.status || 'sent',
+        type: 'proposal'
+      }));
+
       // Calculate pipeline totals
-      const pipelineItems = [...dealsData, ...quotesData, ...proposalsData];
+      const pipelineItems = [...transformedDeals, ...transformedQuotes, ...transformedProposals];
       const totalPipelineValue = pipelineItems.reduce((sum, item) => {
         const value = parseFloat(item.value?.toString() || '0');
         const probability = parseFloat(item.probability?.toString() || '0') / 100;
@@ -231,27 +231,27 @@ router.get(
       // Group by type for breakdown
       const breakdown = {
         deals: {
-          count: dealsData.length,
-          value: dealsData.reduce((sum, deal) => sum + parseFloat(deal.value?.toString() || '0'), 0),
-          weightedValue: dealsData.reduce((sum, deal) => {
+          count: transformedDeals.length,
+          value: transformedDeals.reduce((sum, deal) => sum + parseFloat(deal.value?.toString() || '0'), 0),
+          weightedValue: transformedDeals.reduce((sum, deal) => {
             const value = parseFloat(deal.value?.toString() || '0');
             const probability = parseFloat(deal.probability?.toString() || '0') / 100;
             return sum + (value * probability);
           }, 0)
         },
         quotes: {
-          count: quotesData.length,
-          value: quotesData.reduce((sum, quote) => sum + parseFloat(quote.value?.toString() || '0'), 0),
-          weightedValue: quotesData.reduce((sum, quote) => {
+          count: transformedQuotes.length,
+          value: transformedQuotes.reduce((sum, quote) => sum + parseFloat(quote.value?.toString() || '0'), 0),
+          weightedValue: transformedQuotes.reduce((sum, quote) => {
             const value = parseFloat(quote.value?.toString() || '0');
             const probability = 0.5; // 50% default for quotes
             return sum + (value * probability);
           }, 0)
         },
         proposals: {
-          count: proposalsData.length,
-          value: proposalsData.reduce((sum, proposal) => sum + parseFloat(proposal.value?.toString() || '0'), 0),
-          weightedValue: proposalsData.reduce((sum, proposal) => {
+          count: transformedProposals.length,
+          value: transformedProposals.reduce((sum, proposal) => sum + parseFloat(proposal.value?.toString() || '0'), 0),
+          weightedValue: transformedProposals.reduce((sum, proposal) => {
             const value = parseFloat(proposal.value?.toString() || '0');
             const probability = 0.7; // 70% default for proposals
             return sum + (value * probability);

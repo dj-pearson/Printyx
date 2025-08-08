@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { toast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +23,8 @@ import {
   BarChart3,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -78,6 +83,20 @@ export default function SalesPipelineForecasting() {
   const [period, setPeriod] = useState("monthly");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  const queryClient = useQueryClient();
+  const form = useForm({
+    defaultValues: {
+      forecastName: "",
+      forecastType: "quarterly",
+      startDate: "",
+      endDate: "",
+      revenueTarget: "",
+      dealCountTarget: "",
+      confidenceLevel: "medium"
+    }
+  });
 
   // Fetch available forecasts
   const { data: forecasts } = useQuery({
@@ -111,6 +130,37 @@ export default function SalesPipelineForecasting() {
       return fetch(url).then(res => res.json());
     },
   }) as { data: PipelineForecastData | undefined; isLoading: boolean };
+
+  // Create forecast mutation
+  const createForecastMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("/api/sales-forecasts", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { "Content-Type": "application/json" }
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales-forecasts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pipeline-forecast"] });
+      setIsCreateDialogOpen(false);
+      form.reset();
+      toast({ title: "Success", description: "Forecast created successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to create forecast",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const onSubmit = (data: any) => {
+    createForecastMutation.mutate({
+      ...data,
+      revenueTarget: parseFloat(data.revenueTarget) || 0,
+      dealCountTarget: parseInt(data.dealCountTarget) || 0,
+    });
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -223,6 +273,106 @@ export default function SalesPipelineForecasting() {
                 />
               </div>
             </div>
+
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Forecast
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Create New Forecast</DialogTitle>
+                  <DialogDescription>
+                    Create a sales forecast that will be included in the pipeline analysis
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div>
+                    <Label htmlFor="forecastName">Forecast Name</Label>
+                    <Input
+                      id="forecastName"
+                      {...form.register("forecastName", { required: true })}
+                      placeholder="Q1 2025 Sales Forecast"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="startDate">Start Date</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        {...form.register("startDate", { required: true })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="endDate">End Date</Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        {...form.register("endDate", { required: true })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="revenueTarget">Revenue Target ($)</Label>
+                      <Input
+                        id="revenueTarget"
+                        type="number"
+                        {...form.register("revenueTarget", { required: true })}
+                        placeholder="100000"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="dealCountTarget">Deal Count Target</Label>
+                      <Input
+                        id="dealCountTarget"
+                        type="number"
+                        {...form.register("dealCountTarget")}
+                        placeholder="25"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="forecastType">Forecast Type</Label>
+                    <Select 
+                      value={form.watch("forecastType")} 
+                      onValueChange={(value) => form.setValue("forecastType", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsCreateDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={createForecastMutation.isPending}
+                    >
+                      {createForecastMutation.isPending ? "Creating..." : "Create Forecast"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
