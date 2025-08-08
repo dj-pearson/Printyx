@@ -182,7 +182,12 @@ export default function BusinessRecords() {
         title: "Success",
         description: "Business record updated successfully",
       });
+      // Invalidate all business records queries
       queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      // Force refetch to ensure immediate UI update
+      queryClient.refetchQueries({ queryKey: ["/api/business-records"] });
       setIsEditDialogOpen(false);
       setEditingRecord(null);
     },
@@ -750,7 +755,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="companyName">Company Name *</Label>
           <Input
             id="companyName"
-            value={formData.companyName}
+            value={formData.companyName || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
             required
           />
@@ -760,7 +765,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="primaryContactName">Primary Contact *</Label>
           <Input
             id="primaryContactName"
-            value={formData.primaryContactName}
+            value={formData.primaryContactName || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, primaryContactName: e.target.value }))}
             required
           />
@@ -771,7 +776,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Input
             id="primaryContactEmail"
             type="email"
-            value={formData.primaryContactEmail}
+            value={formData.primaryContactEmail || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, primaryContactEmail: e.target.value }))}
           />
         </div>
@@ -780,7 +785,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="primaryContactPhone">Phone</Label>
           <Input
             id="primaryContactPhone"
-            value={formData.primaryContactPhone}
+            value={formData.primaryContactPhone || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, primaryContactPhone: e.target.value }))}
           />
         </div>
@@ -789,7 +794,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="address">Address</Label>
           <Input
             id="address"
-            value={formData.address}
+            value={formData.address || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
           />
         </div>
@@ -798,7 +803,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="city">City</Label>
           <Input
             id="city"
-            value={formData.city}
+            value={formData.city || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
           />
         </div>
@@ -807,7 +812,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="state">State</Label>
           <Input
             id="state"
-            value={formData.state}
+            value={formData.state || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
           />
         </div>
@@ -816,7 +821,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="zipCode">ZIP Code</Label>
           <Input
             id="zipCode"
-            value={formData.zipCode}
+            value={formData.zipCode || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
           />
         </div>
@@ -825,7 +830,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="industry">Industry</Label>
           <Input
             id="industry"
-            value={formData.industry}
+            value={formData.industry || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
           />
         </div>
@@ -834,7 +839,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
           <Label htmlFor="website">Website</Label>
           <Input
             id="website"
-            value={formData.website}
+            value={formData.website || ''}
             onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
           />
         </div>
@@ -874,7 +879,7 @@ function EditBusinessRecordForm({ record, onSubmit, isLoading }: {
         <Label htmlFor="notes">Notes</Label>
         <Textarea
           id="notes"
-          value={formData.notes}
+          value={formData.notes || ''}
           onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
           rows={3}
         />
