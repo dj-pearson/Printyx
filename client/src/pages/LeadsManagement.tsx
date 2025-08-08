@@ -441,9 +441,19 @@ export default function LeadsManagement() {
     });
   };
 
-  // Handle lead row click to navigate to detail page
-  const handleLeadClick = (leadId: string) => {
-    setLocation(`/leads/${leadId}`);
+  // Generate descriptive URL slug from company name
+  const generateLeadSlug = (companyName: string): string => {
+    if (!companyName) return 'unnamed-company';
+    return companyName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  // Handle lead row click to navigate to detail page with descriptive URL
+  const handleLeadClick = (lead: Lead) => {
+    const slug = generateLeadSlug(lead.companyName || lead.businessName || 'Unnamed Company');
+    setLocation(`/leads/${slug}?id=${lead.id}`);
   };
 
   // Render table cell content based on column type
@@ -453,7 +463,7 @@ export default function LeadsManagement() {
         return (
           <div
             className="cursor-pointer"
-            onClick={() => handleLeadClick(lead.id)}
+            onClick={() => handleLeadClick(lead)}
           >
             <div className="font-medium text-blue-600 hover:text-blue-800">
               {lead.name}
@@ -465,7 +475,7 @@ export default function LeadsManagement() {
         return (
           <div
             className="cursor-pointer"
-            onClick={() => handleLeadClick(lead.id)}
+            onClick={() => handleLeadClick(lead)}
           >
             <div className="font-medium text-blue-600 hover:text-blue-800">
               {lead.companyName}
@@ -988,7 +998,7 @@ export default function LeadsManagement() {
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem
-                                onClick={() => handleLeadClick(lead.id)}
+                                onClick={() => handleLeadClick(lead)}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
@@ -1084,7 +1094,7 @@ export default function LeadsManagement() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => handleLeadClick(lead.id)}
+                            onClick={() => handleLeadClick(lead)}
                           >
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
