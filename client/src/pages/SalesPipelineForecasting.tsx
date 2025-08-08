@@ -133,11 +133,12 @@ export default function SalesPipelineForecasting() {
 
   // Create forecast mutation
   const createForecastMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/sales-forecasts", {
-      method: "POST",
-      body: JSON.stringify(data),
-      headers: { "Content-Type": "application/json" }
-    }),
+    mutationFn: (data: any) => 
+      fetch("/api/sales-forecasts", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" }
+      }).then(res => res.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-forecasts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pipeline-forecast"] });
