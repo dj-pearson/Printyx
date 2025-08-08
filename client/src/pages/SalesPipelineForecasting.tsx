@@ -79,7 +79,7 @@ interface PipelineForecastData {
 }
 
 export default function SalesPipelineForecasting() {
-  const [selectedForecast, setSelectedForecast] = useState<string>("");
+  const [selectedForecast, setSelectedForecast] = useState<string>("all");
   const [period, setPeriod] = useState("monthly");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -101,7 +101,11 @@ export default function SalesPipelineForecasting() {
   // Fetch available forecasts
   const { data: forecasts } = useQuery({
     queryKey: ["/api/sales-forecasts"],
+    queryFn: () => fetch("/api/sales-forecasts").then(res => res.json())
   });
+
+  // Get selected forecast data
+  const selectedForecastData = forecasts?.find((f: any) => f.id === selectedForecast);
 
   // Fetch pipeline forecast data
   const { data: forecastData, isLoading } = useQuery({
@@ -404,11 +408,17 @@ export default function SalesPipelineForecasting() {
                   <p className="text-2xl font-bold">
                     {formatCurrency(forecastData?.goals?.totalValue || 0)}
                   </p>
+                  <div className="mt-1">
+                    <p className="text-sm text-gray-600">Forecast</p>
+                    <p className="text-lg font-semibold text-blue-600">
+                      {formatCurrency(selectedForecastData?.revenueTarget || 0)}
+                    </p>
+                  </div>
                 </div>
                 <Target className="w-8 h-8 text-green-600" />
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                From CRM goals
+                From CRM goals & forecasts
               </p>
             </CardContent>
           </Card>
@@ -419,8 +429,14 @@ export default function SalesPipelineForecasting() {
                 <div>
                   <p className="text-sm text-gray-600">Remaining to Goal</p>
                   <p className="text-2xl font-bold">
-                    {formatCurrency(forecastData?.remaining?.toGoalValue || 0)}
+                    {formatCurrency(Math.max(0, (forecastData?.goals?.totalValue || 0) - (forecastData?.pipeline?.totalValue || 0)))}
                   </p>
+                  <div className="mt-1">
+                    <p className="text-sm text-gray-600">Remaining to Forecast</p>
+                    <p className="text-lg font-semibold text-orange-600">
+                      {formatCurrency(Math.max(0, (selectedForecastData?.revenueTarget || 0) - (forecastData?.pipeline?.totalValue || 0)))}
+                    </p>
+                  </div>
                 </div>
                 <DollarSign className="w-8 h-8 text-orange-600" />
               </div>
@@ -434,15 +450,21 @@ export default function SalesPipelineForecasting() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Progress</p>
+                  <p className="text-sm text-gray-600">Progress to Goal</p>
                   <p className="text-2xl font-bold">
-                    {Math.round(forecastData?.remaining?.progressPercent || 0)}%
+                    {Math.round(forecastData?.goals?.totalValue > 0 ? ((forecastData?.pipeline?.totalValue || 0) / forecastData.goals.totalValue) * 100 : 0)}%
                   </p>
+                  <div className="mt-1">
+                    <p className="text-sm text-gray-600">Progress to Forecast</p>
+                    <p className="text-lg font-semibold text-purple-600">
+                      {Math.round(selectedForecastData?.revenueTarget > 0 ? ((forecastData?.pipeline?.totalValue || 0) / selectedForecastData.revenueTarget) * 100 : 0)}%
+                    </p>
+                  </div>
                 </div>
                 <PieChart className="w-8 h-8 text-purple-600" />
               </div>
               <Progress 
-                value={forecastData?.remaining?.progressPercent || 0} 
+                value={forecastData?.goals?.totalValue > 0 ? ((forecastData?.pipeline?.totalValue || 0) / forecastData.goals.totalValue) * 100 : 0} 
                 className="mt-2" 
               />
             </CardContent>
