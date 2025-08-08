@@ -672,51 +672,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.get(
-    "/api/dashboard/alerts",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  app.get("/api/dashboard/alerts", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
 
-        // Real alerts from database - low stock items
-        const lowStockItems = await db
-          .select({
-            id: inventoryItems.id,
-            name: inventoryItems.itemDescription,
-            category: inventoryItems.itemCategory,
-            currentStock: inventoryItems.quantityOnHand,
-            minThreshold: inventoryItems.reorderPoint,
-          })
-          .from(inventoryItems)
-          .where(and(
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Real alerts from database - low stock items
+      const lowStockItems = await db
+        .select({
+          id: inventoryItems.id,
+          name: inventoryItems.itemDescription,
+          category: inventoryItems.itemCategory,
+          currentStock: inventoryItems.quantityOnHand,
+          minThreshold: inventoryItems.reorderPoint,
+        })
+        .from(inventoryItems)
+        .where(
+          and(
             eq(inventoryItems.tenantId, tenantId),
             sql`quantity_on_hand <= reorder_point`
-          ))
-          .orderBy(asc(inventoryItems.quantityOnHand))
-          .limit(20);
+          )
+        )
+        .orderBy(asc(inventoryItems.quantityOnHand))
+        .limit(20);
 
-        const alerts = lowStockItems.map(item => ({
-          id: item.id,
-          type: 'low_stock',
-          severity: 'medium',
-          title: `Low Stock: ${item.name}`,
-          message: `${item.name} is running low (${item.currentStock} remaining, reorder at ${item.minThreshold})`,
-          category: item.category,
-          timestamp: new Date().toISOString(),
-        }));
+      const alerts = lowStockItems.map((item) => ({
+        id: item.id,
+        type: "low_stock",
+        severity: "medium",
+        title: `Low Stock: ${item.name}`,
+        message: `${item.name} is running low (${item.currentStock} remaining, reorder at ${item.minThreshold})`,
+        category: item.category,
+        timestamp: new Date().toISOString(),
+      }));
 
-        res.json(alerts);
-      } catch (error) {
-        console.error("Error fetching alerts:", error);
-        res.status(500).json({ message: "Failed to fetch alerts" });
-      }
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching alerts:", error);
+      res.status(500).json({ message: "Failed to fetch alerts" });
     }
-  );
+  });
 
   // Demo Scheduling Routes
   app.get("/api/demos", requireAuth, async (req: any, res) => {
@@ -793,50 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sales Pipeline Forecasting Routes
-  app.get("/api/sales-forecasts", requireAuth, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
-      }
-
-      // Sample forecasting data until schema is updated
-      const sampleForecasts = [
-        {
-          id: "forecast-1",
-          forecastName: "Q1 2025 Forecast",
-          forecastType: "quarterly",
-          startDate: new Date("2025-01-01"),
-          endDate: new Date("2025-03-31"),
-          revenueTarget: 500000,
-          unitTarget: 25,
-          dealCountTarget: 15,
-          actualRevenue: 187500,
-          actualUnits: 9,
-          actualDeals: 6,
-          pipelineValue: 425000,
-          weightedPipelineValue: 318750,
-          probabilityAdjustedRevenue: 275000,
-          confidenceLevel: "high",
-          confidencePercentage: 85,
-          conversionRate: 40.0,
-          averageDealSize: 31250,
-          salesCycleLength: 45,
-          status: "active",
-          achievementPercentage: 37.5,
-          projectedRevenue: 412500,
-          gapToTarget: 87500,
-          createdAt: new Date("2024-12-15"),
-        },
-      ];
-
-      res.json(sampleForecasts);
-    } catch (error) {
-      console.error("Error fetching sales forecasts:", error);
-      res.status(500).json({ message: "Failed to fetch sales forecasts" });
-    }
-  });
+  // Sales Pipeline Forecasting is handled in routes-sales-forecasting
 
   app.get("/api/sales-trends", requireAuth, async (req: any, res) => {
     try {
@@ -4123,7 +4078,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Use real dashboard service instead of mock data
-        const integrationHubData = await DashboardService.getDashboardData(tenantId);
+        const integrationHubData = await DashboardService.getDashboardData(
+          tenantId
+        );
         res.json(integrationHubData);
       } catch (error) {
         console.error("Error fetching integration hub dashboard:", error);
@@ -4138,19 +4095,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", resolveTenant);
 
   // Company Contacts API routes
-  app.get("/api/company-contacts/:companyId", requireAuth, async (req: any, res) => {
-    try {
-      const user = req.user as User;
-      const tenantId = user.tenantId;
-      const { companyId } = req.params;
+  app.get(
+    "/api/company-contacts/:companyId",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const user = req.user as User;
+        const tenantId = user.tenantId;
+        const { companyId } = req.params;
 
-      const contacts = await storage.getCompanyContacts(companyId, tenantId);
-      res.json(contacts);
-    } catch (error) {
-      console.error("Error fetching company contacts:", error);
-      res.status(500).json({ error: "Failed to fetch company contacts" });
+        const contacts = await storage.getCompanyContacts(companyId, tenantId);
+        res.json(contacts);
+      } catch (error) {
+        console.error("Error fetching company contacts:", error);
+        res.status(500).json({ error: "Failed to fetch company contacts" });
+      }
     }
-  });
+  );
 
   app.post("/api/company-contacts", requireAuth, async (req: any, res) => {
     try {
@@ -4177,7 +4138,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tenantId = user.tenantId;
       const { id } = req.params;
 
-      const contact = await storage.updateCompanyContact(id, req.body, tenantId);
+      const contact = await storage.updateCompanyContact(
+        id,
+        req.body,
+        tenantId
+      );
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
@@ -4188,22 +4153,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/company-contacts/:id", requireAuth, async (req: any, res) => {
-    try {
-      const user = req.user as User;
-      const tenantId = user.tenantId;
-      const { id } = req.params;
+  app.delete(
+    "/api/company-contacts/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const user = req.user as User;
+        const tenantId = user.tenantId;
+        const { id } = req.params;
 
-      const result = await storage.deleteCompanyContact(id, tenantId);
-      if (!result) {
-        return res.status(404).json({ error: "Contact not found" });
+        const result = await storage.deleteCompanyContact(id, tenantId);
+        if (!result) {
+          return res.status(404).json({ error: "Contact not found" });
+        }
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting company contact:", error);
+        res.status(500).json({ error: "Failed to delete company contact" });
       }
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting company contact:", error);
-      res.status(500).json({ error: "Failed to delete company contact" });
     }
-  });
+  );
 
   // Contacts routes
   app.get("/api/contacts", requireAuth, async (req: TenantRequest, res) => {
@@ -4661,19 +4630,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`[COMPANY-CONTACTS DEBUG] Route hit. Session:`, req.session);
       console.log(`[COMPANY-CONTACTS DEBUG] User:`, req.user);
-      
+
       const user = req.user as User;
       if (!user || !user.tenantId) {
         console.log(`[COMPANY-CONTACTS DEBUG] No user or tenantId found`);
         return res.status(401).json({ message: "Authentication required" });
       }
-      
+
       const tenantId = user.tenantId;
-      console.log(`[COMPANY-CONTACTS DEBUG] Fetching all contacts for tenant: ${tenantId}`);
+      console.log(
+        `[COMPANY-CONTACTS DEBUG] Fetching all contacts for tenant: ${tenantId}`
+      );
 
       const contacts = await storage.getAllCompanyContacts(tenantId);
       console.log(`[COMPANY-CONTACTS DEBUG] Found ${contacts.length} contacts`);
-      
+
       res.json(contacts);
     } catch (error) {
       console.error("Error fetching all company contacts:", error);
@@ -4699,9 +4670,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let actualCompanyId = companyId;
 
         // First check if it's a valid UUID and company ID
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId);
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            companyId
+          );
         let existingCompany = null;
-        
+
         if (isUuid) {
           existingCompany = await storage.getCompany(companyId, tenantId);
         }
@@ -4742,9 +4716,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let actualCompanyId = companyId;
 
         // First check if it's a valid UUID and company ID
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId);
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            companyId
+          );
         let existingCompany = null;
-        
+
         if (isUuid) {
           existingCompany = await storage.getCompany(companyId, tenantId);
         }
@@ -5680,7 +5657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             companyId: companyId, // Use companyId field for company_contacts table
             tenantId: user.tenantId,
             ownerId: user.id, // Set the current user as owner
-            leadStatus: 'new', // Set default lead status
+            leadStatus: "new", // Set default lead status
           });
           createdContacts.push(contact);
         }
@@ -6768,42 +6745,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update deal
-  app.put(
-    "/api/deals/:id",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        // Simple session-based authentication check
-        if (!req.session.userId) {
-          return res.status(401).json({ message: "Not authenticated" });
-        }
-
-        const user = await storage.getUser(req.session.userId);
-        if (!user?.tenantId) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-
-        const tenantId = user.tenantId;
-        const dealId = req.params.id;
-
-        // Convert date strings to Date objects for Drizzle
-        const updateData = { ...req.body };
-        if (updateData.expectedCloseDate && typeof updateData.expectedCloseDate === 'string') {
-          updateData.expectedCloseDate = new Date(updateData.expectedCloseDate);
-        }
-
-        const deal = await storage.updateDeal(dealId, updateData, tenantId);
-        if (!deal) {
-          return res.status(404).json({ message: "Deal not found" });
-        }
-
-        res.json(deal);
-      } catch (error) {
-        console.error("Error updating deal:", error);
-        res.status(500).json({ message: "Failed to update deal" });
+  app.put("/api/deals/:id", requireAuth, async (req: any, res) => {
+    try {
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
       }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const tenantId = user.tenantId;
+      const dealId = req.params.id;
+
+      // Convert date strings to Date objects for Drizzle
+      const updateData = { ...req.body };
+      if (
+        updateData.expectedCloseDate &&
+        typeof updateData.expectedCloseDate === "string"
+      ) {
+        updateData.expectedCloseDate = new Date(updateData.expectedCloseDate);
+      }
+
+      const deal = await storage.updateDeal(dealId, updateData, tenantId);
+      if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+
+      res.json(deal);
+    } catch (error) {
+      console.error("Error updating deal:", error);
+      res.status(500).json({ message: "Failed to update deal" });
     }
-  );
+  });
 
   // Update deal stage (for drag and drop)
   app.put(
@@ -7023,7 +6999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register OAuth integration routes (Google Calendar, Microsoft, etc.)
   app.use(integrationRoutes);
-  
+
   // Register integration hub dashboard routes
   app.use(integrationHubRoutes);
 
@@ -7056,7 +7032,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerQuickBooksRoutes(app);
 
   // Register manufacturer integration routes
-
 
   // Register Sales Pipeline Workflow routes
   setupSalesPipelineRoutes(app, storage, requireAuth);
@@ -12600,7 +12575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register modular dashboard routes
   registerModularDashboardRoutes(app);
-  
+
   // Register onboarding routes
   registerOnboardingRoutes(app);
 
@@ -12608,8 +12583,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerManufacturerIntegrationRoutes(app);
 
   // Register customer portal routes
-  app.use('/api/customer-portal', customerPortalRoutes);
-  
+  app.use("/api/customer-portal", customerPortalRoutes);
+
   // Register Service Dispatch routes (converted from mock data to database queries)
   app.use(serviceDispatchRouter);
 
@@ -12638,8 +12613,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            eq(businessRecords.recordType, 'customer'),
-            sql`LOWER(${businessRecords.name}) LIKE LOWER(${'%' + searchTerm + '%'})`
+            eq(businessRecords.recordType, "customer"),
+            sql`LOWER(${businessRecords.name}) LIKE LOWER(${
+              "%" + searchTerm + "%"
+            })`
           )
         )
         .limit(10);
@@ -12675,7 +12652,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             eq(companyContacts.tenantId, tenantId),
             eq(companyContacts.businessRecordId, companyId),
-            sql`LOWER(${companyContacts.name}) LIKE LOWER(${'%' + searchTerm + '%'})`
+            sql`LOWER(${companyContacts.name}) LIKE LOWER(${
+              "%" + searchTerm + "%"
+            })`
           )
         )
         .limit(10);
@@ -12707,7 +12686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             eq(equipment.tenantId, tenantId),
             eq(equipment.businessRecordId, companyId),
-            eq(equipment.status, 'active')
+            eq(equipment.status, "active")
           )
         )
         .orderBy(equipment.assetNumber);
