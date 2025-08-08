@@ -113,8 +113,10 @@ export default function BusinessRecords() {
   const queryClient = useQueryClient();
 
   // Fetch all business records
-  const { data: businessRecords = [], isLoading } = useQuery({
+  const { data: businessRecords = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/business-records"],
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always refetch
   });
 
   // Fetch specific record details
@@ -177,17 +179,15 @@ export default function BusinessRecords() {
     mutationFn: async (data: { id: string; record: Partial<BusinessRecord> }) => {
       return await apiRequest(`/api/business-records/${data.id}`, "PUT", data.record);
     },
-    onSuccess: () => {
+    onSuccess: (updatedData) => {
       toast({
         title: "Success",
         description: "Business record updated successfully",
       });
-      // Invalidate all business records queries
-      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
-      // Force refetch to ensure immediate UI update
-      queryClient.refetchQueries({ queryKey: ["/api/business-records"] });
+      // Invalidate all related queries
+      queryClient.invalidateQueries();
+      // Force immediate refetch of business records
+      refetch();
       setIsEditDialogOpen(false);
       setEditingRecord(null);
     },
