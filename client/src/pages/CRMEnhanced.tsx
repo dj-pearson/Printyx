@@ -44,6 +44,17 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
+// Utility function to create URL-friendly company names
+const createCompanySlug = (companyName: string): string => {
+  return companyName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .trim()
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+};
+
 // New company-centric lead creation schema
 const createLeadSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
@@ -81,7 +92,14 @@ export default function CRMEnhanced() {
   const [, setLocation] = useLocation();
 
   const { data: leads, isLoading: isLoadingLeads } = useQuery<Lead[]>({
-    queryKey: ["/api/leads"],
+    queryKey: ["/api/business-records"],
+    queryFn: async () => {
+      const response = await fetch("/api/business-records?recordType=lead");
+      if (!response.ok) {
+        throw new Error("Failed to fetch leads");
+      }
+      return response.json();
+    },
   });
 
   const { data: quotes, isLoading: isLoadingQuotes } = useQuery<Quote[]>({
@@ -168,20 +186,23 @@ export default function CRMEnhanced() {
       if (!contactResponse.ok) throw new Error('Failed to create contact');
       const contact = await contactResponse.json();
 
-      // Create the lead
-      const leadResponse = await fetch('/api/leads', {
+      // Create the lead using business records API
+      const leadResponse = await fetch('/api/business-records', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          companyId: company.id,
-          contactId: contact.id,
-          leadSource: data.leadSource,
-          estimatedValue: parseFloat(data.estimatedValue),
-          estimatedCloseDate: new Date(data.estimatedCloseDate),
-          notes: data.notes,
+          recordType: 'lead',
           status: 'new',
+          companyName: data.companyName,
+          primaryContactName: data.contactName,
+          primaryContactEmail: data.email,
+          primaryContactPhone: data.phone,
+          leadSource: data.leadSource,
+          estimatedAmount: parseFloat(data.estimatedValue),
+          estimatedCloseDate: data.estimatedCloseDate,
+          notes: data.notes,
         }),
       });
       
@@ -193,7 +214,7 @@ export default function CRMEnhanced() {
         title: "Success",
         description: "Lead created successfully!",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
       queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       setIsCreateLeadOpen(false);
       leadForm.reset();
@@ -254,7 +275,7 @@ export default function CRMEnhanced() {
 
   const updateLeadStatusMutation = useMutation({
     mutationFn: async ({ leadId, status }: { leadId: string; status: string }) => {
-      const response = await fetch(`/api/leads/${leadId}`, {
+      const response = await fetch(`/api/business-records/${leadId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -265,7 +286,7 @@ export default function CRMEnhanced() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
     },
   });
 
@@ -316,7 +337,7 @@ export default function CRMEnhanced() {
   };
 
   const filteredLeads = leads?.filter(lead => {
-    return filterStatus === "all" || lead.leadStatus === filterStatus;
+    return filterStatus === "all" || lead.status === filterStatus;
   });
 
   const getSalesPipelineMetrics = () => {
@@ -324,9 +345,9 @@ export default function CRMEnhanced() {
     
     const totalValue = leads.reduce((sum, lead) => sum + parseFloat(lead.estimatedAmount?.toString() || '0'), 0);
     const totalLeads = leads.length;
-    const closedWon = leads.filter(lead => lead.leadStatus === 'closed_won').length;
+    const closedWon = leads.filter(lead => lead.status === 'closed_won').length;
     const conversionRate = totalLeads > 0 ? (closedWon / totalLeads) * 100 : 0;
-    const activeLeads = leads.filter(lead => !['closed_won', 'closed_lost'].includes(lead.leadStatus || '')).length;
+    const activeLeads = leads.filter(lead => !['closed_won', 'closed_lost'].includes(lead.status || '')).length;
 
     return { totalValue, conversionRate, activeLeads };
   };
@@ -707,11 +728,11 @@ export default function CRMEnhanced() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-lg">Lead #{lead.id}</CardTitle>
-                        <Badge className={`${getStatusColor(lead.leadStatus || 'new')} border-0`}>
+                        <CardTitle className="text-lg">{lead.companyName || lead.businessName || 'Unnamed Company'}</CardTitle>
+                        <Badge className={`${getStatusColor(lead.status || 'new')} border-0`}>
                           <span className="flex items-center gap-1">
-                            {getStatusIcon(lead.leadStatus || 'new')}
-                            {(lead.leadStatus || 'new').replace('_', ' ')}
+                            {getStatusIcon(lead.status || 'new')}
+                            {(lead.status || 'new').replace('_', ' ')}
                           </span>
                         </Badge>
                       </div>
@@ -764,7 +785,7 @@ export default function CRMEnhanced() {
 
                     <div className="flex justify-between items-center pt-2 border-t">
                       <div className="flex gap-2">
-                        {lead.leadStatus === 'new' && (
+                        {lead.status === 'new' && (
                           <Button 
                             size="sm" 
                             onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'qualified' })}
@@ -774,7 +795,7 @@ export default function CRMEnhanced() {
                             Qualify
                           </Button>
                         )}
-                        {lead.leadStatus === 'qualified' && (
+                        {lead.status === 'qualified' && (
                           <Button 
                             size="sm" 
                             onClick={() => updateLeadStatusMutation.mutate({ leadId: lead.id, status: 'proposal' })}
@@ -805,7 +826,10 @@ export default function CRMEnhanced() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => setLocation(`/leads/${lead.id}`)}
+                          onClick={() => {
+                            const companySlug = createCompanySlug(lead.companyName || lead.businessName || 'unnamed-company');
+                            setLocation(`/leads/${companySlug}?id=${lead.id}`);
+                          }}
                         >
                           View Details
                         </Button>
