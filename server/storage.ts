@@ -107,7 +107,7 @@ import {
   type InsertManagedService,
   type Vendor,
   type AccountsPayable,
-  type AccountsReceivable,  
+  type AccountsReceivable,
   type ChartOfAccount,
   type PurchaseOrder,
   type PurchaseOrderItem,
@@ -149,7 +149,7 @@ import {
   type LocationHistory,
   type InsertMobileServiceSession,
   type InsertTimeTrackingEntry,
-  type InsertServicePhoto,  
+  type InsertServicePhoto,
   type InsertLocationHistory,
   // Onboarding schemas
   onboardingChecklists,
@@ -172,7 +172,23 @@ import {
   type InsertOnboardingTask,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, inArray, sql, desc, asc, like, gte, lte, lt, ne, count, isNull, isNotNull } from "drizzle-orm";
+import {
+  eq,
+  and,
+  or,
+  inArray,
+  sql,
+  desc,
+  asc,
+  like,
+  gte,
+  lte,
+  lt,
+  ne,
+  count,
+  isNull,
+  isNotNull,
+} from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 // Interface for storage operations with role-based access control
@@ -181,173 +197,315 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUsers(tenantId: string): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
-  
+
   // Authentication operations
   authenticateUser(email: string, password: string): Promise<User | null>;
   createUser(user: InsertUser): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  
+
   // Tenant operations for platform users
   getAllTenants(): Promise<{ id: string; name: string; domain?: string }[]>;
-  
+
   // Role-based data access operations
-  getUserWithRole(id: string): Promise<(User & { role?: Role; team?: Team }) | undefined>;
-  getAccessibleCustomers(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<Customer[]>;
-  getAccessibleLeads(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<Lead[]>;
-  getAccessibleServiceTickets(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<ServiceTicket[]>;
-  getAccessibleContracts(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<Contract[]>;
-  
+  getUserWithRole(
+    id: string
+  ): Promise<(User & { role?: Role; team?: Team }) | undefined>;
+  getAccessibleCustomers(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<Customer[]>;
+  getAccessibleLeads(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<Lead[]>;
+  getAccessibleServiceTickets(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<ServiceTicket[]>;
+  getAccessibleContracts(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<Contract[]>;
+
   // Customer operations
   getCustomers(tenantId: string): Promise<Customer[]>;
   getCustomer(id: string, tenantId: string): Promise<Customer | undefined>;
-  createCustomer(customer: Omit<Customer, "id" | "createdAt" | "updatedAt">): Promise<Customer>;
-  updateCustomer(id: string, customer: Partial<Customer>, tenantId: string): Promise<Customer | undefined>;
+  createCustomer(
+    customer: Omit<Customer, "id" | "createdAt" | "updatedAt">
+  ): Promise<Customer>;
+  updateCustomer(
+    id: string,
+    customer: Partial<Customer>,
+    tenantId: string
+  ): Promise<Customer | undefined>;
   deleteCustomer(id: string, tenantId: string): Promise<boolean>;
-  
+
   // Company operations (new primary business entity)
   getCompanies(tenantId: string): Promise<Company[]>;
   getCompany(id: string, tenantId: string): Promise<Company | undefined>;
-  getCompanyByName(name: string, tenantId: string): Promise<Company | undefined>;
-  createCompany(company: Omit<Company, "id" | "createdAt" | "updatedAt">): Promise<Company>;
-  updateCompany(id: string, company: Partial<Company>, tenantId: string): Promise<Company | undefined>;
+  getCompanyByName(
+    name: string,
+    tenantId: string
+  ): Promise<Company | undefined>;
+  createCompany(
+    company: Omit<Company, "id" | "createdAt" | "updatedAt">
+  ): Promise<Company>;
+  updateCompany(
+    id: string,
+    company: Partial<Company>,
+    tenantId: string
+  ): Promise<Company | undefined>;
   deleteCompany(id: string, tenantId: string): Promise<boolean>;
 
   // Company contact operations
-  getCompanyContacts(companyId: string, tenantId: string): Promise<CompanyContact[]>;
-  getCompanyContact(id: string, tenantId: string): Promise<CompanyContact | undefined>;
-  createCompanyContact(contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact>;
-  updateCompanyContact(id: string, contact: Partial<CompanyContact>, tenantId: string): Promise<CompanyContact | undefined>;
+  getCompanyContacts(
+    companyId: string,
+    tenantId: string
+  ): Promise<CompanyContact[]>;
+  getCompanyContact(
+    id: string,
+    tenantId: string
+  ): Promise<CompanyContact | undefined>;
+  createCompanyContact(
+    contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">
+  ): Promise<CompanyContact>;
+  updateCompanyContact(
+    id: string,
+    contact: Partial<CompanyContact>,
+    tenantId: string
+  ): Promise<CompanyContact | undefined>;
   deleteCompanyContact(id: string, tenantId: string): Promise<boolean>;
 
   // Lead operations (simplified pipeline tracking)
   getLeads(tenantId: string): Promise<Lead[]>;
   getLead(id: string, tenantId: string): Promise<Lead | undefined>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
-  updateLead(id: string, lead: Partial<Lead>, tenantId: string): Promise<Lead | undefined>;
+  updateLead(
+    id: string,
+    lead: Partial<Lead>,
+    tenantId: string
+  ): Promise<Lead | undefined>;
   convertLeadToCustomer(leadId: string, tenantId: string): Promise<Customer>;
-  
+
   // Lead activity/interaction operations
   getLeadActivities(leadId: string, tenantId: string): Promise<LeadActivity[]>;
-  createLeadActivity(activity: Omit<LeadActivity, "id" | "createdAt" | "updatedAt">): Promise<LeadActivity>;
+  createLeadActivity(
+    activity: Omit<LeadActivity, "id" | "createdAt" | "updatedAt">
+  ): Promise<LeadActivity>;
 
   // Contact operations (comprehensive contact management)
   getContacts(options: {
     filters: any;
     search: string;
     sortBy: string;
-    sortOrder: 'asc' | 'desc';
+    sortOrder: "asc" | "desc";
     offset: number;
     limit: number;
   }): Promise<CompanyContact[]>;
-  getContactsCount(options: { filters: any; search: string; }): Promise<number>;
+  getContactsCount(options: { filters: any; search: string }): Promise<number>;
   getContactById(id: string): Promise<CompanyContact | undefined>;
-  createContact(contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact>;
-  updateContact(id: string, contact: Partial<CompanyContact>): Promise<CompanyContact>;
+  createContact(
+    contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">
+  ): Promise<CompanyContact>;
+  updateContact(
+    id: string,
+    contact: Partial<CompanyContact>
+  ): Promise<CompanyContact>;
   deleteContact(id: string): Promise<boolean>;
   getUserByName(name: string): Promise<User | undefined>;
-  getContactsByCompany(companyId: string, tenantId: string): Promise<CompanyContact[]>;
-  
+  getContactsByCompany(
+    companyId: string,
+    tenantId: string
+  ): Promise<CompanyContact[]>;
+
   // Lead contact operations
   getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]>;
-  createLeadContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact>;
-  
+  createLeadContact(
+    contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">
+  ): Promise<LeadContact>;
+
   // Lead related records operations
-  getLeadRelatedRecords(leadId: string, tenantId: string): Promise<LeadRelatedRecord[]>;
-  createLeadRelatedRecord(record: Omit<LeadRelatedRecord, "id" | "createdAt">): Promise<LeadRelatedRecord>;
-  
+  getLeadRelatedRecords(
+    leadId: string,
+    tenantId: string
+  ): Promise<LeadRelatedRecord[]>;
+  createLeadRelatedRecord(
+    record: Omit<LeadRelatedRecord, "id" | "createdAt">
+  ): Promise<LeadRelatedRecord>;
+
   // Quote operations with RBAC
   getQuotes(tenantId: string): Promise<Quote[]>;
-  createQuote(quote: Omit<Quote, "id" | "createdAt" | "updatedAt">): Promise<Quote>;
-  
+  createQuote(
+    quote: Omit<Quote, "id" | "createdAt" | "updatedAt">
+  ): Promise<Quote>;
+
   // Equipment operations
   getEquipment(tenantId: string): Promise<Equipment[]>;
-  createEquipment(equipment: Omit<Equipment, "id" | "createdAt" | "updatedAt">): Promise<Equipment>;
-  
+  createEquipment(
+    equipment: Omit<Equipment, "id" | "createdAt" | "updatedAt">
+  ): Promise<Equipment>;
+
   // Contract operations
   getContracts(tenantId: string): Promise<Contract[]>;
-  createContract(contract: Omit<Contract, "id" | "createdAt" | "updatedAt">): Promise<Contract>;
-  
+  createContract(
+    contract: Omit<Contract, "id" | "createdAt" | "updatedAt">
+  ): Promise<Contract>;
+
   // Service ticket operations with RBAC
   getServiceTickets(tenantId: string): Promise<ServiceTicket[]>;
-  createServiceTicket(ticket: Omit<ServiceTicket, "id" | "createdAt" | "updatedAt">): Promise<ServiceTicket>;
-  updateServiceTicket(id: string, ticket: Partial<ServiceTicket>, tenantId: string): Promise<ServiceTicket | undefined>;
-  
+  createServiceTicket(
+    ticket: Omit<ServiceTicket, "id" | "createdAt" | "updatedAt">
+  ): Promise<ServiceTicket>;
+  updateServiceTicket(
+    id: string,
+    ticket: Partial<ServiceTicket>,
+    tenantId: string
+  ): Promise<ServiceTicket | undefined>;
+
   // Inventory operations
   getInventoryItems(tenantId: string): Promise<InventoryItem[]>;
-  createInventoryItem(item: Omit<InventoryItem, "id" | "createdAt" | "updatedAt">): Promise<InventoryItem>;
-  
+  createInventoryItem(
+    item: Omit<InventoryItem, "id" | "createdAt" | "updatedAt">
+  ): Promise<InventoryItem>;
+
   // Technician operations
   getTechnicians(tenantId: string): Promise<Technician[]>;
-  createTechnician(technician: Omit<Technician, "id" | "createdAt" | "updatedAt">): Promise<Technician>;
-  
+  createTechnician(
+    technician: Omit<Technician, "id" | "createdAt" | "updatedAt">
+  ): Promise<Technician>;
+
   // Meter reading operations
   getMeterReadings(tenantId: string): Promise<MeterReading[]>;
-  createMeterReading(reading: Omit<MeterReading, "id" | "createdAt" | "updatedAt">): Promise<MeterReading>;
-  
+  createMeterReading(
+    reading: Omit<MeterReading, "id" | "createdAt" | "updatedAt">
+  ): Promise<MeterReading>;
+
   // Invoice operations
   getInvoices(tenantId: string): Promise<Invoice[]>;
-  createInvoice(invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">): Promise<Invoice>;
-  
+  createInvoice(
+    invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">
+  ): Promise<Invoice>;
+
   // User-Customer assignments for territory management
-  getUserCustomerAssignments(userId: string, tenantId: string): Promise<UserCustomerAssignment[]>;
-  createUserCustomerAssignment(assignment: Omit<UserCustomerAssignment, "id" | "createdAt">): Promise<UserCustomerAssignment>;
-  
+  getUserCustomerAssignments(
+    userId: string,
+    tenantId: string
+  ): Promise<UserCustomerAssignment[]>;
+  createUserCustomerAssignment(
+    assignment: Omit<UserCustomerAssignment, "id" | "createdAt">
+  ): Promise<UserCustomerAssignment>;
+
   // Product Management operations
   getProductModels(tenantId: string): Promise<ProductModel[]>;
-  getProductModel(id: string, tenantId: string): Promise<ProductModel | undefined>;
+  getProductModel(
+    id: string,
+    tenantId: string
+  ): Promise<ProductModel | undefined>;
   createProductModel(model: InsertProductModel): Promise<ProductModel>;
-  updateProductModel(id: string, model: Partial<ProductModel>, tenantId: string): Promise<ProductModel | undefined>;
-  
-  getProductAccessories(modelId: string, tenantId: string): Promise<ProductAccessory[]>;
-  createProductAccessory(accessory: InsertProductAccessory): Promise<ProductAccessory>;
-  
+  updateProductModel(
+    id: string,
+    model: Partial<ProductModel>,
+    tenantId: string
+  ): Promise<ProductModel | undefined>;
+
+  getProductAccessories(
+    modelId: string,
+    tenantId: string
+  ): Promise<ProductAccessory[]>;
+  createProductAccessory(
+    accessory: InsertProductAccessory
+  ): Promise<ProductAccessory>;
+
   getCpcRates(modelId: string, tenantId: string): Promise<CpcRate[]>;
   createCpcRate(rate: InsertCpcRate): Promise<CpcRate>;
-  
+
   // Contract Tiered Rates operations (for meter billing)
   getContractTieredRates(tenantId: string): Promise<ContractTieredRate[]>;
-  getContractTieredRatesByContract(contractId: string): Promise<ContractTieredRate[]>;
-  createContractTieredRate(rate: InsertContractTieredRate): Promise<ContractTieredRate>;
-  
+  getContractTieredRatesByContract(
+    contractId: string
+  ): Promise<ContractTieredRate[]>;
+  createContractTieredRate(
+    rate: InsertContractTieredRate
+  ): Promise<ContractTieredRate>;
+
   // Enhanced meter reading operations
-  getMeterReadingsByStatus(tenantId: string, status: string): Promise<MeterReading[]>;
-  updateMeterReading(id: string, reading: Partial<MeterReading>, tenantId: string): Promise<MeterReading | undefined>;
+  getMeterReadingsByStatus(
+    tenantId: string,
+    status: string
+  ): Promise<MeterReading[]>;
+  updateMeterReading(
+    id: string,
+    reading: Partial<MeterReading>,
+    tenantId: string
+  ): Promise<MeterReading | undefined>;
   getContract(id: string, tenantId: string): Promise<Contract | undefined>;
-  
+
   // Deal management operations
   getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]>;
   getDeal(id: string, tenantId: string): Promise<any>;
   createDeal(deal: any): Promise<any>;
   updateDeal(id: string, deal: Partial<any>, tenantId: string): Promise<any>;
   updateDealStage(id: string, stageId: string, tenantId: string): Promise<any>;
-  
+
   // Deal stages operations
   getDealStages(tenantId: string): Promise<any[]>;
   createDealStage(stage: any): Promise<any>;
-  updateDealStageById(id: string, stage: Partial<any>, tenantId: string): Promise<any>;
-  
+  updateDealStageById(
+    id: string,
+    stage: Partial<any>,
+    tenantId: string
+  ): Promise<any>;
+
   // Deal activities operations
   getDealActivities(dealId: string, tenantId: string): Promise<any[]>;
   createDealActivity(activity: any): Promise<any>;
 
   // Purchase Order operations
   getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]>;
-  getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined>;
+  getPurchaseOrder(
+    id: string,
+    tenantId: string
+  ): Promise<PurchaseOrder | undefined>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
-  updatePurchaseOrder(id: string, po: Partial<PurchaseOrder>, tenantId: string): Promise<PurchaseOrder | undefined>;
+  updatePurchaseOrder(
+    id: string,
+    po: Partial<PurchaseOrder>,
+    tenantId: string
+  ): Promise<PurchaseOrder | undefined>;
   deletePurchaseOrder(id: string, tenantId: string): Promise<boolean>;
-  
+
   // Purchase Order Items operations
-  getPurchaseOrderItems(purchaseOrderId: string, tenantId: string): Promise<PurchaseOrderItem[]>;
-  createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem>;
-  updatePurchaseOrderItem(id: string, item: Partial<PurchaseOrderItem>, tenantId: string): Promise<PurchaseOrderItem | undefined>;
+  getPurchaseOrderItems(
+    purchaseOrderId: string,
+    tenantId: string
+  ): Promise<PurchaseOrderItem[]>;
+  createPurchaseOrderItem(
+    item: InsertPurchaseOrderItem
+  ): Promise<PurchaseOrderItem>;
+  updatePurchaseOrderItem(
+    id: string,
+    item: Partial<PurchaseOrderItem>,
+    tenantId: string
+  ): Promise<PurchaseOrderItem | undefined>;
   deletePurchaseOrderItem(id: string, tenantId: string): Promise<boolean>;
-  
+
   // Vendor operations
   getVendors(tenantId: string): Promise<Vendor[]>;
   getVendor(id: string, tenantId: string): Promise<Vendor | undefined>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
-  updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined>;
+  updateVendor(
+    id: string,
+    vendor: Partial<Vendor>,
+    tenantId: string
+  ): Promise<Vendor | undefined>;
   deleteVendor(id: string, tenantId: string): Promise<boolean>;
 
   // Product catalog operations
@@ -360,71 +518,189 @@ export interface IStorage {
   getAllManagedServices(tenantId: string): Promise<ManagedService[]>;
 
   // Pricing System
-  getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSetting | undefined>;
-  updateCompanyPricingSettings(tenantId: string, settings: InsertCompanyPricingSetting): Promise<CompanyPricingSetting>;
-  
+  getCompanyPricingSettings(
+    tenantId: string
+  ): Promise<CompanyPricingSetting | undefined>;
+  updateCompanyPricingSettings(
+    tenantId: string,
+    settings: InsertCompanyPricingSetting
+  ): Promise<CompanyPricingSetting>;
+
   getProductPricing(tenantId: string): Promise<ProductPricing[]>;
-  getProductPricingByProductId(productId: string, productType: string, tenantId: string): Promise<ProductPricing | undefined>;
+  getProductPricingByProductId(
+    productId: string,
+    productType: string,
+    tenantId: string
+  ): Promise<ProductPricing | undefined>;
   createProductPricing(pricing: InsertProductPricing): Promise<ProductPricing>;
-  updateProductPricing(id: string, tenantId: string, pricing: Partial<InsertProductPricing>): Promise<ProductPricing | undefined>;
+  updateProductPricing(
+    id: string,
+    tenantId: string,
+    pricing: Partial<InsertProductPricing>
+  ): Promise<ProductPricing | undefined>;
   deleteProductPricing(id: string, tenantId: string): Promise<boolean>;
-  
-  getQuotePricing(quoteId: string, tenantId: string): Promise<QuotePricing | undefined>;
+
+  getQuotePricing(
+    quoteId: string,
+    tenantId: string
+  ): Promise<QuotePricing | undefined>;
   createQuotePricing(pricing: InsertQuotePricing): Promise<QuotePricing>;
-  updateQuotePricing(id: string, tenantId: string, pricing: Partial<InsertQuotePricing>): Promise<QuotePricing | undefined>;
-  
-  getQuotePricingLineItems(quotePricingId: string, tenantId: string): Promise<QuotePricingLineItem[]>;
-  createQuotePricingLineItem(lineItem: InsertQuotePricingLineItem): Promise<QuotePricingLineItem>;
-  updateQuotePricingLineItem(id: string, tenantId: string, lineItem: Partial<InsertQuotePricingLineItem>): Promise<QuotePricingLineItem | undefined>;
+  updateQuotePricing(
+    id: string,
+    tenantId: string,
+    pricing: Partial<InsertQuotePricing>
+  ): Promise<QuotePricing | undefined>;
+
+  getQuotePricingLineItems(
+    quotePricingId: string,
+    tenantId: string
+  ): Promise<QuotePricingLineItem[]>;
+  createQuotePricingLineItem(
+    lineItem: InsertQuotePricingLineItem
+  ): Promise<QuotePricingLineItem>;
+  updateQuotePricingLineItem(
+    id: string,
+    tenantId: string,
+    lineItem: Partial<InsertQuotePricingLineItem>
+  ): Promise<QuotePricingLineItem | undefined>;
   deleteQuotePricingLineItem(id: string, tenantId: string): Promise<boolean>;
 
   // Mobile field service operations
-  getMobileServiceSessions(params: { tenantId: string; serviceTicketId?: string; technicianId?: string }): Promise<MobileServiceSession[]>;
-  createMobileServiceSession(session: InsertMobileServiceSession): Promise<MobileServiceSession>;
-  updateMobileServiceSession(id: string, tenantId: string, session: Partial<MobileServiceSession>): Promise<MobileServiceSession | undefined>;
-  
-  getTimeTrackingEntries(sessionId: string, tenantId: string): Promise<TimeTrackingEntry[]>;
-  createTimeTrackingEntry(entry: InsertTimeTrackingEntry): Promise<TimeTrackingEntry>;
-  
-  getServicePhotos(params: { tenantId: string; serviceTicketId?: string; sessionId?: string }): Promise<ServicePhoto[]>;
+  getMobileServiceSessions(params: {
+    tenantId: string;
+    serviceTicketId?: string;
+    technicianId?: string;
+  }): Promise<MobileServiceSession[]>;
+  createMobileServiceSession(
+    session: InsertMobileServiceSession
+  ): Promise<MobileServiceSession>;
+  updateMobileServiceSession(
+    id: string,
+    tenantId: string,
+    session: Partial<MobileServiceSession>
+  ): Promise<MobileServiceSession | undefined>;
+
+  getTimeTrackingEntries(
+    sessionId: string,
+    tenantId: string
+  ): Promise<TimeTrackingEntry[]>;
+  createTimeTrackingEntry(
+    entry: InsertTimeTrackingEntry
+  ): Promise<TimeTrackingEntry>;
+
+  getServicePhotos(params: {
+    tenantId: string;
+    serviceTicketId?: string;
+    sessionId?: string;
+  }): Promise<ServicePhoto[]>;
   createServicePhoto(photo: InsertServicePhoto): Promise<ServicePhoto>;
-  
-  getLocationHistory(params: { tenantId: string; technicianId?: string; sessionId?: string; startDate?: Date; endDate?: Date }): Promise<LocationHistory[]>;
-  createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory>;
+
+  getLocationHistory(params: {
+    tenantId: string;
+    technicianId?: string;
+    sessionId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<LocationHistory[]>;
+  createLocationHistory(
+    location: InsertLocationHistory
+  ): Promise<LocationHistory>;
 
   // Business Records operations (unified lead-to-customer lifecycle)
-  getBusinessRecords(tenantId: string, recordType?: string, status?: string, search?: string, limit?: number): Promise<any[]>;
+  getBusinessRecords(
+    tenantId: string,
+    recordType?: string,
+    status?: string,
+    search?: string,
+    limit?: number
+  ): Promise<any[]>;
   getBusinessRecord(id: string, tenantId: string): Promise<any | undefined>;
   createBusinessRecord(record: any): Promise<any>;
-  updateBusinessRecord(id: string, tenantId: string, record: Partial<any>): Promise<any | undefined>;
+  updateBusinessRecord(
+    id: string,
+    tenantId: string,
+    record: Partial<any>
+  ): Promise<any | undefined>;
 
   // Onboarding operations
   getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]>;
-  getOnboardingChecklist(id: string, tenantId: string): Promise<OnboardingChecklist | undefined>;
-  createOnboardingChecklist(checklist: InsertOnboardingChecklist): Promise<OnboardingChecklist>;
-  updateOnboardingChecklist(id: string, tenantId: string, checklist: Partial<OnboardingChecklist>): Promise<OnboardingChecklist | undefined>;
+  getOnboardingChecklist(
+    id: string,
+    tenantId: string
+  ): Promise<OnboardingChecklist | undefined>;
+  createOnboardingChecklist(
+    checklist: InsertOnboardingChecklist
+  ): Promise<OnboardingChecklist>;
+  updateOnboardingChecklist(
+    id: string,
+    tenantId: string,
+    checklist: Partial<OnboardingChecklist>
+  ): Promise<OnboardingChecklist | undefined>;
   deleteOnboardingChecklist(id: string, tenantId: string): Promise<void>;
-  
-  getOnboardingEquipment(checklistId: string, tenantId: string): Promise<OnboardingEquipment[]>;
-  createOnboardingEquipment(equipment: InsertOnboardingEquipment): Promise<OnboardingEquipment>;
-  updateOnboardingEquipment(id: string, tenantId: string, equipment: Partial<OnboardingEquipment>): Promise<OnboardingEquipment | undefined>;
-  
-  getOnboardingNetworkConfig(checklistId: string, tenantId: string): Promise<OnboardingNetworkConfig[]>;
-  createOnboardingNetworkConfig(config: InsertOnboardingNetworkConfig): Promise<OnboardingNetworkConfig>;
-  updateOnboardingNetworkConfig(id: string, tenantId: string, config: Partial<OnboardingNetworkConfig>): Promise<OnboardingNetworkConfig | undefined>;
-  
-  getOnboardingPrintManagement(checklistId: string, tenantId: string): Promise<OnboardingPrintManagement[]>;
-  createOnboardingPrintManagement(config: InsertOnboardingPrintManagement): Promise<OnboardingPrintManagement>;
-  updateOnboardingPrintManagement(id: string, tenantId: string, config: Partial<OnboardingPrintManagement>): Promise<OnboardingPrintManagement | undefined>;
-  
-  getOnboardingDynamicSections(checklistId: string, tenantId: string): Promise<OnboardingDynamicSection[]>;
-  createOnboardingDynamicSection(section: InsertOnboardingDynamicSection): Promise<OnboardingDynamicSection>;
-  updateOnboardingDynamicSection(id: string, tenantId: string, section: Partial<OnboardingDynamicSection>): Promise<OnboardingDynamicSection | undefined>;
+
+  getOnboardingEquipment(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingEquipment[]>;
+  createOnboardingEquipment(
+    equipment: InsertOnboardingEquipment
+  ): Promise<OnboardingEquipment>;
+  updateOnboardingEquipment(
+    id: string,
+    tenantId: string,
+    equipment: Partial<OnboardingEquipment>
+  ): Promise<OnboardingEquipment | undefined>;
+
+  getOnboardingNetworkConfig(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingNetworkConfig[]>;
+  createOnboardingNetworkConfig(
+    config: InsertOnboardingNetworkConfig
+  ): Promise<OnboardingNetworkConfig>;
+  updateOnboardingNetworkConfig(
+    id: string,
+    tenantId: string,
+    config: Partial<OnboardingNetworkConfig>
+  ): Promise<OnboardingNetworkConfig | undefined>;
+
+  getOnboardingPrintManagement(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingPrintManagement[]>;
+  createOnboardingPrintManagement(
+    config: InsertOnboardingPrintManagement
+  ): Promise<OnboardingPrintManagement>;
+  updateOnboardingPrintManagement(
+    id: string,
+    tenantId: string,
+    config: Partial<OnboardingPrintManagement>
+  ): Promise<OnboardingPrintManagement | undefined>;
+
+  getOnboardingDynamicSections(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingDynamicSection[]>;
+  createOnboardingDynamicSection(
+    section: InsertOnboardingDynamicSection
+  ): Promise<OnboardingDynamicSection>;
+  updateOnboardingDynamicSection(
+    id: string,
+    tenantId: string,
+    section: Partial<OnboardingDynamicSection>
+  ): Promise<OnboardingDynamicSection | undefined>;
   deleteOnboardingDynamicSection(id: string, tenantId: string): Promise<void>;
-  
-  getOnboardingTasks(checklistId: string, tenantId: string): Promise<OnboardingTask[]>;
+
+  getOnboardingTasks(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingTask[]>;
   createOnboardingTask(task: InsertOnboardingTask): Promise<OnboardingTask>;
-  updateOnboardingTask(id: string, tenantId: string, task: Partial<OnboardingTask>): Promise<OnboardingTask | undefined>;
+  updateOnboardingTask(
+    id: string,
+    tenantId: string,
+    task: Partial<OnboardingTask>
+  ): Promise<OnboardingTask | undefined>;
   deleteOnboardingTask(id: string, tenantId: string): Promise<void>;
 }
 
@@ -443,7 +719,7 @@ export class DatabaseStorage implements IStorage {
         lastName: users.lastName,
         email: users.email,
         roleId: users.roleId,
-        isActive: users.isActive
+        isActive: users.isActive,
       })
       .from(users)
       .where(eq(users.tenantId, tenantId));
@@ -465,10 +741,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .returning();
+    const [user] = await db.insert(users).values(userData).returning();
     return user;
   }
 
@@ -477,7 +750,10 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async authenticateUser(email: string, password: string): Promise<User | null> {
+  async authenticateUser(
+    email: string,
+    password: string
+  ): Promise<User | null> {
     const user = await this.getUserByEmail(email);
     if (!user || !user.passwordHash) {
       return null;
@@ -498,7 +774,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tenant operations for platform users
-  async getAllTenants(): Promise<{ id: string; name: string; domain?: string }[]> {
+  async getAllTenants(): Promise<
+    { id: string; name: string; domain?: string }[]
+  > {
     const result = await db
       .select({
         id: tenants.id,
@@ -507,12 +785,14 @@ export class DatabaseStorage implements IStorage {
       })
       .from(tenants)
       .orderBy(tenants.name);
-    
+
     return result;
   }
 
   // Enhanced user operations with role information
-  async getUserWithRole(id: string): Promise<(User & { role?: Role; team?: Team }) | undefined> {
+  async getUserWithRole(
+    id: string
+  ): Promise<(User & { role?: Role; team?: Team }) | undefined> {
     const result = await db
       .select({
         user: users,
@@ -531,109 +811,168 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Role-based data access methods
-  async getAccessibleCustomers(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<Customer[]> {
-    let query = db.select().from(customers).where(eq(customers.tenantId, tenantId));
+  async getAccessibleCustomers(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<Customer[]> {
+    let query = db
+      .select()
+      .from(customers)
+      .where(eq(customers.tenantId, tenantId));
 
     // Apply role-based filtering
-    if (roleLevel === 1) { // Individual contributor - only assigned customers
+    if (roleLevel === 1) {
+      // Individual contributor - only assigned customers
       const assignedCustomerIds = await db
         .select({ customerId: userCustomerAssignments.customerId })
         .from(userCustomerAssignments)
-        .where(and(
-          eq(userCustomerAssignments.userId, userId),
-          eq(userCustomerAssignments.tenantId, tenantId)
-        ));
-      
+        .where(
+          and(
+            eq(userCustomerAssignments.userId, userId),
+            eq(userCustomerAssignments.tenantId, tenantId)
+          )
+        );
+
       if (assignedCustomerIds.length === 0) return [];
-      
-      query = query.where(inArray(customers.id, assignedCustomerIds.map(a => a.customerId)));
-    } else if (roleLevel === 2 && teamId) { // Team lead - team's customers
+
+      query = query.where(
+        inArray(
+          customers.id,
+          assignedCustomerIds.map((a) => a.customerId)
+        )
+      );
+    } else if (roleLevel === 2 && teamId) {
+      // Team lead - team's customers
       const teamUserIds = await db
         .select({ userId: users.id })
         .from(users)
-        .where(and(
-          eq(users.teamId, teamId),
-          eq(users.tenantId, tenantId)
-        ));
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
       const teamCustomerIds = await db
         .select({ customerId: userCustomerAssignments.customerId })
         .from(userCustomerAssignments)
-        .where(and(
-          inArray(userCustomerAssignments.userId, teamUserIds.map(u => u.userId)),
-          eq(userCustomerAssignments.tenantId, tenantId)
-        ));
+        .where(
+          and(
+            inArray(
+              userCustomerAssignments.userId,
+              teamUserIds.map((u) => u.userId)
+            ),
+            eq(userCustomerAssignments.tenantId, tenantId)
+          )
+        );
 
       if (teamCustomerIds.length === 0) return [];
-      
-      query = query.where(inArray(customers.id, teamCustomerIds.map(a => a.customerId)));
+
+      query = query.where(
+        inArray(
+          customers.id,
+          teamCustomerIds.map((a) => a.customerId)
+        )
+      );
     }
     // Level 3+ (Manager/Director/Admin) see all customers in tenant
 
     return await query;
   }
 
-  async getAccessibleLeads(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<Lead[]> {
+  async getAccessibleLeads(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<Lead[]> {
     let query = db.select().from(leads).where(eq(leads.tenantId, tenantId));
 
-    if (roleLevel === 1) { // Individual - only assigned leads
+    if (roleLevel === 1) {
+      // Individual - only assigned leads
       query = query.where(eq(leads.ownerId, userId));
-    } else if (roleLevel === 2 && teamId) { // Team lead - team's leads
+    } else if (roleLevel === 2 && teamId) {
+      // Team lead - team's leads
       const teamUserIds = await db
         .select({ userId: users.id })
         .from(users)
-        .where(and(
-          eq(users.teamId, teamId),
-          eq(users.tenantId, tenantId)
-        ));
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
-      query = query.where(inArray(leads.ownerId, teamUserIds.map(u => u.userId)));
+      query = query.where(
+        inArray(
+          leads.ownerId,
+          teamUserIds.map((u) => u.userId)
+        )
+      );
     }
 
     return await query;
   }
 
-  async getAccessibleServiceTickets(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<ServiceTicket[]> {
-    let query = db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, tenantId));
+  async getAccessibleServiceTickets(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<ServiceTicket[]> {
+    let query = db
+      .select()
+      .from(serviceTickets)
+      .where(eq(serviceTickets.tenantId, tenantId));
 
-    if (roleLevel === 1) { // Individual technician - only assigned tickets
-      query = query.where(or(
-        eq(serviceTickets.assignedTechnicianId, userId),
-        eq(serviceTickets.createdBy, userId)
-      ));
-    } else if (roleLevel === 2 && teamId) { // Team supervisor - team's tickets
+    if (roleLevel === 1) {
+      // Individual technician - only assigned tickets
+      query = query.where(
+        or(
+          eq(serviceTickets.assignedTechnicianId, userId),
+          eq(serviceTickets.createdBy, userId)
+        )
+      );
+    } else if (roleLevel === 2 && teamId) {
+      // Team supervisor - team's tickets
       const teamTechnicianIds = await db
         .select({ technicianId: technicians.id })
         .from(technicians)
         .innerJoin(users, eq(technicians.userId, users.id))
-        .where(and(
-          eq(users.teamId, teamId),
-          eq(users.tenantId, tenantId)
-        ));
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
       if (teamTechnicianIds.length > 0) {
-        query = query.where(inArray(serviceTickets.assignedTechnicianId, teamTechnicianIds.map(t => t.technicianId)));
+        query = query.where(
+          inArray(
+            serviceTickets.assignedTechnicianId,
+            teamTechnicianIds.map((t) => t.technicianId)
+          )
+        );
       }
     }
 
     return await query;
   }
 
-  async getAccessibleContracts(userId: string, tenantId: string, roleLevel: number, teamId?: string): Promise<Contract[]> {
-    let query = db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
+  async getAccessibleContracts(
+    userId: string,
+    tenantId: string,
+    roleLevel: number,
+    teamId?: string
+  ): Promise<Contract[]> {
+    let query = db
+      .select()
+      .from(contracts)
+      .where(eq(contracts.tenantId, tenantId));
 
-    if (roleLevel === 1) { // Individual sales rep - only assigned contracts
+    if (roleLevel === 1) {
+      // Individual sales rep - only assigned contracts
       query = query.where(eq(contracts.assignedSalespersonId, userId));
-    } else if (roleLevel === 2 && teamId) { // Team lead - team's contracts
+    } else if (roleLevel === 2 && teamId) {
+      // Team lead - team's contracts
       const teamUserIds = await db
         .select({ userId: users.id })
         .from(users)
-        .where(and(
-          eq(users.teamId, teamId),
-          eq(users.tenantId, tenantId)
-        ));
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
-      query = query.where(inArray(contracts.assignedSalespersonId, teamUserIds.map(u => u.userId)));
+      query = query.where(
+        inArray(
+          contracts.assignedSalespersonId,
+          teamUserIds.map((u) => u.userId)
+        )
+      );
     }
 
     return await query;
@@ -641,29 +980,44 @@ export class DatabaseStorage implements IStorage {
 
   // Standard CRUD operations (existing methods with tenant filtering)
   async getCustomers(tenantId: string): Promise<Customer[]> {
-    return await db.select().from(customers).where(eq(customers.tenantId, tenantId));
+    return await db
+      .select()
+      .from(customers)
+      .where(eq(customers.tenantId, tenantId));
   }
 
-  async getCustomer(customerId: string, tenantId: string): Promise<Customer | undefined> {
+  async getCustomer(
+    customerId: string,
+    tenantId: string
+  ): Promise<Customer | undefined> {
     try {
       const result = await db
         .select()
         .from(customers)
-        .where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)))
+        .where(
+          and(eq(customers.id, customerId), eq(customers.tenantId, tenantId))
+        )
         .limit(1);
       return result[0];
     } catch (error) {
-      console.error('Error in getCustomer:', error);
+      console.error("Error in getCustomer:", error);
       return undefined;
     }
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    const [newCustomer] = await db.insert(customers).values(customer).returning();
+    const [newCustomer] = await db
+      .insert(customers)
+      .values(customer)
+      .returning();
     return newCustomer;
   }
 
-  async updateCustomer(id: string, customer: Partial<Customer>, tenantId: string): Promise<Customer | undefined> {
+  async updateCustomer(
+    id: string,
+    customer: Partial<Customer>,
+    tenantId: string
+  ): Promise<Customer | undefined> {
     const [updatedCustomer] = await db
       .update(customers)
       .set({ ...customer, updatedAt: new Date() })
@@ -680,30 +1034,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Customer Detail Methods for comprehensive customer information
-  async getCustomerEquipment(customerId: string, tenantId: string): Promise<Equipment[]> {
+  async getCustomerEquipment(
+    customerId: string,
+    tenantId: string
+  ): Promise<Equipment[]> {
     try {
       return await db
         .select()
         .from(equipment)
-        .where(and(
-          eq(equipment.customerId, customerId),
-          eq(equipment.tenantId, tenantId)
-        ));
+        .where(
+          and(
+            eq(equipment.customerId, customerId),
+            eq(equipment.tenantId, tenantId)
+          )
+        );
     } catch (error) {
       console.log("No equipment table found, returning empty array");
       return [];
     }
   }
 
-  async getCustomerMeterReadings(customerId: string, tenantId: string): Promise<MeterReading[]> {
+  async getCustomerMeterReadings(
+    customerId: string,
+    tenantId: string
+  ): Promise<MeterReading[]> {
     try {
       return await db
         .select()
         .from(meterReadings)
-        .where(and(
-          eq(meterReadings.customerId, customerId),
-          eq(meterReadings.tenantId, tenantId)
-        ))
+        .where(
+          and(
+            eq(meterReadings.customerId, customerId),
+            eq(meterReadings.tenantId, tenantId)
+          )
+        )
         .orderBy(desc(meterReadings.readingDate));
     } catch (error) {
       console.log("No meter readings table found, returning empty array");
@@ -711,15 +1075,20 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerInvoices(customerId: string, tenantId: string): Promise<Invoice[]> {
+  async getCustomerInvoices(
+    customerId: string,
+    tenantId: string
+  ): Promise<Invoice[]> {
     try {
       return await db
         .select()
         .from(invoices)
-        .where(and(
-          eq(invoices.customerId, customerId),
-          eq(invoices.tenantId, tenantId)
-        ))
+        .where(
+          and(
+            eq(invoices.customerId, customerId),
+            eq(invoices.tenantId, tenantId)
+          )
+        )
         .orderBy(desc(invoices.invoiceDate));
     } catch (error) {
       console.log("No invoices table found, returning empty array");
@@ -727,15 +1096,20 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerServiceTickets(customerId: string, tenantId: string): Promise<ServiceTicket[]> {
+  async getCustomerServiceTickets(
+    customerId: string,
+    tenantId: string
+  ): Promise<ServiceTicket[]> {
     try {
       return await db
         .select()
         .from(serviceTickets)
-        .where(and(
-          eq(serviceTickets.customerId, customerId),
-          eq(serviceTickets.tenantId, tenantId)
-        ))
+        .where(
+          and(
+            eq(serviceTickets.customerId, customerId),
+            eq(serviceTickets.tenantId, tenantId)
+          )
+        )
         .orderBy(desc(serviceTickets.createdAt));
     } catch (error) {
       console.log("No service tickets table found, returning empty array");
@@ -743,15 +1117,20 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerContracts(customerId: string, tenantId: string): Promise<Contract[]> {
+  async getCustomerContracts(
+    customerId: string,
+    tenantId: string
+  ): Promise<Contract[]> {
     try {
       return await db
         .select()
         .from(contracts)
-        .where(and(
-          eq(contracts.customerId, customerId),
-          eq(contracts.tenantId, tenantId)
-        ));
+        .where(
+          and(
+            eq(contracts.customerId, customerId),
+            eq(contracts.tenantId, tenantId)
+          )
+        );
     } catch (error) {
       console.log("No contracts found, returning empty array");
       return [];
@@ -760,7 +1139,10 @@ export class DatabaseStorage implements IStorage {
 
   // Company operations (new primary business entity)
   async getCompanies(tenantId: string): Promise<Company[]> {
-    return await db.select().from(companies).where(eq(companies.tenantId, tenantId));
+    return await db
+      .select()
+      .from(companies)
+      .where(eq(companies.tenantId, tenantId));
   }
 
   async getCompany(id: string, tenantId: string): Promise<Company | undefined> {
@@ -771,30 +1153,44 @@ export class DatabaseStorage implements IStorage {
     return company;
   }
 
-  async getCompanyByName(name: string, tenantId: string): Promise<Company | undefined> {
+  async getCompanyByName(
+    name: string,
+    tenantId: string
+  ): Promise<Company | undefined> {
     // Handle null, undefined, or empty names
-    if (!name || name.trim() === '') {
+    if (!name || name.trim() === "") {
       return undefined;
     }
-    
+
     try {
       const [company] = await db
         .select()
         .from(companies)
-        .where(and(eq(companies.businessName, name.trim()), eq(companies.tenantId, tenantId)));
+        .where(
+          and(
+            eq(companies.businessName, name.trim()),
+            eq(companies.tenantId, tenantId)
+          )
+        );
       return company;
     } catch (error) {
-      console.error('Error in getCompanyByName:', error);
+      console.error("Error in getCompanyByName:", error);
       return undefined;
     }
   }
 
-  async createCompany(company: Omit<Company, "id" | "createdAt" | "updatedAt">): Promise<Company> {
+  async createCompany(
+    company: Omit<Company, "id" | "createdAt" | "updatedAt">
+  ): Promise<Company> {
     const [newCompany] = await db.insert(companies).values(company).returning();
     return newCompany;
   }
 
-  async updateCompany(id: string, company: Partial<Company>, tenantId: string): Promise<Company | undefined> {
+  async updateCompany(
+    id: string,
+    company: Partial<Company>,
+    tenantId: string
+  ): Promise<Company | undefined> {
     const [updatedCompany] = await db
       .update(companies)
       .set({ ...company, updatedAt: new Date() })
@@ -811,11 +1207,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Company contact operations
-  async getCompanyContacts(companyId: string, tenantId: string): Promise<CompanyContact[]> {
+  async getCompanyContacts(
+    companyId: string,
+    tenantId: string
+  ): Promise<CompanyContact[]> {
     return await db
       .select()
       .from(companyContacts)
-      .where(and(eq(companyContacts.companyId, companyId), eq(companyContacts.tenantId, tenantId)));
+      .where(
+        and(
+          eq(companyContacts.companyId, companyId),
+          eq(companyContacts.tenantId, tenantId)
+        )
+      );
   }
 
   async getAllCompanyContacts(tenantId: string): Promise<CompanyContact[]> {
@@ -826,24 +1230,40 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(companyContacts.createdAt));
   }
 
-  async getCompanyContact(id: string, tenantId: string): Promise<CompanyContact | undefined> {
+  async getCompanyContact(
+    id: string,
+    tenantId: string
+  ): Promise<CompanyContact | undefined> {
     const [contact] = await db
       .select()
       .from(companyContacts)
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
+      .where(
+        and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId))
+      );
     return contact;
   }
 
-  async createCompanyContact(contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact> {
-    const [newContact] = await db.insert(companyContacts).values(contact).returning();
+  async createCompanyContact(
+    contact: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">
+  ): Promise<CompanyContact> {
+    const [newContact] = await db
+      .insert(companyContacts)
+      .values(contact)
+      .returning();
     return newContact;
   }
 
-  async updateCompanyContact(id: string, contactData: Partial<CompanyContact>, tenantId: string): Promise<CompanyContact | undefined> {
+  async updateCompanyContact(
+    id: string,
+    contactData: Partial<CompanyContact>,
+    tenantId: string
+  ): Promise<CompanyContact | undefined> {
     const [updated] = await db
       .update(companyContacts)
       .set({ ...contactData, updatedAt: new Date() })
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)))
+      .where(
+        and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId))
+      )
       .returning();
     return updated;
   }
@@ -851,15 +1271,23 @@ export class DatabaseStorage implements IStorage {
   async deleteCompanyContact(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(companyContacts)
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
+      .where(
+        and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId))
+      );
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  async updateCompanyContact(id: string, contact: Partial<CompanyContact>, tenantId: string): Promise<CompanyContact | undefined> {
+  async updateCompanyContact(
+    id: string,
+    contact: Partial<CompanyContact>,
+    tenantId: string
+  ): Promise<CompanyContact | undefined> {
     const [updatedContact] = await db
       .update(companyContacts)
       .set({ ...contact, updatedAt: new Date() })
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)))
+      .where(
+        and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId))
+      )
       .returning();
     return updatedContact;
   }
@@ -867,7 +1295,9 @@ export class DatabaseStorage implements IStorage {
   async deleteCompanyContact(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(companyContacts)
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
+      .where(
+        and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId))
+      );
     return result.rowCount > 0;
   }
 
@@ -883,13 +1313,16 @@ export class DatabaseStorage implements IStorage {
       `);
       return result.rows;
     } catch (error) {
-      console.error('Error in getLeads:', error);
+      console.error("Error in getLeads:", error);
       return [];
     }
   }
 
   // Customer-specific operations (filtered views of business records)
-  async getCustomers(tenantId: string, includeInactive: boolean = false): Promise<any[]> {
+  async getCustomers(
+    tenantId: string,
+    includeInactive: boolean = false
+  ): Promise<any[]> {
     try {
       // Use raw SQL to avoid Drizzle schema mapping issues
       if (!includeInactive) {
@@ -908,12 +1341,10 @@ export class DatabaseStorage implements IStorage {
         return result.rows;
       }
     } catch (error) {
-      console.error('Error in getCustomers:', error);
+      console.error("Error in getCustomers:", error);
       return [];
     }
   }
-
-
 
   // Former customers for reporting and reactivation
   async getFormerCustomers(tenantId: string): Promise<any[]> {
@@ -925,19 +1356,25 @@ export class DatabaseStorage implements IStorage {
       `);
       return result.rows;
     } catch (error) {
-      console.error('Error in getFormerCustomers:', error);
+      console.error("Error in getFormerCustomers:", error);
       return [];
     }
   }
 
   // Unified Business Records operations - handles entire lead-to-customer lifecycle
-  async getBusinessRecords(tenantId: string, recordType?: string, status?: string, search?: string, limit?: number): Promise<any[]> {
+  async getBusinessRecords(
+    tenantId: string,
+    recordType?: string,
+    status?: string,
+    search?: string,
+    limit?: number
+  ): Promise<any[]> {
     try {
       // Use raw SQL to avoid Drizzle schema mapping issues
       const conditions = [`tenant_id = '${tenantId}'`];
       if (recordType) conditions.push(`record_type = '${recordType}'`);
       if (status) conditions.push(`status = '${status}'`);
-      
+
       // Add search functionality across company name and contact info
       if (search && search.length > 0) {
         const searchTerm = search.toLowerCase();
@@ -949,10 +1386,11 @@ export class DatabaseStorage implements IStorage {
           LOWER(city) LIKE '%${searchTerm}%'
         )`);
       }
-      
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-      const limitClause = limit ? `LIMIT ${limit}` : '';
-      
+
+      const whereClause =
+        conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      const limitClause = limit ? `LIMIT ${limit}` : "";
+
       const result = await db.execute(sql`
         SELECT 
           id, 
@@ -977,7 +1415,7 @@ export class DatabaseStorage implements IStorage {
         ORDER BY created_at DESC
         ${sql.raw(limitClause)}
       `);
-      
+
       return result.rows.map((row: any) => ({
         id: row.id,
         tenantId: row.tenant_id,
@@ -998,58 +1436,68 @@ export class DatabaseStorage implements IStorage {
         updatedAt: row.updated_at,
       }));
     } catch (error) {
-      console.error('Error in getBusinessRecords:', error);
+      console.error("Error in getBusinessRecords:", error);
       // Return empty array to prevent frontend crashes
       return [];
     }
   }
 
-  async getBusinessRecord(id: string, tenantId: string): Promise<any | undefined> {
-    const [record] = await db.select({
-      id: businessRecords.id,
-      tenantId: businessRecords.tenantId,
-      recordType: businessRecords.recordType,
-      status: businessRecords.status,
-      companyName: businessRecords.companyName,
-      primaryContactName: businessRecords.primaryContactName,
-      primaryContactEmail: businessRecords.primaryContactEmail,
-      primaryContactPhone: businessRecords.primaryContactPhone,
-      phone: businessRecords.phone,
-      website: businessRecords.website,
-      industry: businessRecords.industry,
-      addressLine1: businessRecords.addressLine1,
-      city: businessRecords.city,
-      state: businessRecords.state,
-      postalCode: businessRecords.postalCode,
-      createdAt: businessRecords.createdAt,
-      updatedAt: businessRecords.updatedAt,
-    }).from(businessRecords).where(
-      and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId))
-    );
+  async getBusinessRecord(
+    id: string,
+    tenantId: string
+  ): Promise<any | undefined> {
+    // Return the full record with camelCase keys as defined in the Drizzle schema
+    const [record] = await db
+      .select()
+      .from(businessRecords)
+      .where(
+        and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId))
+      );
     return record;
   }
 
   async createBusinessRecord(record: any): Promise<any> {
-    const [newRecord] = await db.insert(businessRecords).values(record).returning();
+    const [newRecord] = await db
+      .insert(businessRecords)
+      .values(record)
+      .returning();
     return newRecord;
   }
 
-  async updateBusinessRecord(id: string, tenantId: string, updates: any): Promise<any | undefined> {
-    console.log('[DEBUG] STORAGE - Updating business record:', { id, tenantId, updates: JSON.stringify(updates, null, 2) });
-    const [updatedRecord] = await db.update(businessRecords)
+  async updateBusinessRecord(
+    id: string,
+    tenantId: string,
+    updates: any
+  ): Promise<any | undefined> {
+    console.log("[DEBUG] STORAGE - Updating business record:", {
+      id,
+      tenantId,
+      updates: JSON.stringify(updates, null, 2),
+    });
+    const [updatedRecord] = await db
+      .update(businessRecords)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
+      .where(
+        and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId))
+      )
       .returning();
-    console.log('[DEBUG] STORAGE - Updated record returned:', JSON.stringify(updatedRecord, null, 2));
+    console.log(
+      "[DEBUG] STORAGE - Updated record returned:",
+      JSON.stringify(updatedRecord, null, 2)
+    );
     return updatedRecord;
   }
 
   async createLead(lead: any): Promise<any> {
-    const leadData = { ...lead, recordType: 'lead' };
+    const leadData = { ...lead, recordType: "lead" };
     return await this.createBusinessRecord(leadData);
   }
 
-  async updateLead(id: string, lead: any, tenantId: string): Promise<any | undefined> {
+  async updateLead(
+    id: string,
+    lead: any,
+    tenantId: string
+  ): Promise<any | undefined> {
     return await this.updateBusinessRecord(id, tenantId, lead);
   }
 
@@ -1058,100 +1506,167 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(quotes).where(eq(quotes.tenantId, tenantId));
   }
 
-  async createQuote(quote: Omit<Quote, "id" | "createdAt" | "updatedAt">): Promise<Quote> {
+  async createQuote(
+    quote: Omit<Quote, "id" | "createdAt" | "updatedAt">
+  ): Promise<Quote> {
     const [newQuote] = await db.insert(quotes).values(quote).returning();
     return newQuote;
   }
 
   // Equipment operations
   async getEquipment(tenantId: string): Promise<Equipment[]> {
-    return await db.select().from(equipment).where(eq(equipment.tenantId, tenantId));
+    return await db
+      .select()
+      .from(equipment)
+      .where(eq(equipment.tenantId, tenantId));
   }
 
-  async createEquipment(equipmentData: Omit<Equipment, "id" | "createdAt" | "updatedAt">): Promise<Equipment> {
-    const [newEquipment] = await db.insert(equipment).values(equipmentData).returning();
+  async createEquipment(
+    equipmentData: Omit<Equipment, "id" | "createdAt" | "updatedAt">
+  ): Promise<Equipment> {
+    const [newEquipment] = await db
+      .insert(equipment)
+      .values(equipmentData)
+      .returning();
     return newEquipment;
   }
 
   // Contract operations
   async getContracts(tenantId: string): Promise<Contract[]> {
-    return await db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
+    return await db
+      .select()
+      .from(contracts)
+      .where(eq(contracts.tenantId, tenantId));
   }
 
-  async createContract(contract: Omit<Contract, "id" | "createdAt" | "updatedAt">): Promise<Contract> {
-    const [newContract] = await db.insert(contracts).values(contract).returning();
+  async createContract(
+    contract: Omit<Contract, "id" | "createdAt" | "updatedAt">
+  ): Promise<Contract> {
+    const [newContract] = await db
+      .insert(contracts)
+      .values(contract)
+      .returning();
     return newContract;
   }
 
   // Service ticket operations
   async getServiceTickets(tenantId: string): Promise<ServiceTicket[]> {
-    return await db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, tenantId));
+    return await db
+      .select()
+      .from(serviceTickets)
+      .where(eq(serviceTickets.tenantId, tenantId));
   }
 
-  async createServiceTicket(ticket: Omit<ServiceTicket, "id" | "createdAt" | "updatedAt">): Promise<ServiceTicket> {
-    const [newTicket] = await db.insert(serviceTickets).values(ticket).returning();
+  async createServiceTicket(
+    ticket: Omit<ServiceTicket, "id" | "createdAt" | "updatedAt">
+  ): Promise<ServiceTicket> {
+    const [newTicket] = await db
+      .insert(serviceTickets)
+      .values(ticket)
+      .returning();
     return newTicket;
   }
 
-  async updateServiceTicket(id: string, ticket: Partial<ServiceTicket>, tenantId: string): Promise<ServiceTicket | undefined> {
+  async updateServiceTicket(
+    id: string,
+    ticket: Partial<ServiceTicket>,
+    tenantId: string
+  ): Promise<ServiceTicket | undefined> {
     const [updatedTicket] = await db
       .update(serviceTickets)
       .set({ ...ticket, updatedAt: new Date() })
-      .where(and(eq(serviceTickets.id, id), eq(serviceTickets.tenantId, tenantId)))
+      .where(
+        and(eq(serviceTickets.id, id), eq(serviceTickets.tenantId, tenantId))
+      )
       .returning();
     return updatedTicket;
   }
 
   // Inventory operations
   async getInventoryItems(tenantId: string): Promise<InventoryItem[]> {
-    return await db.select().from(inventoryItems).where(eq(inventoryItems.tenantId, tenantId));
+    return await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.tenantId, tenantId));
   }
 
-  async createInventoryItem(item: Omit<InventoryItem, "id" | "createdAt" | "updatedAt">): Promise<InventoryItem> {
+  async createInventoryItem(
+    item: Omit<InventoryItem, "id" | "createdAt" | "updatedAt">
+  ): Promise<InventoryItem> {
     const [newItem] = await db.insert(inventoryItems).values(item).returning();
     return newItem;
   }
 
   // Technician operations
   async getTechnicians(tenantId: string): Promise<Technician[]> {
-    return await db.select().from(technicians).where(eq(technicians.tenantId, tenantId));
+    return await db
+      .select()
+      .from(technicians)
+      .where(eq(technicians.tenantId, tenantId));
   }
 
-  async createTechnician(technician: Omit<Technician, "id" | "createdAt" | "updatedAt">): Promise<Technician> {
-    const [newTechnician] = await db.insert(technicians).values(technician).returning();
+  async createTechnician(
+    technician: Omit<Technician, "id" | "createdAt" | "updatedAt">
+  ): Promise<Technician> {
+    const [newTechnician] = await db
+      .insert(technicians)
+      .values(technician)
+      .returning();
     return newTechnician;
   }
 
   // Meter reading operations
   async getMeterReadings(tenantId: string): Promise<MeterReading[]> {
-    return await db.select().from(meterReadings).where(eq(meterReadings.tenantId, tenantId));
-  }
-
-  async createMeterReading(reading: Omit<MeterReading, "id" | "createdAt" | "updatedAt">): Promise<MeterReading> {
-    const [newReading] = await db.insert(meterReadings).values(reading).returning();
-    return newReading;
-  }
-
-  async getMeterReadingsByStatus(tenantId: string, status: string): Promise<MeterReading[]> {
     return await db
       .select()
       .from(meterReadings)
-      .where(and(
-        eq(meterReadings.tenantId, tenantId),
-        eq(meterReadings.billingStatus, status)
-      ));
+      .where(eq(meterReadings.tenantId, tenantId));
   }
 
-  async updateMeterReading(id: string, reading: Partial<MeterReading>, tenantId: string): Promise<MeterReading | undefined> {
+  async createMeterReading(
+    reading: Omit<MeterReading, "id" | "createdAt" | "updatedAt">
+  ): Promise<MeterReading> {
+    const [newReading] = await db
+      .insert(meterReadings)
+      .values(reading)
+      .returning();
+    return newReading;
+  }
+
+  async getMeterReadingsByStatus(
+    tenantId: string,
+    status: string
+  ): Promise<MeterReading[]> {
+    return await db
+      .select()
+      .from(meterReadings)
+      .where(
+        and(
+          eq(meterReadings.tenantId, tenantId),
+          eq(meterReadings.billingStatus, status)
+        )
+      );
+  }
+
+  async updateMeterReading(
+    id: string,
+    reading: Partial<MeterReading>,
+    tenantId: string
+  ): Promise<MeterReading | undefined> {
     const [updatedReading] = await db
       .update(meterReadings)
       .set({ ...reading, updatedAt: new Date() })
-      .where(and(eq(meterReadings.id, id), eq(meterReadings.tenantId, tenantId)))
+      .where(
+        and(eq(meterReadings.id, id), eq(meterReadings.tenantId, tenantId))
+      )
       .returning();
     return updatedReading;
   }
 
-  async getContract(id: string, tenantId: string): Promise<Contract | undefined> {
+  async getContract(
+    id: string,
+    tenantId: string
+  ): Promise<Contract | undefined> {
     const [contract] = await db
       .select()
       .from(contracts)
@@ -1161,27 +1676,42 @@ export class DatabaseStorage implements IStorage {
 
   // Invoice operations
   async getInvoices(tenantId: string): Promise<Invoice[]> {
-    return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId));
+    return await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.tenantId, tenantId));
   }
 
-  async createInvoice(invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">): Promise<Invoice> {
+  async createInvoice(
+    invoice: Omit<Invoice, "id" | "createdAt" | "updatedAt">
+  ): Promise<Invoice> {
     const [newInvoice] = await db.insert(invoices).values(invoice).returning();
     return newInvoice;
   }
 
   // User-Customer assignment operations for territory management
-  async getUserCustomerAssignments(userId: string, tenantId: string): Promise<UserCustomerAssignment[]> {
+  async getUserCustomerAssignments(
+    userId: string,
+    tenantId: string
+  ): Promise<UserCustomerAssignment[]> {
     return await db
       .select()
       .from(userCustomerAssignments)
-      .where(and(
-        eq(userCustomerAssignments.userId, userId),
-        eq(userCustomerAssignments.tenantId, tenantId)
-      ));
+      .where(
+        and(
+          eq(userCustomerAssignments.userId, userId),
+          eq(userCustomerAssignments.tenantId, tenantId)
+        )
+      );
   }
 
-  async createUserCustomerAssignment(assignment: Omit<UserCustomerAssignment, "id" | "createdAt">): Promise<UserCustomerAssignment> {
-    const [newAssignment] = await db.insert(userCustomerAssignments).values(assignment).returning();
+  async createUserCustomerAssignment(
+    assignment: Omit<UserCustomerAssignment, "id" | "createdAt">
+  ): Promise<UserCustomerAssignment> {
+    const [newAssignment] = await db
+      .insert(userCustomerAssignments)
+      .values(assignment)
+      .returning();
     return newAssignment;
   }
 
@@ -1195,26 +1725,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Lead to Customer Conversion - ZERO data duplication
-  async convertLeadToCustomer(leadId: string, tenantId: string, userId: string): Promise<any | undefined> {
+  async convertLeadToCustomer(
+    leadId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<any | undefined> {
     // Generate unique customer number
     const customerNumber = await this.generateCustomerNumber(tenantId);
-    
-    const [convertedCustomer] = await db.update(businessRecords)
+
+    const [convertedCustomer] = await db
+      .update(businessRecords)
       .set({
-        recordType: 'customer',
-        status: 'active',
+        recordType: "customer",
+        status: "active",
         customerNumber: customerNumber,
         customerSince: new Date(),
         convertedBy: userId,
         probability: 100,
         closeDate: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
-      .where(and(
-        eq(businessRecords.id, leadId), 
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'lead')
-      ))
+      .where(
+        and(
+          eq(businessRecords.id, leadId),
+          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.recordType, "lead")
+        )
+      )
       .returning();
 
     // Create activity record for conversion
@@ -1222,11 +1759,11 @@ export class DatabaseStorage implements IStorage {
       await this.createBusinessRecordActivity({
         tenantId,
         businessRecordId: leadId,
-        activityType: 'conversion',
-        subject: 'Lead Converted to Customer',
+        activityType: "conversion",
+        subject: "Lead Converted to Customer",
         description: `Lead successfully converted to customer. Customer number: ${customerNumber}`,
         completedDate: new Date(),
-        createdBy: userId
+        createdBy: userId,
       });
     }
 
@@ -1234,21 +1771,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Customer Lifecycle Management
-  async deactivateCustomer(customerId: string, tenantId: string, userId: string, reason: string): Promise<any | undefined> {
-    const [deactivatedCustomer] = await db.update(businessRecords)
+  async deactivateCustomer(
+    customerId: string,
+    tenantId: string,
+    userId: string,
+    reason: string
+  ): Promise<any | undefined> {
+    const [deactivatedCustomer] = await db
+      .update(businessRecords)
       .set({
-        recordType: 'former_customer',
+        recordType: "former_customer",
         status: reason, // competitor_switch, churned, expired, etc.
         customerUntil: new Date(),
         churnReason: reason,
         deactivatedBy: userId,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
-      .where(and(
-        eq(businessRecords.id, customerId), 
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'customer')
-      ))
+      .where(
+        and(
+          eq(businessRecords.id, customerId),
+          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.recordType, "customer")
+        )
+      )
       .returning();
 
     // Create activity record for deactivation
@@ -1256,82 +1801,105 @@ export class DatabaseStorage implements IStorage {
       await this.createBusinessRecordActivity({
         tenantId,
         businessRecordId: customerId,
-        activityType: 'churn_prevention',
+        activityType: "churn_prevention",
         subject: `Customer Deactivated - ${reason}`,
         description: `Customer relationship ended due to: ${reason}`,
         completedDate: new Date(),
-        createdBy: userId
+        createdBy: userId,
       });
     }
 
     return deactivatedCustomer;
   }
 
-  async markCustomerNonPayment(customerId: string, tenantId: string, userId: string): Promise<any | undefined> {
-    return await db.update(businessRecords)
+  async markCustomerNonPayment(
+    customerId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<any | undefined> {
+    return await db
+      .update(businessRecords)
       .set({
-        status: 'non_payment',
+        status: "non_payment",
         deactivatedBy: userId,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
-      .where(and(
-        eq(businessRecords.id, customerId), 
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'customer')
-      ))
+      .where(
+        and(
+          eq(businessRecords.id, customerId),
+          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.recordType, "customer")
+        )
+      )
       .returning();
   }
 
-  async reactivateCustomer(customerId: string, tenantId: string, userId: string): Promise<any | undefined> {
-    return await db.update(businessRecords)
+  async reactivateCustomer(
+    customerId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<any | undefined> {
+    return await db
+      .update(businessRecords)
       .set({
-        recordType: 'customer',
-        status: 'active',
+        recordType: "customer",
+        status: "active",
         customerUntil: null,
         churnReason: null,
         deactivatedBy: null,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
-      .where(and(
-        eq(businessRecords.id, customerId), 
-        eq(businessRecords.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(businessRecords.id, customerId),
+          eq(businessRecords.tenantId, tenantId)
+        )
+      )
       .returning();
   }
 
   // Generate unique customer number
   private async generateCustomerNumber(tenantId: string): Promise<string> {
-    const prefix = 'CUST';
+    const prefix = "CUST";
     const year = new Date().getFullYear().toString().slice(-2);
-    
+
     // Get the next sequence number for this tenant and year
-    const existingCustomers = await db.select().from(businessRecords)
-      .where(and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'customer'),
-        isNotNull(businessRecords.customerNumber)
-      ));
-    
-    const currentYearCustomers = existingCustomers.filter(c => 
+    const existingCustomers = await db
+      .select()
+      .from(businessRecords)
+      .where(
+        and(
+          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.recordType, "customer"),
+          isNotNull(businessRecords.customerNumber)
+        )
+      );
+
+    const currentYearCustomers = existingCustomers.filter((c) =>
       c.customerNumber?.startsWith(`${prefix}${year}`)
     );
-    
+
     const nextNumber = currentYearCustomers.length + 1;
-    const paddedNumber = nextNumber.toString().padStart(4, '0');
-    
+    const paddedNumber = nextNumber.toString().padStart(4, "0");
+
     return `${prefix}${year}${paddedNumber}`;
   }
 
   // Lead activity operations
   // Unified Business Record Activities
-  async getBusinessRecordActivities(businessRecordId: string, tenantId: string): Promise<any[]> {
+  async getBusinessRecordActivities(
+    businessRecordId: string,
+    tenantId: string
+  ): Promise<any[]> {
     return await db
       .select()
       .from(businessRecordActivities)
-      .where(and(
-        eq(businessRecordActivities.businessRecordId, businessRecordId), 
-        eq(businessRecordActivities.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(businessRecordActivities.businessRecordId, businessRecordId),
+          eq(businessRecordActivities.tenantId, tenantId)
+        )
+      )
       .orderBy(sql`${businessRecordActivities.createdAt} DESC`);
   }
 
@@ -1340,15 +1908,24 @@ export class DatabaseStorage implements IStorage {
     const processedActivity = {
       ...activity,
       // Convert date strings to Date objects
-      scheduledDate: activity.scheduledDate ? new Date(activity.scheduledDate) : null,
+      scheduledDate: activity.scheduledDate
+        ? new Date(activity.scheduledDate)
+        : null,
       dueDate: activity.dueDate ? new Date(activity.dueDate) : null,
-      followUpDate: activity.followUpDate ? new Date(activity.followUpDate) : null,
-      completedDate: activity.completedDate ? new Date(activity.completedDate) : null,
+      followUpDate: activity.followUpDate
+        ? new Date(activity.followUpDate)
+        : null,
+      completedDate: activity.completedDate
+        ? new Date(activity.completedDate)
+        : null,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
-    const [newActivity] = await db.insert(businessRecordActivities).values(processedActivity).returning();
+    const [newActivity] = await db
+      .insert(businessRecordActivities)
+      .values(processedActivity)
+      .returning();
     return newActivity;
   }
 
@@ -1368,7 +1945,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Customer activity methods (same as lead activities)
-  async getCustomerActivities(customerId: string, tenantId: string): Promise<any[]> {
+  async getCustomerActivities(
+    customerId: string,
+    tenantId: string
+  ): Promise<any[]> {
     return await this.getBusinessRecordActivities(customerId, tenantId);
   }
 
@@ -1383,28 +1963,54 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Lead contact operations
-  async getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]> {
+  async getLeadContacts(
+    leadId: string,
+    tenantId: string
+  ): Promise<LeadContact[]> {
     return await db
       .select()
       .from(leadContacts)
-      .where(and(eq(leadContacts.leadId, leadId), eq(leadContacts.tenantId, tenantId)));
+      .where(
+        and(
+          eq(leadContacts.leadId, leadId),
+          eq(leadContacts.tenantId, tenantId)
+        )
+      );
   }
 
-  async createLeadContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact> {
-    const [newContact] = await db.insert(leadContacts).values(contact).returning();
+  async createLeadContact(
+    contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">
+  ): Promise<LeadContact> {
+    const [newContact] = await db
+      .insert(leadContacts)
+      .values(contact)
+      .returning();
     return newContact;
   }
 
   // Lead related records operations
-  async getLeadRelatedRecords(leadId: string, tenantId: string): Promise<LeadRelatedRecord[]> {
+  async getLeadRelatedRecords(
+    leadId: string,
+    tenantId: string
+  ): Promise<LeadRelatedRecord[]> {
     return await db
       .select()
       .from(leadRelatedRecords)
-      .where(and(eq(leadRelatedRecords.leadId, leadId), eq(leadRelatedRecords.tenantId, tenantId)));
+      .where(
+        and(
+          eq(leadRelatedRecords.leadId, leadId),
+          eq(leadRelatedRecords.tenantId, tenantId)
+        )
+      );
   }
 
-  async createLeadRelatedRecord(record: Omit<LeadRelatedRecord, "id" | "createdAt">): Promise<LeadRelatedRecord> {
-    const [newRecord] = await db.insert(leadRelatedRecords).values(record).returning();
+  async createLeadRelatedRecord(
+    record: Omit<LeadRelatedRecord, "id" | "createdAt">
+  ): Promise<LeadRelatedRecord> {
+    const [newRecord] = await db
+      .insert(leadRelatedRecords)
+      .values(record)
+      .returning();
     return newRecord;
   }
 
@@ -1417,32 +2023,42 @@ export class DatabaseStorage implements IStorage {
       .orderBy(productModels.productName);
   }
 
-  async getProductModel(id: string, tenantId: string): Promise<ProductModel | undefined> {
+  async getProductModel(
+    id: string,
+    tenantId: string
+  ): Promise<ProductModel | undefined> {
     const [model] = await db
       .select()
       .from(productModels)
-      .where(and(eq(productModels.id, id), eq(productModels.tenantId, tenantId)));
+      .where(
+        and(eq(productModels.id, id), eq(productModels.tenantId, tenantId))
+      );
     return model;
   }
 
   async createProductModel(model: InsertProductModel): Promise<ProductModel> {
-    const [result] = await db
-      .insert(productModels)
-      .values(model)
-      .returning();
+    const [result] = await db.insert(productModels).values(model).returning();
     return result;
   }
 
-  async updateProductModel(id: string, model: Partial<ProductModel>, tenantId: string): Promise<ProductModel | undefined> {
+  async updateProductModel(
+    id: string,
+    model: Partial<ProductModel>,
+    tenantId: string
+  ): Promise<ProductModel | undefined> {
     const [result] = await db
       .update(productModels)
       .set({ ...model, updatedAt: new Date() })
-      .where(and(eq(productModels.id, id), eq(productModels.tenantId, tenantId)))
+      .where(
+        and(eq(productModels.id, id), eq(productModels.tenantId, tenantId))
+      )
       .returning();
     return result;
   }
 
-  async getAllProductAccessories(tenantId: string): Promise<ProductAccessory[]> {
+  async getAllProductAccessories(
+    tenantId: string
+  ): Promise<ProductAccessory[]> {
     return await db
       .select()
       .from(productAccessories)
@@ -1450,15 +2066,25 @@ export class DatabaseStorage implements IStorage {
       .orderBy(productAccessories.accessoryName);
   }
 
-  async getProductAccessories(modelId: string, tenantId: string): Promise<ProductAccessory[]> {
+  async getProductAccessories(
+    modelId: string,
+    tenantId: string
+  ): Promise<ProductAccessory[]> {
     return await db
       .select()
       .from(productAccessories)
-      .where(and(eq(productAccessories.modelId, modelId), eq(productAccessories.tenantId, tenantId)))
+      .where(
+        and(
+          eq(productAccessories.modelId, modelId),
+          eq(productAccessories.tenantId, tenantId)
+        )
+      )
       .orderBy(productAccessories.accessoryName);
   }
 
-  async createProductAccessory(accessory: InsertProductAccessory): Promise<ProductAccessory> {
+  async createProductAccessory(
+    accessory: InsertProductAccessory
+  ): Promise<ProductAccessory> {
     const [result] = await db
       .insert(productAccessories)
       .values(accessory)
@@ -1466,11 +2092,20 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateProductAccessory(id: string, accessory: Partial<ProductAccessory>, tenantId: string): Promise<ProductAccessory | undefined> {
+  async updateProductAccessory(
+    id: string,
+    accessory: Partial<ProductAccessory>,
+    tenantId: string
+  ): Promise<ProductAccessory | undefined> {
     const [result] = await db
       .update(productAccessories)
       .set({ ...accessory, updatedAt: new Date() })
-      .where(and(eq(productAccessories.id, id), eq(productAccessories.tenantId, tenantId)))
+      .where(
+        and(
+          eq(productAccessories.id, id),
+          eq(productAccessories.tenantId, tenantId)
+        )
+      )
       .returning();
     return result;
   }
@@ -1479,20 +2114,21 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(cpcRates)
-      .where(and(eq(cpcRates.modelId, modelId), eq(cpcRates.tenantId, tenantId)))
+      .where(
+        and(eq(cpcRates.modelId, modelId), eq(cpcRates.tenantId, tenantId))
+      )
       .orderBy(cpcRates.colorType);
   }
 
   async createCpcRate(rate: InsertCpcRate): Promise<CpcRate> {
-    const [result] = await db
-      .insert(cpcRates)
-      .values(rate)
-      .returning();
+    const [result] = await db.insert(cpcRates).values(rate).returning();
     return result;
   }
 
   // Contract Tiered Rates operations (for meter billing)
-  async getContractTieredRates(tenantId: string): Promise<ContractTieredRate[]> {
+  async getContractTieredRates(
+    tenantId: string
+  ): Promise<ContractTieredRate[]> {
     return await db
       .select()
       .from(contractTieredRates)
@@ -1500,7 +2136,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(contractTieredRates.sortOrder);
   }
 
-  async getContractTieredRatesByContract(contractId: string): Promise<ContractTieredRate[]> {
+  async getContractTieredRatesByContract(
+    contractId: string
+  ): Promise<ContractTieredRate[]> {
     return await db
       .select()
       .from(contractTieredRates)
@@ -1508,7 +2146,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(contractTieredRates.sortOrder);
   }
 
-  async createContractTieredRate(rate: InsertContractTieredRate): Promise<ContractTieredRate> {
+  async createContractTieredRate(
+    rate: InsertContractTieredRate
+  ): Promise<ContractTieredRate> {
     const [result] = await db
       .insert(contractTieredRates)
       .values(rate)
@@ -1517,20 +2157,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ============= TASK MANAGEMENT OPERATIONS =============
-  
+
   async getTasks(tenantId: string, userId?: string): Promise<Task[]> {
-    let query = db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.tenantId, tenantId));
-    
+    let query = db.select().from(tasks).where(eq(tasks.tenantId, tenantId));
+
     if (userId) {
       query = query.where(eq(tasks.assignedTo, userId));
     }
-    
-    return await query
-      .orderBy(desc(tasks.createdAt))
-      .limit(50);
+
+    return await query.orderBy(desc(tasks.createdAt)).limit(50);
   }
 
   async getTask(id: string, tenantId: string): Promise<Task | undefined> {
@@ -1542,14 +2177,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTask(task: InsertTask): Promise<Task> {
-    const [result] = await db
-      .insert(tasks)
-      .values(task)
-      .returning();
+    const [result] = await db.insert(tasks).values(task).returning();
     return result;
   }
 
-  async updateTask(id: string, task: Partial<Task>, tenantId: string): Promise<Task | undefined> {
+  async updateTask(
+    id: string,
+    task: Partial<Task>,
+    tenantId: string
+  ): Promise<Task | undefined> {
     const [result] = await db
       .update(tasks)
       .set({ ...task, updatedAt: new Date() })
@@ -1563,48 +2199,50 @@ export class DatabaseStorage implements IStorage {
       .select({
         status: tasks.status,
         count: sql<number>`COUNT(*)`,
-        avgHours: sql<number>`AVG(${tasks.actualHours})`
+        avgHours: sql<number>`AVG(${tasks.actualHours})`,
       })
       .from(tasks)
       .where(eq(tasks.tenantId, tenantId));
-    
+
     if (userId) {
       baseQuery = baseQuery.where(eq(tasks.assignedTo, userId));
     }
-    
+
     const results = await baseQuery.groupBy(tasks.status);
-    
+
     const stats = {
       totalTasks: 0,
       completedTasks: 0,
       inProgressTasks: 0,
       overdueTasks: 0,
       myTasks: userId ? results.reduce((sum, r) => sum + r.count, 0) : 0,
-      avgCompletionTime: 0
+      avgCompletionTime: 0,
     };
-    
-    results.forEach(result => {
+
+    results.forEach((result) => {
       stats.totalTasks += result.count;
-      if (result.status === 'completed') {
+      if (result.status === "completed") {
         stats.completedTasks = result.count;
         stats.avgCompletionTime = result.avgHours || 0;
-      } else if (result.status === 'in_progress') {
+      } else if (result.status === "in_progress") {
         stats.inProgressTasks = result.count;
       }
     });
-    
+
     // Get overdue tasks
     const overdueCount = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(tasks)
-      .where(and(
-        eq(tasks.tenantId, tenantId),
-        lt(tasks.dueDate, new Date()),
-        ne(tasks.status, 'completed')
-      ));
-    
+      .where(
+        and(
+          eq(tasks.tenantId, tenantId),
+          lt(tasks.dueDate, new Date()),
+          ne(tasks.status, "completed")
+        )
+      );
+
     stats.overdueTasks = overdueCount[0]?.count || 0;
-    
+
     return stats;
   }
 
@@ -1617,26 +2255,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProject(project: InsertProject): Promise<Project> {
-    const [result] = await db
-      .insert(projects)
-      .values(project)
-      .returning();
+    const [result] = await db.insert(projects).values(project).returning();
     return result;
   }
 
   // ============= PERFORMANCE MONITORING OPERATIONS =============
-  
+
   async getPerformanceMetrics(tenantId?: string): Promise<any> {
     // Get latest metrics grouped by type
     const metrics = await db
       .select({
         metricType: performanceMetrics.metricType,
         value: sql<number>`AVG(${performanceMetrics.value})`,
-        unit: performanceMetrics.unit
+        unit: performanceMetrics.unit,
       })
       .from(performanceMetrics)
       .where(tenantId ? eq(performanceMetrics.tenantId, tenantId) : sql`TRUE`)
-      .where(gte(performanceMetrics.timestamp, new Date(Date.now() - 60 * 60 * 1000))) // Last hour
+      .where(
+        gte(performanceMetrics.timestamp, new Date(Date.now() - 60 * 60 * 1000))
+      ) // Last hour
       .groupBy(performanceMetrics.metricType, performanceMetrics.unit);
 
     const result = {
@@ -1645,24 +2282,24 @@ export class DatabaseStorage implements IStorage {
       cpu_usage: 0,
       memory_usage: 0,
       disk_usage: 0,
-      active_issues: 0
+      active_issues: 0,
     };
 
-    metrics.forEach(metric => {
+    metrics.forEach((metric) => {
       switch (metric.metricType) {
-        case 'response_time':
+        case "response_time":
           result.avg_response_time = metric.value;
           break;
-        case 'cpu_usage':
+        case "cpu_usage":
           result.cpu_usage = metric.value;
           break;
-        case 'memory_usage':
+        case "memory_usage":
           result.memory_usage = metric.value;
           break;
-        case 'disk_usage':
+        case "disk_usage":
           result.disk_usage = metric.value;
           break;
-        case 'throughput':
+        case "throughput":
           result.total_requests = metric.value;
           break;
       }
@@ -1672,11 +2309,13 @@ export class DatabaseStorage implements IStorage {
     const [activeIssues] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(systemAlerts)
-      .where(and(
-        tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
-        eq(systemAlerts.resolved, false),
-        ne(systemAlerts.type, 'info')
-      ));
+      .where(
+        and(
+          tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
+          eq(systemAlerts.resolved, false),
+          ne(systemAlerts.type, "info")
+        )
+      );
 
     result.active_issues = activeIssues?.count || 0;
 
@@ -1688,20 +2327,21 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(systemAlerts)
       .where(tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`)
-      .where(gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))) // Last 24 hours
+      .where(
+        gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))
+      ) // Last 24 hours
       .orderBy(desc(systemAlerts.createdAt))
       .limit(10);
   }
 
   async createSystemAlert(alert: InsertSystemAlert): Promise<SystemAlert> {
-    const [result] = await db
-      .insert(systemAlerts)
-      .values(alert)
-      .returning();
+    const [result] = await db.insert(systemAlerts).values(alert).returning();
     return result;
   }
 
-  async recordPerformanceMetric(metric: InsertPerformanceMetric): Promise<PerformanceMetric> {
+  async recordPerformanceMetric(
+    metric: InsertPerformanceMetric
+  ): Promise<PerformanceMetric> {
     const [result] = await db
       .insert(performanceMetrics)
       .values(metric)
@@ -1710,7 +2350,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ============= SYSTEM INTEGRATIONS OPERATIONS =============
-  
+
   async getSystemIntegrations(tenantId?: string): Promise<SystemIntegration[]> {
     return await db
       .select()
@@ -1719,7 +2359,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(systemIntegrations.name);
   }
 
-  async createSystemIntegration(integration: InsertSystemIntegration): Promise<SystemIntegration> {
+  async createSystemIntegration(
+    integration: InsertSystemIntegration
+  ): Promise<SystemIntegration> {
     const [result] = await db
       .insert(systemIntegrations)
       .values(integration)
@@ -1727,20 +2369,28 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateSystemIntegration(id: string, integration: Partial<SystemIntegration>, tenantId?: string): Promise<SystemIntegration | undefined> {
+  async updateSystemIntegration(
+    id: string,
+    integration: Partial<SystemIntegration>,
+    tenantId?: string
+  ): Promise<SystemIntegration | undefined> {
     const [result] = await db
       .update(systemIntegrations)
       .set({ ...integration, updatedAt: new Date() })
-      .where(and(
-        eq(systemIntegrations.id, id),
-        tenantId ? eq(systemIntegrations.tenantId, tenantId) : sql`TRUE`
-      ))
+      .where(
+        and(
+          eq(systemIntegrations.id, id),
+          tenantId ? eq(systemIntegrations.tenantId, tenantId) : sql`TRUE`
+        )
+      )
       .returning();
     return result;
   }
 
   // Professional Services
-  async getAllProfessionalServices(tenantId: string): Promise<ProfessionalService[]> {
+  async getAllProfessionalServices(
+    tenantId: string
+  ): Promise<ProfessionalService[]> {
     return await db
       .select()
       .from(professionalServices)
@@ -1748,7 +2398,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(professionalServices.productName);
   }
 
-  async createProfessionalService(service: InsertProfessionalService): Promise<ProfessionalService> {
+  async createProfessionalService(
+    service: InsertProfessionalService
+  ): Promise<ProfessionalService> {
     const [result] = await db
       .insert(professionalServices)
       .values(service)
@@ -1765,7 +2417,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(serviceProducts.productName);
   }
 
-  async createServiceProduct(service: InsertServiceProduct): Promise<ServiceProduct> {
+  async createServiceProduct(
+    service: InsertServiceProduct
+  ): Promise<ServiceProduct> {
     const [result] = await db
       .insert(serviceProducts)
       .values(service)
@@ -1782,7 +2436,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(softwareProducts.productName);
   }
 
-  async createSoftwareProduct(product: InsertSoftwareProduct): Promise<SoftwareProduct> {
+  async createSoftwareProduct(
+    product: InsertSoftwareProduct
+  ): Promise<SoftwareProduct> {
     const [result] = await db
       .insert(softwareProducts)
       .values(product)
@@ -1796,18 +2452,18 @@ export class DatabaseStorage implements IStorage {
       // For now, return empty array until product models table is properly set up
       return [];
     } catch (error) {
-      console.error('Error in getAllProductModels:', error);
+      console.error("Error in getAllProductModels:", error);
       return [];
     }
   }
 
-  // Product Accessories - fallback implementation  
+  // Product Accessories - fallback implementation
   async getAllProductAccessories(tenantId: string): Promise<any[]> {
     try {
       // For now, return empty array until product accessories table is properly set up
       return [];
     } catch (error) {
-      console.error('Error in getAllProductAccessories:', error);
+      console.error("Error in getAllProductAccessories:", error);
       return [];
     }
   }
@@ -1831,10 +2487,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSupply(supply: InsertSupply): Promise<Supply> {
-    const [result] = await db
-      .insert(supplies)
-      .values(supply)
-      .returning();
+    const [result] = await db.insert(supplies).values(supply).returning();
     return result;
   }
 
@@ -1847,7 +2500,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(managedServices.productName);
   }
 
-  async createManagedService(service: InsertManagedService): Promise<ManagedService> {
+  async createManagedService(
+    service: InsertManagedService
+  ): Promise<ManagedService> {
     const [result] = await db
       .insert(managedServices)
       .values(service)
@@ -1856,7 +2511,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Contact operations (used for company contacts)
-  async createContact(contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">): Promise<LeadContact> {
+  async createContact(
+    contact: Omit<LeadContact, "id" | "createdAt" | "updatedAt">
+  ): Promise<LeadContact> {
     const [result] = await db
       .insert(leadContacts)
       .values({
@@ -1868,18 +2525,26 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getContactsByCompany(companyId: string, tenantId: string): Promise<LeadContact[]> {
+  async getContactsByCompany(
+    companyId: string,
+    tenantId: string
+  ): Promise<LeadContact[]> {
     return await db
       .select()
       .from(leadContacts)
-      .where(and(
-        eq(leadContacts.leadId, companyId), // Using leadId as companyId for now
-        eq(leadContacts.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(leadContacts.leadId, companyId), // Using leadId as companyId for now
+          eq(leadContacts.tenantId, tenantId)
+        )
+      )
       .orderBy(leadContacts.firstName, leadContacts.lastName);
   }
 
-  async updateContact(contactId: string, contact: Partial<LeadContact>): Promise<LeadContact> {
+  async updateContact(
+    contactId: string,
+    contact: Partial<LeadContact>
+  ): Promise<LeadContact> {
     const [result] = await db
       .update(leadContacts)
       .set({
@@ -1894,18 +2559,20 @@ export class DatabaseStorage implements IStorage {
   async deleteContact(contactId: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(leadContacts)
-      .where(and(
-        eq(leadContacts.id, contactId),
-        eq(leadContacts.tenantId, tenantId)
-      ));
+      .where(
+        and(eq(leadContacts.id, contactId), eq(leadContacts.tenantId, tenantId))
+      );
     return result.rowCount > 0;
   }
 
   // ============= ACCOUNTING OPERATIONS =============
-  
+
   // Vendor operations
   async getVendors(tenantId: string): Promise<Vendor[]> {
-    return await db.select().from(vendors).where(eq(vendors.tenantId, tenantId));
+    return await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.tenantId, tenantId));
   }
 
   async getVendor(id: string, tenantId: string): Promise<Vendor | undefined> {
@@ -1921,7 +2588,11 @@ export class DatabaseStorage implements IStorage {
     return newVendor;
   }
 
-  async updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined> {
+  async updateVendor(
+    id: string,
+    vendor: Partial<Vendor>,
+    tenantId: string
+  ): Promise<Vendor | undefined> {
     const [updatedVendor] = await db
       .update(vendors)
       .set({ ...vendor, updatedAt: new Date() })
@@ -1939,95 +2610,160 @@ export class DatabaseStorage implements IStorage {
 
   // Accounts Payable operations
   async getAccountsPayable(tenantId: string): Promise<AccountsPayable[]> {
-    return await db.select().from(accountsPayable).where(eq(accountsPayable.tenantId, tenantId));
+    return await db
+      .select()
+      .from(accountsPayable)
+      .where(eq(accountsPayable.tenantId, tenantId));
   }
 
-  async getAccountPayable(id: string, tenantId: string): Promise<AccountsPayable | undefined> {
+  async getAccountPayable(
+    id: string,
+    tenantId: string
+  ): Promise<AccountsPayable | undefined> {
     const [ap] = await db
       .select()
       .from(accountsPayable)
-      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId)));
+      .where(
+        and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId))
+      );
     return ap;
   }
 
-  async createAccountsPayable(ap: InsertAccountsPayable): Promise<AccountsPayable> {
+  async createAccountsPayable(
+    ap: InsertAccountsPayable
+  ): Promise<AccountsPayable> {
     const [newAP] = await db.insert(accountsPayable).values(ap).returning();
     return newAP;
   }
 
-  async updateAccountsPayable(id: string, ap: Partial<AccountsPayable>, tenantId: string): Promise<AccountsPayable | undefined> {
+  async updateAccountsPayable(
+    id: string,
+    ap: Partial<AccountsPayable>,
+    tenantId: string
+  ): Promise<AccountsPayable | undefined> {
     const [updatedAP] = await db
       .update(accountsPayable)
       .set({ ...ap, updatedAt: new Date() })
-      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId)))
+      .where(
+        and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId))
+      )
       .returning();
     return updatedAP;
   }
 
   // Accounts Receivable operations
   async getAccountsReceivable(tenantId: string): Promise<AccountsReceivable[]> {
-    return await db.select().from(accountsReceivable).where(eq(accountsReceivable.tenantId, tenantId));
+    return await db
+      .select()
+      .from(accountsReceivable)
+      .where(eq(accountsReceivable.tenantId, tenantId));
   }
 
-  async getAccountReceivable(id: string, tenantId: string): Promise<AccountsReceivable | undefined> {
+  async getAccountReceivable(
+    id: string,
+    tenantId: string
+  ): Promise<AccountsReceivable | undefined> {
     const [ar] = await db
       .select()
       .from(accountsReceivable)
-      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenantId, tenantId)));
+      .where(
+        and(
+          eq(accountsReceivable.id, id),
+          eq(accountsReceivable.tenantId, tenantId)
+        )
+      );
     return ar;
   }
 
-  async createAccountsReceivable(ar: InsertAccountsReceivable): Promise<AccountsReceivable> {
+  async createAccountsReceivable(
+    ar: InsertAccountsReceivable
+  ): Promise<AccountsReceivable> {
     const [newAR] = await db.insert(accountsReceivable).values(ar).returning();
     return newAR;
   }
 
-  async updateAccountsReceivable(id: string, ar: Partial<AccountsReceivable>, tenantId: string): Promise<AccountsReceivable | undefined> {
+  async updateAccountsReceivable(
+    id: string,
+    ar: Partial<AccountsReceivable>,
+    tenantId: string
+  ): Promise<AccountsReceivable | undefined> {
     const [updatedAR] = await db
       .update(accountsReceivable)
       .set({ ...ar, updatedAt: new Date() })
-      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenantId, tenantId)))
+      .where(
+        and(
+          eq(accountsReceivable.id, id),
+          eq(accountsReceivable.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedAR;
   }
 
   // Chart of Accounts operations
   async getChartOfAccounts(tenantId: string): Promise<ChartOfAccount[]> {
-    return await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.tenantId, tenantId));
+    return await db
+      .select()
+      .from(chartOfAccounts)
+      .where(eq(chartOfAccounts.tenantId, tenantId));
   }
 
-  async getChartOfAccount(id: string, tenantId: string): Promise<ChartOfAccount | undefined> {
+  async getChartOfAccount(
+    id: string,
+    tenantId: string
+  ): Promise<ChartOfAccount | undefined> {
     const [account] = await db
       .select()
       .from(chartOfAccounts)
-      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId)));
+      .where(
+        and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId))
+      );
     return account;
   }
 
-  async createChartOfAccount(account: InsertChartOfAccount): Promise<ChartOfAccount> {
-    const [newAccount] = await db.insert(chartOfAccounts).values(account).returning();
+  async createChartOfAccount(
+    account: InsertChartOfAccount
+  ): Promise<ChartOfAccount> {
+    const [newAccount] = await db
+      .insert(chartOfAccounts)
+      .values(account)
+      .returning();
     return newAccount;
   }
 
-  async updateChartOfAccount(id: string, account: Partial<ChartOfAccount>, tenantId: string): Promise<ChartOfAccount | undefined> {
+  async updateChartOfAccount(
+    id: string,
+    account: Partial<ChartOfAccount>,
+    tenantId: string
+  ): Promise<ChartOfAccount | undefined> {
     const [updatedAccount] = await db
       .update(chartOfAccounts)
       .set({ ...account, updatedAt: new Date() })
-      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId)))
+      .where(
+        and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId))
+      )
       .returning();
     return updatedAccount;
   }
 
   // Purchase Order operations
   async getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]> {
-    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenantId, tenantId));
+    return await db
+      .select()
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.tenantId, tenantId));
   }
 
-  async getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined> {
+  async getPurchaseOrder(
+    id: string,
+    tenantId: string
+  ): Promise<PurchaseOrder | undefined> {
     const [po] = await db
       .select()
       .from(purchaseOrders)
-      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)));
+      .where(
+        and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId))
+      );
     return po;
   }
 
@@ -2036,32 +2772,60 @@ export class DatabaseStorage implements IStorage {
     return newPO;
   }
 
-  async updatePurchaseOrder(id: string, po: Partial<PurchaseOrder>, tenantId: string): Promise<PurchaseOrder | undefined> {
+  async updatePurchaseOrder(
+    id: string,
+    po: Partial<PurchaseOrder>,
+    tenantId: string
+  ): Promise<PurchaseOrder | undefined> {
     const [updatedPO] = await db
       .update(purchaseOrders)
       .set({ ...po, updatedAt: new Date() })
-      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)))
+      .where(
+        and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId))
+      )
       .returning();
     return updatedPO;
   }
 
-  async getPurchaseOrderItems(purchaseOrderId: string, tenantId: string): Promise<PurchaseOrderItem[]> {
+  async getPurchaseOrderItems(
+    purchaseOrderId: string,
+    tenantId: string
+  ): Promise<PurchaseOrderItem[]> {
     return await db
       .select()
       .from(purchaseOrderItems)
-      .where(and(eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId), eq(purchaseOrderItems.tenantId, tenantId)));
+      .where(
+        and(
+          eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId),
+          eq(purchaseOrderItems.tenantId, tenantId)
+        )
+      );
   }
 
-  async createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem> {
-    const [newItem] = await db.insert(purchaseOrderItems).values(item).returning();
+  async createPurchaseOrderItem(
+    item: InsertPurchaseOrderItem
+  ): Promise<PurchaseOrderItem> {
+    const [newItem] = await db
+      .insert(purchaseOrderItems)
+      .values(item)
+      .returning();
     return newItem;
   }
 
-  async updatePurchaseOrderItem(id: string, item: Partial<PurchaseOrderItem>, tenantId: string): Promise<PurchaseOrderItem | undefined> {
+  async updatePurchaseOrderItem(
+    id: string,
+    item: Partial<PurchaseOrderItem>,
+    tenantId: string
+  ): Promise<PurchaseOrderItem | undefined> {
     const [updatedItem] = await db
       .update(purchaseOrderItems)
       .set(item)
-      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenantId, tenantId)))
+      .where(
+        and(
+          eq(purchaseOrderItems.id, id),
+          eq(purchaseOrderItems.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedItem;
   }
@@ -2070,21 +2834,36 @@ export class DatabaseStorage implements IStorage {
     // First delete all line items
     await db
       .delete(purchaseOrderItems)
-      .where(and(eq(purchaseOrderItems.purchaseOrderId, id), eq(purchaseOrderItems.tenantId, tenantId)));
-    
+      .where(
+        and(
+          eq(purchaseOrderItems.purchaseOrderId, id),
+          eq(purchaseOrderItems.tenantId, tenantId)
+        )
+      );
+
     // Then delete the purchase order
     const result = await db
       .delete(purchaseOrders)
-      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)));
-    
+      .where(
+        and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId))
+      );
+
     return result.rowCount > 0;
   }
 
-  async deletePurchaseOrderItem(id: string, tenantId: string): Promise<boolean> {
+  async deletePurchaseOrderItem(
+    id: string,
+    tenantId: string
+  ): Promise<boolean> {
     const result = await db
       .delete(purchaseOrderItems)
-      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenantId, tenantId)));
-    
+      .where(
+        and(
+          eq(purchaseOrderItems.id, id),
+          eq(purchaseOrderItems.tenantId, tenantId)
+        )
+      );
+
     return result.rowCount > 0;
   }
 
@@ -2110,7 +2889,11 @@ export class DatabaseStorage implements IStorage {
     return newVendor;
   }
 
-  async updateVendor(id: string, vendor: Partial<Vendor>, tenantId: string): Promise<Vendor | undefined> {
+  async updateVendor(
+    id: string,
+    vendor: Partial<Vendor>,
+    tenantId: string
+  ): Promise<Vendor | undefined> {
     const [updatedVendor] = await db
       .update(vendors)
       .set({ ...vendor, updatedAt: new Date() })
@@ -2123,29 +2906,43 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(vendors)
       .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
-    
+
     return result.rowCount > 0;
   }
 
   // Business Record Contacts operations
-  async getBusinessRecordContacts(businessRecordId: string, tenantId: string): Promise<CompanyContact[]> {
+  async getBusinessRecordContacts(
+    businessRecordId: string,
+    tenantId: string
+  ): Promise<CompanyContact[]> {
     return await db
       .select()
       .from(companyContacts)
-      .where(and(
-        eq(companyContacts.companyId, businessRecordId),
-        eq(companyContacts.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(companyContacts.companyId, businessRecordId),
+          eq(companyContacts.tenantId, tenantId)
+        )
+      )
       .orderBy(companyContacts.firstName, companyContacts.lastName);
   }
 
-  async createBusinessRecordContact(contact: InsertCompanyContact): Promise<CompanyContact> {
-    const [newContact] = await db.insert(companyContacts).values(contact).returning();
+  async createBusinessRecordContact(
+    contact: InsertCompanyContact
+  ): Promise<CompanyContact> {
+    const [newContact] = await db
+      .insert(companyContacts)
+      .values(contact)
+      .returning();
     return newContact;
   }
 
   // Deal management operations
-  async getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]> {
+  async getDeals(
+    tenantId: string,
+    stageId?: string,
+    search?: string
+  ): Promise<any[]> {
     let query = db
       .select({
         id: deals.id,
@@ -2250,7 +3047,11 @@ export class DatabaseStorage implements IStorage {
     return newDeal;
   }
 
-  async updateDeal(id: string, deal: Partial<any>, tenantId: string): Promise<any> {
+  async updateDeal(
+    id: string,
+    deal: Partial<any>,
+    tenantId: string
+  ): Promise<any> {
     const [updatedDeal] = await db
       .update(deals)
       .set({ ...deal, updatedAt: new Date() })
@@ -2259,7 +3060,11 @@ export class DatabaseStorage implements IStorage {
     return updatedDeal;
   }
 
-  async updateDealStage(id: string, stageId: string, tenantId: string): Promise<any> {
+  async updateDealStage(
+    id: string,
+    stageId: string,
+    tenantId: string
+  ): Promise<any> {
     // Check if the new stage is a closing stage
     const [stage] = await db
       .select()
@@ -2317,7 +3122,9 @@ export class DatabaseStorage implements IStorage {
         updatedAt: dealStages.updatedAt,
       })
       .from(dealStages)
-      .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.isActive, true)))
+      .where(
+        and(eq(dealStages.tenantId, tenantId), eq(dealStages.isActive, true))
+      )
       .orderBy(dealStages.sortOrder);
   }
 
@@ -2326,7 +3133,11 @@ export class DatabaseStorage implements IStorage {
     return newStage;
   }
 
-  async updateDealStageById(id: string, stage: Partial<any>, tenantId: string): Promise<any> {
+  async updateDealStageById(
+    id: string,
+    stage: Partial<any>,
+    tenantId: string
+  ): Promise<any> {
     const [updatedStage] = await db
       .update(dealStages)
       .set({ ...stage, updatedAt: new Date() })
@@ -2351,31 +3162,46 @@ export class DatabaseStorage implements IStorage {
       })
       .from(dealActivities)
       .leftJoin(users, eq(dealActivities.userId, users.id))
-      .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenantId, tenantId)))
+      .where(
+        and(
+          eq(dealActivities.dealId, dealId),
+          eq(dealActivities.tenantId, tenantId)
+        )
+      )
       .orderBy(desc(dealActivities.createdAt));
   }
 
   async createDealActivity(activity: any): Promise<any> {
-    const [newActivity] = await db.insert(dealActivities).values(activity).returning();
+    const [newActivity] = await db
+      .insert(dealActivities)
+      .values(activity)
+      .returning();
     return newActivity;
   }
 
   // Pricing System Implementation
-  async getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSetting | undefined> {
+  async getCompanyPricingSettings(
+    tenantId: string
+  ): Promise<CompanyPricingSetting | undefined> {
     const [settings] = await db
       .select()
       .from(companyPricingSettings)
-      .where(and(
-        eq(companyPricingSettings.tenantId, tenantId),
-        eq(companyPricingSettings.isActive, true)
-      ));
+      .where(
+        and(
+          eq(companyPricingSettings.tenantId, tenantId),
+          eq(companyPricingSettings.isActive, true)
+        )
+      );
     return settings;
   }
 
-  async updateCompanyPricingSettings(tenantId: string, settingsData: InsertCompanyPricingSetting): Promise<CompanyPricingSetting> {
+  async updateCompanyPricingSettings(
+    tenantId: string,
+    settingsData: InsertCompanyPricingSetting
+  ): Promise<CompanyPricingSetting> {
     // Try to update existing settings first
     const existing = await this.getCompanyPricingSettings(tenantId);
-    
+
     if (existing) {
       const [updated] = await db
         .update(companyPricingSettings)
@@ -2401,20 +3227,28 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(productPricing.createdAt));
   }
 
-  async getProductPricingByProductId(productId: string, productType: string, tenantId: string): Promise<ProductPricing | undefined> {
+  async getProductPricingByProductId(
+    productId: string,
+    productType: string,
+    tenantId: string
+  ): Promise<ProductPricing | undefined> {
     const [pricing] = await db
       .select()
       .from(productPricing)
-      .where(and(
-        eq(productPricing.productId, productId),
-        eq(productPricing.productType, productType),
-        eq(productPricing.tenantId, tenantId),
-        eq(productPricing.isActive, true)
-      ));
+      .where(
+        and(
+          eq(productPricing.productId, productId),
+          eq(productPricing.productType, productType),
+          eq(productPricing.tenantId, tenantId),
+          eq(productPricing.isActive, true)
+        )
+      );
     return pricing;
   }
 
-  async createProductPricing(pricingData: InsertProductPricing): Promise<ProductPricing> {
+  async createProductPricing(
+    pricingData: InsertProductPricing
+  ): Promise<ProductPricing> {
     const [created] = await db
       .insert(productPricing)
       .values(pricingData)
@@ -2422,14 +3256,17 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateProductPricing(id: string, tenantId: string, pricingData: Partial<InsertProductPricing>): Promise<ProductPricing | undefined> {
+  async updateProductPricing(
+    id: string,
+    tenantId: string,
+    pricingData: Partial<InsertProductPricing>
+  ): Promise<ProductPricing | undefined> {
     const [updated] = await db
       .update(productPricing)
       .set({ ...pricingData, updatedAt: new Date() })
-      .where(and(
-        eq(productPricing.id, id),
-        eq(productPricing.tenantId, tenantId)
-      ))
+      .where(
+        and(eq(productPricing.id, id), eq(productPricing.tenantId, tenantId))
+      )
       .returning();
     return updated;
   }
@@ -2437,29 +3274,35 @@ export class DatabaseStorage implements IStorage {
   async deleteProductPricing(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(productPricing)
-      .where(and(
-        eq(productPricing.id, id),
-        eq(productPricing.tenantId, tenantId)
-      ));
+      .where(
+        and(eq(productPricing.id, id), eq(productPricing.tenantId, tenantId))
+      );
     return result.rowCount > 0;
   }
 
-  async getQuotePricing(quoteId: string, tenantId: string): Promise<QuotePricing | undefined> {
+  async getQuotePricing(
+    quoteId: string,
+    tenantId: string
+  ): Promise<QuotePricing | undefined> {
     const [pricing] = await db
       .select()
       .from(quotePricing)
-      .where(and(
-        or(
-          eq(quotePricing.leadId, quoteId),
-          eq(quotePricing.customerId, quoteId),
-          eq(quotePricing.quoteNumber, quoteId)
-        ),
-        eq(quotePricing.tenantId, tenantId)
-      ));
+      .where(
+        and(
+          or(
+            eq(quotePricing.leadId, quoteId),
+            eq(quotePricing.customerId, quoteId),
+            eq(quotePricing.quoteNumber, quoteId)
+          ),
+          eq(quotePricing.tenantId, tenantId)
+        )
+      );
     return pricing;
   }
 
-  async createQuotePricing(pricingData: InsertQuotePricing): Promise<QuotePricing> {
+  async createQuotePricing(
+    pricingData: InsertQuotePricing
+  ): Promise<QuotePricing> {
     const [created] = await db
       .insert(quotePricing)
       .values(pricingData)
@@ -2467,30 +3310,38 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateQuotePricing(id: string, tenantId: string, pricingData: Partial<InsertQuotePricing>): Promise<QuotePricing | undefined> {
+  async updateQuotePricing(
+    id: string,
+    tenantId: string,
+    pricingData: Partial<InsertQuotePricing>
+  ): Promise<QuotePricing | undefined> {
     const [updated] = await db
       .update(quotePricing)
       .set({ ...pricingData, updatedAt: new Date() })
-      .where(and(
-        eq(quotePricing.id, id),
-        eq(quotePricing.tenantId, tenantId)
-      ))
+      .where(and(eq(quotePricing.id, id), eq(quotePricing.tenantId, tenantId)))
       .returning();
     return updated;
   }
 
-  async getQuotePricingLineItems(quotePricingId: string, tenantId: string): Promise<QuotePricingLineItem[]> {
+  async getQuotePricingLineItems(
+    quotePricingId: string,
+    tenantId: string
+  ): Promise<QuotePricingLineItem[]> {
     return await db
       .select()
       .from(quotePricingLineItems)
-      .where(and(
-        eq(quotePricingLineItems.quotePricingId, quotePricingId),
-        eq(quotePricingLineItems.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(quotePricingLineItems.quotePricingId, quotePricingId),
+          eq(quotePricingLineItems.tenantId, tenantId)
+        )
+      )
       .orderBy(asc(quotePricingLineItems.lineNumber));
   }
 
-  async createQuotePricingLineItem(lineItemData: InsertQuotePricingLineItem): Promise<QuotePricingLineItem> {
+  async createQuotePricingLineItem(
+    lineItemData: InsertQuotePricingLineItem
+  ): Promise<QuotePricingLineItem> {
     const [created] = await db
       .insert(quotePricingLineItems)
       .values(lineItemData)
@@ -2498,25 +3349,36 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateQuotePricingLineItem(id: string, tenantId: string, lineItemData: Partial<InsertQuotePricingLineItem>): Promise<QuotePricingLineItem | undefined> {
+  async updateQuotePricingLineItem(
+    id: string,
+    tenantId: string,
+    lineItemData: Partial<InsertQuotePricingLineItem>
+  ): Promise<QuotePricingLineItem | undefined> {
     const [updated] = await db
       .update(quotePricingLineItems)
       .set({ ...lineItemData, updatedAt: new Date() })
-      .where(and(
-        eq(quotePricingLineItems.id, id),
-        eq(quotePricingLineItems.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(quotePricingLineItems.id, id),
+          eq(quotePricingLineItems.tenantId, tenantId)
+        )
+      )
       .returning();
     return updated;
   }
 
-  async deleteQuotePricingLineItem(id: string, tenantId: string): Promise<boolean> {
+  async deleteQuotePricingLineItem(
+    id: string,
+    tenantId: string
+  ): Promise<boolean> {
     const result = await db
       .delete(quotePricingLineItems)
-      .where(and(
-        eq(quotePricingLineItems.id, id),
-        eq(quotePricingLineItems.tenantId, tenantId)
-      ));
+      .where(
+        and(
+          eq(quotePricingLineItems.id, id),
+          eq(quotePricingLineItems.tenantId, tenantId)
+        )
+      );
     return result.rowCount > 0;
   }
 
@@ -2525,7 +3387,7 @@ export class DatabaseStorage implements IStorage {
     filters: any;
     search: string;
     sortBy: string;
-    sortOrder: 'asc' | 'desc';
+    sortOrder: "asc" | "desc";
     offset: number;
     limit: number;
   }): Promise<CompanyContact[]> {
@@ -2547,7 +3409,7 @@ export class DatabaseStorage implements IStorage {
         ownerName: users.firstName,
         favoriteContentType: companyContacts.favoriteContentType,
         preferredChannels: companyContacts.preferredChannels,
-        tenantId: companyContacts.tenantId
+        tenantId: companyContacts.tenantId,
       })
       .from(companyContacts)
       .leftJoin(companies, eq(companyContacts.companyId, companies.id))
@@ -2558,28 +3420,44 @@ export class DatabaseStorage implements IStorage {
     if (options.filters.ownerId) {
       query = query.where(eq(companyContacts.ownerId, options.filters.ownerId));
     }
-    
+
     if (options.filters.leadStatus) {
-      query = query.where(eq(companyContacts.leadStatus, options.filters.leadStatus));
+      query = query.where(
+        eq(companyContacts.leadStatus, options.filters.leadStatus)
+      );
     }
 
     // Apply search
     if (options.search) {
-      query = query.where(or(
-        like(companyContacts.firstName, `%${options.search}%`),
-        like(companyContacts.lastName, `%${options.search}%`),
-        like(companyContacts.email, `%${options.search}%`),
-        like(companyContacts.phone, `%${options.search}%`)
-      ));
+      query = query.where(
+        or(
+          like(companyContacts.firstName, `%${options.search}%`),
+          like(companyContacts.lastName, `%${options.search}%`),
+          like(companyContacts.email, `%${options.search}%`),
+          like(companyContacts.phone, `%${options.search}%`)
+        )
+      );
     }
 
     // Apply sorting - simplified to avoid dynamic column access issues
-    if (options.sortBy === 'lastActivityDate' || options.sortBy === 'lastContactDate') {
-      query = options.sortOrder === 'asc' ? query.orderBy(asc(companyContacts.lastContactDate)) : query.orderBy(desc(companyContacts.lastContactDate));
-    } else if (options.sortBy === 'firstName') {
-      query = options.sortOrder === 'asc' ? query.orderBy(asc(companyContacts.firstName)) : query.orderBy(desc(companyContacts.firstName));
-    } else if (options.sortBy === 'lastName') {
-      query = options.sortOrder === 'asc' ? query.orderBy(asc(companyContacts.lastName)) : query.orderBy(desc(companyContacts.lastName));
+    if (
+      options.sortBy === "lastActivityDate" ||
+      options.sortBy === "lastContactDate"
+    ) {
+      query =
+        options.sortOrder === "asc"
+          ? query.orderBy(asc(companyContacts.lastContactDate))
+          : query.orderBy(desc(companyContacts.lastContactDate));
+    } else if (options.sortBy === "firstName") {
+      query =
+        options.sortOrder === "asc"
+          ? query.orderBy(asc(companyContacts.firstName))
+          : query.orderBy(desc(companyContacts.firstName));
+    } else if (options.sortBy === "lastName") {
+      query =
+        options.sortOrder === "asc"
+          ? query.orderBy(asc(companyContacts.lastName))
+          : query.orderBy(desc(companyContacts.lastName));
     } else {
       // Default sort by created date
       query = query.orderBy(desc(companyContacts.createdAt));
@@ -2591,7 +3469,10 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
-  async getContactsCount(options: { filters: any; search: string; }): Promise<number> {
+  async getContactsCount(options: {
+    filters: any;
+    search: string;
+  }): Promise<number> {
     let query = db
       .select({ count: count() })
       .from(companyContacts)
@@ -2601,19 +3482,23 @@ export class DatabaseStorage implements IStorage {
     if (options.filters.ownerId) {
       query = query.where(eq(companyContacts.ownerId, options.filters.ownerId));
     }
-    
+
     if (options.filters.leadStatus) {
-      query = query.where(eq(companyContacts.leadStatus, options.filters.leadStatus));
+      query = query.where(
+        eq(companyContacts.leadStatus, options.filters.leadStatus)
+      );
     }
 
     // Apply search
     if (options.search) {
-      query = query.where(or(
-        like(companyContacts.firstName, `%${options.search}%`),
-        like(companyContacts.lastName, `%${options.search}%`),
-        like(companyContacts.email, `%${options.search}%`),
-        like(companyContacts.phone, `%${options.search}%`)
-      ));
+      query = query.where(
+        or(
+          like(companyContacts.firstName, `%${options.search}%`),
+          like(companyContacts.lastName, `%${options.search}%`),
+          like(companyContacts.email, `%${options.search}%`),
+          like(companyContacts.phone, `%${options.search}%`)
+        )
+      );
     }
 
     const result = await query;
@@ -2628,19 +3513,24 @@ export class DatabaseStorage implements IStorage {
     return contact;
   }
 
-  async createContact(contactData: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">): Promise<CompanyContact> {
+  async createContact(
+    contactData: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">
+  ): Promise<CompanyContact> {
     const [created] = await db
       .insert(companyContacts)
       .values({
         ...contactData,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .returning();
     return created;
   }
 
-  async updateContact(id: string, contactData: Partial<CompanyContact>): Promise<CompanyContact> {
+  async updateContact(
+    id: string,
+    contactData: Partial<CompanyContact>
+  ): Promise<CompanyContact> {
     const [updated] = await db
       .update(companyContacts)
       .set({ ...contactData, updatedAt: new Date() })
@@ -2660,22 +3550,29 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(or(
-        eq(users.firstName, name),
-        eq(users.lastName, name),
-        like(sql`${users.firstName} || ' ' || ${users.lastName}`, `%${name}%`)
-      ));
+      .where(
+        or(
+          eq(users.firstName, name),
+          eq(users.lastName, name),
+          like(sql`${users.firstName} || ' ' || ${users.lastName}`, `%${name}%`)
+        )
+      );
     return user;
   }
 
-  async getContactsByCompany(companyId: string, tenantId: string): Promise<CompanyContact[]> {
+  async getContactsByCompany(
+    companyId: string,
+    tenantId: string
+  ): Promise<CompanyContact[]> {
     return await db
       .select()
       .from(companyContacts)
-      .where(and(
-        eq(companyContacts.companyId, companyId),
-        eq(companyContacts.tenantId, tenantId)
-      ));
+      .where(
+        and(
+          eq(companyContacts.companyId, companyId),
+          eq(companyContacts.tenantId, tenantId)
+        )
+      );
   }
 
   // Tenant management methods
@@ -2683,20 +3580,19 @@ export class DatabaseStorage implements IStorage {
     const [tenant] = await db
       .select()
       .from(tenants)
-      .where(or(
-        eq(tenants.slug, slug),
-        eq(tenants.subdomainPrefix, slug),
-        eq(tenants.pathPrefix, slug)
-      ))
+      .where(
+        or(
+          eq(tenants.slug, slug),
+          eq(tenants.subdomainPrefix, slug),
+          eq(tenants.pathPrefix, slug)
+        )
+      )
       .limit(1);
     return tenant;
   }
 
   async createTenant(tenantData: any): Promise<any> {
-    const [tenant] = await db
-      .insert(tenants)
-      .values(tenantData)
-      .returning();
+    const [tenant] = await db.insert(tenants).values(tenantData).returning();
     return tenant;
   }
 
@@ -2715,59 +3611,61 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(userSettings)
       .where(eq(userSettings.userId, userId));
-    
+
     // If no settings exist, create default settings
     if (!settings) {
       // Get user's tenant info
       const user = await this.getUserById(userId);
       if (!user?.tenantId) {
-        throw new Error('User tenant ID is required for creating settings');
+        throw new Error("User tenant ID is required for creating settings");
       }
       const tenantId = user.tenantId;
-      
+
       const defaultSettings = {
         id: `settings-${userId}`,
         userId: userId,
         tenantId: tenantId,
-        firstName: '',
-        lastName: '',
-        email: '',
-        theme: 'system',
-        language: 'en',
-        timezone: 'America/New_York',
-        dateFormat: 'MM/dd/yyyy',
-        timeFormat: '12',
-        currency: 'USD',
+        firstName: "",
+        lastName: "",
+        email: "",
+        theme: "system",
+        language: "en",
+        timezone: "America/New_York",
+        dateFormat: "MM/dd/yyyy",
+        timeFormat: "12",
+        currency: "USD",
         notifications: {
           email: true,
           push: true,
           sms: false,
-          marketing: false
+          marketing: false,
         },
         accessibility: {
           highContrast: false,
           reducedMotion: false,
-          fontSize: 'medium',
+          fontSize: "medium",
           screenReader: false,
           keyboardNavigation: false,
-          colorBlind: 'none',
+          colorBlind: "none",
           soundEnabled: true,
-          voiceCommands: false
+          voiceCommands: false,
         },
-        twoFactorEnabled: false
+        twoFactorEnabled: false,
       };
-      
+
       const [created] = await db
         .insert(userSettings)
         .values(defaultSettings)
         .returning();
       return created;
     }
-    
+
     return settings;
   }
 
-  async createUserSettings(settingsData: InsertUserSettings): Promise<UserSettings> {
+  async createUserSettings(
+    settingsData: InsertUserSettings
+  ): Promise<UserSettings> {
     const [created] = await db
       .insert(userSettings)
       .values(settingsData)
@@ -2775,17 +3673,20 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateUserSettings(userId: string, settingsData: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
+  async updateUserSettings(
+    userId: string,
+    settingsData: Partial<InsertUserSettings>
+  ): Promise<UserSettings | undefined> {
     // Ensure user settings exist first
     await this.getUserSettings(userId);
-    
+
     // Now update the existing settings
     const [updated] = await db
       .update(userSettings)
       .set({ ...settingsData, updatedAt: new Date() })
       .where(eq(userSettings.userId, userId))
       .returning();
-    
+
     return updated;
   }
 
@@ -2797,14 +3698,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserById(userId: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId));
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
     return user;
   }
 
-  async updateUser(userId: string, userData: Partial<InsertUser>): Promise<User | undefined> {
+  async updateUser(
+    userId: string,
+    userData: Partial<InsertUser>
+  ): Promise<User | undefined> {
     const [updated] = await db
       .update(users)
       .set({ ...userData, updatedAt: new Date() })
@@ -2813,7 +3714,9 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getUserCustomerAssignments(userId: string): Promise<UserCustomerAssignment[]> {
+  async getUserCustomerAssignments(
+    userId: string
+  ): Promise<UserCustomerAssignment[]> {
     return await db
       .select()
       .from(userCustomerAssignments)
@@ -2828,9 +3731,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(userId: string): Promise<boolean> {
-    const result = await db
-      .delete(users)
-      .where(eq(users.id, userId));
+    const result = await db.delete(users).where(eq(users.id, userId));
     return result.rowCount > 0;
   }
 
@@ -2840,27 +3741,45 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
 
-  async getWarehouseOperation(id: string, tenantId: string): Promise<any | undefined> {
+  async getWarehouseOperation(
+    id: string,
+    tenantId: string
+  ): Promise<any | undefined> {
     // Return undefined for now - will be implemented with proper schema
     return undefined;
   }
 
   async createWarehouseOperation(data: any): Promise<any> {
     // Return the data for now - will be implemented with proper schema
-    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+    return {
+      id: "temp-id",
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
-  async updateWarehouseOperation(id: string, data: any, tenantId: string): Promise<any | undefined> {
+  async updateWarehouseOperation(
+    id: string,
+    data: any,
+    tenantId: string
+  ): Promise<any | undefined> {
     // Return the data for now - will be implemented with proper schema
     return { id, ...data, updatedAt: new Date() };
   }
 
-  async deleteWarehouseOperation(id: string, tenantId: string): Promise<boolean> {
+  async deleteWarehouseOperation(
+    id: string,
+    tenantId: string
+  ): Promise<boolean> {
     // Return true for now - will be implemented with proper schema
     return true;
   }
 
-  async getWarehouseOperationsByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+  async getWarehouseOperationsByEquipment(
+    equipmentId: string,
+    tenantId: string
+  ): Promise<any[]> {
     return [];
   }
 
@@ -2870,14 +3789,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSerialNumber(data: any): Promise<any> {
-    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+    return {
+      id: "temp-id",
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
-  async updateSerialNumber(id: string, data: any, tenantId: string): Promise<any | undefined> {
+  async updateSerialNumber(
+    id: string,
+    data: any,
+    tenantId: string
+  ): Promise<any | undefined> {
     return { id, ...data, updatedAt: new Date() };
   }
 
-  async getSerialNumbersByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+  async getSerialNumbersByEquipment(
+    equipmentId: string,
+    tenantId: string
+  ): Promise<any[]> {
     return [];
   }
 
@@ -2887,10 +3818,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBuildProcess(data: any): Promise<any> {
-    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+    return {
+      id: "temp-id",
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
-  async getBuildProcessesByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+  async getBuildProcessesByEquipment(
+    equipmentId: string,
+    tenantId: string
+  ): Promise<any[]> {
     return [];
   }
 
@@ -2900,7 +3839,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Customer detail methods - for comprehensive customer information
-  async getCustomerEquipment(customerId: string, tenantId: string): Promise<any[]> {
+  async getCustomerEquipment(
+    customerId: string,
+    tenantId: string
+  ): Promise<any[]> {
     try {
       return await db
         .select({
@@ -2916,7 +3858,12 @@ export class DatabaseStorage implements IStorage {
           createdAt: equipment.createdAt,
         })
         .from(equipment)
-        .where(and(eq(equipment.customerId, customerId), eq(equipment.tenantId, tenantId)))
+        .where(
+          and(
+            eq(equipment.customerId, customerId),
+            eq(equipment.tenantId, tenantId)
+          )
+        )
         .orderBy(equipment.createdAt);
     } catch (error) {
       console.log("No equipment table found, returning empty array");
@@ -2924,16 +3871,22 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerMeterReadings(customerId: string, tenantId: string): Promise<any[]> {
+  async getCustomerMeterReadings(
+    customerId: string,
+    tenantId: string
+  ): Promise<any[]> {
     try {
       // First get equipment for this customer
-      const customerEquipment = await this.getCustomerEquipment(customerId, tenantId);
+      const customerEquipment = await this.getCustomerEquipment(
+        customerId,
+        tenantId
+      );
       if (customerEquipment.length === 0) {
         return [];
       }
-      
-      const equipmentIds = customerEquipment.map(e => e.id);
-      
+
+      const equipmentIds = customerEquipment.map((e) => e.id);
+
       return await db
         .select({
           id: meterReadings.id,
@@ -2950,10 +3903,12 @@ export class DatabaseStorage implements IStorage {
           createdAt: meterReadings.createdAt,
         })
         .from(meterReadings)
-        .where(and(
-          sql`${meterReadings.equipmentId} = ANY(${equipmentIds})`,
-          eq(meterReadings.tenantId, tenantId)
-        ))
+        .where(
+          and(
+            sql`${meterReadings.equipmentId} = ANY(${equipmentIds})`,
+            eq(meterReadings.tenantId, tenantId)
+          )
+        )
         .orderBy(meterReadings.readingDate);
     } catch (error) {
       console.log("No meter readings found, returning empty array");
@@ -2961,7 +3916,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerInvoices(customerId: string, tenantId: string): Promise<any[]> {
+  async getCustomerInvoices(
+    customerId: string,
+    tenantId: string
+  ): Promise<any[]> {
     try {
       return await db
         .select({
@@ -2977,7 +3935,12 @@ export class DatabaseStorage implements IStorage {
           createdAt: invoices.createdAt,
         })
         .from(invoices)
-        .where(and(eq(invoices.customerId, customerId), eq(invoices.tenantId, tenantId)))
+        .where(
+          and(
+            eq(invoices.customerId, customerId),
+            eq(invoices.tenantId, tenantId)
+          )
+        )
         .orderBy(invoices.createdAt);
     } catch (error) {
       console.log("No invoices found, returning empty array");
@@ -2985,7 +3948,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerServiceTickets(customerId: string, tenantId: string): Promise<any[]> {
+  async getCustomerServiceTickets(
+    customerId: string,
+    tenantId: string
+  ): Promise<any[]> {
     try {
       return await db
         .select({
@@ -3002,7 +3968,12 @@ export class DatabaseStorage implements IStorage {
           createdAt: serviceTickets.createdAt,
         })
         .from(serviceTickets)
-        .where(and(eq(serviceTickets.customerId, customerId), eq(serviceTickets.tenantId, tenantId)))
+        .where(
+          and(
+            eq(serviceTickets.customerId, customerId),
+            eq(serviceTickets.tenantId, tenantId)
+          )
+        )
         .orderBy(serviceTickets.createdAt);
     } catch (error) {
       console.log("No service tickets found, returning empty array");
@@ -3010,7 +3981,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerContracts(customerId: string, tenantId: string): Promise<any[]> {
+  async getCustomerContracts(
+    customerId: string,
+    tenantId: string
+  ): Promise<any[]> {
     try {
       return await db
         .select({
@@ -3025,7 +3999,12 @@ export class DatabaseStorage implements IStorage {
           createdAt: contracts.createdAt,
         })
         .from(contracts)
-        .where(and(eq(contracts.customerId, customerId), eq(contracts.tenantId, tenantId)))
+        .where(
+          and(
+            eq(contracts.customerId, customerId),
+            eq(contracts.tenantId, tenantId)
+          )
+        )
         .orderBy(contracts.createdAt);
     } catch (error) {
       console.log("No contracts found, returning empty array");
@@ -3034,64 +4013,123 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDeliverySchedule(data: any): Promise<any> {
-    return { id: 'temp-id', ...data, createdAt: new Date(), updatedAt: new Date() };
+    return {
+      id: "temp-id",
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 
-  async updateDeliverySchedule(id: string, data: any, tenantId: string): Promise<any | undefined> {
+  async updateDeliverySchedule(
+    id: string,
+    data: any,
+    tenantId: string
+  ): Promise<any | undefined> {
     return { id, ...data, updatedAt: new Date() };
   }
 
-  async getDeliverySchedulesByEquipment(equipmentId: string, tenantId: string): Promise<any[]> {
+  async getDeliverySchedulesByEquipment(
+    equipmentId: string,
+    tenantId: string
+  ): Promise<any[]> {
     return [];
   }
 
   // Mobile field service operations
-  async getMobileServiceSessions(params: { tenantId: string; serviceTicketId?: string; technicianId?: string }): Promise<MobileServiceSession[]> {
-    let query = db.select().from(mobileServiceSessions).where(eq(mobileServiceSessions.tenantId, params.tenantId));
+  async getMobileServiceSessions(params: {
+    tenantId: string;
+    serviceTicketId?: string;
+    technicianId?: string;
+  }): Promise<MobileServiceSession[]> {
+    let query = db
+      .select()
+      .from(mobileServiceSessions)
+      .where(eq(mobileServiceSessions.tenantId, params.tenantId));
 
     if (params.serviceTicketId) {
-      query = query.where(eq(mobileServiceSessions.serviceTicketId, params.serviceTicketId));
+      query = query.where(
+        eq(mobileServiceSessions.serviceTicketId, params.serviceTicketId)
+      );
     }
 
     if (params.technicianId) {
-      query = query.where(eq(mobileServiceSessions.technicianId, params.technicianId));
+      query = query.where(
+        eq(mobileServiceSessions.technicianId, params.technicianId)
+      );
     }
 
     return await query.orderBy(desc(mobileServiceSessions.createdAt));
   }
 
-  async createMobileServiceSession(session: InsertMobileServiceSession): Promise<MobileServiceSession> {
-    const [newSession] = await db.insert(mobileServiceSessions).values(session).returning();
+  async createMobileServiceSession(
+    session: InsertMobileServiceSession
+  ): Promise<MobileServiceSession> {
+    const [newSession] = await db
+      .insert(mobileServiceSessions)
+      .values(session)
+      .returning();
     return newSession;
   }
 
-  async updateMobileServiceSession(id: string, tenantId: string, session: Partial<MobileServiceSession>): Promise<MobileServiceSession | undefined> {
+  async updateMobileServiceSession(
+    id: string,
+    tenantId: string,
+    session: Partial<MobileServiceSession>
+  ): Promise<MobileServiceSession | undefined> {
     const [updatedSession] = await db
       .update(mobileServiceSessions)
       .set({ ...session, updatedAt: new Date() })
-      .where(and(eq(mobileServiceSessions.id, id), eq(mobileServiceSessions.tenantId, tenantId)))
+      .where(
+        and(
+          eq(mobileServiceSessions.id, id),
+          eq(mobileServiceSessions.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedSession;
   }
 
-  async getTimeTrackingEntries(sessionId: string, tenantId: string): Promise<TimeTrackingEntry[]> {
+  async getTimeTrackingEntries(
+    sessionId: string,
+    tenantId: string
+  ): Promise<TimeTrackingEntry[]> {
     return await db
       .select()
       .from(timeTrackingEntries)
-      .where(and(eq(timeTrackingEntries.sessionId, sessionId), eq(timeTrackingEntries.tenantId, tenantId)))
+      .where(
+        and(
+          eq(timeTrackingEntries.sessionId, sessionId),
+          eq(timeTrackingEntries.tenantId, tenantId)
+        )
+      )
       .orderBy(desc(timeTrackingEntries.timestamp));
   }
 
-  async createTimeTrackingEntry(entry: InsertTimeTrackingEntry): Promise<TimeTrackingEntry> {
-    const [newEntry] = await db.insert(timeTrackingEntries).values(entry).returning();
+  async createTimeTrackingEntry(
+    entry: InsertTimeTrackingEntry
+  ): Promise<TimeTrackingEntry> {
+    const [newEntry] = await db
+      .insert(timeTrackingEntries)
+      .values(entry)
+      .returning();
     return newEntry;
   }
 
-  async getServicePhotos(params: { tenantId: string; serviceTicketId?: string; sessionId?: string }): Promise<ServicePhoto[]> {
-    let query = db.select().from(servicePhotos).where(eq(servicePhotos.tenantId, params.tenantId));
+  async getServicePhotos(params: {
+    tenantId: string;
+    serviceTicketId?: string;
+    sessionId?: string;
+  }): Promise<ServicePhoto[]> {
+    let query = db
+      .select()
+      .from(servicePhotos)
+      .where(eq(servicePhotos.tenantId, params.tenantId));
 
     if (params.serviceTicketId) {
-      query = query.where(eq(servicePhotos.serviceTicketId, params.serviceTicketId));
+      query = query.where(
+        eq(servicePhotos.serviceTicketId, params.serviceTicketId)
+      );
     }
 
     if (params.sessionId) {
@@ -3106,11 +4144,22 @@ export class DatabaseStorage implements IStorage {
     return newPhoto;
   }
 
-  async getLocationHistory(params: { tenantId: string; technicianId?: string; sessionId?: string; startDate?: Date; endDate?: Date }): Promise<LocationHistory[]> {
-    let query = db.select().from(locationHistory).where(eq(locationHistory.tenantId, params.tenantId));
+  async getLocationHistory(params: {
+    tenantId: string;
+    technicianId?: string;
+    sessionId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<LocationHistory[]> {
+    let query = db
+      .select()
+      .from(locationHistory)
+      .where(eq(locationHistory.tenantId, params.tenantId));
 
     if (params.technicianId) {
-      query = query.where(eq(locationHistory.technicianId, params.technicianId));
+      query = query.where(
+        eq(locationHistory.technicianId, params.technicianId)
+      );
     }
 
     if (params.sessionId) {
@@ -3128,13 +4177,20 @@ export class DatabaseStorage implements IStorage {
     return await query.orderBy(desc(locationHistory.timestamp));
   }
 
-  async createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory> {
-    const [newLocation] = await db.insert(locationHistory).values(location).returning();
+  async createLocationHistory(
+    location: InsertLocationHistory
+  ): Promise<LocationHistory> {
+    const [newLocation] = await db
+      .insert(locationHistory)
+      .values(location)
+      .returning();
     return newLocation;
   }
 
   // Onboarding operations
-  async getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]> {
+  async getOnboardingChecklists(
+    tenantId: string
+  ): Promise<OnboardingChecklist[]> {
     return await db
       .select()
       .from(onboardingChecklists)
@@ -3142,24 +4198,46 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(onboardingChecklists.createdAt));
   }
 
-  async getOnboardingChecklist(id: string, tenantId: string): Promise<OnboardingChecklist | undefined> {
+  async getOnboardingChecklist(
+    id: string,
+    tenantId: string
+  ): Promise<OnboardingChecklist | undefined> {
     const [checklist] = await db
       .select()
       .from(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+      .where(
+        and(
+          eq(onboardingChecklists.id, id),
+          eq(onboardingChecklists.tenantId, tenantId)
+        )
+      );
     return checklist;
   }
 
-  async createOnboardingChecklist(checklist: InsertOnboardingChecklist): Promise<OnboardingChecklist> {
-    const [newChecklist] = await db.insert(onboardingChecklists).values(checklist).returning();
+  async createOnboardingChecklist(
+    checklist: InsertOnboardingChecklist
+  ): Promise<OnboardingChecklist> {
+    const [newChecklist] = await db
+      .insert(onboardingChecklists)
+      .values(checklist)
+      .returning();
     return newChecklist;
   }
 
-  async updateOnboardingChecklist(id: string, tenantId: string, checklist: Partial<OnboardingChecklist>): Promise<OnboardingChecklist | undefined> {
+  async updateOnboardingChecklist(
+    id: string,
+    tenantId: string,
+    checklist: Partial<OnboardingChecklist>
+  ): Promise<OnboardingChecklist | undefined> {
     const [updatedChecklist] = await db
       .update(onboardingChecklists)
       .set({ ...checklist, updatedAt: new Date() })
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingChecklists.id, id),
+          eq(onboardingChecklists.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedChecklist;
   }
@@ -3167,121 +4245,238 @@ export class DatabaseStorage implements IStorage {
   async deleteOnboardingChecklist(id: string, tenantId: string): Promise<void> {
     await db
       .delete(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+      .where(
+        and(
+          eq(onboardingChecklists.id, id),
+          eq(onboardingChecklists.tenantId, tenantId)
+        )
+      );
   }
 
-  async getOnboardingEquipment(checklistId: string, tenantId: string): Promise<OnboardingEquipment[]> {
+  async getOnboardingEquipment(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingEquipment[]> {
     return await db
       .select()
       .from(onboardingEquipment)
-      .where(and(eq(onboardingEquipment.checklistId, checklistId), eq(onboardingEquipment.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingEquipment.checklistId, checklistId),
+          eq(onboardingEquipment.tenantId, tenantId)
+        )
+      )
       .orderBy(onboardingEquipment.createdAt);
   }
 
-  async createOnboardingEquipment(equipment: InsertOnboardingEquipment): Promise<OnboardingEquipment> {
-    const [newEquipment] = await db.insert(onboardingEquipment).values(equipment).returning();
+  async createOnboardingEquipment(
+    equipment: InsertOnboardingEquipment
+  ): Promise<OnboardingEquipment> {
+    const [newEquipment] = await db
+      .insert(onboardingEquipment)
+      .values(equipment)
+      .returning();
     return newEquipment;
   }
 
-  async updateOnboardingEquipment(id: string, tenantId: string, equipment: Partial<OnboardingEquipment>): Promise<OnboardingEquipment | undefined> {
+  async updateOnboardingEquipment(
+    id: string,
+    tenantId: string,
+    equipment: Partial<OnboardingEquipment>
+  ): Promise<OnboardingEquipment | undefined> {
     const [updatedEquipment] = await db
       .update(onboardingEquipment)
       .set({ ...equipment, updatedAt: new Date() })
-      .where(and(eq(onboardingEquipment.id, id), eq(onboardingEquipment.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingEquipment.id, id),
+          eq(onboardingEquipment.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedEquipment;
   }
 
-  async getOnboardingNetworkConfig(checklistId: string, tenantId: string): Promise<OnboardingNetworkConfig[]> {
+  async getOnboardingNetworkConfig(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingNetworkConfig[]> {
     return await db
       .select()
       .from(onboardingNetworkConfig)
-      .where(and(eq(onboardingNetworkConfig.checklistId, checklistId), eq(onboardingNetworkConfig.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingNetworkConfig.checklistId, checklistId),
+          eq(onboardingNetworkConfig.tenantId, tenantId)
+        )
+      )
       .orderBy(onboardingNetworkConfig.createdAt);
   }
 
-  async createOnboardingNetworkConfig(config: InsertOnboardingNetworkConfig): Promise<OnboardingNetworkConfig> {
-    const [newConfig] = await db.insert(onboardingNetworkConfig).values(config).returning();
+  async createOnboardingNetworkConfig(
+    config: InsertOnboardingNetworkConfig
+  ): Promise<OnboardingNetworkConfig> {
+    const [newConfig] = await db
+      .insert(onboardingNetworkConfig)
+      .values(config)
+      .returning();
     return newConfig;
   }
 
-  async updateOnboardingNetworkConfig(id: string, tenantId: string, config: Partial<OnboardingNetworkConfig>): Promise<OnboardingNetworkConfig | undefined> {
+  async updateOnboardingNetworkConfig(
+    id: string,
+    tenantId: string,
+    config: Partial<OnboardingNetworkConfig>
+  ): Promise<OnboardingNetworkConfig | undefined> {
     const [updatedConfig] = await db
       .update(onboardingNetworkConfig)
       .set({ ...config, updatedAt: new Date() })
-      .where(and(eq(onboardingNetworkConfig.id, id), eq(onboardingNetworkConfig.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingNetworkConfig.id, id),
+          eq(onboardingNetworkConfig.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedConfig;
   }
 
-  async getOnboardingPrintManagement(checklistId: string, tenantId: string): Promise<OnboardingPrintManagement[]> {
+  async getOnboardingPrintManagement(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingPrintManagement[]> {
     return await db
       .select()
       .from(onboardingPrintManagement)
-      .where(and(eq(onboardingPrintManagement.checklistId, checklistId), eq(onboardingPrintManagement.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingPrintManagement.checklistId, checklistId),
+          eq(onboardingPrintManagement.tenantId, tenantId)
+        )
+      )
       .orderBy(onboardingPrintManagement.createdAt);
   }
 
-  async createOnboardingPrintManagement(config: InsertOnboardingPrintManagement): Promise<OnboardingPrintManagement> {
-    const [newConfig] = await db.insert(onboardingPrintManagement).values(config).returning();
+  async createOnboardingPrintManagement(
+    config: InsertOnboardingPrintManagement
+  ): Promise<OnboardingPrintManagement> {
+    const [newConfig] = await db
+      .insert(onboardingPrintManagement)
+      .values(config)
+      .returning();
     return newConfig;
   }
 
-  async updateOnboardingPrintManagement(id: string, tenantId: string, config: Partial<OnboardingPrintManagement>): Promise<OnboardingPrintManagement | undefined> {
+  async updateOnboardingPrintManagement(
+    id: string,
+    tenantId: string,
+    config: Partial<OnboardingPrintManagement>
+  ): Promise<OnboardingPrintManagement | undefined> {
     const [updatedConfig] = await db
       .update(onboardingPrintManagement)
       .set({ ...config, updatedAt: new Date() })
-      .where(and(eq(onboardingPrintManagement.id, id), eq(onboardingPrintManagement.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingPrintManagement.id, id),
+          eq(onboardingPrintManagement.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedConfig;
   }
 
-  async getOnboardingDynamicSections(checklistId: string, tenantId: string): Promise<OnboardingDynamicSection[]> {
+  async getOnboardingDynamicSections(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingDynamicSection[]> {
     return await db
       .select()
       .from(onboardingDynamicSections)
-      .where(and(eq(onboardingDynamicSections.checklistId, checklistId), eq(onboardingDynamicSections.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingDynamicSections.checklistId, checklistId),
+          eq(onboardingDynamicSections.tenantId, tenantId)
+        )
+      )
       .orderBy(onboardingDynamicSections.sectionOrder);
   }
 
-  async createOnboardingDynamicSection(section: InsertOnboardingDynamicSection): Promise<OnboardingDynamicSection> {
-    const [newSection] = await db.insert(onboardingDynamicSections).values(section).returning();
+  async createOnboardingDynamicSection(
+    section: InsertOnboardingDynamicSection
+  ): Promise<OnboardingDynamicSection> {
+    const [newSection] = await db
+      .insert(onboardingDynamicSections)
+      .values(section)
+      .returning();
     return newSection;
   }
 
-  async updateOnboardingDynamicSection(id: string, tenantId: string, section: Partial<OnboardingDynamicSection>): Promise<OnboardingDynamicSection | undefined> {
+  async updateOnboardingDynamicSection(
+    id: string,
+    tenantId: string,
+    section: Partial<OnboardingDynamicSection>
+  ): Promise<OnboardingDynamicSection | undefined> {
     const [updatedSection] = await db
       .update(onboardingDynamicSections)
       .set({ ...section, updatedAt: new Date() })
-      .where(and(eq(onboardingDynamicSections.id, id), eq(onboardingDynamicSections.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingDynamicSections.id, id),
+          eq(onboardingDynamicSections.tenantId, tenantId)
+        )
+      )
       .returning();
     return updatedSection;
   }
 
-  async deleteOnboardingDynamicSection(id: string, tenantId: string): Promise<void> {
+  async deleteOnboardingDynamicSection(
+    id: string,
+    tenantId: string
+  ): Promise<void> {
     await db
       .delete(onboardingDynamicSections)
-      .where(and(eq(onboardingDynamicSections.id, id), eq(onboardingDynamicSections.tenantId, tenantId)));
+      .where(
+        and(
+          eq(onboardingDynamicSections.id, id),
+          eq(onboardingDynamicSections.tenantId, tenantId)
+        )
+      );
   }
 
-  async getOnboardingTasks(checklistId: string, tenantId: string): Promise<OnboardingTask[]> {
+  async getOnboardingTasks(
+    checklistId: string,
+    tenantId: string
+  ): Promise<OnboardingTask[]> {
     return await db
       .select()
       .from(onboardingTasks)
-      .where(and(eq(onboardingTasks.checklistId, checklistId), eq(onboardingTasks.tenantId, tenantId)))
+      .where(
+        and(
+          eq(onboardingTasks.checklistId, checklistId),
+          eq(onboardingTasks.tenantId, tenantId)
+        )
+      )
       .orderBy(onboardingTasks.createdAt);
   }
 
-  async createOnboardingTask(task: InsertOnboardingTask): Promise<OnboardingTask> {
+  async createOnboardingTask(
+    task: InsertOnboardingTask
+  ): Promise<OnboardingTask> {
     const [newTask] = await db.insert(onboardingTasks).values(task).returning();
     return newTask;
   }
 
-  async updateOnboardingTask(id: string, tenantId: string, task: Partial<OnboardingTask>): Promise<OnboardingTask | undefined> {
+  async updateOnboardingTask(
+    id: string,
+    tenantId: string,
+    task: Partial<OnboardingTask>
+  ): Promise<OnboardingTask | undefined> {
     const [updatedTask] = await db
       .update(onboardingTasks)
       .set({ ...task, updatedAt: new Date() })
-      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId)))
+      .where(
+        and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId))
+      )
       .returning();
     return updatedTask;
   }
@@ -3289,7 +4484,9 @@ export class DatabaseStorage implements IStorage {
   async deleteOnboardingTask(id: string, tenantId: string): Promise<void> {
     await db
       .delete(onboardingTasks)
-      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId)));
+      .where(
+        and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId))
+      );
   }
 }
 
