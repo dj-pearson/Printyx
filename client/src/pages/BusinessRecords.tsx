@@ -180,6 +180,9 @@ export default function BusinessRecords() {
       return await apiRequest(`/api/business-records/${data.id}`, "PUT", data.record);
     },
     onSuccess: (updatedData) => {
+      console.log('API Response Data:', updatedData);
+      console.log('Current editing record:', editingRecord);
+      
       toast({
         title: "Success",
         description: "Business record updated successfully",
@@ -187,10 +190,23 @@ export default function BusinessRecords() {
       
       // Optimistic update: immediately update the cache with new data
       queryClient.setQueryData(["/api/business-records"], (oldData: any) => {
-        if (!oldData) return oldData;
-        return oldData.map((record: BusinessRecord) => 
-          record.id === editingRecord?.id ? { ...record, ...updatedData } : record
-        );
+        if (!oldData) {
+          console.log('No old data found in cache');
+          return oldData;
+        }
+        console.log('Current cache data:', oldData);
+        
+        const updated = oldData.map((record: BusinessRecord) => {
+          if (record.id === editingRecord?.id) {
+            const mergedRecord = { ...record, ...updatedData };
+            console.log('Merging record:', { original: record, updated: updatedData, merged: mergedRecord });
+            return mergedRecord;
+          }
+          return record;
+        });
+        
+        console.log('Updated cache data:', updated);
+        return updated;
       });
       
       // Also invalidate and refetch to ensure consistency
