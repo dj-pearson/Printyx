@@ -100,7 +100,9 @@ export function registerBusinessRecordRoutes(app: Express) {
       
       // Transform frontend data to database format
       const frontendData = req.body;
+      console.log('[DEBUG] UPDATE - Frontend data received:', JSON.stringify(frontendData, null, 2));
       const dbData = BusinessRecordsTransformer.toDb(frontendData);
+      console.log('[DEBUG] UPDATE - Transformed DB data:', JSON.stringify(dbData, null, 2));
       
       // Handle record type changes (lead to customer conversion)
       if (frontendData.recordType) {
