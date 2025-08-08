@@ -120,59 +120,53 @@ router.get(
         dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       }
 
-      // Get all pipeline data within the time period
-      const [dealsData, quotesData, proposalsData, crmGoalsData] = await Promise.all([
-        // Active deals in the time period
-        db
-          .select()
-          .from(deals)
-          .where(
-            and(
-              eq(deals.tenantId, tenantId),
-              sql`${deals.status} NOT IN ('won', 'lost')`
-            )
-          ),
-        
-        // Active quotes in the time period
-        db
-          .select()
-          .from(quotes)
-          .where(
-            and(
-              eq(quotes.tenantId, tenantId),
-              sql`${quotes.status} IN ('Sent', 'Draft', 'Pending')`
-            )
-          ),
-        
-        // Active proposals in the time period
-        db
-          .select()
-          .from(proposals)
-          .where(
-            and(
-              eq(proposals.tenantId, tenantId),
-              sql`${proposals.status} IN ('sent', 'draft', 'pending', 'under_review')`
-            )
-          ),
-        
-        // CRM Goals for the period
-        db
-          .select({
-            id: salesGoals.id,
-            goalType: salesGoals.goalType,
-            targetValue: salesGoals.targetValue,
-            targetCount: salesGoals.targetCount,
-            startDate: salesGoals.startDate,
-            endDate: salesGoals.endDate
-          })
-          .from(salesGoals)
-          .where(
-            and(
-              eq(salesGoals.tenantId, tenantId),
-              eq(salesGoals.isActive, true)
-            )
-          )
-      ]);
+      // Get pipeline data using simpler raw queries to avoid Drizzle issues
+      let dealsData = [];
+      let quotesData = [];
+      let proposalsData = [];
+      let crmGoalsData = [];
+
+      try {
+        // Get deals data
+        const dealsResult = await db.execute(sql`
+          SELECT id, title, amount, probability, status, expected_close_date, tenant_id 
+          FROM deals 
+          WHERE tenant_id = ${tenantId} AND status NOT IN ('won', 'lost')
+        `);
+        dealsData = dealsResult.rows || [];
+
+        // Get quotes data
+        const quotesResult = await db.execute(sql`
+          SELECT id, title, total_amount, status, valid_until, tenant_id, quote_number 
+          FROM quotes 
+          WHERE tenant_id = ${tenantId} AND status IN ('Sent', 'Draft', 'Pending')
+        `);
+        quotesData = quotesResult.rows || [];
+
+        // Get proposals data
+        const proposalsResult = await db.execute(sql`
+          SELECT id, title, total_amount, status, valid_until, tenant_id 
+          FROM proposals 
+          WHERE tenant_id = ${tenantId} AND status IN ('sent', 'draft', 'pending', 'under_review')
+        `);
+        proposalsData = proposalsResult.rows || [];
+
+        // Get CRM goals data
+        try {
+          const crmGoalsResult = await db.execute(sql`
+            SELECT id, goal_type, target_value, target_count, start_date, end_date 
+            FROM sales_goals 
+            WHERE tenant_id = ${tenantId} AND is_active = true
+          `);
+          crmGoalsData = crmGoalsResult.rows || [];
+        } catch (error) {
+          console.log('CRM Goals table not found, continuing without goals data');
+          crmGoalsData = [];
+        }
+      } catch (error) {
+        console.error('Error fetching pipeline data:', error);
+        throw error;
+      }
 
       // Transform data with type and default probabilities
       const transformedDeals = dealsData.map(deal => ({
@@ -180,17 +174,17 @@ router.get(
         title: deal.title || `Deal ${deal.id}`,
         value: parseFloat(deal.amount?.toString() || '0'),
         probability: deal.probability || 50,
-        expectedCloseDate: deal.expectedCloseDate || new Date().toISOString(),
+        expectedCloseDate: deal.expected_close_date || new Date().toISOString(),
         status: deal.status || 'open',
         type: 'deal'
       }));
 
       const transformedQuotes = quotesData.map(quote => ({
         id: quote.id,
-        title: quote.title || `Quote #${quote.quoteNumber || quote.id}`,
-        value: parseFloat(quote.totalAmount?.toString() || '0'),
+        title: quote.title || `Quote #${quote.quote_number || quote.id}`,
+        value: parseFloat(quote.total_amount?.toString() || '0'),
         probability: 50, // Default probability for quotes
-        expectedCloseDate: quote.validUntil || new Date().toISOString(),
+        expectedCloseDate: quote.valid_until || new Date().toISOString(),
         status: quote.status || 'sent',
         type: 'quote'
       }));
@@ -198,9 +192,9 @@ router.get(
       const transformedProposals = proposalsData.map(proposal => ({
         id: proposal.id,
         title: proposal.title || `Proposal ${proposal.id}`,
-        value: parseFloat(proposal.totalAmount?.toString() || '0'),
+        value: parseFloat(proposal.total_amount?.toString() || '0'),
         probability: 70, // Default probability for proposals
-        expectedCloseDate: proposal.validUntil || new Date().toISOString(),
+        expectedCloseDate: proposal.valid_until || new Date().toISOString(),
         status: proposal.status || 'sent',
         type: 'proposal'
       }));
@@ -217,12 +211,12 @@ router.get(
 
       // Calculate goal targets
       const totalGoalValue = crmGoalsData
-        .filter(goal => goal.goalType === 'revenue')
-        .reduce((sum, goal) => sum + parseFloat(goal.targetValue?.toString() || '0'), 0);
+        .filter(goal => goal.goal_type === 'revenue')
+        .reduce((sum, goal) => sum + parseFloat(goal.target_value?.toString() || '0'), 0);
 
       const totalGoalCount = crmGoalsData
-        .filter(goal => goal.goalType !== 'revenue')
-        .reduce((sum, goal) => sum + parseInt(goal.targetCount?.toString() || '0'), 0);
+        .filter(goal => goal.goal_type !== 'revenue')
+        .reduce((sum, goal) => sum + parseInt(goal.target_count?.toString() || '0'), 0);
 
       // Calculate remaining to goal
       const remainingToGoalValue = Math.max(0, totalGoalValue - totalPipelineValue);
