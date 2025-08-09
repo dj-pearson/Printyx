@@ -12674,9 +12674,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const searchResults = await db
         .select({
           id: businessRecords.id,
-          name: businessRecords.name,
-          phone: businessRecords.phone,
-          email: businessRecords.email,
+          name: businessRecords.companyName,
+          phone: businessRecords.primaryContactPhone,
+          email: businessRecords.primaryContactEmail,
           address: businessRecords.address,
         })
         .from(businessRecords)
@@ -12684,7 +12684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             eq(businessRecords.tenantId, tenantId),
             eq(businessRecords.recordType, "customer"),
-            sql`LOWER(${businessRecords.name}) LIKE LOWER(${
+            sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${
               "%" + searchTerm + "%"
             })`
           )
@@ -12709,20 +12709,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
+      // For now, return the primary contact from the business record itself
       const searchResults = await db
         .select({
-          id: companyContacts.id,
-          name: companyContacts.name,
-          phone: companyContacts.phone,
-          email: companyContacts.email,
-          role: companyContacts.role,
+          id: businessRecords.id,
+          name: businessRecords.primaryContactName,
+          phone: businessRecords.primaryContactPhone,
+          email: businessRecords.primaryContactEmail,
+          role: sql`'Primary Contact'`,
         })
-        .from(companyContacts)
+        .from(businessRecords)
         .where(
           and(
-            eq(companyContacts.tenantId, tenantId),
-            eq(companyContacts.businessRecordId, companyId),
-            sql`LOWER(${companyContacts.name}) LIKE LOWER(${
+            eq(businessRecords.tenantId, tenantId),
+            eq(businessRecords.id, companyId),
+            eq(businessRecords.recordType, "customer"),
+            sql`LOWER(${businessRecords.primaryContactName}) LIKE LOWER(${
               "%" + searchTerm + "%"
             })`
           )
