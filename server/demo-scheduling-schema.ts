@@ -102,6 +102,14 @@ export const demoSchedules = pgTable("demo_schedules", {
     date: string;
   }>>().default([]),
   
+  // Calendar Integration (Phase 2)
+  externalEventId: varchar("external_event_id"), // MS Graph/Google Calendar event ID
+  calendarProvider: varchar("calendar_provider"), // 'microsoft', 'google', 'outlook'
+  calendarEventLink: varchar("calendar_event_link"), // Link to calendar event
+  attendeesNotified: boolean("attendees_notified").default(false),
+  calendarSyncStatus: varchar("calendar_sync_status").default('pending'), // 'pending', 'synced', 'failed'
+  lastCalendarSync: timestamp("last_calendar_sync"),
+
   // Communication History
   remindersSent: integer("reminders_sent").default(0),
   lastReminderDate: timestamp("last_reminder_date"),

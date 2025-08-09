@@ -188,13 +188,80 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
     },
   });
 
+  // Phase 2: Enhanced validation with stage guards (poka-yoke)
+  const validateDealData = (data: CreateDealFormData) => {
+    const errors = [];
+    
+    // Required field validations
+    if (!data.title.trim()) {
+      errors.push("Deal title is required");
+    }
+    
+    if (!data.stageId) {
+      errors.push("Deal stage must be selected");
+    }
+    
+    // Stage-specific validations (stage guards)
+    const selectedStage = stages.find(s => s.id === data.stageId);
+    if (selectedStage) {
+      // Early stage requirements
+      if (selectedStage.name === 'Qualified' || selectedStage.name === 'Needs Analysis') {
+        if (!data.description.trim()) {
+          errors.push("Description is required for qualified deals");
+        }
+      }
+      
+      // Proposal/negotiation stage requirements
+      if (selectedStage.name === 'Proposal' || selectedStage.name === 'Negotiation') {
+        if (!data.amount || parseFloat(data.amount) <= 0) {
+          errors.push("Deal amount is required for proposal stage and beyond");
+        }
+        if (!data.expectedCloseDate) {
+          errors.push("Expected close date is required for proposal stage and beyond");
+        }
+      }
+      
+      // High-value deal requirements (poka-yoke)
+      if (data.amount && parseFloat(data.amount) > 50000) {
+        if (data.priority === 'low') {
+          errors.push("High-value deals (>$50K) cannot be set as low priority");
+        }
+        if (!data.notes.trim()) {
+          errors.push("Notes are required for high-value deals (>$50K)");
+        }
+      }
+    }
+    
+    // Business logic validations
+    if (data.expectedCloseDate) {
+      const closeDate = new Date(data.expectedCloseDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (closeDate < today) {
+        errors.push("Expected close date cannot be in the past");
+      }
+      
+      const threeMonthsFromNow = new Date();
+      threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+      
+      if (closeDate > threeMonthsFromNow && !data.notes.trim()) {
+        errors.push("Deals with close dates beyond 3 months require notes explaining the timeline");
+      }
+    }
+    
+    return errors;
+  };
+
   const handleCreateDeal = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim()) {
+    // Phase 2: Apply stage guards and validations
+    const validationErrors = validateDealData(formData);
+    if (validationErrors.length > 0) {
       toast({
         title: "Validation Error",
-        description: "Deal title is required",
+        description: validationErrors[0], // Show first error
         variant: "destructive",
       });
       return;
