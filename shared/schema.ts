@@ -1821,51 +1821,26 @@ export const dealActivities = pgTable("deal_activities", {
 
 // The comprehensive customers table is defined above (line 448) with all necessary fields
 
-// Contracts table - Enhanced for comprehensive meter billing
+// Contracts table - Simplified to match actual database structure
 export const contracts = pgTable("contracts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
   customerId: varchar("customer_id").notNull(),
   contractNumber: varchar("contract_number").notNull(),
-  contractType: varchar("contract_type").notNull().default('cost_per_click'), // cost_per_click, flat_rate, hybrid
   
   // Contract Dates
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
-  autoRenewal: boolean("auto_renewal").default(false),
-  renewalTerms: integer("renewal_terms").default(12), // months
   
-  // Base Rates (simple contracts)
+  // Base Rates
   blackRate: decimal("black_rate", { precision: 10, scale: 4 }),
   colorRate: decimal("color_rate", { precision: 10, scale: 4 }),
   monthlyBase: decimal("monthly_base", { precision: 10, scale: 2 }),
   
-  // Tiered Billing Support
-  hasTieredRates: boolean("has_tiered_rates").default(false),
+  // Status
+  status: varchar("status").notNull().default('active'),
   
-  // Minimum Volume Commitments
-  minimumBlackVolume: integer("minimum_black_volume").default(0),
-  minimumColorVolume: integer("minimum_color_volume").default(0),
-  
-  // Billing Settings
-  billingFrequency: varchar("billing_frequency").notNull().default('monthly'), // monthly, quarterly, annual
-  billingDate: integer("billing_date").default(1), // day of month
-  invoiceTerms: varchar("invoice_terms").notNull().default('net_30'), // net_15, net_30, net_60
-  
-  // Contract Profitability Tracking
-  equipmentCost: decimal("equipment_cost", { precision: 10, scale: 2 }),
-  installationCost: decimal("installation_cost", { precision: 10, scale: 2 }),
-  estimatedMargin: decimal("estimated_margin", { precision: 5, scale: 2 }), // percentage
-  
-  // Status and Management
-  status: varchar("status").notNull().default('active'), // active, inactive, expired, cancelled
-  assignedSalespersonId: varchar("assigned_salesperson_id"),
-  serviceLevel: varchar("service_level").notNull().default('standard'), // standard, premium, basic
-  
-  // Notes and Special Terms
-  notes: text("notes"),
-  specialTerms: text("special_terms"),
-  
+  // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2901,10 +2876,6 @@ export const contractsRelations = relations(contracts, ({ one, many }) => ({
   customer: one(customers, {
     fields: [contracts.customerId],
     references: [customers.id],
-  }),
-  assignedSalesperson: one(users, {
-    fields: [contracts.assignedSalespersonId],
-    references: [users.id],
   }),
   tieredRates: many(contractTieredRates),
   meterReadings: many(meterReadings),
