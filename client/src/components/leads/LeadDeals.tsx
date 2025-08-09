@@ -36,9 +36,13 @@ import {
   Edit,
   MoreHorizontal,
   ExternalLink,
-  Briefcase
+  Briefcase,
+  BarChart3,
+  Activity
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { ConversionInsights } from "@/components/analytics/ConversionInsights";
+import { PipelineTrendWidgets } from "@/components/analytics/PipelineTrendWidgets";
 
 interface LeadDealsProps {
   leadId: string;
@@ -641,6 +645,28 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Phase 3: Conversion Insights Section */}
+      {deals.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 mb-4 pt-8 border-t">
+            <BarChart3 className="h-5 w-5" />
+            <h3 className="text-lg font-semibold">Conversion Insights & Optimization</h3>
+          </div>
+          
+          <div className="space-y-6">
+            <ConversionInsights dealId={deals[0]?.id} />
+            
+            <div className="border-t pt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="h-5 w-5" />
+                <h4 className="text-md font-medium">Pipeline Trend Analysis</h4>
+              </div>
+              <PipelineTrendWidgets />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
