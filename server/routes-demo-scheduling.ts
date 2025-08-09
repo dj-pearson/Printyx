@@ -107,7 +107,7 @@ router.get('/api/demos/customers', requireAuth, async (req: any, res) => {
   }
 });
 
-// Create new demo schedule
+// Create new demo schedule (Phase 2: Enhanced validations)
 router.post('/api/demos', requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -133,6 +133,36 @@ router.post('/api/demos', requireAuth, async (req: any, res) => {
       customerRequirements,
       proposalAmount
     } = req.body;
+
+    // Phase 2: Enhanced validation (poka-yoke)
+    const validationErrors = [];
+    
+    if (!businessRecordId?.trim()) validationErrors.push("Customer selection is required");
+    if (!scheduledDate) validationErrors.push("Scheduled date is required");
+    if (!scheduledTime) validationErrors.push("Scheduled time is required");
+    if (!demoType?.trim()) validationErrors.push("Demo type is required");
+    
+    // Business logic validations
+    const demoDate = new Date(scheduledDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (demoDate < today) {
+      validationErrors.push("Demo cannot be scheduled in the past");
+    }
+    
+    // Weekend scheduling warning (business rule)
+    const dayOfWeek = demoDate.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      validationErrors.push("Demos scheduled on weekends require manager approval");
+    }
+    
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ 
+        error: "Validation failed", 
+        details: validationErrors 
+      });
+    }
 
     // For now, return success response until schema is updated
     const newDemo = {
