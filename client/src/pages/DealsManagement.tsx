@@ -1229,11 +1229,11 @@ export default function DealsManagement() {
                               {collapsedStages[stage.id] ? "▶" : "▾"}
                             </Button>
                           </div>
-                          <div className="mt-1 text-[12px] font-semibold text-gray-700">
-                            {formatAmount(
-                              stageAggregates[stage.id]?.totalAmount || 0
-                            )}
-                          </div>
+                        </div>
+                        <div className="mt-1 text-[12px] font-semibold text-gray-700">
+                          {formatAmount(
+                            stageAggregates[stage.id]?.totalAmount || 0
+                          )}
                         </div>
                       </div>
 
