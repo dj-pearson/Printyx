@@ -7522,7 +7522,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ 
             message: "Platform admin required",
             userRole: req.user?.role,
-            userId: req.user?.id 
+            userId: req.user?.id,
+            isPlatformUser: req.user?.isPlatformUser,
+            is_platform_user: req.user?.is_platform_user,
+            debug: {
+              checkResult: isPlatformUser,
+              conditions: {
+                isPlatformUser: req.user?.isPlatformUser,
+                is_platform_user: req.user?.is_platform_user,
+                platform_admin: req.user?.role === "platform_admin",
+                root_admin: req.user?.role === "root_admin",
+                Platform_Admin: req.user?.role === "Platform Admin",
+                Root_Admin: req.user?.role === "Root Admin",
+                admin: req.user?.role === "admin"
+              }
+            }
           });
         }
         const file = req.file;
