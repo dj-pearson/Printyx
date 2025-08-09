@@ -1,0 +1,220 @@
+Manufacturer,Model_Name,Model_Code,Display_Name,Category,Speed_PPM,Max_Paper_Size,MSRP_USD,Key_Features,Compatible_Models
+Canon,imageRUNNER ADVANCE DX C5870i,C5870i,imageRUNNER ADVANCE DX C5870i,Multifunction,70,12x18,Not Disclosed,"Cloud Connector, McAfee Security, EPEAT Climate+",
+Canon,imageRUNNER ADVANCE DX C5860i,C5860i,imageRUNNER ADVANCE DX C5860i,Multifunction,60,12x18,11200,"Advanced Security, 270 ipm Scan Speed",
+Canon,imageRUNNER ADVANCE DX C5850i,C5850i,imageRUNNER ADVANCE DX C5850i,Multifunction,50,12x18,Not Disclosed,"Cloud Connector, 6350-sheet capacity",
+Canon,imageRUNNER ADVANCE DX C5840i,C5840i,imageRUNNER ADVANCE DX C5840i,Multifunction,40,12x18,Not Disclosed,"6350-sheet capacity, Advanced Security",
+Canon,imageRUNNER ADVANCE DX C3926i,C3926i,imageRUNNER ADVANCE DX C3926i,Multifunction,26,12x18,3400,"Low-volume, 2300-sheet capacity",
+Canon,imageRUNNER ADVANCE DX 8986i,8986i,imageRUNNER ADVANCE DX 8986i,Multifunction,86,13x19,Not Disclosed,"High-volume, 8020-sheet capacity",
+Canon,imageRUNNER ADVANCE DX 8995i,8995i,imageRUNNER ADVANCE DX 8995i,Multifunction,95,13x19,Not Disclosed,"High-volume, recently announced",
+Canon,imageRUNNER ADVANCE DX 8905i,8905i,imageRUNNER ADVANCE DX 8905i,Multifunction,105,13x19,Not Disclosed,High-volume production,
+Canon,imageRUNNER ADVANCE DX 4945i,4945i,imageRUNNER ADVANCE DX 4945i,Multifunction,45,11x17,Not Disclosed,"Mid-volume, EPEAT Climate+",
+Canon,Color imageCLASS MF753Cdw,MF753Cdw,Color imageCLASS MF753Cdw,Multifunction,35,Letter,535,"Wireless, duplex, ENERGY STAR",
+Canon,imagePRESS V1350,V1350,imagePRESS V1350,Production,135,SRA3,200000+,"Red VCSEL, Active Registration, FOGRA51",
+Canon,imagePRESS V1000,V1000,imagePRESS V1000,Production,101,SRA3,Not Disclosed,"Embedded cooling, flat paper path",
+Canon,imagePRESS V900,V900,imagePRESS V900,Production,90,SRA3,Not Disclosed,Auto duplex to 350gsm,
+Canon,imagePRESS V800,V800,imagePRESS V800,Production,80,SRA3,Not Disclosed,Enhanced media handling,
+Canon,imagePRESS V700,V700,imagePRESS V700,Production,70,SRA3,Not Disclosed,Light production,
+Canon,imagePRESS C265,C265,imagePRESS C265,Production,65,SRA3,Not Disclosed,"R-VCSEL Laser, 1300mm long-sheet",
+Canon,Staple Finisher-AB2,Finisher-AB2,Staple Finisher-AB2,Accessory,,,Not Disclosed,"Corner/Double stapling, 3000-sheet output",C5800 series
+Canon,Paper Folding/Booklet Finisher-A1,Finisher-A1,Booklet Finisher-A1,Accessory,,,Not Disclosed,"Saddle stitch, 20 sheets x 10 sets",C5800 series
+Canon,Inner Finisher-L1,Finisher-L1,Inner Finisher-L1,Accessory,,,Not Disclosed,Internal stapling and hole punching,Most DX models
+Canon,Inner 2/4 Hole Puncher-D1,Puncher-D1,Inner 2/4 Hole Puncher-D1,Accessory,,,Not Disclosed,2-hole or 4-hole punching,With Inner Finisher-L1
+Canon,Paper Deck Unit-F1,0607C002AA,Paper Deck Unit-F1,Accessory,,,Not Disclosed,High-capacity feeding,C5800/DX4700/DX6800
+Canon,Paper Deck Unit-B1,3655B002AA,Paper Deck Unit-B1,Accessory,,,Not Disclosed,2700-sheet capacity,Various models
+Canon,Paper Deck Unit-B2,3655B004AA,Paper Deck Unit-B2,Accessory,,,Not Disclosed,2700-sheet capacity,Various models
+Canon,Cassette Feeding Unit-AF1,3755B001AA,Cassette Feeding Unit-AF1,Accessory,,,Not Disclosed,2 x 500 sheets,Various models
+Xerox,VersaLink B400,B400,VersaLink B400,Printer,36,Letter,800-1200,"3-10 users, ConnectKey",
+Xerox,VersaLink B405,B405,VersaLink B405,Multifunction,36,Letter,Not Disclosed,Print/Copy/Scan/Fax,
+Xerox,VersaLink B415,B415,VersaLink B415,Multifunction,36,Letter,Not Disclosed,ConnectKey enabled,
+Xerox,VersaLink B605,B605,VersaLink B605,Multifunction,55,Ledger,Not Disclosed,High-volume B&W,
+Xerox,VersaLink B615,B615,VersaLink B615,Multifunction,58,Ledger,Not Disclosed,Advanced features,
+Xerox,VersaLink B625,B625,VersaLink B625,Multifunction,55,Ledger,Not Disclosed,Production-ready,
+Xerox,VersaLink C400,C400,VersaLink C400,Printer,36,Letter,Not Disclosed,Color printing,
+Xerox,VersaLink C405,C405,VersaLink C405,Multifunction,36,Letter,1400-2000,Small workgroup color,
+Xerox,VersaLink C415,C415,VersaLink C415,Multifunction,36,Letter,1500-2200,"ConnectKey, mobile printing",
+Xerox,VersaLink C505,C505,VersaLink C505,Multifunction,43,Letter,Not Disclosed,Mid-range color,
+Xerox,VersaLink C605,C605,VersaLink C605,Multifunction,58,Ledger,Not Disclosed,High-speed color,
+Xerox,VersaLink C625,C625,VersaLink C625,Multifunction,58,Ledger,Not Disclosed,Production color,
+Xerox,AltaLink B8055,B8055,AltaLink B8055,Multifunction,55,Ledger,Not Disclosed,Large workgroup,
+Xerox,AltaLink B8065,B8065,AltaLink B8065,Multifunction,65,Ledger,Not Disclosed,High-volume B&W,
+Xerox,AltaLink B8075,B8075,AltaLink B8075,Multifunction,75,Ledger,Not Disclosed,Production B&W,
+Xerox,AltaLink B8090,B8090,AltaLink B8090,Multifunction,90,Ledger,Not Disclosed,Very high-volume,
+Xerox,AltaLink C8045,C8045,AltaLink C8045,Multifunction,45,Ledger,15000-35000,Color workgroup,
+Xerox,AltaLink C8055,C8055,AltaLink C8055,Multifunction,55,Ledger,15000-35000,High-speed color,
+Xerox,AltaLink C8070,C8070,AltaLink C8070,Multifunction,70,Ledger,15000-35000,Production color,
+Xerox,PrimeLink C9265,C9265,PrimeLink C9265,Production,65,SRA3,50000-85000,"2024 model, CMYK+ technology",
+Xerox,PrimeLink C9275,C9275,PrimeLink C9275,Production,75,SRA3,50000-85000,Advanced automation,
+Xerox,PrimeLink C9281,C9281,PrimeLink C9281,Production,81,SRA3,50000-85000,10-inch touchscreen,
+Xerox,PrimeLink B9100,B9100,PrimeLink B9100,Production,100+,SRA3,Not Disclosed,B&W production,
+Xerox,Business Ready Finisher,BR-Finisher,Business Ready Finisher,Accessory,,,3000-6000,"500-sheet top, 3000-sheet stacker",AltaLink/PrimeLink
+Xerox,Business Ready Booklet Maker,BR-Booklet,Business Ready Booklet Maker,Accessory,,,Not Disclosed,64-page booklets,AltaLink series
+Xerox,Production Ready Booklet Maker,PR-Booklet,Production Ready Booklet Maker,Accessory,,,Not Disclosed,200-page booklets,Production models
+Xerox,Plockmatic Pro 50/35,Plockmatic-50,Plockmatic Pro 50,Accessory,,,Not Disclosed,"Face trimming, square fold",Production models
+Xerox,High Capacity Feeder (1-Tray),HCF-1,High Capacity Feeder,Accessory,,,1000-3000,Standard capacity expansion,Various models
+Xerox,Advanced High Capacity Feeder,HCF-Advanced,Advanced HCF,Accessory,,,1000-3000,Multiple tray configurations,AltaLink models
+Xerox,Tandem Tray Modules,TTM,Tandem Tray Modules,Accessory,,,1000-3000,Multiple paper sources,Various models
+Ricoh,IM C2000,IM C2000,IM C2000,Multifunction,20,A3,Not Disclosed,"10.1"" Smart Panel, Always Current Technology",
+Ricoh,IM C2500,IM C2500,IM C2500,Multifunction,25,A3,Not Disclosed,"SPDF, 1200x1200 dpi",
+Ricoh,IM C3000,IM C3000,IM C3000,Multifunction,30,A3,Not Disclosed,PostScript3 Emulation,
+Ricoh,IM C3500,IM C3500,IM C3500,Multifunction,35,A3,Not Disclosed,PDF Direct Print,
+Ricoh,IM C4500,IM C4500,IM C4500,Multifunction,45,A3,Not Disclosed,4GB RAM + 256GB SSD,
+Ricoh,IM C4510,IM C4510,IM C4510,Multifunction,45,A3,Not Disclosed,220-sheet SPDF,
+Ricoh,IM C5500,IM C5500,IM C5500,Multifunction,55,A3,Not Disclosed,High-volume capabilities,
+Ricoh,IM C6000,IM C6000,IM C6000,Multifunction,60,A3,Not Disclosed,Advanced finishing options,
+Ricoh,IM C6500,IM C6500,IM C6500,Multifunction,65,A3,Not Disclosed,Production-level features,
+Ricoh,IM 2500,IM 2500,IM 2500 Black and White Laser MFP,Multifunction,25,11x17,Not Disclosed,"220-sheet SPDF, 240 ipm scan",
+Ricoh,IM 4000,IM 4000,IM 4000 Black and White Laser MFP,Multifunction,40,11x17,Not Disclosed,Enhanced scanning capabilities,
+Ricoh,IM 9000,IM 9000,IM 9000 Black and White Laser MFP,Multifunction,90,11x17,Not Disclosed,"High-volume, 8700-sheet capacity",
+Ricoh,IM C320F,IM C320F,IM C320F Color Laser MFP,Multifunction,32,A4,Not Disclosed,"7"" Smart Panel, 50% recycled plastic",
+Ricoh,M C320FW,M C320FW,M C320FW Color Laser MFP,Multifunction,32,A4,Not Disclosed,"4.3"""" touch panel",
+Ricoh,P C375,P C375,P C375 Printer,Printer,32,A4,Not Disclosed,1300-sheet input capacity,
+Ricoh,Pro 8400S,Pro 8400S,Pro 8400S,Production,96,SRA3,Not Disclosed,"VCSEL technology, 2400×4800 dpi",
+Ricoh,Pro 8410S,Pro 8410S,Pro 8410S,Production,111,SRA3,Not Disclosed,With scan capability,
+Ricoh,Pro 8420S,Pro 8420S,Pro 8420S,Production,136,SRA3,Not Disclosed,"With scan, 350gsm media",
+Ricoh,Pro 8410,Pro 8410,Pro 8410,Production,111,SRA3,Not Disclosed,Print only,
+Ricoh,Pro 8420,Pro 8420,Pro 8420,Production,136,SRA3,Not Disclosed,Print only,
+Ricoh,Pro C5300s,Pro C5300s,Pro C5300s,Production,Not Disclosed,SRA3,Not Disclosed,Color production,
+Ricoh,Pro C5310s,Pro C5310s,Pro C5310s,Production,Not Disclosed,SRA3,Not Disclosed,Color production,
+Ricoh,Internal Finisher SR3310,419401,Internal Finisher SR3310,Accessory,,,Not Disclosed,"500-sheet, multi-position stapling",Various IM models
+Ricoh,Internal Finisher SR3250,SR3250,Internal Finisher SR3250,Accessory,,,Not Disclosed,"12×18 support, 50-sheet staple",Various models
+Ricoh,Internal Finisher SR3300,SR3300,Internal Finisher SR3300,Accessory,,,Not Disclosed,"A3 support, 5-sheet staple",Various models
+Ricoh,Finisher SR3320,419399,Finisher SR3320,Accessory,,,Not Disclosed,"1000-sheet, 50-sheet stapling",Various models
+Ricoh,Finisher SR3340,419392,Finisher SR3340,Accessory,,,Not Disclosed,"3000-sheet, 65-sheet stapling",Various models
+Ricoh,Finisher SR4140,SR4140,Finisher SR4140,Accessory,,,Not Disclosed,"3000-sheet, 100-sheet stapling",High-end models
+Ricoh,Booklet Finisher SR3330,419397,Booklet Finisher SR3330,Accessory,,,Not Disclosed,"1000-sheet, saddle-stitch",Various models
+Ricoh,Booklet Finisher SR3350,419390,Booklet Finisher SR3350,Accessory,,,Not Disclosed,"3000-sheet, 12×18 booklets",Various models
+Ricoh,Booklet Finisher SR4160,SR4160,Booklet Finisher SR4160,Accessory,,,Not Disclosed,High-volume booklet finishing,High-volume models
+Ricoh,LCIT PB3330,419374,LCIT PB3330,Accessory,,,Not Disclosed,2000 additional sheets,Various models
+Ricoh,LCIT RT3050,419378,LCIT RT3050,Accessory,,,Not Disclosed,"1500 additional sheets, side-mount",Various models
+Ricoh,LCIT RT4070,RT4070,LCIT RT4070,Accessory,,,Not Disclosed,"2200 additional sheets, 13×19.2",Various models
+Ricoh,Paper Feed Unit PB3320,419365,Paper Feed Unit PB3320,Accessory,,,Not Disclosed,1100 additional sheets,Various models
+Konica Minolta,bizhub C251i,C251i,bizhub C251i Multifunction Office Printer,Multifunction,25,A3,3000-5000,"10.1"" touchscreen, quad-core CPU",
+Konica Minolta,bizhub C301i,C301i,bizhub C301i Multifunction Office Printer,Multifunction,30,A3,4000-6000,"Enhanced security, mobile printing",
+Konica Minolta,bizhub C361i,C361i,bizhub C361i Multifunction Office Printer,Multifunction,36,A3,5000-7500,"Workflow automation, Bitdefender option",
+Konica Minolta,bizhub C451i,C451i,bizhub C451i Multifunction Office Printer,Multifunction,45,A3,7000-10000,"280 opm scan, 6650-sheet capacity",
+Konica Minolta,bizhub C551i,C551i,bizhub C551i Multifunction Office Printer,Multifunction,55,A3,9000-13000,"High-volume, advanced security",
+Konica Minolta,bizhub C651i,C651i,bizhub C651i Multifunction Office Printer,Multifunction,65,A3,11000-15000,"Enterprise security, workflow automation",
+Konica Minolta,bizhub C751i,C751i,bizhub C751i Multifunction Office Printer,Multifunction,75,A3,13000-18000,"Maximum productivity, advanced finishing",
+Konica Minolta,bizhub 301i,301i,bizhub 301i Black & White MFP,Multifunction,30,A3,2500-4000,"Compact design, energy-efficient",
+Konica Minolta,bizhub 361i,361i,bizhub 361i Black & White MFP,Multifunction,36,A3,3000-5000,Mid-range productivity,
+Konica Minolta,bizhub 451i,451i,bizhub 451i Black & White MFP,Multifunction,45,A3,4000-7000,"High-speed mono, advanced security",
+Konica Minolta,bizhub 551i,551i,bizhub 551i Black & White MFP,Multifunction,55,A3,6000-9000,High-volume mono production,
+Konica Minolta,bizhub 651i,651i,bizhub 651i Black & White MFP,Multifunction,65,A3,8000-12000,Enterprise-level mono,
+Konica Minolta,bizhub 751i,751i,bizhub 751i Black & White MFP,Multifunction,75,A3,10000-14000,Maximum mono productivity,
+Konica Minolta,bizhub C3301i,C3301i,bizhub C3301i Compact Color MFP,Multifunction,33,A4,1500-2500,"Compact design, wireless",
+Konica Minolta,bizhub C3351i,C3351i,bizhub C3351i Compact Color MFP,Multifunction,33,A4,1800-2800,Enhanced feature set,
+Konica Minolta,bizhub C4001i,C4001i,bizhub C4001i Compact Color MFP,Multifunction,40,A4,2000-3200,Higher speed A4 color,
+Konica Minolta,bizhub C4751i,C4751i,bizhub One C4751i Color MFP,Multifunction,50,A4,2500-4000,"2024 model, 6GB RAM, 256GB SSD",
+Konica Minolta,bizhub 4051i,4051i,bizhub 4051i Compact Monochrome MFP,Multifunction,40,A4,800-1500,Compact mono solution,
+Konica Minolta,bizhub 4701i,4701i,bizhub 4701i Compact Monochrome MFP,Multifunction,47,A4,1200-2000,High-speed A4 mono,
+Konica Minolta,bizhub 4751i,4751i,bizhub 4751i Compact Monochrome MFP,Multifunction,47,A4,1300-2200,Professional A4 mono,
+Konica Minolta,AccurioPress C12000,C12000,AccurioPress C12000 Production Press,Production,120,SRA3,120000-200000,Automated color management,
+Konica Minolta,AccurioPress C7100,C7100,AccurioPress C7100 Production Press,Production,100,SRA3,80000-150000,Mid-range production,
+Konica Minolta,AccurioPress C84hc,C84hc,AccurioPress C84hc High Chroma,Production,84,SRA3,70000-120000,"High Chroma toner, extended gamut",
+Konica Minolta,AccurioPress C74hc,C74hc,AccurioPress C74hc High Chroma,Production,74,SRA3,60000-100000,360gsm thick paper handling,
+Konica Minolta,AccurioPress C6100,C6100,AccurioPress C6100 Production Press,Production,100,SRA3,70000-120000,8GB system memory,
+Konica Minolta,AccurioPress 6120,6120,AccurioPress 6120 Monochrome,Production,120,SRA3,30000-55000,High-volume mono production,
+Konica Minolta,Inner Finisher,FS-533,Inner Finisher,Accessory,,,800-1200,"100-sheet stapling, sorting",bizhub i-Series
+Konica Minolta,Floor Finisher,FS-540,Floor Finisher,Accessory,,,2000-3500,"Advanced stapling, hole punching",High-volume bizhub
+Konica Minolta,Floor Finisher + Saddle Stitcher,FS-540 SD,Floor Finisher with Saddle Stitcher,Accessory,,,4000-6500,"Booklet creation, 50-sheet saddle stitch",Production models
+Konica Minolta,Large Capacity Unit (2500),LU-301,Large Capacity Unit,Accessory,,,600-900,2500-sheet capacity,C450i/C550i/C650i+
+Konica Minolta,Large Capacity Unit (3000),LU-302,Large Capacity Unit,Accessory,,,800-1200,3000-sheet capacity,High-end bizhub
+Konica Minolta,2-way Paper Feed Cabinet,PC-410,Paper Feed Cabinet,Accessory,,,400-600,Additional paper drawers,Various bizhub
+Konica Minolta,Fiery Image Controller,IC-418,Fiery Image Controller,Accessory,,,3000-5000,Advanced color management,Production/high-end
+Konica Minolta,Spectrophotometer,IQ-501,Spectrophotometer,Accessory,,,8000-12000,Automated color calibration,AccurioPress models
+Kyocera,TASKalfa 2554ci,1102YN2US2,TASKalfa 2554ci,Multifunction,25,A3,7000-15000,"Evolution Series, 4th generation",
+Kyocera,TASKalfa 3554ci,TBA,TASKalfa 3554ci,Multifunction,35,A3,Not Disclosed,Latest 4th generation series,
+Kyocera,TASKalfa 4054ci,1102YN2US2,TASKalfa 4054ci,Multifunction,40,A3,Not Disclosed,Evolution Series,
+Kyocera,TASKalfa 5054ci,1102YN2US2-1603TM0US0,TASKalfa 5054ci,Multifunction,50,A3,Not Disclosed,Evolution Series,
+Kyocera,TASKalfa 6054ci,1102YN2US2-1603TN0US0,TASKalfa 6054ci,Multifunction,60,A3,12000-20000,"Evolution Series, production-level",
+Kyocera,TASKalfa 7054ci,1102XC2USV,TASKalfa 7054ci,Multifunction,70,A3,15000-25000,"Evolution Series, high-volume",
+Kyocera,TASKalfa 8052ci,TBA,TASKalfa 8052ci,Multifunction,80,A3,Not Disclosed,High-volume color,
+Kyocera,TASKalfa 8353ci,TBA,TASKalfa 8353ci,Multifunction,83,A3,Not Disclosed,Production color,
+Kyocera,TASKalfa 4004i,TBA,TASKalfa 4004i,Multifunction,40,A3,Not Disclosed,4th generation B&W,
+Kyocera,TASKalfa 5004i,TBA,TASKalfa 5004i,Multifunction,50,A3,Not Disclosed,4th generation B&W,
+Kyocera,TASKalfa 6004i,TBA,TASKalfa 6004i,Multifunction,60,A3,Not Disclosed,4th generation B&W,
+Kyocera,TASKalfa 7004i,TBA,TASKalfa 7004i,Multifunction,70,A3,8000-18000,4th generation B&W,
+Kyocera,TASKalfa 8002i,TBA,TASKalfa 8002i,Multifunction,80,A3,8000-15000,High-volume B&W,
+Kyocera,TASKalfa Pro 55000c,TBA,TASKalfa Pro 55000c,Production,135,SRA3,100000+,"2024 launch, digital inkjet",
+Kyocera,TASKalfa Pro 15000c,TBA,TASKalfa Pro 15000c,Production,150,SRA3,100000+,1-2M monthly duty cycle,
+Kyocera,ECOSYS MA4000cix,TBA,ECOSYS MA4000cix,Multifunction,40,A4+,Not Disclosed,"Color MFD, no fax",
+Kyocera,ECOSYS MA4000cifx,TBA,ECOSYS MA4000cifx,Multifunction,40,A4+,Not Disclosed,"Color MFD, with fax",
+Kyocera,ECOSYS M8130cidn,TBA,ECOSYS M8130cidn,Multifunction,30,11x17,3000-6000,"Color MFD, up to 11×17",
+Kyocera,ECOSYS P8060cdn,TBA,ECOSYS P8060cdn,Printer,60,A3,2000-4000,Color printer,
+Kyocera,ECOSYS MA4500ix,TBA,ECOSYS MA4500ix,Multifunction,45,A4+,Not Disclosed,"B&W MFD, no fax",
+Kyocera,ECOSYS MA4500ifx,TBA,ECOSYS MA4500ifx,Multifunction,45,A4+,Not Disclosed,"B&W MFD, with fax",
+Kyocera,ECOSYS M3145idn,TBA,ECOSYS M3145idn,Multifunction,47,A4+,1500-3000,B&W MFD,
+Kyocera,DP-7160,1203TC6USV,DP-7160,Accessory,,,Not Disclosed,"Duplex scanning, 320 sheets",TASKalfa series
+Kyocera,DP-7170,1203TD6USV,DP-7170,Accessory,,,Not Disclosed,"Multi-feed detection, 320 sheets",TASKalfa series
+Kyocera,DF-7120,1203RV2US0,DF-7120,Accessory,,,Not Disclosed,"1000-sheet, stapling, punch option",TASKalfa series
+Kyocera,DF-7140,1203V82US0,DF-7140,Accessory,,,Not Disclosed,"4000-sheet, booklet folder, Z-fold",TASKalfa series
+Kyocera,DF-7150,1203V92US0,DF-7150,Accessory,,,Not Disclosed,"4000-sheet, 3 types stapling",TASKalfa series
+Kyocera,PF-7120,1203RL2US0,PF-7120,Accessory,,,Not Disclosed,3500-sheet side deck,TASKalfa series
+Kyocera,PF-7140,1203V42USV,PF-7140,Accessory,,,Not Disclosed,Double 600-sheet feeder,TASKalfa series
+Kyocera,PF-7150,1203V52USV,PF-7150,Accessory,,,Not Disclosed,1750 sheets x 2 rows,TASKalfa series
+Kyocera,Fax System 12,1503RK2USJ,Fax System 12,Accessory,,,899,Send/receive fax capability,TASKalfa series
+Kyocera,Data Security Kit 10,1603V60UN0,Data Security Kit 10,Accessory,,,Not Disclosed,Enhanced security features,TASKalfa series
+Kyocera,IB-37 WiFi Module,1503T80UN0,IB-37 WiFi Module,Accessory,,,Not Disclosed,5GHz/2.4GHz WiFi,TASKalfa series
+Sharp,MX-C358F,MX-C358F,MX-C358F Color MFP,Multifunction,35,A4,Not Disclosed,"Capacitive touchscreen, buttonless interface",
+Sharp,MX-B468F,MX-B468F,MX-B468F Monochrome MFP,Multifunction,46,A4,Not Disclosed,"Desktop design, advanced security",
+Sharp,MX-C428P,MX-C428P,MX-C428P Color Printer,Printer,42,A4,Not Disclosed,Desktop color printer,
+Sharp,MX-B468P,MX-B468P,MX-B468P Monochrome Printer,Printer,46,A4,Not Disclosed,"Desktop printer, compact design",
+Sharp,MX-4071,MX-4071,MX-4071 Color MFP,Multifunction,40,A3,Not Disclosed,"10.1"" tilting touchscreen, motion sensor",
+Sharp,MX-5051,MX-5051,MX-5051 Advanced Series,Multifunction,50,A3,Not Disclosed,"Voice control, AWS integration",
+Sharp,MX-5071,MX-5071,MX-5071 Essential Series,Multifunction,50,A3,Not Disclosed,"Follow-Me printing, envelope feeding",
+Sharp,MX-6051,MX-6051,MX-6051 Advanced Series,Multifunction,60,A3,Not Disclosed,Higher volume capacity,
+Sharp,MX-6071,MX-6071,MX-6071 Essential Series,Multifunction,60,A3,Not Disclosed,Advanced features,
+Sharp,MX-8081,MX-8081,MX-8081 Production Color,Production,80,A3,40000-60000,"True 1200x1200 dpi, 240 ipm scan",
+Sharp,MX-M1056,MX-M1056,MX-M1056 Monochrome Production,Production,105,A3,40000-60000,"15.4"""" swiveling panel",
+Sharp,MX-M1206,MX-M1206,MX-M1206 Light Production,Production,120,A3,40000-60000,High-volume capability,
+Sharp,BP-50C26,BP-50C26,BP-50C26 Essential Color,Multifunction,26,A3,Not Disclosed,Essential series features,
+Sharp,BP-50C31,BP-50C31,BP-50C31 Essential Color,Multifunction,31,A3,Not Disclosed,Compact design,
+Sharp,BP-50C45,BP-50C45,BP-50C45 Essential Color,Multifunction,45,A3,Not Disclosed,Basic finishing options,
+Sharp,BP-50C55,BP-50C55,BP-50C55 Essential Color,Multifunction,55,A3,Not Disclosed,Essential series,
+Sharp,BP-50C65,BP-50C65,BP-50C65 Essential Color,Multifunction,65,A3,Not Disclosed,Essential series,
+Sharp,BP-70C31,BP-70C31,BP-70C31 Advanced Color,Multifunction,31,A3,Not Disclosed,"300-sheet DSPF, 280 ipm scan",
+Sharp,BP-70C45,BP-70C45,BP-70C45 Advanced Color,Multifunction,45,A3,Not Disclosed,"Adobe PostScript 3, 256GB SSD",
+Sharp,BP-70C55,BP-70C55,BP-70C55 Advanced Color,Multifunction,55,A3,Not Disclosed,Serverless print release,
+Sharp,BP-70C65,BP-70C65,BP-70C65 Advanced Color,Multifunction,65,A3,Not Disclosed,Inner folding unit optional,
+Sharp,BP-C535WR,BP-C535WR,BP-C535WR A4 Color MFP,Multifunction,35,A4,Not Disclosed,"7"""" capacitive touchscreen",
+Sharp,BP-C535WD,BP-C535WD,BP-C535WD A4 Color MFP,Multifunction,35,A4,Not Disclosed,Optional inner finishing,
+Sharp,BP-C545WD,BP-C545WD,BP-C545WD A4 Color MFP,Multifunction,45,A4,Not Disclosed,Inner finishing capability,
+Sharp,MX-FN17,MX-FN17,Inner Finisher,Accessory,,,Not Disclosed,100-sheet stapling,Various MX models
+Sharp,MX-FN27N,MX-FN27N,Standard Finisher,Accessory,,,Not Disclosed,Standard finishing,Various MX models
+Sharp,MX-FN28,MX-FN28,Finisher,Accessory,,,Not Disclosed,Large stacker capability,Various MX models
+Sharp,Inner Folding Unit,IF-Unit,Inner Folding Unit,Accessory,,,Not Disclosed,"Tri-fold, Z-fold patterns",BP-70 series
+Sharp,MX-PN11B,MX-PN11B,3-Hole Punch Unit,Accessory,,,Not Disclosed,3-hole punching,For MX-FN17
+Sharp,MX-PN14B,MX-PN14B,3-Hole Punch Unit,Accessory,,,Not Disclosed,3-hole punching,For MX-FN27N
+Sharp,MX-PN15B,MX-PN15B,3-Hole Punch Unit,Accessory,,,Not Disclosed,3-hole punching,For MX-FN28/29
+Sharp,Large Capacity Trays,LCT-Various,Large Capacity Trays,Accessory,,,Not Disclosed,Up to 2100+ sheets,Various models
+Sharp,550-sheet drawers,PF-550,Paper Feed Unit,Accessory,,,Not Disclosed,Additional paper capacity,Various models
+Sharp,Tandem LCT,TLCT,Tandem Large Capacity,Accessory,,,Not Disclosed,Multiple paper types,High-volume models
+Lexmark,CX963se,CX963se,CX963se Multifunction,Multifunction,55,SRA3,Not Disclosed,"10"" touchscreen, PANTONE calibration",
+Lexmark,CX962se,CX962se,CX962se Multifunction,Multifunction,45,SRA3,Not Disclosed,"Duplex printing, 12×18 media",
+Lexmark,CX961se,20L8200,CX961se Multifunction,Multifunction,35,SRA3,Not Disclosed,"Single-pass duplex scan, 175K duty cycle",
+Lexmark,CX921de,32C0200,CX921de Multifunction,Multifunction,35,SRA3,Not Disclosed,"SRA3 support, 250K duty cycle",
+Lexmark,XC9655,XC9655,XC9655 Color MFP,Multifunction,Not Disclosed,A3,Not Disclosed,Dealer model,
+Lexmark,XC9645,XC9645,XC9645 Color MFP,Multifunction,Not Disclosed,A3,Not Disclosed,Dealer model,
+Lexmark,XC9635,XC9635,XC9635 Color MFP,Multifunction,Not Disclosed,A3,Not Disclosed,Dealer model,
+Lexmark,XC8355,XC8355,XC8355 Color MFP,Multifunction,Not Disclosed,A3,Not Disclosed,Dealer model,
+Lexmark,CS963,CS963,CS963 Color Printer,Printer,Not Disclosed,A3,Not Disclosed,Color A3 printing,
+Lexmark,XM1145,XM1145,XM1145 Mono MFP,Multifunction,42,A3,Not Disclosed,Monochrome multifunction,
+Lexmark,XM3250,XM3250,XM3250 Mono MFP,Multifunction,50,A3,Not Disclosed,Mid-range mono,
+Lexmark,XM5263,XM5263,XM5263 Mono MFP,Multifunction,63,A3,Not Disclosed,High-speed mono,
+Lexmark,XC8155de,XC8155de,XC8155de Production,Production,52,A3,Not Disclosed,Production multifunction,
+Lexmark,MX532adwe,MX532adwe,MX532adwe Mono MFP,Multifunction,46,A4+,Not Disclosed,Advanced mono MFP,
+Lexmark,MX711de,MX711de,MX711de Mono MFP,Multifunction,55,A3,Not Disclosed,High-volume mono,
+Lexmark,MX810de,MX810de,MX810de Mono MFP,Multifunction,65,A3,Not Disclosed,Production mono,
+Lexmark,MX811de,MX811de,MX811de Mono MFP,Multifunction,65,A3,Not Disclosed,Enhanced mono features,
+Lexmark,MX812dt,MX812dt,MX812dt Mono MFP,Multifunction,70,A3,Not Disclosed,Maximum mono performance,
+Lexmark,500-Sheet Staple Finisher,30430,500-Sheet Staple Finisher,Accessory,,,Not Disclosed,"Single/dual position stapling, 50 sheets",Various CX models
+Lexmark,Staple Finisher,7561,Staple Finisher,Accessory,,,Not Disclosed,"500-sheet output, job offset",Various models
+Lexmark,Staple Hole Punch Finisher,7562,Staple Hole Punch Finisher,Accessory,,,Not Disclosed,2/3/4-hole punch modes,Various models
+Lexmark,1250-Sheet Staple Hole Punch,Various,1250-Sheet Finisher,Accessory,,,Not Disclosed,Multi-position stapling,High-volume models
+Lexmark,2250-Sheet Booklet Finisher,Various,2250-Sheet Booklet Finisher,Accessory,,,Not Disclosed,"Booklet creation, saddle stitch",Production models
+Lexmark,Multipurpose Feeder,40X-7725,Multipurpose Feeder,Accessory,,,Not Disclosed,"Various media types, envelopes",Various models
+Lexmark,550-sheet paper trays,Various,Paper Tray 550-sheet,Accessory,,,Not Disclosed,Additional paper capacity,Various models
+Lexmark,Large Capacity Trays,LCT-Various,Large Capacity Trays,Accessory,,,Not Disclosed,High-volume paper feeding,High-volume models
+Lexmark,Flash Memory,57X-Series,Flash Memory Upgrade,Accessory,,,Not Disclosed,Memory expansion,Various models
+Lexmark,SDRAM Memory,Various,SDRAM Memory,Accessory,,,Not Disclosed,System memory upgrade,Various models
+Lexmark,Hard Drive Options,Various,Hard Drive,Accessory,,,Not Disclosed,Document processing storage,Various models
