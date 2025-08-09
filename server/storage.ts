@@ -45,6 +45,7 @@ import {
   masterProductModels,
   masterProductAccessories,
   enabledProducts,
+  masterProductAccessoryRelationships,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -184,6 +185,8 @@ import {
   type TenantEnabledProduct,
   type EnabledProduct,
   type InsertEnabledProduct,
+  type MasterProductAccessoryRelationship,
+  type InsertMasterProductAccessoryRelationship,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -942,6 +945,44 @@ export class DatabaseStorage implements IStorage {
       } as any)
       .returning();
     return created as any;
+  }
+
+  // Master Product-Accessory Relationships
+  async createProductAccessoryRelationship(
+    data: InsertMasterProductAccessoryRelationship
+  ): Promise<MasterProductAccessoryRelationship> {
+    const [created] = await db
+      .insert(masterProductAccessoryRelationships)
+      .values(data as any)
+      .onConflictDoNothing() // Prevent duplicate relationships
+      .returning();
+    return created as any;
+  }
+
+  async getProductAccessories(
+    baseProductId: string
+  ): Promise<(MasterProductAccessoryRelationship & MasterProductAccessory)[]> {
+    const rows = await db
+      .select({
+        relationshipId: masterProductAccessoryRelationships.id,
+        relationshipType: masterProductAccessoryRelationships.relationshipType,
+        category: masterProductAccessoryRelationships.category,
+        accessoryId: masterProductAccessories.id,
+        manufacturer: masterProductAccessories.manufacturer,
+        accessoryCode: masterProductAccessories.accessoryCode,
+        displayName: masterProductAccessories.displayName,
+        specsJson: masterProductAccessories.specsJson,
+        msrp: masterProductAccessories.msrp,
+        status: masterProductAccessories.status,
+      })
+      .from(masterProductAccessoryRelationships)
+      .leftJoin(
+        masterProductAccessories,
+        eq(masterProductAccessoryRelationships.accessoryId, masterProductAccessories.id)
+      )
+      .where(eq(masterProductAccessoryRelationships.baseProductId, baseProductId))
+      .orderBy(masterProductAccessoryRelationships.relationshipType, masterProductAccessories.displayName);
+    return rows as any;
   }
 
   // User operations (mandatory for Replit Auth)

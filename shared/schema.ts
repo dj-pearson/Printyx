@@ -5577,6 +5577,20 @@ export const enabledProducts = pgTable("enabled_products", {
   tenantEnabledIdx: index("enabled_products_tenant_enabled_idx").on(table.tenantId, table.enabled),
 }));
 
+// Master Product-Accessory Relationships
+export const masterProductAccessoryRelationships = pgTable("master_product_accessory_relationships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  baseProductId: varchar("base_product_id").notNull(), // References masterProductModels.id
+  accessoryId: varchar("accessory_id").notNull(), // References masterProductAccessories.id
+  relationshipType: varchar("relationship_type").notNull().default("compatible"), // compatible, recommended, required
+  category: varchar("category"), // Hardware Accessories, Showroom, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  baseProductIdx: index("master_relationships_base_idx").on(table.baseProductId),
+  accessoryIdx: index("master_relationships_accessory_idx").on(table.accessoryId),
+  uniqueRelationship: index("master_relationships_unique_idx").on(table.baseProductId, table.accessoryId),
+}));
+
 export const tenantEnabledProducts = pgTable("tenant_enabled_products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
@@ -5610,6 +5624,8 @@ export type EnabledProduct = typeof enabledProducts.$inferSelect;
 export type InsertEnabledProduct = typeof enabledProducts.$inferInsert;
 export type TenantEnabledProduct = typeof tenantEnabledProducts.$inferSelect;
 export type InsertTenantEnabledProduct = typeof tenantEnabledProducts.$inferInsert;
+export type MasterProductAccessoryRelationship = typeof masterProductAccessoryRelationships.$inferSelect;
+export type InsertMasterProductAccessoryRelationship = typeof masterProductAccessoryRelationships.$inferInsert;
 
 // Insert schemas for master catalog
 export const insertMasterProductModelSchema = createInsertSchema(masterProductModels).omit({
