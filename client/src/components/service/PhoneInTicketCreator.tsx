@@ -235,6 +235,12 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           return;
         }
         break;
+      case 4:
+        if (!form.getValues("issueDescription") || form.getValues("issueDescription").length < 10) {
+          toast({ title: "Required", description: "Please provide a detailed issue description (at least 10 characters)", variant: "destructive" });
+          return;
+        }
+        break;
     }
     setCurrentStep(prev => Math.min(prev + 1, 4));
   };
