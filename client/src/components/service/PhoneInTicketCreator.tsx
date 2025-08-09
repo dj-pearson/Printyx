@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -104,35 +105,40 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
   const { data: companies = [], isLoading: companiesLoading } = useQuery({
     queryKey: ["/api/phone-tickets/search-companies", companySearchTerm],
     enabled: companySearchTerm.length >= 2,
+    queryFn: async () => {
+      return await apiRequest(`/api/phone-tickets/search-companies?q=${encodeURIComponent(companySearchTerm)}`);
+    },
   });
 
   // Contact search query (when company is selected)
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["/api/phone-tickets/search-contacts", selectedCompany?.id, contactSearchTerm],
     enabled: !!selectedCompany && contactSearchTerm.length >= 2,
+    queryFn: async () => {
+      if (!selectedCompany) return [];
+      return await apiRequest(`/api/phone-tickets/search-contacts/${selectedCompany.id}?q=${encodeURIComponent(contactSearchTerm)}`);
+    },
   });
 
   // Equipment query (when company is selected)
   const { data: equipment = [], isLoading: equipmentLoading } = useQuery({
     queryKey: ["/api/phone-tickets/equipment", selectedCompany?.id, equipmentSearchTerm],
     enabled: !!selectedCompany,
+    queryFn: async () => {
+      if (!selectedCompany) return [];
+      return await apiRequest(`/api/phone-tickets/equipment/${selectedCompany.id}`);
+    },
   });
 
   // Create phone-in ticket mutation
   const createTicketMutation = useMutation({
     mutationFn: async (data: PhoneTicketFormData) => {
-      const response = await fetch("/api/phone-in-tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...data,
-          customerId: selectedCompany?.id,
-          contactId: selectedContact?.id,
-          equipmentId: selectedEquipment?.id,
-        }),
+      return await apiRequest("/api/phone-in-tickets", "POST", {
+        ...data,
+        customerId: selectedCompany?.id,
+        contactId: selectedContact?.id,
+        equipmentId: selectedEquipment?.id,
       });
-      if (!response.ok) throw new Error("Failed to create ticket");
-      return response.json();
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Phone-in ticket created successfully" });
@@ -152,17 +158,11 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
   // Create new contact mutation
   const createContactMutation = useMutation({
     mutationFn: async (contactData: any) => {
-      const response = await fetch("/api/contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...contactData,
-          companyId: selectedCompany?.id,
-          customerId: selectedCompany?.id,
-        }),
+      return await apiRequest("/api/contacts", "POST", {
+        ...contactData,
+        companyId: selectedCompany?.id,
+        customerId: selectedCompany?.id,
       });
-      if (!response.ok) throw new Error("Failed to create contact");
-      return response.json();
     },
     onSuccess: (newContact) => {
       setSelectedContact(newContact);
