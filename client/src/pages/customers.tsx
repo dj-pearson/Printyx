@@ -62,13 +62,18 @@ export default function Customers() {
 
   const enriched = useMemo(() => {
     return (customers as any[]).map((c) => {
-      const company = (companies as any[]).find((co) => co.id === c.companyId);
+      const company = (companies as any[]).find(
+        (co) => co.id === (c.companyId || c.company_id)
+      );
+      // Prefer snake_case from business_records: company_name
       const companyName =
+        c.company_name ||
         c.companyName ||
         company?.businessName ||
+        company?.name ||
         `Customer ${String(c.id).slice(0, 8)}`;
-      const city = c.city || c.addressCity || company?.city || "";
-      const state = c.state || c.addressState || company?.state || "";
+      const city = c.city || company?.city || "";
+      const state = c.state || company?.state || "";
       return {
         ...c,
         companyName,
