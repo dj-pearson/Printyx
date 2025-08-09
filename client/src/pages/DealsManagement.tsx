@@ -748,6 +748,13 @@ export default function DealsManagement() {
     ? deals.find((deal) => deal.id === activeId)
     : null;
 
+  const formatAmount = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value || 0);
+
   return (
     <MainLayout>
       <div className="flex flex-col h-full">
@@ -1171,7 +1178,7 @@ export default function DealsManagement() {
               </div>
               <div
                 ref={boardRef}
-                className="flex gap-2 sm:gap-3 h-full overflow-x-auto pb-4"
+                className="flex flex-wrap gap-2 sm:gap-3 h-full overflow-x-auto md:overflow-x-visible pb-4"
               >
                 {stages.map((stage) => (
                   <div
@@ -1192,12 +1199,6 @@ export default function DealsManagement() {
                             </h3>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="text-[10px] text-gray-600 hidden lg:block">
-                              $
-                              {stageAggregates[
-                                stage.id
-                              ]?.totalAmount?.toLocaleString?.() || 0}
-                            </div>
                             <Badge
                               variant="secondary"
                               className="text-[10px] flex-shrink-0"
@@ -1222,6 +1223,11 @@ export default function DealsManagement() {
                             >
                               {collapsedStages[stage.id] ? "▶" : "▾"}
                             </Button>
+                          </div>
+                          <div className="mt-1 text-[11px] text-gray-600 w-full">
+                            {formatAmount(
+                              stageAggregates[stage.id]?.totalAmount || 0
+                            )}
                           </div>
                         </div>
                       </div>
