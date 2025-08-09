@@ -225,10 +225,10 @@ function DraggableDealCard({ deal }: { deal: Deal }) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      className="bg-white border rounded-md p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
     >
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-sm text-gray-900 line-clamp-2">
+      <div className="flex items-start justify-between mb-1.5">
+        <h4 className="font-medium text-[13px] text-gray-900 line-clamp-2">
           {deal.title}
         </h4>
         <div className="flex items-center gap-1">
@@ -256,12 +256,12 @@ function DraggableDealCard({ deal }: { deal: Deal }) {
       </div>
 
       {deal.amount && (
-        <div className="text-lg font-semibold text-green-600 mb-2">
+        <div className="text-base font-semibold text-green-600 mb-1.5">
           ${parseFloat(deal.amount.toString()).toLocaleString()}
         </div>
       )}
 
-      <div className="space-y-1 text-xs text-gray-600">
+      <div className="space-y-0.5 text-[11px] text-gray-600">
         {deal.companyName && (
           <div className="flex items-center gap-1">
             <Building2 className="h-3 w-3" />
@@ -294,11 +294,11 @@ function DraggableDealCard({ deal }: { deal: Deal }) {
         )}
       </div>
 
-      <div className="flex items-center justify-between mt-3">
+      <div className="flex items-center justify-between mt-2">
         <Badge
           variant="secondary"
           className={cn(
-            "text-xs",
+            "text-[10px]",
             deal.priority === "high" && "bg-red-100 text-red-800",
             deal.priority === "medium" && "bg-yellow-100 text-yellow-800",
             deal.priority === "low" && "bg-green-100 text-green-800"
@@ -308,7 +308,7 @@ function DraggableDealCard({ deal }: { deal: Deal }) {
         </Badge>
 
         {deal.probability && (
-          <span className="text-xs text-gray-500">{deal.probability}%</span>
+          <span className="text-[10px] text-gray-500">{deal.probability}%</span>
         )}
       </div>
     </div>
@@ -1151,8 +1151,8 @@ export default function DealsManagement() {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              {/* Stage rail for quick navigation */}
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              {/* Stage rail for quick navigation (mobile only) */}
+              <div className="flex gap-2 overflow-x-auto pb-2 md:hidden">
                 {stages.map((s) => (
                   <Button
                     key={s.id}
@@ -1171,42 +1171,43 @@ export default function DealsManagement() {
               </div>
               <div
                 ref={boardRef}
-                className="flex gap-3 sm:gap-6 h-full overflow-x-auto pb-6"
+                className="flex gap-2 sm:gap-3 h-full overflow-x-auto pb-4"
               >
                 {stages.map((stage) => (
                   <div
                     key={stage.id}
                     ref={(el) => (stageRefs.current[stage.id] = el)}
-                    className="flex-shrink-0 w-72 sm:w-80 lg:w-[22rem]"
+                    className="flex-shrink-0 w-64 sm:w-72 lg:w-80"
                   >
-                    <div className="bg-gray-50 rounded-lg h-full flex flex-col min-h-96">
-                      <div className="p-3 sm:p-4 border-b border-gray-200">
+                    <div className="bg-gray-50 rounded-md h-full flex flex-col min-h-80">
+                      <div className="p-2 sm:p-3 border-b border-gray-200">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
                             <div
-                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                               style={{ backgroundColor: stage.color }}
                             />
-                            <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                            <h3 className="font-medium text-gray-900 text-xs sm:text-sm truncate">
                               {stage.name}
                             </h3>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="text-xs text-gray-600 hidden lg:block">
-                              ${"{"}
-                              stageAggregates[stage.id]?.totalAmount?.toLocaleString?.()
-                              || 0{"}"}
+                            <div className="text-[10px] text-gray-600 hidden lg:block">
+                              $
+                              {stageAggregates[
+                                stage.id
+                              ]?.totalAmount?.toLocaleString?.() || 0}
                             </div>
                             <Badge
                               variant="secondary"
-                              className="text-xs flex-shrink-0"
+                              className="text-[10px] flex-shrink-0"
                             >
                               {stageAggregates[stage.id]?.count ?? 0}
                             </Badge>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 px-2"
+                              className="h-6 px-1"
                               onClick={() =>
                                 setCollapsedStages((prev) => ({
                                   ...prev,
@@ -1233,7 +1234,7 @@ export default function DealsManagement() {
                       >
                         <DroppableStageArea stageId={stage.id}>
                           {!collapsedStages[stage.id] && (
-                            <div className="flex-1 p-3 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto min-h-0">
+                            <div className="flex-1 p-2 sm:p-3 space-y-2 overflow-y-auto min-h-0">
                               {(dealsByStage[stage.id] || []).map((deal) => (
                                 <DraggableDealCard key={deal.id} deal={deal} />
                               ))}
