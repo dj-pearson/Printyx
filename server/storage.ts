@@ -449,7 +449,12 @@ export interface IStorage {
   getContract(id: string, tenantId: string): Promise<Contract | undefined>;
 
   // Deal management operations
-  getDeals(tenantId: string, stageId?: string, search?: string, leadId?: string): Promise<any[]>;
+  getDeals(
+    tenantId: string,
+    stageId?: string,
+    search?: string,
+    leadId?: string
+  ): Promise<any[]>;
   getDeal(id: string, tenantId: string): Promise<any>;
   createDeal(deal: any): Promise<any>;
   updateDeal(id: string, deal: Partial<any>, tenantId: string): Promise<any>;
@@ -1595,6 +1600,21 @@ export class DatabaseStorage implements IStorage {
   ): Promise<InventoryItem> {
     const [newItem] = await db.insert(inventoryItems).values(item).returning();
     return newItem;
+  }
+
+  async updateInventoryItem(
+    id: string,
+    updates: Partial<InventoryItem>,
+    tenantId: string
+  ): Promise<InventoryItem | undefined> {
+    const [updated] = await db
+      .update(inventoryItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(
+        and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId))
+      )
+      .returning();
+    return updated;
   }
 
   // Technician operations

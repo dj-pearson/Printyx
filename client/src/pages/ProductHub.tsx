@@ -2,22 +2,29 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Monitor, 
-  Wrench, 
-  Users, 
-  Cog, 
-  Package, 
+import {
+  Monitor,
+  Wrench,
+  Users,
+  Cog,
+  Package,
   Server,
+  Layers,
   Search,
   Plus,
   BarChart3,
   FileText,
-  Settings
+  Settings,
 } from "lucide-react";
 
 interface ProductModule {
@@ -35,69 +42,91 @@ const productModules: ProductModule[] = [
   {
     id: "product-models",
     title: "Product Models",
-    description: "Manage copier equipment with CPC rates and manufacturer specifications",
+    description:
+      "Manage copier equipment with CPC rates and manufacturer specifications",
     icon: Monitor,
-    path: "/admin/product-models",
+    path: "/product-models",
     category: "Hardware",
     itemCount: 45,
-    status: "active"
+    status: "active",
   },
   {
-    id: "product-accessories", 
+    id: "product-accessories",
     title: "Product Accessories",
     description: "Hardware add-ons with model compatibility tracking",
     icon: Wrench,
-    path: "/admin/product-accessories", 
+    path: "/product-accessories",
     category: "Hardware",
     itemCount: 23,
-    status: "active"
+    status: "active",
   },
   {
     id: "professional-services",
-    title: "Professional Services", 
+    title: "Professional Services",
     description: "Consulting, installation, and training service offerings",
     icon: Users,
-    path: "/admin/professional-services",
-    category: "Services", 
+    path: "/professional-services",
+    category: "Services",
     itemCount: 12,
-    status: "active"
+    status: "active",
   },
   {
     id: "service-products",
     title: "Service Products",
     description: "Ongoing service offerings with subscription models",
     icon: Cog,
-    path: "/admin/service-products",
+    path: "/service-products",
     category: "Services",
     itemCount: 8,
-    status: "active"
+    status: "active",
   },
   {
     id: "supplies",
     title: "Supplies",
-    description: "Consumables, toner, paper, and maintenance kits with inventory tracking",
+    description:
+      "Consumables, toner, paper, and maintenance kits with inventory tracking",
     icon: Package,
-    path: "/admin/supplies",
+    path: "/supplies",
     category: "Consumables",
     itemCount: 156,
-    status: "active"
+    status: "active",
+  },
+  {
+    id: "inventory",
+    title: "Inventory",
+    description: "Stock levels, adjustments, reorders, and receiving",
+    icon: Package,
+    path: "/inventory",
+    category: "Operations",
+    itemCount: 0,
+    status: "active",
   },
   {
     id: "it-services",
     title: "IT & Managed Services",
     description: "Network management, cloud services, security, and IT support",
     icon: Server,
-    path: "/admin/it-services", 
+    path: "/managed-services",
     category: "Technology",
     itemCount: 18,
-    status: "active"
-  }
+    status: "active",
+  },
+  {
+    id: "software-products",
+    title: "Software Products",
+    description: "Licenses and software offerings with pricing and bundles",
+    icon: Layers,
+    path: "/software-products",
+    category: "Technology",
+    itemCount: 0,
+    status: "active",
+  },
 ];
 
 const quickActions = [
   { title: "Bulk Import Products", icon: FileText, action: "import" },
   { title: "Generate Product Reports", icon: BarChart3, action: "reports" },
-  { title: "Product Settings", icon: Settings, action: "settings" }
+  { title: "Product Settings", icon: Settings, action: "settings" },
 ];
 
 export default function ProductHub() {
@@ -106,30 +135,43 @@ export default function ProductHub() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Filter modules based on search and category
-  const filteredModules = productModules.filter(module => {
-    const matchesSearch = module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         module.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || module.category === selectedCategory;
+  const filteredModules = productModules.filter((module) => {
+    const matchesSearch =
+      module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      module.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || module.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const categories = ["all", ...Array.from(new Set(productModules.map(m => m.category)))];
+  const categories = [
+    "all",
+    ...Array.from(new Set(productModules.map((m) => m.category))),
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-green-100 text-green-800";
-      case "setup": return "bg-yellow-100 text-yellow-800";
-      case "coming-soon": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "setup":
+        return "bg-yellow-100 text-yellow-800";
+      case "coming-soon":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "active": return "Active";
-      case "setup": return "Setup Required";
-      case "coming-soon": return "Coming Soon";
-      default: return "Unknown";
+      case "active":
+        return "Active";
+      case "setup":
+        return "Setup Required";
+      case "coming-soon":
+        return "Coming Soon";
+      default:
+        return "Unknown";
     }
   };
 
@@ -139,7 +181,9 @@ export default function ProductHub() {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Product Management Hub</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Product Management Hub
+            </h1>
             <p className="text-muted-foreground mt-2">
               Centralized management for all product categories and services
             </p>
@@ -150,23 +194,30 @@ export default function ProductHub() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Products
+              </CardTitle>
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {productModules.reduce((sum, module) => sum + (module.itemCount || 0), 0)}
+                {productModules.reduce(
+                  (sum, module) => sum + (module.itemCount || 0),
+                  0
+                )}
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Modules</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Active Modules
+              </CardTitle>
               <Monitor className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {productModules.filter(m => m.status === "active").length}
+                {productModules.filter((m) => m.status === "active").length}
               </div>
             </CardContent>
           </Card>
@@ -186,7 +237,9 @@ export default function ProductHub() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {productModules.filter(m => m.category === "Services").reduce((sum, module) => sum + (module.itemCount || 0), 0)}
+                {productModules
+                  .filter((m) => m.category === "Services")
+                  .reduce((sum, module) => sum + (module.itemCount || 0), 0)}
               </div>
             </CardContent>
           </Card>
@@ -245,7 +298,10 @@ export default function ProductHub() {
           {filteredModules.map((module) => {
             const IconComponent = module.icon;
             return (
-              <Card key={module.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card
+                key={module.id}
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+              >
                 <Link href={module.path}>
                   <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between">
@@ -254,13 +310,17 @@ export default function ProductHub() {
                           <IconComponent className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                          <CardTitle className="text-lg">{module.title}</CardTitle>
+                          <CardTitle className="text-lg">
+                            {module.title}
+                          </CardTitle>
                           <Badge variant="secondary" className="text-xs">
                             {module.category}
                           </Badge>
                         </div>
                       </div>
-                      <Badge className={`text-xs ${getStatusColor(module.status)}`}>
+                      <Badge
+                        className={`text-xs ${getStatusColor(module.status)}`}
+                      >
                         {getStatusText(module.status)}
                       </Badge>
                     </div>
@@ -271,7 +331,9 @@ export default function ProductHub() {
                     </CardDescription>
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">
-                        {module.itemCount ? `${module.itemCount} items` : "No items"}
+                        {module.itemCount
+                          ? `${module.itemCount} items`
+                          : "No items"}
                       </div>
                       <Button size="sm" variant="ghost">
                         Manage <Plus className="ml-1 h-3 w-3" />

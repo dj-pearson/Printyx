@@ -1,7 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { registerOnboardingRoutes } from "./routes-onboarding";
-import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from "./routes-export";
+import {
+  exportChecklistPDF,
+  exportChecklistExcel,
+  exportChecklistCSV,
+} from "./routes-export";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
@@ -5384,6 +5388,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Inventory
+  app.get("/api/inventory", requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+      const items = await storage.getInventoryItems(tenantId);
+      // Shape data to match current UI expectations in Inventory.tsx
+      const shaped = items.map((it: any) => ({
+        id: it.id,
+        name: it.itemDescription ?? it.manufacturerPartNumber ?? it.partNumber,
+        sku: it.partNumber,
+        currentStock: it.quantityOnHand ?? 0,
+        reorderPoint: it.reorderPoint ?? 0,
+        unitCost: it.unitCost ?? 0,
+      }));
+      res.json(shaped);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      res.status(500).json({ message: "Failed to fetch inventory" });
+    }
+  });
+
+  app.post(
+    "/api/inventory",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        // Prefer strict validation against insert schema if client sends schema-compatible payload
+        let payload: any;
+        try {
+          payload = insertInventoryItemSchema.parse({ ...req.body, tenantId });
+        } catch {
+          // Fallback: map simplified UI shape to schema
+          const { name, sku, reorderPoint, unitCost, currentStock } =
+            req.body ?? {};
+          payload = insertInventoryItemSchema.parse({
+            tenantId,
+            partNumber: sku,
+            itemDescription: name,
+            reorderPoint: reorderPoint ?? 0,
+            unitCost: unitCost ?? 0,
+            quantityOnHand: currentStock ?? 0,
+          });
+        }
+        const created = await storage.createInventoryItem(payload);
+        res.json(created);
+      } catch (error) {
+        console.error("Error creating inventory item:", error);
+        res.status(500).json({ message: "Failed to create inventory item" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/inventory/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        // Allow partial updates either in schema fields or UI fields
+        const body = req.body ?? {};
+        const updates: any = {
+          ...body,
+        };
+        if (body.name) updates.itemDescription = body.name;
+        if (body.sku) updates.partNumber = body.sku;
+        if (typeof body.currentStock === "number")
+          updates.quantityOnHand = body.currentStock;
+        if (typeof body.reorderPoint === "number")
+          updates.reorderPoint = body.reorderPoint;
+        if (typeof body.unitCost === "number") updates.unitCost = body.unitCost;
+
+        const updated = await storage.updateInventoryItem(
+          id,
+          updates,
+          tenantId
+        );
+        if (!updated) {
+          return res.status(404).json({ message: "Inventory item not found" });
+        }
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating inventory item:", error);
+        res.status(500).json({ message: "Failed to update inventory item" });
+      }
+    }
+  );
+
   app.post(
     "/api/managed-services",
     requireAuth,
@@ -7375,63 +7479,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Contract routes
-  app.get("/api/contracts", requireAuth, requireTenant, async (req: TenantRequest, res) => {
-    try {
-      const contracts = await storage.getContracts(req.tenantId!);
-      res.json(contracts);
-    } catch (error) {
-      console.error("Error fetching contracts:", error);
-      res.status(500).json({ message: "Failed to fetch contracts" });
+  app.get(
+    "/api/contracts",
+    requireAuth,
+    requireTenant,
+    async (req: TenantRequest, res) => {
+      try {
+        const contracts = await storage.getContracts(req.tenantId!);
+        res.json(contracts);
+      } catch (error) {
+        console.error("Error fetching contracts:", error);
+        res.status(500).json({ message: "Failed to fetch contracts" });
+      }
     }
-  });
+  );
 
-  app.post("/api/contracts", requireAuth, requireTenant, async (req: TenantRequest, res) => {
-    try {
-      const session = req.session as any;
-      const userId = session?.userId;
-      
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+  app.post(
+    "/api/contracts",
+    requireAuth,
+    requireTenant,
+    async (req: TenantRequest, res) => {
+      try {
+        const session = req.session as any;
+        const userId = session?.userId;
+
+        if (!userId) {
+          return res.status(401).json({ message: "Authentication required" });
+        }
+
+        // Generate contract number if not provided
+        const contractNumber = req.body.contractNumber || `CNT-${Date.now()}`;
+
+        // Ensure we have a customerId
+        if (!req.body.customerId) {
+          return res.status(400).json({ message: "Customer ID is required" });
+        }
+
+        // Prepare contract data with only existing database columns
+        const contractData = {
+          customerId: req.body.customerId,
+          tenantId: req.tenantId!,
+          contractNumber,
+          startDate: req.body.startDate,
+          endDate: req.body.endDate,
+          blackRate: req.body.blackRate ? parseFloat(req.body.blackRate) : null,
+          colorRate: req.body.colorRate ? parseFloat(req.body.colorRate) : null,
+          monthlyBase: req.body.monthlyBase
+            ? parseFloat(req.body.monthlyBase)
+            : null,
+          status: req.body.status || "active",
+        };
+
+        console.log(
+          "Creating contract with data:",
+          JSON.stringify(contractData, null, 2)
+        );
+
+        // Convert date strings to Date objects if they exist
+        if (
+          contractData.startDate &&
+          typeof contractData.startDate === "string"
+        ) {
+          contractData.startDate = new Date(contractData.startDate);
+        }
+        if (contractData.endDate && typeof contractData.endDate === "string") {
+          contractData.endDate = new Date(contractData.endDate);
+        }
+
+        const newContract = await storage.createContract(contractData);
+        res.status(201).json(newContract);
+      } catch (error) {
+        console.error("Error creating contract:", error);
+        res.status(500).json({ message: "Failed to create contract" });
       }
-
-      // Generate contract number if not provided
-      const contractNumber = req.body.contractNumber || `CNT-${Date.now()}`;
-      
-      // Ensure we have a customerId
-      if (!req.body.customerId) {
-        return res.status(400).json({ message: "Customer ID is required" });
-      }
-
-      // Prepare contract data with only existing database columns
-      const contractData = {
-        customerId: req.body.customerId,
-        tenantId: req.tenantId!,
-        contractNumber,
-        startDate: req.body.startDate,
-        endDate: req.body.endDate,
-        blackRate: req.body.blackRate ? parseFloat(req.body.blackRate) : null,
-        colorRate: req.body.colorRate ? parseFloat(req.body.colorRate) : null,
-        monthlyBase: req.body.monthlyBase ? parseFloat(req.body.monthlyBase) : null,
-        status: req.body.status || 'active',
-      };
-
-      console.log('Creating contract with data:', JSON.stringify(contractData, null, 2));
-
-      // Convert date strings to Date objects if they exist
-      if (contractData.startDate && typeof contractData.startDate === 'string') {
-        contractData.startDate = new Date(contractData.startDate);
-      }
-      if (contractData.endDate && typeof contractData.endDate === 'string') {
-        contractData.endDate = new Date(contractData.endDate);
-      }
-
-      const newContract = await storage.createContract(contractData);
-      res.status(201).json(newContract);
-    } catch (error) {
-      console.error("Error creating contract:", error);
-      res.status(500).json({ message: "Failed to create contract" });
     }
-  });
+  );
 
   // Import and register proposals routes
   const proposalsRouter = await import("./routes-proposals.js");
@@ -12667,10 +12789,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register onboarding routes
   registerOnboardingRoutes(app);
-  
+
   // Export checklist routes
   app.get("/api/onboarding/export/:id/pdf", requireAuth, exportChecklistPDF);
-  app.get("/api/onboarding/export/:id/excel", requireAuth, exportChecklistExcel);
+  app.get(
+    "/api/onboarding/export/:id/excel",
+    requireAuth,
+    exportChecklistExcel
+  );
   app.get("/api/onboarding/export/:id/csv", requireAuth, exportChecklistCSV);
 
   // Register manufacturer integration routes
@@ -12699,9 +12825,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Debug: let's see what the exact query returns
       console.log("Executing search query for companies...");
-      
+
       const searchPattern = `%${searchTerm.toString().toLowerCase()}%`;
-      
+
       const searchResults = await db
         .select()
         .from(businessRecords)
@@ -12718,16 +12844,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         )
         .limit(10);
-      
-      console.log(`Found ${searchResults.length} results:`, searchResults.map(r => ({ name: r.companyName, type: r.recordType, status: r.status })));
+
+      console.log(
+        `Found ${searchResults.length} results:`,
+        searchResults.map((r) => ({
+          name: r.companyName,
+          type: r.recordType,
+          status: r.status,
+        }))
+      );
 
       // Transform the result to match expected format
-      const transformedResults = searchResults.map(record => ({
+      const transformedResults = searchResults.map((record) => ({
         id: record.id,
         name: record.companyName,
         phone: record.primaryContactPhone,
         email: record.primaryContactEmail,
-        address: [record.addressLine1, record.addressLine2, record.city, record.state, record.postalCode].filter(Boolean).join(', '),
+        address: [
+          record.addressLine1,
+          record.addressLine2,
+          record.city,
+          record.state,
+          record.postalCode,
+        ]
+          .filter(Boolean)
+          .join(", "),
       }));
 
       res.json(transformedResults);
@@ -12746,13 +12887,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let whereConditions = [
         eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.id, companyId)
+        eq(businessRecords.id, companyId),
       ];
 
       // Add search filtering only if searchTerm is provided and not empty
       if (searchTerm && (searchTerm as string).trim().length >= 1) {
         const searchPattern = `%${searchTerm.toString().toLowerCase()}%`;
-        whereConditions.push(sql`LOWER(primary_contact_name) LIKE ${searchPattern}`);
+        whereConditions.push(
+          sql`LOWER(primary_contact_name) LIKE ${searchPattern}`
+        );
       }
 
       // Return the primary contact from the business record itself
@@ -12769,8 +12912,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(10);
 
       // Filter out contacts with null/empty names
-      const validResults = searchResults.filter(contact => 
-        contact.name && contact.name.trim().length > 0
+      const validResults = searchResults.filter(
+        (contact) => contact.name && contact.name.trim().length > 0
       );
 
       res.json(validResults);
@@ -12788,7 +12931,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For now, return empty array as equipment table may not be properly set up
       const equipmentResults = [];
-      console.log(`Equipment query for company ${companyId}: returning empty array for now`);
+      console.log(
+        `Equipment query for company ${companyId}: returning empty array for now`
+      );
 
       res.json(equipmentResults);
     } catch (error) {
@@ -12801,9 +12946,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/phone-in-tickets", async (req, res) => {
     try {
       const tenantId = req.headers["x-tenant-id"] as string;
-      
+
       console.log("Phone-in ticket request body:", req.body);
-      
+
       // Map request fields to database schema
       const phoneTicketData = {
         tenant_id: tenantId,
@@ -12822,7 +12967,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         equipment_model: req.body.equipmentModel || "",
         equipment_serial: req.body.equipmentSerial || "",
         issue_category: req.body.issueCategory || "other",
-        issue_description: req.body.issueDescription || "No description provided",
+        issue_description:
+          req.body.issueDescription || "No description provided",
         priority: req.body.priority || "medium",
         contact_method: "phone",
         preferred_service_date: req.body.preferredServiceDate || null,
@@ -12830,7 +12976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       console.log("Creating phone-in ticket:", phoneTicketData);
-      
+
       // Use direct SQL execution instead of ORM
       const result = await db.execute(sql`
         INSERT INTO phone_in_tickets (
@@ -12849,14 +12995,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ${phoneTicketData.contact_method}, ${phoneTicketData.preferred_service_date}, ${phoneTicketData.notes}
         ) RETURNING *
       `);
-      
+
       const createdTicket = result.rows[0];
       console.log("Phone-in ticket created successfully:", createdTicket);
       res.json({ success: true, ticket: createdTicket });
-      
     } catch (error) {
       console.error("Error creating phone-in ticket:", error);
-      res.status(500).json({ error: "Failed to create phone-in ticket", details: error.message });
+      res
+        .status(500)
+        .json({
+          error: "Failed to create phone-in ticket",
+          details: error.message,
+        });
     }
   });
 
@@ -12864,19 +13014,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/phone-in-tickets", async (req, res) => {
     try {
       const tenantId = req.headers["x-tenant-id"] as string;
-      
+
       const result = await db.execute(sql`
         SELECT * FROM phone_in_tickets 
         WHERE tenant_id = ${tenantId}
         ORDER BY created_at DESC
         LIMIT 50
       `);
-      
+
       res.json(result.rows);
-      
     } catch (error) {
       console.error("Error fetching phone-in tickets:", error);
-      res.status(500).json({ error: "Failed to fetch phone-in tickets", details: error.message });
+      res
+        .status(500)
+        .json({
+          error: "Failed to fetch phone-in tickets",
+          details: error.message,
+        });
     }
   });
 
@@ -12885,24 +13039,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const tenantId = req.headers["x-tenant-id"] as string;
-      
+
       // Get the phone-in ticket
       const phoneTicketResult = await db.execute(sql`
         SELECT * FROM phone_in_tickets 
         WHERE id = ${id} AND tenant_id = ${tenantId}
       `);
-      
+
       if (phoneTicketResult.rows.length === 0) {
         return res.status(404).json({ error: "Phone-in ticket not found" });
       }
-      
+
       const phoneTicket = phoneTicketResult.rows[0];
-      
+
       // Check if already converted
       if (phoneTicket.converted_to_ticket_id) {
         return res.status(400).json({ error: "Ticket already converted" });
       }
-      
+
       // Create service ticket from phone-in ticket
       const serviceTicketResult = await db.execute(sql`
         INSERT INTO service_tickets (
@@ -12910,16 +13064,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           equipment_id, customer_address, customer_phone
         ) VALUES (
           ${phoneTicket.tenant_id}, ${phoneTicket.customer_id}, 
-          ${'Service Call: ' + (phoneTicket.customer_name || 'Unknown Customer')},
-          ${phoneTicket.issue_description || 'No description provided'},
-          ${phoneTicket.priority || 'medium'}, 'new',
+          ${
+            "Service Call: " + (phoneTicket.customer_name || "Unknown Customer")
+          },
+          ${phoneTicket.issue_description || "No description provided"},
+          ${phoneTicket.priority || "medium"}, 'new',
           ${phoneTicket.equipment_id}, ${phoneTicket.location_address},
           ${phoneTicket.caller_phone}
         ) RETURNING *
       `);
-      
+
       const serviceTicket = serviceTicketResult.rows[0];
-      
+
       // Mark phone-in ticket as converted
       await db.execute(sql`
         UPDATE phone_in_tickets 
@@ -12927,16 +13083,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             converted_at = NOW()
         WHERE id = ${id}
       `);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         serviceTicket: serviceTicket,
-        message: "Phone-in ticket converted to service ticket successfully"
+        message: "Phone-in ticket converted to service ticket successfully",
       });
-      
     } catch (error) {
       console.error("Error converting phone-in ticket:", error);
-      res.status(500).json({ error: "Failed to convert phone-in ticket", details: error.message });
+      res
+        .status(500)
+        .json({
+          error: "Failed to convert phone-in ticket",
+          details: error.message,
+        });
     }
   });
 
@@ -12957,14 +13117,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
   registerModularDashboardRoutes(app);
   registerManufacturerIntegrationRoutes(app);
-  
+
   // Register Sales Forecasting routes
   app.use(salesForecastingRoutes);
 
   // Phase 3: Register analytics routes
-  import('./analytics-routes').then(({ analyticsRouter }) => {
-    app.use(analyticsRouter);
-  }).catch(err => console.error('Failed to load analytics routes:', err));
+  import("./analytics-routes")
+    .then(({ analyticsRouter }) => {
+      app.use(analyticsRouter);
+    })
+    .catch((err) => console.error("Failed to load analytics routes:", err));
 
   const httpServer = createServer(app);
   return httpServer;
