@@ -12857,6 +12857,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Phone-in ticket conversion endpoint
+  app.post("/api/phone-in-tickets/:id/convert", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers["x-tenant-id"] as string;
+      
+      // Get the phone-in ticket
+      const phoneTicketResult = await db.execute(sql`
+        SELECT * FROM phone_in_tickets 
+        WHERE id = ${id} AND tenant_id = ${tenantId}
+      `);
+      
+      if (phoneTicketResult.rows.length === 0) {
+        return res.status(404).json({ error: "Phone-in ticket not found" });
+      }
+      
+      const phoneTicket = phoneTicketResult.rows[0];
+      
+      // Check if already converted
+      if (phoneTicket.converted_to_ticket_id) {
+        return res.status(400).json({ error: "Ticket already converted" });
+      }
+      
+      // Create service ticket from phone-in ticket
+      const serviceTicketResult = await db.execute(sql`
+        INSERT INTO service_tickets (
+          tenant_id, customer_id, title, description, priority, status,
+          equipment_id, customer_address, customer_phone
+        ) VALUES (
+          ${phoneTicket.tenant_id}, ${phoneTicket.customer_id}, 
+          ${'Service Call: ' + (phoneTicket.customer_name || 'Unknown Customer')},
+          ${phoneTicket.issue_description || 'No description provided'},
+          ${phoneTicket.priority || 'medium'}, 'new',
+          ${phoneTicket.equipment_id}, ${phoneTicket.location_address},
+          ${phoneTicket.caller_phone}
+        ) RETURNING *
+      `);
+      
+      const serviceTicket = serviceTicketResult.rows[0];
+      
+      // Mark phone-in ticket as converted
+      await db.execute(sql`
+        UPDATE phone_in_tickets 
+        SET converted_to_ticket_id = ${serviceTicket.id}, 
+            converted_at = NOW()
+        WHERE id = ${id}
+      `);
+      
+      res.json({ 
+        success: true, 
+        serviceTicket: serviceTicket,
+        message: "Phone-in ticket converted to service ticket successfully"
+      });
+      
+    } catch (error) {
+      console.error("Error converting phone-in ticket:", error);
+      res.status(500).json({ error: "Failed to convert phone-in ticket", details: error.message });
+    }
+  });
+
   // Register all route modules
   registerOnboardingRoutes(app);
   registerBusinessRecordRoutes(app);
