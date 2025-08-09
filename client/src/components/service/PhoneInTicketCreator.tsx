@@ -193,8 +193,17 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
     setSelectedCompany(company);
     form.setValue("companyName", company.name);
     form.setValue("companyId", company.id);
+    // Auto-populate location information from the selected company
     form.setValue("locationAddress", company.address || "");
     setCompanySearchTerm(company.name);
+    
+    // Clear previous contact selections when company changes
+    setSelectedContact(null);
+    setContactSearchTerm("");
+    form.setValue("callerName", "");
+    form.setValue("callerPhone", "");
+    form.setValue("callerEmail", "");
+    form.setValue("callerRole", "");
   };
 
   const handleContactSelect = (contact: any) => {
@@ -326,6 +335,9 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             <div className="mt-2">
               <div className="font-medium">{selectedCompany.name}</div>
               <div className="text-sm text-gray-600">{selectedCompany.address}</div>
+              <div className="text-xs text-gray-500">
+                Location will be auto-populated in Step 3
+              </div>
             </div>
           </div>
         )}

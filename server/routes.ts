@@ -12684,14 +12684,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            or(
-              eq(businessRecords.recordType, "customer"),
-              eq(businessRecords.recordType, "lead")
-            ),
+            // Only search customers for phone-in tickets, not leads
+            eq(businessRecords.recordType, "customer"),
             or(
               sql`LOWER(company_name) LIKE ${searchPattern}`,
               sql`LOWER(primary_contact_name) LIKE ${searchPattern}`,
-              sql`record_type ILIKE ${searchPattern}`,
               sql`status ILIKE ${searchPattern}`
             )
           )
