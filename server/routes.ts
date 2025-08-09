@@ -13128,6 +13128,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
     .catch((err) => console.error("Failed to load analytics routes:", err));
 
+  // Register Master Catalog routes
+  import("./routes-catalog")
+    .then(({ catalogRouter }) => {
+      app.use(catalogRouter);
+    })
+    .catch((err) => console.error("Failed to load catalog routes:", err));
+
+  // Seed master catalog on startup (development only)
+  if (process.env.NODE_ENV === 'development') {
+    import("./catalog-seed")
+      .then(({ seedMasterCatalog }) => {
+        setTimeout(() => {
+          seedMasterCatalog().then((success) => {
+            if (success) {
+              console.log('Master catalog seeded successfully');
+            }
+          });
+        }, 2000); // Wait 2 seconds for DB to be ready
+      })
+      .catch((err) => console.error("Failed to load catalog seeding:", err));
+  }
+
   const httpServer = createServer(app);
   return httpServer;
 }
