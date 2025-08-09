@@ -7860,10 +7860,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     return {
-      isValid: requiredFieldsFound >= 2, // Need at least model code and name
+      isValid: requiredFieldsFound >= 1, // Relax validation - need at least one required field
       mappings,
       suggestions,
-      headersFound: headers
+      headersFound: headers,
+      requiredFieldsFound,
+      debug: { patterns, requiredFields }
     };
   };
 
@@ -7959,21 +7961,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Enhanced CSV parsing with field mapping
         const csvText = file.buffer.toString("utf-8");
+        console.log("CSV file size:", file.size, "bytes");
+        console.log("First 200 characters:", csvText.substring(0, 200));
+        
         const lines = csvText.split(/\r?\n/).filter(line => line.trim());
         
         if (lines.length === 0) {
           return res.status(400).json({ message: "CSV file is empty" });
         }
+        
+        if (lines.length < 2) {
+          return res.status(400).json({ 
+            message: "CSV file must have at least a header row and one data row",
+            linesFound: lines.length
+          });
+        }
 
         // Parse header and create field mappings
-        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+        const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
         const fieldMappings = createFieldMappings(headers);
+        
+        // Log debug information
+        console.log("CSV Headers detected:", headers);
+        console.log("Field mappings:", fieldMappings);
         
         if (!fieldMappings.isValid) {
           return res.status(400).json({ 
             message: "Invalid CSV format", 
-            detail: `Required fields missing. Found: ${headers.join(", ")}. Need at least: model/item code, name/description, and price fields.`,
-            suggestedMappings: fieldMappings.suggestions
+            detail: `Required fields missing. Found headers: ${headers.join(", ")}. Need at least: model/item code and name/description fields.`,
+            suggestedMappings: fieldMappings.suggestions,
+            detectedHeaders: headers,
+            fieldMappings: fieldMappings.mappings
           });
         }
 
