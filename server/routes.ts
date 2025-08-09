@@ -36,6 +36,7 @@ import {
   companyContacts,
   equipment,
   businessRecords,
+  phoneInTickets,
 } from "@shared/schema";
 import multer from "multer";
 import csv from "csv-parser";
@@ -12773,49 +12774,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Phone-in tickets POST endpoint
+  // Phone-in tickets POST endpoint - Now properly saves to database
   app.post("/api/phone-in-tickets", async (req, res) => {
     try {
       const tenantId = req.headers["x-tenant-id"] as string;
       
       console.log("Phone-in ticket request body:", req.body);
       
-      // Create basic phone-in ticket record (no validation for now, just store it)
-      const ticketData = {
-        id: `phone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        tenantId: tenantId || "default-tenant",
-        customerId: req.body.customerId || null,
-        contactId: req.body.contactId || null,
-        equipmentId: req.body.equipmentId || null,
-        title: `Phone-in: ${req.body.issueCategory || 'Issue'} - ${req.body.companyName || 'Company'}`,
-        description: req.body.issueDescription || req.body.description || "No description provided",
+      // Map request fields to database schema
+      const phoneTicketData = {
+        tenant_id: tenantId,
+        caller_name: req.body.callerName || "Unknown",
+        caller_phone: req.body.callerPhone || "",
+        caller_email: req.body.callerEmail || "",
+        caller_role: req.body.callerRole || "",
+        customer_id: req.body.customerId || req.body.companyId || "",
+        customer_name: req.body.companyName || "Unknown Company",
+        location_address: req.body.locationAddress || "",
+        location_building: req.body.locationBuilding || "",
+        location_floor: req.body.locationFloor || "",
+        location_room: req.body.locationRoom || "",
+        equipment_id: req.body.equipmentId || "",
+        equipment_brand: req.body.equipmentBrand || "",
+        equipment_model: req.body.equipmentModel || "",
+        equipment_serial: req.body.equipmentSerial || "",
+        issue_category: req.body.issueCategory || "other",
+        issue_description: req.body.issueDescription || "No description provided",
         priority: req.body.priority || "medium",
-        status: "open",
-        contactMethod: "phone",
-        callerName: req.body.callerName || "Unknown",
-        callerPhone: req.body.callerPhone || "",
-        callerEmail: req.body.callerEmail || "",
-        callerRole: req.body.callerRole || "",
-        locationAddress: req.body.locationAddress || "",
-        locationBuilding: req.body.locationBuilding || "",
-        locationFloor: req.body.locationFloor || "",
-        locationRoom: req.body.locationRoom || "",
-        equipmentBrand: req.body.equipmentBrand || "",
-        equipmentModel: req.body.equipmentModel || "",
-        equipmentSerial: req.body.equipmentSerial || "",
-        issueCategory: req.body.issueCategory || "other",
-        preferredServiceDate: req.body.preferredServiceDate || "",
+        contact_method: "phone",
+        preferred_service_date: req.body.preferredServiceDate || null,
         notes: req.body.notes || "",
-        createdAt: new Date().toISOString(),
-        createdBy: "system", // Could be set to current user ID
       };
 
-      console.log("Creating phone-in ticket:", ticketData);
-      res.json({ success: true, ticket: ticketData });
+      console.log("Creating phone-in ticket:", phoneTicketData);
+      
+      // Use direct SQL execution instead of ORM
+      const result = await db.execute(sql`
+        INSERT INTO phone_in_tickets (
+          tenant_id, caller_name, caller_phone, caller_email, caller_role,
+          customer_id, customer_name, location_address, location_building, 
+          location_floor, location_room, equipment_id, equipment_brand, 
+          equipment_model, equipment_serial, issue_category, issue_description,
+          priority, contact_method, preferred_service_date, notes
+        ) VALUES (
+          ${phoneTicketData.tenant_id}, ${phoneTicketData.caller_name}, ${phoneTicketData.caller_phone}, 
+          ${phoneTicketData.caller_email}, ${phoneTicketData.caller_role}, ${phoneTicketData.customer_id}, 
+          ${phoneTicketData.customer_name}, ${phoneTicketData.location_address}, ${phoneTicketData.location_building}, 
+          ${phoneTicketData.location_floor}, ${phoneTicketData.location_room}, ${phoneTicketData.equipment_id}, 
+          ${phoneTicketData.equipment_brand}, ${phoneTicketData.equipment_model}, ${phoneTicketData.equipment_serial}, 
+          ${phoneTicketData.issue_category}, ${phoneTicketData.issue_description}, ${phoneTicketData.priority}, 
+          ${phoneTicketData.contact_method}, ${phoneTicketData.preferred_service_date}, ${phoneTicketData.notes}
+        ) RETURNING *
+      `);
+      
+      const createdTicket = result.rows[0];
+      console.log("Phone-in ticket created successfully:", createdTicket);
+      res.json({ success: true, ticket: createdTicket });
       
     } catch (error) {
       console.error("Error creating phone-in ticket:", error);
       res.status(500).json({ error: "Failed to create phone-in ticket", details: error.message });
+    }
+  });
+
+  // Phone-in tickets GET endpoint
+  app.get("/api/phone-in-tickets", async (req, res) => {
+    try {
+      const tenantId = req.headers["x-tenant-id"] as string;
+      
+      const result = await db.execute(sql`
+        SELECT * FROM phone_in_tickets 
+        WHERE tenant_id = ${tenantId}
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
+      
+      res.json(result.rows);
+      
+    } catch (error) {
+      console.error("Error fetching phone-in tickets:", error);
+      res.status(500).json({ error: "Failed to fetch phone-in tickets", details: error.message });
     }
   });
 
