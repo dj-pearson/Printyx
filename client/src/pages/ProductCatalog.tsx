@@ -1,19 +1,48 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import { Search, Package, ShoppingCart, Settings, Eye, CheckCircle, Filter, ArrowLeft } from 'lucide-react';
-import MainLayout from '@/components/layout/main-layout';
-import { Link } from 'wouter';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  Search,
+  Package,
+  ShoppingCart,
+  Settings,
+  Eye,
+  CheckCircle,
+  Filter,
+  ArrowLeft,
+  Upload,
+} from "lucide-react";
+import MainLayout from "@/components/layout/main-layout";
+import { Link } from "wouter";
 
 interface MasterProduct {
   id: string;
@@ -52,81 +81,125 @@ interface EnabledProduct {
 }
 
 export default function ProductCatalog() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedManufacturer, setSelectedManufacturer] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedManufacturer, setSelectedManufacturer] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+    new Set()
+  );
+  const [masterCsvFile, setMasterCsvFile] = useState<File | null>(null);
+  const [tenantCsvFile, setTenantCsvFile] = useState<File | null>(null);
   const [enableForm, setEnableForm] = useState({
-    customSku: '',
-    customName: '',
-    dealerCost: '',
-    companyPrice: '',
-    markupRuleId: '',
-    priceOverridden: false
+    customSku: "",
+    customName: "",
+    dealerCost: "",
+    companyPrice: "",
+    markupRuleId: "",
+    priceOverridden: false,
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Helper: upload CSV via multipart/form-data
+  const uploadCsv = async (url: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const headers: HeadersInit = {};
+    if (
+      typeof window !== "undefined" &&
+      localStorage.getItem("demo-authenticated") === "true"
+    ) {
+      headers["X-Demo-Auth"] = "true";
+    }
+    if (typeof window !== "undefined") {
+      const tenantId =
+        localStorage.getItem("demo-tenant-id") ||
+        "550e8400-e29b-41d4-a716-446655440000";
+      if (tenantId) headers["x-tenant-id"] = tenantId;
+    }
+    const res = await fetch(url, {
+      method: "POST",
+      body: form,
+      headers,
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const text = (await res.text()) || res.statusText;
+      throw new Error(`${res.status}: ${text}`);
+    }
+    return res.json();
+  };
+
   // Fetch master catalog products
   const { data: masterProducts = [], isLoading: isLoadingMaster } = useQuery({
-    queryKey: ['/api/catalog/models', { manufacturer: selectedManufacturer, search: searchTerm, category: selectedCategory }],
-    queryFn: () => apiRequest(`/api/catalog/models?manufacturer=${selectedManufacturer}&search=${searchTerm}&category=${selectedCategory}`)
+    queryKey: [
+      "/api/catalog/models",
+      {
+        manufacturer: selectedManufacturer,
+        search: searchTerm,
+        category: selectedCategory,
+      },
+    ],
+    queryFn: () =>
+      apiRequest(
+        `/api/catalog/models?manufacturer=${selectedManufacturer}&search=${searchTerm}&category=${selectedCategory}`
+      ),
   });
 
   // Fetch enabled products for tenant
   const { data: enabledProducts = [], isLoading: isLoadingEnabled } = useQuery({
-    queryKey: ['/api/enabled-products'],
-    queryFn: () => apiRequest('/api/enabled-products')
+    queryKey: ["/api/enabled-products"],
+    queryFn: () => apiRequest("/api/enabled-products"),
   });
 
   // Fetch manufacturers list
   const { data: manufacturers = [] } = useQuery({
-    queryKey: ['/api/catalog/manufacturers'],
-    queryFn: () => apiRequest('/api/catalog/manufacturers')
+    queryKey: ["/api/catalog/manufacturers"],
+    queryFn: () => apiRequest("/api/catalog/manufacturers"),
   });
 
   // Enable single product mutation
   const enableProductMutation = useMutation({
     mutationFn: (data: { productId: string; overrides: any }) =>
       apiRequest(`/api/catalog/models/${data.productId}/enable`, {
-        method: 'POST',
-        body: JSON.stringify(data.overrides)
+        method: "POST",
+        body: JSON.stringify(data.overrides),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
-      toast({ title: 'Product enabled successfully' });
+      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
+      toast({ title: "Product enabled successfully" });
     },
     onError: (error: any) => {
-      toast({ 
-        title: 'Error enabling product', 
+      toast({
+        title: "Error enabling product",
         description: error.message,
-        variant: 'destructive' 
+        variant: "destructive",
       });
-    }
+    },
   });
 
   // Bulk enable products mutation
   const bulkEnableMutation = useMutation({
     mutationFn: (data: { masterProductIds: string[]; defaultOverrides: any }) =>
-      apiRequest('/api/catalog/models/bulk-enable', {
-        method: 'POST',
-        body: JSON.stringify(data)
+      apiRequest("/api/catalog/models/bulk-enable", {
+        method: "POST",
+        body: JSON.stringify(data),
       }),
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
-      toast({ 
-        title: 'Products enabled', 
-        description: `${data.enabled} products enabled, ${data.skipped} already enabled` 
+      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
+      toast({
+        title: "Products enabled",
+        description: `${data.enabled} products enabled, ${data.skipped} already enabled`,
       });
       setSelectedProducts(new Set());
     },
     onError: (error: any) => {
-      toast({ 
-        title: 'Error enabling products', 
+      toast({
+        title: "Error enabling products",
         description: error.message,
-        variant: 'destructive' 
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const handleSelectProduct = (productId: string) => {
@@ -141,25 +214,35 @@ export default function ProductCatalog() {
 
   const handleBulkEnable = () => {
     if (selectedProducts.size === 0) {
-      toast({ title: 'No products selected', variant: 'destructive' });
+      toast({ title: "No products selected", variant: "destructive" });
       return;
     }
 
     bulkEnableMutation.mutate({
       masterProductIds: Array.from(selectedProducts),
       defaultOverrides: {
-        dealerCost: enableForm.dealerCost ? parseFloat(enableForm.dealerCost) : null,
-        companyPrice: enableForm.companyPrice ? parseFloat(enableForm.companyPrice) : null,
-        markupRuleId: enableForm.markupRuleId || null
-      }
+        dealerCost: enableForm.dealerCost
+          ? parseFloat(enableForm.dealerCost)
+          : null,
+        companyPrice: enableForm.companyPrice
+          ? parseFloat(enableForm.companyPrice)
+          : null,
+        markupRuleId: enableForm.markupRuleId || null,
+      },
     });
   };
 
   const isProductEnabled = (productId: string) => {
-    return enabledProducts.some((ep: EnabledProduct) => ep.masterProductId === productId);
+    return enabledProducts.some(
+      (ep: EnabledProduct) => ep.masterProductId === productId
+    );
   };
 
-  const categories = Array.from(new Set(masterProducts.map((p: MasterProduct) => p.category).filter(Boolean)));
+  const categories = Array.from(
+    new Set(
+      masterProducts.map((p: MasterProduct) => p.category).filter(Boolean)
+    )
+  );
 
   return (
     <MainLayout>
@@ -175,27 +258,134 @@ export default function ProductCatalog() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Master Product Catalog</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">
+                Master Product Catalog
+              </h1>
               <p className="text-sm text-muted-foreground hidden sm:block">
-                Browse Printyx's master catalog and enable products for your organization
+                Browse Printyx's master catalog and enable products for your
+                organization
               </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            {/* Platform Admin: Import to Master Catalog */}
+            <div className="flex items-center gap-2">
+              <input
+                id="masterCsv"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => setMasterCsvFile(e.target.files?.[0] || null)}
+              />
+              <label htmlFor="masterCsv">
+                <Button asChild variant="outline" size="sm">
+                  <span className="flex items-center gap-2 cursor-pointer">
+                    <Upload className="h-4 w-4" />
+                    Import Master CSV
+                  </span>
+                </Button>
+              </label>
+              <Button
+                size="sm"
+                disabled={!masterCsvFile}
+                onClick={async () => {
+                  if (!masterCsvFile) return;
+                  try {
+                    const result = await uploadCsv(
+                      "/api/catalog/models/import",
+                      masterCsvFile
+                    );
+                    toast({
+                      title: "Master catalog imported",
+                      description: `${result.created ?? 0} processed`,
+                    });
+                    setMasterCsvFile(null);
+                    // Refresh catalog
+                    queryClient.invalidateQueries();
+                  } catch (err: any) {
+                    toast({
+                      title: "Import failed",
+                      description: err.message,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Upload
+              </Button>
+            </div>
+            {/* Tenant: Enable from CSV with Dealer Prices */}
+            <div className="flex items-center gap-2">
+              <input
+                id="tenantCsv"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => setTenantCsvFile(e.target.files?.[0] || null)}
+              />
+              <label htmlFor="tenantCsv">
+                <Button asChild variant="outline" size="sm">
+                  <span className="flex items-center gap-2 cursor-pointer">
+                    <Upload className="h-4 w-4" />
+                    Enable From CSV
+                  </span>
+                </Button>
+              </label>
+              <Button
+                size="sm"
+                disabled={!tenantCsvFile}
+                onClick={async () => {
+                  if (!tenantCsvFile) return;
+                  try {
+                    const result = await uploadCsv(
+                      "/api/catalog/models/enable-from-csv",
+                      tenantCsvFile
+                    );
+                    toast({
+                      title: "Products enabled",
+                      description: `${result.enabled ?? 0} enabled`,
+                    });
+                    setTenantCsvFile(null);
+                    queryClient.invalidateQueries({
+                      queryKey: ["/api/enabled-products"],
+                    });
+                  } catch (err: any) {
+                    toast({
+                      title: "Enable failed",
+                      description: err.message,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Apply
+              </Button>
             </div>
           </div>
         </div>
 
         <Tabs defaultValue="browse" className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="browse" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <TabsTrigger
+              value="browse"
+              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+            >
               <Search className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Browse Catalog</span>
               <span className="sm:hidden">Browse</span>
             </TabsTrigger>
-            <TabsTrigger value="enabled" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <TabsTrigger
+              value="enabled"
+              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+            >
               <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Enabled Products</span>
               <span className="sm:hidden">Enabled</span>
             </TabsTrigger>
-            <TabsTrigger value="tenant" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <TabsTrigger
+              value="tenant"
+              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+            >
               <Package className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Tenant Products</span>
               <span className="sm:hidden">Tenant</span>
@@ -215,7 +405,9 @@ export default function ProductCatalog() {
                 {/* Mobile-first responsive grid */}
                 <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Search Products</Label>
+                    <Label className="text-sm font-medium">
+                      Search Products
+                    </Label>
                     <Input
                       placeholder="Search by name or model..."
                       value={searchTerm}
@@ -225,7 +417,10 @@ export default function ProductCatalog() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Manufacturer</Label>
-                    <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
+                    <Select
+                      value={selectedManufacturer}
+                      onValueChange={setSelectedManufacturer}
+                    >
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder="All Manufacturers" />
                       </SelectTrigger>
@@ -241,7 +436,10 @@ export default function ProductCatalog() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Category</Label>
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <Select
+                      value={selectedCategory}
+                      onValueChange={setSelectedCategory}
+                    >
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder="All Categories" />
                       </SelectTrigger>
@@ -259,7 +457,10 @@ export default function ProductCatalog() {
                     <Label className="text-sm font-medium">Bulk Actions</Label>
                     <Button
                       onClick={handleBulkEnable}
-                      disabled={selectedProducts.size === 0 || bulkEnableMutation.isPending}
+                      disabled={
+                        selectedProducts.size === 0 ||
+                        bulkEnableMutation.isPending
+                      }
                       className="w-full h-9 text-sm"
                       size="sm"
                     >
@@ -274,48 +475,76 @@ export default function ProductCatalog() {
             {selectedProducts.size > 0 && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Bulk Enable Settings</CardTitle>
+                  <CardTitle className="text-lg">
+                    Bulk Enable Settings
+                  </CardTitle>
                   <CardDescription className="text-sm">
-                    Configure default settings for {selectedProducts.size} selected products
+                    Configure default settings for {selectedProducts.size}{" "}
+                    selected products
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Default Dealer Cost</Label>
+                      <Label className="text-sm font-medium">
+                        Default Dealer Cost
+                      </Label>
                       <Input
                         type="number"
                         step="0.01"
                         placeholder="0.00"
                         value={enableForm.dealerCost}
-                        onChange={(e) => setEnableForm(prev => ({ ...prev, dealerCost: e.target.value }))}
+                        onChange={(e) =>
+                          setEnableForm((prev) => ({
+                            ...prev,
+                            dealerCost: e.target.value,
+                          }))
+                        }
                         className="h-9"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Default Company Price</Label>
+                      <Label className="text-sm font-medium">
+                        Default Company Price
+                      </Label>
                       <Input
                         type="number"
                         step="0.01"
                         placeholder="0.00"
                         value={enableForm.companyPrice}
-                        onChange={(e) => setEnableForm(prev => ({ ...prev, companyPrice: e.target.value }))}
+                        onChange={(e) =>
+                          setEnableForm((prev) => ({
+                            ...prev,
+                            companyPrice: e.target.value,
+                          }))
+                        }
                         className="h-9"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Markup Rule</Label>
-                      <Select 
-                        value={enableForm.markupRuleId} 
-                        onValueChange={(value) => setEnableForm(prev => ({ ...prev, markupRuleId: value }))}
+                      <Select
+                        value={enableForm.markupRuleId}
+                        onValueChange={(value) =>
+                          setEnableForm((prev) => ({
+                            ...prev,
+                            markupRuleId: value,
+                          }))
+                        }
                       >
                         <SelectTrigger className="h-9">
                           <SelectValue placeholder="Select markup rule" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="standard">Standard Markup (25%)</SelectItem>
-                          <SelectItem value="premium">Premium Markup (35%)</SelectItem>
-                          <SelectItem value="bulk">Bulk Discount (15%)</SelectItem>
+                          <SelectItem value="standard">
+                            Standard Markup (25%)
+                          </SelectItem>
+                          <SelectItem value="premium">
+                            Premium Markup (35%)
+                          </SelectItem>
+                          <SelectItem value="bulk">
+                            Bulk Discount (15%)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -326,140 +555,194 @@ export default function ProductCatalog() {
 
             {/* Master Products Grid - Mobile Optimized */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {isLoadingMaster ? (
-                // Loading skeleton
-                Array.from({ length: 8 }).map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <CardHeader className="pb-3">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="h-3 bg-gray-200 rounded"></div>
-                        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                masterProducts.map((product: MasterProduct) => {
-                  const isEnabled = isProductEnabled(product.id);
-                  const isSelected = selectedProducts.has(product.id);
-                  
-                  return (
-                    <Card key={product.id} className={`transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-blue-500' : ''} ${isEnabled ? 'bg-green-50 border-green-200' : ''}`}>
+              {isLoadingMaster
+                ? // Loading skeleton
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <Card key={i} className="animate-pulse">
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-base sm:text-lg leading-tight">{product.displayName}</CardTitle>
-                            <CardDescription className="text-xs sm:text-sm">
-                              {product.manufacturer} - {product.modelCode}
-                            </CardDescription>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {isEnabled ? (
-                              <Badge variant="outline" className="bg-green-100 text-green-800 text-xs">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                <span className="hidden sm:inline">Enabled</span>
-                                <span className="sm:hidden">✓</span>
-                              </Badge>
-                            ) : (
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => handleSelectProduct(product.id)}
-                              />
-                            )}
-                          </div>
-                        </div>
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                       </CardHeader>
-                      <CardContent className="pt-0">
+                      <CardContent>
                         <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-muted-foreground">MSRP:</span>
-                            <span className="text-sm font-medium">
-                              {product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}
-                            </span>
-                          </div>
-                          
-                          {product.category && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-muted-foreground">Category:</span>
-                              <Badge variant="outline" className="text-xs">{product.category}</Badge>
-                            </div>
-                          )}
-
-                          <div className="flex gap-2 pt-2">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="flex-1 text-xs">
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  <span className="hidden sm:inline">View Details</span>
-                                  <span className="sm:hidden">View</span>
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-2xl mx-4">
-                                <DialogHeader>
-                                  <DialogTitle>{product.displayName}</DialogTitle>
-                                  <DialogDescription>
-                                    {product.manufacturer} {product.modelCode}
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                      <Label className="text-sm font-medium">Manufacturer</Label>
-                                      <p className="text-sm">{product.manufacturer}</p>
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">Model Code</Label>
-                                      <p className="text-sm">{product.modelCode}</p>
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">MSRP</Label>
-                                      <p className="text-sm">{product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                      <Label className="text-sm font-medium">Status</Label>
-                                      <p className="text-sm">{product.status}</p>
-                                    </div>
-                                  </div>
-                                  {product.specsJson && (
-                                    <div>
-                                      <Label className="text-sm font-medium">Specifications</Label>
-                                      <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40 mt-2">
-                                        {JSON.stringify(product.specsJson, null, 2)}
-                                      </pre>
-                                    </div>
-                                  )}
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                            
-                            {!isEnabled && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  enableProductMutation.mutate({
-                                    productId: product.id,
-                                    overrides: {}
-                                  });
-                                }}
-                                disabled={enableProductMutation.isPending}
-                                className="text-xs"
-                              >
-                                <ShoppingCart className="h-3 w-3 mr-1" />
-                                <span className="hidden sm:inline">Enable</span>
-                                <span className="sm:hidden">+</span>
-                              </Button>
-                            )}
-                          </div>
+                          <div className="h-3 bg-gray-200 rounded"></div>
+                          <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                         </div>
                       </CardContent>
                     </Card>
-                  );
-                })
-              )}
+                  ))
+                : masterProducts.map((product: MasterProduct) => {
+                    const isEnabled = isProductEnabled(product.id);
+                    const isSelected = selectedProducts.has(product.id);
+
+                    return (
+                      <Card
+                        key={product.id}
+                        className={`transition-all hover:shadow-md ${
+                          isSelected ? "ring-2 ring-blue-500" : ""
+                        } ${isEnabled ? "bg-green-50 border-green-200" : ""}`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-base sm:text-lg leading-tight">
+                                {product.displayName}
+                              </CardTitle>
+                              <CardDescription className="text-xs sm:text-sm">
+                                {product.manufacturer} - {product.modelCode}
+                              </CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {isEnabled ? (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-green-100 text-green-800 text-xs"
+                                >
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  <span className="hidden sm:inline">
+                                    Enabled
+                                  </span>
+                                  <span className="sm:hidden">✓</span>
+                                </Badge>
+                              ) : (
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() =>
+                                    handleSelectProduct(product.id)
+                                  }
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-muted-foreground">
+                                MSRP:
+                              </span>
+                              <span className="text-sm font-medium">
+                                {product.msrp
+                                  ? `$${product.msrp.toLocaleString()}`
+                                  : "N/A"}
+                              </span>
+                            </div>
+
+                            {product.category && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">
+                                  Category:
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {product.category}
+                                </Badge>
+                              </div>
+                            )}
+
+                            <div className="flex gap-2 pt-2">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 text-xs"
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    <span className="hidden sm:inline">
+                                      View Details
+                                    </span>
+                                    <span className="sm:hidden">View</span>
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl mx-4">
+                                  <DialogHeader>
+                                    <DialogTitle>
+                                      {product.displayName}
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                      {product.manufacturer} {product.modelCode}
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      <div>
+                                        <Label className="text-sm font-medium">
+                                          Manufacturer
+                                        </Label>
+                                        <p className="text-sm">
+                                          {product.manufacturer}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">
+                                          Model Code
+                                        </Label>
+                                        <p className="text-sm">
+                                          {product.modelCode}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">
+                                          MSRP
+                                        </Label>
+                                        <p className="text-sm">
+                                          {product.msrp
+                                            ? `$${product.msrp.toLocaleString()}`
+                                            : "N/A"}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">
+                                          Status
+                                        </Label>
+                                        <p className="text-sm">
+                                          {product.status}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {product.specsJson && (
+                                      <div>
+                                        <Label className="text-sm font-medium">
+                                          Specifications
+                                        </Label>
+                                        <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40 mt-2">
+                                          {JSON.stringify(
+                                            product.specsJson,
+                                            null,
+                                            2
+                                          )}
+                                        </pre>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+
+                              {!isEnabled && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    enableProductMutation.mutate({
+                                      productId: product.id,
+                                      overrides: {},
+                                    });
+                                  }}
+                                  disabled={enableProductMutation.isPending}
+                                  className="text-xs"
+                                >
+                                  <ShoppingCart className="h-3 w-3 mr-1" />
+                                  <span className="hidden sm:inline">
+                                    Enable
+                                  </span>
+                                  <span className="sm:hidden">+</span>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
             </div>
           </TabsContent>
 
@@ -479,7 +762,9 @@ export default function ProductCatalog() {
                     <div className="col-span-full text-center text-muted-foreground py-12">
                       <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p className="text-sm">No products enabled yet.</p>
-                      <p className="text-xs">Browse the catalog to enable products.</p>
+                      <p className="text-xs">
+                        Browse the catalog to enable products.
+                      </p>
                     </div>
                   ) : (
                     enabledProducts.map((product: EnabledProduct) => (
@@ -489,34 +774,57 @@ export default function ProductCatalog() {
                             {product.customName || product.displayName}
                           </CardTitle>
                           <CardDescription className="text-xs">
-                            {product.manufacturer} - {product.customSku || product.modelCode}
+                            {product.manufacturer} -{" "}
+                            {product.customSku || product.modelCode}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-0">
                           <div className="space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-xs text-muted-foreground">MSRP:</span>
-                              <span className="text-sm">{product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}</span>
+                              <span className="text-xs text-muted-foreground">
+                                MSRP:
+                              </span>
+                              <span className="text-sm">
+                                {product.msrp
+                                  ? `$${product.msrp.toLocaleString()}`
+                                  : "N/A"}
+                              </span>
                             </div>
                             {product.dealerCost && (
                               <div className="flex justify-between">
-                                <span className="text-xs text-muted-foreground">Dealer Cost:</span>
-                                <span className="text-sm">${product.dealerCost.toLocaleString()}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Dealer Cost:
+                                </span>
+                                <span className="text-sm">
+                                  ${product.dealerCost.toLocaleString()}
+                                </span>
                               </div>
                             )}
                             {product.companyPrice && (
                               <div className="flex justify-between">
-                                <span className="text-xs text-muted-foreground">Company Price:</span>
-                                <span className="text-sm font-medium">${product.companyPrice.toLocaleString()}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Company Price:
+                                </span>
+                                <span className="text-sm font-medium">
+                                  ${product.companyPrice.toLocaleString()}
+                                </span>
                               </div>
                             )}
                             <div className="flex justify-between">
-                              <span className="text-xs text-muted-foreground">Source:</span>
-                              <Badge variant="outline" className="text-xs">Master Catalog</Badge>
+                              <span className="text-xs text-muted-foreground">
+                                Source:
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                Master Catalog
+                              </Badge>
                             </div>
                           </div>
                           <div className="flex gap-2 pt-3">
-                            <Button variant="outline" size="sm" className="flex-1 text-xs">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 text-xs"
+                            >
                               <Settings className="h-3 w-3 mr-1" />
                               Configure
                             </Button>
@@ -533,7 +841,9 @@ export default function ProductCatalog() {
           <TabsContent value="tenant" className="space-y-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Tenant-Specific Products</CardTitle>
+                <CardTitle className="text-lg">
+                  Tenant-Specific Products
+                </CardTitle>
                 <CardDescription className="text-sm">
                   Products created specifically for your organization
                 </CardDescription>
@@ -542,7 +852,9 @@ export default function ProductCatalog() {
                 <div className="text-center text-muted-foreground py-12">
                   <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-sm">No tenant-specific products yet.</p>
-                  <p className="text-xs">Create custom products not available in the master catalog.</p>
+                  <p className="text-xs">
+                    Create custom products not available in the master catalog.
+                  </p>
                   <Button className="mt-4" size="sm">
                     <Package className="h-4 w-4 mr-2" />
                     Add Custom Product
