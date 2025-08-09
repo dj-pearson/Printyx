@@ -56,6 +56,7 @@ interface MasterProduct {
   status: string;
   category?: string;
   productType?: string;
+  itemType?: 'model' | 'accessory';
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +87,7 @@ export default function ProductCatalog() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedManufacturer, setSelectedManufacturer] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedItemType, setSelectedItemType] = useState("all");
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
     new Set()
   );
@@ -147,6 +149,7 @@ export default function ProductCatalog() {
         manufacturer: selectedManufacturer,
         search: searchTerm,
         category: selectedCategory,
+        itemType: selectedItemType,
       },
     ],
     queryFn: () =>
@@ -482,7 +485,7 @@ export default function ProductCatalog() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Mobile-first responsive grid */}
-                <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+                <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-5 sm:gap-4">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">
                       Search Products
@@ -529,6 +532,22 @@ export default function ProductCatalog() {
                             {category}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Product Type</Label>
+                    <Select
+                      value={selectedItemType}
+                      onValueChange={setSelectedItemType}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="All Types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="model">Models</SelectItem>
+                        <SelectItem value="accessory">Accessories</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -650,7 +669,14 @@ export default function ProductCatalog() {
                       </CardContent>
                     </Card>
                   ))
-                : masterProducts.map((product: MasterProduct) => {
+                : masterProducts
+                    .filter((product: MasterProduct) => {
+                      if (selectedItemType !== "all" && product.itemType !== selectedItemType) {
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((product: MasterProduct) => {
                     const isEnabled = isProductEnabled(product.id);
                     const isSelected = selectedProducts.has(product.id);
 
@@ -729,16 +755,22 @@ export default function ProductCatalog() {
                               </div>
                             )}
 
-                            {product.category && (
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-muted-foreground">
-                                  Category:
-                                </span>
+                            {/* Product Type and Category Badges */}
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {product.itemType && (
+                                <Badge 
+                                  variant={product.itemType === 'model' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {product.itemType === 'model' ? 'Model' : 'Accessory'}
+                                </Badge>
+                              )}
+                              {product.category && (
                                 <Badge variant="outline" className="text-xs">
                                   {product.category}
                                 </Badge>
-                              </div>
-                            )}
+                              )}
+                            </div>
 
                             <div className="flex gap-2 pt-2">
                               <Dialog>
@@ -765,6 +797,28 @@ export default function ProductCatalog() {
                                     </DialogDescription>
                                   </DialogHeader>
                                   <div className="space-y-4">
+                                    {/* Product Type and Category Badges */}
+                                    <div className="flex flex-wrap gap-2">
+                                      {product.itemType && (
+                                        <Badge 
+                                          variant={product.itemType === 'model' ? 'default' : 'secondary'}
+                                          className="text-sm"
+                                        >
+                                          {product.itemType === 'model' ? 'Equipment Model' : 'Accessory'}
+                                        </Badge>
+                                      )}
+                                      {product.category && (
+                                        <Badge variant="outline" className="text-sm">
+                                          {product.category}
+                                        </Badge>
+                                      )}
+                                      {product.productType && product.productType !== product.itemType && (
+                                        <Badge variant="secondary" className="text-sm">
+                                          {product.productType}
+                                        </Badge>
+                                      )}
+                                    </div>
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                       <div>
                                         <Label className="text-sm font-medium">
@@ -792,6 +846,26 @@ export default function ProductCatalog() {
                                             : "N/A"}
                                         </p>
                                       </div>
+                                      {product.dealerCost && (
+                                        <div>
+                                          <Label className="text-sm font-medium">
+                                            Dealer Cost
+                                          </Label>
+                                          <p className="text-sm text-green-600">
+                                            ${product.dealerCost.toLocaleString()}
+                                          </p>
+                                        </div>
+                                      )}
+                                      {product.marginPercentage && (
+                                        <div>
+                                          <Label className="text-sm font-medium">
+                                            Margin
+                                          </Label>
+                                          <p className="text-sm text-blue-600">
+                                            {product.marginPercentage}%
+                                          </p>
+                                        </div>
+                                      )}
                                       <div>
                                         <Label className="text-sm font-medium">
                                           Status
