@@ -229,17 +229,14 @@ export default function ProductCatalog() {
       productType?: string;
       status?: string;
     }) =>
-      apiRequest(`/api/catalog/models/${data.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          displayName: data.displayName,
-          dealerCost: data.dealerCost,
-          marginPercentage: data.marginPercentage,
-          msrp: data.msrp,
-          category: data.category,
-          productType: data.productType,
-          status: data.status,
-        }),
+      apiRequest(`/api/catalog/models/${data.id}`, "PATCH", {
+        displayName: data.displayName,
+        dealerCost: data.dealerCost,
+        marginPercentage: data.marginPercentage,
+        msrp: data.msrp,
+        category: data.category,
+        productType: data.productType,
+        status: data.status,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/catalog/models"] });
