@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -216,7 +216,7 @@ export default function LeadDetailHubspot() {
   });
 
   // Initialize form when lead data loads
-  useState(() => {
+  useEffect(() => {
     if (lead) {
       setEditForm(lead);
     }
@@ -225,7 +225,7 @@ export default function LeadDetailHubspot() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("PUT", `/api/business-records/${id}`, data);
+      return await apiRequest(`/api/business-records/${id}`, "PUT", data);
     },
     onSuccess: () => {
       toast({
@@ -318,6 +318,80 @@ export default function LeadDetailHubspot() {
               <Edit className="h-4 w-4 mr-1 sm:mr-2" />
               {isEditing ? "Cancel" : "Edit"}
             </Button>
+          </div>
+
+          {/* Quick Action CTAs */}
+          <div className="mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLocation('/deals/new?leadId=' + id + '&companyName=' + encodeURIComponent(lead.companyName || ''))}
+                className="text-xs"
+              >
+                <Briefcase className="h-3 w-3 mr-1" />
+                Create Deal
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setDialogs(prev => ({ ...prev, editRecord: true }))}
+                className="text-xs"
+              >
+                <UserPlus className="h-3 w-3 mr-1" />
+                Add Contacts
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setDialogs(prev => ({ ...prev, note: true }))}
+                className="text-xs"
+              >
+                <StickyNote className="h-3 w-3 mr-1" />
+                Log Activity
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLocation('/demo-scheduling?leadId=' + id + '&companyName=' + encodeURIComponent(lead.companyName || ''))}
+                className="text-xs"
+              >
+                <Calendar className="h-3 w-3 mr-1" />
+                Schedule Demo
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    leadId: id,
+                    companyName: lead.companyName || '',
+                    prefill: 'true'
+                  });
+                  setLocation(`/quotes/new?${params.toString()}`);
+                }}
+                className="text-xs"
+              >
+                <Quote className="h-3 w-3 mr-1" />
+                Create Quote
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    leadId: id,
+                    companyName: lead.companyName || '',
+                    prefill: 'true'
+                  });
+                  setLocation(`/proposals/new?${params.toString()}`);
+                }}
+                className="text-xs"
+              >
+                <FileText className="h-3 w-3 mr-1" />
+                Build Proposal
+              </Button>
+            </div>
           </div>
 
           {/* Company Info */}

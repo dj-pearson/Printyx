@@ -4097,7 +4097,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply tenant resolution middleware to all API routes
   app.use("/api", resolveTenant);
 
-  // Company Contacts API routes
+  // Company Contacts API routes - standardized endpoints
+  // GET /api/company-contacts - fetch all contacts, optionally filtered by companyId
+  app.get("/api/company-contacts", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { companyId } = req.query;
+
+      if (companyId) {
+        // Fetch contacts for specific company
+        const contacts = await storage.getCompanyContacts(companyId, tenantId);
+        res.json(contacts);
+      } else {
+        // Fetch all contacts (existing behavior)
+        const contacts = await storage.getAllCompanyContacts(tenantId);
+        res.json(contacts);
+      }
+    } catch (error) {
+      console.error("Error fetching company contacts:", error);
+      res.status(500).json({ error: "Failed to fetch company contacts" });
+    }
+  });
+
+  // Legacy endpoint - kept for backward compatibility during transition
   app.get(
     "/api/company-contacts/:companyId",
     requireAuth,
