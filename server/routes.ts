@@ -7792,7 +7792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const { id } = req.params;
-        const { displayName, msrp, dealerCost, marginPercentage } = req.body;
+        const { displayName, msrp, dealerCost, marginPercentage, category, productType, status } = req.body;
 
         // Update the master product
         const updateData: any = {};
@@ -7800,6 +7800,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (msrp !== undefined) updateData.msrp = msrp;
         if (dealerCost !== undefined) updateData.dealerCost = dealerCost;
         if (marginPercentage !== undefined) updateData.marginPercentage = marginPercentage;
+        if (category !== undefined) updateData.category = category;
+        if (productType !== undefined) updateData.productType = productType;
+        if (status !== undefined) updateData.status = status;
         updateData.updatedAt = new Date();
 
         await db.update(masterProductModels)

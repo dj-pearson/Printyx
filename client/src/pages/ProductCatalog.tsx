@@ -107,6 +107,9 @@ export default function ProductCatalog() {
     dealerCost: "",
     marginPercentage: "",
     msrp: "",
+    category: "",
+    productType: "",
+    status: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -222,6 +225,9 @@ export default function ProductCatalog() {
       dealerCost?: number; 
       marginPercentage?: number; 
       msrp?: number;
+      category?: string;
+      productType?: string;
+      status?: string;
     }) =>
       apiRequest(`/api/catalog/models/${data.id}`, {
         method: "PATCH",
@@ -230,6 +236,9 @@ export default function ProductCatalog() {
           dealerCost: data.dealerCost,
           marginPercentage: data.marginPercentage,
           msrp: data.msrp,
+          category: data.category,
+          productType: data.productType,
+          status: data.status,
         }),
       }),
     onSuccess: () => {
@@ -241,6 +250,9 @@ export default function ProductCatalog() {
         dealerCost: "",
         marginPercentage: "",
         msrp: "",
+        category: "",
+        productType: "",
+        status: "",
       });
     },
     onError: (error: any) => {
@@ -269,6 +281,9 @@ export default function ProductCatalog() {
       dealerCost: product.dealerCost?.toString() || "",
       marginPercentage: product.marginPercentage?.toString() || "",
       msrp: product.msrp?.toString() || "",
+      category: product.category || "",
+      productType: product.productType || "",
+      status: product.status || "active",
     });
   };
 
@@ -281,6 +296,9 @@ export default function ProductCatalog() {
       dealerCost: editForm.dealerCost ? parseFloat(editForm.dealerCost) : undefined,
       marginPercentage: editForm.marginPercentage ? parseFloat(editForm.marginPercentage) : undefined,
       msrp: editForm.msrp ? parseFloat(editForm.msrp) : undefined,
+      category: editForm.category || undefined,
+      productType: editForm.productType || undefined,
+      status: editForm.status || undefined,
     });
   };
 
@@ -291,6 +309,9 @@ export default function ProductCatalog() {
       dealerCost: "",
       marginPercentage: "",
       msrp: "",
+      category: "",
+      productType: "",
+      status: "",
     });
   };
 
@@ -981,6 +1002,82 @@ export default function ProductCatalog() {
                                         placeholder="0.00"
                                       />
                                     </div>
+
+                                    {/* Category Field */}
+                                    <div>
+                                      <Label className="text-sm font-medium">
+                                        Category
+                                      </Label>
+                                      <select
+                                        value={editForm.category}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            category: e.target.value,
+                                          }))
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      >
+                                        <option value="">Select category...</option>
+                                        <option value="Equipment">Equipment</option>
+                                        <option value="Supplies">Supplies</option>
+                                        <option value="Hardware Accessories">Hardware Accessories</option>
+                                        <option value="Software">Software</option>
+                                        <option value="Maintenance">Maintenance</option>
+                                        <option value="Consumables">Consumables</option>
+                                      </select>
+                                    </div>
+
+                                    {/* Product Type Field */}
+                                    <div>
+                                      <Label className="text-sm font-medium">
+                                        Product Type
+                                      </Label>
+                                      <select
+                                        value={editForm.productType}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            productType: e.target.value,
+                                          }))
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      >
+                                        <option value="">Select product type...</option>
+                                        <option value="MFP">MFP</option>
+                                        <option value="Printer">Printer</option>
+                                        <option value="Scanner">Scanner</option>
+                                        <option value="Copier">Copier</option>
+                                        <option value="Accessory">Accessory</option>
+                                        <option value="Toner">Toner</option>
+                                        <option value="Paper">Paper</option>
+                                        <option value="Service">Service</option>
+                                        <option value="Software">Software</option>
+                                      </select>
+                                    </div>
+
+                                    {/* Status Field */}
+                                    <div>
+                                      <Label className="text-sm font-medium">
+                                        Status
+                                      </Label>
+                                      <select
+                                        value={editForm.status}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            status: e.target.value,
+                                          }))
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      >
+                                        <option value="active">Active</option>
+                                        <option value="discontinued">Discontinued</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="draft">Draft</option>
+                                      </select>
+                                    </div>
+
                                     <div className="flex gap-2 pt-4">
                                       <Button
                                         onClick={handleSaveEdit}
