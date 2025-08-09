@@ -110,13 +110,14 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
     },
   });
 
-  // Contact search query (when company is selected)
+  // Contact search query (when company is selected) - now loads all contacts initially
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["/api/phone-tickets/search-contacts", selectedCompany?.id, contactSearchTerm],
-    enabled: !!selectedCompany && contactSearchTerm.length >= 2,
+    enabled: !!selectedCompany,
     queryFn: async () => {
       if (!selectedCompany) return [];
-      return await apiRequest(`/api/phone-tickets/search-contacts/${selectedCompany.id}?q=${encodeURIComponent(contactSearchTerm)}`);
+      const queryParam = contactSearchTerm ? `?q=${encodeURIComponent(contactSearchTerm)}` : '';
+      return await apiRequest(`/api/phone-tickets/search-contacts/${selectedCompany.id}${queryParam}`);
     },
   });
 
@@ -356,32 +357,49 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
           
-          {contactSearchTerm.length >= 2 && (
-            <div className="mt-2 border rounded-lg max-h-40 overflow-y-auto">
+          {selectedCompany && (
+            <div className="mt-2 border rounded-lg max-h-60 overflow-y-auto">
               {contactsLoading ? (
-                <div className="p-3 text-gray-500">Searching...</div>
+                <div className="p-3 text-gray-500">Loading contacts...</div>
               ) : (
                 <>
-                  {contacts.map((contact: any) => (
-                    <div
-                      key={contact.id}
-                      className="p-3 hover:bg-gray-50 cursor-pointer border-b"
-                      onClick={() => handleContactSelect(contact)}
-                    >
-                      <div className="font-medium">{contact.name}</div>
-                      <div className="text-sm text-gray-600">{contact.phone}</div>
-                      <div className="text-xs text-gray-500">{contact.role}</div>
+                  {contacts.length > 0 ? (
+                    <>
+                      {contacts.map((contact: any) => (
+                        <div
+                          key={contact.id}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b"
+                          onClick={() => handleContactSelect(contact)}
+                        >
+                          <div className="font-medium">{contact.name}</div>
+                          <div className="text-sm text-gray-600">{contact.phone}</div>
+                          <div className="text-xs text-gray-500">{contact.role}</div>
+                        </div>
+                      ))}
+                      {contactSearchTerm && (
+                        <div
+                          className="p-3 hover:bg-blue-50 cursor-pointer border-t bg-blue-25"
+                          onClick={() => setShowNewContactForm(true)}
+                        >
+                          <div className="flex items-center gap-2 text-blue-600">
+                            <Plus className="h-4 w-4" />
+                            <span className="font-medium">Create new contact: "{contactSearchTerm}"</span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-3 text-gray-500">
+                      {contactSearchTerm ? `No contacts found for "${contactSearchTerm}"` : "No contacts available"}
+                      <div
+                        className="mt-2 text-blue-600 cursor-pointer hover:underline flex items-center gap-1"
+                        onClick={() => setShowNewContactForm(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create new contact
+                      </div>
                     </div>
-                  ))}
-                  <div
-                    className="p-3 hover:bg-blue-50 cursor-pointer border-t bg-blue-25"
-                    onClick={() => setShowNewContactForm(true)}
-                  >
-                    <div className="flex items-center gap-2 text-blue-600">
-                      <Plus className="h-4 w-4" />
-                      <span className="font-medium">Create new contact: "{contactSearchTerm}"</span>
-                    </div>
-                  </div>
+                  )}
                 </>
               )}
             </div>
