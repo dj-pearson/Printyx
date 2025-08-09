@@ -73,6 +73,7 @@ import ProposalBuilder from "@/pages/ProposalBuilder";
 import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceScheduling";
 import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
+import ProductCatalog from "@/pages/ProductCatalog";
 import VendorManagement from "@/pages/VendorManagement";
 import CustomerNumberSettings from "@/pages/CustomerNumberSettings";
 import FinancialForecasting from "@/pages/FinancialForecasting";
@@ -243,6 +244,7 @@ function Router() {
             component={ServiceDispatchOptimization}
           />
           <Route path="/mobile-field-service" component={MobileFieldService} />
+          <Route path="/product-catalog" component={ProductCatalog} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
           <Route path="/admin/product-models" component={ProductModels} />

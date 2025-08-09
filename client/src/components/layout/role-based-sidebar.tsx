@@ -249,6 +249,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           icon: Package,
         },
         {
+          name: "Product Catalog",
+          href: "/product-catalog",
+          icon: Package,
+        },
+        {
           name: "Equipment Lifecycle",
           href: `${adminPrefix}/equipment-lifecycle-management`,
           icon: Settings,

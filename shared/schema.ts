@@ -5523,3 +5523,83 @@ export type InsertProposalSection = z.infer<typeof insertProposalSectionSchema>;
 export type CompanyBrandingProfile = typeof companyBrandingProfiles.$inferSelect;
 export type InsertCompanyBrandingProfile = z.infer<typeof insertCompanyBrandingProfileSchema>;
 
+// Master Product Catalog - Platform-maintained product database
+export const masterProductModels = pgTable("master_product_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  manufacturer: varchar("manufacturer").notNull(),
+  modelCode: varchar("model_code").notNull(),
+  displayName: varchar("display_name").notNull(),
+  specsJson: jsonb("specs_json"),
+  msrp: decimal("msrp", { precision: 10, scale: 2 }),
+  status: varchar("status").notNull().default("active"),
+  discontinuedAt: timestamp("discontinued_at"),
+  version: varchar("version").notNull().default("1.0"),
+  category: varchar("category"),
+  productType: varchar("product_type"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  manufacturerModelIdx: index("master_models_manufacturer_model_idx").on(table.manufacturer, table.modelCode),
+  statusIdx: index("master_models_status_idx").on(table.status),
+}));
+
+export const masterProductAccessories = pgTable("master_product_accessories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  manufacturer: varchar("manufacturer").notNull(),
+  accessoryCode: varchar("accessory_code").notNull(),
+  displayName: varchar("display_name").notNull(),
+  specsJson: jsonb("specs_json"),
+  msrp: decimal("msrp", { precision: 10, scale: 2 }),
+  category: varchar("category"),
+  status: varchar("status").notNull().default("active"),
+  discontinuedAt: timestamp("discontinued_at"),
+  version: varchar("version").notNull().default("1.0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const tenantEnabledProducts = pgTable("tenant_enabled_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  masterProductId: varchar("master_product_id"),
+  source: varchar("source").notNull().default("master"),
+  enabled: boolean("enabled").default(true),
+  isActive: boolean("is_active").default(true),
+  discontinued: boolean("discontinued").default(false),
+  customSku: varchar("custom_sku"),
+  customName: varchar("custom_name"),
+  dealerCost: decimal("dealer_cost", { precision: 10, scale: 2 }),
+  markupRuleId: varchar("markup_rule_id"),
+  companyPrice: decimal("company_price", { precision: 10, scale: 2 }),
+  priceOverridden: boolean("price_overridden").default(false),
+  tenantProductJson: jsonb("tenant_product_json"),
+  enabledAt: timestamp("enabled_at"),
+  enabledBy: varchar("enabled_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantMasterIdx: index("enabled_products_tenant_master_idx").on(table.tenantId, table.masterProductId),
+  tenantEnabledIdx: index("enabled_products_tenant_enabled_idx").on(table.tenantId, table.enabled),
+}));
+
+// Master Product Catalog Types
+export type MasterProductModel = typeof masterProductModels.$inferSelect;
+export type InsertMasterProductModel = typeof masterProductModels.$inferInsert;
+export type MasterProductAccessory = typeof masterProductAccessories.$inferSelect;
+export type InsertMasterProductAccessory = typeof masterProductAccessories.$inferInsert;
+export type TenantEnabledProduct = typeof tenantEnabledProducts.$inferSelect;
+export type InsertTenantEnabledProduct = typeof tenantEnabledProducts.$inferInsert;
+
+// Insert schemas for master catalog
+export const insertMasterProductModelSchema = createInsertSchema(masterProductModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTenantEnabledProductSchema = createInsertSchema(tenantEnabledProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
