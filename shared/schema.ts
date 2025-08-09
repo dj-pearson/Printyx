@@ -5531,6 +5531,8 @@ export const masterProductModels = pgTable("master_product_models", {
   displayName: varchar("display_name").notNull(),
   specsJson: jsonb("specs_json"),
   msrp: decimal("msrp", { precision: 10, scale: 2 }),
+  dealerCost: decimal("dealer_cost", { precision: 10, scale: 2 }),
+  marginPercentage: decimal("margin_percentage", { precision: 5, scale: 2 }),
   status: varchar("status").notNull().default("active"),
   discontinuedAt: timestamp("discontinued_at"),
   version: varchar("version").notNull().default("1.0"),
