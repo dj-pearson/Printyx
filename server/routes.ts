@@ -38,6 +38,10 @@ import {
   insertDealStageSchema,
   insertDealActivitySchema,
   insertMasterProductModelSchema,
+  insertSeoSettingsSchema,
+  insertSeoPageSchema,
+  seoSettings,
+  seoPages,
   companyContacts,
   equipment,
   businessRecords,
@@ -7345,19 +7349,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/catalog/models", requireAuth, async (req: any, res) => {
     try {
       const isPlatformUser =
-        req.user?.isPlatformUser || 
+        req.user?.isPlatformUser ||
         req.user?.is_platform_user ||
-        req.user?.role === "platform_admin" || 
+        req.user?.role === "platform_admin" ||
         req.user?.role === "root_admin" ||
         req.user?.role === "Platform Admin" ||
         req.user?.role === "Root Admin" ||
         req.user?.role === "admin";
-      
+
       if (!isPlatformUser) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           message: "Platform admin required",
           userRole: req.user?.role,
-          userId: req.user?.id 
+          userId: req.user?.id,
         });
       }
       const payload = insertMasterProductModelSchema.parse(req.body);
@@ -7528,6 +7532,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // ===== SEO Management Routes =====
+  // Root Admin: upsert global SEO settings
+  app.post("/api/seo/settings", requireAuth, async (req: any, res) => {
+    try {
+      const isPlatformUser =
+        req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser)
+        return res.status(403).json({ message: "Platform admin required" });
+      const payload = insertSeoSettingsSchema.parse(req.body);
+      const [existing] = await db.select().from(seoSettings).limit(1);
+      if (existing) {
+        const [updated] = await db
+          .update(seoSettings)
+          .set({ ...payload, updatedAt: new Date() })
+          .where(eq(seoSettings.id, (existing as any).id))
+          .returning();
+        return res.json(updated);
+      }
+      const [created] = await db
+        .insert(seoSettings)
+        .values(payload as any)
+        .returning();
+      res.json(created);
+    } catch (error: any) {
+      console.error("Error upserting SEO settings:", error);
+      res.status(500).json({
+        message: "Failed to upsert SEO settings",
+        detail: error?.message,
+      });
+    }
+  });
+
+  // Root Admin: upsert SEO page record
+  app.post("/api/seo/pages", requireAuth, async (req: any, res) => {
+    try {
+      const isPlatformUser =
+        req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser)
+        return res.status(403).json({ message: "Platform admin required" });
+      const payload = insertSeoPageSchema.parse(req.body);
+      // Upsert by path (global)
+      const [existing] = await db
+        .select()
+        .from(seoPages)
+        .where(eq(seoPages.path, (payload as any).path))
+        .limit(1);
+      if (existing) {
+        const [updated] = await db
+          .update(seoPages)
+          .set({ ...payload, updatedAt: new Date(), lastmod: new Date() })
+          .where(eq(seoPages.id, (existing as any).id))
+          .returning();
+        return res.json(updated);
+      }
+      const [created] = await db
+        .insert(seoPages)
+        .values({ ...payload, lastmod: new Date() } as any)
+        .returning();
+      res.json(created);
+    } catch (error: any) {
+      console.error("Error upserting SEO page:", error);
+      res
+        .status(500)
+        .json({ message: "Failed to upsert SEO page", detail: error?.message });
+    }
+  });
+
+  // Public: generate sitemap.xml
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const settingsRows = await db.select().from(seoSettings).limit(1);
+      const settings = settingsRows[0] as any;
+      const pages = await db
+        .select({
+          path: seoPages.path,
+          lastmod: seoPages.lastmod,
+          changefreq: seoPages.changefreq,
+          priority: seoPages.priority,
+          includeInSitemap: seoPages.includeInSitemap,
+        })
+        .from(seoPages);
+      const baseUrl =
+        settings?.siteUrl?.replace(/\/$/, "") || "https://printyx.net";
+      const urls = pages.filter((p: any) => p.includeInSitemap !== false);
+      const xml =
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+        urls
+          .map((p: any) => {
+            const loc = `${baseUrl}${
+              p.path.startsWith("/") ? p.path : `/${p.path}`
+            }`;
+            const lastmod = (
+              p.lastmod ? new Date(p.lastmod) : new Date()
+            ).toISOString();
+            const changefreq =
+              p.changefreq || settings?.sitemapChangefreq || "weekly";
+            const priority =
+              p.priority || settings?.sitemapPriorityDefault || 0.5;
+            return `\n  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+          })
+          .join("") +
+        "\n</urlset>";
+      res.header("Content-Type", "application/xml").send(xml);
+    } catch (error) {
+      console.error("Error generating sitemap:", error);
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
+  // Public: AI/LLM crawler directives (llms.txt)
+  app.get("/llms.txt", async (_req, res) => {
+    try {
+      const settingsRows = await db.select().from(seoSettings).limit(1);
+      const settings = settingsRows[0] as any;
+      const allow = settings?.allowAiCrawling !== false;
+      const lines = [
+        `# LLMs crawling directives for Printyx`,
+        `# Allow AI crawlers to index public content for generative engines`,
+        allow ? `Allow: /` : `Disallow: /`,
+      ];
+      res.header("Content-Type", "text/plain").send(lines.join("\n"));
+    } catch (error) {
+      res.header("Content-Type", "text/plain").send("Allow: /\n");
+    }
+  });
+
+  // Public: dynamic schema.json endpoint per path
+  app.get("/schema.json", async (req, res) => {
+    try {
+      const path = String(req.query.path || "/");
+      const [page] = await db
+        .select()
+        .from(seoPages)
+        .where(eq(seoPages.path, path))
+        .limit(1);
+      const settingsRows = await db.select().from(seoSettings).limit(1);
+      const settings = settingsRows[0] as any;
+      const baseWebsite = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: settings?.siteName || "Printyx",
+        url: settings?.siteUrl || "https://printyx.net",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${
+            settings?.siteUrl || "https://printyx.net"
+          }/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      };
+      let payload = baseWebsite as any;
+      if (page?.schemaType && page?.schemaData) {
+        payload = {
+          "@context": "https://schema.org",
+          "@type": page.schemaType,
+          ...(page.schemaData as any),
+        };
+      }
+      res.json(payload);
+    } catch (error) {
+      res.json({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Printyx",
+      });
+    }
+  });
+
+  // Admin: get SEO settings
+  app.get("/api/seo/settings", requireAuth, async (_req: any, res) => {
+    try {
+      const rows = await db.select().from(seoSettings).limit(1);
+      res.json(rows[0] || null);
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Failed to load SEO settings",
+        detail: error?.message,
+      });
+    }
+  });
+
+  // Admin: list SEO pages
+  app.get("/api/seo/pages", requireAuth, async (_req: any, res) => {
+    try {
+      const rows = await db
+        .select()
+        .from(seoPages)
+        .orderBy(desc(seoPages.updatedAt));
+      res.json(rows);
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ message: "Failed to load SEO pages", detail: error?.message });
+    }
+  });
+
   // Admin-only: Import master catalog models (CSV)
   app.post(
     "/api/catalog/models/import",
@@ -7536,16 +7737,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const isPlatformUser =
-          req.user?.isPlatformUser || 
+          req.user?.isPlatformUser ||
           req.user?.is_platform_user ||
-          req.user?.role === "platform_admin" || 
+          req.user?.role === "platform_admin" ||
           req.user?.role === "root_admin" ||
           req.user?.role === "Platform Admin" ||
           req.user?.role === "Root Admin" ||
           req.user?.role === "admin";
-        
+
         if (!isPlatformUser) {
-          return res.status(403).json({ 
+          return res.status(403).json({
             message: "Platform admin required",
             userRole: req.user?.role,
             userId: req.user?.id,
@@ -7560,9 +7761,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 root_admin: req.user?.role === "root_admin",
                 Platform_Admin: req.user?.role === "Platform Admin",
                 Root_Admin: req.user?.role === "Root Admin",
-                admin: req.user?.role === "admin"
-              }
-            }
+                admin: req.user?.role === "admin",
+              },
+            },
           });
         }
         const file = req.file;
@@ -7651,7 +7852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const description = row["description"];
           const msrp = normalizeMoney(row["msrp"]);
           const dealerPrice = normalizeMoney(row["dealer price"]);
-          
+
           if (!modelCode || !description) continue;
 
           // Create unique key for duplicate detection
@@ -7662,50 +7863,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Enhanced categorization logic
-          const isAccessory = currentCategory === "Accessories" || 
-                            currentCategory === "Hardware Accessories" ||
-                            currentCategory === "Showroom" ||
-                            /accessory|module|tray|feeder|finisher|cabinet|stand|kit/i.test(description);
+          const isAccessory =
+            currentCategory === "Accessories" ||
+            currentCategory === "Hardware Accessories" ||
+            currentCategory === "Showroom" ||
+            /accessory|module|tray|feeder|finisher|cabinet|stand|kit/i.test(
+              description
+            );
 
           if (isAccessory) {
             const payload: any = {
               manufacturer: "Canon",
               accessoryCode: modelCode,
               displayName: description,
-              category: currentCategory === "Showroom" ? "Showroom Model" : (currentCategory || "Accessories"),
+              category:
+                currentCategory === "Showroom"
+                  ? "Showroom Model"
+                  : currentCategory || "Accessories",
               msrp,
               specsJson: {
                 dealerPrice,
                 baseModel: currentModel,
-                section: currentCategory
-              }
+                section: currentCategory,
+              },
             };
-            
+
             try {
               const saved = await storage.upsertMasterAccessory(payload);
               if (saved) {
                 created++;
                 duplicatesSkipped.add(duplicateKey);
-                
+
                 // Create relationship to current model if available
                 if (currentModel) {
                   try {
-                    const baseProduct = await storage.findMasterProduct("Canon", currentModel);
+                    const baseProduct = await storage.findMasterProduct(
+                      "Canon",
+                      currentModel
+                    );
                     if (baseProduct) {
                       await storage.createProductAccessoryRelationship({
                         baseProductId: baseProduct.id,
                         accessoryId: saved.id,
-                        relationshipType: currentCategory === "Showroom" ? "recommended" : "compatible",
-                        category: currentCategory
+                        relationshipType:
+                          currentCategory === "Showroom"
+                            ? "recommended"
+                            : "compatible",
+                        category: currentCategory,
                       });
                       relationshipsCreated.push({
                         baseModel: currentModel,
                         accessory: modelCode,
-                        category: currentCategory
+                        category: currentCategory,
                       });
                     }
                   } catch (error) {
-                    console.warn(`Failed to create relationship for ${currentModel} -> ${modelCode}:`, error);
+                    console.warn(
+                      `Failed to create relationship for ${currentModel} -> ${modelCode}:`,
+                      error
+                    );
                   }
                 }
               }
@@ -7723,14 +7939,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             displayName: description,
             msrp,
             category: currentCategory || "Equipment",
-            productType: currentCategory === "Equipment" ? "multifunction" : "accessory",
+            productType:
+              currentCategory === "Equipment" ? "multifunction" : "accessory",
             specsJson: {
               dealerPrice,
               section: currentCategory,
-              isMainModel: currentCategory === "Equipment"
-            }
+              isMainModel: currentCategory === "Equipment",
+            },
           };
-          
+
           try {
             const saved = await storage.upsertMasterProduct(payload);
             if (saved) {
@@ -7747,8 +7964,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        res.json({ 
-          created, 
+        res.json({
+          created,
           updated: 0, // We count upserts as created
           skipped,
           duplicatesFound: duplicatesSkipped.size,
@@ -7757,8 +7974,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           summary: {
             totalProcessed: created + skipped,
             uniqueItemsImported: duplicatesSkipped.size,
-            duplicatesSkipped: skipped
-          }
+            duplicatesSkipped: skipped,
+          },
         });
       } catch (error: any) {
         console.error("Error importing master catalog:", error);
@@ -7771,74 +7988,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Update master product
-  app.patch(
-    "/api/catalog/models/:id",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const isPlatformUser =
-          req.user?.isPlatformUser || 
-          req.user?.is_platform_user ||
-          req.user?.role === "platform_admin" || 
-          req.user?.role === "root_admin" ||
-          req.user?.role === "Platform Admin" ||
-          req.user?.role === "Root Admin" ||
-          req.user?.role === "admin";
-        
-        if (!isPlatformUser) {
-          return res.status(403).json({ 
-            message: "Platform admin required to update master products"
-          });
-        }
+  app.patch("/api/catalog/models/:id", requireAuth, async (req: any, res) => {
+    try {
+      const isPlatformUser =
+        req.user?.isPlatformUser ||
+        req.user?.is_platform_user ||
+        req.user?.role === "platform_admin" ||
+        req.user?.role === "root_admin" ||
+        req.user?.role === "Platform Admin" ||
+        req.user?.role === "Root Admin" ||
+        req.user?.role === "admin";
 
-        const { id } = req.params;
-        const { displayName, msrp, dealerCost, marginPercentage, category, productType, status } = req.body;
-
-        // Update the master product
-        const updateData: any = {};
-        if (displayName !== undefined) updateData.displayName = displayName;
-        if (msrp !== undefined) updateData.msrp = msrp;
-        if (dealerCost !== undefined) updateData.dealerCost = dealerCost;
-        if (marginPercentage !== undefined) updateData.marginPercentage = marginPercentage;
-        if (category !== undefined) updateData.category = category;
-        if (productType !== undefined) updateData.productType = productType;
-        if (status !== undefined) updateData.status = status;
-        updateData.updatedAt = new Date();
-
-        await db.update(masterProductModels)
-          .set(updateData)
-          .where(eq(masterProductModels.id, id));
-
-        res.json({ success: true, updated: updateData });
-      } catch (error: any) {
-        console.error("Error updating master product:", error);
-        res.status(500).json({
-          message: "Failed to update master product",
-          detail: error?.message,
+      if (!isPlatformUser) {
+        return res.status(403).json({
+          message: "Platform admin required to update master products",
         });
       }
+
+      const { id } = req.params;
+      const {
+        displayName,
+        msrp,
+        dealerCost,
+        marginPercentage,
+        category,
+        productType,
+        status,
+      } = req.body;
+
+      // Update the master product
+      const updateData: any = {};
+      if (displayName !== undefined) updateData.displayName = displayName;
+      if (msrp !== undefined) updateData.msrp = msrp;
+      if (dealerCost !== undefined) updateData.dealerCost = dealerCost;
+      if (marginPercentage !== undefined)
+        updateData.marginPercentage = marginPercentage;
+      if (category !== undefined) updateData.category = category;
+      if (productType !== undefined) updateData.productType = productType;
+      if (status !== undefined) updateData.status = status;
+      updateData.updatedAt = new Date();
+
+      await db
+        .update(masterProductModels)
+        .set(updateData)
+        .where(eq(masterProductModels.id, id));
+
+      res.json({ success: true, updated: updateData });
+    } catch (error: any) {
+      console.error("Error updating master product:", error);
+      res.status(500).json({
+        message: "Failed to update master product",
+        detail: error?.message,
+      });
     }
-  );
+  });
 
   // Helper functions for enhanced CSV import
   const createFieldMappings = (headers: string[]) => {
     const mappings = {};
     const suggestions = {};
-    
+
     // Define field mapping patterns
     const patterns = {
-      modelCode: ['item no', 'item no.', 'model', 'model code', 'model_code', 'product code', 'sku', 'part number', 'part no'],
-      displayName: ['description', 'name', 'product name', 'model name', 'model_name', 'display name', 'display_name', 'title'],
-      msrp: ['msrp', 'msrp_usd', 'retail price', 'list price', 'suggested retail price'],
-      dealerCost: ['dealer price', 'dealer cost', 'cost', 'wholesale price', 'buy price'],
-      manufacturer: ['manufacturer', 'brand', 'make'],
-      category: ['category', 'type', 'product type', 'class'],
-      status: ['status', 'state', 'active']
+      modelCode: [
+        "item no",
+        "item no.",
+        "model",
+        "model code",
+        "model_code",
+        "product code",
+        "sku",
+        "part number",
+        "part no",
+      ],
+      displayName: [
+        "description",
+        "name",
+        "product name",
+        "model name",
+        "model_name",
+        "display name",
+        "display_name",
+        "title",
+      ],
+      msrp: [
+        "msrp",
+        "msrp_usd",
+        "retail price",
+        "list price",
+        "suggested retail price",
+      ],
+      dealerCost: [
+        "dealer price",
+        "dealer cost",
+        "cost",
+        "wholesale price",
+        "buy price",
+      ],
+      manufacturer: ["manufacturer", "brand", "make"],
+      category: ["category", "type", "product type", "class"],
+      status: ["status", "state", "active"],
     };
-    
+
     let requiredFieldsFound = 0;
-    const requiredFields = ['modelCode', 'displayName'];
-    
+    const requiredFields = ["modelCode", "displayName"];
+
     // Map headers to fields
     for (const [field, searchTerms] of Object.entries(patterns)) {
       for (const header of headers) {
@@ -7849,54 +8103,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         }
       }
-      
+
       if (!mappings[field]) {
         // Find closest match for suggestions
-        const closest = headers.find(h => 
-          searchTerms.some(term => h.toLowerCase().includes(term.toLowerCase()))
+        const closest = headers.find((h) =>
+          searchTerms.some((term) =>
+            h.toLowerCase().includes(term.toLowerCase())
+          )
         );
         if (closest) suggestions[field] = closest;
       }
     }
-    
+
     return {
       isValid: requiredFieldsFound >= 1, // Relax validation - need at least one required field
       mappings,
       suggestions,
       headersFound: headers,
       requiredFieldsFound,
-      debug: { patterns, requiredFields }
+      debug: { patterns, requiredFields },
     };
   };
 
   // Category normalization mapping
   const normalizeCategoryName = (category: string): string => {
     if (!category) return category;
-    
+
     const categoryLower = category.toLowerCase().trim();
-    
+
     // Consolidate similar categories
-    if (categoryLower.includes('mfp') || categoryLower.includes('multifunction')) {
-      return 'Multifunction';
+    if (
+      categoryLower.includes("mfp") ||
+      categoryLower.includes("multifunction")
+    ) {
+      return "Multifunction";
     }
-    
-    if (categoryLower.includes('accessory') || categoryLower.includes('hardware accessory') || 
-        categoryLower.includes('paper feeding') || categoryLower.includes('document feeding')) {
-      return 'Accessory';
+
+    if (
+      categoryLower.includes("accessory") ||
+      categoryLower.includes("hardware accessory") ||
+      categoryLower.includes("paper feeding") ||
+      categoryLower.includes("document feeding")
+    ) {
+      return "Accessory";
     }
-    
+
     // Capitalize first letter for consistency
     return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
   };
 
   const parseCSVLine = (line: string): string[] => {
     const result = [];
-    let current = '';
+    let current = "";
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      
+
       if (char === '"') {
         if (inQuotes && line[i + 1] === '"') {
           current += '"';
@@ -7904,54 +8167,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           inQuotes = !inQuotes;
         }
-      } else if (char === ',' && !inQuotes) {
+      } else if (char === "," && !inQuotes) {
         result.push(current);
-        current = '';
+        current = "";
       } else {
         current += char;
       }
     }
-    
+
     result.push(current);
     return result;
   };
 
   const mapRowToProduct = (rowData: any, fieldMappings: any) => {
     const mappings = fieldMappings.mappings;
-    
+
     const normalizeMoney = (value: string) => {
       if (!value) return undefined;
-      const cleaned = value.replace(/[$,\s]/g, '');
+      const cleaned = value.replace(/[$,\s]/g, "");
       const num = parseFloat(cleaned);
       return isNaN(num) ? undefined : num;
     };
 
     // Get raw category value and normalize it
-    const rawCategory = rowData[mappings.category] || 'General';
+    const rawCategory = rowData[mappings.category] || "General";
     const normalizedCategory = normalizeCategoryName(rawCategory);
 
     return {
-      manufacturer: rowData[mappings.manufacturer] || 'Unknown',
-      modelCode: rowData[mappings.modelCode] || '',
-      displayName: rowData[mappings.displayName] || '',
+      manufacturer: rowData[mappings.manufacturer] || "Unknown",
+      modelCode: rowData[mappings.modelCode] || "",
+      displayName: rowData[mappings.displayName] || "",
       msrp: normalizeMoney(rowData[mappings.msrp]),
       dealerCost: normalizeMoney(rowData[mappings.dealerCost]),
       category: normalizedCategory,
-      productType: normalizedCategory === 'Accessory' ? 'accessory' : 'model',
-      status: rowData[mappings.status] || 'active'
+      productType: normalizedCategory === "Accessory" ? "accessory" : "model",
+      status: rowData[mappings.status] || "active",
     };
   };
 
   const mergeProductData = (existing: any, newData: any) => {
     const merged = { ...existing };
-    
+
     // Only update fields that are missing or empty in existing
-    Object.keys(newData).forEach(key => {
+    Object.keys(newData).forEach((key) => {
       if (!merged[key] && newData[key]) {
         merged[key] = newData[key];
       }
     });
-    
+
     return merged;
   };
 
@@ -7963,17 +8226,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const isPlatformUser =
-          req.user?.isPlatformUser || 
+          req.user?.isPlatformUser ||
           req.user?.is_platform_user ||
-          req.user?.role === "platform_admin" || 
+          req.user?.role === "platform_admin" ||
           req.user?.role === "root_admin" ||
           req.user?.role === "Platform Admin" ||
           req.user?.role === "Root Admin" ||
           req.user?.role === "admin";
-        
+
         if (!isPlatformUser) {
-          return res.status(403).json({ 
-            message: "Platform admin required to import master products"
+          return res.status(403).json({
+            message: "Platform admin required to import master products",
           });
         }
 
@@ -7986,35 +8249,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const csvText = file.buffer.toString("utf-8");
         console.log("CSV file size:", file.size, "bytes");
         console.log("First 200 characters:", csvText.substring(0, 200));
-        
-        const lines = csvText.split(/\r?\n/).filter(line => line.trim());
-        
+
+        const lines = csvText.split(/\r?\n/).filter((line) => line.trim());
+
         if (lines.length === 0) {
           return res.status(400).json({ message: "CSV file is empty" });
         }
-        
+
         if (lines.length < 2) {
-          return res.status(400).json({ 
-            message: "CSV file must have at least a header row and one data row",
-            linesFound: lines.length
+          return res.status(400).json({
+            message:
+              "CSV file must have at least a header row and one data row",
+            linesFound: lines.length,
           });
         }
 
         // Parse header and create field mappings
-        const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+        const headers = parseCSVLine(lines[0]).map((h) =>
+          h.trim().toLowerCase()
+        );
         const fieldMappings = createFieldMappings(headers);
-        
+
         // Log debug information
         console.log("CSV Headers detected:", headers);
         console.log("Field mappings:", fieldMappings);
-        
+
         if (!fieldMappings.isValid) {
-          return res.status(400).json({ 
-            message: "Invalid CSV format", 
-            detail: `Required fields missing. Found headers: ${headers.join(", ")}. Need at least: model/item code and name/description fields.`,
+          return res.status(400).json({
+            message: "Invalid CSV format",
+            detail: `Required fields missing. Found headers: ${headers.join(
+              ", "
+            )}. Need at least: model/item code and name/description fields.`,
             suggestedMappings: fieldMappings.suggestions,
             detectedHeaders: headers,
-            fieldMappings: fieldMappings.mappings
+            fieldMappings: fieldMappings.mappings,
           });
         }
 
@@ -8029,7 +8297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i];
           if (!line.trim()) continue;
-          
+
           try {
             const values = parseCSVLine(line);
             if (values.length < headers.length) {
@@ -8045,16 +8313,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             const productData = mapRowToProduct(rowData, fieldMappings);
-            
+
             if (!productData.modelCode || !productData.displayName) {
-              errors.push(`Row ${i + 1}: Missing required fields (model code or name)`);
+              errors.push(
+                `Row ${i + 1}: Missing required fields (model code or name)`
+              );
               skipped++;
               continue;
             }
 
             // Check for duplicates and handle gracefully
             const duplicateKey = `${productData.manufacturer}-${productData.modelCode}`;
-            
+
             if (duplicateMap.has(duplicateKey)) {
               // Merge data with existing entry, filling in missing fields
               const existing = duplicateMap.get(duplicateKey);
@@ -8064,7 +8334,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             duplicateMap.set(duplicateKey, productData);
-
           } catch (error) {
             errors.push(`Row ${i + 1}: ${error.message}`);
             skipped++;
@@ -8075,36 +8344,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const [duplicateKey, productData] of duplicateMap.entries()) {
           try {
             // Check if product already exists in database
-            const existing = await storage.findMasterProduct(productData.manufacturer, productData.modelCode);
-            
+            const existing = await storage.findMasterProduct(
+              productData.manufacturer,
+              productData.modelCode
+            );
+
             if (existing) {
               // Update existing product with new data (fill in missing fields only)
               const updateData = {};
-              if (!existing.displayName && productData.displayName) updateData.displayName = productData.displayName;
-              if (!existing.msrp && productData.msrp) updateData.msrp = productData.msrp;
-              if (!existing.dealerCost && productData.dealerCost) updateData.dealerCost = productData.dealerCost;
-              if (!existing.marginPercentage && productData.marginPercentage) updateData.marginPercentage = productData.marginPercentage;
-              if (!existing.category && productData.category) updateData.category = productData.category;
-              if (!existing.productType && productData.productType) updateData.productType = productData.productType;
-              if (!existing.status && productData.status) updateData.status = productData.status;
-              
+              if (!existing.displayName && productData.displayName)
+                updateData.displayName = productData.displayName;
+              if (!existing.msrp && productData.msrp)
+                updateData.msrp = productData.msrp;
+              if (!existing.dealerCost && productData.dealerCost)
+                updateData.dealerCost = productData.dealerCost;
+              if (!existing.marginPercentage && productData.marginPercentage)
+                updateData.marginPercentage = productData.marginPercentage;
+              if (!existing.category && productData.category)
+                updateData.category = productData.category;
+              if (!existing.productType && productData.productType)
+                updateData.productType = productData.productType;
+              if (!existing.status && productData.status)
+                updateData.status = productData.status;
+
               if (Object.keys(updateData).length > 0) {
                 updateData.updatedAt = new Date();
-                await db.update(masterProductModels)
+                await db
+                  .update(masterProductModels)
                   .set(updateData)
                   .where(eq(masterProductModels.id, existing.id));
                 updated++;
-                processedItems.push({ action: 'updated', ...productData, fieldsUpdated: Object.keys(updateData) });
+                processedItems.push({
+                  action: "updated",
+                  ...productData,
+                  fieldsUpdated: Object.keys(updateData),
+                });
               } else {
                 skipped++;
-                processedItems.push({ action: 'skipped', ...productData, reason: 'No new data to update' });
+                processedItems.push({
+                  action: "skipped",
+                  ...productData,
+                  reason: "No new data to update",
+                });
               }
             } else {
               // Create new product
               const saved = await storage.upsertMasterProduct(productData);
               if (saved) {
                 created++;
-                processedItems.push({ action: 'created', ...productData });
+                processedItems.push({ action: "created", ...productData });
               }
             }
           } catch (error) {
@@ -8120,18 +8408,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             created,
             updated,
             skipped,
-            errors: errors.length
+            errors: errors.length,
           },
           fieldMappings: fieldMappings.mappings,
           processedItems: processedItems.slice(0, 10), // First 10 for preview
-          errors: errors.slice(0, 10) // First 10 errors
+          errors: errors.slice(0, 10), // First 10 errors
         });
-
       } catch (error) {
         console.error("Enhanced CSV import error:", error);
         res.status(500).json({
           message: "Failed to import CSV",
-          detail: error?.message
+          detail: error?.message,
         });
       }
     }
@@ -8144,32 +8431,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const isPlatformUser =
-          req.user?.isPlatformUser || 
+          req.user?.isPlatformUser ||
           req.user?.is_platform_user ||
-          req.user?.role === "platform_admin" || 
+          req.user?.role === "platform_admin" ||
           req.user?.role === "root_admin" ||
           req.user?.role === "Platform Admin" ||
           req.user?.role === "Root Admin" ||
           req.user?.role === "admin";
-        
+
         if (!isPlatformUser) {
-          return res.status(403).json({ 
-            message: "Platform admin required to normalize categories"
+          return res.status(403).json({
+            message: "Platform admin required to normalize categories",
           });
         }
 
         // Get all products with categories that need normalization
-        const products = await db.select().from(masterProductModels).where(sql`category IS NOT NULL`);
-        
+        const products = await db
+          .select()
+          .from(masterProductModels)
+          .where(sql`category IS NOT NULL`);
+
         let updated = 0;
         for (const product of products) {
           const normalizedCategory = normalizeCategoryName(product.category);
           if (normalizedCategory !== product.category) {
-            await db.update(masterProductModels)
-              .set({ 
+            await db
+              .update(masterProductModels)
+              .set({
                 category: normalizedCategory,
-                productType: normalizedCategory === 'Accessory' ? 'accessory' : 'model',
-                updatedAt: new Date()
+                productType:
+                  normalizedCategory === "Accessory" ? "accessory" : "model",
+                updatedAt: new Date(),
               })
               .where(eq(masterProductModels.id, product.id));
             updated++;
@@ -8179,14 +8471,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           success: true,
           message: `Normalized ${updated} product categories`,
-          updated
+          updated,
         });
-
       } catch (error) {
         console.error("Error normalizing categories:", error);
-        res.status(500).json({ 
+        res.status(500).json({
           message: "Failed to normalize categories",
-          detail: error?.message
+          detail: error?.message,
         });
       }
     }
