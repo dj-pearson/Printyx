@@ -722,10 +722,23 @@ export default function DealsManagement() {
     stages.forEach((s) => {
       const list = dealsByStage[s.id] || [];
       const count = list.length;
-      const totalAmount = list.reduce((sum, d) => sum + (d.amount || 0), 0);
+      // Guard against strings or undefined amounts
+      const totalAmount = list.reduce((sum, d: any) => {
+        const n =
+          typeof d.amount === "number"
+            ? d.amount
+            : parseFloat(String(d.amount || "0"));
+        return sum + (isFinite(n) && !isNaN(n) ? n : 0);
+      }, 0);
       const avgProb = count
         ? Math.round(
-            list.reduce((sum, d) => sum + (d.probability || 0), 0) / count
+            list.reduce((sum, d: any) => {
+              const p =
+                typeof d.probability === "number"
+                  ? d.probability
+                  : parseFloat(String(d.probability || "0"));
+              return sum + (isFinite(p) && !isNaN(p) ? p : 0);
+            }, 0) / count
           )
         : 0;
       map[s.id] = { count, totalAmount, avgProb };
