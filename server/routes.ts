@@ -7320,10 +7320,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const isPlatformUser =
         req.user?.isPlatformUser || 
+        req.user?.is_platform_user ||
         req.user?.role === "platform_admin" || 
-        req.user?.role === "root_admin";
+        req.user?.role === "root_admin" ||
+        req.user?.role === "Platform Admin" ||
+        req.user?.role === "Root Admin" ||
+        req.user?.role === "admin";
+      
       if (!isPlatformUser) {
-        return res.status(403).json({ message: "Platform admin required" });
+        return res.status(403).json({ 
+          message: "Platform admin required",
+          userRole: req.user?.role,
+          userId: req.user?.id 
+        });
       }
       const payload = insertMasterProductModelSchema.parse(req.body);
       const saved = await storage.upsertMasterProduct(payload);
@@ -7502,10 +7511,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const isPlatformUser =
           req.user?.isPlatformUser || 
+          req.user?.is_platform_user ||
           req.user?.role === "platform_admin" || 
-          req.user?.role === "root_admin";
+          req.user?.role === "root_admin" ||
+          req.user?.role === "Platform Admin" ||
+          req.user?.role === "Root Admin" ||
+          req.user?.role === "admin";
+        
         if (!isPlatformUser) {
-          return res.status(403).json({ message: "Platform admin required" });
+          return res.status(403).json({ 
+            message: "Platform admin required",
+            userRole: req.user?.role,
+            userId: req.user?.id 
+          });
         }
         const file = req.file;
         if (!file)
