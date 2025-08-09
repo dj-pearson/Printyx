@@ -42,6 +42,9 @@ import {
   deals,
   dealStages,
   dealActivities,
+  masterProductModels,
+  masterProductAccessories,
+  enabledProducts,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -179,6 +182,8 @@ import {
   type MasterProductAccessory,
   type InsertMasterProductAccessory,
   type TenantEnabledProduct,
+  type EnabledProduct,
+  type InsertEnabledProduct,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -863,20 +868,20 @@ export class DatabaseStorage implements IStorage {
 
   async getEnabledProducts(
     tenantId: string
-  ): Promise<(TenantEnabledProduct & MasterProductModel)[]> {
+  ): Promise<(EnabledProduct & MasterProductModel)[]> {
     const rows = await db
       .select({
-        enabledProductId: tenantEnabledProducts.id,
-        tenantId: tenantEnabledProducts.tenantId,
-        source: tenantEnabledProducts.source,
-        enabled: tenantEnabledProducts.enabled,
-        customSku: tenantEnabledProducts.customSku,
-        customName: tenantEnabledProducts.customName,
-        dealerCost: tenantEnabledProducts.dealerCost,
-        companyPrice: tenantEnabledProducts.companyPrice,
-        priceOverridden: tenantEnabledProducts.priceOverridden,
-        enabledAt: tenantEnabledProducts.enabledAt,
-        masterProductId: tenantEnabledProducts.masterProductId,
+        enabledProductId: enabledProducts.enabledProductId,
+        tenantId: enabledProducts.tenantId,
+        source: enabledProducts.source,
+        enabled: enabledProducts.enabled,
+        customSku: enabledProducts.customSku,
+        customName: enabledProducts.customName,
+        dealerCost: enabledProducts.dealerCost,
+        companyPrice: enabledProducts.companyPrice,
+        priceOverridden: enabledProducts.priceOverridden,
+        enabledAt: enabledProducts.enabledAt,
+        masterProductId: enabledProducts.masterProductId,
         manufacturer: masterProductModels.manufacturer,
         modelCode: masterProductModels.modelCode,
         displayName: masterProductModels.displayName,
@@ -886,51 +891,51 @@ export class DatabaseStorage implements IStorage {
         category: masterProductModels.category,
         productType: masterProductModels.productType,
       })
-      .from(tenantEnabledProducts)
+      .from(enabledProducts)
       .leftJoin(
         masterProductModels,
-        eq(tenantEnabledProducts.masterProductId, masterProductModels.id)
+        eq(enabledProducts.masterProductId, masterProductModels.id)
       )
       .where(
         and(
-          eq(tenantEnabledProducts.tenantId, tenantId),
-          eq(tenantEnabledProducts.enabled, true)
+          eq(enabledProducts.tenantId, tenantId),
+          eq(enabledProducts.enabled, true)
         )
       )
-      .orderBy(desc(tenantEnabledProducts.enabledAt));
+      .orderBy(desc(enabledProducts.enabledAt));
     return rows as any;
   }
 
   async enableMasterProduct(
     tenantId: string,
     masterProductId: string,
-    overrides: Partial<TenantEnabledProduct>
-  ): Promise<TenantEnabledProduct> {
+    overrides: Partial<EnabledProduct>
+  ): Promise<EnabledProduct> {
     // Upsert behavior: if already enabled, update overrides
     const [existing] = await db
       .select()
-      .from(tenantEnabledProducts)
+      .from(enabledProducts)
       .where(
         and(
-          eq(tenantEnabledProducts.tenantId, tenantId),
-          eq(tenantEnabledProducts.masterProductId, masterProductId)
+          eq(enabledProducts.tenantId, tenantId),
+          eq(enabledProducts.masterProductId, masterProductId)
         )
       )
       .limit(1);
     if (existing) {
       const [updated] = await db
-        .update(tenantEnabledProducts)
+        .update(enabledProducts)
         .set({ ...overrides, updatedAt: new Date(), enabled: true })
-        .where(eq(tenantEnabledProducts.id, existing.id))
+        .where(eq(enabledProducts.enabledProductId, existing.enabledProductId))
         .returning();
       return updated as any;
     }
     const [created] = await db
-      .insert(tenantEnabledProducts)
+      .insert(enabledProducts)
       .values({
         tenantId,
         masterProductId,
-        source: "master",
+        source: "master_catalog",
         enabled: true,
         enabledAt: new Date(),
         ...overrides,

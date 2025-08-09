@@ -5558,6 +5558,25 @@ export const masterProductAccessories = pgTable("master_product_accessories", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const enabledProducts = pgTable("enabled_products", {
+  enabledProductId: varchar("enabled_product_id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  masterProductId: varchar("master_product_id"),
+  source: varchar("source").notNull().default("master_catalog"),
+  enabled: boolean("enabled").default(true),
+  customSku: varchar("custom_sku"),
+  customName: varchar("custom_name"),
+  dealerCost: decimal("dealer_cost", { precision: 10, scale: 2 }),
+  companyPrice: decimal("company_price", { precision: 10, scale: 2 }),
+  markupRuleId: varchar("markup_rule_id"),
+  priceOverridden: boolean("price_overridden").default(false),
+  enabledAt: timestamp("enabled_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantMasterIdx: index("enabled_products_tenant_master_idx").on(table.tenantId, table.masterProductId),
+  tenantEnabledIdx: index("enabled_products_tenant_enabled_idx").on(table.tenantId, table.enabled),
+}));
+
 export const tenantEnabledProducts = pgTable("tenant_enabled_products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
@@ -5587,6 +5606,8 @@ export type MasterProductModel = typeof masterProductModels.$inferSelect;
 export type InsertMasterProductModel = typeof masterProductModels.$inferInsert;
 export type MasterProductAccessory = typeof masterProductAccessories.$inferSelect;
 export type InsertMasterProductAccessory = typeof masterProductAccessories.$inferInsert;
+export type EnabledProduct = typeof enabledProducts.$inferSelect;
+export type InsertEnabledProduct = typeof enabledProducts.$inferInsert;
 export type TenantEnabledProduct = typeof tenantEnabledProducts.$inferSelect;
 export type InsertTenantEnabledProduct = typeof tenantEnabledProducts.$inferInsert;
 
@@ -5594,6 +5615,12 @@ export type InsertTenantEnabledProduct = typeof tenantEnabledProducts.$inferInse
 export const insertMasterProductModelSchema = createInsertSchema(masterProductModels).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEnabledProductSchema = createInsertSchema(enabledProducts).omit({
+  enabledProductId: true,
+  enabledAt: true,
   updatedAt: true,
 });
 
