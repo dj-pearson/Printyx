@@ -7319,7 +7319,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/catalog/models", requireAuth, async (req: any, res) => {
     try {
       const isPlatformUser =
-        req.user?.isPlatformUser || req.user?.role === "platform_admin";
+        req.user?.isPlatformUser || 
+        req.user?.role === "platform_admin" || 
+        req.user?.role === "root_admin";
       if (!isPlatformUser) {
         return res.status(403).json({ message: "Platform admin required" });
       }
@@ -7499,7 +7501,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const isPlatformUser =
-          req.user?.isPlatformUser || req.user?.role === "platform_admin";
+          req.user?.isPlatformUser || 
+          req.user?.role === "platform_admin" || 
+          req.user?.role === "root_admin";
         if (!isPlatformUser) {
           return res.status(403).json({ message: "Platform admin required" });
         }
