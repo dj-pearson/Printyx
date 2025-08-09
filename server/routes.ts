@@ -12667,26 +12667,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { q: searchTerm } = req.query;
       const tenantId = req.headers["x-tenant-id"] as string;
 
-      console.log("Search request:", { searchTerm, tenantId, headers: req.headers });
+      console.log("Search request:", { searchTerm, tenantId });
 
       if (!searchTerm || (searchTerm as string).length < 2) {
         return res.json([]);
       }
 
+      // Debug: let's see what the exact query returns
+      console.log("Executing search query for companies...");
+      
       const searchResults = await db
         .select()
         .from(businessRecords)
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            eq(businessRecords.recordType, "customer"),
             or(
-              sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${'%' + searchTerm + '%'})`,
-              sql`LOWER(${businessRecords.primaryContactName}) LIKE LOWER(${'%' + searchTerm + '%'})`
+              eq(businessRecords.recordType, "customer"),
+              eq(businessRecords.recordType, "lead")
+            ),
+            or(
+              sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${`%${searchTerm}%`})`,
+              sql`LOWER(${businessRecords.primaryContactName}) LIKE LOWER(${`%${searchTerm}%`})`
             )
           )
         )
         .limit(10);
+      
+      console.log(`Found ${searchResults.length} results:`, searchResults);
 
       // Transform the result to match expected format
       const transformedResults = searchResults.map(record => ({
