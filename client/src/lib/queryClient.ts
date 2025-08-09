@@ -25,7 +25,7 @@ export async function apiRequest(
 
   // Add tenant ID header - use localStorage if available, fallback to session
   if (typeof window !== 'undefined') {
-    const tenantId = localStorage.getItem('demo-tenant-id') || '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
+    const tenantId = localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
     if (tenantId) {
       requestHeaders['x-tenant-id'] = tenantId;
     }
@@ -57,7 +57,7 @@ export const getQueryFn: <T>(options: {
 
     // Add tenant ID header - use localStorage if available, fallback to session
     if (typeof window !== 'undefined') {
-      const tenantId = localStorage.getItem('demo-tenant-id') || '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
+      const tenantId = localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
       if (tenantId) {
         headers['x-tenant-id'] = tenantId;
       }
