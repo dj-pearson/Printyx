@@ -56,7 +56,7 @@ import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { DashboardService } from "./integrations/dashboard-service";
 import { db } from "./db";
-import { and, eq, sql, desc } from "drizzle-orm";
+import { and, eq, sql, desc, or } from "drizzle-orm";
 import integrationRoutes from "./integrations/routes";
 import integrationHubRoutes from "./routes-integration-hub";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
@@ -12678,7 +12678,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             eq(businessRecords.tenantId, tenantId),
             eq(businessRecords.recordType, "customer"),
-            sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${'%' + searchTerm + '%'})`
+            or(
+              sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${'%' + searchTerm + '%'})`,
+              sql`LOWER(${businessRecords.primaryContactName}) LIKE LOWER(${'%' + searchTerm + '%'})`
+            )
           )
         )
         .limit(10);
