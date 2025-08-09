@@ -12676,6 +12676,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Debug: let's see what the exact query returns
       console.log("Executing search query for companies...");
       
+      const searchPattern = `%${searchTerm.toString().toLowerCase()}%`;
+      
       const searchResults = await db
         .select()
         .from(businessRecords)
@@ -12687,14 +12689,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               eq(businessRecords.recordType, "lead")
             ),
             or(
-              sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${`%${searchTerm}%`})`,
-              sql`LOWER(${businessRecords.primaryContactName}) LIKE LOWER(${`%${searchTerm}%`})`
+              sql`LOWER(company_name) LIKE ${searchPattern}`,
+              sql`LOWER(primary_contact_name) LIKE ${searchPattern}`,
+              sql`record_type ILIKE ${searchPattern}`,
+              sql`status ILIKE ${searchPattern}`
             )
           )
         )
         .limit(10);
       
-      console.log(`Found ${searchResults.length} results:`, searchResults);
+      console.log(`Found ${searchResults.length} results:`, searchResults.map(r => ({ name: r.companyName, type: r.recordType, status: r.status })));
 
       // Transform the result to match expected format
       const transformedResults = searchResults.map(record => ({
