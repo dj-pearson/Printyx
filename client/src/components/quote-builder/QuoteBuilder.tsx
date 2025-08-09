@@ -153,6 +153,36 @@ export default function QuoteBuilder({
     queryKey: ['/api/business-records'],
   });
 
+  // Handle URL parameters for pre-filling (e.g., from leads page)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const leadId = urlParams.get('leadId');
+    const companyName = urlParams.get('companyName');
+    const shouldPrefill = urlParams.get('prefill') === 'true';
+    
+    if (shouldPrefill && leadId && businessRecords && !initialQuoteId) {
+      // Find the lead/company in business records
+      const company = businessRecords.find((record: any) => record.id === leadId);
+      if (company) {
+        console.log('🏢 Pre-filling quote with company:', company.companyName);
+        setSelectedCompany(company);
+        form.setValue('businessRecordId', company.id);
+        form.setValue('title', `Quote for ${company.companyName}`);
+        
+        // Auto-populate billing address if available
+        if (company.address) {
+          form.setValue('billingAddress', {
+            street: company.address,
+            city: company.city || '',
+            state: company.state || '',
+            zipCode: company.zipCode || '',
+            country: 'US',
+          });
+        }
+      }
+    }
+  }, [businessRecords, form, initialQuoteId]);
+
   // Populate form when existing quote is loaded
   useEffect(() => {
     if (existingQuote && !quoteLoading) {
