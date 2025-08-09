@@ -95,11 +95,22 @@ export default function Contracts() {
 
   const createContractMutation = useMutation({
     mutationFn: async () => {
+      const selectedQuote = (availableQuotes as any[]).find((q) => q.id === selectedQuoteId);
+      const customerId = contractForm.customerId || selectedQuote?.customerId;
+      
+      console.log('Creating contract with:', {
+        selectedQuoteId,
+        selectedQuote,
+        customerId,
+        contractFormCustomerId: contractForm.customerId,
+      });
+
+      if (!customerId) {
+        throw new Error('No customer ID available. Please select a quote with a linked customer or select a customer manually.');
+      }
+
       const payload: any = {
-        customerId:
-          contractForm.customerId ||
-          (availableQuotes as any[]).find((q) => q.id === selectedQuoteId)
-            ?.customerId,
+        customerId: customerId,
         startDate: contractForm.startDate,
         endDate: contractForm.endDate,
         monthlyBase: contractForm.monthlyBase
