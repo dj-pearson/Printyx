@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Plus, FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
 export default function Contracts() {
@@ -54,6 +55,14 @@ export default function Contracts() {
   // Fetch active/accepted quotes for building contracts
   const { data: availableQuotes = [], isLoading: quotesLoading } = useQuery({
     queryKey: ["/api/quotes", "contract-source", quoteSearch],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (quoteSearch.trim()) params.append("search", quoteSearch.trim());
+      // Prefer active/accepted quotes for contracts; fall back to all if API ignores param
+      params.append("status", "accepted");
+      params.append("limit", "50");
+      return apiRequest(`/api/quotes?${params.toString()}`);
+    },
     enabled: isCreateOpen,
   });
 
@@ -124,6 +133,12 @@ export default function Contracts() {
       setSelectedQuoteId("");
     },
   });
+
+  const formatCurrency = (amount?: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(Number(amount ?? 0));
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -231,7 +246,7 @@ export default function Contracts() {
                                     {q.quoteNumber} — {q.title}
                                   </div>
                                   <div className="text-xs text-gray-600">
-                                    ${"{"}(q.totalAmount ?? 0){"}"}
+                                    {formatCurrency(q.totalAmount)}
                                   </div>
                                 </div>
                                 <Badge className="capitalize">{q.status}</Badge>
