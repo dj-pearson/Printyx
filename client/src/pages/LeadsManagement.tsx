@@ -1036,7 +1036,7 @@ export default function LeadsManagement() {
                   <div className="flex items-start justify-between">
                     <div
                       className="cursor-pointer"
-                      onClick={() => handleLeadClick(lead.id)}
+                      onClick={() => handleLeadClick(lead)}
                     >
                       <CardTitle className="text-lg text-blue-600 hover:text-blue-800">
                         {lead.name}
