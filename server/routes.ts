@@ -12672,26 +12672,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const searchResults = await db
-        .select({
-          id: businessRecords.id,
-          name: businessRecords.companyName,
-          phone: businessRecords.primaryContactPhone,
-          email: businessRecords.primaryContactEmail,
-          address: businessRecords.address,
-        })
+        .select()
         .from(businessRecords)
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
             eq(businessRecords.recordType, "customer"),
-            sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${
-              "%" + searchTerm + "%"
-            })`
+            sql`LOWER(${businessRecords.companyName}) LIKE LOWER(${'%' + searchTerm + '%'})`
           )
         )
         .limit(10);
 
-      res.json(searchResults);
+      // Transform the result to match expected format
+      const transformedResults = searchResults.map(record => ({
+        id: record.id,
+        name: record.companyName,
+        phone: record.primaryContactPhone,
+        email: record.primaryContactEmail,
+        address: [record.addressLine1, record.addressLine2, record.city, record.state, record.postalCode].filter(Boolean).join(', '),
+      }));
+
+      res.json(transformedResults);
     } catch (error) {
       console.error("Error searching companies:", error);
       res.status(500).json({ error: "Failed to search companies" });
