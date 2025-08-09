@@ -9,11 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { Search, Package, ShoppingCart, Settings, Eye, CheckCircle, Circle, Filter, ArrowLeft } from 'lucide-react';
-import RoleBasedSidebar from '@/components/layout/role-based-sidebar';
+import { Search, Package, ShoppingCart, Settings, Eye, CheckCircle, Filter, ArrowLeft } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
 import { Link } from 'wouter';
 
@@ -42,7 +40,6 @@ interface EnabledProduct {
   companyPrice?: number;
   priceOverridden: boolean;
   enabledAt: string;
-  // Master product fields
   masterProductId?: string;
   manufacturer?: string;
   modelCode?: string;
@@ -59,7 +56,6 @@ export default function ProductCatalog() {
   const [selectedManufacturer, setSelectedManufacturer] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
-  const [showEnableDialog, setShowEnableDialog] = useState(false);
   const [enableForm, setEnableForm] = useState({
     customSku: '',
     customName: '',
@@ -99,7 +95,6 @@ export default function ProductCatalog() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
       toast({ title: 'Product enabled successfully' });
-      setShowEnableDialog(false);
     },
     onError: (error: any) => {
       toast({ 
@@ -168,391 +163,395 @@ export default function ProductCatalog() {
 
   return (
     <MainLayout>
-      <div className="flex min-h-screen bg-gray-50">
-        <RoleBasedSidebar />
-        <div className="flex-1 ml-64 p-6">
-          <div className="mb-6">
-            <div className="flex items-center gap-4 mb-4">
-              <Link href="/product-hub">
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Product Hub
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold">Master Product Catalog</h1>
-                <p className="text-muted-foreground">
-                  Browse Printyx's master catalog and enable products for your organization
-                </p>
-              </div>
+      <div className="space-y-6">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link href="/product-hub">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Back to Product Hub</span>
+                <span className="sm:hidden">Back</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Master Product Catalog</h1>
+              <p className="text-sm text-muted-foreground hidden sm:block">
+                Browse Printyx's master catalog and enable products for your organization
+              </p>
             </div>
           </div>
+        </div>
 
-          <Tabs defaultValue="browse" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="browse" className="flex items-center gap-2">
-            <Search className="h-4 w-4" />
-            Browse Catalog
-          </TabsTrigger>
-          <TabsTrigger value="enabled" className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            Enabled Products
-          </TabsTrigger>
-          <TabsTrigger value="tenant" className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            Tenant Products
-          </TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="browse" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="browse" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Search className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Browse Catalog</span>
+              <span className="sm:hidden">Browse</span>
+            </TabsTrigger>
+            <TabsTrigger value="enabled" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Enabled Products</span>
+              <span className="sm:hidden">Enabled</span>
+            </TabsTrigger>
+            <TabsTrigger value="tenant" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Package className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Tenant Products</span>
+              <span className="sm:hidden">Tenant</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="browse" className="space-y-6">
-          {/* Search and Filter Controls */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Search & Filter
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Search Products</Label>
-                  <Input
-                    placeholder="Search by name or model..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Manufacturer</Label>
-                  <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Manufacturers" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Manufacturers</SelectItem>
-                      {manufacturers.map((manufacturer: string) => (
-                        <SelectItem key={manufacturer} value={manufacturer}>
-                          {manufacturer}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {categories.map((category: string) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Actions</Label>
-                  <div className="flex gap-2">
+          <TabsContent value="browse" className="space-y-4">
+            {/* Search and Filter Controls - Mobile Optimized */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Filter className="h-4 w-4" />
+                  Search & Filter
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Mobile-first responsive grid */}
+                <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Search Products</Label>
+                    <Input
+                      placeholder="Search by name or model..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Manufacturer</Label>
+                    <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="All Manufacturers" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Manufacturers</SelectItem>
+                        {manufacturers.map((manufacturer: string) => (
+                          <SelectItem key={manufacturer} value={manufacturer}>
+                            {manufacturer}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Category</Label>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {categories.map((category: string) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Bulk Actions</Label>
                     <Button
                       onClick={handleBulkEnable}
                       disabled={selectedProducts.size === 0 || bulkEnableMutation.isPending}
-                      className="flex-1"
+                      className="w-full h-9 text-sm"
+                      size="sm"
                     >
                       Enable Selected ({selectedProducts.size})
                     </Button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Bulk Enable Form */}
-          {selectedProducts.size > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Bulk Enable Settings</CardTitle>
-                <CardDescription>
-                  Configure default settings for {selectedProducts.size} selected products
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Default Dealer Cost</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={enableForm.dealerCost}
-                    onChange={(e) => setEnableForm(prev => ({ ...prev, dealerCost: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Default Company Price</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={enableForm.companyPrice}
-                    onChange={(e) => setEnableForm(prev => ({ ...prev, companyPrice: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Markup Rule</Label>
-                  <Select 
-                    value={enableForm.markupRuleId} 
-                    onValueChange={(value) => setEnableForm(prev => ({ ...prev, markupRuleId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select markup rule" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Standard Markup (25%)</SelectItem>
-                      <SelectItem value="premium">Premium Markup (35%)</SelectItem>
-                      <SelectItem value="bulk">Bulk Discount (15%)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Master Products Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {isLoadingMaster ? (
-              // Loading skeleton
-              Array.from({ length: 6 }).map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  </CardHeader>
-                  <CardContent>
+            {/* Bulk Enable Form - Collapsible on Mobile */}
+            {selectedProducts.size > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Bulk Enable Settings</CardTitle>
+                  <CardDescription className="text-sm">
+                    Configure default settings for {selectedProducts.size} selected products
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
                     <div className="space-y-2">
-                      <div className="h-3 bg-gray-200 rounded"></div>
-                      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                      <Label className="text-sm font-medium">Default Dealer Cost</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={enableForm.dealerCost}
+                        onChange={(e) => setEnableForm(prev => ({ ...prev, dealerCost: e.target.value }))}
+                        className="h-9"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              masterProducts.map((product: MasterProduct) => {
-                const isEnabled = isProductEnabled(product.id);
-                const isSelected = selectedProducts.has(product.id);
-                
-                return (
-                  <Card key={product.id} className={`transition-all ${isSelected ? 'ring-2 ring-blue-500' : ''} ${isEnabled ? 'bg-green-50 border-green-200' : ''}`}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">{product.displayName}</CardTitle>
-                          <CardDescription>
-                            {product.manufacturer} - {product.modelCode}
-                          </CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {isEnabled ? (
-                            <Badge variant="success" className="bg-green-100 text-green-800">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Enabled
-                            </Badge>
-                          ) : (
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => handleSelectProduct(product.id)}
-                            />
-                          )}
-                        </div>
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Default Company Price</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={enableForm.companyPrice}
+                        onChange={(e) => setEnableForm(prev => ({ ...prev, companyPrice: e.target.value }))}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Markup Rule</Label>
+                      <Select 
+                        value={enableForm.markupRuleId} 
+                        onValueChange={(value) => setEnableForm(prev => ({ ...prev, markupRuleId: value }))}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Select markup rule" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Standard Markup (25%)</SelectItem>
+                          <SelectItem value="premium">Premium Markup (35%)</SelectItem>
+                          <SelectItem value="bulk">Bulk Discount (15%)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Master Products Grid - Mobile Optimized */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {isLoadingMaster ? (
+                // Loading skeleton
+                Array.from({ length: 8 }).map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardHeader className="pb-3">
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">MSRP:</span>
-                          <span className="font-medium">
-                            {product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}
-                          </span>
-                        </div>
-                        
-                        {product.category && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Category:</span>
-                            <Badge variant="outline">{product.category}</Badge>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 pt-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="flex-1">
-                                <Eye className="h-4 w-4 mr-1" />
-                                View Details
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>{product.displayName}</DialogTitle>
-                                <DialogDescription>
-                                  {product.manufacturer} {product.modelCode}
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <Label>Manufacturer</Label>
-                                    <p className="text-sm">{product.manufacturer}</p>
-                                  </div>
-                                  <div>
-                                    <Label>Model Code</Label>
-                                    <p className="text-sm">{product.modelCode}</p>
-                                  </div>
-                                  <div>
-                                    <Label>MSRP</Label>
-                                    <p className="text-sm">{product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}</p>
-                                  </div>
-                                  <div>
-                                    <Label>Status</Label>
-                                    <p className="text-sm">{product.status}</p>
-                                  </div>
-                                </div>
-                                {product.specsJson && (
-                                  <div>
-                                    <Label>Specifications</Label>
-                                    <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">
-                                      {JSON.stringify(product.specsJson, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          
-                          {!isEnabled && (
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setEnableForm({
-                                  customSku: '',
-                                  customName: '',
-                                  dealerCost: '',
-                                  companyPrice: '',
-                                  markupRuleId: '',
-                                  priceOverridden: false
-                                });
-                                enableProductMutation.mutate({
-                                  productId: product.id,
-                                  overrides: {}
-                                });
-                              }}
-                              disabled={enableProductMutation.isPending}
-                            >
-                              <ShoppingCart className="h-4 w-4 mr-1" />
-                              Enable
-                            </Button>
-                          )}
-                        </div>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded"></div>
+                        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="enabled" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Enabled Products</CardTitle>
-              <CardDescription>
-                Products you've enabled from the master catalog
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {isLoadingEnabled ? (
-                  <div>Loading enabled products...</div>
-                ) : enabledProducts.length === 0 ? (
-                  <div className="col-span-full text-center text-muted-foreground py-8">
-                    No products enabled yet. Browse the catalog to enable products.
-                  </div>
-                ) : (
-                  enabledProducts.map((product: EnabledProduct) => (
-                    <Card key={product.enabledProductId}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">
-                          {product.customName || product.displayName}
-                        </CardTitle>
-                        <CardDescription>
-                          {product.manufacturer} - {product.customSku || product.modelCode}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">MSRP:</span>
-                            <span className="text-sm">{product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}</span>
+                ))
+              ) : (
+                masterProducts.map((product: MasterProduct) => {
+                  const isEnabled = isProductEnabled(product.id);
+                  const isSelected = selectedProducts.has(product.id);
+                  
+                  return (
+                    <Card key={product.id} className={`transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-blue-500' : ''} ${isEnabled ? 'bg-green-50 border-green-200' : ''}`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-base sm:text-lg leading-tight">{product.displayName}</CardTitle>
+                            <CardDescription className="text-xs sm:text-sm">
+                              {product.manufacturer} - {product.modelCode}
+                            </CardDescription>
                           </div>
-                          {product.dealerCost && (
-                            <div className="flex justify-between">
-                              <span className="text-sm text-muted-foreground">Dealer Cost:</span>
-                              <span className="text-sm">${product.dealerCost.toLocaleString()}</span>
-                            </div>
-                          )}
-                          {product.companyPrice && (
-                            <div className="flex justify-between">
-                              <span className="text-sm text-muted-foreground">Company Price:</span>
-                              <span className="text-sm font-medium">${product.companyPrice.toLocaleString()}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">Source:</span>
-                            <Badge variant="outline">Master Catalog</Badge>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {isEnabled ? (
+                              <Badge variant="outline" className="bg-green-100 text-green-800 text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                <span className="hidden sm:inline">Enabled</span>
+                                <span className="sm:hidden">✓</span>
+                              </Badge>
+                            ) : (
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleSelectProduct(product.id)}
+                              />
+                            )}
                           </div>
                         </div>
-                        <div className="flex gap-2 pt-3">
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <Settings className="h-4 w-4 mr-1" />
-                            Configure
-                          </Button>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">MSRP:</span>
+                            <span className="text-sm font-medium">
+                              {product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}
+                            </span>
+                          </div>
+                          
+                          {product.category && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-muted-foreground">Category:</span>
+                              <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 pt-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="flex-1 text-xs">
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  <span className="hidden sm:inline">View Details</span>
+                                  <span className="sm:hidden">View</span>
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl mx-4">
+                                <DialogHeader>
+                                  <DialogTitle>{product.displayName}</DialogTitle>
+                                  <DialogDescription>
+                                    {product.manufacturer} {product.modelCode}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                      <Label className="text-sm font-medium">Manufacturer</Label>
+                                      <p className="text-sm">{product.manufacturer}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">Model Code</Label>
+                                      <p className="text-sm">{product.modelCode}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">MSRP</Label>
+                                      <p className="text-sm">{product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">Status</Label>
+                                      <p className="text-sm">{product.status}</p>
+                                    </div>
+                                  </div>
+                                  {product.specsJson && (
+                                    <div>
+                                      <Label className="text-sm font-medium">Specifications</Label>
+                                      <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40 mt-2">
+                                        {JSON.stringify(product.specsJson, null, 2)}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            
+                            {!isEnabled && (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  enableProductMutation.mutate({
+                                    productId: product.id,
+                                    overrides: {}
+                                  });
+                                }}
+                                disabled={enableProductMutation.isPending}
+                                className="text-xs"
+                              >
+                                <ShoppingCart className="h-3 w-3 mr-1" />
+                                <span className="hidden sm:inline">Enable</span>
+                                <span className="sm:hidden">+</span>
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  );
+                })
+              )}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="tenant" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tenant-Specific Products</CardTitle>
-              <CardDescription>
-                Products created specifically for your organization
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-muted-foreground py-8">
-                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No tenant-specific products yet.</p>
-                <p className="text-sm">Create custom products not available in the master catalog.</p>
-                <Button className="mt-4">
-                  <Package className="h-4 w-4 mr-2" />
-                  Add Custom Product
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-          </Tabs>
-        </div>
+          <TabsContent value="enabled" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Enabled Products</CardTitle>
+                <CardDescription className="text-sm">
+                  Products you've enabled from the master catalog
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {isLoadingEnabled ? (
+                    <div>Loading enabled products...</div>
+                  ) : enabledProducts.length === 0 ? (
+                    <div className="col-span-full text-center text-muted-foreground py-12">
+                      <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">No products enabled yet.</p>
+                      <p className="text-xs">Browse the catalog to enable products.</p>
+                    </div>
+                  ) : (
+                    enabledProducts.map((product: EnabledProduct) => (
+                      <Card key={product.enabledProductId}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base leading-tight">
+                            {product.customName || product.displayName}
+                          </CardTitle>
+                          <CardDescription className="text-xs">
+                            {product.manufacturer} - {product.customSku || product.modelCode}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-xs text-muted-foreground">MSRP:</span>
+                              <span className="text-sm">{product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}</span>
+                            </div>
+                            {product.dealerCost && (
+                              <div className="flex justify-between">
+                                <span className="text-xs text-muted-foreground">Dealer Cost:</span>
+                                <span className="text-sm">${product.dealerCost.toLocaleString()}</span>
+                              </div>
+                            )}
+                            {product.companyPrice && (
+                              <div className="flex justify-between">
+                                <span className="text-xs text-muted-foreground">Company Price:</span>
+                                <span className="text-sm font-medium">${product.companyPrice.toLocaleString()}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-xs text-muted-foreground">Source:</span>
+                              <Badge variant="outline" className="text-xs">Master Catalog</Badge>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-3">
+                            <Button variant="outline" size="sm" className="flex-1 text-xs">
+                              <Settings className="h-3 w-3 mr-1" />
+                              Configure
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="tenant" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Tenant-Specific Products</CardTitle>
+                <CardDescription className="text-sm">
+                  Products created specifically for your organization
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center text-muted-foreground py-12">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm">No tenant-specific products yet.</p>
+                  <p className="text-xs">Create custom products not available in the master catalog.</p>
+                  <Button className="mt-4" size="sm">
+                    <Package className="h-4 w-4 mr-2" />
+                    Add Custom Product
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );
