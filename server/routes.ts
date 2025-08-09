@@ -7820,6 +7820,282 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Helper functions for enhanced CSV import
+  const createFieldMappings = (headers: string[]) => {
+    const mappings = {};
+    const suggestions = {};
+    
+    // Define field mapping patterns
+    const patterns = {
+      modelCode: ['item no', 'item no.', 'model', 'model code', 'product code', 'sku', 'part number', 'part no'],
+      displayName: ['description', 'name', 'product name', 'title', 'display name'],
+      msrp: ['msrp', 'retail price', 'list price', 'suggested retail price'],
+      dealerCost: ['dealer price', 'dealer cost', 'cost', 'wholesale price', 'buy price'],
+      manufacturer: ['manufacturer', 'brand', 'make'],
+      category: ['category', 'type', 'product type', 'class'],
+      status: ['status', 'state', 'active']
+    };
+    
+    let requiredFieldsFound = 0;
+    const requiredFields = ['modelCode', 'displayName'];
+    
+    // Map headers to fields
+    for (const [field, searchTerms] of Object.entries(patterns)) {
+      for (const header of headers) {
+        const headerLower = header.toLowerCase().trim();
+        if (searchTerms.includes(headerLower)) {
+          mappings[field] = header;
+          if (requiredFields.includes(field)) requiredFieldsFound++;
+          break;
+        }
+      }
+      
+      if (!mappings[field]) {
+        // Find closest match for suggestions
+        const closest = headers.find(h => 
+          searchTerms.some(term => h.toLowerCase().includes(term.toLowerCase()))
+        );
+        if (closest) suggestions[field] = closest;
+      }
+    }
+    
+    return {
+      isValid: requiredFieldsFound >= 2, // Need at least model code and name
+      mappings,
+      suggestions,
+      headersFound: headers
+    };
+  };
+
+  const parseCSVLine = (line: string): string[] => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++; // Skip next quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current);
+    return result;
+  };
+
+  const mapRowToProduct = (rowData: any, fieldMappings: any) => {
+    const mappings = fieldMappings.mappings;
+    
+    const normalizeMoney = (value: string) => {
+      if (!value) return undefined;
+      const cleaned = value.replace(/[$,\s]/g, '');
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? undefined : num;
+    };
+
+    return {
+      manufacturer: rowData[mappings.manufacturer] || 'Unknown',
+      modelCode: rowData[mappings.modelCode] || '',
+      displayName: rowData[mappings.displayName] || '',
+      msrp: normalizeMoney(rowData[mappings.msrp]),
+      dealerCost: normalizeMoney(rowData[mappings.dealerCost]),
+      category: rowData[mappings.category] || 'General',
+      productType: rowData[mappings.category] ? 
+        (rowData[mappings.category].toLowerCase().includes('accessory') ? 'accessory' : 'model') : 'model',
+      status: rowData[mappings.status] || 'active'
+    };
+  };
+
+  const mergeProductData = (existing: any, newData: any) => {
+    const merged = { ...existing };
+    
+    // Only update fields that are missing or empty in existing
+    Object.keys(newData).forEach(key => {
+      if (!merged[key] && newData[key]) {
+        merged[key] = newData[key];
+      }
+    });
+    
+    return merged;
+  };
+
+  // Enhanced CSV import with intelligent field mapping and duplicate handling
+  app.post(
+    "/api/catalog/import-enhanced",
+    requireAuth,
+    upload.single("file"),
+    async (req: any, res) => {
+      try {
+        const isPlatformUser =
+          req.user?.isPlatformUser || 
+          req.user?.is_platform_user ||
+          req.user?.role === "platform_admin" || 
+          req.user?.role === "root_admin" ||
+          req.user?.role === "Platform Admin" ||
+          req.user?.role === "Root Admin" ||
+          req.user?.role === "admin";
+        
+        if (!isPlatformUser) {
+          return res.status(403).json({ 
+            message: "Platform admin required to import master products"
+          });
+        }
+
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "CSV file required" });
+        }
+
+        // Enhanced CSV parsing with field mapping
+        const csvText = file.buffer.toString("utf-8");
+        const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+        
+        if (lines.length === 0) {
+          return res.status(400).json({ message: "CSV file is empty" });
+        }
+
+        // Parse header and create field mappings
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+        const fieldMappings = createFieldMappings(headers);
+        
+        if (!fieldMappings.isValid) {
+          return res.status(400).json({ 
+            message: "Invalid CSV format", 
+            detail: `Required fields missing. Found: ${headers.join(", ")}. Need at least: model/item code, name/description, and price fields.`,
+            suggestedMappings: fieldMappings.suggestions
+          });
+        }
+
+        let created = 0;
+        let updated = 0;
+        let skipped = 0;
+        let errors = [];
+        const processedItems = [];
+        const duplicateMap = new Map(); // Track duplicates for merging
+
+        // Process data rows
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          if (!line.trim()) continue;
+          
+          try {
+            const values = parseCSVLine(line);
+            if (values.length < headers.length) {
+              // Pad with empty strings for missing columns
+              while (values.length < headers.length) {
+                values.push("");
+              }
+            }
+
+            const rowData = {};
+            headers.forEach((header, index) => {
+              rowData[header] = values[index] ? values[index].trim() : "";
+            });
+
+            const productData = mapRowToProduct(rowData, fieldMappings);
+            
+            if (!productData.modelCode || !productData.displayName) {
+              errors.push(`Row ${i + 1}: Missing required fields (model code or name)`);
+              skipped++;
+              continue;
+            }
+
+            // Check for duplicates and handle gracefully
+            const duplicateKey = `${productData.manufacturer}-${productData.modelCode}`;
+            
+            if (duplicateMap.has(duplicateKey)) {
+              // Merge data with existing entry, filling in missing fields
+              const existing = duplicateMap.get(duplicateKey);
+              const merged = mergeProductData(existing, productData);
+              duplicateMap.set(duplicateKey, merged);
+              continue;
+            }
+
+            duplicateMap.set(duplicateKey, productData);
+
+          } catch (error) {
+            errors.push(`Row ${i + 1}: ${error.message}`);
+            skipped++;
+          }
+        }
+
+        // Now process all unique items, checking database for existing records
+        for (const [duplicateKey, productData] of duplicateMap.entries()) {
+          try {
+            // Check if product already exists in database
+            const existing = await storage.findMasterProduct(productData.manufacturer, productData.modelCode);
+            
+            if (existing) {
+              // Update existing product with new data (fill in missing fields only)
+              const updateData = {};
+              if (!existing.displayName && productData.displayName) updateData.displayName = productData.displayName;
+              if (!existing.msrp && productData.msrp) updateData.msrp = productData.msrp;
+              if (!existing.dealerCost && productData.dealerCost) updateData.dealerCost = productData.dealerCost;
+              if (!existing.marginPercentage && productData.marginPercentage) updateData.marginPercentage = productData.marginPercentage;
+              if (!existing.category && productData.category) updateData.category = productData.category;
+              if (!existing.productType && productData.productType) updateData.productType = productData.productType;
+              if (!existing.status && productData.status) updateData.status = productData.status;
+              
+              if (Object.keys(updateData).length > 0) {
+                updateData.updatedAt = new Date();
+                await db.update(masterProductModels)
+                  .set(updateData)
+                  .where(eq(masterProductModels.id, existing.id));
+                updated++;
+                processedItems.push({ action: 'updated', ...productData, fieldsUpdated: Object.keys(updateData) });
+              } else {
+                skipped++;
+                processedItems.push({ action: 'skipped', ...productData, reason: 'No new data to update' });
+              }
+            } else {
+              // Create new product
+              const saved = await storage.upsertMasterProduct(productData);
+              if (saved) {
+                created++;
+                processedItems.push({ action: 'created', ...productData });
+              }
+            }
+          } catch (error) {
+            errors.push(`${productData.modelCode}: ${error.message}`);
+            skipped++;
+          }
+        }
+
+        res.json({
+          success: true,
+          summary: {
+            totalRows: lines.length - 1,
+            created,
+            updated,
+            skipped,
+            errors: errors.length
+          },
+          fieldMappings: fieldMappings.mappings,
+          processedItems: processedItems.slice(0, 10), // First 10 for preview
+          errors: errors.slice(0, 10) // First 10 errors
+        });
+
+      } catch (error) {
+        console.error("Enhanced CSV import error:", error);
+        res.status(500).json({
+          message: "Failed to import CSV",
+          detail: error?.message
+        });
+      }
+    }
+  );
+
   // Bulk update pricing
   app.post(
     "/api/pricing/products/bulk-update",

@@ -111,6 +111,9 @@ export default function ProductCatalog() {
     productType: "",
     status: "",
   });
+  
+  const [importResults, setImportResults] = useState<any>(null);
+  const [showImportResults, setShowImportResults] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -211,6 +214,35 @@ export default function ProductCatalog() {
     onError: (error: any) => {
       toast({
         title: "Error enabling products",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Enhanced CSV import mutation
+  const enhancedImportMutation = useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return uploadCsv("/api/catalog/import-enhanced", file);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog/models"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
+      
+      toast({
+        title: "CSV Import Complete",
+        description: `Created: ${data.summary.created}, Updated: ${data.summary.updated}, Skipped: ${data.summary.skipped}${data.summary.errors > 0 ? `, Errors: ${data.summary.errors}` : ''}`,
+      });
+      
+      // Show detailed results
+      setImportResults(data);
+      setShowImportResults(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import failed",
         description: error.message,
         variant: "destructive",
       });
@@ -389,34 +421,49 @@ export default function ProductCatalog() {
                   </span>
                 </Button>
               </label>
-              <Button
-                size="sm"
-                disabled={!masterCsvFile}
-                onClick={async () => {
-                  if (!masterCsvFile) return;
-                  try {
-                    const result = await uploadCsv(
-                      "/api/catalog/models/import",
-                      masterCsvFile
-                    );
-                    toast({
-                      title: "Master catalog imported",
-                      description: `${result.created ?? 0} processed`,
-                    });
-                    setMasterCsvFile(null);
-                    // Refresh catalog
-                    queryClient.invalidateQueries();
-                  } catch (err: any) {
-                    toast({
-                      title: "Import failed",
-                      description: err.message,
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                Upload
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!masterCsvFile}
+                  onClick={async () => {
+                    if (!masterCsvFile) return;
+                    try {
+                      const result = await uploadCsv(
+                        "/api/catalog/models/import",
+                        masterCsvFile
+                      );
+                      toast({
+                        title: "Master catalog imported",
+                        description: `${result.created ?? 0} processed`,
+                      });
+                      setMasterCsvFile(null);
+                      // Refresh catalog
+                      queryClient.invalidateQueries();
+                    } catch (err: any) {
+                      toast({
+                        title: "Import failed",
+                        description: err.message,
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  Legacy
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!masterCsvFile || enhancedImportMutation.isPending}
+                  onClick={() => {
+                    if (masterCsvFile) {
+                      enhancedImportMutation.mutate(masterCsvFile);
+                      setMasterCsvFile(null);
+                    }
+                  }}
+                >
+                  {enhancedImportMutation.isPending ? "Processing..." : "Smart Import"}
+                </Button>
+              </div>
             </div>
             {/* Tenant: Enable from CSV with Dealer Prices */}
             <div className="flex items-center gap-2">
@@ -672,6 +719,90 @@ export default function ProductCatalog() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Import Results Dialog */}
+            <Dialog open={showImportResults} onOpenChange={setShowImportResults}>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>CSV Import Results</DialogTitle>
+                  <DialogDescription>
+                    Enhanced CSV import completed with intelligent field mapping and duplicate handling
+                  </DialogDescription>
+                </DialogHeader>
+                {importResults && (
+                  <div className="space-y-4">
+                    {/* Summary Statistics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">
+                          {importResults.summary.created}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Created</div>
+                      </div>
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {importResults.summary.updated}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Updated</div>
+                      </div>
+                      <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                        <div className="text-2xl font-bold text-yellow-600">
+                          {importResults.summary.skipped}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Skipped</div>
+                      </div>
+                      <div className="text-center p-3 bg-red-50 rounded-lg">
+                        <div className="text-2xl font-bold text-red-600">
+                          {importResults.summary.errors || 0}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Errors</div>
+                      </div>
+                    </div>
+
+                    {/* Field Mappings */}
+                    {importResults.fieldMappings && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Field Mappings Detected</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {Object.entries(importResults.fieldMappings).map(([field, csvHeader]) => (
+                              <div key={field} className="flex justify-between items-center py-1">
+                                <span className="text-sm font-medium capitalize">
+                                  {field.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {csvHeader as string}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Errors List */}
+                    {importResults.errors && importResults.errors.length > 0 && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base text-red-600">Import Errors</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {importResults.errors.map((error: string, index: number) => (
+                              <div key={index} className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                                {error}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             {/* Master Products Grid - Mobile Optimized */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
