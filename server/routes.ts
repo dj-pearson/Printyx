@@ -7370,12 +7370,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
 
+      // Generate contract number if not provided
+      const contractNumber = req.body.contractNumber || `CNT-${Date.now()}`;
+      
+      // Convert date strings to Date objects and prepare contract data
       const contractData = {
         ...req.body,
         tenantId: req.tenantId!,
         createdBy: userId,
         updatedBy: userId,
+        contractNumber,
+        contractType: req.body.contractType || 'cost_per_click',
       };
+
+      // Convert date strings to Date objects if they exist
+      if (contractData.startDate && typeof contractData.startDate === 'string') {
+        contractData.startDate = new Date(contractData.startDate);
+      }
+      if (contractData.endDate && typeof contractData.endDate === 'string') {
+        contractData.endDate = new Date(contractData.endDate);
+      }
 
       const newContract = await storage.createContract(contractData);
       res.status(201).json(newContract);
