@@ -112,7 +112,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     sections.push({
       name: "Sales & CRM",
       items: [
-        { name: "Sales Command Center", href: "/sales/command-center", icon: TrendingUp },
+        {
+          name: "Sales Command Center",
+          href: "/sales/command-center",
+          icon: TrendingUp,
+        },
         { name: "CRM", href: "/crm", icon: Target },
         { name: "Leads Management", href: "/leads-management", icon: UserPlus },
         { name: "Contacts", href: "/contacts", icon: Users },
@@ -144,7 +148,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         },
         { name: "Demo Scheduling", href: "/demo-scheduling", icon: Calendar },
         { name: "Contracts", href: "/contracts", icon: ClipboardList },
-        { name: "Document Builder", href: "/document-builder", icon: FileSignature },
+        {
+          name: "Document Builder",
+          href: "/document-builder",
+          icon: FileSignature,
+        },
         {
           name: "Customer Success",
           href: "/customer-success-management",
@@ -165,13 +173,26 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   }
 
   // Service section - organized by service workflow progression
-  if (permissions.service || permissions.sales || isPlatformRole || isCompanyAdmin) {
+  if (
+    permissions.service ||
+    permissions.sales ||
+    isPlatformRole ||
+    isCompanyAdmin
+  ) {
     sections.push({
       name: "Service",
       items: [
         { name: "Service Hub", href: "/service-hub", icon: Headphones },
-        { name: "Onboarding Checklists", href: "/onboarding", icon: CheckSquare },
-        { name: "Service Dispatch", href: "/service-dispatch-optimization", icon: Calendar },
+        {
+          name: "Onboarding Checklists",
+          href: "/onboarding",
+          icon: CheckSquare,
+        },
+        {
+          name: "Service Dispatch",
+          href: "/service-dispatch-optimization",
+          icon: Calendar,
+        },
         {
           name: "Mobile Field Service",
           href: "/mobile-field-service",
@@ -208,7 +229,6 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           href: "/incident-response-system",
           icon: AlertTriangle,
         },
-        { name: "Service Products", href: "/service-products", icon: Package },
         {
           name: "Manufacturer Integration",
           href: "/manufacturer-integration",
@@ -227,22 +247,6 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           name: "Product Hub",
           href: `${adminPrefix}/product-hub`,
           icon: Package,
-        },
-        { name: "Inventory", href: "/inventory", icon: Package },
-        {
-          name: "Product Models",
-          href: `${adminPrefix}/product-models`,
-          icon: Package,
-        },
-        {
-          name: "Product Accessories",
-          href: `${adminPrefix}/product-accessories`,
-          icon: Package,
-        },
-        {
-          name: "Software Products",
-          href: `${adminPrefix}/software-products`,
-          icon: Layers,
         },
         {
           name: "Equipment Lifecycle",
@@ -400,7 +404,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           icon: Activity,
         },
         { name: "Data Enrichment", href: "/data-enrichment", icon: Brain },
-        { name: "Customer Number Settings", href: "/customer-number-settings", icon: Hash }
+        {
+          name: "Customer Number Settings",
+          href: "/customer-number-settings",
+          icon: Hash,
+        },
       ],
     });
   }
