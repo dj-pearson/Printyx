@@ -1178,13 +1178,18 @@ export default function DealsManagement() {
               </div>
               <div
                 ref={boardRef}
-                className="flex flex-wrap gap-2 sm:gap-3 h-full overflow-x-auto md:overflow-x-visible pb-4"
+                className="grid gap-4 h-full pb-4"
+                style={{
+                  gridTemplateColumns: `repeat(${
+                    stages.length || 1
+                  }, minmax(220px, 1fr))`,
+                }}
               >
                 {stages.map((stage) => (
                   <div
                     key={stage.id}
                     ref={(el) => (stageRefs.current[stage.id] = el)}
-                    className="flex-shrink-0 w-64 sm:w-72 lg:w-80"
+                    className="min-w-0"
                   >
                     <div className="bg-gray-50 rounded-md h-full flex flex-col min-h-80">
                       <div className="p-2 sm:p-3 border-b border-gray-200">
@@ -1224,7 +1229,7 @@ export default function DealsManagement() {
                               {collapsedStages[stage.id] ? "▶" : "▾"}
                             </Button>
                           </div>
-                          <div className="mt-1 text-[11px] text-gray-600 w-full">
+                          <div className="mt-1 text-[11px] text-gray-600">
                             {formatAmount(
                               stageAggregates[stage.id]?.totalAmount || 0
                             )}
