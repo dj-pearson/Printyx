@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,18 @@ export default function CustomerDetailHubspot() {
     queryKey: ["/api/business-records", id],
     enabled: !!id,
   });
+
+  // Fetch company contacts to surface the designated primary contact on the main page
+  const { data: companyContacts = [] } = useQuery({
+    queryKey: ["/api/companies", id, "contacts"],
+    enabled: !!id,
+  });
+
+  const primaryContact = useMemo(() => {
+    const list = (companyContacts as any[]) || [];
+    if (!list.length) return null;
+    return list.find((c: any) => c.isPrimaryContact) || list[0];
+  }, [companyContacts]);
 
   // Form state for editing - All business_records fields
   const [editForm, setEditForm] = useState({
@@ -966,7 +978,12 @@ export default function CustomerDetailHubspot() {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {customer.primaryContactName || "--"}
+                              {customer.primaryContactName ||
+                                (primaryContact
+                                  ? `${primaryContact.firstName || ""} ${
+                                      primaryContact.lastName || ""
+                                    }`.trim()
+                                  : "--")}
                             </p>
                           )}
                         </div>
@@ -986,7 +1003,9 @@ export default function CustomerDetailHubspot() {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {customer.primaryContactTitle || "--"}
+                              {customer.primaryContactTitle ||
+                                primaryContact?.title ||
+                                "--"}
                             </p>
                           )}
                         </div>
@@ -1013,6 +1032,13 @@ export default function CustomerDetailHubspot() {
                                   className="text-blue-600 hover:underline"
                                 >
                                   {customer.primaryContactEmail}
+                                </a>
+                              ) : primaryContact?.email ? (
+                                <a
+                                  href={`mailto:${primaryContact.email}`}
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {primaryContact.email}
                                 </a>
                               ) : (
                                 "--"
@@ -1043,6 +1069,13 @@ export default function CustomerDetailHubspot() {
                                   className="text-blue-600 hover:underline"
                                 >
                                   {customer.primaryContactPhone}
+                                </a>
+                              ) : primaryContact?.phone ? (
+                                <a
+                                  href={`tel:${primaryContact.phone}`}
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {primaryContact.phone}
                                 </a>
                               ) : (
                                 "--"
