@@ -12961,6 +12961,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Sales Forecasting routes
   app.use(salesForecastingRoutes);
 
+  // Phase 3: Register analytics routes
+  import('./analytics-routes').then(({ analyticsRouter }) => {
+    app.use(analyticsRouter);
+  }).catch(err => console.error('Failed to load analytics routes:', err));
+
   const httpServer = createServer(app);
   return httpServer;
 }
