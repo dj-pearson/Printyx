@@ -223,6 +223,29 @@ export default function ProductCatalog() {
     },
   });
 
+  // Normalize categories mutation
+  const normalizeMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/catalog/normalize-categories", {
+        method: "POST",
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog/models"] });
+      toast({ 
+        title: "Categories normalized successfully!", 
+        description: `Updated ${data.updated} products` 
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error normalizing categories",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Enhanced CSV import mutation
   const enhancedImportMutation = useMutation({
     mutationFn: (file: File) => {
@@ -375,6 +398,10 @@ export default function ProductCatalog() {
     return enabledProducts.some(
       (ep: EnabledProduct) => ep.masterProductId === productId
     );
+  };
+
+  const handleNormalizeCategories = () => {
+    normalizeMutation.mutate();
   };
 
 
@@ -631,6 +658,15 @@ export default function ProductCatalog() {
                       size="sm"
                     >
                       Enable Selected ({selectedProducts.size})
+                    </Button>
+                    <Button
+                      onClick={handleNormalizeCategories}
+                      disabled={normalizeMutation.isPending}
+                      className="w-full h-9 text-sm"
+                      variant="outline"
+                      size="sm"
+                    >
+                      {normalizeMutation.isPending ? "Normalizing..." : "Fix Categories"}
                     </Button>
                   </div>
                 </div>

@@ -7869,6 +7869,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  // Category normalization mapping
+  const normalizeCategoryName = (category: string): string => {
+    if (!category) return category;
+    
+    const categoryLower = category.toLowerCase().trim();
+    
+    // Consolidate similar categories
+    if (categoryLower.includes('mfp') || categoryLower.includes('multifunction')) {
+      return 'Multifunction';
+    }
+    
+    if (categoryLower.includes('accessory') || categoryLower.includes('hardware accessory') || 
+        categoryLower.includes('paper feeding') || categoryLower.includes('document feeding')) {
+      return 'Accessory';
+    }
+    
+    // Capitalize first letter for consistency
+    return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+  };
+
   const parseCSVLine = (line: string): string[] => {
     const result = [];
     let current = '';
@@ -7906,15 +7926,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return isNaN(num) ? undefined : num;
     };
 
+    // Get raw category value and normalize it
+    const rawCategory = rowData[mappings.category] || 'General';
+    const normalizedCategory = normalizeCategoryName(rawCategory);
+
     return {
       manufacturer: rowData[mappings.manufacturer] || 'Unknown',
       modelCode: rowData[mappings.modelCode] || '',
       displayName: rowData[mappings.displayName] || '',
       msrp: normalizeMoney(rowData[mappings.msrp]),
       dealerCost: normalizeMoney(rowData[mappings.dealerCost]),
-      category: rowData[mappings.category] || 'General',
-      productType: rowData[mappings.category] ? 
-        (rowData[mappings.category].toLowerCase().includes('accessory') ? 'accessory' : 'model') : 'model',
+      category: normalizedCategory,
+      productType: normalizedCategory === 'Accessory' ? 'accessory' : 'model',
       status: rowData[mappings.status] || 'active'
     };
   };
@@ -8108,6 +8131,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Enhanced CSV import error:", error);
         res.status(500).json({
           message: "Failed to import CSV",
+          detail: error?.message
+        });
+      }
+    }
+  );
+
+  // Normalize existing product categories
+  app.post(
+    "/api/catalog/normalize-categories",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const isPlatformUser =
+          req.user?.isPlatformUser || 
+          req.user?.is_platform_user ||
+          req.user?.role === "platform_admin" || 
+          req.user?.role === "root_admin" ||
+          req.user?.role === "Platform Admin" ||
+          req.user?.role === "Root Admin" ||
+          req.user?.role === "admin";
+        
+        if (!isPlatformUser) {
+          return res.status(403).json({ 
+            message: "Platform admin required to normalize categories"
+          });
+        }
+
+        // Get all products with categories that need normalization
+        const products = await db.select().from(masterProductModels).where(sql`category IS NOT NULL`);
+        
+        let updated = 0;
+        for (const product of products) {
+          const normalizedCategory = normalizeCategoryName(product.category);
+          if (normalizedCategory !== product.category) {
+            await db.update(masterProductModels)
+              .set({ 
+                category: normalizedCategory,
+                productType: normalizedCategory === 'Accessory' ? 'accessory' : 'model',
+                updatedAt: new Date()
+              })
+              .where(eq(masterProductModels.id, product.id));
+            updated++;
+          }
+        }
+
+        res.json({
+          success: true,
+          message: `Normalized ${updated} product categories`,
+          updated
+        });
+
+      } catch (error) {
+        console.error("Error normalizing categories:", error);
+        res.status(500).json({ 
+          message: "Failed to normalize categories",
           detail: error?.message
         });
       }
