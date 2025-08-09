@@ -37,6 +37,7 @@ import {
   insertDealSchema,
   insertDealStageSchema,
   insertDealActivitySchema,
+  insertMasterProductModelSchema,
   companyContacts,
   equipment,
   businessRecords,
@@ -7298,6 +7299,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Master Product Catalog Routes
+  app.get("/api/catalog/models", requireAuth, async (req: any, res) => {
+    try {
+      const { manufacturer, search, category, status } = req.query as any;
+      const rows = await storage.browseMasterProducts({
+        manufacturer,
+        search,
+        category,
+        status,
+      });
+      res.json(rows);
+    } catch (error) {
+      console.error("Error browsing master catalog:", error);
+      res.status(500).json({ message: "Failed to fetch master catalog" });
+    }
+  });
+
+  app.post("/api/catalog/models", requireAuth, async (req: any, res) => {
+    try {
+      const isPlatformUser =
+        req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser) {
+        return res.status(403).json({ message: "Platform admin required" });
+      }
+      const payload = insertMasterProductModelSchema.parse(req.body);
+      const saved = await storage.upsertMasterProduct(payload);
+      res.status(201).json(saved);
+    } catch (error: any) {
+      console.error("Error creating master product:", error);
+      res
+        .status(500)
+        .json({
+          message: "Failed to create master product",
+          detail: error?.message,
+        });
+    }
+  });
+
+  app.get("/api/catalog/manufacturers", requireAuth, async (_req: any, res) => {
+    try {
+      const rows = await storage.listMasterManufacturers();
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching manufacturers:", error);
+      res.status(500).json({ message: "Failed to fetch manufacturers" });
+    }
+  });
+
+  app.get("/api/enabled-products", requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      const rows = await storage.getEnabledProducts(tenantId);
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching enabled products:", error);
+      res.status(500).json({ message: "Failed to fetch enabled products" });
+    }
+  });
+
+  app.post(
+    "/api/catalog/models/:id/enable",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { tenantId, id: userId } = req.user;
+        const { id } = req.params;
+        const overrides = { ...req.body, enabledBy: userId };
+        const result = await storage.enableMasterProduct(
+          tenantId,
+          id,
+          overrides
+        );
+        res.json(result);
+      } catch (error) {
+        console.error("Error enabling product:", error);
+        res.status(500).json({ message: "Failed to enable product" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/catalog/models/bulk-enable",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { tenantId, id: userId } = req.user;
+        const { masterProductIds = [], defaultOverrides = {} } = req.body ?? {};
+        let enabled = 0;
+        let skipped = 0;
+        for (const pid of masterProductIds) {
+          try {
+            await storage.enableMasterProduct(tenantId, pid, {
+              ...defaultOverrides,
+              enabledBy: userId,
+            });
+            enabled += 1;
+          } catch {
+            skipped += 1;
+          }
+        }
+        res.json({ enabled, skipped });
+      } catch (error) {
+        console.error("Error bulk enabling products:", error);
+        res.status(500).json({ message: "Failed to bulk enable products" });
+      }
+    }
+  );
+
+  // Admin-only: Import master catalog models (CSV)
+  app.post(
+    "/api/catalog/models/import",
+    requireAuth,
+    upload.single("file"),
+    async (req: any, res) => {
+      try {
+        const isPlatformUser =
+          req.user?.isPlatformUser || req.user?.role === "platform_admin";
+        if (!isPlatformUser) {
+          return res.status(403).json({ message: "Platform admin required" });
+        }
+        const file = req.file;
+        if (!file)
+          return res.status(400).json({ message: "CSV file required" });
+
+        const csvText = file.buffer.toString("utf-8");
+        const lines = csvText.split(/\r?\n/).filter(Boolean);
+        const header = lines.shift();
+        const columns = (header || "")
+          .split(",")
+          .map((h) => h.trim().toLowerCase());
+
+        let created = 0;
+        let updated = 0;
+
+        for (const line of lines) {
+          const values = line.split(",").map((v) => v.trim());
+          const row: any = {};
+          columns.forEach((c, i) => (row[c] = values[i]));
+
+          const payload = insertMasterProductModelSchema.parse({
+            manufacturer: row.manufacturer,
+            modelCode: row.model_code || row.modelcode || row.model,
+            displayName:
+              row.display_name ||
+              `${row.manufacturer} ${row.model_code || row.model}`,
+            category: row.category || undefined,
+            productType: row.product_type || undefined,
+            msrp: row.msrp ? Number(row.msrp) : undefined,
+            specsJson: row.specs_json ? JSON.parse(row.specs_json) : undefined,
+          } as any);
+
+          const existingBefore = await storage.browseMasterProducts({
+            manufacturer: payload.manufacturer as any,
+            search: payload.modelCode as any,
+          });
+
+          const saved = await storage.upsertMasterProduct(payload);
+          if (existingBefore.find((m: any) => m.id === saved.id)) updated += 1;
+          else created += 1;
+        }
+
+        res.json({ created, updated });
+      } catch (error: any) {
+        console.error("Error importing master catalog:", error);
+        res
+          .status(500)
+          .json({
+            message: "Failed to import master catalog",
+            detail: error?.message,
+          });
+      }
+    }
+  );
+
   // Bulk update pricing
   app.post(
     "/api/pricing/products/bulk-update",
@@ -13001,12 +13176,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, ticket: createdTicket });
     } catch (error) {
       console.error("Error creating phone-in ticket:", error);
-      res
-        .status(500)
-        .json({
-          error: "Failed to create phone-in ticket",
-          details: error.message,
-        });
+      res.status(500).json({
+        error: "Failed to create phone-in ticket",
+        details: error.message,
+      });
     }
   });
 
@@ -13025,12 +13198,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result.rows);
     } catch (error) {
       console.error("Error fetching phone-in tickets:", error);
-      res
-        .status(500)
-        .json({
-          error: "Failed to fetch phone-in tickets",
-          details: error.message,
-        });
+      res.status(500).json({
+        error: "Failed to fetch phone-in tickets",
+        details: error.message,
+      });
     }
   });
 
@@ -13091,12 +13262,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error converting phone-in ticket:", error);
-      res
-        .status(500)
-        .json({
-          error: "Failed to convert phone-in ticket",
-          details: error.message,
-        });
+      res.status(500).json({
+        error: "Failed to convert phone-in ticket",
+        details: error.message,
+      });
     }
   });
 
@@ -13136,13 +13305,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     .catch((err) => console.error("Failed to load catalog routes:", err));
 
   // Seed master catalog on startup (development only)
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     import("./catalog-seed")
       .then(({ seedMasterCatalog }) => {
         setTimeout(() => {
           seedMasterCatalog().then((success) => {
             if (success) {
-              console.log('Master catalog seeded successfully');
+              console.log("Master catalog seeded successfully");
             }
           });
         }, 2000); // Wait 2 seconds for DB to be ready
