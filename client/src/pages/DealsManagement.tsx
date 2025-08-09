@@ -1199,17 +1199,11 @@ export default function DealsManagement() {
                               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                               style={{ backgroundColor: stage.color }}
                             />
-                            <h3 className="font-medium text-gray-900 text-xs sm:text-sm truncate">
+                            <h3 className="text-gray-900 text-sm font-medium leading-tight break-words">
                               {stage.name}
                             </h3>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] flex-shrink-0"
-                            >
-                              {stageAggregates[stage.id]?.count ?? 0}
-                            </Badge>
                             <Button
                               variant="ghost"
                               size="sm"
