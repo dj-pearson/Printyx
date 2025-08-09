@@ -136,8 +136,9 @@ export default function ServiceHub() {
   });
 
   const filteredPhoneInTickets = phoneInTickets.filter((ticket: any) => {
-    const matchesSearch = ticket.issueDescription?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.callerName?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -266,11 +267,15 @@ export default function ServiceHub() {
                     {phoneInTickets.slice(0, 5).map((ticket: any) => (
                       <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg space-y-2 sm:space-y-0">
                         <div className="flex-1">
-                          <p className="font-medium text-sm md:text-base">{ticket.customerName}</p>
-                          <p className="text-xs md:text-sm text-gray-600">{ticket.issueCategory}</p>
+                          <p className="font-medium text-sm md:text-base">{ticket.title || ticket.companyName || 'Unknown Company'}</p>
+                          <p className="text-xs md:text-sm text-gray-600">{ticket.description || ticket.issueDescription}</p>
                           <p className="text-xs text-gray-500">
                             <Clock className="h-3 w-3 inline mr-1" />
                             {new Date(ticket.createdAt).toLocaleTimeString()}
+                            <span className="ml-2">
+                              <Phone className="h-3 w-3 inline mr-1" />
+                              {ticket.callerName}
+                            </span>
                           </p>
                         </div>
                         <div className="flex gap-2 flex-wrap">
@@ -373,24 +378,24 @@ export default function ServiceHub() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">{ticket.customerName}</h3>
+                              <h3 className="font-semibold">{ticket.title || 'Phone-in Ticket'}</h3>
                               <Badge variant={getPriorityBadgeVariant(ticket.priority)}>
                                 {ticket.priority}
                               </Badge>
                             </div>
-                            <p className="text-sm text-gray-600 mb-2">{ticket.issueDescription}</p>
+                            <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
                             <div className="flex items-center gap-4 text-xs text-gray-500">
                               <span className="flex items-center gap-1">
                                 <Phone className="h-3 w-3" />
-                                {ticket.callerName}
+                                {ticket.callerName} ({ticket.callerPhone})
                               </span>
                               <span className="flex items-center gap-1">
                                 <Building className="h-3 w-3" />
-                                {ticket.locationAddress}
+                                {ticket.locationAddress || 'No address provided'}
                               </span>
                               <span className="flex items-center gap-1">
-                                <Timer className="h-3 w-3" />
-                                {ticket.callDuration}s
+                                <Clock className="h-3 w-3" />
+                                {new Date(ticket.createdAt).toLocaleTimeString()}
                               </span>
                             </div>
                           </div>
