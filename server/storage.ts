@@ -733,30 +733,98 @@ export class DatabaseStorage implements IStorage {
     category?: string;
     search?: string;
     status?: string;
-  }): Promise<MasterProductModel[]> {
-    let query = db.select().from(masterProductModels);
+  }): Promise<any[]> {
+    // Query models
+    let modelQuery = db
+      .select({
+        id: masterProductModels.id,
+        manufacturer: masterProductModels.manufacturer,
+        modelCode: masterProductModels.modelCode,
+        displayName: masterProductModels.displayName,
+        specsJson: masterProductModels.specsJson,
+        msrp: masterProductModels.msrp,
+        dealerCost: masterProductModels.dealerCost,
+        marginPercentage: masterProductModels.marginPercentage,
+        status: masterProductModels.status,
+        discontinuedAt: masterProductModels.discontinuedAt,
+        version: masterProductModels.version,
+        category: masterProductModels.category,
+        productType: masterProductModels.productType,
+        createdAt: masterProductModels.createdAt,
+        updatedAt: masterProductModels.updatedAt,
+        itemType: sql<string>`'model'`.as('itemType')
+      })
+      .from(masterProductModels);
+
+    // Query accessories
+    let accessoryQuery = db
+      .select({
+        id: masterProductAccessories.id,
+        manufacturer: masterProductAccessories.manufacturer,
+        modelCode: masterProductAccessories.accessoryCode,
+        displayName: masterProductAccessories.displayName,
+        specsJson: masterProductAccessories.specsJson,
+        msrp: masterProductAccessories.msrp,
+        dealerCost: sql<number>`NULL`.as('dealerCost'),
+        marginPercentage: sql<number>`NULL`.as('marginPercentage'),
+        status: masterProductAccessories.status,
+        discontinuedAt: masterProductAccessories.discontinuedAt,
+        version: masterProductAccessories.version,
+        category: masterProductAccessories.category,
+        productType: sql<string>`'accessory'`.as('productType'),
+        createdAt: masterProductAccessories.createdAt,
+        updatedAt: masterProductAccessories.updatedAt,
+        itemType: sql<string>`'accessory'`.as('itemType')
+      })
+      .from(masterProductAccessories);
+
+    // Apply filters to both queries
     if (params.manufacturer && params.manufacturer !== "all") {
-      query = query.where(
+      modelQuery = modelQuery.where(
         eq(masterProductModels.manufacturer, params.manufacturer)
+      );
+      accessoryQuery = accessoryQuery.where(
+        eq(masterProductAccessories.manufacturer, params.manufacturer)
       );
     }
     if (params.category && params.category !== "all") {
-      query = query.where(eq(masterProductModels.category, params.category));
+      modelQuery = modelQuery.where(eq(masterProductModels.category, params.category));
+      accessoryQuery = accessoryQuery.where(eq(masterProductAccessories.category, params.category));
     }
     if (params.status) {
-      query = query.where(eq(masterProductModels.status, params.status));
+      modelQuery = modelQuery.where(eq(masterProductModels.status, params.status));
+      accessoryQuery = accessoryQuery.where(eq(masterProductAccessories.status, params.status));
     }
     if (params.search) {
       const s = `%${params.search.toLowerCase()}%`;
-      query = query.where(
+      modelQuery = modelQuery.where(
         or(
           like(masterProductModels.displayName, s),
           like(masterProductModels.modelCode, s),
           like(masterProductModels.manufacturer, s)
         )
       );
+      accessoryQuery = accessoryQuery.where(
+        or(
+          like(masterProductAccessories.displayName, s),
+          like(masterProductAccessories.accessoryCode, s),
+          like(masterProductAccessories.manufacturer, s)
+        )
+      );
     }
-    return await query.orderBy(desc(masterProductModels.updatedAt));
+
+    // Execute both queries and combine results
+    const [models, accessories] = await Promise.all([
+      modelQuery.orderBy(desc(masterProductModels.updatedAt)),
+      accessoryQuery.orderBy(desc(masterProductAccessories.updatedAt))
+    ]);
+
+    // Combine and sort by updated date
+    const allProducts = [...models, ...accessories].sort((a, b) => 
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+
+    return allProducts;
   }
 
   async createMasterProduct(
