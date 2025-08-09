@@ -23,6 +23,14 @@ export async function apiRequest(
     requestHeaders['X-Demo-Auth'] = 'true';
   }
 
+  // Add tenant ID header - use localStorage if available, fallback to session
+  if (typeof window !== 'undefined') {
+    const tenantId = localStorage.getItem('demo-tenant-id') || '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
+    if (tenantId) {
+      requestHeaders['x-tenant-id'] = tenantId;
+    }
+  }
+
   const res = await fetch(url, {
     method,
     headers: requestHeaders,
@@ -45,6 +53,14 @@ export const getQueryFn: <T>(options: {
     // Add demo auth header if localStorage flag is set
     if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
       headers['X-Demo-Auth'] = 'true';
+    }
+
+    // Add tenant ID header - use localStorage if available, fallback to session
+    if (typeof window !== 'undefined') {
+      const tenantId = localStorage.getItem('demo-tenant-id') || '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
+      if (tenantId) {
+        headers['x-tenant-id'] = tenantId;
+      }
     }
 
     const res = await fetch(queryKey.join("/") as string, {
