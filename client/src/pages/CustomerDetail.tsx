@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -251,18 +258,18 @@ export default function CustomerDetailHubspot() {
         title: "Customer Updated",
         description: "Customer information has been successfully updated.",
       });
-      
+
       // Optimistic update for main business records list
       queryClient.setQueryData(["/api/business-records"], (oldData: any) => {
         if (!oldData) return oldData;
-        return oldData.map((record: any) => 
+        return oldData.map((record: any) =>
           record.id === id ? { ...record, ...updatedData } : record
         );
       });
-      
+
       // Optimistic update for individual record
       queryClient.setQueryData(["/api/business-records", id], updatedData);
-      
+
       // Invalidate all related caches to ensure consistency
       queryClient.invalidateQueries({
         queryKey: ["/api/business-records", id],
@@ -273,7 +280,7 @@ export default function CustomerDetailHubspot() {
       queryClient.invalidateQueries({
         queryKey: ["/api/customers"],
       });
-      
+
       setIsEditing(false);
     },
     onError: (error: any) => {
@@ -334,9 +341,9 @@ export default function CustomerDetailHubspot() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto">
-        {/* HubSpot-style Header */}
-        <div className="flex items-center justify-between mb-6 bg-white p-6 rounded-lg shadow-sm border">
-          <div className="flex items-center space-x-4">
+        {/* Responsive Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6 bg-white p-4 md:p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
@@ -346,15 +353,21 @@ export default function CustomerDetailHubspot() {
               Back to Customers
             </Button>
             <Separator orientation="vertical" className="h-6" />
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-3 min-w-0">
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="bg-green-100 text-green-600 text-lg font-semibold">
-                  {customer.companyName?.[0] || "C"}
+                  {
+                    (customer.companyName ||
+                      (customer as any).company_name ||
+                      "C")[0]
+                  }
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  {customer.companyName || "Unnamed Customer"}
+                <h1 className="text-2xl font-semibold text-gray-900 truncate max-w-[75vw] md:max-w-[40vw]">
+                  {customer.companyName ||
+                    (customer as any).company_name ||
+                    "Unnamed Customer"}
                 </h1>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Badge
@@ -377,7 +390,75 @@ export default function CustomerDetailHubspot() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* Actions: dropdown on mobile, button group on md+ with wrapping */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-between"
+                >
+                  Actions
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onClick={() =>
+                    setDialogs((prev) => ({ ...prev, call: true }))
+                  }
+                >
+                  <PhoneCall className="h-4 w-4 mr-2" /> Log Call
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    setDialogs((prev) => ({ ...prev, email: true }))
+                  }
+                >
+                  <Mail className="h-4 w-4 mr-2" /> Log Email
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    setDialogs((prev) => ({ ...prev, meeting: true }))
+                  }
+                >
+                  <Calendar className="h-4 w-4 mr-2" /> Schedule Service
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    setDialogs((prev) => ({ ...prev, note: true }))
+                  }
+                >
+                  <FileText className="h-4 w-4 mr-2" /> Add Note
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    setDialogs((prev) => ({ ...prev, task: true }))
+                  }
+                >
+                  <CheckSquare className="h-4 w-4 mr-2" /> Add Task
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {!isEditing ? (
+                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                    <Edit className="h-4 w-4 mr-2" /> Edit
+                  </DropdownMenuItem>
+                ) : (
+                  <>
+                    <DropdownMenuItem onClick={handleSave}>
+                      <Save className="h-4 w-4 mr-2" /> Save Changes
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsEditing(false)}>
+                      <X className="h-4 w-4 mr-2" /> Cancel
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="hidden md:flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
