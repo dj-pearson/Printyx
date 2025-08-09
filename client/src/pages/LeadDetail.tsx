@@ -327,7 +327,18 @@ export default function LeadDetailHubspot() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => setLocation('/deals/new?leadId=' + id + '&companyName=' + encodeURIComponent(lead.companyName || ''))}
+                onClick={() => {
+                  // Switch to deals tab first
+                  const dealsTab = document.querySelector('[data-state="inactive"][value="deals"]') as HTMLElement;
+                  if (dealsTab) {
+                    dealsTab.click();
+                    // Small delay to ensure tab is active before triggering action
+                    setTimeout(() => {
+                      const event = new CustomEvent('leadTabAction', { detail: { action: 'createDeal' } });
+                      window.dispatchEvent(event);
+                    }, 100);
+                  }
+                }}
                 className="text-xs"
               >
                 <Briefcase className="h-3 w-3 mr-1" />
@@ -364,12 +375,21 @@ export default function LeadDetailHubspot() {
                 variant="outline" 
                 size="sm" 
                 onClick={() => {
-                  const params = new URLSearchParams({
-                    leadId: id,
-                    companyName: lead.companyName || '',
-                    prefill: 'true'
-                  });
-                  setLocation(`/quotes/new?${params.toString()}`);
+                  // Route through deals - switch to deals tab and trigger quote creation
+                  const dealsTab = document.querySelector('[data-state="inactive"][value="deals"]') as HTMLElement;
+                  if (dealsTab) {
+                    dealsTab.click();
+                    setTimeout(() => {
+                      const event = new CustomEvent('leadTabAction', { 
+                        detail: { 
+                          action: 'createQuote', 
+                          leadId: id, 
+                          companyName: lead.companyName || '' 
+                        } 
+                      });
+                      window.dispatchEvent(event);
+                    }, 100);
+                  }
                 }}
                 className="text-xs"
               >
@@ -380,12 +400,21 @@ export default function LeadDetailHubspot() {
                 variant="outline" 
                 size="sm" 
                 onClick={() => {
-                  const params = new URLSearchParams({
-                    leadId: id,
-                    companyName: lead.companyName || '',
-                    prefill: 'true'
-                  });
-                  setLocation(`/proposals/new?${params.toString()}`);
+                  // Route through deals - switch to deals tab and trigger proposal creation
+                  const dealsTab = document.querySelector('[data-state="inactive"][value="deals"]') as HTMLElement;
+                  if (dealsTab) {
+                    dealsTab.click();
+                    setTimeout(() => {
+                      const event = new CustomEvent('leadTabAction', { 
+                        detail: { 
+                          action: 'createProposal', 
+                          leadId: id, 
+                          companyName: lead.companyName || '' 
+                        } 
+                      });
+                      window.dispatchEvent(event);
+                    }, 100);
+                  }
                 }}
                 className="text-xs"
               >
@@ -493,7 +522,7 @@ export default function LeadDetailHubspot() {
           {/* Left Column - Main Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Lead Management Tabs */}
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs defaultValue="overview" className="w-full" id="lead-tabs">
               <div className="border-b border-gray-200">
                 <TabsList className="h-auto p-0 bg-transparent space-x-0">
                   <div className="flex flex-wrap gap-1 p-1">

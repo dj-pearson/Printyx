@@ -104,6 +104,40 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
     stageId: "",
   });
 
+  // Handle Quick Actions CTA events from LeadDetail
+  useEffect(() => {
+    const handleTabAction = (event: CustomEvent) => {
+      const { action, leadId: eventLeadId, companyName } = event.detail || {};
+      
+      if (action === 'createDeal') {
+        setIsCreateDialogOpen(true);
+      } else if (action === 'createQuote') {
+        // Route to quote builder with deal context
+        const params = new URLSearchParams({
+          leadId: eventLeadId || leadId,
+          companyName: companyName || leadName,
+          prefill: 'true',
+          source: 'deal'
+        });
+        window.open(`/quotes/new?${params.toString()}`, '_blank');
+      } else if (action === 'createProposal') {
+        // Route to proposal builder with deal context
+        const params = new URLSearchParams({
+          leadId: eventLeadId || leadId,
+          companyName: companyName || leadName,
+          prefill: 'true',
+          source: 'deal'
+        });
+        window.open(`/proposals/new?${params.toString()}`, '_blank');
+      }
+    };
+
+    window.addEventListener('leadTabAction', handleTabAction as EventListener);
+    return () => {
+      window.removeEventListener('leadTabAction', handleTabAction as EventListener);
+    };
+  }, [leadId, leadName]);
+
   // Fetch deals associated with this lead
   const { data: deals = [], isLoading: dealsLoading } = useQuery<Deal[]>({
     queryKey: ['/api/deals', { leadId }],
@@ -482,11 +516,11 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
         </div>
       )}
 
-      {/* Summary Stats */}
+      {/* Enhanced Summary Stats with Goal Attainment */}
       {deals.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-blue-600">{deals.length}</div>
                 <div className="text-sm text-gray-600">Total Deals</div>
@@ -499,11 +533,43 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
               </div>
               <div>
                 <div className="text-2xl font-bold text-purple-600">
-                  {deals.length > 0 
-                    ? Math.round(deals.reduce((sum, deal) => sum + (deal.probability || 0), 0) / deals.length)
-                    : 0}%
+                  {(() => {
+                    const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+                    const monthlyGoal = 50000; // Lead-specific goal (smaller than company-wide)
+                    const attainmentPct = Math.min(100, Math.round((totalValue / monthlyGoal) * 100));
+                    return `${attainmentPct}%`;
+                  })()}
                 </div>
-                <div className="text-sm text-gray-600">Avg Probability</div>
+                <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
+                  Goal Attainment
+                  <Badge 
+                    variant={(() => {
+                      const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+                      const monthlyGoal = 50000;
+                      const attainment = (totalValue / monthlyGoal) * 100;
+                      return attainment >= 90 ? 'default' : attainment >= 70 ? 'secondary' : 'destructive';
+                    })()} 
+                    className="text-xs ml-1"
+                  >
+                    {(() => {
+                      const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+                      const monthlyGoal = 50000;
+                      const attainment = (totalValue / monthlyGoal) * 100;
+                      return attainment >= 90 ? 'On Track' : attainment >= 70 ? 'At Risk' : 'Behind';
+                    })()}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {(() => {
+                    const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+                    const monthlyGoal = 50000;
+                    const remaining = Math.max(0, monthlyGoal - totalValue);
+                    return `$${remaining.toLocaleString()}`;
+                  })()}
+                </div>
+                <div className="text-sm text-gray-600">Remaining to Goal</div>
               </div>
             </div>
           </CardContent>
