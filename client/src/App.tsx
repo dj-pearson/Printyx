@@ -116,6 +116,7 @@ import EnhancedOnboardingForm from "@/pages/EnhancedOnboardingForm";
 import ComprehensiveOnboardingForm from "@/pages/ComprehensiveOnboardingForm";
 import RoleManagement from "@/pages/RoleManagement";
 import GPT5Dashboard from "@/pages/GPT5Dashboard";
+import DocumentBuilder from "@/pages/DocumentBuilder";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -234,6 +235,7 @@ function Router() {
           <Route path="/service-reports" component={ServiceReports} />
           <Route path="/revenue-reports" component={RevenueReports} />
           <Route path="/contracts" component={Contracts} />
+          <Route path="/document-builder" component={DocumentBuilder} />
           <Route path="/meter-readings" component={MeterReadings} />
           <Route path="/invoices" component={Invoices} />
           <Route

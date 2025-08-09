@@ -1870,6 +1870,65 @@ export const contractTieredRates = pgTable("contract_tiered_rates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Combined Documents table - Purchase Agreements + Service Contracts
+export const documents = pgTable("documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  customerId: varchar("customer_id").notNull(),
+  
+  // Document Info
+  documentNumber: varchar("document_number").notNull(),
+  documentType: varchar("document_type").notNull(), // purchase_only, purchase_service, service_only
+  
+  // Purchase Agreement Fields
+  agreementNumber: varchar("agreement_number"),
+  buyerName: varchar("buyer_name"),
+  buyerAddress: text("buyer_address"),
+  shipToName: varchar("ship_to_name"),
+  shipToAddress: text("ship_to_address"),
+  poNumber: varchar("po_number"),
+  orderDate: timestamp("order_date"),
+  
+  // Equipment/Line Items (stored as JSON)
+  lineItems: jsonb("line_items"),
+  
+  // Service Contract Fields
+  includeServiceContract: boolean("include_service_contract").default(false),
+  serviceTerm: integer("service_term"), // months
+  serviceStartDate: timestamp("service_start_date"),
+  autoRenewal: boolean("auto_renewal").default(false),
+  
+  // Billing Details
+  minimumBlackPrints: integer("minimum_black_prints"),
+  minimumColorPrints: integer("minimum_color_prints"),
+  blackRate: decimal("black_rate", { precision: 10, scale: 4 }),
+  colorRate: decimal("color_rate", { precision: 10, scale: 4 }),
+  monthlyBase: decimal("monthly_base", { precision: 10, scale: 2 }),
+  
+  // Consumables
+  includeConsumables: boolean("include_consumables").default(false),
+  includeBlackSupplies: boolean("include_black_supplies").default(false),
+  includeColorSupplies: boolean("include_color_supplies").default(false),
+  
+  // Terms
+  paymentTerms: varchar("payment_terms"),
+  warrantyTerms: text("warranty_terms"),
+  specialTerms: text("special_terms"),
+  authorizedSignerTitle: varchar("authorized_signer_title"),
+  
+  // Customer Info
+  customerName: varchar("customer_name"),
+  
+  // Status
+  status: varchar("status").default("draft"), // draft, sent, signed, completed
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  updatedBy: varchar("updated_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Product Management System - Models (Top-level products like copiers)
 export const productModels = pgTable("product_models", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

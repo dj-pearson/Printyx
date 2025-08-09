@@ -7373,6 +7373,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate contract number if not provided
       const contractNumber = req.body.contractNumber || `CNT-${Date.now()}`;
       
+      // Ensure we have a customerId
+      if (!req.body.customerId) {
+        return res.status(400).json({ message: "Customer ID is required" });
+      }
+
       // Prepare contract data with only existing database columns
       const contractData = {
         customerId: req.body.customerId,
@@ -7385,6 +7390,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         monthlyBase: req.body.monthlyBase ? parseFloat(req.body.monthlyBase) : null,
         status: req.body.status || 'active',
       };
+
+      console.log('Creating contract with data:', JSON.stringify(contractData, null, 2));
 
       // Convert date strings to Date objects if they exist
       if (contractData.startDate && typeof contractData.startDate === 'string') {
@@ -7405,6 +7412,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import and register proposals routes
   const proposalsRouter = await import("./routes-proposals.js");
   app.use("/api/proposals", proposalsRouter.default);
+
+  // Import and register documents routes
+  const documentsRouter = await import("./routes-documents.js");
+  app.use("/api/documents", documentsRouter.default);
 
   // Social Media Post Generator Routes
   const socialMediaRoutes = await import("./routes-social-media");

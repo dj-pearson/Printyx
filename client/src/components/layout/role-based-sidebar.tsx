@@ -144,6 +144,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         },
         { name: "Demo Scheduling", href: "/demo-scheduling", icon: Calendar },
         { name: "Contracts", href: "/contracts", icon: ClipboardList },
+        { name: "Document Builder", href: "/document-builder", icon: FileSignature },
         {
           name: "Customer Success",
           href: "/customer-success-management",
