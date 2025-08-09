@@ -14,7 +14,7 @@ import {
   type TechnicianTicketSession,
   type TicketPartsRequest,
 } from "@shared/enhanced-service-schema";
-import { serviceTickets, customers } from "@shared/schema";
+import { serviceTickets, customers, businessRecords } from "@shared/schema";
 
 const router = express.Router();
 
@@ -24,10 +24,53 @@ router.post("/phone-in-tickets", async (req, res) => {
     const validatedData = insertPhoneInTicketSchema.parse(req.body);
     const tenantId = req.headers["x-tenant-id"] as string;
 
+    // If customerId is provided, fetch customer info from business_records
+    let customerInfo = {};
+    if (validatedData.customerId) {
+      const [customer] = await db
+        .select({
+          id: businessRecords.id,
+          companyName: businessRecords.companyName,
+          primaryContactName: businessRecords.primaryContactName,
+          primaryContactEmail: businessRecords.primaryContactEmail,
+          primaryContactPhone: businessRecords.primaryContactPhone,
+          address: businessRecords.address,
+          addressLine1: businessRecords.addressLine1,
+          addressLine2: businessRecords.addressLine2,
+          city: businessRecords.city,
+          state: businessRecords.state,
+          postalCode: businessRecords.postalCode,
+        })
+        .from(businessRecords)
+        .where(and(
+          eq(businessRecords.id, validatedData.customerId),
+          eq(businessRecords.tenantId, tenantId)
+        ))
+        .limit(1);
+
+      if (customer) {
+        const fullAddress = [
+          customer.address || [customer.addressLine1, customer.addressLine2].filter(Boolean).join(', '),
+          customer.city,
+          customer.state,
+          customer.postalCode
+        ].filter(Boolean).join(', ');
+
+        customerInfo = {
+          customerName: customer.companyName || customer.primaryContactName || 'Unknown Customer',
+          locationAddress: fullAddress || validatedData.locationAddress,
+          callerName: validatedData.callerName || customer.primaryContactName,
+          callerPhone: validatedData.callerPhone || customer.primaryContactPhone,
+          callerEmail: validatedData.callerEmail || customer.primaryContactEmail,
+        };
+      }
+    }
+
     const [phoneTicket] = await db
       .insert(phoneInTickets)
       .values({
         ...validatedData,
+        ...customerInfo,
         tenantId,
       })
       .returning();
@@ -82,6 +125,47 @@ Phone-in ticket details:
   }
 });
 
+// Get customers for phone-in ticket form
+router.get("/customers", async (req, res) => {
+  try {
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const { search } = req.query;
+    
+    let query = db
+      .select({
+        id: businessRecords.id,
+        companyName: businessRecords.companyName,
+        primaryContactName: businessRecords.primaryContactName,
+        primaryContactEmail: businessRecords.primaryContactEmail,
+        primaryContactPhone: businessRecords.primaryContactPhone,
+        address: businessRecords.address,
+        addressLine1: businessRecords.addressLine1,
+        city: businessRecords.city,
+        state: businessRecords.state,
+        type: businessRecords.type,
+      })
+      .from(businessRecords)
+      .where(and(
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.type, 'customer')
+      ));
+
+    if (search) {
+      query = query.where(
+        sql`(${businessRecords.companyName} ILIKE ${'%' + search + '%'} OR 
+             ${businessRecords.primaryContactName} ILIKE ${'%' + search + '%'} OR
+             ${businessRecords.primaryContactPhone} ILIKE ${'%' + search + '%'})`
+      );
+    }
+
+    const customers = await query.limit(50);
+    res.json(customers);
+  } catch (error) {
+    console.error("Error fetching customers for phone-in tickets:", error);
+    res.status(500).json({ error: "Failed to fetch customers" });
+  }
+});
+
 // Get phone-in tickets
 router.get("/phone-in-tickets", async (req, res) => {
   try {
@@ -95,14 +179,25 @@ router.get("/phone-in-tickets", async (req, res) => {
         callerName: phoneInTickets.callerName,
         callerPhone: phoneInTickets.callerPhone,
         callerEmail: phoneInTickets.callerEmail,
+        callerRole: phoneInTickets.callerRole,
+        customerId: phoneInTickets.customerId,
         customerName: phoneInTickets.customerName,
         locationAddress: phoneInTickets.locationAddress,
+        locationBuilding: phoneInTickets.locationBuilding,
+        locationFloor: phoneInTickets.locationFloor,
+        locationRoom: phoneInTickets.locationRoom,
+        equipmentId: phoneInTickets.equipmentId,
+        equipmentBrand: phoneInTickets.equipmentBrand,
+        equipmentModel: phoneInTickets.equipmentModel,
+        equipmentSerial: phoneInTickets.equipmentSerial,
         issueCategory: phoneInTickets.issueCategory,
         issueDescription: phoneInTickets.issueDescription,
-        urgencyLevel: phoneInTickets.urgencyLevel,
-        handledBy: phoneInTickets.handledBy,
+        priority: phoneInTickets.priority,
+        contactMethod: phoneInTickets.contactMethod,
+        preferredServiceDate: phoneInTickets.preferredServiceDate,
         convertedToTicketId: phoneInTickets.convertedToTicketId,
         convertedAt: phoneInTickets.convertedAt,
+        notes: phoneInTickets.notes,
         createdAt: phoneInTickets.createdAt,
         updatedAt: phoneInTickets.updatedAt,
       })
