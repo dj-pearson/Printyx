@@ -1,12 +1,13 @@
 # Printyx Database Schema Hierarchy & Reference
-*Updated: August 8, 2025*
+*Updated: August 9, 2025*
 
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 148 tables across all business modules
+**Total Tables**: 152 tables across all business modules
 
 ## Recent Schema Updates
+- **Master Product Catalog System (Aug 9, 2025)**: Implemented comprehensive master product catalog system for Printyx/Root Admin maintained product database. Added 4 new tables: `master_product_models` (10 columns), `master_product_accessories` (9 columns), `enabled_products` (13 columns), and `tenant_catalog_settings` (9 columns). Features master catalog browsing, tenant-level product enablement, custom pricing overrides, bulk enablement operations, and integrated catalog management within Product Hub. Supports real copier equipment data from Canon, Xerox, HP, Ricoh, and Lexmark manufacturers.
 - **Sales Forecasting System (Aug 8, 2025)**: Implemented comprehensive sales forecasting with real database integration. Added `sales_forecasts`, `forecast_pipeline_items`, `forecast_metrics`, and `forecast_rules` tables with 37, 37, 25, and 18 columns respectively. Features tenant-based filtering, forecasting analytics, pipeline management, and performance tracking with full API endpoints.
 - **Enhanced RBAC System (Aug 7, 2025)**: Implemented enterprise-grade Role-Based Access Control with 4-tier organizational structure (Platform/Company/Regional/Location) and 8-level role hierarchy. Added 6 new tables: `organizational_units`, `enhanced_roles`, `permissions`, `role_permissions`, `user_role_assignments`, `permission_overrides`, `permission_cache`. Includes nested set model for efficient hierarchy queries, permission inheritance, customizable roles for company admins, and multi-level caching for performance.
 - **Comprehensive Onboarding System (Aug 7, 2025)**: Added comprehensive onboarding checklist system with `onboarding_checklists`, `onboarding_dynamic_sections`, `onboarding_equipment`, `onboarding_tasks`, `onboarding_network_config`, and `onboarding_print_management` tables for managing equipment installation and customer onboarding processes. Includes multi-step workflow with equipment details, network configuration, security setup, and dynamic sections.
@@ -416,6 +417,77 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 ### Product & Service Management
+
+### Master Product Catalog System ⭐ **New Aug 9, 2025**
+
+#### `master_product_models` (Printyx Master Catalog - Equipment)
+**Purpose**: Printyx/Root Admin maintained master catalog of copier equipment and models
+**Function**: Central repository for manufacturer equipment data, specifications, and pricing
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Product model identifier
+- `manufacturer` (varchar(100), NOT NULL) - Equipment manufacturer (Canon, Xerox, HP, Ricoh, Lexmark)
+- `model_code` (varchar(100), NOT NULL) - Manufacturer model code/number
+- `display_name` (varchar(255), NOT NULL) - Product display name
+- `category` (varchar(50)) - Product category (MFP, Printer, Scanner, Fax)
+- `product_type` (varchar(100)) - Product type specification (A3 Color, A4 Mono, etc.)
+- `msrp` (decimal(10,2)) - Manufacturer Suggested Retail Price
+- `specs_json` (jsonb) - Technical specifications in JSON format
+- `status` (varchar(20), DEFAULT 'active') - Product status (active, discontinued, beta)
+- `created_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Creation timestamp
+- `updated_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Last update timestamp
+- **Constraints**: UNIQUE(manufacturer, model_code)
+
+#### `master_product_accessories` (Printyx Master Catalog - Accessories)
+**Purpose**: Printyx/Root Admin maintained master catalog of equipment accessories
+**Function**: Central repository for accessories, add-ons, and upgrade components
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Accessory identifier
+- `manufacturer` (varchar(100), NOT NULL) - Accessory manufacturer
+- `accessory_code` (varchar(100), NOT NULL) - Manufacturer accessory code
+- `display_name` (varchar(255), NOT NULL) - Accessory display name
+- `category` (varchar(50)) - Accessory category (Paper Feeding, Document Feeding, Finishing)
+- `msrp` (decimal(10,2)) - Manufacturer Suggested Retail Price
+- `specs_json` (jsonb) - Accessory specifications and compatibility
+- `status` (varchar(20), DEFAULT 'active') - Accessory status
+- `created_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Creation timestamp
+- `updated_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Last update timestamp
+- **Constraints**: UNIQUE(manufacturer, accessory_code)
+
+#### `enabled_products` (Tenant Product Enablement)
+**Purpose**: Track which master catalog products are enabled for each tenant with custom pricing
+**Function**: Tenant-specific product enablement, custom pricing, SKU overrides
+**Fields**:
+- `enabled_product_id` (uuid, PRIMARY KEY) - Enabled product identifier
+- `tenant_id` (uuid, NOT NULL) - Tenant assignment
+- `master_product_id` (uuid, FK → master_product_models.id) - Master catalog product reference
+- `source` (varchar(50), DEFAULT 'master_catalog') - Product source
+- `enabled` (boolean, DEFAULT true) - Product enabled status
+- `custom_sku` (varchar(100)) - Tenant-specific SKU override
+- `custom_name` (varchar(255)) - Tenant-specific name override
+- `dealer_cost` (decimal(10,2)) - Tenant-specific dealer cost
+- `company_price` (decimal(10,2)) - Tenant-specific selling price
+- `markup_rule_id` (uuid) - Applied markup rule reference
+- `price_overridden` (boolean, DEFAULT false) - Price override flag
+- `enabled_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Enablement timestamp
+- `updated_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Last update timestamp
+- **Constraints**: UNIQUE(tenant_id, master_product_id)
+
+#### `tenant_catalog_settings` (Tenant Catalog Configuration)
+**Purpose**: Tenant-specific settings for master catalog integration and behavior
+**Function**: Control auto-enablement, approval workflows, markup defaults
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Settings identifier
+- `tenant_id` (uuid, NOT NULL) - Tenant assignment
+- `auto_enable_new_products` (boolean, DEFAULT false) - Auto-enable new catalog additions
+- `default_markup_percentage` (decimal(5,2), DEFAULT 25.00) - Default markup percentage
+- `require_approval_for_enablement` (boolean, DEFAULT false) - Require approval workflow
+- `import_tracking_enabled` (boolean, DEFAULT true) - Track import activities
+- `last_catalog_sync` (timestamp) - Last synchronization with master catalog
+- `created_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Creation timestamp
+- `updated_at` (timestamp, DEFAULT CURRENT_TIMESTAMP) - Last update timestamp
+- **Constraints**: UNIQUE(tenant_id)
+
+### Tenant Product Management
 
 #### `product_models` (Product Catalog - Models)
 **Purpose**: Copier and printer model specifications
