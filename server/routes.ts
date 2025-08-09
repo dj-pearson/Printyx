@@ -7328,12 +7328,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(saved);
     } catch (error: any) {
       console.error("Error creating master product:", error);
-      res
-        .status(500)
-        .json({
-          message: "Failed to create master product",
-          detail: error?.message,
-        });
+      res.status(500).json({
+        message: "Failed to create master product",
+        detail: error?.message,
+      });
     }
   });
 
@@ -7407,6 +7405,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Tenant: enable products directly from CSV (uses Dealer Price as dealerCost)
+  app.post(
+    "/api/catalog/models/enable-from-csv",
+    requireAuth,
+    upload.single("file"),
+    async (req: any, res) => {
+      try {
+        const { tenantId, id: userId } = req.user;
+        const file = req.file;
+        if (!file)
+          return res.status(400).json({ message: "CSV file required" });
+
+        const csvText = file.buffer.toString("utf-8");
+        const lines = csvText.split(/\r?\n/);
+        let columns: string[] = [];
+        let enabled = 0;
+        let skipped = 0;
+
+        const isHeader = (arr: string[]) => {
+          const lc = arr.map((s) => s.trim().toLowerCase());
+          return (
+            lc.includes("item no.") &&
+            lc.includes("description") &&
+            lc.some((c) => c.includes("dealer price")) &&
+            lc.includes("msrp")
+          );
+        };
+
+        const normalizeMoney = (s?: string) => {
+          if (!s) return undefined;
+          const n = Number(String(s).replace(/[$,\s]/g, ""));
+          return Number.isFinite(n) ? n : undefined;
+        };
+
+        for (const raw of lines) {
+          const line = raw.trimEnd();
+          if (!line) continue;
+          const parts = line.split(",");
+          if (isHeader(parts)) {
+            columns = parts.map((h) => h.trim().toLowerCase());
+            continue;
+          }
+          if (!columns.length) continue;
+
+          const row: any = {};
+          columns.forEach((c, i) => (row[c] = (parts[i] || "").trim()));
+          const modelCode = row["item no."] || row["item no"] || row["item"];
+          const description = row["description"];
+          const dealerPrice =
+            normalizeMoney(row["dealer price"]) ??
+            normalizeMoney(row["dealer"]);
+          if (!modelCode || !description) continue;
+
+          // Make sure a corresponding master product exists (create minimal if missing)
+          let master = await storage.findMasterProduct("Canon", modelCode);
+          if (!master) {
+            master = await storage.upsertMasterProduct({
+              manufacturer: "Canon",
+              modelCode,
+              displayName: description,
+              msrp: undefined,
+            } as any);
+          }
+
+          try {
+            await storage.enableMasterProduct(tenantId, (master as any).id, {
+              enabledBy: userId,
+              dealerCost: dealerPrice as any,
+            });
+            enabled += 1;
+          } catch {
+            skipped += 1;
+          }
+        }
+
+        res.json({ enabled, skipped });
+      } catch (error: any) {
+        console.error("Error enabling products from CSV:", error);
+        res.status(500).json({
+          message: "Failed to enable from CSV",
+          detail: error?.message,
+        });
+      }
+    }
+  );
+
   // Admin-only: Import master catalog models (CSV)
   app.post(
     "/api/catalog/models/import",
@@ -7424,51 +7508,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "CSV file required" });
 
         const csvText = file.buffer.toString("utf-8");
-        const lines = csvText.split(/\r?\n/).filter(Boolean);
-        const header = lines.shift();
-        const columns = (header || "")
-          .split(",")
-          .map((h) => h.trim().toLowerCase());
+        const lines = csvText.split(/\r?\n/);
 
         let created = 0;
         let updated = 0;
+        let currentCategory: string | undefined = undefined;
+        let columns: string[] = [];
 
-        for (const line of lines) {
-          const values = line.split(",").map((v) => v.trim());
+        const isHeader = (arr: string[]) => {
+          const lc = arr.map((s) => s.trim().toLowerCase());
+          return (
+            lc.includes("item no.") &&
+            lc.includes("description") &&
+            lc.some((c) => c.includes("dealer price")) &&
+            lc.includes("msrp")
+          );
+        };
+
+        const normalizeMoney = (s?: string) => {
+          if (!s) return undefined;
+          const n = Number(String(s).replace(/[$,\s]/g, ""));
+          return Number.isFinite(n) ? n : undefined;
+        };
+
+        for (const raw of lines) {
+          const line = raw.trimEnd();
+          if (!line) continue;
+          const parts = line.split(",");
+
+          // Detect section titles to set category
+          if (/^\s*[A-Za-z].*Accessories\s*$/i.test(parts[0])) {
+            currentCategory = "Accessories";
+            columns = [];
+            continue;
+          }
+          if (/^\s*Supplies.*$/i.test(parts[0])) {
+            currentCategory = "Supplies";
+            columns = [];
+            continue;
+          }
+          if (/^\s*imageRUNNER|imagePRESS|imageFORCE/i.test(parts[0])) {
+            currentCategory = "Equipment";
+            continue;
+          }
+
+          // Detect header rows
+          if (isHeader(parts)) {
+            columns = parts.map((h) => h.trim().toLowerCase());
+            continue;
+          }
+
+          if (!columns.length) continue; // skip until header found
+
+          // Build row object using current header
           const row: any = {};
-          columns.forEach((c, i) => (row[c] = values[i]));
+          columns.forEach((c, i) => (row[c] = (parts[i] || "").trim()));
 
-          const payload = insertMasterProductModelSchema.parse({
-            manufacturer: row.manufacturer,
-            modelCode: row.model_code || row.modelcode || row.model,
-            displayName:
-              row.display_name ||
-              `${row.manufacturer} ${row.model_code || row.model}`,
-            category: row.category || undefined,
-            productType: row.product_type || undefined,
-            msrp: row.msrp ? Number(row.msrp) : undefined,
-            specsJson: row.specs_json ? JSON.parse(row.specs_json) : undefined,
-          } as any);
+          const modelCode = row["item no."] || row["item no"] || row["item"];
+          const description = row["description"];
+          const msrp = normalizeMoney(row["msrp"]);
+          if (!modelCode || !description) continue;
 
-          const existingBefore = await storage.browseMasterProducts({
-            manufacturer: payload.manufacturer as any,
-            search: payload.modelCode as any,
-          });
+          if (
+            currentCategory === "Accessories" ||
+            /accessor/i.test(description)
+          ) {
+            const payload: any = {
+              manufacturer: "Canon",
+              accessoryCode: modelCode,
+              displayName: description,
+              category: "Accessories",
+              msrp,
+            };
+            const saved = await storage.upsertMasterAccessory(payload);
+            if (saved) created += 1; // count as created/updated uniformly
+            continue;
+          }
 
+          // Default: treat as equipment model
+          const payload: any = {
+            manufacturer: "Canon",
+            modelCode,
+            displayName: description,
+            msrp,
+            category: currentCategory || undefined,
+          };
           const saved = await storage.upsertMasterProduct(payload);
-          if (existingBefore.find((m: any) => m.id === saved.id)) updated += 1;
-          else created += 1;
+          if (saved) created += 1; // count as created/updated uniformly
         }
 
         res.json({ created, updated });
       } catch (error: any) {
         console.error("Error importing master catalog:", error);
-        res
-          .status(500)
-          .json({
-            message: "Failed to import master catalog",
-            detail: error?.message,
-          });
+        res.status(500).json({
+          message: "Failed to import master catalog",
+          detail: error?.message,
+        });
       }
     }
   );

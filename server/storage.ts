@@ -177,6 +177,7 @@ import {
   type MasterProductModel,
   type InsertMasterProductModel,
   type MasterProductAccessory,
+  type InsertMasterProductAccessory,
   type TenantEnabledProduct,
 } from "@shared/schema";
 import { db } from "./db";
@@ -791,6 +792,64 @@ export class DatabaseStorage implements IStorage {
       return updated as any;
     }
     return await this.createMasterProduct(data);
+  }
+
+  async findMasterProduct(
+    manufacturer: string,
+    modelCode: string
+  ): Promise<MasterProductModel | undefined> {
+    const [row] = await db
+      .select()
+      .from(masterProductModels)
+      .where(
+        and(
+          eq(masterProductModels.manufacturer, manufacturer as any),
+          eq(masterProductModels.modelCode, modelCode as any)
+        )
+      )
+      .limit(1);
+    return row as any;
+  }
+
+  async createMasterAccessory(
+    data: InsertMasterProductAccessory
+  ): Promise<MasterProductAccessory> {
+    const [created] = await db
+      .insert(masterProductAccessories)
+      .values(data as any)
+      .returning();
+    return created as any;
+  }
+
+  async upsertMasterAccessory(
+    data: InsertMasterProductAccessory
+  ): Promise<MasterProductAccessory> {
+    const [existing] = await db
+      .select()
+      .from(masterProductAccessories)
+      .where(
+        and(
+          eq(masterProductAccessories.manufacturer, data.manufacturer as any),
+          eq(masterProductAccessories.accessoryCode, data.accessoryCode as any)
+        )
+      )
+      .limit(1);
+    if (existing) {
+      const [updated] = await db
+        .update(masterProductAccessories)
+        .set({
+          displayName: (data as any).displayName ?? existing.displayName,
+          specsJson: (data as any).specsJson ?? existing.specsJson,
+          msrp: (data as any).msrp ?? existing.msrp,
+          status: (data as any).status ?? existing.status,
+          category: (data as any).category ?? existing.category,
+          updatedAt: new Date(),
+        })
+        .where(eq(masterProductAccessories.id, (existing as any).id))
+        .returning();
+      return updated as any;
+    }
+    return await this.createMasterAccessory(data);
   }
 
   async listMasterManufacturers(): Promise<string[]> {
