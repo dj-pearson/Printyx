@@ -128,13 +128,38 @@ import {
 } from "@shared/schema";
 
 // Basic authentication middleware - Updated to work with current auth system
-const requireAuth = (req: any, res: any, next: any) => {
+const requireAuth = async (req: any, res: any, next: any) => {
   // Check for session-based auth (legacy) or user object (current)
   const isAuthenticated =
     req.session?.userId || req.user?.id || req.user?.claims?.sub;
 
   if (!isAuthenticated) {
     return res.status(401).json({ message: "Authentication required" });
+  }
+
+  // Get user ID from various sources
+  const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+
+  if (userId && (!req.user || !req.user.role || !req.user.tenantId)) {
+    // Fetch full user details from database if missing
+    try {
+      const fullUser = await storage.getUser(userId);
+      if (fullUser) {
+        req.user = {
+          ...req.user,
+          id: fullUser.id,
+          role: fullUser.role,
+          tenantId: fullUser.tenantId,
+          isPlatformUser: fullUser.isPlatformUser,
+          is_platform_user: fullUser.isPlatformUser,
+          email: fullUser.email,
+          firstName: fullUser.firstName,
+          lastName: fullUser.lastName,
+        };
+      }
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    }
   }
 
   // Add user context for backwards compatibility
