@@ -170,6 +170,14 @@ import {
   type InsertOnboardingDynamicSection,
   type OnboardingTask,
   type InsertOnboardingTask,
+  // Master product catalog schemas
+  masterProductModels,
+  masterProductAccessories,
+  tenantEnabledProducts,
+  type MasterProductModel,
+  type InsertMasterProductModel,
+  type MasterProductAccessory,
+  type TenantEnabledProduct,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -710,6 +718,168 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Master catalog queries
+  async browseMasterProducts(params: {
+    manufacturer?: string;
+    category?: string;
+    search?: string;
+    status?: string;
+  }): Promise<MasterProductModel[]> {
+    let query = db.select().from(masterProductModels);
+    if (params.manufacturer && params.manufacturer !== "all") {
+      query = query.where(
+        eq(masterProductModels.manufacturer, params.manufacturer)
+      );
+    }
+    if (params.category && params.category !== "all") {
+      query = query.where(eq(masterProductModels.category, params.category));
+    }
+    if (params.status) {
+      query = query.where(eq(masterProductModels.status, params.status));
+    }
+    if (params.search) {
+      const s = `%${params.search.toLowerCase()}%`;
+      query = query.where(
+        or(
+          like(masterProductModels.displayName, s),
+          like(masterProductModels.modelCode, s),
+          like(masterProductModels.manufacturer, s)
+        )
+      );
+    }
+    return await query.orderBy(desc(masterProductModels.updatedAt));
+  }
+
+  async createMasterProduct(
+    data: InsertMasterProductModel
+  ): Promise<MasterProductModel> {
+    const [created] = await db
+      .insert(masterProductModels)
+      .values(data as any)
+      .returning();
+    return created as any;
+  }
+
+  async upsertMasterProduct(
+    data: InsertMasterProductModel
+  ): Promise<MasterProductModel> {
+    // Try find by manufacturer + modelCode
+    const [existing] = await db
+      .select()
+      .from(masterProductModels)
+      .where(
+        and(
+          eq(masterProductModels.manufacturer, data.manufacturer as any),
+          eq(masterProductModels.modelCode, data.modelCode as any)
+        )
+      )
+      .limit(1);
+    if (existing) {
+      const [updated] = await db
+        .update(masterProductModels)
+        .set({
+          displayName: (data as any).displayName ?? existing.displayName,
+          specsJson: (data as any).specsJson ?? existing.specsJson,
+          msrp: (data as any).msrp ?? existing.msrp,
+          status: (data as any).status ?? existing.status,
+          category: (data as any).category ?? existing.category,
+          productType: (data as any).productType ?? existing.productType,
+          updatedAt: new Date(),
+        })
+        .where(eq(masterProductModels.id, (existing as any).id))
+        .returning();
+      return updated as any;
+    }
+    return await this.createMasterProduct(data);
+  }
+
+  async listMasterManufacturers(): Promise<string[]> {
+    const rows = await db
+      .select({ manufacturer: masterProductModels.manufacturer })
+      .from(masterProductModels)
+      .groupBy(masterProductModels.manufacturer)
+      .orderBy(masterProductModels.manufacturer);
+    return rows.map((r) => r.manufacturer);
+  }
+
+  async getEnabledProducts(
+    tenantId: string
+  ): Promise<(TenantEnabledProduct & MasterProductModel)[]> {
+    const rows = await db
+      .select({
+        enabledProductId: tenantEnabledProducts.id,
+        tenantId: tenantEnabledProducts.tenantId,
+        source: tenantEnabledProducts.source,
+        enabled: tenantEnabledProducts.enabled,
+        customSku: tenantEnabledProducts.customSku,
+        customName: tenantEnabledProducts.customName,
+        dealerCost: tenantEnabledProducts.dealerCost,
+        companyPrice: tenantEnabledProducts.companyPrice,
+        priceOverridden: tenantEnabledProducts.priceOverridden,
+        enabledAt: tenantEnabledProducts.enabledAt,
+        masterProductId: tenantEnabledProducts.masterProductId,
+        manufacturer: masterProductModels.manufacturer,
+        modelCode: masterProductModels.modelCode,
+        displayName: masterProductModels.displayName,
+        specsJson: masterProductModels.specsJson,
+        msrp: masterProductModels.msrp,
+        status: masterProductModels.status,
+        category: masterProductModels.category,
+        productType: masterProductModels.productType,
+      })
+      .from(tenantEnabledProducts)
+      .leftJoin(
+        masterProductModels,
+        eq(tenantEnabledProducts.masterProductId, masterProductModels.id)
+      )
+      .where(
+        and(
+          eq(tenantEnabledProducts.tenantId, tenantId),
+          eq(tenantEnabledProducts.enabled, true)
+        )
+      )
+      .orderBy(desc(tenantEnabledProducts.enabledAt));
+    return rows as any;
+  }
+
+  async enableMasterProduct(
+    tenantId: string,
+    masterProductId: string,
+    overrides: Partial<TenantEnabledProduct>
+  ): Promise<TenantEnabledProduct> {
+    // Upsert behavior: if already enabled, update overrides
+    const [existing] = await db
+      .select()
+      .from(tenantEnabledProducts)
+      .where(
+        and(
+          eq(tenantEnabledProducts.tenantId, tenantId),
+          eq(tenantEnabledProducts.masterProductId, masterProductId)
+        )
+      )
+      .limit(1);
+    if (existing) {
+      const [updated] = await db
+        .update(tenantEnabledProducts)
+        .set({ ...overrides, updatedAt: new Date(), enabled: true })
+        .where(eq(tenantEnabledProducts.id, existing.id))
+        .returning();
+      return updated as any;
+    }
+    const [created] = await db
+      .insert(tenantEnabledProducts)
+      .values({
+        tenantId,
+        masterProductId,
+        source: "master",
+        enabled: true,
+        enabledAt: new Date(),
+        ...overrides,
+      } as any)
+      .returning();
+    return created as any;
+  }
+
   // User operations (mandatory for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
