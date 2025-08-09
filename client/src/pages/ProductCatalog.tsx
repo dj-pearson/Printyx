@@ -349,9 +349,9 @@ export default function ProductCatalog() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-4">
             <Link href="/product-hub">
               <Button variant="outline" size="sm">
@@ -673,7 +673,7 @@ export default function ProductCatalog() {
             )}
 
             {/* Master Products Grid - Mobile Optimized */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {isLoadingMaster
                 ? // Loading skeleton
                   Array.from({ length: 8 }).map((_, i) => (
@@ -793,19 +793,19 @@ export default function ProductCatalog() {
                               )}
                             </div>
 
-                            <div className="flex gap-2 pt-2">
+                            <div className="flex flex-col sm:flex-row gap-2 pt-2">
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="flex-1 text-xs"
+                                    className="flex-1 text-xs min-h-[44px] sm:min-h-[36px]"
                                   >
                                     <Eye className="h-3 w-3 mr-1" />
                                     <span className="hidden sm:inline">
                                       View Details
                                     </span>
-                                    <span className="sm:hidden">View</span>
+                                    <span className="sm:hidden">View Details</span>
                                   </Button>
                                 </DialogTrigger>
                                 <DialogContent className="max-w-2xl mx-4">
@@ -920,22 +920,22 @@ export default function ProductCatalog() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="text-xs"
+                                    className="text-xs min-h-[44px] sm:min-h-[36px]"
                                     onClick={() => handleEditProduct(product)}
                                   >
                                     <Settings className="h-3 w-3 mr-1" />
                                     <span className="hidden sm:inline">Edit</span>
-                                    <span className="sm:hidden">✏️</span>
+                                    <span className="sm:hidden">Edit</span>
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent className="max-w-md mx-4">
+                                <DialogContent className="max-w-md mx-4 max-h-[90vh] overflow-y-auto">
                                   <DialogHeader>
                                     <DialogTitle>Edit Product</DialogTitle>
                                     <DialogDescription>
                                       Update product details and pricing
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <div className="space-y-4">
+                                  <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
                                     <div>
                                       <Label className="text-sm font-medium">
                                         Display Name
@@ -1078,11 +1078,11 @@ export default function ProductCatalog() {
                                       </select>
                                     </div>
 
-                                    <div className="flex gap-2 pt-4">
+                                    <div className="flex flex-col sm:flex-row gap-2 pt-4 sticky bottom-0 bg-white p-2 -m-2 border-t">
                                       <Button
                                         onClick={handleSaveEdit}
                                         disabled={updateMasterProductMutation.isPending}
-                                        className="flex-1"
+                                        className="flex-1 min-h-[44px] sm:min-h-[36px]"
                                       >
                                         {updateMasterProductMutation.isPending
                                           ? "Saving..."
@@ -1092,6 +1092,7 @@ export default function ProductCatalog() {
                                         variant="outline"
                                         onClick={handleCancelEdit}
                                         disabled={updateMasterProductMutation.isPending}
+                                        className="min-h-[44px] sm:min-h-[36px]"
                                       >
                                         Cancel
                                       </Button>
@@ -1110,13 +1111,13 @@ export default function ProductCatalog() {
                                     });
                                   }}
                                   disabled={enableProductMutation.isPending}
-                                  className="text-xs"
+                                  className="text-xs min-h-[44px] sm:min-h-[36px]"
                                 >
                                   <ShoppingCart className="h-3 w-3 mr-1" />
                                   <span className="hidden sm:inline">
                                     Enable
                                   </span>
-                                  <span className="sm:hidden">+</span>
+                                  <span className="sm:hidden">Enable</span>
                                 </Button>
                               )}
                             </div>
@@ -1137,7 +1138,7 @@ export default function ProductCatalog() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {isLoadingEnabled ? (
                     <div>Loading enabled products...</div>
                   ) : enabledProducts.length === 0 ? (
