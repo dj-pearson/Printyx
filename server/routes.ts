@@ -7350,6 +7350,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Contract routes
+  app.get("/api/contracts", requireAuth, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const contracts = await storage.getContracts(req.tenantId!);
+      res.json(contracts);
+    } catch (error) {
+      console.error("Error fetching contracts:", error);
+      res.status(500).json({ message: "Failed to fetch contracts" });
+    }
+  });
+
+  app.post("/api/contracts", requireAuth, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const session = req.session as any;
+      const userId = session?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const contractData = {
+        ...req.body,
+        tenantId: req.tenantId!,
+        createdBy: userId,
+        updatedBy: userId,
+      };
+
+      const newContract = await storage.createContract(contractData);
+      res.status(201).json(newContract);
+    } catch (error) {
+      console.error("Error creating contract:", error);
+      res.status(500).json({ message: "Failed to create contract" });
+    }
+  });
+
   // Import and register proposals routes
   const proposalsRouter = await import("./routes-proposals.js");
   app.use("/api/proposals", proposalsRouter.default);
