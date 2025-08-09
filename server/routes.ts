@@ -12667,7 +12667,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { q: searchTerm } = req.query;
       const tenantId = req.headers["x-tenant-id"] as string;
 
+      console.log(`[DEBUG] Search request: term="${searchTerm}", tenant="${tenantId}"`);
+
       if (!searchTerm || (searchTerm as string).length < 2) {
+        console.log(`[DEBUG] Search term too short or empty: "${searchTerm}"`);
         return res.json([]);
       }
 
@@ -12695,6 +12698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         address: [record.addressLine1, record.addressLine2, record.city, record.state, record.postalCode].filter(Boolean).join(', '),
       }));
 
+      console.log(`[DEBUG] Found ${searchResults.length} results:`, transformedResults);
       res.json(transformedResults);
     } catch (error) {
       console.error("Error searching companies:", error);
