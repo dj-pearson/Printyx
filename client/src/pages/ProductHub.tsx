@@ -40,6 +40,17 @@ interface ProductModule {
 
 const productModules: ProductModule[] = [
   {
+    id: "product-catalog",
+    title: "Master Product Catalog",
+    description:
+      "Browse Printyx's master catalog and enable products for your organization",
+    icon: Package,
+    path: "/product-catalog",
+    category: "Catalog",
+    itemCount: 150,
+    status: "active",
+  },
+  {
     id: "product-models",
     title: "Product Models",
     description:

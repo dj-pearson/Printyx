@@ -12,7 +12,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { Search, Package, ShoppingCart, Settings, Eye, CheckCircle, Circle, Filter } from 'lucide-react';
+import { Search, Package, ShoppingCart, Settings, Eye, CheckCircle, Circle, Filter, ArrowLeft } from 'lucide-react';
+import RoleBasedSidebar from '@/components/layout/role-based-sidebar';
+import MainLayout from '@/components/layout/main-layout';
+import { Link } from 'wouter';
 
 interface MasterProduct {
   id: string;
@@ -164,15 +167,28 @@ export default function ProductCatalog() {
   const categories = Array.from(new Set(masterProducts.map((p: MasterProduct) => p.category).filter(Boolean)));
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Product Catalog</h1>
-        <p className="text-muted-foreground">
-          Browse the master catalog and enable products for your organization
-        </p>
-      </div>
+    <MainLayout>
+      <div className="flex min-h-screen bg-gray-50">
+        <RoleBasedSidebar />
+        <div className="flex-1 ml-64 p-6">
+          <div className="mb-6">
+            <div className="flex items-center gap-4 mb-4">
+              <Link href="/product-hub">
+                <Button variant="outline" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Product Hub
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-3xl font-bold">Master Product Catalog</h1>
+                <p className="text-muted-foreground">
+                  Browse Printyx's master catalog and enable products for your organization
+                </p>
+              </div>
+            </div>
+          </div>
 
-      <Tabs defaultValue="browse" className="space-y-6">
+          <Tabs defaultValue="browse" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="browse" className="flex items-center gap-2">
             <Search className="h-4 w-4" />
@@ -535,7 +551,9 @@ export default function ProductCatalog() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
+          </Tabs>
+        </div>
+      </div>
+    </MainLayout>
   );
 }
