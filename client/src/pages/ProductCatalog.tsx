@@ -176,6 +176,9 @@ export default function ProductCatalog() {
     queryFn: () => apiRequest("/api/catalog/manufacturers"),
   });
 
+  // Derive categories from products
+  const categories = [...new Set(masterProducts.map((p: MasterProduct) => p.category).filter(Boolean))];
+
   // Enable single product mutation
   const enableProductMutation = useMutation({
     mutationFn: (data: { productId: string; overrides: any }) =>
@@ -374,11 +377,7 @@ export default function ProductCatalog() {
     );
   };
 
-  const categories = Array.from(
-    new Set(
-      masterProducts.map((p: MasterProduct) => p.category).filter(Boolean)
-    )
-  );
+
 
   return (
     <MainLayout>
@@ -824,9 +823,27 @@ export default function ProductCatalog() {
                   ))
                 : masterProducts
                     .filter((product: MasterProduct) => {
+                      // Search term filter
+                      if (searchTerm && !product.displayName.toLowerCase().includes(searchTerm.toLowerCase()) && 
+                          !product.modelCode.toLowerCase().includes(searchTerm.toLowerCase())) {
+                        return false;
+                      }
+                      
+                      // Manufacturer filter
+                      if (selectedManufacturer !== "all" && product.manufacturer !== selectedManufacturer) {
+                        return false;
+                      }
+                      
+                      // Category filter
+                      if (selectedCategory !== "all" && product.category !== selectedCategory) {
+                        return false;
+                      }
+                      
+                      // Item type filter
                       if (selectedItemType !== "all" && product.itemType !== selectedItemType) {
                         return false;
                       }
+                      
                       return true;
                     })
                     .map((product: MasterProduct) => {
