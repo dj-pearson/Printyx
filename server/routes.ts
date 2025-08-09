@@ -6595,9 +6595,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     try {
       const tenantId = user.tenantId;
-      const { stageId, search } = req.query;
+      const { stageId, search, leadId } = req.query;
 
-      const deals = await storage.getDeals(tenantId, stageId, search);
+      const deals = await storage.getDeals(tenantId, stageId, search, leadId);
       res.json(deals);
     } catch (error) {
       console.error("Error fetching deals:", error);

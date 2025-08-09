@@ -30,6 +30,7 @@ import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { ContactManager } from "@/components/ContactManager";
 import { LeadProposals } from "@/components/leads/LeadProposals";
 import { LeadQuotes } from "@/components/leads/LeadQuotes";
+import { LeadDeals } from "@/components/leads/LeadDeals";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -1754,16 +1755,11 @@ export default function LeadDetailHubspot() {
               </TabsContent>
 
               <TabsContent value="deals" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Associated Deals</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">
-                      Deals associated with this lead will be displayed here.
-                    </p>
-                  </CardContent>
-                </Card>
+                <LeadDeals
+                  leadId={lead?.id || ""}
+                  leadName={lead?.companyName || "Unknown Lead"}
+                  companyId={lead?.companyId || lead?.id || ""}
+                />
               </TabsContent>
 
               <TabsContent value="proposals" className="mt-6">

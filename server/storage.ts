@@ -449,7 +449,7 @@ export interface IStorage {
   getContract(id: string, tenantId: string): Promise<Contract | undefined>;
 
   // Deal management operations
-  getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]>;
+  getDeals(tenantId: string, stageId?: string, search?: string, leadId?: string): Promise<any[]>;
   getDeal(id: string, tenantId: string): Promise<any>;
   createDeal(deal: any): Promise<any>;
   updateDeal(id: string, deal: Partial<any>, tenantId: string): Promise<any>;
@@ -2941,7 +2941,8 @@ export class DatabaseStorage implements IStorage {
   async getDeals(
     tenantId: string,
     stageId?: string,
-    search?: string
+    search?: string,
+    leadId?: string
   ): Promise<any[]> {
     let query = db
       .select({
@@ -2977,6 +2978,10 @@ export class DatabaseStorage implements IStorage {
 
     if (stageId) {
       query = query.where(eq(deals.stageId, stageId));
+    }
+
+    if (leadId) {
+      query = query.where(eq(deals.leadId, leadId));
     }
 
     if (search) {
