@@ -12667,6 +12667,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { q: searchTerm } = req.query;
       const tenantId = req.headers["x-tenant-id"] as string;
 
+      console.log("Search request:", { searchTerm, tenantId, headers: req.headers });
+
       if (!searchTerm || (searchTerm as string).length < 2) {
         return res.json([]);
       }
