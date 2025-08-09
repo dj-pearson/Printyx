@@ -72,18 +72,22 @@ const getConfirmationColor = (status: string) => {
 export default function DemoScheduling() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
-  const form = useForm({
-    schema: demoSchedulingSchema,
-    onSubmit: (data) => {
-      createDemoMutation.mutate({
-        ...data,
-        equipmentModels: data.equipmentModels ? data.equipmentModels.split(',').map((m: string) => m.trim()) : [],
-      });
-    },
-    successMessage: "Demo scheduled successfully",
-    errorMessage: "Failed to schedule demo. Please check the form and try again.",
-    resetOnSuccess: true,
+  const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm({
+    defaultValues: {
+      businessRecordId: '',
+      demoType: '',
+      scheduledDate: '',
+      scheduledTime: '',
+      duration: 60,
+      equipmentModels: '',
+      demoLocation: '',
+      assignedSalesRep: '',
+      demoObjectives: '',
+      proposalAmount: 0,
+    }
   });
+
+
 
   // Fetch demo schedules
   const { data: demos = [], isLoading } = useQuery({
