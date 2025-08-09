@@ -104,21 +104,18 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
   const { data: companies = [], isLoading: companiesLoading } = useQuery({
     queryKey: ["/api/phone-tickets/search-companies", companySearchTerm],
     enabled: companySearchTerm.length >= 2,
-    queryFn: () => fetch(`/api/phone-tickets/search-companies?q=${companySearchTerm}`).then(r => r.json()),
   });
 
   // Contact search query (when company is selected)
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["/api/phone-tickets/search-contacts", selectedCompany?.id, contactSearchTerm],
     enabled: !!selectedCompany && contactSearchTerm.length >= 2,
-    queryFn: () => fetch(`/api/phone-tickets/search-contacts/${selectedCompany.id}?q=${contactSearchTerm}`).then(r => r.json()),
   });
 
   // Equipment query (when company is selected)
   const { data: equipment = [], isLoading: equipmentLoading } = useQuery({
     queryKey: ["/api/phone-tickets/equipment", selectedCompany?.id, equipmentSearchTerm],
     enabled: !!selectedCompany,
-    queryFn: () => fetch(`/api/phone-tickets/equipment/${selectedCompany.id}`).then(r => r.json()),
   });
 
   // Create phone-in ticket mutation
