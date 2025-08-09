@@ -124,6 +124,7 @@ import {
   contracts,
   serviceTickets,
   invoices,
+  masterProductModels,
   type User,
 } from "@shared/schema";
 
@@ -7763,6 +7764,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error importing master catalog:", error);
         res.status(500).json({
           message: "Failed to import master catalog",
+          detail: error?.message,
+        });
+      }
+    }
+  );
+
+  // Update master product
+  app.patch(
+    "/api/catalog/models/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const isPlatformUser =
+          req.user?.isPlatformUser || 
+          req.user?.is_platform_user ||
+          req.user?.role === "platform_admin" || 
+          req.user?.role === "root_admin" ||
+          req.user?.role === "Platform Admin" ||
+          req.user?.role === "Root Admin" ||
+          req.user?.role === "admin";
+        
+        if (!isPlatformUser) {
+          return res.status(403).json({ 
+            message: "Platform admin required to update master products"
+          });
+        }
+
+        const { id } = req.params;
+        const { displayName, msrp, dealerCost, marginPercentage } = req.body;
+
+        // Update the master product
+        const updateData: any = {};
+        if (displayName !== undefined) updateData.displayName = displayName;
+        if (msrp !== undefined) updateData.msrp = msrp;
+        if (dealerCost !== undefined) updateData.dealerCost = dealerCost;
+        if (marginPercentage !== undefined) updateData.marginPercentage = marginPercentage;
+        updateData.updatedAt = new Date();
+
+        await db.update(masterProductModels)
+          .set(updateData)
+          .where(eq(masterProductModels.id, id));
+
+        res.json({ success: true, updated: updateData });
+      } catch (error: any) {
+        console.error("Error updating master product:", error);
+        res.status(500).json({
+          message: "Failed to update master product",
           detail: error?.message,
         });
       }

@@ -51,6 +51,8 @@ interface MasterProduct {
   displayName: string;
   specsJson?: any;
   msrp?: number;
+  dealerCost?: number;
+  marginPercentage?: number;
   status: string;
   category?: string;
   productType?: string;
@@ -96,6 +98,13 @@ export default function ProductCatalog() {
     companyPrice: "",
     markupRuleId: "",
     priceOverridden: false,
+  });
+  const [editingProduct, setEditingProduct] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    displayName: "",
+    dealerCost: "",
+    marginPercentage: "",
+    msrp: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -202,6 +211,44 @@ export default function ProductCatalog() {
     },
   });
 
+  // Update master product mutation
+  const updateMasterProductMutation = useMutation({
+    mutationFn: (data: { 
+      id: string; 
+      displayName: string; 
+      dealerCost?: number; 
+      marginPercentage?: number; 
+      msrp?: number;
+    }) =>
+      apiRequest(`/api/catalog/models/${data.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          displayName: data.displayName,
+          dealerCost: data.dealerCost,
+          marginPercentage: data.marginPercentage,
+          msrp: data.msrp,
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog/models"] });
+      toast({ title: "Product updated successfully" });
+      setEditingProduct(null);
+      setEditForm({
+        displayName: "",
+        dealerCost: "",
+        marginPercentage: "",
+        msrp: "",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating product",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSelectProduct = (productId: string) => {
     const newSelected = new Set(selectedProducts);
     if (newSelected.has(productId)) {
@@ -210,6 +257,38 @@ export default function ProductCatalog() {
       newSelected.add(productId);
     }
     setSelectedProducts(newSelected);
+  };
+
+  const handleEditProduct = (product: MasterProduct) => {
+    setEditingProduct(product.id);
+    setEditForm({
+      displayName: product.displayName,
+      dealerCost: product.dealerCost?.toString() || "",
+      marginPercentage: product.marginPercentage?.toString() || "",
+      msrp: product.msrp?.toString() || "",
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingProduct) return;
+    
+    updateMasterProductMutation.mutate({
+      id: editingProduct,
+      displayName: editForm.displayName,
+      dealerCost: editForm.dealerCost ? parseFloat(editForm.dealerCost) : undefined,
+      marginPercentage: editForm.marginPercentage ? parseFloat(editForm.marginPercentage) : undefined,
+      msrp: editForm.msrp ? parseFloat(editForm.msrp) : undefined,
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setEditForm({
+      displayName: "",
+      dealerCost: "",
+      marginPercentage: "",
+      msrp: "",
+    });
   };
 
   const handleBulkEnable = () => {
@@ -628,6 +707,28 @@ export default function ProductCatalog() {
                               </span>
                             </div>
 
+                            {product.dealerCost && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">
+                                  Dealer Cost:
+                                </span>
+                                <span className="text-sm font-medium text-green-600">
+                                  ${product.dealerCost.toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+
+                            {product.marginPercentage && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">
+                                  Margin:
+                                </span>
+                                <span className="text-sm font-medium text-blue-600">
+                                  {product.marginPercentage}%
+                                </span>
+                              </div>
+                            )}
+
                             {product.category && (
                               <div className="flex justify-between items-center">
                                 <span className="text-xs text-muted-foreground">
@@ -714,6 +815,116 @@ export default function ProductCatalog() {
                                         </pre>
                                       </div>
                                     )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+
+                              {/* Edit Button */}
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => handleEditProduct(product)}
+                                  >
+                                    <Settings className="h-3 w-3 mr-1" />
+                                    <span className="hidden sm:inline">Edit</span>
+                                    <span className="sm:hidden">✏️</span>
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md mx-4">
+                                  <DialogHeader>
+                                    <DialogTitle>Edit Product</DialogTitle>
+                                    <DialogDescription>
+                                      Update product details and pricing
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label className="text-sm font-medium">
+                                        Display Name
+                                      </Label>
+                                      <Input
+                                        value={editForm.displayName}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            displayName: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="Product display name"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">
+                                        MSRP ($)
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={editForm.msrp}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            msrp: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">
+                                        Dealer Cost ($)
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={editForm.dealerCost}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            dealerCost: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">
+                                        Margin Percentage (%)
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={editForm.marginPercentage}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            marginPercentage: e.target.value,
+                                          }))
+                                        }
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2 pt-4">
+                                      <Button
+                                        onClick={handleSaveEdit}
+                                        disabled={updateMasterProductMutation.isPending}
+                                        className="flex-1"
+                                      >
+                                        {updateMasterProductMutation.isPending
+                                          ? "Saving..."
+                                          : "Save Changes"}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        onClick={handleCancelEdit}
+                                        disabled={updateMasterProductMutation.isPending}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
                                   </div>
                                 </DialogContent>
                               </Dialog>
