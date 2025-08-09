@@ -7535,12 +7535,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return Number.isFinite(n) ? n : undefined;
         };
 
+        let currentModel: string | undefined = undefined;
+        let skipped = 0;
+        const duplicatesSkipped = new Set<string>();
+        const relationshipsCreated = [];
+
         for (const raw of lines) {
           const line = raw.trimEnd();
           if (!line) continue;
           const parts = line.split(",");
 
+          // Detect main model headers (e.g., "imageRUNNER ADVANCE DX C359iF / C259iF")
+          if (/^\s*imageRUNNER|imagePRESS|imageFORCE/i.test(parts[0])) {
+            currentCategory = "Equipment";
+            // Extract model from title - use the first model code mentioned
+            const modelMatch = parts[0].match(/([A-Z]\d{3,4}[a-zA-Z]*)/);
+            currentModel = modelMatch ? modelMatch[1] : undefined;
+            columns = [];
+            continue;
+          }
+
           // Detect section titles to set category
+          if (/^\s*Showroom\s+Models\s*$/i.test(parts[0])) {
+            currentCategory = "Showroom";
+            columns = [];
+            continue;
+          }
+          if (/^\s*Hardware\s+Accessories\s*$/i.test(parts[0])) {
+            currentCategory = "Hardware Accessories";
+            columns = [];
+            continue;
+          }
           if (/^\s*[A-Za-z].*Accessories\s*$/i.test(parts[0])) {
             currentCategory = "Accessories";
             columns = [];
@@ -7549,10 +7574,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (/^\s*Supplies.*$/i.test(parts[0])) {
             currentCategory = "Supplies";
             columns = [];
-            continue;
-          }
-          if (/^\s*imageRUNNER|imagePRESS|imageFORCE/i.test(parts[0])) {
-            currentCategory = "Equipment";
             continue;
           }
 
@@ -7571,37 +7592,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const modelCode = row["item no."] || row["item no"] || row["item"];
           const description = row["description"];
           const msrp = normalizeMoney(row["msrp"]);
+          const dealerPrice = normalizeMoney(row["dealer price"]);
+          
           if (!modelCode || !description) continue;
 
-          if (
-            currentCategory === "Accessories" ||
-            /accessor/i.test(description)
-          ) {
+          // Create unique key for duplicate detection
+          const duplicateKey = `Canon-${modelCode}`;
+          if (duplicatesSkipped.has(duplicateKey)) {
+            skipped++;
+            continue;
+          }
+
+          // Enhanced categorization logic
+          const isAccessory = currentCategory === "Accessories" || 
+                            currentCategory === "Hardware Accessories" ||
+                            currentCategory === "Showroom" ||
+                            /accessory|module|tray|feeder|finisher|cabinet|stand|kit/i.test(description);
+
+          if (isAccessory) {
             const payload: any = {
               manufacturer: "Canon",
               accessoryCode: modelCode,
               displayName: description,
-              category: "Accessories",
+              category: currentCategory === "Showroom" ? "Showroom Model" : (currentCategory || "Accessories"),
               msrp,
+              specsJson: {
+                dealerPrice,
+                baseModel: currentModel,
+                section: currentCategory
+              }
             };
-            const saved = await storage.upsertMasterAccessory(payload);
-            if (saved) created += 1; // count as created/updated uniformly
+            
+            try {
+              const saved = await storage.upsertMasterAccessory(payload);
+              if (saved) {
+                created++;
+                duplicatesSkipped.add(duplicateKey);
+                
+                // Create relationship to current model if available
+                if (currentModel) {
+                  try {
+                    const baseProduct = await storage.findMasterProduct("Canon", currentModel);
+                    if (baseProduct) {
+                      await storage.createProductAccessoryRelationship({
+                        baseProductId: baseProduct.id,
+                        accessoryId: saved.id,
+                        relationshipType: currentCategory === "Showroom" ? "recommended" : "compatible",
+                        category: currentCategory
+                      });
+                      relationshipsCreated.push({
+                        baseModel: currentModel,
+                        accessory: modelCode,
+                        category: currentCategory
+                      });
+                    }
+                  } catch (error) {
+                    console.warn(`Failed to create relationship for ${currentModel} -> ${modelCode}:`, error);
+                  }
+                }
+              }
+            } catch (error) {
+              console.warn(`Failed to create accessory ${modelCode}:`, error);
+              skipped++;
+            }
             continue;
           }
 
-          // Default: treat as equipment model
+          // Handle main equipment models
           const payload: any = {
             manufacturer: "Canon",
             modelCode,
             displayName: description,
             msrp,
-            category: currentCategory || undefined,
+            category: currentCategory || "Equipment",
+            productType: currentCategory === "Equipment" ? "multifunction" : "accessory",
+            specsJson: {
+              dealerPrice,
+              section: currentCategory,
+              isMainModel: currentCategory === "Equipment"
+            }
           };
-          const saved = await storage.upsertMasterProduct(payload);
-          if (saved) created += 1; // count as created/updated uniformly
+          
+          try {
+            const saved = await storage.upsertMasterProduct(payload);
+            if (saved) {
+              created++;
+              duplicatesSkipped.add(duplicateKey);
+              // Update current model reference for relationship mapping
+              if (currentCategory === "Equipment") {
+                currentModel = modelCode;
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to create product ${modelCode}:`, error);
+            skipped++;
+          }
         }
 
-        res.json({ created, updated });
+        res.json({ 
+          created, 
+          updated: 0, // We count upserts as created
+          skipped,
+          duplicatesFound: duplicatesSkipped.size,
+          relationshipsCreated: relationshipsCreated.length,
+          relationships: relationshipsCreated.slice(0, 10), // Sample of relationships
+          summary: {
+            totalProcessed: created + skipped,
+            uniqueItemsImported: duplicatesSkipped.size,
+            duplicatesSkipped: skipped
+          }
+        });
       } catch (error: any) {
         console.error("Error importing master catalog:", error);
         res.status(500).json({
