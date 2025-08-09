@@ -755,16 +755,16 @@ export default function ProductCatalog() {
                               </span>
                             </div>
 
-                            {product.dealerCost && (
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-muted-foreground">
-                                  Dealer Cost:
-                                </span>
-                                <span className="text-sm font-medium text-green-600">
-                                  ${product.dealerCost.toLocaleString()}
-                                </span>
-                              </div>
-                            )}
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-muted-foreground">
+                                Dealer Cost:
+                              </span>
+                              <span className="text-sm font-medium text-green-600">
+                                {product.dealerCost 
+                                  ? `$${product.dealerCost.toLocaleString()}`
+                                  : "Not Set"}
+                              </span>
+                            </div>
 
                             {product.marginPercentage && (
                               <div className="flex justify-between items-center">
