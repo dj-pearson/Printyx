@@ -29,6 +29,7 @@ import { ActivityForm } from "@/components/forms/ActivityForms";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { ContactManager } from "@/components/ContactManager";
 import { LeadProposals } from "@/components/leads/LeadProposals";
+import { LeadQuotes } from "@/components/leads/LeadQuotes";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -77,6 +78,7 @@ import {
   MapPin2,
   CheckSquare,
   BookOpen,
+  Quote,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -454,6 +456,13 @@ export default function LeadDetailHubspot() {
                     >
                       <FileCheck className="h-4 w-4" />
                       <span>Proposals</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="quotes"
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Quote className="h-4 w-4" />
+                      <span>Quotes</span>
                     </TabsTrigger>
                   </div>
                 </TabsList>
@@ -1685,6 +1694,13 @@ export default function LeadDetailHubspot() {
 
               <TabsContent value="proposals" className="mt-6">
                 <LeadProposals
+                  leadId={lead?.id || ""}
+                  leadName={lead?.companyName || "Unknown Lead"}
+                />
+              </TabsContent>
+
+              <TabsContent value="quotes" className="mt-6">
+                <LeadQuotes
                   leadId={lead?.id || ""}
                   leadName={lead?.companyName || "Unknown Lead"}
                 />
