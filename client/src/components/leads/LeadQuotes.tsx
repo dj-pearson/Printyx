@@ -178,7 +178,10 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
   // Calculate statistics
   const stats = {
     total: quotes.length,
-    totalValue: quotes.reduce((sum: number, q: Quote) => sum + (q.totalAmount || 0), 0),
+    totalValue: quotes.reduce((sum: number, q: Quote) => {
+      const amount = parseFloat(q.totalAmount?.toString() || '0');
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0),
     pending: quotes.filter((q: Quote) => ["draft", "sent"].includes(q.status)).length,
     accepted: quotes.filter((q: Quote) => q.status === "accepted").length,
     winRate: quotes.length > 0 ? (quotes.filter((q: Quote) => q.status === "accepted").length / quotes.length) * 100 : 0,
@@ -202,7 +205,12 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
 
   const handleCreateQuote = () => {
     // Navigate to quote builder with lead info pre-filled
-    setLocation(`/quotes/new?leadId=${leadId}&leadName=${encodeURIComponent(leadName)}`);
+    const params = new URLSearchParams({
+      leadId: leadId,
+      companyName: leadName,
+      prefill: 'true'
+    });
+    setLocation(`/quotes/new?${params.toString()}`);
   };
 
   return (
@@ -359,7 +367,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(quote.totalAmount)}
+                          {formatCurrency(parseFloat(quote.totalAmount?.toString() || '0'))}
                         </TableCell>
                         <TableCell>
                           {quote.validUntil ? formatDate(quote.validUntil) : "-"}
