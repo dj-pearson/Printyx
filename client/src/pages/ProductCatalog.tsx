@@ -239,7 +239,11 @@ export default function ProductCatalog() {
         status: data.status,
       }),
     onSuccess: () => {
+      // Force refetch of all product-related queries
       queryClient.invalidateQueries({ queryKey: ["/api/catalog/models"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
+      queryClient.refetchQueries({ queryKey: ["/api/catalog/models"] });
+      
       toast({ title: "Product updated successfully" });
       setEditingProduct(null);
       setEditForm({
@@ -912,7 +916,9 @@ export default function ProductCatalog() {
                               </Dialog>
 
                               {/* Edit Button */}
-                              <Dialog>
+                              <Dialog open={editingProduct === product.id} onOpenChange={(open) => {
+                                if (!open) handleCancelEdit();
+                              }}>
                                 <DialogTrigger asChild>
                                   <Button
                                     variant="outline"
