@@ -7373,14 +7373,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate contract number if not provided
       const contractNumber = req.body.contractNumber || `CNT-${Date.now()}`;
       
-      // Convert date strings to Date objects and prepare contract data
+      // Prepare contract data with only existing database columns
       const contractData = {
-        ...req.body,
+        customerId: req.body.customerId,
         tenantId: req.tenantId!,
-        createdBy: userId,
-        updatedBy: userId,
         contractNumber,
-        contractType: req.body.contractType || 'cost_per_click',
+        startDate: req.body.startDate,
+        endDate: req.body.endDate,
+        blackRate: req.body.blackRate ? parseFloat(req.body.blackRate) : null,
+        colorRate: req.body.colorRate ? parseFloat(req.body.colorRate) : null,
+        monthlyBase: req.body.monthlyBase ? parseFloat(req.body.monthlyBase) : null,
+        status: req.body.status || 'active',
       };
 
       // Convert date strings to Date objects if they exist
