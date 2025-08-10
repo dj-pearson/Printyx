@@ -52,7 +52,7 @@ import csv from "csv-parser";
 import { Readable } from "stream";
 import { format } from "date-fns";
 import { equipmentLifecycle } from "../shared/equipment-schema";
-import crypto from "crypto";
+import { createHash } from "crypto";
 import { requireRootAdmin } from "./routes-root-admin";
 import {
   businessRecords,
@@ -7728,6 +7728,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .join("") +
         "\n</urlset>";
+      const etag = createHash("sha1").update(xml).digest("hex");
+      res.setHeader("ETag", etag);
+      if (_req.headers["if-none-match"] === etag) {
+        return res.status(304).end();
+      }
       res
         .header("Content-Type", "application/xml; charset=utf-8")
         .header("Cache-Control", "public, max-age=300, s-maxage=600")
@@ -7764,10 +7769,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Sitemap: ${baseUrl}/sitemap.xml`,
         `LLMS: ${baseUrl}/llms.txt`,
       ];
+      const body = lines.join("\n");
+      const etag = createHash("sha1").update(body).digest("hex");
+      res.setHeader("ETag", etag);
+      if (_req.headers["if-none-match"] === etag) {
+        return res.status(304).end();
+      }
       res
         .header("Content-Type", "text/plain; charset=utf-8")
         .header("Cache-Control", "public, max-age=300, s-maxage=600")
-        .send(lines.join("\n"));
+        .send(body);
     } catch (_e) {
       res
         .header("Content-Type", "text/plain")
@@ -7823,10 +7834,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `# Allow AI crawlers to index public content for generative engines`,
         allow ? `Allow: /` : `Disallow: /`,
       ];
+      const body = lines.join("\n");
+      const etag = createHash("sha1").update(body).digest("hex");
+      res.setHeader("ETag", etag);
+      if (_req.headers["if-none-match"] === etag) {
+        return res.status(304).end();
+      }
       res
         .header("Content-Type", "text/plain; charset=utf-8")
         .header("Cache-Control", "public, max-age=300, s-maxage=600")
-        .send(lines.join("\n"));
+        .send(body);
     } catch (error) {
       res
         .header("Content-Type", "text/plain; charset=utf-8")

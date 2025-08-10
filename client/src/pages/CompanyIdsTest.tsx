@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -52,36 +58,30 @@ export default function CompanyIdsTest() {
   const { toast } = useToast();
 
   // Query for records missing IDs
-  const { data: missingIds, isLoading: loadingMissing, refetch: refetchMissing } = useQuery({
+  const {
+    data: missingIds,
+    isLoading: loadingMissing,
+    refetch: refetchMissing,
+  } = useQuery({
     queryKey: ["/api/company-ids/missing-ids"],
     queryFn: async (): Promise<MissingIdsResponse> => {
-      const response = await fetch("/api/company-ids/missing-ids");
-      if (!response.ok) {
-        throw new Error("Failed to fetch missing IDs");
-      }
-      return response.json();
+      return await apiRequest("/api/company-ids/missing-ids");
     },
   });
 
   // Mutation for backfilling records
   const backfillMutation = useMutation({
     mutationFn: async (limit: number = 50): Promise<BackfillResult> => {
-      const response = await fetch("/api/company-ids/backfill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to backfill records");
-      }
-      return response.json();
+      return await apiRequest("/api/company-ids/backfill", "POST", { limit });
     },
     onSuccess: (data) => {
       toast({
         title: "Backfill Complete",
         description: data.message,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/company-ids/missing-ids"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/company-ids/missing-ids"],
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -95,21 +95,16 @@ export default function CompanyIdsTest() {
   // Mutation for generating ID for specific record
   const generateMutation = useMutation({
     mutationFn: async (recordId: string): Promise<GenerateResult> => {
-      const response = await fetch(`/api/company-ids/generate/${recordId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) {
-        throw new Error("Failed to generate company ID");
-      }
-      return response.json();
+      return await apiRequest(`/api/company-ids/generate/${recordId}`, "POST");
     },
     onSuccess: (data) => {
       toast({
         title: "Company ID Generated",
         description: `New URL: ${data.url}`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/company-ids/missing-ids"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/company-ids/missing-ids"],
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -124,15 +119,10 @@ export default function CompanyIdsTest() {
   const { data: slugPreview, isLoading: loadingPreview } = useQuery({
     queryKey: ["/api/company-ids/preview-slug", testCompanyName, recordType],
     queryFn: async (): Promise<SlugPreview> => {
-      const response = await fetch("/api/company-ids/preview-slug", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName: testCompanyName, recordType }),
+      return await apiRequest("/api/company-ids/preview-slug", "POST", {
+        companyName: testCompanyName,
+        recordType,
       });
-      if (!response.ok) {
-        throw new Error("Failed to preview slug");
-      }
-      return response.json();
     },
     enabled: testCompanyName.length > 2,
   });
@@ -140,7 +130,9 @@ export default function CompanyIdsTest() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Company ID System Test</h2>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Company ID System Test
+        </h2>
         <p className="text-muted-foreground">
           Test the new company display ID and URL slug generation system
         </p>
@@ -186,11 +178,25 @@ export default function CompanyIdsTest() {
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-semibold mb-2">Preview Result:</h4>
               <div className="space-y-2 text-sm">
-                <div><span className="font-medium">Company:</span> {slugPreview.companyName}</div>
-                <div><span className="font-medium">Display ID:</span> <code>{slugPreview.sampleDisplayId}</code></div>
-                <div><span className="font-medium">URL Slug:</span> <code>{slugPreview.urlSlug}</code></div>
-                <div><span className="font-medium">Full URL:</span> <code>{slugPreview.previewUrl}</code></div>
-                <div className="text-xs text-muted-foreground">{slugPreview.note}</div>
+                <div>
+                  <span className="font-medium">Company:</span>{" "}
+                  {slugPreview.companyName}
+                </div>
+                <div>
+                  <span className="font-medium">Display ID:</span>{" "}
+                  <code>{slugPreview.sampleDisplayId}</code>
+                </div>
+                <div>
+                  <span className="font-medium">URL Slug:</span>{" "}
+                  <code>{slugPreview.urlSlug}</code>
+                </div>
+                <div>
+                  <span className="font-medium">Full URL:</span>{" "}
+                  <code>{slugPreview.previewUrl}</code>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {slugPreview.note}
+                </div>
               </div>
             </div>
           )}
@@ -217,7 +223,11 @@ export default function CompanyIdsTest() {
               variant="outline"
               size="sm"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loadingMissing ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${
+                  loadingMissing ? "animate-spin" : ""
+                }`}
+              />
               Refresh
             </Button>
             <Button
@@ -234,11 +244,17 @@ export default function CompanyIdsTest() {
           ) : missingIds?.records.length ? (
             <div className="space-y-2">
               {missingIds.records.slice(0, 10).map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div
+                  key={record.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
                   <div className="flex-1">
-                    <div className="font-medium">{record.companyName || "Unnamed Company"}</div>
+                    <div className="font-medium">
+                      {record.companyName || "Unnamed Company"}
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      {record.recordType} • {record.status} • {new Date(record.createdAt).toLocaleDateString()}
+                      {record.recordType} • {record.status} •{" "}
+                      {new Date(record.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <Button

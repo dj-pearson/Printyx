@@ -124,27 +124,17 @@ export function ContactManager({
   // Fetch contacts for this company - using standardized endpoint
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
     queryKey: [`/api/company-contacts`, { companyId }],
-    queryFn: async () => {
-      const response = await fetch(`/api/company-contacts?companyId=${companyId}`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch contacts");
-      return response.json();
-    },
+    queryFn: async () =>
+      apiRequest(`/api/company-contacts?companyId=${companyId}`),
   });
 
   // Create contact mutation - using standardized endpoint
   const createContactMutation = useMutation({
-    mutationFn: async (contactData: Partial<Contact>) => {
-      const response = await fetch(`/api/company-contacts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...contactData, companyId }),
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to create contact");
-      return response.json();
-    },
+    mutationFn: async (contactData: Partial<Contact>) =>
+      apiRequest(`/api/company-contacts`, "POST", {
+        ...contactData,
+        companyId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/company-contacts`, { companyId }],
@@ -163,16 +153,8 @@ export function ContactManager({
 
   // Update contact mutation - using standardized endpoint
   const updateContactMutation = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<Contact> & { id: string }) => {
-      const response = await fetch(`/api/company-contacts/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to update contact");
-      return response.json();
-    },
+    mutationFn: async ({ id, ...data }: Partial<Contact> & { id: string }) =>
+      apiRequest(`/api/company-contacts/${id}`, "PUT", data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/company-contacts`, { companyId }],
@@ -191,14 +173,8 @@ export function ContactManager({
 
   // Delete contact mutation - using standardized endpoint
   const deleteContactMutation = useMutation({
-    mutationFn: async (contactId: string) => {
-      const response = await fetch(`/api/company-contacts/${contactId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to delete contact");
-      return response.json();
-    },
+    mutationFn: async (contactId: string) =>
+      apiRequest(`/api/company-contacts/${contactId}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/company-contacts`, { companyId }],
