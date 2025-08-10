@@ -222,6 +222,17 @@ export const queryClient = new QueryClient({
       cacheTime: 10 * 60 * 1000, // 10 minutes cache
       refetchOnMount: true,
       refetchOnReconnect: true,
+      onError: (error: any) => {
+        const message =
+          typeof error === "string"
+            ? error
+            : error?.message || "Failed to load data";
+        toast({
+          title: "Load error",
+          description: message,
+          variant: "destructive",
+        });
+      },
       retry: (failureCount, error: any) => {
         // Don't retry on auth errors or client errors
         if (
@@ -237,6 +248,15 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       retry: false,
+      onError: (error: any) => {
+        const message =
+          typeof error === "string" ? error : error?.message || "Action failed";
+        toast({
+          title: "Action failed",
+          description: message,
+          variant: "destructive",
+        });
+      },
     },
   },
 });
