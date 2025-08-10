@@ -827,8 +827,8 @@ export default function CRMEnhanced() {
                           variant="outline" 
                           size="sm"
                           onClick={() => {
-                            const companySlug = createCompanySlug(lead.companyName || lead.businessName || 'unnamed-company');
-                            setLocation(`/leads/${companySlug}?id=${lead.id}`);
+                            const urlSlug = lead.urlSlug || lead.url_slug || lead.id;
+                            setLocation(`/leads/${urlSlug}`);
                           }}
                         >
                           View Details
