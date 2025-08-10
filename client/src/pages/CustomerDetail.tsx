@@ -105,7 +105,7 @@ import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 
 export default function CustomerDetailHubspot() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -131,16 +131,16 @@ export default function CustomerDetailHubspot() {
     editRecord: false,
   });
 
-  // Fetch customer details
+  // Fetch customer details using URL slug
   const { data: customer, isLoading } = useQuery({
-    queryKey: ["/api/business-records", id],
-    enabled: !!id,
+    queryKey: ["/api/business-records", slug],
+    enabled: !!slug,
   });
 
   // Fetch company contacts to surface the designated primary contact on the main page
   const { data: companyContacts = [] } = useQuery({
-    queryKey: ["/api/companies", id, "contacts"],
-    enabled: !!id,
+    queryKey: ["/api/companies", customer?.id, "contacts"],
+    enabled: !!customer?.id,
   });
 
   const primaryContact = useMemo(() => {
@@ -263,7 +263,7 @@ export default function CustomerDetailHubspot() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/business-records/${id}`, "PUT", data);
+      return await apiRequest(`/api/business-records/${customer?.id}`, "PUT", data);
     },
     onSuccess: (updatedData) => {
       toast({
@@ -275,16 +275,16 @@ export default function CustomerDetailHubspot() {
       queryClient.setQueryData(["/api/business-records"], (oldData: any) => {
         if (!oldData) return oldData;
         return oldData.map((record: any) =>
-          record.id === id ? { ...record, ...updatedData } : record
+          record.id === customer?.id ? { ...record, ...updatedData } : record
         );
       });
 
       // Optimistic update for individual record
-      queryClient.setQueryData(["/api/business-records", id], updatedData);
+      queryClient.setQueryData(["/api/business-records", slug], updatedData);
 
       // Invalidate all related caches to ensure consistency
       queryClient.invalidateQueries({
-        queryKey: ["/api/business-records", id],
+        queryKey: ["/api/business-records", slug],
       });
       queryClient.invalidateQueries({
         queryKey: ["/api/business-records"],
