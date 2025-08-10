@@ -1,13 +1,40 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,9 +43,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertVendorSchema, type Vendor } from "@shared/schema";
 import { z } from "zod";
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Building2,
   User,
   Phone,
@@ -32,7 +59,7 @@ import {
   Globe,
   FileText,
   Calendar,
-  DollarSign
+  DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -105,7 +132,13 @@ export default function VendorManagement() {
 
   // Form setup
   const form = useForm<VendorFormData>({
-    resolver: zodResolver(insertVendorSchema.omit({ tenantId: true, createdAt: true, updatedAt: true })),
+    resolver: zodResolver(
+      insertVendorSchema.omit({
+        tenantId: true,
+        createdAt: true,
+        updatedAt: true,
+      })
+    ),
     defaultValues: {
       vendorNumber: "",
       companyName: "",
@@ -140,27 +173,33 @@ export default function VendorManagement() {
   const togglePreferred = (vendor: Vendor) => {
     updateVendorMutation.mutate({
       id: vendor.id,
-      data: { preferred: !vendor.preferred }
+      data: { preferred: !vendor.preferred },
     });
   };
 
   // Get vendor stats
   const vendorStats = {
     total: vendors.length,
-    active: vendors.filter(v => v.status === "active").length,
-    preferred: vendors.filter(v => v.preferred).length,
-    inactive: vendors.filter(v => v.status === "inactive").length,
+    active: vendors.filter((v) => v.status === "active").length,
+    preferred: vendors.filter((v) => v.preferred).length,
+    inactive: vendors.filter((v) => v.status === "inactive").length,
   };
 
   return (
-    <MainLayout title="Vendor Management" description="Manage your supplier relationships and vendor information">
+    <MainLayout
+      title="Vendor Management"
+      description="Manage your supplier relationships and vendor information"
+    >
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Vendor Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Vendor Management
+            </h1>
             <p className="text-muted-foreground mt-2">
-              Manage supplier relationships and vendor information for procurement
+              Manage supplier relationships and vendor information for
+              procurement
             </p>
           </div>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -179,7 +218,10 @@ export default function VendorManagement() {
               </DialogHeader>
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -202,7 +244,10 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Contact Person</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Primary contact name" />
+                            <Input
+                              {...field}
+                              placeholder="Primary contact name"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -215,7 +260,11 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input {...field} type="email" placeholder="contact@vendor.com" />
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="contact@vendor.com"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -241,7 +290,10 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Website</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="https://vendor.com" />
+                            <Input
+                              {...field}
+                              placeholder="https://vendor.com"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -254,7 +306,10 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Tax ID</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Tax identification number" />
+                            <Input
+                              {...field}
+                              placeholder="Tax identification number"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -281,7 +336,10 @@ export default function VendorManagement() {
                       <FormItem>
                         <FormLabel>Payment Terms</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g., Net 30, Net 15" />
+                          <Input
+                            {...field}
+                            placeholder="e.g., Net 30, Net 15"
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -294,7 +352,10 @@ export default function VendorManagement() {
                       <FormItem>
                         <FormLabel>Notes</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="Additional notes about this vendor" />
+                          <Textarea
+                            {...field}
+                            placeholder="Additional notes about this vendor"
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -323,15 +384,20 @@ export default function VendorManagement() {
                   </div>
 
                   <div className="flex justify-end space-x-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => setShowCreateDialog(false)}
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={createVendorMutation.isPending}>
-                      {createVendorMutation.isPending ? "Creating..." : "Create Vendor"}
+                    <Button
+                      type="submit"
+                      disabled={createVendorMutation.isPending}
+                    >
+                      {createVendorMutation.isPending
+                        ? "Creating..."
+                        : "Create Vendor"}
                     </Button>
                   </div>
                 </form>
@@ -446,7 +512,9 @@ export default function VendorManagement() {
                         <div className="flex items-center space-x-2">
                           <div className="flex flex-col">
                             <div className="flex items-center space-x-2">
-                              <span className="font-medium">{vendor.companyName}</span>
+                              <span className="font-medium">
+                                {vendor.companyName}
+                              </span>
                               {vendor.isPreferred && (
                                 <Star className="h-4 w-4 text-yellow-500 fill-current" />
                               )}
@@ -513,7 +581,8 @@ export default function VendorManagement() {
                               : "bg-gray-100 text-gray-800"
                           }
                         >
-                          {vendor.status?.charAt(0).toUpperCase() + vendor.status?.slice(1)}
+                          {vendor.status?.charAt(0).toUpperCase() +
+                            vendor.status?.slice(1)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -542,7 +611,15 @@ export default function VendorManagement() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => deleteVendorMutation.mutate(vendor.id)}
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  `Delete vendor ${vendor.companyName}? This cannot be undone.`
+                                )
+                              ) {
+                                deleteVendorMutation.mutate(vendor.id);
+                              }
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -578,18 +655,26 @@ export default function VendorManagement() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
-                        <span className="text-sm text-muted-foreground">Company Name</span>
-                        <p className="font-medium">{selectedVendor.companyName}</p>
+                        <span className="text-sm text-muted-foreground">
+                          Company Name
+                        </span>
+                        <p className="font-medium">
+                          {selectedVendor.companyName}
+                        </p>
                       </div>
                       {selectedVendor.taxId && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Tax ID</span>
+                          <span className="text-sm text-muted-foreground">
+                            Tax ID
+                          </span>
                           <p className="font-medium">{selectedVendor.taxId}</p>
                         </div>
                       )}
                       {selectedVendor.website && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Website</span>
+                          <span className="text-sm text-muted-foreground">
+                            Website
+                          </span>
                           <p>
                             <a
                               href={selectedVendor.website}
@@ -604,8 +689,12 @@ export default function VendorManagement() {
                       )}
                       {selectedVendor.paymentTerms && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Payment Terms</span>
-                          <p className="font-medium">{selectedVendor.paymentTerms}</p>
+                          <span className="text-sm text-muted-foreground">
+                            Payment Terms
+                          </span>
+                          <p className="font-medium">
+                            {selectedVendor.paymentTerms}
+                          </p>
                         </div>
                       )}
                     </CardContent>
@@ -621,13 +710,19 @@ export default function VendorManagement() {
                     <CardContent className="space-y-3">
                       {selectedVendor.contactPerson && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Contact Person</span>
-                          <p className="font-medium">{selectedVendor.contactPerson}</p>
+                          <span className="text-sm text-muted-foreground">
+                            Contact Person
+                          </span>
+                          <p className="font-medium">
+                            {selectedVendor.contactPerson}
+                          </p>
                         </div>
                       )}
                       {selectedVendor.email && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Email</span>
+                          <span className="text-sm text-muted-foreground">
+                            Email
+                          </span>
                           <p>
                             <a
                               href={`mailto:${selectedVendor.email}`}
@@ -640,7 +735,9 @@ export default function VendorManagement() {
                       )}
                       {selectedVendor.phone && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Phone</span>
+                          <span className="text-sm text-muted-foreground">
+                            Phone
+                          </span>
                           <p>
                             <a
                               href={`tel:${selectedVendor.phone}`}
@@ -653,7 +750,9 @@ export default function VendorManagement() {
                       )}
                       {selectedVendor.address && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Address</span>
+                          <span className="text-sm text-muted-foreground">
+                            Address
+                          </span>
                           <p className="text-sm">{selectedVendor.address}</p>
                         </div>
                       )}
@@ -676,7 +775,10 @@ export default function VendorManagement() {
                 )}
 
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDetailsDialog(false)}
+                  >
                     Close
                   </Button>
                   <Button onClick={() => togglePreferred(selectedVendor)}>
