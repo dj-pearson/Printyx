@@ -569,6 +569,22 @@ export default function RoleBasedSidebar() {
                       <a
                         href={item.href}
                         className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:text-gray-900"
+                        onMouseEnter={() => {
+                          // Prefetch common data for faster nav
+                          // Note: we only prefetch a few key lists
+                          const prefetches: string[] = [
+                            "/api/customers",
+                            "/api/tasks/enhanced",
+                            "/api/service-tickets",
+                          ];
+                          prefetches.forEach((key) => {
+                            try {
+                              (window as any).__queryClient?.prefetchQuery?.({
+                                queryKey: [key],
+                              });
+                            } catch {}
+                          });
+                        }}
                       >
                         <item.icon className="h-4 w-4 flex-shrink-0" />
                         <span className="truncate">{item.name}</span>

@@ -68,3 +68,6 @@ queryClient.getQueryCache().subscribe(() => {
 });
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Expose queryClient for lightweight prefetch from non-hook code (e.g., sidebar hover)
+(window as any).__queryClient = queryClient;

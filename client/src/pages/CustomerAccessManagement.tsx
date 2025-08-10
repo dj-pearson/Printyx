@@ -1,36 +1,55 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MainLayout } from '@/components/layout/main-layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Shield, 
-  Users, 
-  Key, 
-  UserCheck, 
-  UserX, 
-  Settings, 
-  Plus, 
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MainLayout } from "@/components/layout/main-layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Shield,
+  Users,
+  Key,
+  UserCheck,
+  UserX,
+  Settings,
+  Plus,
   Edit,
   Trash2,
-  Search
-} from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
+  Search,
+} from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface CustomerAccess {
   id: string;
@@ -39,7 +58,7 @@ interface CustomerAccess {
   userEmail: string;
   customerId: string;
   customerName: string;
-  accessLevel: 'view' | 'edit' | 'admin';
+  accessLevel: "view" | "edit" | "admin";
   permissions: string[];
   assignedBy: string;
   assignedDate: Date;
@@ -56,51 +75,56 @@ interface Role {
 
 const getAccessLevelColor = (level: string) => {
   switch (level) {
-    case 'view': return 'bg-blue-100 text-blue-800';
-    case 'edit': return 'bg-yellow-100 text-yellow-800';
-    case 'admin': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case "view":
+      return "bg-blue-100 text-blue-800";
+    case "edit":
+      return "bg-yellow-100 text-yellow-800";
+    case "admin":
+      return "bg-red-100 text-red-800";
+    default:
+      return "bg-gray-100 text-gray-800";
   }
 };
 
 export default function CustomerAccessManagement() {
-  const [selectedTab, setSelectedTab] = useState('access-assignments');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTab, setSelectedTab] = useState("access-assignments");
+  const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   // Fetch customer access assignments
   const { data: accessAssignments, isLoading: isLoadingAccess } = useQuery({
-    queryKey: ['/api/customer-access'],
+    queryKey: ["/api/customer-access"],
     enabled: true,
   });
 
   // Fetch available users
   const { data: users, isLoading: isLoadingUsers } = useQuery({
-    queryKey: ['/api/users'],
+    queryKey: ["/api/users"],
     enabled: true,
   });
 
   // Fetch available customers
   const { data: customers, isLoading: isLoadingCustomers } = useQuery({
-    queryKey: ['/api/customers'],
+    queryKey: ["/api/customers"],
     enabled: true,
   });
 
   // Fetch roles
   const { data: roles, isLoading: isLoadingRoles } = useQuery({
-    queryKey: ['/api/roles'],
+    queryKey: ["/api/roles"],
     enabled: true,
   });
 
   const createAccessMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/customer-access', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: any) =>
+      apiRequest("/api/customer-access", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/customer-access'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customer-access"] });
       setIsCreateDialogOpen(false);
       toast({
         title: "Success",
@@ -117,11 +141,12 @@ export default function CustomerAccessManagement() {
   });
 
   const revokeAccessMutation = useMutation({
-    mutationFn: (accessId: string) => apiRequest(`/api/customer-access/${accessId}`, {
-      method: 'DELETE',
-    }),
+    mutationFn: (accessId: string) =>
+      apiRequest(`/api/customer-access/${accessId}`, {
+        method: "DELETE",
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/customer-access'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customer-access"] });
       toast({
         title: "Success",
         description: "Customer access revoked successfully",
@@ -136,10 +161,12 @@ export default function CustomerAccessManagement() {
     },
   });
 
-  const filteredAccess = accessAssignments?.filter((access: CustomerAccess) =>
-    access.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    access.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const filteredAccess =
+    accessAssignments?.filter(
+      (access: CustomerAccess) =>
+        access.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        access.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
 
   return (
     <MainLayout>
@@ -147,9 +174,14 @@ export default function CustomerAccessManagement() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Customer Access Management</h1>
-            <p className="text-gray-600">Manage user access to customer data and permissions</p>
+            <p className="text-gray-600">
+              Manage user access to customer data and permissions
+            </p>
           </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <Dialog
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -217,7 +249,9 @@ export default function CustomerAccessManagement() {
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList>
-            <TabsTrigger value="access-assignments">Access Assignments</TabsTrigger>
+            <TabsTrigger value="access-assignments">
+              Access Assignments
+            </TabsTrigger>
             <TabsTrigger value="role-permissions">Role Permissions</TabsTrigger>
             <TabsTrigger value="audit-log">Audit Log</TabsTrigger>
           </TabsList>
@@ -258,24 +292,36 @@ export default function CustomerAccessManagement() {
                   <TableBody>
                     {isLoadingAccess ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center">Loading...</TableCell>
+                        <TableCell colSpan={7} className="text-center">
+                          Loading...
+                        </TableCell>
                       </TableRow>
                     ) : filteredAccess.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center">No access assignments found</TableCell>
+                        <TableCell colSpan={7} className="text-center">
+                          No access assignments found
+                        </TableCell>
                       </TableRow>
                     ) : (
                       filteredAccess.map((access: CustomerAccess) => (
                         <TableRow key={access.id}>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{access.userName}</div>
-                              <div className="text-sm text-gray-500">{access.userEmail}</div>
+                              <div className="font-medium">
+                                {access.userName}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {access.userEmail}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>{access.customerName}</TableCell>
                           <TableCell>
-                            <Badge className={getAccessLevelColor(access.accessLevel)}>
+                            <Badge
+                              className={getAccessLevelColor(
+                                access.accessLevel
+                              )}
+                            >
                               {access.accessLevel}
                             </Badge>
                           </TableCell>
@@ -284,7 +330,11 @@ export default function CustomerAccessManagement() {
                             {new Date(access.assignedDate).toLocaleDateString()}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={access.isActive ? "default" : "secondary"}>
+                            <Badge
+                              variant={
+                                access.isActive ? "default" : "secondary"
+                              }
+                            >
                               {access.isActive ? "Active" : "Inactive"}
                             </Badge>
                           </TableCell>
@@ -293,10 +343,18 @@ export default function CustomerAccessManagement() {
                               <Button variant="outline" size="sm">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 size="sm"
-                                onClick={() => revokeAccessMutation.mutate(access.id)}
+                                onClick={() => {
+                                  if (
+                                    confirm(
+                                      `Revoke access for ${access.userName} to ${access.customerName}?`
+                                    )
+                                  ) {
+                                    revokeAccessMutation.mutate(access.id);
+                                  }
+                                }}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -337,14 +395,21 @@ export default function CustomerAccessManagement() {
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-3 gap-4">
-                            {Object.entries(role.permissions || {}).map(([permission, enabled]) => (
-                              <div key={permission} className="flex items-center justify-between">
-                                <span className="text-sm">{permission}</span>
-                                <Badge variant={enabled ? "default" : "secondary"}>
-                                  {enabled ? "Enabled" : "Disabled"}
-                                </Badge>
-                              </div>
-                            ))}
+                            {Object.entries(role.permissions || {}).map(
+                              ([permission, enabled]) => (
+                                <div
+                                  key={permission}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span className="text-sm">{permission}</span>
+                                  <Badge
+                                    variant={enabled ? "default" : "secondary"}
+                                  >
+                                    {enabled ? "Enabled" : "Disabled"}
+                                  </Badge>
+                                </div>
+                              )
+                            )}
                           </div>
                         </CardContent>
                       </Card>
