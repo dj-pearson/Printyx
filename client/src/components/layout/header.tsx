@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
 interface HeaderProps {
@@ -28,10 +29,20 @@ export default function Header({ title, description }: HeaderProps) {
       <div className="flex h-16 items-center px-4 lg:px-6">
         {/* Sidebar Trigger - Shows hamburger menu on mobile, desktop toggle */}
         <SidebarTrigger className="mr-2 md:mr-4" />
-        
+
         {/* Logo */}
         <div className="mr-4 flex">
-          <h1 className="text-xl font-bold text-blue-600 md:text-xl text-lg">Printyx</h1>
+          <h1
+            className="text-xl font-bold text-blue-600"
+            onMouseEnter={() => {
+              // Prefetch common routes for faster nav
+              queryClient.prefetchQuery({ queryKey: ["/api/tasks/enhanced"] });
+              queryClient.prefetchQuery({ queryKey: ["/api/customers"] });
+              queryClient.prefetchQuery({ queryKey: ["/api/service-tickets"] });
+            }}
+          >
+            Printyx
+          </h1>
         </div>
 
         {/* Search - Responsive design */}
@@ -53,7 +64,11 @@ export default function Header({ title, description }: HeaderProps) {
 
         <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Notifications - Hidden on small mobile */}
-          <Button variant="ghost" size="icon" className="relative hidden sm:flex">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative hidden sm:flex"
+          >
             <Bell className="h-5 w-5" />
             <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-red-500">
               3
@@ -65,9 +80,13 @@ export default function Header({ title, description }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.profileImageUrl || ""} alt={user?.firstName || ""} />
+                  <AvatarImage
+                    src={user?.profileImageUrl || ""}
+                    alt={user?.firstName || ""}
+                  />
                   <AvatarFallback className="text-xs">
-                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    {user?.firstName?.[0]}
+                    {user?.lastName?.[0]}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -103,20 +122,22 @@ export default function Header({ title, description }: HeaderProps) {
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={async () => {
-                try {
-                  const response = await fetch('/api/auth/logout', {
-                    method: 'POST',
-                    credentials: 'include'
-                  });
-                  if (response.ok) {
-                    window.location.href = '/';
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    const response = await fetch("/api/auth/logout", {
+                      method: "POST",
+                      credentials: "include",
+                    });
+                    if (response.ok) {
+                      window.location.href = "/";
+                    }
+                  } catch (error) {
+                    console.error("Logout error:", error);
+                    window.location.href = "/";
                   }
-                } catch (error) {
-                  console.error('Logout error:', error);
-                  window.location.href = '/';
-                }
-              }}>
+                }}
+              >
                 <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
