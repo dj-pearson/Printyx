@@ -4667,6 +4667,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Unified business records route (handles both customers and leads by slug/ID)
+  app.get(
+    "/api/business-records/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        
+        // Try to get by URL slug first, then by ID
+        let record;
+        const isSlug = id.includes('-') && id.length > 20 && /\d{8}$/.test(id);
+        
+        if (isSlug) {
+          record = await storage.getBusinessRecordBySlug(id, tenantId);
+        } else {
+          record = await storage.getBusinessRecord(id, tenantId);
+        }
+
+        if (!record) {
+          return res.status(404).json({ message: "Business record not found" });
+        }
+
+        // Transform database fields to frontend format
+        const transformedRecord = BusinessRecordsTransformer.toFrontend(record);
+        res.json(transformedRecord);
+      } catch (error) {
+        console.error("Error fetching business record:", error);
+        res.status(500).json({ message: "Failed to fetch business record" });
+      }
+    }
+  );
+
   // Company management routes (new primary business entity)
   app.get(
     "/api/companies",
