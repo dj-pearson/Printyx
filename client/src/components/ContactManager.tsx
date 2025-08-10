@@ -524,9 +524,15 @@ export function ContactManager({
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() =>
-                                deleteContactMutation.mutate(contact.id)
-                              }
+                              onClick={() => {
+                                if (
+                                  confirm(
+                                    `Delete ${contact.firstName} ${contact.lastName}? This cannot be undone.`
+                                  )
+                                ) {
+                                  deleteContactMutation.mutate(contact.id);
+                                }
+                              }}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
