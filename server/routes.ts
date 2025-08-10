@@ -73,6 +73,7 @@ import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
 import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
 import { registerModularDashboardRoutes } from "./routes-modular-dashboard";
 import { registerManufacturerIntegrationRoutes } from "./routes-manufacturer-integration";
+import { blockRegistrations } from "./middleware/registration-lock";
 import customerPortalRoutes from "./routes-customer-portal";
 import { serviceDispatchRouter } from "./routes-service-dispatch";
 import commissionRoutes from "./routes-commission";
@@ -381,6 +382,9 @@ function validateManagedServiceData(row: any): any {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Apply registration lock middleware to block new user registrations
+  app.use(blockRegistrations);
+
   // Setup session management
   const pgStore = connectPg(session);
   app.use(

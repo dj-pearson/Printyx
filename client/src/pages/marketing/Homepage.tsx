@@ -289,10 +289,10 @@ const Homepage = () => {
                 Login
               </Button>
               <Button
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                onClick={() => (window.location.href = "/login")}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 opacity-75 cursor-not-allowed"
+                disabled
               >
-                Get Started
+                Coming October 1st
               </Button>
             </div>
 
@@ -362,13 +362,10 @@ const Homepage = () => {
                       Login
                     </Button>
                     <Button
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        window.location.href = "/login";
-                      }}
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 opacity-75 cursor-not-allowed"
+                      disabled
                     >
-                      Get Started
+                      Coming October 1st
                     </Button>
                   </div>
                 </div>
@@ -416,8 +413,8 @@ const Homepage = () => {
                   : "-translate-x-10 opacity-0"
               }`}
             >
-              <Badge className="mb-4 bg-amber-100 text-amber-900 border-amber-300">
-                Early Access
+              <Badge className="mb-4 bg-blue-100 text-blue-900 border-blue-300">
+                Coming October 1st, 2025
               </Badge>
 
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
@@ -430,26 +427,26 @@ const Homepage = () => {
 
               <p className="text-xl text-gray-700 mb-8 leading-relaxed">
                 We’re building a simpler, unified tool for copier dealers. No
-                hype. No fluff. Just a clean workflow for CRM, service,
-                inventory, and billing so you can get back to running your
-                business.
+                A clean workflow for CRM, service, inventory, and billing that lets you focus
+                on running your business instead of managing software.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <Button
                   size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-6"
-                  onClick={() => (window.location.href = "/login")}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-6 opacity-75 cursor-not-allowed"
+                  disabled
                 >
-                  Start Free Trial
+                  Coming October 1st
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="text-lg px-8 py-6 border-gray-300 hover:bg-gray-50"
+                  className="text-lg px-8 py-6 border-gray-300 hover:bg-gray-50 opacity-75 cursor-not-allowed"
+                  disabled
                 >
-                  Watch Demo
+                  Get Notified
                 </Button>
               </div>
 
@@ -827,27 +824,28 @@ const Homepage = () => {
       <section className="py-24 bg-gradient-to-r from-blue-600 to-blue-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-4">
-            Ready to Transform Your Copier Business?
+            Get Ready to Transform Your Copier Business
           </h2>
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
             We’re in Early Access. If you want something simpler and faster than
-            your current stack, try it.
+            a unified platform designed specifically for copier dealers.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="bg-white text-blue-600 hover:bg-gray-50 text-lg px-8 py-6"
-              onClick={() => (window.location.href = "/login")}
+              className="bg-white text-blue-600 hover:bg-gray-50 opacity-75 cursor-not-allowed text-lg px-8 py-6"
+              disabled
             >
-              Start Your Free Trial
+              Coming October 1st
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button
               size="lg"
               variant="outline"
               className="border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-6"
+              disabled
             >
-              Schedule Demo
+              Get Notified
             </Button>
           </div>
         </div>
