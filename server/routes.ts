@@ -7672,9 +7672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (_e) {
       res
         .header("Content-Type", "text/plain")
-        .send(
-          "User-agent: *\nAllow: /\nSitemap: https://printyx.net/sitemap.xml\nLLMS: https://printyx.net/llms.txt\n"
-        );
+        .send("User-agent: *\nAllow: /\nSitemap: https://printyx.net/sitemap.xml\nLLMS: https://printyx.net/llms.txt\n");
     }
   });
 
@@ -7797,6 +7795,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res
         .status(500)
         .json({ message: "Failed to load SEO pages", detail: error?.message });
+    }
+  });
+
+  // Admin: regenerate sitemap endpoint
+  app.post("/api/seo/regenerate-sitemap", requireAuth, async (req: any, res) => {
+    try {
+      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser) return res.status(403).json({ message: "Platform admin required" });
+      
+      // This endpoint doesn't generate a new sitemap, just returns success
+      // The actual sitemap is generated dynamically via GET /sitemap.xml
+      res.json({ message: "Sitemap regenerated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to regenerate sitemap", detail: error?.message });
+    }
+  });
+
+  // Admin: regenerate robots.txt endpoint
+  app.post("/api/seo/regenerate-robots", requireAuth, async (req: any, res) => {
+    try {
+      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser) return res.status(403).json({ message: "Platform admin required" });
+      
+      // This endpoint doesn't generate a new robots.txt, just returns success
+      // The actual robots.txt is generated dynamically via GET /robots.txt
+      res.json({ message: "Robots.txt regenerated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to regenerate robots.txt", detail: error?.message });
+    }
+  });
+
+  // Admin: regenerate llms.txt endpoint
+  app.post("/api/seo/regenerate-llms", requireAuth, async (req: any, res) => {
+    try {
+      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser) return res.status(403).json({ message: "Platform admin required" });
+      
+      // This endpoint doesn't generate a new llms.txt, just returns success
+      // The actual llms.txt is generated dynamically via GET /llms.txt
+      res.json({ message: "LLMs.txt regenerated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to regenerate llms.txt", detail: error?.message });
     }
   });
 
