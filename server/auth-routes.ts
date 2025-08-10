@@ -24,8 +24,13 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
     
+    // Debug logging for failed logins
+    console.log(`Login attempt for email: ${email}`);
+    console.log(`Password length: ${password.length}`);
+    
     const user = await storage.authenticateUser(email, password);
     if (!user) {
+      console.log(`Authentication failed for ${email}`);
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
