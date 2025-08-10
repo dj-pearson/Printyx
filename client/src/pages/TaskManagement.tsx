@@ -88,6 +88,8 @@ import {
   CreateProjectDialog,
 } from "@/components/tasks/TaskDialogs";
 import { TaskBoardView } from "@/components/tasks/TaskBoardView";
+import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest } from "@/lib/queryClient";
 
 // Enhanced interfaces for advanced task management functionality
 interface Task {
@@ -259,10 +261,31 @@ export default function TaskManagement() {
   });
 
   // Fetch team members for assignment
-  const { data: teamMembers = [] } = useQuery({
+  const { data: teamMembers = [], isLoading: teamLoading } = useQuery({
     queryKey: ["/api/users/team"],
     queryFn: async () => apiRequest("/api/users/team"),
   });
+
+  if (tasksLoading || projectsLoading || teamLoading) {
+    return (
+      <MainLayout
+        title="Task Management"
+        description="Advanced project and task management"
+      >
+        <div className="space-y-6 p-6">
+          <div className="flex items-center space-x-4">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   // Create task mutation
   const createTaskMutation = useMutation({

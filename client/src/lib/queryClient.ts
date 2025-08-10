@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -83,6 +84,14 @@ export async function apiRequest(
     }
   }
 
+  if (res.status === 403 && isMutating) {
+    toast({
+      title: "Action blocked",
+      description:
+        "Your session protection failed. Please refresh and try again.",
+      variant: "destructive",
+    });
+  }
   await throwIfResNotOk(res);
   return await res.json();
 }
@@ -152,6 +161,14 @@ export async function apiFormRequest(
     }
   }
 
+  if (res.status === 403) {
+    toast({
+      title: "Upload blocked",
+      description:
+        "Your session protection failed. Please refresh and try again.",
+      variant: "destructive",
+    });
+  }
   await throwIfResNotOk(res);
   return await res.json();
 }
