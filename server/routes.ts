@@ -102,6 +102,7 @@ import {
   requireTenant,
   TenantRequest,
 } from "./middleware/tenancy";
+import { BusinessRecordsTransformer } from "./data-field-mapping";
 import { db } from "./db";
 import {
   eq,
@@ -4533,8 +4534,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
         // Get business records where recordType = 'customer' (copier buyers)
-        const customers = await storage.getCustomers(tenantId);
-        res.json(customers);
+        const customers = await storage.getBusinessRecords(tenantId, 'customer');
+        // Transform database fields to frontend format
+        const transformedCustomers = customers.map((customer) =>
+          BusinessRecordsTransformer.toFrontend(customer)
+        );
+        res.json(transformedCustomers);
       } catch (error) {
         console.error("Error fetching customers:", error);
         res.status(500).json({ message: "Failed to fetch customers" });
@@ -4554,13 +4559,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
-        const customer = await storage.getCustomer(id, tenantId);
+        // Try to get by URL slug first, then by ID
+        let customer;
+        const isSlug = id.includes('-') && id.length > 20 && /\d{8}$/.test(id);
+        
+        if (isSlug) {
+          customer = await storage.getBusinessRecordBySlug(id, tenantId);
+        } else {
+          customer = await storage.getBusinessRecord(id, tenantId);
+        }
 
         if (!customer) {
           return res.status(404).json({ message: "Customer not found" });
         }
 
-        res.json(customer);
+        // Transform database fields to frontend format
+        const transformedCustomer = BusinessRecordsTransformer.toFrontend(customer);
+        res.json(transformedCustomer);
       } catch (error) {
         console.error("Error fetching customer:", error);
         res.status(500).json({ message: "Failed to fetch customer" });
