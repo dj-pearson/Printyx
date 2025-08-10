@@ -8,18 +8,6 @@ The platform includes AI-powered analytics (customer churn, CLV, predictive main
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes
-- **Deployment Build Fixes (Aug 10, 2025)**: Resolved all duplicate method warnings in storage.ts that were preventing successful deployment. Fixed duplicate object keys in routes.ts (highRiskCustomers), removed duplicate class methods (updateCompanyContact, deleteCompanyContact, getCustomers, getProductAccessories, getAllProductAccessories, getVendors, createVendor, updateVendor, deleteVendor, createContact, updateContact, deleteContact, getContactsByCompany, getUserCustomerAssignments, getCustomerEquipment, getCustomerMeterReadings, getCustomerInvoices, getCustomerServiceTickets, getCustomerContracts). Updated browserslist database. Build now completes successfully with no errors, ready for deployment.
-- **All-in-One SEO Management System (Aug 10, 2025)**: Implemented comprehensive SEO management solution at `/root-admin/seo` with complete backend integration. Added dynamic sitemap.xml, robots.txt, and llms.txt generation with database-driven settings. Features global SEO settings configuration, individual page meta management with structured data, automatic file regeneration endpoints, and role-based access control. Integrated into MainLayout with proper headers, toast notifications, and Root Admin sidebar navigation. Includes preset schema templates for various content types and comprehensive API endpoints for SEO file management.
-- **Product Category Normalization System (Aug 9, 2025)**: Implemented comprehensive category standardization system to eliminate duplicate/similar categories in master product catalog. Added `normalizeCategoryName()` function that consolidates MFP→Multifunction, Paper Feeding/Document Feeding/Hardware Accessory→Accessory during CSV import and existing data cleanup. Created `/api/catalog/normalize-categories` endpoint and "Fix Categories" UI button for bulk normalization. Updated existing database records (7 MFP products normalized to Multifunction). Enhanced CSV Smart Import to automatically apply category normalization, ensuring consistent categorization for filtering and product type assignment.
-- **Phase 3 CRM Conversion Insights & Optimization (Aug 9, 2025)**: Completed comprehensive Phase 3 CRM improvements focusing on conversion insights and pipeline optimization. Added ConversionInsights component with funnel analysis, activity calculator nudges, loss reason analysis, and monthly trend tracking. Implemented PipelineTrendWidgets with statistical process control charts, trend monitoring widgets, and performance alerts. Created comprehensive analytics API endpoints (/api/analytics/conversion-metrics, /api/analytics/activity-nudges, /api/analytics/control-charts, /api/analytics/trend-widgets) with tenant-aware data filtering. Integrated Phase 3 features into LeadDeals component providing deal-specific conversion insights and pipeline trend analysis for optimization.
-- **Phase 2 CRM Calendar Integration & Stage Guards (Aug 9, 2025)**: Completed comprehensive Phase 2 CRM improvements including calendar provider connections (Microsoft Graph/Google Calendar), enhanced form validations with stage guards (poka-yoke), and advanced business logic validations. Added CalendarProvider context with OAuth integration placeholders, CalendarSetup component for provider management, enhanced demo scheduling with calendar sync buttons and event creation handlers, and comprehensive validation rules for deals and demos preventing data quality issues. Implemented stage-specific validations, high-value deal requirements, business hours validation, and weekend scheduling restrictions.
-- **Phase 1 CRM Deal-Centric Improvements (Aug 9, 2025)**: Implemented Deal-centric data model and UI structure following CRM audit methodology. Added LeadDeals component with comprehensive deal management, enhanced deals API with leadId filtering for lead-specific deals, integrated deal creation with lead context pre-filling, added deal statistics and probability tracking, and implemented deal stage visualization. Lead Detail page now features fully functional Deals tab with associated deals, creation capabilities, and analytics integration.
-- **Phase 0 CRM Audit Fixes (Aug 9, 2025)**: Completed systematic CRM improvements using Lean/Six Sigma methodology. Fixed LeadDetail initialization bug (useState → useEffect), corrected API request signatures, resolved mobile card navigation issues, added Quick Action CTA strip with 6 key actions (Create Deal, Add Contacts, Log Activity, Schedule Demo, Create Quote, Build Proposal), and standardized Contacts API endpoints to unified /api/company-contacts surface. All actions include proper data pre-filling and seamless integration.
-- **Comprehensive Pipeline Forecasting Enhancement (Aug 8, 2025)**: Enhanced sales forecasting system to integrate deals, quotes, proposals, forecasts, and CRM goals into a unified pipeline view. Added new `/api/pipeline-forecast` endpoint that pulls data from multiple sources with time-based filtering (monthly, quarterly, yearly). Features weighted pipeline calculations, goal progress tracking, breakdown by pipeline type (deals, quotes, proposals), and remaining targets analysis. Includes new PipelineForecast.tsx component with comprehensive dashboard showing active pipeline amounts vs forecast goals, CRM goal integration, and detailed pipeline item listings with probability weighting.
-- **Sales Forecasting System (Aug 8, 2025)**: Implemented comprehensive sales forecasting functionality with real database integration. Added 4 new tables (`sales_forecasts`, `forecast_pipeline_items`, `forecast_metrics`, `forecast_rules`) with 37, 37, 25, and 18 columns respectively. Features tenant-based filtering, forecasting analytics, pipeline opportunity management, performance tracking, and rule-based automation. All API endpoints fully functional with proper authentication and JSON responses. Database schema documentation updated to reflect current 148 table structure.
-- **Enhanced RBAC System (Aug 7, 2025)**: Implemented enterprise-grade Role-Based Access Control system based on RBAC.md research. Features 4-tier organizational structure (Platform/Company/Regional/Location) with 8-level role hierarchy, 6 new database tables with nested set models for efficient queries, granular permission system with 35+ business-specific permissions, customizable roles for company admins, permission overrides for exceptions, and multi-level caching for performance. Supports both small single-location dealers ($500K) and large multi-location enterprises ($300M) with specialized role templates.
-
 ## System Architecture
 
 ### Frontend
@@ -51,14 +39,13 @@ Preferred communication style: Simple, everyday language.
 - **Permission System**: Granular module permissions with location-aware access controls.
 
 ### Technical Implementations
-- **Unified Business Records System**: Zero-data-loss lead-to-customer conversion (new → contacted → qualified → active → inactive) with HubSpot-style interface.
+- **Unified Business Records System**: Zero-data-loss lead-to-customer conversion (new → contacted → qualified → active → inactive).
 - **Triple-Platform Integration System**: E-Automate, Salesforce, and QuickBooks Online integration with isolated field mapping architecture.
 - **Unified Data Enrichment System**: Lead prospecting with ZoomInfo and Apollo.io integration.
 - **Root Admin Security Suite**: Comprehensive security platform including Social Media Generation, Security Management, System Monitoring, and Access Control, restricted to platform and root admins.
-- **Enhanced RBAC System**: Enterprise-grade Role-Based Access Control with 4-tier organizational structure (Platform/Company/Regional/Location) and 8-level role hierarchy. Includes nested set models for efficient hierarchy queries, permission inheritance, customizable roles for company admins, and multi-level caching for performance.
-- **Multi-Tenant Architecture**: Replaced hardcoded tenant IDs with session-based tenant resolution and comprehensive tenant middleware.
+- **Enhanced RBAC System**: Enterprise-grade Role-Based Access Control with 4-tier organizational structure and 8-level role hierarchy, including nested set models for efficient hierarchy queries, permission inheritance, customizable roles, and multi-level caching.
+- **Multi-Tenant Architecture**: Session-based tenant resolution and comprehensive tenant middleware.
 - **Performance Optimization**: Standardized polling, smart cache strategies, pagination, optimistic updates, and grouped cache invalidation.
-- **Form Validation**: Unified validation library with comprehensive schemas.
 - **Customer Success Management**: Customer health scoring, equipment usage analytics, NPS scoring, and automated intervention workflows.
 - **Remote Monitoring & IoT**: Real-time equipment monitoring, predictive maintenance, fleet dashboards, and automated alerts.
 - **Document Management**: Advanced document lifecycle, OCR processing, automated workflows, and compliance tracking.
@@ -66,7 +53,7 @@ Preferred communication style: Simple, everyday language.
 - **Meter Billing System**: Automated invoice generation and tiered billing.
 - **Service Dispatch**: Smart technician assignment and work order optimization.
 - **CRM System**: Lead pipeline, quote generation, customer interaction, and equipment tracking.
-- **Proposal Builder**: Quote-to-proposal conversion system with professional templates, customizable sections, and company branding integration.
+- **Proposal Builder**: Quote-to-proposal conversion system with professional templates and branding integration.
 - **Comprehensive Onboarding System**: Multi-step customer onboarding and equipment installation management.
 - **Product Management System**: Seven-category product catalog.
 - **Task Management System**: Personal and multi-step project tracking.
@@ -76,13 +63,13 @@ Preferred communication style: Simple, everyday language.
 - **Workflow Automation System**: Trigger-based actions and template creation.
 - **System Integrations Dashboard**: Management for third-party integrations.
 - **Legal Compliance Framework**: Integrated EULA, Privacy Policy, and Terms & Conditions.
-- **Sidebar Consolidation**: The application uses ONLY `role-based-sidebar.tsx` for all navigation. All navigation modifications must be done in `role-based-sidebar.tsx`.
+- **Sidebar Consolidation**: All navigation is handled by `role-based-sidebar.tsx`.
 
 ### UI/UX Decisions
 - Consistent navigation layout.
 - Card-based interface for product categories.
 - Chevron icons for expand/collapse states in nested navigation.
-- **Mobile-First Design Philosophy**: All components prioritize mobile experience with progressive enhancement for larger screens, adhering to 44x44px touch targets, 16px minimum font size for inputs to prevent iOS zoom, responsive grid layouts, and safe area support.
+- **Mobile-First Design Philosophy**: All components prioritize mobile experience with progressive enhancement, adhering to accessibility standards (e.g., 44x44px touch targets, 16px minimum font size for inputs), responsive grid layouts, and safe area support.
 
 ## External Dependencies
 
