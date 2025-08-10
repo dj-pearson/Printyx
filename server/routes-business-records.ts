@@ -7,6 +7,11 @@ import {
   TenantRequest,
 } from "./middleware/tenancy";
 import { BusinessRecordsTransformer } from "./data-field-mapping";
+import { 
+  generateCompanyDisplayId, 
+  generateUniqueUrlSlug, 
+  updateBusinessRecordWithIdentifiers 
+} from "./utils/company-id-generator";
 
 export function registerBusinessRecordRoutes(app: Express) {
   // Unified Business Records API - supports entire lead-to-customer lifecycle
@@ -102,6 +107,15 @@ export function registerBusinessRecordRoutes(app: Express) {
           recordType
         );
 
+        // Generate company display ID and URL slug
+        const companyDisplayId = await generateCompanyDisplayId(tenantId);
+        const urlSlug = await generateUniqueUrlSlug(
+          recordType, 
+          frontendData.companyName || 'Unnamed Company', 
+          companyDisplayId, 
+          tenantId
+        );
+
         const recordData = {
           ...dbData,
           tenantId: tenantId,
@@ -109,9 +123,11 @@ export function registerBusinessRecordRoutes(app: Express) {
           recordType: recordType,
           status: status,
           companyName: frontendData.companyName, // Ensure company name is properly set
+          companyDisplayId: companyDisplayId,
+          urlSlug: urlSlug,
         };
         console.log(
-          "[DEBUG] Final record data:",
+          "[DEBUG] Final record data with IDs:",
           JSON.stringify(recordData, null, 2)
         );
 

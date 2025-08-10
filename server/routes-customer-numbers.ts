@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ne } from "drizzle-orm";
 import { storage } from "./storage";
+import { db } from "./db";
 
 // Simple auth middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -37,7 +38,7 @@ class CustomerNumberService {
    */
   static async generateCustomerNumber(tenantId: string, userId?: string): Promise<string> {
     // Get active configuration for tenant
-    const configs = await storage.db
+    const configs = await db
       .select()
       .from(customerNumberConfig)
       .where(
@@ -61,7 +62,7 @@ class CustomerNumberService {
         isActive: true,
       };
 
-      const [newConfig] = await storage.db
+      const [newConfig] = await db
         .insert(customerNumberConfig)
         .values(defaultConfig)
         .returning();
@@ -76,7 +77,7 @@ class CustomerNumberService {
     const customerNumber = `${config.prefix}${config.separatorChar || ""}${paddedSequence}`;
 
     // Update the sequence number for next use
-    await storage.db
+    await db
       .update(customerNumberConfig)
       .set({ 
         currentSequence: config.currentSequence + 1,
@@ -98,7 +99,7 @@ class CustomerNumberService {
     userId?: string
   ): Promise<void> {
     // Record in history
-    await storage.db.insert(customerNumberHistory).values({
+    await db.insert(customerNumberHistory).values({
       tenantId,
       customerId,
       customerNumber,
@@ -107,7 +108,7 @@ class CustomerNumberService {
     });
 
     // Update business record with customer number
-    await storage.db
+    await db
       .update(businessRecords)
       .set({ 
         customerNumber,
@@ -133,7 +134,7 @@ class CustomerNumberService {
     const customerNumber = await this.generateCustomerNumber(tenantId, userId);
 
     // Update lead to customer status
-    await storage.db
+    await db
       .update(businessRecords)
       .set({
         recordType: "customer",
@@ -149,7 +150,7 @@ class CustomerNumberService {
       );
 
     // Get configuration for history
-    const config = await storage.db
+    const config = await db
       .select()
       .from(customerNumberConfig)
       .where(
@@ -162,7 +163,7 @@ class CustomerNumberService {
 
     if (config[0]) {
       // Record in history
-      await storage.db.insert(customerNumberHistory).values({
+      await db.insert(customerNumberHistory).values({
         tenantId,
         customerId: leadId,
         customerNumber,
@@ -180,7 +181,7 @@ router.get("/config", requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
 
-    const configs = await storage.db
+    const configs = await db
       .select()
       .from(customerNumberConfig)
       .where(eq(customerNumberConfig.tenantId, tenantId))
@@ -205,13 +206,13 @@ router.post("/config", requireAuth, async (req: any, res) => {
 
     // Deactivate existing configurations if this is being set as active
     if (validatedData.isActive) {
-      await storage.db
+      await db
         .update(customerNumberConfig)
         .set({ isActive: false })
         .where(eq(customerNumberConfig.tenantId, tenantId));
     }
 
-    const [config] = await storage.db
+    const [config] = await db
       .insert(customerNumberConfig)
       .values(validatedData)
       .returning();
@@ -230,7 +231,7 @@ router.put("/config/:id", requireAuth, async (req: any, res) => {
     const { id } = req.params;
 
     // Validate that this config belongs to the tenant
-    const existing = await storage.db
+    const existing = await db
       .select()
       .from(customerNumberConfig)
       .where(
@@ -247,18 +248,18 @@ router.put("/config/:id", requireAuth, async (req: any, res) => {
 
     // Deactivate other configurations if this is being set as active
     if (req.body.isActive) {
-      await storage.db
+      await db
         .update(customerNumberConfig)
         .set({ isActive: false })
         .where(
           and(
             eq(customerNumberConfig.tenantId, tenantId),
-            eq(customerNumberConfig.id, id)
+            ne(customerNumberConfig.id, id)
           )
         );
     }
 
-    const [updated] = await storage.db
+    const [updated] = await db
       .update(customerNumberConfig)
       .set({
         ...req.body,
@@ -306,7 +307,7 @@ router.post("/assign", requireAuth, async (req: any, res) => {
     }
 
     // Get active configuration
-    const config = await storage.db
+    const config = await db
       .select()
       .from(customerNumberConfig)
       .where(
@@ -363,7 +364,7 @@ router.get("/history", requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
 
-    const history = await storage.db
+    const history = await db
       .select({
         id: customerNumberHistory.id,
         customerNumber: customerNumberHistory.customerNumber,

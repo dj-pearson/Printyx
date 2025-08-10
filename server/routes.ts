@@ -9000,6 +9000,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const customerNumberRoutes = await import("./routes-customer-numbers");
   app.use("/api/customer-numbers", customerNumberRoutes.customerNumberRoutes);
 
+  // Company ID Management Routes
+  const companyIdRoutes = await import("./routes-company-ids");
+  app.use("/api/company-ids", companyIdRoutes.default);
+
   // Enhanced RBAC Routes
   app.use("/api/rbac", enhancedRBACRoutes);
   app.use("/api/ai/gpt5", gpt5Routes);
