@@ -42,12 +42,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -84,8 +79,16 @@ import { format } from "date-fns";
 // Warehouse operation schema
 const warehouseOperationSchema = z.object({
   equipmentId: z.string().min(1, "Equipment is required"),
-  operationType: z.enum(["receiving", "quality_control", "staging", "shipping", "build"]),
-  status: z.enum(["pending", "in_progress", "completed", "failed"]).default("pending"),
+  operationType: z.enum([
+    "receiving",
+    "quality_control",
+    "staging",
+    "shipping",
+    "build",
+  ]),
+  status: z
+    .enum(["pending", "in_progress", "completed", "failed"])
+    .default("pending"),
   assignedTo: z.string().optional(),
   scheduledDate: z.date().optional(),
   notes: z.string().optional(),
@@ -97,13 +100,19 @@ const warehouseOperationSchema = z.object({
 const serialNumberSchema = z.object({
   serialNumber: z.string().min(1, "Serial number is required"),
   equipmentId: z.string().min(1, "Equipment is required"),
-  status: z.enum(["received", "staged", "built", "tested", "shipped", "delivered"]).default("received"),
+  status: z
+    .enum(["received", "staged", "built", "tested", "shipped", "delivered"])
+    .default("received"),
   location: z.string().optional(),
-  accessories: z.array(z.object({
-    accessoryId: z.string(),
-    serialNumber: z.string().optional(),
-    status: z.enum(["pending", "matched", "installed"]).default("pending"),
-  })).optional(),
+  accessories: z
+    .array(
+      z.object({
+        accessoryId: z.string(),
+        serialNumber: z.string().optional(),
+        status: z.enum(["pending", "matched", "installed"]).default("pending"),
+      })
+    )
+    .optional(),
 });
 
 // Build process schema
@@ -112,20 +121,24 @@ const buildProcessSchema = z.object({
   modelId: z.string().min(1, "Model is required"),
   assignedTechnician: z.string().min(1, "Technician is required"),
   scheduledDate: z.date(),
-  accessories: z.array(z.object({
-    accessoryId: z.string(),
-    quantity: z.number().min(1),
-    isRequired: z.boolean().default(false),
-  })),
-  buildSteps: z.array(z.object({
-    stepName: z.string(),
-    description: z.string(),
-    estimatedTime: z.number(), // minutes
-    isCompleted: z.boolean().default(false),
-    completedBy: z.string().optional(),
-    completedAt: z.date().optional(),
-    notes: z.string().optional(),
-  })),
+  accessories: z.array(
+    z.object({
+      accessoryId: z.string(),
+      quantity: z.number().min(1),
+      isRequired: z.boolean().default(false),
+    })
+  ),
+  buildSteps: z.array(
+    z.object({
+      stepName: z.string(),
+      description: z.string(),
+      estimatedTime: z.number(), // minutes
+      isCompleted: z.boolean().default(false),
+      completedBy: z.string().optional(),
+      completedAt: z.date().optional(),
+      notes: z.string().optional(),
+    })
+  ),
 });
 
 // Delivery schedule schema
@@ -212,18 +225,15 @@ export default function WarehouseOperations() {
 
   // Create operation mutation
   const createOperationMutation = useMutation({
-    mutationFn: async (data: WarehouseOperationFormData) => {
-      const response = await fetch("/api/warehouse-operations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to create operation");
-      return response.json();
-    },
+    mutationFn: async (data: WarehouseOperationFormData) =>
+      apiRequest("/api/warehouse-operations", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-operations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-operations/stats"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse-operations"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse-operations/stats"],
+      });
       setShowCreateDialog(false);
       toast({ title: "Operation created successfully" });
     },
@@ -231,17 +241,12 @@ export default function WarehouseOperations() {
 
   // Update operation status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const response = await fetch(`/api/warehouse-operations/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!response.ok) throw new Error("Failed to update status");
-      return response.json();
-    },
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      apiRequest(`/api/warehouse-operations/${id}/status`, "PATCH", { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-operations"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouse-operations"],
+      });
       toast({ title: "Status updated successfully" });
     },
   });
@@ -281,7 +286,11 @@ export default function WarehouseOperations() {
   // Filter operations
   const filteredOperations = operations.filter((op: any) => {
     if (statusFilter !== "all" && op.status !== statusFilter) return false;
-    if (searchTerm && !op.equipmentId?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (
+      searchTerm &&
+      !op.equipmentId?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+      return false;
     return true;
   });
 
@@ -300,24 +309,66 @@ export default function WarehouseOperations() {
           <div className="md:hidden overflow-x-auto">
             <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground">
               <div className="flex space-x-1 min-w-max">
-                <TabsTrigger value="overview" className="whitespace-nowrap text-xs px-3">Overview</TabsTrigger>
-                <TabsTrigger value="receiving" className="whitespace-nowrap text-xs px-3">Receiving</TabsTrigger>
-                <TabsTrigger value="inventory" className="whitespace-nowrap text-xs px-3">Inventory</TabsTrigger>
-                <TabsTrigger value="build" className="whitespace-nowrap text-xs px-3">Build</TabsTrigger>
-                <TabsTrigger value="delivery" className="whitespace-nowrap text-xs px-3">Delivery</TabsTrigger>
-                <TabsTrigger value="analytics" className="whitespace-nowrap text-xs px-3">Analytics</TabsTrigger>
+                <TabsTrigger
+                  value="overview"
+                  className="whitespace-nowrap text-xs px-3"
+                >
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger
+                  value="receiving"
+                  className="whitespace-nowrap text-xs px-3"
+                >
+                  Receiving
+                </TabsTrigger>
+                <TabsTrigger
+                  value="inventory"
+                  className="whitespace-nowrap text-xs px-3"
+                >
+                  Inventory
+                </TabsTrigger>
+                <TabsTrigger
+                  value="build"
+                  className="whitespace-nowrap text-xs px-3"
+                >
+                  Build
+                </TabsTrigger>
+                <TabsTrigger
+                  value="delivery"
+                  className="whitespace-nowrap text-xs px-3"
+                >
+                  Delivery
+                </TabsTrigger>
+                <TabsTrigger
+                  value="analytics"
+                  className="whitespace-nowrap text-xs px-3"
+                >
+                  Analytics
+                </TabsTrigger>
               </div>
             </TabsList>
           </div>
-          
+
           {/* Desktop grid tabs */}
           <TabsList className="hidden md:grid w-full grid-cols-3 lg:grid-cols-6 gap-1">
-            <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="receiving" className="text-sm">Receiving</TabsTrigger>
-            <TabsTrigger value="inventory" className="text-sm">Inventory</TabsTrigger>
-            <TabsTrigger value="build" className="text-sm">Build</TabsTrigger>
-            <TabsTrigger value="delivery" className="text-sm">Delivery</TabsTrigger>
-            <TabsTrigger value="analytics" className="text-sm">Analytics</TabsTrigger>
+            <TabsTrigger value="overview" className="text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="receiving" className="text-sm">
+              Receiving
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="text-sm">
+              Inventory
+            </TabsTrigger>
+            <TabsTrigger value="build" className="text-sm">
+              Build
+            </TabsTrigger>
+            <TabsTrigger value="delivery" className="text-sm">
+              Delivery
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="text-sm">
+              Analytics
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -329,8 +380,12 @@ export default function WarehouseOperations() {
                     <div className="flex items-center space-x-2">
                       <Package className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
                       <div>
-                        <p className="text-lg md:text-2xl font-bold">{stats.totalOperations || 0}</p>
-                        <p className="text-xs md:text-sm text-muted-foreground">Total Operations</p>
+                        <p className="text-lg md:text-2xl font-bold">
+                          {stats.totalOperations || 0}
+                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">
+                          Total Operations
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -341,8 +396,12 @@ export default function WarehouseOperations() {
                     <div className="flex items-center space-x-2">
                       <Clock className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
                       <div>
-                        <p className="text-lg md:text-2xl font-bold">{stats.pendingOperations || 0}</p>
-                        <p className="text-xs md:text-sm text-muted-foreground">Pending</p>
+                        <p className="text-lg md:text-2xl font-bold">
+                          {stats.pendingOperations || 0}
+                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">
+                          Pending
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -353,8 +412,12 @@ export default function WarehouseOperations() {
                     <div className="flex items-center space-x-2">
                       <Activity className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
                       <div>
-                        <p className="text-lg md:text-2xl font-bold">{stats.inProgressOperations || 0}</p>
-                        <p className="text-xs md:text-sm text-muted-foreground">In Progress</p>
+                        <p className="text-lg md:text-2xl font-bold">
+                          {stats.inProgressOperations || 0}
+                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">
+                          In Progress
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -365,8 +428,12 @@ export default function WarehouseOperations() {
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
                       <div>
-                        <p className="text-lg md:text-2xl font-bold">{stats.completedOperations || 0}</p>
-                        <p className="text-xs md:text-sm text-muted-foreground">Completed</p>
+                        <p className="text-lg md:text-2xl font-bold">
+                          {stats.completedOperations || 0}
+                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">
+                          Completed
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -378,23 +445,43 @@ export default function WarehouseOperations() {
             <Card>
               <CardHeader>
                 <CardTitle>Recent Operations</CardTitle>
-                <CardDescription>Latest warehouse activities and their status</CardDescription>
+                <CardDescription>
+                  Latest warehouse activities and their status
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {filteredOperations.slice(0, 5).map((operation: any) => {
-                    const StatusIcon = statusIcons[operation.operationType as keyof typeof statusIcons] || Package;
+                    const StatusIcon =
+                      statusIcons[
+                        operation.operationType as keyof typeof statusIcons
+                      ] || Package;
                     return (
-                      <div key={operation.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div
+                        key={operation.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
                           <StatusIcon className="h-5 w-5 text-muted-foreground" />
                           <div>
-                            <p className="font-medium">{operation.operationType.replace('_', ' ').toUpperCase()}</p>
-                            <p className="text-sm text-muted-foreground">Equipment ID: {operation.equipmentId}</p>
+                            <p className="font-medium">
+                              {operation.operationType
+                                .replace("_", " ")
+                                .toUpperCase()}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Equipment ID: {operation.equipmentId}
+                            </p>
                           </div>
                         </div>
-                        <Badge className={statusColors[operation.status as keyof typeof statusColors]}>
-                          {operation.status.replace('_', ' ')}
+                        <Badge
+                          className={
+                            statusColors[
+                              operation.status as keyof typeof statusColors
+                            ]
+                          }
+                        >
+                          {operation.status.replace("_", " ")}
                         </Badge>
                       </div>
                     );
@@ -407,10 +494,17 @@ export default function WarehouseOperations() {
           <TabsContent value="receiving" className="space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">Receiving Operations</h2>
-                <p className="text-sm md:text-base text-muted-foreground">Process incoming shipments and manage inventory</p>
+                <h2 className="text-xl md:text-2xl font-bold">
+                  Receiving Operations
+                </h2>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Process incoming shipments and manage inventory
+                </p>
               </div>
-              <Button onClick={() => setShowCreateDialog(true)} className="w-full md:w-auto">
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                className="w-full md:w-auto"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 New Operation
               </Button>
@@ -433,7 +527,10 @@ export default function WarehouseOperations() {
                   </div>
                   <div className="flex items-center space-x-2 w-full md:w-auto">
                     <Filter className="h-4 w-4 text-gray-400" />
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <Select
+                      value={statusFilter}
+                      onValueChange={setStatusFilter}
+                    >
                       <SelectTrigger className="w-full md:w-[180px]">
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
@@ -474,25 +571,40 @@ export default function WarehouseOperations() {
                         </TableHeader>
                         <TableBody>
                           {filteredOperations.map((operation: any) => {
-                            const StatusIcon = statusIcons[operation.status as keyof typeof statusIcons] || Clock;
-                            
+                            const StatusIcon =
+                              statusIcons[
+                                operation.status as keyof typeof statusIcons
+                              ] || Clock;
+
                             return (
                               <TableRow key={operation.id}>
                                 <TableCell className="font-medium">
-                                  {operation.operationType.replace('_', ' ').toUpperCase()}
+                                  {operation.operationType
+                                    .replace("_", " ")
+                                    .toUpperCase()}
                                 </TableCell>
                                 <TableCell>{operation.equipmentId}</TableCell>
-                                <TableCell>{operation.assignedTo || 'Unassigned'}</TableCell>
                                 <TableCell>
-                                  {operation.scheduledDate 
-                                    ? format(new Date(operation.scheduledDate), 'MMM dd, yyyy') 
-                                    : 'Not scheduled'
-                                  }
+                                  {operation.assignedTo || "Unassigned"}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={statusColors[operation.status as keyof typeof statusColors]}>
+                                  {operation.scheduledDate
+                                    ? format(
+                                        new Date(operation.scheduledDate),
+                                        "MMM dd, yyyy"
+                                      )
+                                    : "Not scheduled"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    className={
+                                      statusColors[
+                                        operation.status as keyof typeof statusColors
+                                      ]
+                                    }
+                                  >
                                     <StatusIcon className="h-3 w-3 mr-1" />
-                                    {operation.status.replace('_', ' ')}
+                                    {operation.status.replace("_", " ")}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -507,28 +619,32 @@ export default function WarehouseOperations() {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
-                                    
-                                    {operation.status === 'pending' && (
+
+                                    {operation.status === "pending" && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => updateStatusMutation.mutate({ 
-                                          id: operation.id, 
-                                          status: 'in_progress' 
-                                        })}
+                                        onClick={() =>
+                                          updateStatusMutation.mutate({
+                                            id: operation.id,
+                                            status: "in_progress",
+                                          })
+                                        }
                                       >
                                         Start
                                       </Button>
                                     )}
-                                    
-                                    {operation.status === 'in_progress' && (
+
+                                    {operation.status === "in_progress" && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => updateStatusMutation.mutate({ 
-                                          id: operation.id, 
-                                          status: 'completed' 
-                                        })}
+                                        onClick={() =>
+                                          updateStatusMutation.mutate({
+                                            id: operation.id,
+                                            status: "completed",
+                                          })
+                                        }
                                       >
                                         Complete
                                       </Button>
@@ -545,9 +661,15 @@ export default function WarehouseOperations() {
                     {/* Mobile Card View */}
                     <div className="md:hidden space-y-4">
                       {filteredOperations.map((operation: any) => {
-                        const StatusIcon = statusIcons[operation.status as keyof typeof statusIcons] || Clock;
-                        const OperationTypeIcon = statusIcons[operation.operationType as keyof typeof statusIcons] || Package;
-                        
+                        const StatusIcon =
+                          statusIcons[
+                            operation.status as keyof typeof statusIcons
+                          ] || Clock;
+                        const OperationTypeIcon =
+                          statusIcons[
+                            operation.operationType as keyof typeof statusIcons
+                          ] || Package;
+
                         return (
                           <Card key={operation.id} className="border">
                             <CardContent className="p-4">
@@ -556,33 +678,51 @@ export default function WarehouseOperations() {
                                   <OperationTypeIcon className="h-5 w-5 text-blue-600" />
                                   <div>
                                     <p className="font-semibold text-sm">
-                                      {operation.operationType.replace('_', ' ').toUpperCase()}
+                                      {operation.operationType
+                                        .replace("_", " ")
+                                        .toUpperCase()}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">ID: {operation.equipmentId}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      ID: {operation.equipmentId}
+                                    </p>
                                   </div>
                                 </div>
-                                <Badge className={statusColors[operation.status as keyof typeof statusColors]}>
+                                <Badge
+                                  className={
+                                    statusColors[
+                                      operation.status as keyof typeof statusColors
+                                    ]
+                                  }
+                                >
                                   <StatusIcon className="h-3 w-3 mr-1" />
-                                  {operation.status.replace('_', ' ')}
+                                  {operation.status.replace("_", " ")}
                                 </Badge>
                               </div>
-                              
+
                               <div className="space-y-2 mb-4">
                                 <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Assigned To:</span>
-                                  <span>{operation.assignedTo || 'Unassigned'}</span>
+                                  <span className="text-muted-foreground">
+                                    Assigned To:
+                                  </span>
+                                  <span>
+                                    {operation.assignedTo || "Unassigned"}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Scheduled:</span>
+                                  <span className="text-muted-foreground">
+                                    Scheduled:
+                                  </span>
                                   <span>
-                                    {operation.scheduledDate 
-                                      ? format(new Date(operation.scheduledDate), 'MMM dd, yyyy') 
-                                      : 'Not scheduled'
-                                    }
+                                    {operation.scheduledDate
+                                      ? format(
+                                          new Date(operation.scheduledDate),
+                                          "MMM dd, yyyy"
+                                        )
+                                      : "Not scheduled"}
                                   </span>
                                 </div>
                               </div>
-                              
+
                               <div className="flex flex-col space-y-2">
                                 <Button
                                   variant="outline"
@@ -596,30 +736,34 @@ export default function WarehouseOperations() {
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
                                 </Button>
-                                
-                                {operation.status === 'pending' && (
+
+                                {operation.status === "pending" && (
                                   <Button
                                     variant="default"
                                     size="sm"
-                                    onClick={() => updateStatusMutation.mutate({ 
-                                      id: operation.id, 
-                                      status: 'in_progress' 
-                                    })}
+                                    onClick={() =>
+                                      updateStatusMutation.mutate({
+                                        id: operation.id,
+                                        status: "in_progress",
+                                      })
+                                    }
                                     className="w-full"
                                   >
                                     <Activity className="h-4 w-4 mr-2" />
                                     Start Operation
                                   </Button>
                                 )}
-                                
-                                {operation.status === 'in_progress' && (
+
+                                {operation.status === "in_progress" && (
                                   <Button
                                     variant="default"
                                     size="sm"
-                                    onClick={() => updateStatusMutation.mutate({ 
-                                      id: operation.id, 
-                                      status: 'completed' 
-                                    })}
+                                    onClick={() =>
+                                      updateStatusMutation.mutate({
+                                        id: operation.id,
+                                        status: "completed",
+                                      })
+                                    }
                                     className="w-full"
                                   >
                                     <CheckCircle className="h-4 w-4 mr-2" />
@@ -641,10 +785,17 @@ export default function WarehouseOperations() {
           <TabsContent value="inventory" className="space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">Serial Number Management</h2>
-                <p className="text-sm md:text-base text-muted-foreground">Track equipment serial numbers and accessories</p>
+                <h2 className="text-xl md:text-2xl font-bold">
+                  Serial Number Management
+                </h2>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Track equipment serial numbers and accessories
+                </p>
               </div>
-              <Button onClick={() => setShowSerialDialog(true)} className="w-full md:w-auto">
+              <Button
+                onClick={() => setShowSerialDialog(true)}
+                className="w-full md:w-auto"
+              >
                 <QrCode className="h-4 w-4 mr-2" />
                 Add Serial Number
               </Button>
@@ -654,7 +805,10 @@ export default function WarehouseOperations() {
             <Card>
               <CardHeader>
                 <CardTitle>Equipment Serial Numbers</CardTitle>
-                <CardDescription>Track and manage equipment serial numbers through their lifecycle</CardDescription>
+                <CardDescription>
+                  Track and manage equipment serial numbers through their
+                  lifecycle
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8 text-muted-foreground">
@@ -667,10 +821,17 @@ export default function WarehouseOperations() {
           <TabsContent value="build" className="space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">Build Process Management</h2>
-                <p className="text-sm md:text-base text-muted-foreground">Manage equipment assembly and accessory matching</p>
+                <h2 className="text-xl md:text-2xl font-bold">
+                  Build Process Management
+                </h2>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Manage equipment assembly and accessory matching
+                </p>
               </div>
-              <Button onClick={() => setShowBuildDialog(true)} className="w-full md:w-auto">
+              <Button
+                onClick={() => setShowBuildDialog(true)}
+                className="w-full md:w-auto"
+              >
                 <Wrench className="h-4 w-4 mr-2" />
                 New Build Process
               </Button>
@@ -680,7 +841,9 @@ export default function WarehouseOperations() {
             <Card>
               <CardHeader>
                 <CardTitle>Active Build Processes</CardTitle>
-                <CardDescription>Monitor equipment builds and accessory installations</CardDescription>
+                <CardDescription>
+                  Monitor equipment builds and accessory installations
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8 text-muted-foreground">
@@ -693,10 +856,17 @@ export default function WarehouseOperations() {
           <TabsContent value="delivery" className="space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">Delivery Scheduling</h2>
-                <p className="text-sm md:text-base text-muted-foreground">Schedule and track equipment deliveries to customers</p>
+                <h2 className="text-xl md:text-2xl font-bold">
+                  Delivery Scheduling
+                </h2>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Schedule and track equipment deliveries to customers
+                </p>
               </div>
-              <Button onClick={() => setShowDeliveryDialog(true)} className="w-full md:w-auto">
+              <Button
+                onClick={() => setShowDeliveryDialog(true)}
+                className="w-full md:w-auto"
+              >
                 <Truck className="h-4 w-4 mr-2" />
                 Schedule Delivery
               </Button>
@@ -706,7 +876,9 @@ export default function WarehouseOperations() {
             <Card>
               <CardHeader>
                 <CardTitle>Scheduled Deliveries</CardTitle>
-                <CardDescription>Manage delivery schedules and installation appointments</CardDescription>
+                <CardDescription>
+                  Manage delivery schedules and installation appointments
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8 text-muted-foreground">
@@ -718,8 +890,12 @@ export default function WarehouseOperations() {
 
           <TabsContent value="analytics" className="space-y-4 md:space-y-6">
             <div>
-              <h2 className="text-xl md:text-2xl font-bold">Warehouse Analytics</h2>
-              <p className="text-sm md:text-base text-muted-foreground">Performance metrics and operational insights</p>
+              <h2 className="text-xl md:text-2xl font-bold">
+                Warehouse Analytics
+              </h2>
+              <p className="text-sm md:text-base text-muted-foreground">
+                Performance metrics and operational insights
+              </p>
             </div>
 
             {/* Analytics dashboard would go here */}
@@ -760,7 +936,10 @@ export default function WarehouseOperations() {
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -768,7 +947,10 @@ export default function WarehouseOperations() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Equipment</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select equipment" />
@@ -793,7 +975,10 @@ export default function WarehouseOperations() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Operation Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -801,7 +986,9 @@ export default function WarehouseOperations() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="receiving">Receiving</SelectItem>
-                            <SelectItem value="quality_control">Quality Control</SelectItem>
+                            <SelectItem value="quality_control">
+                              Quality Control
+                            </SelectItem>
                             <SelectItem value="staging">Staging</SelectItem>
                             <SelectItem value="build">Build Process</SelectItem>
                             <SelectItem value="shipping">Shipping</SelectItem>
@@ -819,7 +1006,10 @@ export default function WarehouseOperations() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Assigned To</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select technician" />
@@ -844,18 +1034,32 @@ export default function WarehouseOperations() {
                     <FormItem>
                       <FormLabel>Notes</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Additional notes or instructions" />
+                        <Textarea
+                          {...field}
+                          placeholder="Additional notes or instructions"
+                        />
                       </FormControl>
                     </FormItem>
                   )}
                 />
 
                 <div className="flex flex-col space-y-2 md:flex-row md:justify-end md:space-y-0 md:space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="w-full md:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCreateDialog(false)}
+                    className="w-full md:w-auto"
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createOperationMutation.isPending} className="w-full md:w-auto">
-                    {createOperationMutation.isPending ? "Creating..." : "Create Operation"}
+                  <Button
+                    type="submit"
+                    disabled={createOperationMutation.isPending}
+                    className="w-full md:w-auto"
+                  >
+                    {createOperationMutation.isPending
+                      ? "Creating..."
+                      : "Create Operation"}
                   </Button>
                 </div>
               </form>
@@ -873,22 +1077,35 @@ export default function WarehouseOperations() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">Operation Type</label>
+                    <label className="text-sm font-medium">
+                      Operation Type
+                    </label>
                     <p className="text-sm text-muted-foreground">
-                      {(selectedOperation as any).operationType?.replace('_', ' ').toUpperCase()}
+                      {(selectedOperation as any).operationType
+                        ?.replace("_", " ")
+                        .toUpperCase()}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Status</label>
-                    <Badge className={statusColors[(selectedOperation as any).status as keyof typeof statusColors]}>
-                      {(selectedOperation as any).status?.replace('_', ' ')}
+                    <Badge
+                      className={
+                        statusColors[
+                          (selectedOperation as any)
+                            .status as keyof typeof statusColors
+                        ]
+                      }
+                    >
+                      {(selectedOperation as any).status?.replace("_", " ")}
                     </Badge>
                   </div>
                 </div>
                 {(selectedOperation as any).notes && (
                   <div>
                     <label className="text-sm font-medium">Notes</label>
-                    <p className="text-sm text-muted-foreground">{(selectedOperation as any).notes}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(selectedOperation as any).notes}
+                    </p>
                   </div>
                 )}
               </div>

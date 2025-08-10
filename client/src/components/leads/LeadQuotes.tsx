@@ -129,30 +129,20 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
   const queryClient = useQueryClient();
 
   // Fetch quotes for this lead
-  const { data: quotes = [], isLoading, refetch } = useQuery({
+  const {
+    data: quotes = [],
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["/api/quotes", "lead", leadId],
     enabled: !!leadId,
-    queryFn: async () => {
-      const response = await fetch(`/api/quotes?leadId=${leadId}`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch quotes");
-      return response.json();
-    },
+    queryFn: async () => apiRequest(`/api/quotes?leadId=${leadId}`),
   });
 
   // Update quote status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const response = await fetch(`/api/quotes/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to update quote status");
-      return response.json();
-    },
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      apiRequest(`/api/quotes/${id}/status`, "PATCH", { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/quotes", "lead", leadId],
@@ -166,12 +156,13 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
 
   // Filter quotes based on search and status
   const filteredQuotes = quotes.filter((quote: Quote) => {
-    const matchesSearch = 
+    const matchesSearch =
       quote.quoteNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || quote.status === statusFilter;
-    
+
+    const matchesStatus =
+      statusFilter === "all" || quote.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
@@ -179,12 +170,18 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
   const stats = {
     total: quotes.length,
     totalValue: quotes.reduce((sum: number, q: Quote) => {
-      const amount = parseFloat(q.totalAmount?.toString() || '0');
+      const amount = parseFloat(q.totalAmount?.toString() || "0");
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0),
-    pending: quotes.filter((q: Quote) => ["draft", "sent"].includes(q.status)).length,
+    pending: quotes.filter((q: Quote) => ["draft", "sent"].includes(q.status))
+      .length,
     accepted: quotes.filter((q: Quote) => q.status === "accepted").length,
-    winRate: quotes.length > 0 ? (quotes.filter((q: Quote) => q.status === "accepted").length / quotes.length) * 100 : 0,
+    winRate:
+      quotes.length > 0
+        ? (quotes.filter((q: Quote) => q.status === "accepted").length /
+            quotes.length) *
+          100
+        : 0,
   };
 
   const formatCurrency = (amount: number) => {
@@ -208,7 +205,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
     const params = new URLSearchParams({
       leadId: leadId,
       companyName: leadName,
-      prefill: 'true'
+      prefill: "true",
     });
     setLocation(`/quotes/new?${params.toString()}`);
   };
@@ -333,7 +330,9 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                       <TableCell colSpan={7} className="text-center py-8">
                         <div className="flex flex-col items-center space-y-2">
                           <Calculator className="h-8 w-8 text-gray-400" />
-                          <p className="text-gray-500">No quotes found for this lead</p>
+                          <p className="text-gray-500">
+                            No quotes found for this lead
+                          </p>
                           <Button size="sm" onClick={handleCreateQuote}>
                             <Plus className="h-4 w-4 mr-2" />
                             Create First Quote
@@ -355,22 +354,32 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                         <TableCell>
                           <Badge
                             className={
-                              statusColors[quote.status as keyof typeof statusColors]
+                              statusColors[
+                                quote.status as keyof typeof statusColors
+                              ]
                             }
                           >
                             <div className="flex items-center space-x-1">
                               {getStatusIcon(quote.status)}
                               <span className="capitalize">
-                                {statusLabels[quote.status as keyof typeof statusLabels]}
+                                {
+                                  statusLabels[
+                                    quote.status as keyof typeof statusLabels
+                                  ]
+                                }
                               </span>
                             </div>
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(parseFloat(quote.totalAmount?.toString() || '0'))}
+                          {formatCurrency(
+                            parseFloat(quote.totalAmount?.toString() || "0")
+                          )}
                         </TableCell>
                         <TableCell>
-                          {quote.validUntil ? formatDate(quote.validUntil) : "-"}
+                          {quote.validUntil
+                            ? formatDate(quote.validUntil)
+                            : "-"}
                         </TableCell>
                         <TableCell>{formatDate(quote.createdAt)}</TableCell>
                         <TableCell>
@@ -383,13 +392,17 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem
-                                onClick={() => setLocation(`/quotes/${quote.id}`)}
+                                onClick={() =>
+                                  setLocation(`/quotes/${quote.id}`)
+                                }
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Quote
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setLocation(`/quotes/${quote.id}`)}
+                                onClick={() =>
+                                  setLocation(`/quotes/${quote.id}`)
+                                }
                               >
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Quote

@@ -116,42 +116,19 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
   // Fetch lead proposals
   const { data: proposals = [], isLoading } = useQuery<Proposal[]>({
     queryKey: [`/api/proposals?businessRecordId=${leadId}`],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/proposals?businessRecordId=${leadId}`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch proposals");
-      return response.json();
-    },
+    queryFn: async () =>
+      apiRequest(`/api/proposals?businessRecordId=${leadId}`),
   });
 
   // Fetch proposal templates
   const { data: templates = [] } = useQuery<any[]>({
     queryKey: ["/api/proposals/proposal-templates"],
-    queryFn: async () => {
-      const response = await fetch("/api/proposals/proposal-templates", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch templates");
-      return response.json();
-    },
+    queryFn: async () => apiRequest("/api/proposals/proposal-templates"),
   });
 
   // Create proposal mutation
   const createProposalMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch("/api/proposals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to create proposal");
-      return response.json();
-    },
+    mutationFn: async (data: any) => apiRequest("/api/proposals", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/proposals?businessRecordId=${leadId}`],
@@ -173,16 +150,8 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
 
   // Update proposal status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const response = await fetch(`/api/proposals/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to update proposal status");
-      return response.json();
-    },
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      apiRequest(`/api/proposals/${id}/status`, "PATCH", { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/proposals?businessRecordId=${leadId}`],
