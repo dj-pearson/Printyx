@@ -459,6 +459,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
           icon: Database,
         },
         {
+          name: "SEO Management",
+          href: "/root-admin/seo",
+          icon: Globe,
+        },
+        {
           name: "GPT-5 AI Dashboard",
           href: "/gpt5-dashboard",
           icon: Brain,

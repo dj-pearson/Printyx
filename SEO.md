@@ -1,3 +1,62 @@
+Printyx SEO Strategy (SEO + GEO)
+
+1. Objectives
+
+- Rank for core commercial-intent keywords in the print dealer space
+- Be discoverable by AI assistants and LLM-based search (GEO)
+- Provide a maintainable system for Root Admins to manage meta, schema, and crawl signals
+
+2. Core Keywords (seed)
+
+- print dealer crm, copier dealer crm, managed print crm
+- copier service dispatch, print service dispatch, field service app for print
+- copier inventory management, print inventory software, master product catalog canon
+- meter billing engine, copier contract billing, service sla mttr reporting
+- copier sales quotes, proposal builder for copiers, canon imageRUNNER catalog
+
+3. Information Architecture Targets
+
+- Homepage: Organization schema; high-level value props and internal links
+- Product Hub: Service schema; index of product subsystems
+- Product Catalog: Service schema; reference to Canon catalog concepts
+- CRM: SoftwareApplication schema; sales features
+- Service Hub: Service schema; dispatch, PM, mobile
+- Reports: WebSite schema; KPIs and dashboards
+
+4. On-page SEO (dynamic via system)
+
+- Title and meta description per route via `/meta.json?path=...`
+- JSON-LD per route via `/schema.json?path=...`
+- Open Graph/Twitter tags populated from meta.json
+- robots.txt, sitemap.xml, and llms.txt generated server-side
+
+5. Content Playbook
+
+- Create 10 pillar pages aligned to the core keywords; each pillar supports 4-6 cluster articles
+- Each page includes FAQ section using `FAQPage` schema where helpful
+- Product Catalog: publish category explainers (imageRUNNER, imagePRESS, accessories)
+- Service Hub: publish how-to and best practices for dispatch, PM, mobile service
+- CRM: publish sales pipeline, quoting, proposal building tutorials
+
+6. GEO (Generative Engine Optimization)
+
+- llms.txt signals permission to crawl public content
+- Maintain concise, structured JSON-LD for key routes
+- Provide clear, canonical summaries at the top of pages (<150 words)
+- Use FAQ blocks and glossaries to improve grounding for LLMs
+
+7. Governance
+
+- Root Admin SEO console manages global settings and per-page entries
+- Seeded core pages are editable; add new paths as needed
+- Review sitemap monthly; keep thin/empty pages `includeInSitemap=false`
+
+8. Next Content Sprints (suggested)
+
+- Pillar: “Copier Dealer CRM” (+ clusters: pipeline, quoting, proposals, forecasting)
+- Pillar: “Print Service Dispatch & Mobile” (+ clusters: PM, SLAs, parts, checklists)
+- Pillar: “Master Product Catalog for Canon imageRUNNER” (+ clusters: accessories, pricing, imports)
+
 # Construction SaaS SEO Strategy 2025
 
 Your construction management platform enters a market with significant digital opportunity: **1.7 million monthly searches for construction contractors** and **73% of construction companies increasing SEO spend**. This comprehensive strategy addresses the unique intersection of B2B SaaS marketing and construction industry needs, providing actionable recommendations for implementation during your website development phase.
