@@ -5980,15 +5980,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const reading of pendingReadings) {
           try {
             // Calculate billing amounts using tiered rates
+            if (!reading.contractId) continue;
             const contract = await storage.getContract(
-              reading.contractId,
+              String(reading.contractId),
               tenantId
             );
             if (!contract) continue;
 
             // Get tiered rates for this contract
             const tieredRates = await storage.getContractTieredRatesByContract(
-              reading.contractId
+              String(reading.contractId)
             );
 
             let blackAmount = 0;
@@ -6029,7 +6030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const invoice = await storage.createInvoice({
               tenantId: String(tenantId),
               customerId: String(contract.customerId),
-              contractId: contract?.id ? String(contract.id) : undefined,
+              contractId: contract?.id ? String(contract.id) : null,
               invoiceNumber: `INV-${Date.now()}-${Math.random()
                 .toString(36)
                 .substring(2, 7)}`,
@@ -6045,7 +6046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 "MMMM yyyy"
               )}`,
               createdBy: String((req as any).user?.id || "system"),
-            });
+            } as any);
 
             // Update meter reading billing status
             await storage.updateMeterReading(
@@ -8597,7 +8598,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("CSV file size:", file.size, "bytes");
         console.log("First 200 characters:", csvText.substring(0, 200));
 
-        const lines = csvText.split(/\r?\n/).filter((line) => line.trim());
+        const lines: string[] = csvText
+          .split(/\r?\n/)
+          .filter((line: string) => line.trim());
 
         if (lines.length === 0) {
           return res.status(400).json({ message: "CSV file is empty" });
@@ -8646,7 +8649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!line.trim()) continue;
 
           try {
-            const values = parseCSVLine(line as any);
+            const values: string[] = parseCSVLine(line as any);
             if (values.length < headers.length) {
               // Pad with empty strings for missing columns
               while (values.length < headers.length) {
@@ -8804,7 +8807,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         let updated = 0;
         for (const product of products) {
-          const normalizedCategory = normalizeCategoryName(product.category);
+          const normalizedCategory = normalizeCategoryName(
+            String(product.category || "")
+          );
           if (normalizedCategory !== product.category) {
             await db
               .update(masterProductModels)
@@ -9191,9 +9196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const days = Number((req.query as any)?.days ?? 7);
-        const tenantId = req.user.tenantId;
+        const tenantId = String((req as any).user?.tenantId || "");
         const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + parseInt(days));
+        futureDate.setDate(futureDate.getDate() + parseInt(String(days)));
 
         const query = `
         SELECT 
@@ -9219,7 +9224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [
           String(tenantId),
           futureDate.toISOString(),
-        ] as any);
+        ]);
         res.json(result.rows);
       } catch (error) {
         console.error("Error fetching due schedules:", error);
@@ -14010,7 +14015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               equipmentId,
               serialNumber: equipment.serialNumber || `SN-${equipmentId}`,
               currentStage: "active",
-              currentLocation: equipment.location || "customer_site",
+              currentLocation: (equipment as any).location || "customer_site",
               customerId: equipment.customerId,
               lastServiceDate: new Date(),
             })
@@ -14097,7 +14102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .filter((rate) => rate.colorType === "color")
               .sort((a, b) => a.minimumVolume - b.minimumVolume);
             totalAmount += calculateTieredAmount(
-              reading.colorCopies,
+              Number(reading.colorCopies || 0),
               colorRates,
               parseFloat(contract.colorRate?.toString() || "0")
             );
@@ -14107,8 +14112,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const invoice = await storage.createInvoice({
             tenantId: String(tenantId),
             customerId: String(contract.customerId),
-            contractId: contract?.id ? String(contract.id) : undefined,
-            invoiceNumber: `INV-${contract.contractNumber}-${Date.now()}`,
+            contractId: contract?.id ? String(contract.id) : null,
+            invoiceNumber: `INV-${String(contract.contractNumber || "CON")}-$
+            {Date.now()}`,
             invoiceDate: new Date(),
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             totalAmount: String(totalAmount),
@@ -14121,7 +14127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               "MMMM yyyy"
             )}`,
             createdBy: String((req as any).user?.id || "system"),
-          });
+          } as any);
 
           // Update meter reading as processed
           await storage.updateMeterReading(
@@ -14143,14 +14149,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           const newBalance =
             parseFloat(String(customer?.currentBalance || "0")) + totalAmount;
-          await storage.updateBusinessRecord(
-            contract.customerId,
-            {
-              currentBalance: newBalance.toString(),
-              lastMeterReadingDate: reading.readingDate,
-            },
-            tenantId
-          );
+          await storage.updateBusinessRecord(contract.customerId, tenantId, {
+            currentBalance: newBalance.toString(),
+            lastMeterReadingDate: reading.readingDate,
+          });
         }
 
         res.json({
@@ -14478,13 +14480,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tenantId = req.headers["x-tenant-id"] as string;
 
       // For now, return empty array as equipment table may not be properly set up
-      const equipmentResults = [];
+      const equipmentResults: any[] = [];
       console.log(
         `Equipment query for company ${companyId}: returning empty array for now`
       );
 
       res.json(equipmentResults);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching equipment:", error);
       res.status(500).json({ error: "Failed to fetch equipment" });
     }
@@ -14547,11 +14549,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createdTicket = result.rows[0];
       console.log("Phone-in ticket created successfully:", createdTicket);
       res.json({ success: true, ticket: createdTicket });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating phone-in ticket:", error);
       res.status(500).json({
         error: "Failed to create phone-in ticket",
-        details: error.message,
+        details: error?.message,
       });
     }
   });
@@ -14569,11 +14571,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `);
 
       res.json(result.rows);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching phone-in tickets:", error);
       res.status(500).json({
         error: "Failed to fetch phone-in tickets",
-        details: error.message,
+        details: error?.message,
       });
     }
   });
@@ -14633,11 +14635,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serviceTicket: serviceTicket,
         message: "Phone-in ticket converted to service ticket successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error converting phone-in ticket:", error);
       res.status(500).json({
         error: "Failed to convert phone-in ticket",
-        details: error.message,
+        details: error?.message,
       });
     }
   });
