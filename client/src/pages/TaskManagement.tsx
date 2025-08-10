@@ -247,13 +247,7 @@ export default function TaskManagement() {
   // Fetch tasks with enhanced data
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks/enhanced"],
-    queryFn: async () => {
-      const response = await fetch("/api/tasks/enhanced", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch tasks");
-      return response.json();
-    },
+    queryFn: async () => apiRequest("/api/tasks/enhanced"),
   });
 
   // Fetch projects
@@ -261,39 +255,19 @@ export default function TaskManagement() {
     Project[]
   >({
     queryKey: ["/api/projects/enhanced"],
-    queryFn: async () => {
-      const response = await fetch("/api/projects/enhanced", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch projects");
-      return response.json();
-    },
+    queryFn: async () => apiRequest("/api/projects/enhanced"),
   });
 
   // Fetch team members for assignment
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["/api/users/team"],
-    queryFn: async () => {
-      const response = await fetch("/api/users/team", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch team members");
-      return response.json();
-    },
+    queryFn: async () => apiRequest("/api/users/team"),
   });
 
   // Create task mutation
   const createTaskMutation = useMutation({
-    mutationFn: async (data: Partial<Task>) => {
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to create task");
-      return response.json();
-    },
+    mutationFn: async (data: Partial<Task>) =>
+      apiRequest("/api/tasks", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/enhanced"] });
       toast({ title: "Success", description: "Task created successfully" });
@@ -303,16 +277,8 @@ export default function TaskManagement() {
 
   // Update task mutation
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) => {
-      const response = await fetch(`/api/tasks/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to update task");
-      return response.json();
-    },
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) =>
+      apiRequest(`/api/tasks/${id}`, "PATCH", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/enhanced"] });
       setEditingTask(null);
