@@ -45,17 +45,29 @@ export function registerBusinessRecordRoutes(app: Express) {
     }
   );
 
-  // Get specific business record
+  // Get specific business record by ID or URL slug
   app.get(
-    "/api/business-records/:id",
+    "/api/business-records/:identifier",
     resolveTenant,
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
         const tenantId = req.tenantId!;
-        const { id } = req.params;
+        const { identifier } = req.params;
 
-        const record = await storage.getBusinessRecord(id, tenantId);
+        let record;
+        
+        // Check if identifier is a URL slug (contains dashes and ends with display ID)
+        const isSlug = identifier.includes('-') && identifier.length > 20 && /\d{8}$/.test(identifier);
+        
+        if (isSlug) {
+          // Look up by URL slug using direct database query
+          record = await storage.getBusinessRecordBySlug(identifier, tenantId);
+        } else {
+          // Look up by ID using existing method
+          record = await storage.getBusinessRecord(identifier, tenantId);
+        }
+
         if (!record) {
           return res.status(404).json({ message: "Business record not found" });
         }

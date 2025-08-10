@@ -162,7 +162,7 @@ function Router() {
         <>
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
-          <Route path="/customers/:id" component={CustomerDetail} />
+          <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/crm" component={CRMEnhanced} />
           <Route path="/business-records" component={BusinessRecords} />
           <Route path="/contacts" component={Contacts} />

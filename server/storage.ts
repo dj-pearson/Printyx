@@ -1780,6 +1780,20 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
+  async getBusinessRecordBySlug(
+    urlSlug: string,
+    tenantId: string
+  ): Promise<any | undefined> {
+    // Return the full record with camelCase keys as defined in the Drizzle schema
+    const [record] = await db
+      .select()
+      .from(businessRecords)
+      .where(
+        and(eq(businessRecords.urlSlug, urlSlug), eq(businessRecords.tenantId, tenantId))
+      );
+    return record;
+  }
+
   async createBusinessRecord(record: any): Promise<any> {
     const [newRecord] = await db
       .insert(businessRecords)
