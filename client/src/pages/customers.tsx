@@ -217,12 +217,7 @@ export default function Customers() {
                           variant="outline"
                           size="sm"
                           className="w-full flex items-center gap-2 min-h-11 sm:h-9"
-                          onClick={() => {
-                            console.log("Customer data:", customer);
-                            const slug = customer.urlSlug || customer.url_slug;
-                            console.log("Using slug:", slug);
-                            navigate(`/customers/${slug || customer.id}`);
-                          }}
+                          onClick={() => navigate(`/customers/${customer.urlSlug || customer.url_slug || customer.id}`)}
                         >
                           <Eye className="h-4 w-4" />
                           View Details
