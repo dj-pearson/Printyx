@@ -7,6 +7,8 @@ import {
   exportChecklistCSV,
 } from "./routes-export";
 import session from "express-session";
+import csurf from "csurf";
+import rateLimit from "express-rate-limit";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { authRoutes } from "./auth-routes";
@@ -44,14 +46,24 @@ import {
   seoPages,
   companyContacts,
   equipment,
-  businessRecords,
-  phoneInTickets,
 } from "@shared/schema";
 import multer from "multer";
 import csv from "csv-parser";
 import { Readable } from "stream";
 import { format } from "date-fns";
 import { equipmentLifecycle } from "../shared/equipment-schema";
+import {
+  businessRecords,
+  locations,
+  regions,
+  tenants,
+  inventoryItems,
+  contracts,
+  serviceTickets,
+  invoices,
+  masterProductModels,
+  type User,
+} from "@shared/schema";
 // Mobile routes integrated directly in main routes file
 import { registerIntegrationRoutes } from "./routes-integrations";
 import { registerTaskRoutes } from "./routes-tasks";
@@ -66,7 +78,7 @@ import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
 import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
 import { DashboardService } from "./integrations/dashboard-service";
 import { db } from "./db";
-import { and, eq, sql, desc, or } from "drizzle-orm";
+import { and, eq, sql, desc, or, asc } from "drizzle-orm";
 import integrationRoutes from "./integrations/routes";
 import integrationHubRoutes from "./routes-integration-hub";
 import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
@@ -103,36 +115,7 @@ import {
   TenantRequest,
 } from "./middleware/tenancy";
 import { BusinessRecordsTransformer } from "./data-field-mapping";
-import { db } from "./db";
-import {
-  eq,
-  and,
-  or,
-  inArray,
-  sql,
-  desc,
-  asc,
-  like,
-  gte,
-  lte,
-  lt,
-  ne,
-  count,
-  isNull,
-  isNotNull,
-} from "drizzle-orm";
-import {
-  locations,
-  regions,
-  tenants,
-  businessRecords,
-  inventoryItems,
-  contracts,
-  serviceTickets,
-  invoices,
-  masterProductModels,
-  type User,
-} from "@shared/schema";
+// removed duplicate imports (db, drizzle operators, schema tables)
 
 // Basic authentication middleware - Updated to work with current auth system
 const requireAuth = async (req: any, res: any, next: any) => {
@@ -383,6 +366,18 @@ function validateManagedServiceData(row: any): any {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Basic API rate limiting (per-IP)
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many requests, please try again later." },
+  });
+
+  app.use("/api/", apiLimiter);
+  // Resolve tenant context for all requests
+  app.use(resolveTenant as any);
   // Apply registration lock middleware to block new user registrations
   app.use(blockRegistrations);
 
@@ -392,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     session({
       store: new pgStore({
         conString: process.env.DATABASE_URL,
-        createTableIfMissing: false, // Don't recreate tables - use existing schema
+        createTableIfMissing: false,
         tableName: "sessions",
       }),
       secret:
@@ -400,53 +395,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: false, // Set to true in production with HTTPS
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        secure: app.get("env") === "production", // only over HTTPS in prod
+        httpOnly: true, // mitigate XSS
+        sameSite: app.get("env") === "production" ? "lax" : "lax",
+        maxAge: 24 * 60 * 60 * 1000,
       },
+      name: "sid", // avoid default connect.sid
     })
   );
+
+  // CSRF protection for state-changing routes (session-based)
+  // Exempt specific API endpoints that must be CSRF-free (webhooks, file uploads tokens, public GETs)
+  const csrfProtection = csurf({ cookie: false });
+  // Apply CSRF only to non-GET/HEAD/OPTIONS methods under /api
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api")) return next();
+    const method = req.method.toUpperCase();
+    if (method === "GET" || method === "HEAD" || method === "OPTIONS")
+      return next();
+    // Allowlist webhook-like endpoints
+    const exemptPaths = [
+      "/api/quickbooks/webhook",
+      "/api/salesforce/webhook",
+      "/api/integrations/webhook",
+      "/api/seo/regenerate-sitemap",
+      "/api/seo/regenerate-robots",
+      "/api/seo/regenerate-llms",
+    ];
+    if (exemptPaths.some((p) => req.path.startsWith(p))) return next();
+    return csrfProtection(req, res, next);
+  });
+
+  // CSRF token endpoint (for clients to fetch a token if needed)
+  app.get("/api/csrf-token", (req: any, res) => {
+    try {
+      // Generate a token on demand
+      const token = (req as any).csrfToken
+        ? (req as any).csrfToken()
+        : undefined;
+      res.json({ csrfToken: token || null });
+    } catch {
+      res.json({ csrfToken: null });
+    }
+  });
 
   // Auth routes
   app.use("/api/auth", authRoutes);
 
-  // Tenants route for platform users
-  app.get(
-    "/api/tenants",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const user = await storage.getUserWithRole(req.session.userId);
-
-        // Only platform admin roles can access all tenants
-        if (!user?.role?.canAccessAllTenants) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-
-        const tenants = await storage.getAllTenants();
-        res.json(tenants);
-      } catch (error) {
-        console.error("Error fetching tenants:", error);
-        res.status(500).json({ message: "Failed to fetch tenants" });
+  // Tenants route for platform users (Root Admin / platform-only)
+  app.get("/api/tenants", requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithRole(req.session.userId);
+      if (!user?.role?.canAccessAllTenants && (user?.role?.level ?? 0) < 7) {
+        return res.status(403).json({ message: "Root admin access required" });
       }
-    }
-  );
 
-  // Multi-location support routes for enhanced tenant selector
+      const tenants = await storage.getAllTenants();
+      res.json(tenants);
+    } catch (error) {
+      console.error("Error fetching tenants:", error);
+      res.status(500).json({ message: "Failed to fetch tenants" });
+    }
+  });
+
+  // Multi-location support routes for enhanced tenant selector (Root Admin or same-tenant)
   app.get(
     "/api/tenants/:tenantId/locations",
-    requireAuth,
-    requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         const { tenantId } = req.params;
         const user = await storage.getUserWithRole(req.session.userId);
 
-        // Only allow platform admins or users from the same tenant
-        if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
+        // Only allow platform admins (root) or users from the same tenant
+        const isRoot =
+          user?.role?.canAccessAllTenants || (user?.role?.level ?? 0) >= 7;
+        if (!isRoot && user?.tenantId !== tenantId) {
           return res.status(403).json({ error: "Insufficient permissions" });
         }
 
@@ -812,11 +836,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName: businessRecords.companyName,
           primaryContactName: businessRecords.primaryContactName,
           phone: businessRecords.phone,
-          email: businessRecords.email,
+          email: businessRecords.primaryContactEmail,
           addressLine1: businessRecords.addressLine1,
           city: businessRecords.city,
           state: businessRecords.state,
-          zipCode: businessRecords.zipCode,
+          postalCode: businessRecords.postalCode,
         })
         .from(businessRecords)
         .where(
@@ -4534,7 +4558,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
         // Get business records where recordType = 'customer' (copier buyers)
-        const customers = await storage.getBusinessRecords(tenantId, 'customer');
+        const customers = await storage.getBusinessRecords(
+          tenantId,
+          "customer"
+        );
         // Transform database fields to frontend format
         const transformedCustomers = customers.map((customer) =>
           BusinessRecordsTransformer.toFrontend(customer)
@@ -4561,8 +4588,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Try to get by URL slug first, then by ID
         let customer;
-        const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
-        
+        const isSlug = id.includes("-") && id.length >= 20 && /\d{8}$/.test(id);
+
         if (isSlug) {
           customer = await storage.getBusinessRecordBySlug(id, tenantId);
         } else {
@@ -4574,7 +4601,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Transform database fields to frontend format
-        const transformedCustomer = BusinessRecordsTransformer.toFrontend(customer);
+        const transformedCustomer =
+          BusinessRecordsTransformer.toFrontend(customer);
         res.json(transformedCustomer);
       } catch (error) {
         console.error("Error fetching customer:", error);
@@ -4610,98 +4638,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Leads API routes (unified with business records)
-  app.get(
-    "/api/leads",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        // Get business records where recordType = 'lead'
-        const leads = await storage.getBusinessRecords(tenantId, 'lead');
-        // Transform database fields to frontend format
-        const transformedLeads = leads.map((lead) =>
-          BusinessRecordsTransformer.toFrontend(lead)
-        );
-        res.json(transformedLeads);
-      } catch (error) {
-        console.error("Error fetching leads:", error);
-        res.status(500).json({ message: "Failed to fetch leads" });
+  app.get("/api/leads", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
       }
+      // Get business records where recordType = 'lead'
+      const leads = await storage.getBusinessRecords(tenantId, "lead");
+      // Transform database fields to frontend format
+      const transformedLeads = leads.map((lead) =>
+        BusinessRecordsTransformer.toFrontend(lead)
+      );
+      res.json(transformedLeads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
     }
-  );
+  });
 
-  app.get(
-    "/api/leads/:id",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        // Try to get by URL slug first, then by ID
-        let lead;
-        const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
-        
-        if (isSlug) {
-          lead = await storage.getBusinessRecordBySlug(id, tenantId);
-        } else {
-          lead = await storage.getBusinessRecord(id, tenantId);
-        }
-
-        if (!lead) {
-          return res.status(404).json({ message: "Lead not found" });
-        }
-
-        // Transform database fields to frontend format
-        const transformedLead = BusinessRecordsTransformer.toFrontend(lead);
-        res.json(transformedLead);
-      } catch (error) {
-        console.error("Error fetching lead:", error);
-        res.status(500).json({ message: "Failed to fetch lead" });
+  app.get("/api/leads/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
       }
+      // Try to get by URL slug first, then by ID
+      let lead;
+      const isSlug = id.includes("-") && id.length >= 20 && /\d{8}$/.test(id);
+
+      if (isSlug) {
+        lead = await storage.getBusinessRecordBySlug(id, tenantId);
+      } else {
+        lead = await storage.getBusinessRecord(id, tenantId);
+      }
+
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      // Transform database fields to frontend format
+      const transformedLead = BusinessRecordsTransformer.toFrontend(lead);
+      res.json(transformedLead);
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+      res.status(500).json({ message: "Failed to fetch lead" });
     }
-  );
+  });
 
   // Unified business records route (handles both customers and leads by slug/ID)
-  app.get(
-    "/api/business-records/:id",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        
-        // Try to get by URL slug first, then by ID
-        let record;
-        const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
-        
-        if (isSlug) {
-          record = await storage.getBusinessRecordBySlug(id, tenantId);
-        } else {
-          record = await storage.getBusinessRecord(id, tenantId);
-        }
-
-        if (!record) {
-          return res.status(404).json({ message: "Business record not found" });
-        }
-
-        // Transform database fields to frontend format
-        const transformedRecord = BusinessRecordsTransformer.toFrontend(record);
-        res.json(transformedRecord);
-      } catch (error) {
-        console.error("Error fetching business record:", error);
-        res.status(500).json({ message: "Failed to fetch business record" });
+  app.get("/api/business-records/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
       }
+
+      // Try to get by URL slug first, then by ID
+      let record;
+      const isSlug = id.includes("-") && id.length >= 20 && /\d{8}$/.test(id);
+
+      if (isSlug) {
+        record = await storage.getBusinessRecordBySlug(id, tenantId);
+      } else {
+        record = await storage.getBusinessRecord(id, tenantId);
+      }
+
+      if (!record) {
+        return res.status(404).json({ message: "Business record not found" });
+      }
+
+      // Transform database fields to frontend format
+      const transformedRecord = BusinessRecordsTransformer.toFrontend(record);
+      res.json(transformedRecord);
+    } catch (error) {
+      console.error("Error fetching business record:", error);
+      res.status(500).json({ message: "Failed to fetch business record" });
     }
-  );
+  });
 
   // Company management routes (new primary business entity)
   app.get(
@@ -7785,7 +7801,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (_e) {
       res
         .header("Content-Type", "text/plain")
-        .send("User-agent: *\nAllow: /\nSitemap: https://printyx.net/sitemap.xml\nLLMS: https://printyx.net/llms.txt\n");
+        .send(
+          "User-agent: *\nAllow: /\nSitemap: https://printyx.net/sitemap.xml\nLLMS: https://printyx.net/llms.txt\n"
+        );
     }
   });
 
@@ -7912,44 +7930,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: regenerate sitemap endpoint
-  app.post("/api/seo/regenerate-sitemap", requireAuth, async (req: any, res) => {
-    try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === "platform_admin";
-      if (!isPlatformUser) return res.status(403).json({ message: "Platform admin required" });
-      
-      // This endpoint doesn't generate a new sitemap, just returns success
-      // The actual sitemap is generated dynamically via GET /sitemap.xml
-      res.json({ message: "Sitemap regenerated successfully" });
-    } catch (error: any) {
-      res.status(500).json({ message: "Failed to regenerate sitemap", detail: error?.message });
+  app.post(
+    "/api/seo/regenerate-sitemap",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const isPlatformUser =
+          req.user?.isPlatformUser || req.user?.role === "platform_admin";
+        if (!isPlatformUser)
+          return res.status(403).json({ message: "Platform admin required" });
+
+        // This endpoint doesn't generate a new sitemap, just returns success
+        // The actual sitemap is generated dynamically via GET /sitemap.xml
+        res.json({ message: "Sitemap regenerated successfully" });
+      } catch (error: any) {
+        res.status(500).json({
+          message: "Failed to regenerate sitemap",
+          detail: error?.message,
+        });
+      }
     }
-  });
+  );
 
   // Admin: regenerate robots.txt endpoint
   app.post("/api/seo/regenerate-robots", requireAuth, async (req: any, res) => {
     try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === "platform_admin";
-      if (!isPlatformUser) return res.status(403).json({ message: "Platform admin required" });
-      
+      const isPlatformUser =
+        req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser)
+        return res.status(403).json({ message: "Platform admin required" });
+
       // This endpoint doesn't generate a new robots.txt, just returns success
       // The actual robots.txt is generated dynamically via GET /robots.txt
       res.json({ message: "Robots.txt regenerated successfully" });
     } catch (error: any) {
-      res.status(500).json({ message: "Failed to regenerate robots.txt", detail: error?.message });
+      res.status(500).json({
+        message: "Failed to regenerate robots.txt",
+        detail: error?.message,
+      });
     }
   });
 
   // Admin: regenerate llms.txt endpoint
   app.post("/api/seo/regenerate-llms", requireAuth, async (req: any, res) => {
     try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === "platform_admin";
-      if (!isPlatformUser) return res.status(403).json({ message: "Platform admin required" });
-      
+      const isPlatformUser =
+        req.user?.isPlatformUser || req.user?.role === "platform_admin";
+      if (!isPlatformUser)
+        return res.status(403).json({ message: "Platform admin required" });
+
       // This endpoint doesn't generate a new llms.txt, just returns success
       // The actual llms.txt is generated dynamically via GET /llms.txt
       res.json({ message: "LLMs.txt regenerated successfully" });
     } catch (error: any) {
-      res.status(500).json({ message: "Failed to regenerate llms.txt", detail: error?.message });
+      res.status(500).json({
+        message: "Failed to regenerate llms.txt",
+        detail: error?.message,
+      });
     }
   });
 

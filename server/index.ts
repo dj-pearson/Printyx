@@ -1,8 +1,48 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import compression from "compression";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Trust reverse proxy (needed for secure cookies and rate limits behind proxies)
+app.set("trust proxy", 1);
+
+// Security headers
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // disabled for SPA/dev; enable with proper policy later
+  })
+);
+
+// CORS configuration
+const isDevelopment = process.env.NODE_ENV !== "production";
+const allowedOriginsProd = [
+  /^https?:\/\/([a-z0-9-]+\.)?printyx\.net$/i,
+  "https://printyx.net",
+]; // subdomains + apex
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (isDevelopment || !origin) return callback(null, true);
+      if (
+        allowedOriginsProd.some((o) =>
+          o instanceof RegExp ? o.test(origin) : o === origin
+        )
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+
+// Compression
+app.use(compression());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -60,12 +100,15 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`serving on port ${port}`);
+    }
+  );
 })();

@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -12,18 +13,27 @@ const loginSchema = z.object({
 });
 
 // Session management
-declare module 'express-session' {
+declare module "express-session" {
   interface SessionData {
     userId?: string;
     tenantId?: string;
   }
 }
 
+// Brute-force protection for login
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many login attempts. Please try again later." },
+});
+
 // Login endpoint
-router.post('/login', async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
-    
+
     const user = await storage.authenticateUser(email, password);
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
@@ -35,7 +45,7 @@ router.post('/login', async (req, res) => {
 
     // Get user with role information
     const userWithRole = await storage.getUserWithRole(user.id);
-    
+
     res.json({
       message: "Login successful",
       user: {
@@ -45,8 +55,8 @@ router.post('/login', async (req, res) => {
         lastName: user.lastName,
         role: userWithRole?.role,
         team: userWithRole?.team,
-        tenantId: user.tenantId
-      }
+        tenantId: user.tenantId,
+      },
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -55,19 +65,19 @@ router.post('/login', async (req, res) => {
 });
 
 // Logout endpoint
-router.post('/logout', (req, res) => {
+router.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error("Logout error:", err);
       return res.status(500).json({ message: "Failed to logout" });
     }
-    res.clearCookie('connect.sid');
+    res.clearCookie("connect.sid");
     res.json({ message: "Logout successful" });
   });
 });
 
 // Get current user
-router.get('/user', async (req, res) => {
+router.get("/user", async (req, res) => {
   try {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -85,7 +95,7 @@ router.get('/user', async (req, res) => {
       lastName: user.lastName,
       role: user.role,
       team: user.team,
-      tenantId: user.tenantId
+      tenantId: user.tenantId,
     });
   } catch (error) {
     console.error("Get user error:", error);
