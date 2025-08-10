@@ -8,7 +8,7 @@ import bcrypt from "bcrypt";
 const demoUsers = [
   {
     email: "Pearsonperformance@gmail.com",
-    password: "Infomax1!",
+    password: "7I1h8EzWLvFPWR",
     firstName: "Root",
     lastName: "Admin",
     role: "SYSTEM_ADMIN",
@@ -17,7 +17,7 @@ const demoUsers = [
   },
   {
     email: "director@printyx.com",
-    password: "director123",
+    password: "7I1h8EzWLvFPWR",
     firstName: "Sarah",
     lastName: "Director",
     role: "DIRECTOR",
@@ -26,7 +26,7 @@ const demoUsers = [
   },
   {
     email: "sales.manager@printyx.com",
-    password: "manager123",
+    password: "7I1h8EzWLvFPWR",
     firstName: "Mike",
     lastName: "Johnson",
     role: "SALES_MANAGER",
@@ -35,7 +35,7 @@ const demoUsers = [
   },
   {
     email: "service.manager@printyx.com",
-    password: "manager123",
+    password: "7I1h8EzWLvFPWR",
     firstName: "Lisa",
     lastName: "Chen",
     role: "SERVICE_MANAGER",
@@ -44,7 +44,7 @@ const demoUsers = [
   },
   {
     email: "team.lead@printyx.com",
-    password: "lead123",
+    password: "7I1h8EzWLvFPWR",
     firstName: "David",
     lastName: "Wilson",
     role: "TEAM_LEAD",
@@ -53,7 +53,7 @@ const demoUsers = [
   },
   {
     email: "sales.rep@printyx.com",
-    password: "rep123",
+    password: "7I1h8EzWLvFPWR",
     firstName: "Jennifer",
     lastName: "Smith",
     role: "SALES_REP",
@@ -62,7 +62,7 @@ const demoUsers = [
   },
   {
     email: "technician@printyx.com",
-    password: "tech123",
+    password: "7I1h8EzWLvFPWR",
     firstName: "Robert",
     lastName: "Garcia",
     role: "TECHNICIAN",
