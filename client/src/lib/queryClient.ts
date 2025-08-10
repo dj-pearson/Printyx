@@ -6,6 +6,8 @@ async function throwIfResNotOk(res: Response) {
     throw new Error(`${res.status}: ${text}`);
   }
 }
+// In-memory CSRF token cache
+let __csrfToken: string | undefined;
 
 export async function apiRequest(
   url: string,
@@ -17,18 +19,46 @@ export async function apiRequest(
     "Content-Type": "application/json",
     ...headers,
   };
-  
+
   // Add demo auth header if localStorage flag is set
-  if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
-    requestHeaders['X-Demo-Auth'] = 'true';
+  if (
+    typeof window !== "undefined" &&
+    localStorage.getItem("demo-authenticated") === "true"
+  ) {
+    requestHeaders["X-Demo-Auth"] = "true";
   }
 
   // Add tenant ID header - use localStorage if available, fallback to session
-  if (typeof window !== 'undefined') {
-    const tenantId = localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
+  if (typeof window !== "undefined") {
+    const tenantId =
+      localStorage.getItem("demo-tenant-id") ||
+      "550e8400-e29b-41d4-a716-446655440000";
     if (tenantId) {
-      requestHeaders['x-tenant-id'] = tenantId;
+      requestHeaders["x-tenant-id"] = tenantId;
     }
+  }
+
+  // CSRF token: fetch on first use and cache in-memory
+  async function getCsrfToken(): Promise<string | undefined> {
+    if (__csrfToken) return __csrfToken;
+    try {
+      const res = await fetch("/api/csrf-token", { credentials: "include" });
+      if (!res.ok) return undefined;
+      const data = await res.json();
+      __csrfToken = data?.csrfToken || data?.token || data?.csrf;
+      return __csrfToken;
+    } catch {
+      return undefined;
+    }
+  }
+
+  // Attach CSRF only for state-changing methods
+  const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(
+    method.toUpperCase()
+  );
+  if (isMutating && !("x-csrf-token" in requestHeaders)) {
+    const token = await getCsrfToken();
+    if (token) (requestHeaders as any)["x-csrf-token"] = token;
   }
 
   const res = await fetch(url, {
@@ -49,17 +79,22 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const headers: HeadersInit = {};
-    
+
     // Add demo auth header if localStorage flag is set
-    if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
-      headers['X-Demo-Auth'] = 'true';
+    if (
+      typeof window !== "undefined" &&
+      localStorage.getItem("demo-authenticated") === "true"
+    ) {
+      headers["X-Demo-Auth"] = "true";
     }
 
     // Add tenant ID header - use localStorage if available, fallback to session
-    if (typeof window !== 'undefined') {
-      const tenantId = localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
+    if (typeof window !== "undefined") {
+      const tenantId =
+        localStorage.getItem("demo-tenant-id") ||
+        "550e8400-e29b-41d4-a716-446655440000";
       if (tenantId) {
-        headers['x-tenant-id'] = tenantId;
+        headers["x-tenant-id"] = tenantId;
       }
     }
 
@@ -88,12 +123,16 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       retry: (failureCount, error: any) => {
         // Don't retry on auth errors or client errors
-        if (error?.status === 401 || error?.status === 403 || error?.status === 404) {
+        if (
+          error?.status === 401 ||
+          error?.status === 403 ||
+          error?.status === 404
+        ) {
           return false;
         }
         return failureCount < 2; // Limit retries
       },
-      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 10000),
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     },
     mutations: {
       retry: false,
