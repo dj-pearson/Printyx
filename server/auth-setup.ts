@@ -8,7 +8,7 @@ import bcrypt from "bcrypt";
 const demoUsers = [
   {
     email: "Pearsonperformance@gmail.com",
-    password: "7I1h8EzWLvFPWR",
+    password: process.env.DEMO_USER_PASSWORD || "temp-password",
     firstName: "Root",
     lastName: "Admin",
     role: "SYSTEM_ADMIN",
@@ -17,7 +17,7 @@ const demoUsers = [
   },
   {
     email: "director@printyx.com",
-    password: "7I1h8EzWLvFPWR",
+    password: process.env.DEMO_USER_PASSWORD || "temp-password",
     firstName: "Sarah",
     lastName: "Director",
     role: "DIRECTOR",
@@ -26,7 +26,7 @@ const demoUsers = [
   },
   {
     email: "sales.manager@printyx.com",
-    password: "7I1h8EzWLvFPWR",
+    password: process.env.DEMO_USER_PASSWORD || "temp-password",
     firstName: "Mike",
     lastName: "Johnson",
     role: "SALES_MANAGER",
@@ -35,7 +35,7 @@ const demoUsers = [
   },
   {
     email: "service.manager@printyx.com",
-    password: "7I1h8EzWLvFPWR",
+    password: process.env.DEMO_USER_PASSWORD || "temp-password",
     firstName: "Lisa",
     lastName: "Chen",
     role: "SERVICE_MANAGER",
@@ -44,7 +44,7 @@ const demoUsers = [
   },
   {
     email: "team.lead@printyx.com",
-    password: "7I1h8EzWLvFPWR",
+    password: process.env.DEMO_USER_PASSWORD || "temp-password",
     firstName: "David",
     lastName: "Wilson",
     role: "TEAM_LEAD",
@@ -53,7 +53,7 @@ const demoUsers = [
   },
   {
     email: "sales.rep@printyx.com",
-    password: "7I1h8EzWLvFPWR",
+    password: process.env.DEMO_USER_PASSWORD || "temp-password",
     firstName: "Jennifer",
     lastName: "Smith",
     role: "SALES_REP",
@@ -62,7 +62,7 @@ const demoUsers = [
   },
   {
     email: "technician@printyx.com",
-    password: "7I1h8EzWLvFPWR",
+    password: process.env.DEMO_USER_PASSWORD || "temp-password",
     firstName: "Robert",
     lastName: "Garcia",
     role: "TECHNICIAN",
