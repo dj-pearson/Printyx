@@ -4561,7 +4561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Try to get by URL slug first, then by ID
         let customer;
-        const isSlug = id.includes('-') && id.length > 20 && /\d{8}$/.test(id);
+        const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
         
         if (isSlug) {
           customer = await storage.getBusinessRecordBySlug(id, tenantId);
@@ -4645,7 +4645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Try to get by URL slug first, then by ID
         let lead;
-        const isSlug = id.includes('-') && id.length > 20 && /\d{8}$/.test(id);
+        const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
         
         if (isSlug) {
           lead = await storage.getBusinessRecordBySlug(id, tenantId);
@@ -4681,7 +4681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Try to get by URL slug first, then by ID
         let record;
-        const isSlug = id.includes('-') && id.length > 20 && /\d{8}$/.test(id);
+        const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
         
         if (isSlug) {
           record = await storage.getBusinessRecordBySlug(id, tenantId);
