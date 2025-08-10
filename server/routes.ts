@@ -52,6 +52,8 @@ import csv from "csv-parser";
 import { Readable } from "stream";
 import { format } from "date-fns";
 import { equipmentLifecycle } from "../shared/equipment-schema";
+import crypto from "crypto";
+import { requireRootAdmin } from "./routes-root-admin";
 import {
   businessRecords,
   locations,
@@ -7726,7 +7728,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .join("") +
         "\n</urlset>";
-      res.header("Content-Type", "application/xml").send(xml);
+      res
+        .header("Content-Type", "application/xml; charset=utf-8")
+        .header("Cache-Control", "public, max-age=300, s-maxage=600")
+        .send(xml);
     } catch (error) {
       console.error("Error generating sitemap:", error);
       res.status(500).send("Error generating sitemap");
@@ -7759,7 +7764,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Sitemap: ${baseUrl}/sitemap.xml`,
         `LLMS: ${baseUrl}/llms.txt`,
       ];
-      res.header("Content-Type", "text/plain").send(lines.join("\n"));
+      res
+        .header("Content-Type", "text/plain; charset=utf-8")
+        .header("Cache-Control", "public, max-age=300, s-maxage=600")
+        .send(lines.join("\n"));
     } catch (_e) {
       res
         .header("Content-Type", "text/plain")
@@ -7815,9 +7823,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `# Allow AI crawlers to index public content for generative engines`,
         allow ? `Allow: /` : `Disallow: /`,
       ];
-      res.header("Content-Type", "text/plain").send(lines.join("\n"));
+      res
+        .header("Content-Type", "text/plain; charset=utf-8")
+        .header("Cache-Control", "public, max-age=300, s-maxage=600")
+        .send(lines.join("\n"));
     } catch (error) {
-      res.header("Content-Type", "text/plain").send("Allow: /\n");
+      res
+        .header("Content-Type", "text/plain; charset=utf-8")
+        .send("Allow: /\n");
     }
   });
 
@@ -7895,6 +7908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/seo/regenerate-sitemap",
     requireAuth,
+    requireRootAdmin,
     async (req: any, res) => {
       try {
         const isPlatformUser =
@@ -7915,42 +7929,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Admin: regenerate robots.txt endpoint
-  app.post("/api/seo/regenerate-robots", requireAuth, async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser || req.user?.role === "platform_admin";
-      if (!isPlatformUser)
-        return res.status(403).json({ message: "Platform admin required" });
+  app.post(
+    "/api/seo/regenerate-robots",
+    requireAuth,
+    requireRootAdmin,
+    async (req: any, res) => {
+      try {
+        const isPlatformUser =
+          req.user?.isPlatformUser || req.user?.role === "platform_admin";
+        if (!isPlatformUser)
+          return res.status(403).json({ message: "Platform admin required" });
 
-      // This endpoint doesn't generate a new robots.txt, just returns success
-      // The actual robots.txt is generated dynamically via GET /robots.txt
-      res.json({ message: "Robots.txt regenerated successfully" });
-    } catch (error: any) {
-      res.status(500).json({
-        message: "Failed to regenerate robots.txt",
-        detail: error?.message,
-      });
+        // This endpoint doesn't generate a new robots.txt, just returns success
+        // The actual robots.txt is generated dynamically via GET /robots.txt
+        res.json({ message: "Robots.txt regenerated successfully" });
+      } catch (error: any) {
+        res.status(500).json({
+          message: "Failed to regenerate robots.txt",
+          detail: error?.message,
+        });
+      }
     }
-  });
+  );
 
   // Admin: regenerate llms.txt endpoint
-  app.post("/api/seo/regenerate-llms", requireAuth, async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser || req.user?.role === "platform_admin";
-      if (!isPlatformUser)
-        return res.status(403).json({ message: "Platform admin required" });
+  app.post(
+    "/api/seo/regenerate-llms",
+    requireAuth,
+    requireRootAdmin,
+    async (req: any, res) => {
+      try {
+        const isPlatformUser =
+          req.user?.isPlatformUser || req.user?.role === "platform_admin";
+        if (!isPlatformUser)
+          return res.status(403).json({ message: "Platform admin required" });
 
-      // This endpoint doesn't generate a new llms.txt, just returns success
-      // The actual llms.txt is generated dynamically via GET /llms.txt
-      res.json({ message: "LLMs.txt regenerated successfully" });
-    } catch (error: any) {
-      res.status(500).json({
-        message: "Failed to regenerate llms.txt",
-        detail: error?.message,
-      });
+        // This endpoint doesn't generate a new llms.txt, just returns success
+        // The actual llms.txt is generated dynamically via GET /llms.txt
+        res.json({ message: "LLMs.txt regenerated successfully" });
+      } catch (error: any) {
+        res.status(500).json({
+          message: "Failed to regenerate llms.txt",
+          detail: error?.message,
+        });
+      }
     }
-  });
+  );
 
   // Seed baseline SEO settings and core pages on boot (non-blocking)
   (async () => {

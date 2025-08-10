@@ -61,12 +61,27 @@ export async function apiRequest(
     if (token) (requestHeaders as any)["x-csrf-token"] = token;
   }
 
-  const res = await fetch(url, {
+  let res = await fetch(url, {
     method,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
   });
+
+  // If forbidden, try refreshing CSRF token once and retry
+  if (res.status === 403 && isMutating) {
+    __csrfToken = undefined;
+    const token = await getCsrfToken();
+    if (token) {
+      (requestHeaders as any)["x-csrf-token"] = token;
+      res = await fetch(url, {
+        method,
+        headers: requestHeaders,
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: "include",
+      });
+    }
+  }
 
   await throwIfResNotOk(res);
   return await res.json();
