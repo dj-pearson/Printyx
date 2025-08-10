@@ -105,7 +105,7 @@ import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 
 export default function CustomerDetailHubspot() {
-  const { slug } = useParams();
+  const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -2118,7 +2118,7 @@ export default function CustomerDetailHubspot() {
                       </Button>
                     </div>
                   </div>
-                  <ActivityTimeline businessRecordId={id} />
+                  <ActivityTimeline businessRecordId={customer?.id} />
                 </div>
               </TabsContent>
 
@@ -2491,7 +2491,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.call}
         onClose={() => setDialogs((prev) => ({ ...prev, call: false }))}
-        businessRecordId={id}
+        businessRecordId={customer?.id}
         activityType="call"
         recordType="customer"
         recordName={customer.companyName}
@@ -2500,7 +2500,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.email}
         onClose={() => setDialogs((prev) => ({ ...prev, email: false }))}
-        businessRecordId={id}
+        businessRecordId={customer?.id}
         activityType="email"
         recordType="customer"
         recordName={customer.companyName}
@@ -2509,7 +2509,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.meeting}
         onClose={() => setDialogs((prev) => ({ ...prev, meeting: false }))}
-        businessRecordId={id}
+        businessRecordId={customer?.id}
         activityType="meeting"
         recordType="customer"
         recordName={customer.companyName}
@@ -2518,7 +2518,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.note}
         onClose={() => setDialogs((prev) => ({ ...prev, note: false }))}
-        businessRecordId={id}
+        businessRecordId={customer?.id}
         activityType="note"
         recordType="customer"
         recordName={customer.companyName}
@@ -2527,7 +2527,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.task}
         onClose={() => setDialogs((prev) => ({ ...prev, task: false }))}
-        businessRecordId={id}
+        businessRecordId={customer?.id}
         activityType="task"
         recordType="customer"
         recordName={customer.companyName}
