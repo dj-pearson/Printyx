@@ -217,7 +217,7 @@ export default function Customers() {
                           variant="outline"
                           size="sm"
                           className="w-full flex items-center gap-2 min-h-11 sm:h-9"
-                          onClick={() => navigate(`/customers/${customer.id}`)}
+                          onClick={() => navigate(`/customers/${customer.urlSlug || customer.url_slug || customer.id}`)}
                         >
                           <Eye className="h-4 w-4" />
                           View Details
@@ -246,7 +246,7 @@ export default function Customers() {
                     <TableRow
                       key={row.id}
                       className="cursor-pointer"
-                      onClick={() => navigate(`/customers/${row.id}`)}
+                      onClick={() => navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`)}
                     >
                       <TableCell className="font-medium">
                         {row.companyName}
@@ -267,7 +267,7 @@ export default function Customers() {
                           className="h-8"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/customers/${row.id}`);
+                            navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`);
                           }}
                         >
                           View
