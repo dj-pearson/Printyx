@@ -127,16 +127,8 @@ export function CustomerSupplies({
     CustomerSupplyOrder[]
   >({
     queryKey: [`/api/customers/${customerId}/supply-orders`],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/customers/${customerId}/supply-orders`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch supply orders");
-      return response.json();
-    },
+    queryFn: async () =>
+      apiRequest(`/api/customers/${customerId}/supply-orders`),
   });
 
   // Fetch available supplies
@@ -144,30 +136,17 @@ export function CustomerSupplies({
     Supply[]
   >({
     queryKey: ["/api/supplies"],
-    queryFn: async () => {
-      const response = await fetch("/api/supplies?active=true", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch supplies");
-      return response.json();
-    },
+    queryFn: async () => apiRequest("/api/supplies?active=true"),
   });
 
   // Create supply order mutation
   const createOrderMutation = useMutation({
-    mutationFn: async (orderData: any) => {
-      const response = await fetch(
+    mutationFn: async (orderData: any) =>
+      apiRequest(
         `/api/customers/${customerId}/supply-orders`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderData),
-          credentials: "include",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to create supply order");
-      return response.json();
-    },
+        "POST",
+        orderData
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/customers/${customerId}/supply-orders`],

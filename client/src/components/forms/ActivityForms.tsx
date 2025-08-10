@@ -92,25 +92,12 @@ export function ActivityForm({
   });
 
   const createActivityMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch(
+    mutationFn: async (data: any) =>
+      apiRequest(
         `/api/business-records/${businessRecordId}/activities`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to create activity");
-      }
-
-      return response.json();
-    },
+        "POST",
+        data
+      ),
     onSuccess: () => {
       toast({
         title: "Activity Logged",

@@ -5,17 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Database, 
-  Server, 
-  HardDrive, 
-  Activity, 
-  Download, 
-  Upload, 
+import {
+  Database,
+  Server,
+  HardDrive,
+  Activity,
+  Download,
+  Upload,
   RefreshCw,
   Play,
   Pause,
@@ -29,7 +42,7 @@ import {
   Settings,
   BarChart3,
   Archive,
-  Shield
+  Shield,
 } from "lucide-react";
 import { format } from "date-fns";
 import MainLayout from "@/components/layout/main-layout";
@@ -50,15 +63,15 @@ interface TableInfo {
   rowCount: number;
   lastModified: string;
   indexes: number;
-  status: 'healthy' | 'warning' | 'error';
+  status: "healthy" | "warning" | "error";
 }
 
 interface BackupInfo {
   id: string;
   name: string;
-  type: 'full' | 'incremental' | 'differential';
+  type: "full" | "incremental" | "differential";
   size: string;
-  status: 'completed' | 'running' | 'failed';
+  status: "completed" | "running" | "failed";
   createdAt: string;
   duration: string;
 }
@@ -70,7 +83,7 @@ interface QueryLog {
   timestamp: string;
   user: string;
   database: string;
-  status: 'success' | 'error';
+  status: "success" | "error";
 }
 
 export default function DatabaseManagement() {
@@ -80,7 +93,7 @@ export default function DatabaseManagement() {
   const [sqlQuery, setSqlQuery] = useState("");
   const [filterTable, setFilterTable] = useState("all");
   const [queryResult, setQueryResult] = useState<any>(null);
-  
+
   // Fetch real system resources (database stats)
   const { data: systemResources, isLoading: resourcesLoading } = useQuery({
     queryKey: ["/api/root-admin/system-resources"],
@@ -101,14 +114,8 @@ export default function DatabaseManagement() {
 
   // Execute SQL Query mutation
   const executeQueryMutation = useMutation({
-    mutationFn: async (query: string) => {
-      const response = await fetch("/api/root-admin/execute-query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      return response.json();
-    },
+    mutationFn: async (query: string) =>
+      apiRequest("/api/root-admin/execute-query", "POST", { query }),
     onSuccess: (data) => {
       setQueryResult(data);
       if (data.success) {
@@ -149,16 +156,25 @@ export default function DatabaseManagement() {
 
   const tables = tablesData || [];
   const logs = auditLogs || [];
-  
+
   // Create database stats from system resources
   const dbStats: DatabaseStats = {
-    totalSize: systemResources?.find((r: any) => r.name === "Database Size")?.current + " " + 
-              systemResources?.find((r: any) => r.name === "Database Size")?.unit || "Unknown",
-    tableCount: systemResources?.find((r: any) => r.name === "Tables Count")?.current || 0,
-    connectionCount: systemResources?.find((r: any) => r.name === "Active Connections")?.current || 0,
+    totalSize:
+      systemResources?.find((r: any) => r.name === "Database Size")?.current +
+        " " +
+        systemResources?.find((r: any) => r.name === "Database Size")?.unit ||
+      "Unknown",
+    tableCount:
+      systemResources?.find((r: any) => r.name === "Tables Count")?.current ||
+      0,
+    connectionCount:
+      systemResources?.find((r: any) => r.name === "Active Connections")
+        ?.current || 0,
     activeQueries: 0, // Would come from real monitoring
-    cacheHitRatio: systemResources?.find((r: any) => r.name === "Cache Hit Ratio")?.current || 0,
-    uptime: "Unknown" // Would come from real monitoring
+    cacheHitRatio:
+      systemResources?.find((r: any) => r.name === "Cache Hit Ratio")
+        ?.current || 0,
+    uptime: "Unknown", // Would come from real monitoring
   };
 
   // Process tables data for display
@@ -169,31 +185,33 @@ export default function DatabaseManagement() {
     rowCount: table.row_count || 0,
     lastModified: table.last_vacuum || new Date().toISOString(),
     indexes: table.index_scans || 0,
-    status: table.row_count > 100000 ? "warning" : "healthy"
+    status: table.row_count > 100000 ? "warning" : "healthy",
   }));
 
   // Backup functionality would require additional backend implementation
   const backups: BackupInfo[] = [
     {
       id: "backup-001",
-      name: `automatic_backup_${format(new Date(), 'yyyy_MM_dd')}`,
+      name: `automatic_backup_${format(new Date(), "yyyy_MM_dd")}`,
       type: "full",
       size: dbStats.totalSize,
       status: "completed",
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-      duration: "Real backup system needed"
-    }
+      duration: "Real backup system needed",
+    },
   ];
 
   // Process audit logs as query logs
   const queryLogs: QueryLog[] = logs.slice(0, 20).map((log: any) => ({
     id: log.id,
-    query: `${log.action} on ${log.tableName}${log.recordId ? ` (ID: ${log.recordId})` : ''}`,
+    query: `${log.action} on ${log.tableName}${
+      log.recordId ? ` (ID: ${log.recordId})` : ""
+    }`,
     duration: Math.floor(Math.random() * 1000) + 10, // Would be real timing data
     timestamp: log.timestamp,
     user: log.userName || "System",
     database: "printyx_main",
-    status: "success"
+    status: "success",
   }));
 
   const handleExecuteQuery = () => {
@@ -210,32 +228,32 @@ export default function DatabaseManagement() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'healthy':
-      case 'completed':
-      case 'success':
-        return 'bg-green-100 text-green-800';
-      case 'warning':
-      case 'running':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'error':
-      case 'failed':
-        return 'bg-red-100 text-red-800';
+      case "healthy":
+      case "completed":
+      case "success":
+        return "bg-green-100 text-green-800";
+      case "warning":
+      case "running":
+        return "bg-yellow-100 text-yellow-800";
+      case "error":
+      case "failed":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'healthy':
-      case 'completed':
-      case 'success':
+      case "healthy":
+      case "completed":
+      case "success":
         return <CheckCircle className="w-4 h-4" />;
-      case 'warning':
-      case 'running':
+      case "warning":
+      case "running":
         return <Clock className="w-4 h-4" />;
-      case 'error':
-      case 'failed':
+      case "error":
+      case "failed":
         return <AlertTriangle className="w-4 h-4" />;
       default:
         return <Activity className="w-4 h-4" />;
@@ -244,15 +262,19 @@ export default function DatabaseManagement() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'full': return 'bg-blue-100 text-blue-800';
-      case 'incremental': return 'bg-green-100 text-green-800';
-      case 'differential': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "full":
+        return "bg-blue-100 text-blue-800";
+      case "incremental":
+        return "bg-green-100 text-green-800";
+      case "differential":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const filteredTables = processedTables.filter(table => 
-    filterTable === "all" || table.status === filterTable
+  const filteredTables = processedTables.filter(
+    (table) => filterTable === "all" || table.status === filterTable
   );
 
   return (
@@ -260,8 +282,12 @@ export default function DatabaseManagement() {
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Database Management</h1>
-            <p className="text-gray-600 mt-2">Monitor and manage database operations</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Database Management
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Monitor and manage database operations
+            </p>
           </div>
           <div className="flex items-center space-x-2">
             <Badge variant="outline" className="bg-green-50 text-green-700">
@@ -281,7 +307,9 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Size</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Size
+                  </p>
                   <p className="text-2xl font-bold">{dbStats.totalSize}</p>
                 </div>
                 <HardDrive className="w-8 h-8 text-blue-600" />
@@ -305,8 +333,12 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Connections</p>
-                  <p className="text-2xl font-bold">{dbStats.connectionCount}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Connections
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {dbStats.connectionCount}
+                  </p>
                 </div>
                 <Server className="w-8 h-8 text-purple-600" />
               </div>
@@ -317,7 +349,9 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Queries</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Active Queries
+                  </p>
                   <p className="text-2xl font-bold">{dbStats.activeQueries}</p>
                 </div>
                 <Activity className="w-8 h-8 text-orange-600" />
@@ -329,7 +363,9 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Cache Hit Ratio</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Cache Hit Ratio
+                  </p>
                   <p className="text-2xl font-bold">{dbStats.cacheHitRatio}%</p>
                 </div>
                 <BarChart3 className="w-8 h-8 text-indigo-600" />
@@ -400,7 +436,9 @@ export default function DatabaseManagement() {
                   <TableBody>
                     {filteredTables.map((table) => (
                       <TableRow key={table.name}>
-                        <TableCell className="font-medium">{table.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {table.name}
+                        </TableCell>
                         <TableCell>{table.schema}</TableCell>
                         <TableCell>{table.size}</TableCell>
                         <TableCell>{table.rowCount.toLocaleString()}</TableCell>
@@ -414,7 +452,10 @@ export default function DatabaseManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(table.lastModified), 'MMM dd, HH:mm')}
+                          {format(
+                            new Date(table.lastModified),
+                            "MMM dd, HH:mm"
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -447,7 +488,9 @@ export default function DatabaseManagement() {
                     <AlertTriangle className="w-3 h-3 mr-1" />
                     Production Database
                   </Badge>
-                  <span className="text-sm text-gray-500">Execute queries with caution</span>
+                  <span className="text-sm text-gray-500">
+                    Execute queries with caution
+                  </span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -462,8 +505,10 @@ export default function DatabaseManagement() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Button 
-                      disabled={!sqlQuery.trim() || executeQueryMutation.isPending}
+                    <Button
+                      disabled={
+                        !sqlQuery.trim() || executeQueryMutation.isPending
+                      }
                       onClick={handleExecuteQuery}
                     >
                       {executeQueryMutation.isPending ? (
@@ -473,7 +518,7 @@ export default function DatabaseManagement() {
                       )}
                       Execute Query
                     </Button>
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => {
                         setSqlQuery("");
@@ -488,11 +533,13 @@ export default function DatabaseManagement() {
                     Connected as: postgres_admin
                   </div>
                 </div>
-                
+
                 {/* Query Results */}
                 {queryResult && (
                   <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-3">Query Results</h3>
+                    <h3 className="text-lg font-semibold mb-3">
+                      Query Results
+                    </h3>
                     {queryResult.success ? (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -501,7 +548,8 @@ export default function DatabaseManagement() {
                             Success
                           </Badge>
                           <span className="text-sm text-gray-500">
-                            {queryResult.rowCount} rows • {queryResult.executionTime}ms
+                            {queryResult.rowCount} rows •{" "}
+                            {queryResult.executionTime}ms
                           </span>
                         </div>
                         {queryResult.data && queryResult.data.length > 0 && (
@@ -509,30 +557,42 @@ export default function DatabaseManagement() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  {Object.keys(queryResult.data[0]).map((key) => (
-                                    <TableHead key={key}>{key}</TableHead>
-                                  ))}
+                                  {Object.keys(queryResult.data[0]).map(
+                                    (key) => (
+                                      <TableHead key={key}>{key}</TableHead>
+                                    )
+                                  )}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {queryResult.data.slice(0, 100).map((row: any, index: number) => (
-                                  <TableRow key={index}>
-                                    {Object.values(row).map((value: any, cellIndex) => (
-                                      <TableCell key={cellIndex} className="font-mono text-sm">
-                                        {value === null ? (
-                                          <span className="text-gray-400 italic">null</span>
-                                        ) : (
-                                          String(value)
-                                        )}
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
-                                ))}
+                                {queryResult.data
+                                  .slice(0, 100)
+                                  .map((row: any, index: number) => (
+                                    <TableRow key={index}>
+                                      {Object.values(row).map(
+                                        (value: any, cellIndex) => (
+                                          <TableCell
+                                            key={cellIndex}
+                                            className="font-mono text-sm"
+                                          >
+                                            {value === null ? (
+                                              <span className="text-gray-400 italic">
+                                                null
+                                              </span>
+                                            ) : (
+                                              String(value)
+                                            )}
+                                          </TableCell>
+                                        )
+                                      )}
+                                    </TableRow>
+                                  ))}
                               </TableBody>
                             </Table>
                             {queryResult.data.length > 100 && (
                               <p className="text-sm text-gray-500 mt-2">
-                                Showing first 100 rows of {queryResult.data.length} total
+                                Showing first 100 rows of{" "}
+                                {queryResult.data.length} total
                               </p>
                             )}
                           </div>
@@ -567,22 +627,28 @@ export default function DatabaseManagement() {
                     <span>Database Backups</span>
                   </CardTitle>
                   <div className="flex items-center space-x-2">
-                    <Button 
+                    <Button
                       variant="outline"
-                      onClick={() => toast({
-                        title: "Backup System",
-                        description: "Automated backups are managed by the hosting provider. Manual backup functionality coming soon.",
-                      })}
+                      onClick={() =>
+                        toast({
+                          title: "Backup System",
+                          description:
+                            "Automated backups are managed by the hosting provider. Manual backup functionality coming soon.",
+                        })
+                      }
                     >
                       <Download className="w-4 h-4 mr-2" />
                       Create Backup
                     </Button>
-                    <Button 
+                    <Button
                       variant="outline"
-                      onClick={() => toast({
-                        title: "Restore System",
-                        description: "Database restore functionality requires administrator approval. Contact support for assistance.",
-                      })}
+                      onClick={() =>
+                        toast({
+                          title: "Restore System",
+                          description:
+                            "Database restore functionality requires administrator approval. Contact support for assistance.",
+                        })
+                      }
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       Restore
@@ -606,7 +672,9 @@ export default function DatabaseManagement() {
                   <TableBody>
                     {backups.map((backup) => (
                       <TableRow key={backup.id}>
-                        <TableCell className="font-medium">{backup.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {backup.name}
+                        </TableCell>
                         <TableCell>
                           <Badge className={getTypeColor(backup.type)}>
                             {backup.type}
@@ -623,7 +691,10 @@ export default function DatabaseManagement() {
                         </TableCell>
                         <TableCell>{backup.duration}</TableCell>
                         <TableCell>
-                          {format(new Date(backup.createdAt), 'MMM dd, yyyy HH:mm')}
+                          {format(
+                            new Date(backup.createdAt),
+                            "MMM dd, yyyy HH:mm"
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -666,11 +737,12 @@ export default function DatabaseManagement() {
                               <Badge className={getStatusColor(log.status)}>
                                 {log.status}
                               </Badge>
-                              <Badge variant="outline">
-                                {log.duration}ms
-                              </Badge>
+                              <Badge variant="outline">{log.duration}ms</Badge>
                               <span className="text-sm text-gray-500">
-                                {format(new Date(log.timestamp), 'MMM dd, HH:mm:ss')}
+                                {format(
+                                  new Date(log.timestamp),
+                                  "MMM dd, HH:mm:ss"
+                                )}
                               </span>
                             </div>
                             <div className="bg-gray-50 p-3 rounded-md mb-2">
@@ -700,7 +772,7 @@ export default function DatabaseManagement() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button 
+                  <Button
                     className="w-full justify-start"
                     onClick={() => executeQueryMutation.mutate("ANALYZE;")}
                     disabled={executeQueryMutation.isPending}
@@ -708,28 +780,36 @@ export default function DatabaseManagement() {
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Analyze All Tables
                   </Button>
-                  <Button 
-                    className="w-full justify-start" 
+                  <Button
+                    className="w-full justify-start"
                     variant="outline"
-                    onClick={() => executeQueryMutation.mutate("VACUUM ANALYZE;")}
+                    onClick={() =>
+                      executeQueryMutation.mutate("VACUUM ANALYZE;")
+                    }
                     disabled={executeQueryMutation.isPending}
                   >
                     <Database className="w-4 h-4 mr-2" />
                     Vacuum Database
                   </Button>
-                  <Button 
-                    className="w-full justify-start" 
+                  <Button
+                    className="w-full justify-start"
                     variant="outline"
-                    onClick={() => executeQueryMutation.mutate("SELECT pg_stat_reset();")}
+                    onClick={() =>
+                      executeQueryMutation.mutate("SELECT pg_stat_reset();")
+                    }
                     disabled={executeQueryMutation.isPending}
                   >
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Update Statistics
                   </Button>
-                  <Button 
-                    className="w-full justify-start" 
+                  <Button
+                    className="w-full justify-start"
                     variant="outline"
-                    onClick={() => executeQueryMutation.mutate("REINDEX DATABASE SCHEMA public;")}
+                    onClick={() =>
+                      executeQueryMutation.mutate(
+                        "REINDEX DATABASE SCHEMA public;"
+                      )
+                    }
                     disabled={executeQueryMutation.isPending}
                   >
                     <Archive className="w-4 h-4 mr-2" />
@@ -746,41 +826,55 @@ export default function DatabaseManagement() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button 
+                  <Button
                     className="w-full justify-start"
-                    onClick={() => executeQueryMutation.mutate("SELECT * FROM information_schema.table_privileges WHERE grantee != 'postgres' LIMIT 20;")}
+                    onClick={() =>
+                      executeQueryMutation.mutate(
+                        "SELECT * FROM information_schema.table_privileges WHERE grantee != 'postgres' LIMIT 20;"
+                      )
+                    }
                     disabled={executeQueryMutation.isPending}
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     Audit Permissions
                   </Button>
-                  <Button 
-                    className="w-full justify-start" 
+                  <Button
+                    className="w-full justify-start"
                     variant="outline"
-                    onClick={() => toast({
-                      title: "Integrity Check",
-                      description: "Database integrity checks are performed automatically by PostgreSQL. No issues detected.",
-                    })}
+                    onClick={() =>
+                      toast({
+                        title: "Integrity Check",
+                        description:
+                          "Database integrity checks are performed automatically by PostgreSQL. No issues detected.",
+                      })
+                    }
                   >
                     <AlertTriangle className="w-4 h-4 mr-2" />
                     Check Integrity
                   </Button>
-                  <Button 
-                    className="w-full justify-start" 
+                  <Button
+                    className="w-full justify-start"
                     variant="outline"
-                    onClick={() => executeQueryMutation.mutate("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 50;")}
+                    onClick={() =>
+                      executeQueryMutation.mutate(
+                        "SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 50;"
+                      )
+                    }
                     disabled={executeQueryMutation.isPending}
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Export Audit Log
                   </Button>
-                  <Button 
-                    className="w-full justify-start" 
+                  <Button
+                    className="w-full justify-start"
                     variant="outline"
-                    onClick={() => toast({
-                      title: "Log Rotation",
-                      description: "Log rotation is managed automatically by the system. Logs are archived and cleaned up regularly.",
-                    })}
+                    onClick={() =>
+                      toast({
+                        title: "Log Rotation",
+                        description:
+                          "Log rotation is managed automatically by the system. Logs are archived and cleaned up regularly.",
+                      })
+                    }
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Rotate Logs
