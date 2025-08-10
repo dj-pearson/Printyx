@@ -1732,6 +1732,8 @@ export class DatabaseStorage implements IStorage {
           COALESCE(city, '') as city,
           COALESCE(state, '') as state,
           COALESCE(postal_code, '') as postal_code,
+          url_slug,
+          company_display_id,
           created_at,
           updated_at
         FROM business_records 
@@ -1756,6 +1758,10 @@ export class DatabaseStorage implements IStorage {
         city: row.city,
         state: row.state,
         postalCode: row.postal_code,
+        url_slug: row.url_slug,
+        urlSlug: row.url_slug,
+        company_display_id: row.company_display_id,
+        companyDisplayId: row.company_display_id,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
