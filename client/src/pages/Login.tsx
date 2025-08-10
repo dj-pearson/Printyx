@@ -18,51 +18,6 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-const testAccounts = [
-  {
-    label: "Root Admin",
-    email: "Pearsonperformance@gmail.com",
-    password: "Infomax1!",
-    role: "System Administrator"
-  },
-  {
-    label: "Director",
-    email: "director@printyx.com",
-    password: "director123",
-    role: "Director"
-  },
-  {
-    label: "Sales Manager",
-    email: "sales.manager@printyx.com",
-    password: "manager123",
-    role: "Sales Manager"
-  },
-  {
-    label: "Service Manager",
-    email: "service.manager@printyx.com",
-    password: "manager123",
-    role: "Service Manager"
-  },
-  {
-    label: "Team Lead",
-    email: "team.lead@printyx.com",
-    password: "lead123",
-    role: "Team Lead"
-  },
-  {
-    label: "Sales Rep",
-    email: "sales.rep@printyx.com",
-    password: "rep123",
-    role: "Sales Representative"
-  },
-  {
-    label: "Technician",
-    email: "technician@printyx.com",
-    password: "tech123",
-    role: "Service Technician"
-  }
-];
-
 export default function Login() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -121,16 +76,11 @@ export default function Login() {
     }
   };
 
-  const fillTestAccount = (account: typeof testAccounts[0]) => {
-    form.setValue("email", account.email);
-    form.setValue("password", account.password);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl flex gap-8">
+      <div className="w-full max-w-md">
         {/* Login Form */}
-        <Card className="w-full max-w-md">
+        <Card className="w-full">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -181,42 +131,6 @@ export default function Login() {
                 </Button>
               </form>
             </Form>
-          </CardContent>
-        </Card>
-
-        {/* Test Accounts */}
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Demo Accounts</CardTitle>
-            <CardDescription>
-              Click any account below to auto-fill login credentials for testing different role levels
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {testAccounts.map((account, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="w-full justify-between text-left h-auto py-3"
-                  onClick={() => fillTestAccount(account)}
-                >
-                  <div>
-                    <div className="font-medium">{account.label}</div>
-                    <div className="text-sm text-muted-foreground">{account.role}</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {account.email}
-                  </div>
-                </Button>
-              ))}
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Testing RBAC:</strong> Each account has different permissions and data access levels. 
-                Root Admin sees everything, while Sales Reps only see their assigned customers.
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
