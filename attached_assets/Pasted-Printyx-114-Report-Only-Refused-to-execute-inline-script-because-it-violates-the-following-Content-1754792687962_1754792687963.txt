@@ -1,0 +1,405 @@
+Printyx:114 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-NArCoHwSTzqyLq+BMMmClNUijmMmk9ypiY4w5SD7L4I='), or a nonce ('nonce-...') is required to enable inline execution.
+
+Printyx:144 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-Q2BC+6wvEMMGAG5ptiy0mdlUVz5ymLU+2wnaD11rhyc='), or a nonce ('nonce-...') is required to enable inline execution.
+
+Printyx:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-XYvVliZ7kJ9JIDhACMzGUvidf8E8T+euknSiwFmyDfg='), or a nonce ('nonce-...') is required to enable inline execution.
+
+Printyx:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-WuQ3tttJsJ+YpVYBgoqxhhVzmQxiwpjXIC/9n3Re6bY='), or a nonce ('nonce-...') is required to enable inline execution.
+
+Printyx:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-py6B73+6yjr1a1U7B3fGpnrUBzcua1/M2lAYqcWPSHg='), or a nonce ('nonce-...') is required to enable inline execution.
+
+Printyx:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-s5rZU1oZ1ZCu6+l/LoHka8LuVSayJvydtzuSt4Vuk/M='), or a nonce ('nonce-...') is required to enable inline execution.
+
+Printyx:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-07l5B4sWF6cor6yDQ+CQBYw+BXfYaB+C6wxFZmj0wqo='), or a nonce ('nonce-...') is required to enable inline execution.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+_app-2981e4d7aa5be5d9.js:1 [Report Only] Refused to create a worker from 'https://replit.com/public/stallwart.build.js' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'worker-src' was not explicitly set, so 'script-src' is used as a fallback.
+
+4102-c25bec6a5371266d.js:1 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+4102-c25bec6a5371266d.js:1 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+3729-53404ae08e62bb02.js:1 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+_app-2981e4d7aa5be5d9.js:13 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+_app-2981e4d7aa5be5d9.js:13 [LaunchDarkly] LaunchDarkly client initialized
+_app-2981e4d7aa5be5d9.js:15 [Report Only] Refused to create a worker from 'https://replit.com/service-worker.js' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'worker-src' was not explicitly set, so 'script-src' is used as a fallback.
+
+Printyx:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+attached_assets/IMG_8750_1754767443753.png:1  Failed to load resource: the server responded with a status of 404 ()
+_app-2981e4d7aa5be5d9.js:13 Adding extension: API Request Tester Object
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'battery'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-fc3d6289511ec16b.js:1
+framework-fc3d6289511ec16b.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-fc3d6289511ec16b.js:1
+3635-fa2c34df72f2ed9c.js:1 WebSocket connection to 'wss://eval.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXh1WGV4QVlTQmdqbGdkL0VCaUlFYTJseWF6QUFPdFVCQ2lReFlXVXdaR00yT0MxbVl6RTFMVFE0TURRdFlXRmtaaTB6TkRFM1l6VmlabVZrWTJRU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SUhVSEpwYm5SNWVDb1BjR1ZoY25OdmJuQmxjbVp2Y20xaFFrNEtGM0psY0d4cGRDMXlaWEJzTFdKc2IyTnJjeTFyYVhKckVoVnlaWEJzYVhRdGNtVndiQzF0WlhSaExXdHBjbXNhSEhKbGNHeHBkQzF0WVhKbllYSnBibVV0WW14dlkydHpMV3RwY210S0J3aWptOVVWRUFGUUFGb0laWGh3Ykc5eVpYSmFEMmx1ZEdWdWRGOXdaWEp6YjI1aGJIZ0FVaU1JQVJDQWdJQ0FJQmtBQUFBQUFBQVFRQ0VBQUFBQUFBQVFRQ2lBZ0lDQXlBRXdBbUFBYWhZSW81dlZGUklQY0dWaGNuTnZibkJsY21admNtMWhnZ0VDS2dDYUFRb0tDREF1TUM0eE5UazVvQUVCfOaRsWozFgqkCXuL5IJPgIIXTrI4bn-n9gku0oLe0lAhxLaoXHF1k4WN45Y6fGeeMSu46QdHce64Kogi7mY1DQ.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
+connect @ 3635-fa2c34df72f2ed9c.js:1
+stallwart.build.js:1 stallwart: failed ping 1
+/data/repls/1ae0dc68-fc15-4804-aadf-3417c5bfedcd/get_connection_metadata:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3A2f8f169a&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=6f7c0e81-5d91-43f8-9556-1ea2c14942ee:1  Failed to load resource: net::ERR_ADDRESS_UNREACHABLE
+_app-2981e4d7aa5be5d9.js:40 WebSocket connection to 'wss://replit.com/graphql_subscriptions' failed: 
+(anonymous) @ _app-2981e4d7aa5be5d9.js:40
+3635-fa2c34df72f2ed9c.js:1 WebSocket connection to 'wss://eval.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXh1WGV4QVlTQmdqbGdkL0VCaUlFYTJseWF6QUFPdFVCQ2lReFlXVXdaR00yT0MxbVl6RTFMVFE0TURRdFlXRmtaaTB6TkRFM1l6VmlabVZrWTJRU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SUhVSEpwYm5SNWVDb1BjR1ZoY25OdmJuQmxjbVp2Y20xaFFrNEtGM0psY0d4cGRDMXlaWEJzTFdKc2IyTnJjeTFyYVhKckVoVnlaWEJzYVhRdGNtVndiQzF0WlhSaExXdHBjbXNhSEhKbGNHeHBkQzF0WVhKbllYSnBibVV0WW14dlkydHpMV3RwY210S0J3aWptOVVWRUFGUUFGb0laWGh3Ykc5eVpYSmFEMmx1ZEdWdWRGOXdaWEp6YjI1aGJIZ0FVaU1JQVJDQWdJQ0FJQmtBQUFBQUFBQVFRQ0VBQUFBQUFBQVFRQ2lBZ0lDQXlBRXdBbUFBYWhZSW81dlZGUklQY0dWaGNuTnZibkJsY21admNtMWhnZ0VDS2dDYUFRb0tDREF1TUM0eE5UazVvQUVCfOaRsWozFgqkCXuL5IJPgIIXTrI4bn-n9gku0oLe0lAhxLaoXHF1k4WN45Y6fGeeMSu46QdHce64Kogi7mY1DQ.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
+connect @ 3635-fa2c34df72f2ed9c.js:1
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3A2f8f169a&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=8292cbfe-4619-48be-a2ac-dc8c83791f32:1  Failed to load resource: net::ERR_ADDRESS_UNREACHABLE
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3A2f8f169a&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=60b78605-b8d9-4ec9-a051-31d4345450de:1  Failed to load resource: net::ERR_ADDRESS_UNREACHABLE
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3A2f8f169a&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=fb6568c5-a22c-41d4-9633-35c59f86c7d4:1  Failed to load resource: net::ERR_ADDRESS_UNREACHABLE
+_app-2981e4d7aa5be5d9.js:13 Uncaught TypeError: Cannot read properties of undefined (reading 'dimensions')
+    at get dimensions (7b975a49.3fbfeb9a27ff13d5.js:3:88160)
+    at t.Viewport.syncScrollArea (7b975a49.3fbfeb9a27ff13d5.js:3:30735)
+    at 7b975a49.3fbfeb9a27ff13d5.js:3:29381
+    at n (_app-2981e4d7aa5be5d9.js:13:2959)
+/graphql:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+3635-fa2c34df72f2ed9c.js:1 WebSocket connection to 'wss://eval.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXh1WGV4QVlTQmdqbGdkL0VCaUlFYTJseWF6QUFPdFVCQ2lReFlXVXdaR00yT0MxbVl6RTFMVFE0TURRdFlXRmtaaTB6TkRFM1l6VmlabVZrWTJRU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SUhVSEpwYm5SNWVDb1BjR1ZoY25OdmJuQmxjbVp2Y20xaFFrNEtGM0psY0d4cGRDMXlaWEJzTFdKc2IyTnJjeTFyYVhKckVoVnlaWEJzYVhRdGNtVndiQzF0WlhSaExXdHBjbXNhSEhKbGNHeHBkQzF0WVhKbllYSnBibVV0WW14dlkydHpMV3RwY210S0J3aWptOVVWRUFGUUFGb0laWGh3Ykc5eVpYSmFEMmx1ZEdWdWRGOXdaWEp6YjI1aGJIZ0FVaU1JQVJDQWdJQ0FJQmtBQUFBQUFBQVFRQ0VBQUFBQUFBQVFRQ2lBZ0lDQXlBRXdBbUFBYWhZSW81dlZGUklQY0dWaGNuTnZibkJsY21admNtMWhnZ0VDS2dDYUFRb0tDREF1TUM0eE5UazVvQUVCfOaRsWozFgqkCXuL5IJPgIIXTrI4bn-n9gku0oLe0lAhxLaoXHF1k4WN45Y6fGeeMSu46QdHce64Kogi7mY1DQ.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
+connect @ 3635-fa2c34df72f2ed9c.js:1
+stallwart.build.js:1 stallwart: failed ping 1
+_app-2981e4d7aa5be5d9.js:40 WebSocket connection to 'wss://replit.com/graphql_subscriptions' failed: 
+(anonymous) @ _app-2981e4d7aa5be5d9.js:40
+3635-fa2c34df72f2ed9c.js:1 WebSocket connection to 'wss://eval.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXh1WGV4QVlTQmdqbGdkL0VCaUlFYTJseWF6QUFPdFVCQ2lReFlXVXdaR00yT0MxbVl6RTFMVFE0TURRdFlXRmtaaTB6TkRFM1l6VmlabVZrWTJRU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SUhVSEpwYm5SNWVDb1BjR1ZoY25OdmJuQmxjbVp2Y20xaFFrNEtGM0psY0d4cGRDMXlaWEJzTFdKc2IyTnJjeTFyYVhKckVoVnlaWEJzYVhRdGNtVndiQzF0WlhSaExXdHBjbXNhSEhKbGNHeHBkQzF0WVhKbllYSnBibVV0WW14dlkydHpMV3RwY210S0J3aWptOVVWRUFGUUFGb0laWGh3Ykc5eVpYSmFEMmx1ZEdWdWRGOXdaWEp6YjI1aGJIZ0FVaU1JQVJDQWdJQ0FJQmtBQUFBQUFBQVFRQ0VBQUFBQUFBQVFRQ2lBZ0lDQXlBRXdBbUFBYWhZSW81dlZGUklQY0dWaGNuTnZibkJsY21admNtMWhnZ0VDS2dDYUFRb0tDREF1TUM0eE5UazVvQUVCfOaRsWozFgqkCXuL5IJPgIIXTrI4bn-n9gku0oLe0lAhxLaoXHF1k4WN45Y6fGeeMSu46QdHce64Kogi7mY1DQ.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
+connect @ 3635-fa2c34df72f2ed9c.js:1
+/data/repls/1ae0dc68-fc15-4804-aadf-3417c5bfedcd/get_connection_metadata:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+_app-2981e4d7aa5be5d9.js:40 WebSocket connection to 'wss://replit.com/graphql_subscriptions' failed: 
+(anonymous) @ _app-2981e4d7aa5be5d9.js:40
+3635-fa2c34df72f2ed9c.js:1 WebSocket connection to 'wss://eval.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXh1WGV4QVlTQmdqbGdkL0VCaUlFYTJseWF6QUFPdFVCQ2lReFlXVXdaR00yT0MxbVl6RTFMVFE0TURRdFlXRmtaaTB6TkRFM1l6VmlabVZrWTJRU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SUhVSEpwYm5SNWVDb1BjR1ZoY25OdmJuQmxjbVp2Y20xaFFrNEtGM0psY0d4cGRDMXlaWEJzTFdKc2IyTnJjeTFyYVhKckVoVnlaWEJzYVhRdGNtVndiQzF0WlhSaExXdHBjbXNhSEhKbGNHeHBkQzF0WVhKbllYSnBibVV0WW14dlkydHpMV3RwY210S0J3aWptOVVWRUFGUUFGb0laWGh3Ykc5eVpYSmFEMmx1ZEdWdWRGOXdaWEp6YjI1aGJIZ0FVaU1JQVJDQWdJQ0FJQmtBQUFBQUFBQVFRQ0VBQUFBQUFBQVFRQ2lBZ0lDQXlBRXdBbUFBYWhZSW81dlZGUklQY0dWaGNuTnZibkJsY21admNtMWhnZ0VDS2dDYUFRb0tDREF1TUM0eE5UazVvQUVCfOaRsWozFgqkCXuL5IJPgIIXTrI4bn-n9gku0oLe0lAhxLaoXHF1k4WN45Y6fGeeMSu46QdHce64Kogi7mY1DQ.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
+connect @ 3635-fa2c34df72f2ed9c.js:1
+api.sorryapp.com/v1/pages/27c7b5fc:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+events.launchdarkly.com/events/diagnostic/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+api.sorryapp.com/v1/pages/27c7b5fc:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+events.launchdarkly.com/events/diagnostic/62b35a865152ab14c5942820:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+/graphql:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+/graphql:1  Failed to load resource: net::ERR_NAME_NOT_RESOLVED
+3635-fa2c34df72f2ed9c.js:1 WebSocket connection to 'wss://eval.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXh1WGV4QVlTQmdqbGdkL0VCaUlFYTJseWF6QUFPdFVCQ2lReFlXVXdaR00yT0MxbVl6RTFMVFE0TURRdFlXRmtaaTB6TkRFM1l6VmlabVZrWTJRU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SUhVSEpwYm5SNWVDb1BjR1ZoY25OdmJuQmxjbVp2Y20xaFFrNEtGM0psY0d4cGRDMXlaWEJzTFdKc2IyTnJjeTFyYVhKckVoVnlaWEJzYVhRdGNtVndiQzF0WlhSaExXdHBjbXNhSEhKbGNHeHBkQzF0WVhKbllYSnBibVV0WW14dlkydHpMV3RwY210S0J3aWptOVVWRUFGUUFGb0laWGh3Ykc5eVpYSmFEMmx1ZEdWdWRGOXdaWEp6YjI1aGJIZ0FVaU1JQVJDQWdJQ0FJQmtBQUFBQUFBQVFRQ0VBQUFBQUFBQVFRQ2lBZ0lDQXlBRXdBbUFBYWhZSW81dlZGUklQY0dWaGNuTnZibkJsY21admNtMWhnZ0VDS2dDYUFRb0tDREF1TUM0eE5UazVvQUVCfOaRsWozFgqkCXuL5IJPgIIXTrI4bn-n9gku0oLe0lAhxLaoXHF1k4WN45Y6fGeeMSu46QdHce64Kogi7mY1DQ.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
+connect @ 3635-fa2c34df72f2ed9c.js:1
+806ad7172e9c70b2ee6a2ff2bb0bf390:1  Failed to load resource: the server responded with a status of 404 ()
+806ad7172e9c70b2ee6a2ff2bb0bf390:1  Failed to load resource: the server responded with a status of 404 ()
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.
+workspace_iframe.html:32 Unrecognized feature: 'battery'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/pages:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/settings:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/pages:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/settings:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/pages:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/settings:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+806ad7172e9c70b2ee6a2ff2bb0bf390:1  Failed to load resource: the server responded with a status of 404 ()
+806ad7172e9c70b2ee6a2ff2bb0bf390:1  Failed to load resource: the server responded with a status of 404 ()
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/settings:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+injected.js:253  POST https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/seo/settings 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+mutationFn @ RootAdminSEO.tsx:35
+fn @ @tanstack_react-query.js?v=19633cd2:1189
+run @ @tanstack_react-query.js?v=19633cd2:494
+start @ @tanstack_react-query.js?v=19633cd2:536
+execute @ @tanstack_react-query.js?v=19633cd2:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=19633cd2:2630
+(anonymous) @ @tanstack_react-query.js?v=19633cd2:3295
+onClick @ RootAdminSEO.tsx:300
+callCallback2 @ chunk-RPCDYKBN.js?v=19633cd2:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=19633cd2:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=19633cd2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=19633cd2:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=19633cd2:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=19633cd2:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=19633cd2:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=19633cd2:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=19633cd2:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=19633cd2:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=19633cd2:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=19633cd2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=19633cd2:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=19633cd2:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=19633cd2:5449
