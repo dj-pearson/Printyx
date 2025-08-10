@@ -6249,11 +6249,11 @@ export const tenantEnabledProducts = pgTable(
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => ({
-    tenantMasterIdx: index("enabled_products_tenant_master_idx").on(
+    tenantMasterIdx: index("tenant_enabled_products_tenant_master_idx").on(
       table.tenantId,
       table.masterProductId
     ),
-    tenantEnabledIdx: index("enabled_products_tenant_enabled_idx").on(
+    tenantEnabledIdx: index("tenant_enabled_products_tenant_enabled_idx").on(
       table.tenantId,
       table.enabled
     ),
