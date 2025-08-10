@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import NProgress from "nprogress";
+import "nprogress/nprogress.css";
+import { queryClient } from "@/lib/queryClient";
 
 // Lightweight global fetch wrapper to attach CSRF for mutating requests
 // This complements apiRequest; it protects plain fetch usages across the app
@@ -49,5 +52,19 @@ import "./index.css";
     return origFetch(input, finalInit);
   };
 })();
+
+// Global progress bar for queries/mutations
+NProgress.configure({ showSpinner: false, trickleSpeed: 120 });
+let isLoading = false;
+queryClient.getQueryCache().subscribe(() => {
+  const fetching = queryClient.isFetching() > 0 || queryClient.isMutating() > 0;
+  if (fetching && !isLoading) {
+    isLoading = true;
+    NProgress.start();
+  } else if (!fetching && isLoading) {
+    isLoading = false;
+    NProgress.done();
+  }
+});
 
 createRoot(document.getElementById("root")!).render(<App />);

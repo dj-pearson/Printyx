@@ -13,7 +13,27 @@ app.set("trust proxy", 1);
 // Security headers
 app.use(
   helmet({
-    contentSecurityPolicy: false, // disabled for SPA/dev; enable with proper policy later
+    contentSecurityPolicy: process.env.NODE_ENV === "production" && {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'", "https:"],
+        "script-src": ["'self'", "'unsafe-inline'", "https:"],
+        "style-src": ["'self'", "'unsafe-inline'", "https:"],
+        "img-src": ["'self'", "data:", "blob:", "https:"],
+        "font-src": ["'self'", "https:", "data:"],
+        "connect-src": ["'self'", "https:", "wss:", "http:"],
+        "frame-ancestors": ["'self'"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"],
+      },
+    },
+    referrerPolicy: { policy: "no-referrer" },
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    frameguard: { action: "sameorigin" },
+    hsts: { maxAge: 15552000, includeSubDomains: true, preload: true },
+    hidePoweredBy: true,
   })
 );
 

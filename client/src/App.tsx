@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
 import { useLocation } from "wouter";
 import { useSeo } from "@/lib/useSeo";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,9 +13,10 @@ import Homepage from "@/pages/marketing/Homepage";
 import CopierDealerCRM from "@/pages/marketing/CopierDealerCRM";
 import PrintServiceDispatchMobile from "@/pages/marketing/PrintServiceDispatchMobile";
 import CanonMasterProductCatalog from "@/pages/marketing/CanonMasterProductCatalog";
-import Dashboard from "@/pages/dashboard";
-import Customers from "@/pages/customers";
-import CRMEnhanced from "@/pages/CRMEnhanced";
+import React from "react";
+const Dashboard = React.lazy(() => import("@/pages/dashboard"));
+const Customers = React.lazy(() => import("@/pages/customers"));
+const CRMEnhanced = React.lazy(() => import("@/pages/CRMEnhanced"));
 import LeadDetail from "@/pages/LeadDetail";
 import SalesReports from "@/pages/placeholder/SalesReports";
 import ServiceReports from "@/pages/placeholder/ServiceReports";
@@ -32,7 +34,7 @@ import ServiceProducts from "@/pages/ServiceProducts";
 import SoftwareProducts from "@/pages/SoftwareProducts";
 import Supplies from "@/pages/Supplies";
 import ManagedServices from "@/pages/ManagedServices";
-import Invoices from "@/pages/Invoices";
+const Invoices = React.lazy(() => import("@/pages/Invoices"));
 import CompanyContacts from "@/pages/CompanyContacts";
 import Vendors from "@/pages/Vendors";
 import AccountsPayable from "@/pages/AccountsPayable";
@@ -79,7 +81,7 @@ import ProposalBuilder from "@/pages/ProposalBuilder";
 import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceScheduling";
 import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
-import ProductCatalog from "@/pages/ProductCatalog";
+const ProductCatalog = React.lazy(() => import("@/pages/ProductCatalog"));
 import VendorManagement from "@/pages/VendorManagement";
 import CustomerNumberSettings from "@/pages/CustomerNumberSettings";
 import FinancialForecasting from "@/pages/FinancialForecasting";
@@ -117,7 +119,7 @@ import WorkflowAutomation from "@/pages/WorkflowAutomation";
 import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
 import ERPIntegration from "@/pages/ERPIntegration";
 import CustomerAccessManagement from "@/pages/CustomerAccessManagement";
-import ServiceHub from "@/pages/ServiceHub";
+const ServiceHub = React.lazy(() => import("@/pages/ServiceHub"));
 import OnboardingDashboard from "@/pages/OnboardingDashboard";
 import OnboardingDetails from "@/pages/OnboardingDetails";
 import EnhancedOnboardingForm from "@/pages/EnhancedOnboardingForm";
@@ -462,10 +464,51 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <ErrorBoundary>
+          <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+            <Router />
+          </React.Suspense>
+        </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );
 }
 
 export default App;
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error("Global error boundary caught:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="max-w-md text-center">
+            <h1 className="text-xl font-semibold">Something went wrong</h1>
+            <p className="mt-2 text-muted-foreground">
+              Please refresh the page. If the problem persists, contact support.
+            </p>
+            <button
+              className="mt-4 inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children as any;
+  }
+}

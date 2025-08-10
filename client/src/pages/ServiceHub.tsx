@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import PhoneInTicketCreator from "@/components/service/PhoneInTicketCreator";
 import TechnicianTicketWorkflow from "@/components/service/TechnicianTicketWorkflow";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Phone,
   MapPin,
@@ -178,6 +179,25 @@ export default function ServiceHub() {
           <p className="text-gray-600">Loading Enhanced Service System...</p>
         </div>
       </div>
+    );
+  }
+
+  if (ticketsLoading || phoneInLoading) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            <Skeleton className="h-60" />
+            <Skeleton className="h-60" />
+          </div>
+        </div>
+      </MainLayout>
     );
   }
 
