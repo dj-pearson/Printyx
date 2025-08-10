@@ -4609,6 +4609,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Leads API routes (unified with business records)
+  app.get(
+    "/api/leads",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        // Get business records where recordType = 'lead'
+        const leads = await storage.getBusinessRecords(tenantId, 'lead');
+        // Transform database fields to frontend format
+        const transformedLeads = leads.map((lead) =>
+          BusinessRecordsTransformer.toFrontend(lead)
+        );
+        res.json(transformedLeads);
+      } catch (error) {
+        console.error("Error fetching leads:", error);
+        res.status(500).json({ message: "Failed to fetch leads" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/leads/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        // Try to get by URL slug first, then by ID
+        let lead;
+        const isSlug = id.includes('-') && id.length > 20 && /\d{8}$/.test(id);
+        
+        if (isSlug) {
+          lead = await storage.getBusinessRecordBySlug(id, tenantId);
+        } else {
+          lead = await storage.getBusinessRecord(id, tenantId);
+        }
+
+        if (!lead) {
+          return res.status(404).json({ message: "Lead not found" });
+        }
+
+        // Transform database fields to frontend format
+        const transformedLead = BusinessRecordsTransformer.toFrontend(lead);
+        res.json(transformedLead);
+      } catch (error) {
+        console.error("Error fetching lead:", error);
+        res.status(500).json({ message: "Failed to fetch lead" });
+      }
+    }
+  );
+
   // Company management routes (new primary business entity)
   app.get(
     "/api/companies",
