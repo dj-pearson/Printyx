@@ -874,6 +874,8 @@ export const businessRecords = pgTable("business_records", {
 
   // Customer-Specific Fields (E-Automate compatible)
   customerNumber: varchar("customer_number").unique(), // Generated when converted to customer
+  companyDisplayId: varchar("company_display_id").unique(), // Easy-to-read company ID (e.g., "43443425")
+  urlSlug: varchar("url_slug").unique(), // URL-friendly slug (e.g., "customer-new-customer-company-43443425")
   customerSince: timestamp("customer_since"), // Date of conversion to customer
   customerUntil: timestamp("customer_until"), // Date when customer relationship ended (for former customers)
   churnReason: varchar("deactivation_reason"), // competitor_switch, pricing, service_issues, business_closure, etc.

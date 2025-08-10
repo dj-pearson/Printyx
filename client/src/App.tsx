@@ -73,6 +73,7 @@ import LeadsManagement from "@/pages/LeadsManagement";
 import QuoteProposalGeneration from "@/pages/QuoteProposalGeneration";
 import QuoteBuilderPage from "@/pages/QuoteBuilderPage";
 import QuotesManagement from "@/pages/QuotesManagement";
+import CompanyIdsTest from "@/pages/CompanyIdsTest";
 import QuoteView from "@/pages/QuoteView";
 import ProposalBuilder from "@/pages/ProposalBuilder";
 import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceScheduling";
@@ -326,6 +327,7 @@ function Router() {
           />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
+          <Route path="/company-ids-test" component={CompanyIdsTest} />
           <Route
             path="/customer-number-settings"
             component={CustomerNumberSettings}
