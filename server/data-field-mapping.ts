@@ -68,6 +68,10 @@ export const BUSINESS_RECORDS_FIELD_MAP = {
     assignedSalesRep: 'assigned_sales_rep',
     territory: 'territory',
     
+    // URL and Display Fields
+    urlSlug: 'url_slug',
+    companyDisplayId: 'company_display_id',
+    
     // External System Fields
     externalCustomerId: 'external_customer_id',
     externalSystemId: 'external_system_id',
