@@ -1625,30 +1625,6 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  async updateCompanyContact(
-    id: string,
-    contact: Partial<CompanyContact>,
-    tenantId: string
-  ): Promise<CompanyContact | undefined> {
-    const [updatedContact] = await db
-      .update(companyContacts)
-      .set({ ...contact, updatedAt: new Date() })
-      .where(
-        and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId))
-      )
-      .returning();
-    return updatedContact;
-  }
-
-  async deleteCompanyContact(id: string, tenantId: string): Promise<boolean> {
-    const result = await db
-      .delete(companyContacts)
-      .where(
-        and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId))
-      );
-    return result.rowCount > 0;
-  }
-
   // Lead operations (simplified pipeline tracking)
   // Lead-specific operations (filtered views of business records)
   async getLeads(tenantId: string): Promise<any[]> {
@@ -1667,7 +1643,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Customer-specific operations (filtered views of business records)
-  async getCustomers(
+  async getCustomerBusinessRecords(
     tenantId: string,
     includeInactive: boolean = false
   ): Promise<any[]> {
@@ -2429,7 +2405,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(productAccessories.accessoryName);
   }
 
-  async getProductAccessories(
+  async getTenantProductAccessories(
     modelId: string,
     tenantId: string
   ): Promise<ProductAccessory[]> {
@@ -2820,16 +2796,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Product Accessories - fallback implementation
-  async getAllProductAccessories(tenantId: string): Promise<any[]> {
-    try {
-      // For now, return empty array until product accessories table is properly set up
-      return [];
-    } catch (error) {
-      console.error("Error in getAllProductAccessories:", error);
-      return [];
-    }
-  }
+  // Product Accessories - fallback implementation (removed duplicate method)
 
   // Managed Services
   async getAllManagedServices(tenantId: string): Promise<ManagedService[]> {
@@ -2852,15 +2819,6 @@ export class DatabaseStorage implements IStorage {
   async createSupply(supply: InsertSupply): Promise<Supply> {
     const [result] = await db.insert(supplies).values(supply).returning();
     return result;
-  }
-
-  // Managed Services
-  async getAllManagedServices(tenantId: string): Promise<ManagedService[]> {
-    return await db
-      .select()
-      .from(managedServices)
-      .where(eq(managedServices.tenantId, tenantId))
-      .orderBy(managedServices.productName);
   }
 
   async createManagedService(
@@ -3230,48 +3188,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  // Vendor operations
-  async getVendors(tenantId: string): Promise<Vendor[]> {
-    return await db
-      .select()
-      .from(vendors)
-      .where(eq(vendors.tenantId, tenantId))
-      .orderBy(vendors.companyName);
-  }
-
-  async getVendor(id: string, tenantId: string): Promise<Vendor | undefined> {
-    const [vendor] = await db
-      .select()
-      .from(vendors)
-      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
-    return vendor;
-  }
-
-  async createVendor(vendor: InsertVendor): Promise<Vendor> {
-    const [newVendor] = await db.insert(vendors).values(vendor).returning();
-    return newVendor;
-  }
-
-  async updateVendor(
-    id: string,
-    vendor: Partial<Vendor>,
-    tenantId: string
-  ): Promise<Vendor | undefined> {
-    const [updatedVendor] = await db
-      .update(vendors)
-      .set({ ...vendor, updatedAt: new Date() })
-      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)))
-      .returning();
-    return updatedVendor;
-  }
-
-  async deleteVendor(id: string, tenantId: string): Promise<boolean> {
-    const result = await db
-      .delete(vendors)
-      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
-
-    return result.rowCount > 0;
-  }
+  // Vendor operations - removed duplicate methods (kept original versions above)
 
   // Business Record Contacts operations
   async getBusinessRecordContacts(
@@ -3881,38 +3798,7 @@ export class DatabaseStorage implements IStorage {
     return contact;
   }
 
-  async createContact(
-    contactData: Omit<CompanyContact, "id" | "createdAt" | "updatedAt">
-  ): Promise<CompanyContact> {
-    const [created] = await db
-      .insert(companyContacts)
-      .values({
-        ...contactData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-    return created;
-  }
-
-  async updateContact(
-    id: string,
-    contactData: Partial<CompanyContact>
-  ): Promise<CompanyContact> {
-    const [updated] = await db
-      .update(companyContacts)
-      .set({ ...contactData, updatedAt: new Date() })
-      .where(eq(companyContacts.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteContact(id: string): Promise<boolean> {
-    const result = await db
-      .delete(companyContacts)
-      .where(eq(companyContacts.id, id));
-    return result.rowCount > 0;
-  }
+  // Removed duplicate createContact, updateContact, deleteContact methods (already exist above)
 
   async getUserByName(name: string): Promise<User | undefined> {
     const [user] = await db
@@ -3928,20 +3814,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getContactsByCompany(
-    companyId: string,
-    tenantId: string
-  ): Promise<CompanyContact[]> {
-    return await db
-      .select()
-      .from(companyContacts)
-      .where(
-        and(
-          eq(companyContacts.companyId, companyId),
-          eq(companyContacts.tenantId, tenantId)
-        )
-      );
-  }
+  // Removed duplicate getContactsByCompany method (already exists above)
 
   // Tenant management methods
   async getTenantBySlug(slug: string): Promise<any> {
@@ -4082,14 +3955,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getUserCustomerAssignments(
-    userId: string
-  ): Promise<UserCustomerAssignment[]> {
-    return await db
-      .select()
-      .from(userCustomerAssignments)
-      .where(eq(userCustomerAssignments.userId, userId));
-  }
+  // Removed duplicate getUserCustomerAssignments method (already exists above)
 
   async deleteUserCustomerAssignments(userId: string): Promise<boolean> {
     const result = await db
@@ -4206,179 +4072,9 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
 
-  // Customer detail methods - for comprehensive customer information
-  async getCustomerEquipment(
-    customerId: string,
-    tenantId: string
-  ): Promise<any[]> {
-    try {
-      return await db
-        .select({
-          id: equipment.id,
-          customerId: equipment.customerId,
-          equipmentType: equipment.equipmentType,
-          make: equipment.make,
-          model: equipment.model,
-          serialNumber: equipment.serialNumber,
-          installDate: equipment.installDate,
-          location: equipment.location,
-          status: equipment.status,
-          createdAt: equipment.createdAt,
-        })
-        .from(equipment)
-        .where(
-          and(
-            eq(equipment.customerId, customerId),
-            eq(equipment.tenantId, tenantId)
-          )
-        )
-        .orderBy(equipment.createdAt);
-    } catch (error) {
-      console.log("No equipment table found, returning empty array");
-      return [];
-    }
-  }
+  // Removed duplicate getCustomerEquipment method (already exists above)
 
-  async getCustomerMeterReadings(
-    customerId: string,
-    tenantId: string
-  ): Promise<any[]> {
-    try {
-      // First get equipment for this customer
-      const customerEquipment = await this.getCustomerEquipment(
-        customerId,
-        tenantId
-      );
-      if (customerEquipment.length === 0) {
-        return [];
-      }
-
-      const equipmentIds = customerEquipment.map((e) => e.id);
-
-      return await db
-        .select({
-          id: meterReadings.id,
-          equipmentId: meterReadings.equipmentId,
-          contractId: meterReadings.contractId,
-          readingDate: meterReadings.readingDate,
-          blackMeter: meterReadings.blackMeter,
-          colorMeter: meterReadings.colorMeter,
-          blackCopies: meterReadings.blackCopies,
-          colorCopies: meterReadings.colorCopies,
-          collectionMethod: meterReadings.collectionMethod,
-          billingStatus: meterReadings.billingStatus,
-          billingAmount: meterReadings.billingAmount,
-          createdAt: meterReadings.createdAt,
-        })
-        .from(meterReadings)
-        .where(
-          and(
-            sql`${meterReadings.equipmentId} = ANY(${equipmentIds})`,
-            eq(meterReadings.tenantId, tenantId)
-          )
-        )
-        .orderBy(meterReadings.readingDate);
-    } catch (error) {
-      console.log("No meter readings found, returning empty array");
-      return [];
-    }
-  }
-
-  async getCustomerInvoices(
-    customerId: string,
-    tenantId: string
-  ): Promise<any[]> {
-    try {
-      return await db
-        .select({
-          id: invoices.id,
-          customerId: invoices.customerId,
-          invoiceNumber: invoices.invoiceNumber,
-          billingPeriodStart: invoices.billingPeriodStart,
-          billingPeriodEnd: invoices.billingPeriodEnd,
-          totalAmount: invoices.totalAmount,
-          status: invoices.status,
-          dueDate: invoices.dueDate,
-          paidDate: invoices.paidDate,
-          createdAt: invoices.createdAt,
-        })
-        .from(invoices)
-        .where(
-          and(
-            eq(invoices.customerId, customerId),
-            eq(invoices.tenantId, tenantId)
-          )
-        )
-        .orderBy(invoices.createdAt);
-    } catch (error) {
-      console.log("No invoices found, returning empty array");
-      return [];
-    }
-  }
-
-  async getCustomerServiceTickets(
-    customerId: string,
-    tenantId: string
-  ): Promise<any[]> {
-    try {
-      return await db
-        .select({
-          id: serviceTickets.id,
-          customerId: serviceTickets.customerId,
-          equipmentId: serviceTickets.equipmentId,
-          ticketNumber: serviceTickets.ticketNumber,
-          title: serviceTickets.title,
-          description: serviceTickets.description,
-          priority: serviceTickets.priority,
-          status: serviceTickets.status,
-          assignedTechnicianId: serviceTickets.assignedTechnicianId,
-          scheduledDate: serviceTickets.scheduledDate,
-          createdAt: serviceTickets.createdAt,
-        })
-        .from(serviceTickets)
-        .where(
-          and(
-            eq(serviceTickets.customerId, customerId),
-            eq(serviceTickets.tenantId, tenantId)
-          )
-        )
-        .orderBy(serviceTickets.createdAt);
-    } catch (error) {
-      console.log("No service tickets found, returning empty array");
-      return [];
-    }
-  }
-
-  async getCustomerContracts(
-    customerId: string,
-    tenantId: string
-  ): Promise<any[]> {
-    try {
-      return await db
-        .select({
-          id: contracts.id,
-          customerId: contracts.customerId,
-          contractNumber: contracts.contractNumber,
-          contractType: contracts.contractType,
-          startDate: contracts.startDate,
-          endDate: contracts.endDate,
-          status: contracts.status,
-          monthlyRate: contracts.monthlyRate,
-          createdAt: contracts.createdAt,
-        })
-        .from(contracts)
-        .where(
-          and(
-            eq(contracts.customerId, customerId),
-            eq(contracts.tenantId, tenantId)
-          )
-        )
-        .orderBy(contracts.createdAt);
-    } catch (error) {
-      console.log("No contracts found, returning empty array");
-      return [];
-    }
-  }
+  // Removed duplicate customer data methods (getCustomerMeterReadings, getCustomerInvoices, getCustomerServiceTickets, getCustomerContracts) - already exist above
 
   async createDeliverySchedule(data: any): Promise<any> {
     return {

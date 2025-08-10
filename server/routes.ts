@@ -2939,7 +2939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerPredictions: {
           churnPrediction: {
             totalCustomersAnalyzed: 1247,
-            highRiskCustomers: 89,
+            highRiskCustomersCount: 89,
             mediumRiskCustomers: 234,
             lowRiskCustomers: 924,
             predictionAccuracy: 89.4,
