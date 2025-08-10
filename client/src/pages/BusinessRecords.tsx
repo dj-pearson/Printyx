@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { MainLayout } from '@/components/layout/main-layout';
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ interface BusinessRecord {
   primaryContactName: string;
   primaryContactEmail: string;
   primaryContactPhone: string;
+  urlSlug?: string;
   source?: string;
   estimatedDealValue?: number;
   lastContactDate?: string;
@@ -111,6 +113,7 @@ export default function BusinessRecords() {
   const [editingRecord, setEditingRecord] = useState<BusinessRecord | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location, setLocation] = useLocation();
 
   // Fetch all business records
   const { data: businessRecords = [], isLoading, refetch } = useQuery({
@@ -387,7 +390,19 @@ export default function BusinessRecords() {
                         <div className="flex items-center space-x-2">
                           <Building2 className="w-4 h-4 text-muted-foreground" />
                           <div>
-                            <div className="font-medium">{record.companyName}</div>
+                            <div className="font-medium">
+                              <button
+                                className="text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                onClick={() => {
+                                  const path = record.recordType === 'customer' 
+                                    ? `/customers/${record.urlSlug || record.id}`
+                                    : `/leads/${record.urlSlug || record.id}`;
+                                  setLocation(path);
+                                }}
+                              >
+                                {record.companyName}
+                              </button>
+                            </div>
                             <div className="text-sm text-muted-foreground">
                               {record.primaryContactName}
                             </div>
