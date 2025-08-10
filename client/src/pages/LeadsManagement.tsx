@@ -441,19 +441,10 @@ export default function LeadsManagement() {
     });
   };
 
-  // Generate descriptive URL slug from company name
-  const generateLeadSlug = (companyName: string): string => {
-    if (!companyName) return 'unnamed-company';
-    return companyName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  };
-
-  // Handle lead row click to navigate to detail page with descriptive URL
-  const handleLeadClick = (lead: Lead) => {
-    const slug = generateLeadSlug(lead.companyName || lead.businessName || 'Unnamed Company');
-    setLocation(`/leads/${slug}?id=${lead.id}`);
+  // Handle lead row click to navigate to detail page with URL slug
+  const handleLeadClick = (lead: any) => {
+    const urlSlug = lead.urlSlug || lead.url_slug || lead.id;
+    setLocation(`/leads/${urlSlug}`);
   };
 
   // Render table cell content based on column type
