@@ -1,12 +1,17 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useSeo } from "@/lib/useSeo";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import Homepage from "@/pages/marketing/Homepage";
+import CopierDealerCRM from "@/pages/marketing/CopierDealerCRM";
+import PrintServiceDispatchMobile from "@/pages/marketing/PrintServiceDispatchMobile";
+import CanonMasterProductCatalog from "@/pages/marketing/CanonMasterProductCatalog";
 import Dashboard from "@/pages/dashboard";
 import Customers from "@/pages/customers";
 import CRMEnhanced from "@/pages/CRMEnhanced";
@@ -88,6 +93,7 @@ import SecurityManagement from "@/pages/SecurityManagement";
 import SystemMonitoring from "@/pages/SystemMonitoring";
 import AccessControl from "@/pages/AccessControl";
 import RootAdminDashboard from "@/pages/RootAdminDashboard";
+import RootAdminSEO from "@/pages/RootAdminSEO";
 import PlatformConfiguration from "@/pages/PlatformConfiguration";
 import DatabaseManagement from "@/pages/DatabaseManagement";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
@@ -121,6 +127,8 @@ import DocumentBuilder from "@/pages/DocumentBuilder";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [pathname] = useLocation();
+  useSeo(pathname);
 
   return (
     <Switch>
@@ -138,6 +146,15 @@ function Router() {
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
           <Route path="/" component={Homepage} />
+          <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
+          <Route
+            path="/p/print-service-dispatch-mobile"
+            component={PrintServiceDispatchMobile}
+          />
+          <Route
+            path="/p/master-product-catalog-canon-imagerunner"
+            component={CanonMasterProductCatalog}
+          />
           <Route component={Homepage} />
         </Switch>
       ) : (
@@ -392,6 +409,7 @@ function Router() {
           <Route path="/role-management" component={RoleManagement} />
           <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
           <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
+          <Route path="/root-admin/seo" component={RootAdminSEO} />
           <Route
             path="/platform-configuration"
             component={PlatformConfiguration}

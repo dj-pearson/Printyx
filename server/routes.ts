@@ -7642,6 +7642,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public: robots.txt
+  app.get("/robots.txt", async (_req, res) => {
+    try {
+      const settingsRows = await db.select().from(seoSettings).limit(1);
+      const settings = settingsRows[0] as any;
+      const baseUrl =
+        settings?.siteUrl?.replace(/\/$/, "") || "https://printyx.net";
+      const allowIndexing = true; // If needed later, wire to settings
+      const lines = [
+        `User-agent: *`,
+        allowIndexing ? `Allow: /` : `Disallow: /`,
+        `Disallow: /api/`,
+        `Disallow: /admin/`,
+        `Disallow: /root-admin/`,
+        `Disallow: /database-management`,
+        `Disallow: /role-management`,
+        `Disallow: /gpt5-dashboard`,
+        `Disallow: /settings`,
+        `Disallow: /customers`,
+        `Disallow: /crm`,
+        `Disallow: /service-`,
+        `Disallow: /quotes`,
+        `Disallow: /proposal-`,
+        `Sitemap: ${baseUrl}/sitemap.xml`,
+        `LLMS: ${baseUrl}/llms.txt`,
+      ];
+      res.header("Content-Type", "text/plain").send(lines.join("\n"));
+    } catch (_e) {
+      res
+        .header("Content-Type", "text/plain")
+        .send(
+          "User-agent: *\nAllow: /\nSitemap: https://printyx.net/sitemap.xml\nLLMS: https://printyx.net/llms.txt\n"
+        );
+    }
+  });
+
+  // Public: meta.json — returns meta for a given path
+  app.get("/meta.json", async (req, res) => {
+    try {
+      const path = String(req.query.path || "/");
+      const [page] = await db
+        .select()
+        .from(seoPages)
+        .where(eq(seoPages.path, path))
+        .limit(1);
+      const [settings] = await db.select().from(seoSettings).limit(1);
+      const include = (page as any)?.includeInSitemap !== false;
+      const payload = {
+        title:
+          (page as any)?.title ||
+          (settings as any)?.defaultTitle ||
+          (settings as any)?.siteName ||
+          "Printyx",
+        description:
+          (page as any)?.description ||
+          (settings as any)?.defaultDescription ||
+          "",
+        ogImage: (settings as any)?.defaultOgImage || null,
+        twitterHandle: (settings as any)?.twitterHandle || null,
+        robots: include ? "index,follow" : "noindex,nofollow",
+      };
+      res.json(payload);
+    } catch (error: any) {
+      res.json({
+        title: "Printyx",
+        description: "",
+        robots: "noindex,nofollow",
+      });
+    }
+  });
+
   // Public: AI/LLM crawler directives (llms.txt)
   app.get("/llms.txt", async (_req, res) => {
     try {
@@ -7728,6 +7799,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .json({ message: "Failed to load SEO pages", detail: error?.message });
     }
   });
+
+  // Seed baseline SEO settings and core pages on boot (non-blocking)
+  (async () => {
+    try {
+      const [settings] = await db.select().from(seoSettings).limit(1);
+      if (!settings) {
+        await db.insert(seoSettings).values({
+          siteName: "Printyx",
+          siteUrl: "https://printyx.net",
+          defaultTitle: "Printyx — Print Fleet CRM, Service, Finance Platform",
+          defaultDescription:
+            "Printyx unifies CRM, Service, Product, and Finance workflows for print dealers. Master catalog, inventory, billing, and analytics in one platform.",
+          allowAiCrawling: true,
+          sitemapChangefreq: "weekly",
+          sitemapPriorityDefault: "0.5" as any,
+        } as any);
+      }
+
+      const corePages: Array<{
+        path: string;
+        title: string;
+        description: string;
+        changefreq?: string;
+        priority?: string | number;
+        schemaType?: string | null;
+        schemaData?: any;
+      }> = [
+        {
+          path: "/",
+          title: "Printyx — Print Fleet CRM, Service, Finance Platform",
+          description:
+            "All-in-one platform: CRM, Service, Inventory, Billing, and Reporting for print dealers.",
+          changefreq: "weekly",
+          priority: "1.0",
+          schemaType: "Organization",
+          schemaData: {
+            name: "Printyx",
+            url: "https://printyx.net",
+          },
+        },
+        {
+          path: "/product-hub",
+          title: "Product Hub — Catalog, Inventory, and POs",
+          description:
+            "Manage master catalog, enable products, inventory, purchase orders, and warehouse ops.",
+          changefreq: "weekly",
+          priority: "0.8",
+          schemaType: "Service",
+          schemaData: {
+            name: "Product Management",
+            serviceType: "Inventory and Catalog Management",
+          },
+        },
+        {
+          path: "/product-catalog",
+          title:
+            "Master Product Catalog — Canon imageRUNNER, imagePRESS, Accessories",
+          description:
+            "Browse the master catalog. Enable equipment and accessories for your tenant with pricing overrides.",
+          changefreq: "weekly",
+          priority: "0.8",
+          schemaType: "Service",
+          schemaData: {
+            name: "Master Product Catalog",
+          },
+        },
+        {
+          path: "/crm",
+          title: "CRM — Leads, Deals, Quotes, Proposals",
+          description:
+            "End-to-end sales workflow with activities, quotes, proposals, and pipeline forecasting.",
+          changefreq: "weekly",
+          priority: "0.7",
+          schemaType: "SoftwareApplication",
+          schemaData: {
+            name: "Printyx CRM",
+            applicationCategory: "BusinessApplication",
+          },
+        },
+        {
+          path: "/service-hub",
+          title: "Service Hub — Dispatch, PM, Field Operations",
+          description:
+            "Ticketing, dispatch optimization, preventive maintenance, and mobile field service.",
+          changefreq: "weekly",
+          priority: "0.7",
+          schemaType: "Service",
+          schemaData: { name: "Printyx Service" },
+        },
+        {
+          path: "/reports",
+          title: "Reports — Sales, Service, Finance KPIs",
+          description:
+            "Unified reporting across CRM, Service, Finance, and Product. Standardized KPIs and dashboards.",
+          changefreq: "monthly",
+          priority: "0.6",
+          schemaType: "WebSite",
+          schemaData: { name: "Printyx Reports" },
+        },
+      ];
+
+      for (const p of corePages) {
+        const [existing] = await db
+          .select()
+          .from(seoPages)
+          .where(eq(seoPages.path, p.path))
+          .limit(1);
+        if (!existing) {
+          await db.insert(seoPages).values({
+            path: p.path,
+            title: p.title,
+            description: p.description,
+            changefreq: (p.changefreq as any) || undefined,
+            priority: (p.priority as any) || undefined,
+            schemaType: (p.schemaType as any) || null,
+            schemaData: (p.schemaData as any) || null,
+            includeInSitemap: true,
+            lastmod: new Date(),
+          } as any);
+        }
+      }
+    } catch (e) {
+      console.warn("SEO bootstrap skipped:", (e as any)?.message);
+    }
+  })();
 
   // Admin-only: Import master catalog models (CSV)
   app.post(
