@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { businessRecords } from "../../shared/schema.js";
 import { db } from "../db.js";
 
@@ -69,19 +69,23 @@ export function generateUrlSlug(
  * Validates that a URL slug is unique within a tenant
  */
 export async function isSlugUnique(slug: string, tenantId: string, excludeId?: string): Promise<boolean> {
-  const whereConditions = [
-    sql`${businessRecords.tenantId} = ${tenantId}`,
-    sql`${businessRecords.urlSlug} = ${slug}`
-  ];
+  let whereCondition = and(
+    eq(businessRecords.tenantId, tenantId),
+    eq(businessRecords.urlSlug, slug)
+  );
 
   if (excludeId) {
-    whereConditions.push(sql`${businessRecords.id} != ${excludeId}`);
+    whereCondition = and(
+      eq(businessRecords.tenantId, tenantId),
+      eq(businessRecords.urlSlug, slug),
+      sql`${businessRecords.id} != ${excludeId}`
+    );
   }
 
   const existing = await db
     .select({ id: businessRecords.id })
     .from(businessRecords)
-    .where(sql`${whereConditions.join(' AND ')}`)
+    .where(whereCondition)
     .limit(1);
 
   return existing.length === 0;
