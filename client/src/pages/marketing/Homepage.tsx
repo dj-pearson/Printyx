@@ -417,7 +417,7 @@ const Homepage = () => {
               }`}
             >
               <Badge className="mb-4 bg-amber-100 text-amber-900 border-amber-300">
-                New site — Early Access
+                Early Access
               </Badge>
 
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
@@ -538,19 +538,6 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* Early Access Notice */}
-      <section className="py-12 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-            <div className="font-semibold mb-1">Honest note</div>
-            <p className="text-sm">
-              This is a new site and we’re actively shipping improvements each
-              week. If something feels rough, it’s because we’re prioritizing
-              function over flash. Your feedback shapes what we build next.
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Features Section */}
       <section id="features" className="py-24 bg-gray-50">
