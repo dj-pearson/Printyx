@@ -87,6 +87,75 @@ export async function apiRequest(
   return await res.json();
 }
 
+// Form-data aware request that preserves multipart encoding and still injects CSRF/tenant/demo headers
+export async function apiFormRequest(
+  url: string,
+  method: string = "POST",
+  formData: FormData,
+  extraHeaders?: Record<string, string>
+): Promise<any> {
+  const requestHeaders: HeadersInit = {
+    ...extraHeaders,
+  };
+
+  // Demo auth
+  if (
+    typeof window !== "undefined" &&
+    localStorage.getItem("demo-authenticated") === "true"
+  ) {
+    requestHeaders["X-Demo-Auth"] = "true";
+  }
+
+  // Tenant header
+  if (typeof window !== "undefined") {
+    const tenantId =
+      localStorage.getItem("demo-tenant-id") ||
+      "550e8400-e29b-41d4-a716-446655440000";
+    if (tenantId) requestHeaders["x-tenant-id"] = tenantId;
+  }
+
+  // CSRF token
+  async function getCsrfToken(): Promise<string | undefined> {
+    if (__csrfToken) return __csrfToken;
+    try {
+      const res = await fetch("/api/csrf-token", { credentials: "include" });
+      if (!res.ok) return undefined;
+      const data = await res.json();
+      __csrfToken = data?.csrfToken || data?.token || data?.csrf;
+      return __csrfToken;
+    } catch {
+      return undefined;
+    }
+  }
+
+  const token = await getCsrfToken();
+  if (token) (requestHeaders as any)["x-csrf-token"] = token;
+
+  let res = await fetch(url, {
+    method,
+    headers: requestHeaders,
+    body: formData,
+    credentials: "include",
+  });
+
+  if (res.status === 403) {
+    __csrfToken = undefined;
+    const newToken = await getCsrfToken();
+    if (newToken) {
+      (requestHeaders as any)["x-csrf-token"] = newToken;
+      res = await fetch(url, {
+        method,
+        headers: requestHeaders,
+        body: formData,
+        credentials: "include",
+      });
+    }
+  }
+
+  await throwIfResNotOk(res);
+  return await res.json();
+}
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
