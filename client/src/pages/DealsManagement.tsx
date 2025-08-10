@@ -486,15 +486,7 @@ export default function DealsManagement() {
           : undefined,
       };
 
-      const response = await fetch("/api/deals", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(dealData),
-      });
-      return response.json();
+      return await apiRequest("/api/deals", "POST", dealData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
@@ -525,15 +517,7 @@ export default function DealsManagement() {
       dealId: string;
       stageId: string;
     }) => {
-      const response = await fetch(`/api/deals/${dealId}/stage`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ stageId }),
-      });
-      return response.json();
+      return await apiRequest(`/api/deals/${dealId}/stage`, "PUT", { stageId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
@@ -560,18 +544,9 @@ export default function DealsManagement() {
       dealId: string;
       expectedCloseDate: string;
     }) => {
-      const response = await fetch(`/api/deals/${dealId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ expectedCloseDate }),
+      return await apiRequest(`/api/deals/${dealId}`, "PUT", {
+        expectedCloseDate,
       });
-      if (!response.ok) {
-        throw new Error("Failed to update close date");
-      }
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
