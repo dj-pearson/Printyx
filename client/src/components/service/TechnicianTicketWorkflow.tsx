@@ -1,19 +1,31 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  MapPin, 
-  Clock, 
-  User, 
+import {
+  MapPin,
+  Clock,
+  User,
   Wrench,
   CheckCircle,
   AlertTriangle,
@@ -28,7 +40,7 @@ import {
   Settings,
   Clipboard,
   Upload,
-  Send
+  Send,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,13 +52,41 @@ interface TechnicianTicketWorkflowProps {
 }
 
 const workflowSteps = [
-  { id: 'check_in', name: 'Check-In', description: 'Arrive and check-in at customer location' },
-  { id: 'initial_assessment', name: 'Initial Assessment', description: 'Assess the situation and equipment' },
-  { id: 'diagnosis', name: 'Diagnosis', description: 'Diagnose the issue and identify solution' },
-  { id: 'customer_approval', name: 'Customer Approval', description: 'Get customer approval for work and costs' },
-  { id: 'work_execution', name: 'Work Execution', description: 'Perform the actual repair/service work' },
-  { id: 'testing', name: 'Testing', description: 'Test the solution and verify functionality' },
-  { id: 'completion', name: 'Completion', description: 'Complete the work and get customer sign-off' },
+  {
+    id: "check_in",
+    name: "Check-In",
+    description: "Arrive and check-in at customer location",
+  },
+  {
+    id: "initial_assessment",
+    name: "Initial Assessment",
+    description: "Assess the situation and equipment",
+  },
+  {
+    id: "diagnosis",
+    name: "Diagnosis",
+    description: "Diagnose the issue and identify solution",
+  },
+  {
+    id: "customer_approval",
+    name: "Customer Approval",
+    description: "Get customer approval for work and costs",
+  },
+  {
+    id: "work_execution",
+    name: "Work Execution",
+    description: "Perform the actual repair/service work",
+  },
+  {
+    id: "testing",
+    name: "Testing",
+    description: "Test the solution and verify functionality",
+  },
+  {
+    id: "completion",
+    name: "Completion",
+    description: "Complete the work and get customer sign-off",
+  },
 ];
 
 const checkInSchema = z.object({
@@ -57,7 +97,7 @@ const checkInSchema = z.object({
 
 const assessmentSchema = z.object({
   issueConfirmed: z.boolean(),
-  equipmentCondition: z.enum(['good', 'fair', 'poor', 'critical']),
+  equipmentCondition: z.enum(["good", "fair", "poor", "critical"]),
   initialFindings: z.string(),
   estimatedDuration: z.number(),
   photosUploaded: z.boolean().default(false),
@@ -66,12 +106,16 @@ const assessmentSchema = z.object({
 const diagnosisSchema = z.object({
   rootCause: z.string(),
   proposedSolution: z.string(),
-  partsNeeded: z.array(z.object({
-    partNumber: z.string(),
-    description: z.string(),
-    quantity: z.number(),
-    estimatedCost: z.number().optional(),
-  })).default([]),
+  partsNeeded: z
+    .array(
+      z.object({
+        partNumber: z.string(),
+        description: z.string(),
+        quantity: z.number(),
+        estimatedCost: z.number().optional(),
+      })
+    )
+    .default([]),
   laborHours: z.number(),
   totalEstimatedCost: z.number(),
   customerCommunication: z.string(),
@@ -87,11 +131,15 @@ const approvalSchema = z.object({
 const workExecutionSchema = z.object({
   workStartTime: z.string(),
   workDescription: z.string(),
-  partsUsed: z.array(z.object({
-    partNumber: z.string(),
-    quantity: z.number(),
-    serialNumber: z.string().optional(),
-  })).default([]),
+  partsUsed: z
+    .array(
+      z.object({
+        partNumber: z.string(),
+        quantity: z.number(),
+        serialNumber: z.string().optional(),
+      })
+    )
+    .default([]),
   actualLaborHours: z.number(),
   complications: z.string().optional(),
   photosUploaded: z.boolean().default(false),
@@ -107,7 +155,13 @@ const testingSchema = z.object({
 
 const completionSchema = z.object({
   workCompleted: z.boolean(),
-  customerSatisfaction: z.enum(['very_satisfied', 'satisfied', 'neutral', 'dissatisfied', 'very_dissatisfied']),
+  customerSatisfaction: z.enum([
+    "very_satisfied",
+    "satisfied",
+    "neutral",
+    "dissatisfied",
+    "very_dissatisfied",
+  ]),
   customerSignature: z.string(),
   followUpRequired: z.boolean().default(false),
   followUpReason: z.string().optional(),
@@ -115,7 +169,10 @@ const completionSchema = z.object({
   endTime: z.string(),
 });
 
-export default function TechnicianTicketWorkflow({ ticket, onClose }: TechnicianTicketWorkflowProps) {
+export default function TechnicianTicketWorkflow({
+  ticket,
+  onClose,
+}: TechnicianTicketWorkflowProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -142,9 +199,11 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
           .filter((step: any) => step.stepCompleted)
           .map((step: any) => step.stepName);
         setCompletedSteps(completed);
-        
+
         // Set current step to first incomplete step
-        const nextStepIndex = workflowSteps.findIndex(step => !completed.includes(step.id));
+        const nextStepIndex = workflowSteps.findIndex(
+          (step) => !completed.includes(step.id)
+        );
         if (nextStepIndex !== -1) {
           setCurrentStep(nextStepIndex);
         }
@@ -157,20 +216,18 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
     mutationFn: async (data: any) => {
       if (!sessionId) {
         // Create new session first
-        const sessionResponse = await fetch(`/api/service-tickets/${ticket.id}/check-in`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!sessionResponse.ok) throw new Error("Failed to check in");
-        const sessionData = await sessionResponse.json();
+        const sessionData = await apiRequest(
+          `/api/service-tickets/${ticket.id}/check-in`,
+          "POST",
+          data
+        );
         setSessionId(sessionData.sessionId);
         return sessionData;
       }
       return { sessionId };
     },
     onSuccess: () => {
-      setCompletedSteps(prev => [...prev, 'check_in']);
+      setCompletedSteps((prev) => [...prev, "check_in"]);
       setCurrentStep(1);
       toast({ title: "Success", description: "Checked in successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/technician-sessions"] });
@@ -179,17 +236,20 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
 
   // Step completion mutation
   const completeStepMutation = useMutation({
-    mutationFn: async ({ stepName, stepData }: { stepName: string; stepData: any }) => {
-      const response = await fetch(`/api/technician-sessions/${sessionId}/complete-step`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stepName, stepData }),
-      });
-      if (!response.ok) throw new Error("Failed to complete step");
-      return response.json();
-    },
+    mutationFn: async ({
+      stepName,
+      stepData,
+    }: {
+      stepName: string;
+      stepData: any;
+    }) =>
+      apiRequest(
+        `/api/technician-sessions/${sessionId}/complete-step`,
+        "POST",
+        { stepName, stepData }
+      ),
     onSuccess: (_, { stepName }) => {
-      setCompletedSteps(prev => [...prev, stepName]);
+      setCompletedSteps((prev) => [...prev, stepName]);
       const nextStepIndex = currentStep + 1;
       if (nextStepIndex < workflowSteps.length) {
         setCurrentStep(nextStepIndex);
@@ -204,8 +264,8 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
     resolver: zodResolver(checkInSchema),
     defaultValues: {
       arrivalTime: new Date().toISOString().slice(0, 16),
-      gpsLocation: '',
-      notes: '',
+      gpsLocation: "",
+      notes: "",
     },
   });
 
@@ -214,8 +274,8 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
     resolver: zodResolver(assessmentSchema),
     defaultValues: {
       issueConfirmed: true,
-      equipmentCondition: 'fair' as const,
-      initialFindings: '',
+      equipmentCondition: "fair" as const,
+      initialFindings: "",
       estimatedDuration: 1,
       photosUploaded: false,
     },
@@ -225,12 +285,12 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
   const diagnosisForm = useForm({
     resolver: zodResolver(diagnosisSchema),
     defaultValues: {
-      rootCause: '',
-      proposedSolution: '',
+      rootCause: "",
+      proposedSolution: "",
       partsNeeded: [],
       laborHours: 1,
       totalEstimatedCost: 0,
-      customerCommunication: '',
+      customerCommunication: "",
     },
   });
 
@@ -247,7 +307,7 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
     if (!step) return null;
 
     switch (step.id) {
-      case 'check_in':
+      case "check_in":
         return (
           <Card>
             <CardHeader>
@@ -260,26 +320,29 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={checkInForm.handleSubmit(handleCheckIn)} className="space-y-4">
+              <form
+                onSubmit={checkInForm.handleSubmit(handleCheckIn)}
+                className="space-y-4"
+              >
                 <div>
                   <Label>Arrival Time</Label>
                   <Input
                     type="datetime-local"
-                    {...checkInForm.register('arrivalTime')}
+                    {...checkInForm.register("arrivalTime")}
                   />
                 </div>
                 <div>
                   <Label>GPS Location (Optional)</Label>
                   <Input
                     placeholder="Current location coordinates"
-                    {...checkInForm.register('gpsLocation')}
+                    {...checkInForm.register("gpsLocation")}
                   />
                 </div>
                 <div>
                   <Label>Initial Notes</Label>
                   <Textarea
                     placeholder="Any initial observations or notes"
-                    {...checkInForm.register('notes')}
+                    {...checkInForm.register("notes")}
                   />
                 </div>
                 <Button type="submit" disabled={checkInMutation.isPending}>
@@ -291,7 +354,7 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
           </Card>
         );
 
-      case 'initial_assessment':
+      case "initial_assessment":
         return (
           <Card>
             <CardHeader>
@@ -304,7 +367,12 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={assessmentForm.handleSubmit((data) => handleStepCompletion('initial_assessment', data))} className="space-y-4">
+              <form
+                onSubmit={assessmentForm.handleSubmit((data) =>
+                  handleStepCompletion("initial_assessment", data)
+                )}
+                className="space-y-4"
+              >
                 <div className="flex items-center space-x-2">
                   <Controller
                     name="issueConfirmed"
@@ -318,14 +386,17 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
                   />
                   <Label>Issue confirmed as reported</Label>
                 </div>
-                
+
                 <div>
                   <Label>Equipment Condition</Label>
                   <Controller
                     name="equipmentCondition"
                     control={assessmentForm.control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -344,7 +415,7 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
                   <Label>Initial Findings</Label>
                   <Textarea
                     placeholder="Describe what you've found during initial assessment"
-                    {...assessmentForm.register('initialFindings')}
+                    {...assessmentForm.register("initialFindings")}
                   />
                 </div>
 
@@ -353,7 +424,9 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
                   <Input
                     type="number"
                     step="0.5"
-                    {...assessmentForm.register('estimatedDuration', { valueAsNumber: true })}
+                    {...assessmentForm.register("estimatedDuration", {
+                      valueAsNumber: true,
+                    })}
                   />
                 </div>
 
@@ -397,8 +470,10 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
                 <li>Customer interaction tracking</li>
                 <li>Real-time progress updates</li>
               </ul>
-              <Button 
-                onClick={() => handleStepCompletion(step.id, { completed: true })}
+              <Button
+                onClick={() =>
+                  handleStepCompletion(step.id, { completed: true })
+                }
                 className="mt-4"
                 disabled={completeStepMutation.isPending}
               >
@@ -433,23 +508,23 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
                   {completedSteps.length} of {workflowSteps.length} completed
                 </span>
               </div>
-              <Progress 
-                value={(completedSteps.length / workflowSteps.length) * 100} 
+              <Progress
+                value={(completedSteps.length / workflowSteps.length) * 100}
                 className="h-2"
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium">Priority:</span>
                 <Badge variant="secondary" className="ml-2">
-                  {ticket.priority || 'Medium'}
+                  {ticket.priority || "Medium"}
                 </Badge>
               </div>
               <div>
                 <span className="font-medium">Status:</span>
                 <Badge variant="outline" className="ml-2">
-                  {ticket.status?.replace('_', ' ') || 'New'}
+                  {ticket.status?.replace("_", " ") || "New"}
                 </Badge>
               </div>
               <div>
@@ -458,7 +533,9 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
               </div>
               <div>
                 <span className="font-medium">Address:</span>
-                <span className="ml-2">{ticket.customerAddress || 'Not specified'}</span>
+                <span className="ml-2">
+                  {ticket.customerAddress || "Not specified"}
+                </span>
               </div>
             </div>
           </div>
@@ -476,16 +553,18 @@ export default function TechnicianTicketWorkflow({ ticket, onClose }: Technician
               <Button
                 key={step.id}
                 variant={
-                  completedSteps.includes(step.id) 
+                  completedSteps.includes(step.id)
                     ? "default"
-                    : index === currentStep 
-                    ? "outline" 
+                    : index === currentStep
+                    ? "outline"
                     : "ghost"
                 }
                 size="sm"
                 onClick={() => setCurrentStep(index)}
                 className={`flex items-center gap-2 ${
-                  completedSteps.includes(step.id) ? 'bg-green-600 hover:bg-green-700' : ''
+                  completedSteps.includes(step.id)
+                    ? "bg-green-600 hover:bg-green-700"
+                    : ""
                 }`}
               >
                 {completedSteps.includes(step.id) ? (
