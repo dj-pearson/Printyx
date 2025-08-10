@@ -95,10 +95,12 @@ export default function Contracts() {
 
   const createContractMutation = useMutation({
     mutationFn: async () => {
-      const selectedQuote = (availableQuotes as any[]).find((q) => q.id === selectedQuoteId);
+      const selectedQuote = (availableQuotes as any[]).find(
+        (q) => q.id === selectedQuoteId
+      );
       const customerId = contractForm.customerId || selectedQuote?.customerId;
-      
-      console.log('Creating contract with:', {
+
+      console.log("Creating contract with:", {
         selectedQuoteId,
         selectedQuote,
         customerId,
@@ -106,7 +108,9 @@ export default function Contracts() {
       });
 
       if (!customerId) {
-        throw new Error('No customer ID available. Please select a quote with a linked customer or select a customer manually.');
+        throw new Error(
+          "No customer ID available. Please select a quote with a linked customer or select a customer manually."
+        );
       }
 
       const payload: any = {
@@ -126,17 +130,7 @@ export default function Contracts() {
         sourceQuoteId: selectedQuoteId || undefined,
         terms: contractForm.terms,
       };
-      const res = await fetch("/api/contracts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Failed to create contract");
-      }
-      return res.json();
+      return await apiRequest("/api/contracts", "POST", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });

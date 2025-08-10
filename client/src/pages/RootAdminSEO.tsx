@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MainLayout } from "@/components/layout/main-layout";
@@ -32,17 +38,7 @@ export default function RootAdminSEO() {
 
   const upsertSettings = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await fetch("/api/seo/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Failed to save settings");
-      }
-      return res.json();
+      return await apiRequest("/api/seo/settings", "POST", payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/seo/settings"] });
@@ -59,17 +55,7 @@ export default function RootAdminSEO() {
 
   const upsertPage = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await fetch("/api/seo/pages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Failed to save page");
-      }
-      return res.json();
+      return await apiRequest("/api/seo/pages", "POST", payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/seo/pages"] });
@@ -93,12 +79,7 @@ export default function RootAdminSEO() {
   // Add mutations for regenerating static files
   const regenerateSitemap = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/seo/regenerate-sitemap", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to regenerate sitemap");
-      return res.text();
+      return await apiRequest("/api/seo/regenerate-sitemap", "POST");
     },
     onSuccess: () => {
       toast({ title: "Sitemap regenerated successfully!" });
@@ -114,12 +95,7 @@ export default function RootAdminSEO() {
 
   const regenerateRobots = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/seo/regenerate-robots", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to regenerate robots.txt");
-      return res.text();
+      return await apiRequest("/api/seo/regenerate-robots", "POST");
     },
     onSuccess: () => {
       toast({ title: "Robots.txt regenerated successfully!" });
@@ -135,12 +111,7 @@ export default function RootAdminSEO() {
 
   const regenerateLlms = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/seo/regenerate-llms", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to regenerate llms.txt");
-      return res.text();
+      return await apiRequest("/api/seo/regenerate-llms", "POST");
     },
     onSuccess: () => {
       toast({ title: "LLMs.txt regenerated successfully!" });
@@ -226,7 +197,8 @@ export default function RootAdminSEO() {
           <div>
             <h1 className="text-2xl font-semibold">SEO Management</h1>
             <p className="text-sm text-muted-foreground">
-              Manage sitemaps, meta tags, schema markup, and search engine optimization
+              Manage sitemaps, meta tags, schema markup, and search engine
+              optimization
             </p>
           </div>
         </div>
@@ -238,7 +210,8 @@ export default function RootAdminSEO() {
               Global SEO Settings
             </CardTitle>
             <CardDescription>
-              Configure default SEO settings that apply across your entire platform
+              Configure default SEO settings that apply across your entire
+              platform
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -293,7 +266,7 @@ export default function RootAdminSEO() {
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-2 items-center">
               <Button
                 onClick={() =>
@@ -310,7 +283,7 @@ export default function RootAdminSEO() {
               >
                 {upsertSettings.isPending ? "Saving..." : "Save Settings"}
               </Button>
-              
+
               <div className="flex gap-2 ml-4">
                 <Button
                   variant="outline"
@@ -320,9 +293,11 @@ export default function RootAdminSEO() {
                   className="flex items-center gap-1"
                 >
                   <FileText className="h-4 w-4" />
-                  {regenerateSitemap.isPending ? "Generating..." : "Generate Sitemap"}
+                  {regenerateSitemap.isPending
+                    ? "Generating..."
+                    : "Generate Sitemap"}
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -331,9 +306,11 @@ export default function RootAdminSEO() {
                   className="flex items-center gap-1"
                 >
                   <Bot className="h-4 w-4" />
-                  {regenerateRobots.isPending ? "Generating..." : "Generate Robots.txt"}
+                  {regenerateRobots.isPending
+                    ? "Generating..."
+                    : "Generate Robots.txt"}
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -342,11 +319,13 @@ export default function RootAdminSEO() {
                   className="flex items-center gap-1"
                 >
                   <Brain className="h-4 w-4" />
-                  {regenerateLlms.isPending ? "Generating..." : "Generate LLMs.txt"}
+                  {regenerateLlms.isPending
+                    ? "Generating..."
+                    : "Generate LLMs.txt"}
                 </Button>
               </div>
             </div>
-            
+
             <div className="flex gap-4 text-sm">
               <a
                 className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
@@ -386,148 +365,149 @@ export default function RootAdminSEO() {
               SEO Pages
             </CardTitle>
             <CardDescription>
-              Manage individual page SEO settings, meta tags, and structured data
+              Manage individual page SEO settings, meta tags, and structured
+              data
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Path</Label>
-              <Input
-                value={newPath}
-                onChange={(e) => setNewPath(e.target.value)}
-                placeholder="/product-catalog"
-              />
-            </div>
-            <div>
-              <Label>Schema Type</Label>
-              <Input
-                value={newSchemaType}
-                onChange={(e) => setNewSchemaType(e.target.value)}
-                placeholder="Service | Product | SoftwareApplication | Article | FAQPage | Organization"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label>Title</Label>
-              <Input
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-              />
-            </div>
-            <div className="col-span-2">
-              <Label>Description</Label>
-              <Textarea
-                rows={3}
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-              />
-            </div>
-            <div className="col-span-2">
-              <Label>Schema Data (JSON)</Label>
-              <Textarea
-                rows={6}
-                value={newSchemaData}
-                onChange={(e) => setNewSchemaData(e.target.value)}
-              />
-            </div>
-            <div className="col-span-2 flex items-end gap-2">
-              <div className="flex-1">
-                <Label>Presets</Label>
-                <select
-                  className="w-full border rounded h-9 px-2"
-                  onChange={(e) => {
-                    const preset = presetOptions.find(
-                      (p) => p.type === e.target.value
-                    );
-                    if (preset) {
-                      setNewSchemaType(preset.type);
-                      setNewSchemaData(JSON.stringify(preset.data, null, 2));
-                    }
-                  }}
-                  defaultValue=""
-                >
-                  <option value="" disabled>
-                    Select a schema preset
-                  </option>
-                  {presetOptions.map((p) => (
-                    <option key={p.type} value={p.type}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
+              <div>
+                <Label>Path</Label>
+                <Input
+                  value={newPath}
+                  onChange={(e) => setNewPath(e.target.value)}
+                  placeholder="/product-catalog"
+                />
               </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setNewSchemaType("");
-                  setNewSchemaData("");
-                }}
-              >
-                Clear
-              </Button>
-            </div>
-          </div>
-          <Button
-            onClick={() => {
-              let parsed: any = null;
-              try {
-                parsed = newSchemaData ? JSON.parse(newSchemaData) : null;
-              } catch (e) {
-                alert("Schema JSON is invalid");
-                return;
-              }
-              upsertPage.mutate({
-                path: newPath,
-                title: newTitle || null,
-                description: newDescription || null,
-                schemaType: newSchemaType || null,
-                schemaData: parsed,
-                includeInSitemap: true,
-              });
-            }}
-            disabled={upsertPage.isPending}
-          >
-            {upsertPage.isPending ? "Saving..." : "Add / Update Page"}
-          </Button>
-
-          <div className="mt-6">
-            <div className="text-sm text-gray-600 mb-2">Existing Pages</div>
-            <div className="rounded border divide-y">
-              {pagesSorted.map((p: any) => (
-                <div
-                  key={p.id}
-                  className="p-3 text-sm flex items-center justify-between"
+              <div>
+                <Label>Schema Type</Label>
+                <Input
+                  value={newSchemaType}
+                  onChange={(e) => setNewSchemaType(e.target.value)}
+                  placeholder="Service | Product | SoftwareApplication | Article | FAQPage | Organization"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Title</Label>
+                <Input
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Description</Label>
+                <Textarea
+                  rows={3}
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Schema Data (JSON)</Label>
+                <Textarea
+                  rows={6}
+                  value={newSchemaData}
+                  onChange={(e) => setNewSchemaData(e.target.value)}
+                />
+              </div>
+              <div className="col-span-2 flex items-end gap-2">
+                <div className="flex-1">
+                  <Label>Presets</Label>
+                  <select
+                    className="w-full border rounded h-9 px-2"
+                    onChange={(e) => {
+                      const preset = presetOptions.find(
+                        (p) => p.type === e.target.value
+                      );
+                      if (preset) {
+                        setNewSchemaType(preset.type);
+                        setNewSchemaData(JSON.stringify(preset.data, null, 2));
+                      }
+                    }}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>
+                      Select a schema preset
+                    </option>
+                    {presetOptions.map((p) => (
+                      <option key={p.type} value={p.type}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setNewSchemaType("");
+                    setNewSchemaData("");
+                  }}
                 >
-                  <div className="flex-1">
-                    <div className="font-medium">{p.path}</div>
-                    <div className="text-gray-500 line-clamp-1">
-                      {p.title || "(no title)"}
+                  Clear
+                </Button>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                let parsed: any = null;
+                try {
+                  parsed = newSchemaData ? JSON.parse(newSchemaData) : null;
+                } catch (e) {
+                  alert("Schema JSON is invalid");
+                  return;
+                }
+                upsertPage.mutate({
+                  path: newPath,
+                  title: newTitle || null,
+                  description: newDescription || null,
+                  schemaType: newSchemaType || null,
+                  schemaData: parsed,
+                  includeInSitemap: true,
+                });
+              }}
+              disabled={upsertPage.isPending}
+            >
+              {upsertPage.isPending ? "Saving..." : "Add / Update Page"}
+            </Button>
+
+            <div className="mt-6">
+              <div className="text-sm text-gray-600 mb-2">Existing Pages</div>
+              <div className="rounded border divide-y">
+                {pagesSorted.map((p: any) => (
+                  <div
+                    key={p.id}
+                    className="p-3 text-sm flex items-center justify-between"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{p.path}</div>
+                      <div className="text-gray-500 line-clamp-1">
+                        {p.title || "(no title)"}
+                      </div>
+                    </div>
+                    <div className="flex gap-3 text-xs">
+                      <a
+                        className="text-blue-600 underline"
+                        href={`/schema.json?path=${encodeURIComponent(p.path)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        schema.json
+                      </a>
+                      <a
+                        className="text-blue-600 underline"
+                        href={`/meta.json?path=${encodeURIComponent(p.path)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        meta.json
+                      </a>
                     </div>
                   </div>
-                  <div className="flex gap-3 text-xs">
-                    <a
-                      className="text-blue-600 underline"
-                      href={`/schema.json?path=${encodeURIComponent(p.path)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      schema.json
-                    </a>
-                    <a
-                      className="text-blue-600 underline"
-                      href={`/meta.json?path=${encodeURIComponent(p.path)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      meta.json
-                    </a>
-                  </div>
-                </div>
-              ))}
-              {!pagesSorted.length && (
-                <div className="p-3 text-sm text-gray-500">No pages yet</div>
-              )}
-            </div>
+                ))}
+                {!pagesSorted.length && (
+                  <div className="p-3 text-sm text-gray-500">No pages yet</div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
