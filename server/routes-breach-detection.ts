@@ -29,29 +29,33 @@ router.get('/reports/breaches', async (req: any, res) => {
     const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
 
     // 1. Sales Response SLA Breach (Leads not contacted within 24h)
-    const salesResponseBreach = await db
-      .select({ count: count() })
-      .from(businessRecords)
-      .where(
-        and(
-          eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.type, 'lead'),
-          eq(businessRecords.status, 'new'),
-          lt(businessRecords.createdAt, twentyFourHoursAgo)
-        )
-      );
+    try {
+      const salesResponseBreach = await db
+        .select({ count: count() })
+        .from(businessRecords)
+        .where(
+          and(
+            eq(businessRecords.tenantId, tenantId),
+            eq(businessRecords.recordType, 'lead'),
+            eq(businessRecords.status, 'new'),
+            lt(businessRecords.createdAt, twentyFourHoursAgo)
+          )
+        );
 
-    if (salesResponseBreach[0]?.count > 0) {
-      breaches.push({
-        type: 'sales_response_sla',
-        title: 'Response SLA Breach',
-        count: salesResponseBreach[0]?.count || 0,
-        severity: 'high',
-        description: `${salesResponseBreach[0]?.count || 0} leads not contacted within 24 hours`,
-        drillThroughUrl: '/leads-management?filter=sla_breach',
-        icon: 'Clock',
-        lastUpdated: new Date().toISOString()
-      });
+      if (salesResponseBreach[0]?.count > 0) {
+        breaches.push({
+          type: 'sales_response_sla',
+          title: 'Response SLA Breach',
+          count: salesResponseBreach[0]?.count || 0,
+          severity: 'high',
+          description: `${salesResponseBreach[0]?.count || 0} leads not contacted within 24 hours`,
+          drillThroughUrl: '/leads-management?filter=sla_breach',
+          icon: 'Clock',
+          lastUpdated: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.log('Sales response breach detection skipped:', error.message);
     }
 
     // 2. Proposal Aging (Proposals older than 14 days)
