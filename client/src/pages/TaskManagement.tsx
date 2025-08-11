@@ -267,27 +267,6 @@ export default function TaskManagement() {
     queryFn: async () => apiRequest("/api/users/team"),
   });
 
-  if (tasksLoading || projectsLoading || teamLoading) {
-    return (
-      <MainLayout
-        title="Task Management"
-        description="Advanced project and task management"
-      >
-        <div className="space-y-6 p-6">
-          <div className="flex items-center space-x-4">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-5 w-16" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-48 w-full" />
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (data: Partial<Task>) =>
@@ -309,6 +288,26 @@ export default function TaskManagement() {
       setEditingField(null);
     },
   });
+
+  const isLoading = tasksLoading || projectsLoading || teamLoading;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="space-y-6 p-6">
+          <div className="flex items-center space-x-4">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   // Filter and search tasks
   const filteredTasks = tasks.filter((task) => {

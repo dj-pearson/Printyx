@@ -140,7 +140,7 @@ router.get('/reports/breaches', async (req: any, res) => {
       .where(
         and(
           eq(invoices.tenantId, tenantId),
-          eq(invoices.invoiceStatus, 'draft'),
+          eq(invoices.status, 'draft'),
           lt(invoices.createdAt, twentyFourHoursAgo)
         )
       );
