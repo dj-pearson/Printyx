@@ -144,7 +144,17 @@ export default function PurchaseOrders() {
 
   // Fetch purchase orders
   const { data: purchaseOrders = [], isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ["/api/purchase-orders"],
+    queryKey: ["/api/purchase-orders", typeof window !== 'undefined' ? window.location.search : ''],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (typeof window !== 'undefined') {
+        const url = new URLSearchParams(window.location.search);
+        const filter = url.get('filter');
+        if (filter) params.append('filter', filter);
+      }
+      const path = `/api/purchase-orders${params.toString() ? `?${params.toString()}` : ''}`;
+      return await apiRequest(path, 'GET');
+    }
   });
 
   // Fetch vendors for dropdown
@@ -851,6 +861,14 @@ export default function PurchaseOrders() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Filter Banner */}
+        {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('filter') === 'variance_gt_2x' && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
+            <span>Showing POs with lead time variance > 2× plan</span>
+            <Button variant="outline" size="sm" onClick={() => setLocation('/admin/purchase-orders')}>Clear Filter</Button>
+          </div>
+        )}
 
         {/* Purchase Orders Table */}
         <Card>

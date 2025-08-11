@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
@@ -56,12 +56,32 @@ type CreateMeterReadingInput = z.infer<typeof createMeterReadingSchema>;
 export default function MeterReadings() {
   const [, setLocation] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [urlFilter, setUrlFilter] = useState<{ type?: string; n?: string } | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: meterReadings, isLoading: isLoadingReadings } = useQuery<
-    MeterReading[]
-  >({
-    queryKey: ["/api/meter-readings"],
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('filter') || undefined;
+    const n = params.get('n') || undefined;
+    if (type) setUrlFilter({ type, n });
+  }, []);
+
+  const { data: meterReadings, isLoading: isLoadingReadings } = useQuery<MeterReading[]>({
+    queryKey: ["/api/meter-readings", typeof window !== 'undefined' ? window.location.search : ""],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filter = urlParams.get('filter');
+        const n = urlParams.get('n');
+        if (filter) params.append('filter', filter);
+        if (n) params.append('n', n);
+      }
+      const qs = params.toString();
+      const path = `/api/meter-readings${qs ? `?${qs}` : ''}`;
+      return await apiRequest(path, 'GET');
+    }
   });
 
   const { data: equipment } = useQuery<Equipment[]>({
@@ -155,6 +175,14 @@ export default function MeterReadings() {
       description="Manage equipment meter readings and calculate billing"
     >
       <div className="space-y-6">
+        {urlFilter?.type === 'missed_cycles' && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
+            <span>
+              Showing devices with missed meter cycles{urlFilter?.n ? ` (N=${urlFilter.n})` : ''}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setLocation('/meter-readings')}>Clear Filter</Button>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setLocation('/advanced-billing')}>
