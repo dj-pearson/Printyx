@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { OptimizedImage } from '@/components/ui/optimized-image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -635,7 +636,7 @@ export default function BrandManager({
                         <Label className="text-xs capitalize w-16">{key}</Label>
                         {url ? (
                           <div className="flex items-center gap-2 flex-1">
-                            <img src={url} alt={key} className="h-8 w-8 object-contain border rounded" />
+                            <OptimizedImage src={url} alt={key} className="h-8 w-8 object-contain border rounded" />
                             <Button size="sm" variant="outline" onClick={() => handleLogoUpload(key as any)}>
                               Change
                             </Button>
@@ -748,7 +749,7 @@ export default function BrandManager({
               }}
             >
               {profile.logos.primary && (
-                <img 
+                <OptimizedImage 
                   src={profile.logos.primary} 
                   alt="Logo" 
                   className="h-12 object-contain"

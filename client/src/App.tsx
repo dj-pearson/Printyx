@@ -9,10 +9,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
-import Homepage from "@/pages/marketing/Homepage";
-import CopierDealerCRM from "@/pages/marketing/CopierDealerCRM";
-import PrintServiceDispatchMobile from "@/pages/marketing/PrintServiceDispatchMobile";
-import CanonMasterProductCatalog from "@/pages/marketing/CanonMasterProductCatalog";
+const Homepage = React.lazy(() => import("@/pages/marketing/Homepage"));
+const CopierDealerCRM = React.lazy(() => import("@/pages/marketing/CopierDealerCRM"));
+const PrintServiceDispatchMobile = React.lazy(() => import("@/pages/marketing/PrintServiceDispatchMobile"));
+const CanonMasterProductCatalog = React.lazy(() => import("@/pages/marketing/CanonMasterProductCatalog"));
 const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
 const CRMEnhanced = React.lazy(() => import("@/pages/CRMEnhanced"));
@@ -21,7 +21,7 @@ import SalesReports from "@/pages/placeholder/SalesReports";
 import ServiceReports from "@/pages/placeholder/ServiceReports";
 import RevenueReports from "@/pages/placeholder/RevenueReports";
 import Contracts from "@/pages/contracts";
-import ServiceDispatchOptimization from "@/pages/ServiceDispatchOptimization";
+const ServiceDispatchOptimization = React.lazy(() => import("@/pages/ServiceDispatchOptimization"));
 import Inventory from "@/pages/inventory";
 import Billing from "@/pages/billing";
 import Reports from "@/pages/reports";
@@ -54,7 +54,7 @@ import EquipmentLifecycle from "@/pages/EquipmentLifecycle";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import WarehouseOperations from "@/pages/WarehouseOperations";
 import CrmGoalsDashboard from "@/pages/CrmGoalsDashboard";
-import MobileFieldService from "@/pages/MobileFieldService";
+const MobileFieldService = React.lazy(() => import("@/pages/MobileFieldService"));
 import ProductManagementHub from "@/pages/ProductManagementHub";
 import PricingManagement from "@/pages/PricingManagement";
 import Contacts from "@/pages/Contacts";
@@ -76,7 +76,7 @@ import QuoteBuilderPage from "@/pages/QuoteBuilderPage";
 import QuotesManagement from "@/pages/QuotesManagement";
 import CompanyIdsTest from "@/pages/CompanyIdsTest";
 import QuoteView from "@/pages/QuoteView";
-import ProposalBuilder from "@/pages/ProposalBuilder";
+const ProposalBuilder = React.lazy(() => import("@/pages/ProposalBuilder"));
 import PreventiveMaintenanceScheduling from "@/pages/PreventiveMaintenanceScheduling";
 import CustomerSelfServicePortal from "@/pages/CustomerSelfServicePortal";
 import AdvancedBillingEngine from "@/pages/AdvancedBillingEngine";
@@ -131,6 +131,13 @@ function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [pathname] = useLocation();
   useSeo(pathname);
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      queryClient.prefetchQuery({ queryKey: ["/api/tasks/enhanced"] });
+      queryClient.prefetchQuery({ queryKey: ["/api/customers"] });
+      queryClient.prefetchQuery({ queryKey: ["/api/service-tickets"] });
+    }
+  }, [isAuthenticated]);
 
   return (
     <Switch>
