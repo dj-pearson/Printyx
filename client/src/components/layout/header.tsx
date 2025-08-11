@@ -35,10 +35,10 @@ export default function Header({ title, description }: HeaderProps) {
           <h1
             className="text-xl font-bold text-blue-600"
             onMouseEnter={() => {
-              // Prefetch common routes for faster nav
-              queryClient.prefetchQuery({ queryKey: ["/api/tasks"] });
-              queryClient.prefetchQuery({ queryKey: ["/api/customers"] });
-              queryClient.prefetchQuery({ queryKey: ["/api/service-tickets"] });
+              // Temporarily disable prefetching to avoid 401 errors
+              // queryClient.prefetchQuery({ queryKey: ["/api/tasks"] });
+              // queryClient.prefetchQuery({ queryKey: ["/api/customers"] });
+              // queryClient.prefetchQuery({ queryKey: ["/api/service-tickets"] });
             }}
           >
             Printyx
