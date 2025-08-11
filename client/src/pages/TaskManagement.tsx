@@ -89,7 +89,7 @@ import {
 } from "@/components/tasks/TaskDialogs";
 import { TaskBoardView } from "@/components/tasks/TaskBoardView";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FixedSizeList as List, ListChildComponentProps } from "react-window";
+// import { FixedSizeList as VirtualList, ListChildComponentProps } from "react-window";
 import { apiRequest } from "@/lib/queryClient";
 
 // Enhanced interfaces for advanced task management functionality
@@ -641,57 +641,23 @@ function TaskListView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.length > 50 ? (
-                    <tr>
-                      <td colSpan={10} style={{ padding: 0 }}>
-                        <List
-                          height={Math.min(600, tasks.length * 72)}
-                          itemCount={tasks.length}
-                          itemSize={72}
-                          width={"100%" as any}
-                        >
-                          {({ index, style }: ListChildComponentProps) => {
-                            const task = tasks[index];
-                            return (
-                              <div style={style}>
-                                <TaskRow
-                                  key={task.id}
-                                  task={task}
-                                  isExpanded={false}
-                                  isSelected={selectedTasks.includes(task.id)}
-                                  isEditing={editingTask === task.id}
-                                  editingField={editingField}
-                                  teamMembers={teamMembers}
-                                  onToggleExpansion={onToggleExpansion}
-                                  onToggleSelection={onToggleSelection}
-                                  onInlineEdit={onInlineEdit}
-                                  onEditStart={onEditStart}
-                                  onEditEnd={onEditEnd}
-                                />
-                              </div>
-                            );
-                          }}
-                        </List>
-                      </td>
-                    </tr>
-                  ) : (
-                    tasks.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        isExpanded={expandedTasks.includes(task.id)}
-                        isSelected={selectedTasks.includes(task.id)}
-                        isEditing={editingTask === task.id}
-                        editingField={editingField}
-                        teamMembers={teamMembers}
-                        onToggleExpansion={onToggleExpansion}
-                        onToggleSelection={onToggleSelection}
-                        onInlineEdit={onInlineEdit}
-                        onEditStart={onEditStart}
-                        onEditEnd={onEditEnd}
-                      />
-                    ))
-                  )}
+                  {tasks.map((task) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      isExpanded={expandedTasks.includes(task.id)}
+                      isSelected={selectedTasks.includes(task.id)}
+                      isEditing={editingTask === task.id}
+                      editingField={editingField}
+                      teamMembers={teamMembers}
+                      onToggleExpansion={onToggleExpansion}
+                      onToggleSelection={onToggleSelection}
+                      onInlineEdit={onInlineEdit}
+                      onEditStart={onEditStart}
+                      onEditEnd={onEditEnd}
+                    />
+                  ))}
+                
                 </TableBody>
               </Table>
             </div>
