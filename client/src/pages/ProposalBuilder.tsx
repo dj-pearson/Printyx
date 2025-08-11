@@ -157,16 +157,24 @@ export default function ProposalBuilder() {
   const [selectedTemplate, setSelectedTemplate] = useState<ProposalTemplate | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<'quote' | 'template' | 'transform' | 'visual' | 'preview'>('quote');
+  const [agingFilterDays, setAgingFilterDays] = useState<number | null>(null);
 
   // Check for quote ID in URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const quoteIdFromUrl = urlParams.get('quoteId');
+    const filter = urlParams.get('filter');
+    const days = urlParams.get('days');
     
     if (quoteIdFromUrl) {
       setSelectedQuote(quoteIdFromUrl);
       // If quote is pre-selected from URL, skip to template selection
       setActiveStep('template');
+    }
+
+    if (filter === 'aging' && days) {
+      const parsed = parseInt(days, 10);
+      if (!Number.isNaN(parsed)) setAgingFilterDays(parsed);
     }
   }, []);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -209,6 +217,14 @@ export default function ProposalBuilder() {
         quote.proposalNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.toLowerCase().includes(searchTerm.toLowerCase())
       );
+    })
+    .filter((quote: any) => {
+      if (agingFilterDays == null) return true;
+      const created = quote.createdAt ? new Date(quote.createdAt) : null;
+      if (!created) return false;
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const ageDays = Math.floor((Date.now() - created.getTime()) / msPerDay);
+      return ageDays > agingFilterDays;
     })
     .sort((a: any, b: any) => {
       let aValue, bValue;
@@ -298,6 +314,12 @@ export default function ProposalBuilder() {
       description="Create professional, customized proposals with templates and branding"
     >
       <div className="space-y-6">
+        {agingFilterDays != null && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
+            <span>Showing proposals aging greater than {agingFilterDays} days</span>
+            <Button variant="outline" size="sm" onClick={() => setLocation('/proposal-builder')}>Clear Filter</Button>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
