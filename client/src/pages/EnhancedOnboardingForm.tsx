@@ -338,6 +338,24 @@ export default function EnhancedOnboardingForm() {
   const [companySearchTerm, setCompanySearchTerm] = useState("");
   const queryClient = useQueryClient();
 
+  // Prefill from URL params (orderId, quoteId, businessRecordId)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('orderId');
+    const quoteId = params.get('quoteId');
+    const businessRecordId = params.get('businessRecordId');
+    if (orderId) {
+      form.setValue('orderId', orderId);
+    }
+    if (quoteId) {
+      form.setValue('quoteId', quoteId);
+    }
+    if (businessRecordId) {
+      form.setValue('businessRecordId', businessRecordId);
+    }
+  }, [form]);
+
   // Fetch business records for auto-population
   const { data: businessRecords = [] } = useQuery({
     queryKey: ["/api/business-records", businessRecordSearch],
@@ -1941,7 +1959,7 @@ export default function EnhancedOnboardingForm() {
                 Previous
               </Button>
 
-              <div className="flex gap-2">
+            <div className="flex gap-2">
                 {currentStep < steps.length ? (
                   <Button type="button" onClick={nextStep}>
                     Next
@@ -1969,6 +1987,16 @@ export default function EnhancedOnboardingForm() {
                     )}
                   </Button>
                 )}
+              {/* Go-Live CTA when checklist is created */}
+              {createdChecklistId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLocation('/customer-success-management')}
+                >
+                  Go-Live & Handover
+                </Button>
+              )}
               </div>
             </div>
           </form>
