@@ -247,24 +247,36 @@ export default function TaskManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch tasks with enhanced data
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ["/api/tasks/enhanced"],
-    queryFn: async () => apiRequest("/api/tasks/enhanced"),
+  // Fetch tasks using basic endpoint (fallback from enhanced)
+  const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
+    queryKey: ["/api/tasks"],
+    queryFn: async () => apiRequest("/api/tasks"),
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: false, // Disable automatic refetching to prevent loops
   });
 
-  // Fetch projects
-  const { data: projects = [], isLoading: projectsLoading } = useQuery<
+  // Fetch projects using basic endpoint
+  const { data: projects = [], isLoading: projectsLoading, error: projectsError } = useQuery<
     Project[]
   >({
-    queryKey: ["/api/projects/enhanced"],
-    queryFn: async () => apiRequest("/api/projects/enhanced"),
+    queryKey: ["/api/projects"],
+    queryFn: async () => apiRequest("/api/projects"),
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: false,
   });
 
-  // Fetch team members for assignment
-  const { data: teamMembers = [], isLoading: teamLoading } = useQuery({
-    queryKey: ["/api/users/team"],
-    queryFn: async () => apiRequest("/api/users/team"),
+  // Fetch team members for assignment (simplified)
+  const { data: teamMembers = [], isLoading: teamLoading, error: teamError } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => apiRequest("/api/users"),
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: false,
   });
 
   // Create task mutation
@@ -272,7 +284,7 @@ export default function TaskManagement() {
     mutationFn: async (data: Partial<Task>) =>
       apiRequest("/api/tasks", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/enhanced"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({ title: "Success", description: "Task created successfully" });
       setIsCreateTaskOpen(false);
     },
@@ -283,13 +295,14 @@ export default function TaskManagement() {
     mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) =>
       apiRequest(`/api/tasks/${id}`, "PATCH", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/enhanced"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setEditingTask(null);
       setEditingField(null);
     },
   });
 
   const isLoading = tasksLoading || projectsLoading || teamLoading;
+  const hasErrors = tasksError || projectsError || teamError;
 
   if (isLoading) {
     return (
@@ -304,6 +317,37 @@ export default function TaskManagement() {
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-48 w-full" />
           </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (hasErrors) {
+    return (
+      <MainLayout>
+        <div className="space-y-6 p-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-red-500 mb-4">
+                  <AlertTriangle className="h-12 w-12 mx-auto" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Unable to Load Tasks</h3>
+                <p className="text-gray-600 mb-4">
+                  There was an issue loading your task data. Please try refreshing the page.
+                </p>
+                <Button 
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </MainLayout>
     );
