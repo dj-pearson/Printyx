@@ -17,10 +17,12 @@ import {
   BarChart3,
   TrendingDown,
   AlertCircle,
+  AlertTriangle,
   Settings,
   Eye,
   EyeOff
 } from 'lucide-react';
+import BreachDetectionTiles from "@/components/dashboard/BreachDetectionTiles";
 
 const IconMap = {
   DollarSign,
@@ -316,6 +318,15 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
           </div>
         </div>
       )}
+
+      {/* SLA Breach Detection */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5" />
+          SLA Breach Detection
+        </h3>
+        <BreachDetectionTiles />
+      </div>
 
       {/* Lean Alerts Quick Links */}
       <div className="space-y-4">
