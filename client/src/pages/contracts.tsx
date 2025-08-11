@@ -31,9 +31,11 @@ import { Search, Plus, FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 export default function Contracts() {
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const { data: contracts, isLoading: contractsLoading } = useQuery({
     queryKey: ["/api/contracts"],
   });
@@ -92,6 +94,17 @@ export default function Contracts() {
       }));
     }
   }, [selectedQuoteId, availableQuotes]);
+
+  // Auto-open create dialog when navigated from Proposal Builder with quoteId
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const quoteIdFromUrl = params.get("quoteId");
+    if (quoteIdFromUrl) {
+      setIsCreateOpen(true);
+      setQuoteSearch(quoteIdFromUrl);
+      setSelectedQuoteId(quoteIdFromUrl);
+    }
+  }, []);
 
   const createContractMutation = useMutation({
     mutationFn: async () => {
@@ -537,6 +550,14 @@ export default function Contracts() {
                       <Button variant="outline" size="sm">
                         Edit Contract
                       </Button>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            setLocation(`/admin/purchase-orders?contractId=${contract.id}`)
+                          }
+                        >
+                          Book Order
+                        </Button>
                     </div>
                   </CardContent>
                 </Card>
