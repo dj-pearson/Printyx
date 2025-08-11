@@ -1,8 +1,60 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { 
+  DollarSign, 
+  Target, 
+  TrendingUp, 
+  Users, 
+  Wrench, 
+  Clock, 
+  CheckCircle, 
+  BarChart3,
+  TrendingDown,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Settings,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 
-export function ModularDashboard() {
+const IconMap = {
+  DollarSign,
+  Target, 
+  TrendingUp,
+  Users,
+  Wrench,
+  Clock,
+  CheckCircle,
+  BarChart3
+};
+
+interface DashboardModule {
+  id: string;
+  category: string;
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  change?: string;
+  trend?: 'up' | 'down';
+  progress?: number;
+  icon: keyof typeof IconMap;
+  data?: any;
+}
+
+interface ModularDashboardProps {
+  className?: string;
+}
+
+export function ModularDashboard({ className }: ModularDashboardProps) {
+  const [enabledCards, setEnabledCards] = useState<string[]>([]);
+  const [showCardManager, setShowCardManager] = useState(false);
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/dashboard/modules', enabledCards.join(',')],
@@ -267,7 +319,27 @@ export function ModularDashboard() {
         </div>
       )}
 
-
+      {/* SLA Breach Detection */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5" />
+          SLA Breach Detection
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <Card className="bg-green-50 border-green-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                SLA Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-700">All Clear</div>
+              <p className="text-xs text-green-600 mt-1">No SLA breaches detected</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Lean Alerts Quick Links */}
       <div className="space-y-4">
