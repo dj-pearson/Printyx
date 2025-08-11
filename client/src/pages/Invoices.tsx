@@ -31,6 +31,7 @@ import { Plus, Receipt, Calendar, DollarSign, Eye } from "lucide-react";
 import type { Invoice, Contract, Customer } from "@shared/schema";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { FixedSizeList as List, ListChildComponentProps } from "react-window";
 import MainLayout from "@/components/layout/main-layout";
 
 export default function Invoices() {
