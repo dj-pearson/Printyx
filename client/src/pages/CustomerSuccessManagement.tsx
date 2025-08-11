@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { HeartHandshake, TrendingUp, AlertTriangle, Users, Target, Activity, BarChart3, RefreshCw, Star, ThumbsUp, MessageCircle } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -106,6 +107,7 @@ const getTrendIcon = (trend: string) => {
 const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
 export default function CustomerSuccessManagement() {
+  const [, setLocation] = useLocation();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [isCalculatingHealth, setIsCalculatingHealth] = useState(false);
   const queryClient = useQueryClient();
@@ -197,6 +199,20 @@ export default function CustomerSuccessManagement() {
           >
             <RefreshCw className={`h-4 w-4 ${isCalculatingHealth ? 'animate-spin' : ''}`} />
             {isCalculatingHealth ? 'Calculating...' : 'Refresh Health Scores'}
+          </Button>
+          <Button 
+            variant="default"
+            onClick={() => setLocation('/meter-readings')}
+            className="flex items-center gap-2"
+          >
+            Enable Monitoring
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => setLocation('/service-hub')}
+            className="flex items-center gap-2"
+          >
+            Open Service Hub
           </Button>
         </div>
       </div>
