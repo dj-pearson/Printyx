@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 
 // Form schemas
 const proposalSchema = z.object({
@@ -206,7 +206,50 @@ export default function QuoteProposalGeneration() {
     }
   });
 
-  const onCreateProposal = (data: any) => {
+  const onCreateProposal = async (data: any) => {
+    // DoD Validation: Check if quote is ready for proposal creation
+    if (data.quoteId) {
+      try {
+        const validation = await fetch(`/api/validate/quote-to-proposal/${data.quoteId}`, {
+          headers: {
+            'x-tenant-id': localStorage.getItem('currentTenantId') || '',
+          },
+        });
+        const validationResult = await validation.json();
+        
+        if (!validationResult.valid) {
+          toast({
+            title: "Quote Validation Failed",
+            description: (
+              <div>
+                <p>Cannot create proposal. Please fix the following issues:</p>
+                <ul className="list-disc list-inside mt-2">
+                  {validationResult.errors.map((error: string, index: number) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            ),
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: "Validation Passed",
+          description: "Quote meets all requirements. Creating proposal...",
+        });
+      } catch (error) {
+        console.error("DoD validation error:", error);
+        toast({
+          title: "Validation Error",
+          description: "Unable to validate quote. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     createProposalMutation.mutate(data);
   };
 

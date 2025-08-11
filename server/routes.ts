@@ -73,6 +73,7 @@ import { registerEnhancedTaskRoutes } from "./routes-enhanced-tasks";
 import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
 import { registerWarehouseRoutes } from "./routes-warehouse";
 import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
+import breachDetectionRoutes from "./routes-breach-detection";
 import { registerCrmGoalRoutes } from "./routes-crm-goals";
 import { registerBusinessRecordRoutes } from "./routes-business-records";
 import { registerSalesforceRoutes } from "./routes-salesforce-integration";
@@ -14852,6 +14853,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Sales Forecasting routes
   app.use(salesForecastingRoutes);
+  
+  // Register Breach Detection routes
+  app.use('/api', breachDetectionRoutes);
+  
+  // Register DoD Validation routes
+  const validateRoutes = await import("./routes-validate");
+  app.use('/api', validateRoutes.default);
 
   // Phase 3: Register analytics routes
   import("./analytics-routes")

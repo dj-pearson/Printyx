@@ -45,6 +45,8 @@ import ProposalVisualBuilder from '@/components/proposal-builder/ProposalVisualB
 import QuoteTransformer from '@/components/proposal-builder/QuoteTransformer';
 import BrandManager from '@/components/proposal-builder/BrandManager';
 import RichTextEditor from '@/components/proposal-builder/RichTextEditor';
+import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
+import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 
 interface ProposalTemplate {
   id: string;
@@ -299,7 +301,32 @@ export default function ProposalBuilder() {
     // In a real implementation, save to backend and redirect
   };
 
-  const handleCreateProposal = () => {
+  const handleCreateProposal = async () => {
+    // DoD Validation: Check if proposal is ready for contract generation
+    if (selectedQuote) {
+      try {
+        const validation = await fetch(`/api/validate/proposal-to-contract/${selectedQuote}`, {
+          headers: {
+            'x-tenant-id': localStorage.getItem('currentTenantId') || '',
+          },
+        });
+        const validationResult = await validation.json();
+        
+        if (!validationResult.valid) {
+          // Show error toast with validation issues
+          console.error("Proposal validation failed:", validationResult.errors);
+          alert(`Cannot create contract. Please fix the following issues:\n${validationResult.errors.join('\n')}`);
+          return;
+        }
+        
+        console.log("Proposal validation passed, proceeding to contracts...");
+      } catch (error) {
+        console.error("DoD validation error:", error);
+        alert("Unable to validate proposal. Please try again.");
+        return;
+      }
+    }
+    
     // Proceed to Contracts/eSign step after building proposal
     const params = new URLSearchParams();
     if (selectedQuote) params.set('quoteId', selectedQuote);
@@ -319,6 +346,15 @@ export default function ProposalBuilder() {
             <span>Showing proposals aging greater than {agingFilterDays} days</span>
             <Button variant="outline" size="sm" onClick={() => setLocation('/proposal-builder')}>Clear Filter</Button>
           </div>
+        )}
+        
+        {/* DoD Validation Banner */}
+        {selectedQuote && activeStep === 'preview' && (
+          <DoDValidationBanner
+            recordId={selectedQuote}
+            validationType="proposal-to-contract"
+            enabled={true}
+          />
         )}
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -361,10 +397,20 @@ export default function ProposalBuilder() {
                 </Badge>
               )}
               {selectedQuote && selectedTemplate && (
-                <Button onClick={handleCreateProposal}>
+                <DoDEnforcementButton
+                  recordId={selectedQuote}
+                  validationType="proposal-to-contract"
+                  onValidClick={() => {
+                    const params = new URLSearchParams();
+                    if (selectedQuote) params.set('quoteId', selectedQuote);
+                    if (selectedTemplate?.id) params.set('templateId', selectedTemplate.id);
+                    params.set('from', 'proposal-builder');
+                    setLocation('/contracts?' + params.toString());
+                  }}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Proposal
-                </Button>
+                </DoDEnforcementButton>
               )}
             </div>
           )}
@@ -974,10 +1020,20 @@ export default function ProposalBuilder() {
                   <Download className="h-4 w-4 mr-2" />
                   Export PDF
                 </Button>
-                <Button onClick={handleCreateProposal}>
+                <DoDEnforcementButton
+                  recordId={selectedQuote || ''}
+                  validationType="proposal-to-contract"
+                  onValidClick={() => {
+                    const params = new URLSearchParams();
+                    if (selectedQuote) params.set('quoteId', selectedQuote);
+                    if (selectedTemplate?.id) params.set('templateId', selectedTemplate.id);
+                    params.set('from', 'proposal-builder');
+                    setLocation('/contracts?' + params.toString());
+                  }}
+                >
                   <Send className="h-4 w-4 mr-2" />
                   Create Final Proposal
-                </Button>
+                </DoDEnforcementButton>
               </div>
             </div>
           </div>
