@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { MainLayout } from "@/components/layout/main-layout";
+import { useLocation } from "wouter";
 import {
   Card,
   CardContent,
@@ -188,6 +189,7 @@ const statusIcons = {
 
 export default function WarehouseOperations() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -222,6 +224,16 @@ export default function WarehouseOperations() {
   const { data: stats = {} } = useQuery<any>({
     queryKey: ["/api/warehouse-operations/stats"],
   });
+
+  // If navigated with orderId in query, jump to Delivery tab and show cues
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const orderIdFromUrl = params.get("orderId");
+    if (orderIdFromUrl) {
+      setActiveTab("delivery");
+    }
+  }, []);
 
   // Create operation mutation
   const createOperationMutation = useMutation({
@@ -863,14 +875,33 @@ export default function WarehouseOperations() {
                   Schedule and track equipment deliveries to customers
                 </p>
               </div>
-              <Button
-                onClick={() => setShowDeliveryDialog(true)}
-                className="w-full md:w-auto"
-              >
-                <Truck className="h-4 w-4 mr-2" />
-                Schedule Delivery
-              </Button>
+              <div className="flex gap-2 w-full md:w-auto">
+                <Button
+                  onClick={() => setShowDeliveryDialog(true)}
+                  className="w-full md:w-auto"
+                >
+                  <Truck className="h-4 w-4 mr-2" />
+                  Schedule Delivery
+                </Button>
+                {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('orderId') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
+                      setLocation(`/enhanced-onboarding-form?orderId=${orderIdFromUrl}`);
+                    }}
+                  >
+                    Start Install Checklist
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('orderId') && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                Preparing delivery for Order ID: {new URLSearchParams(window.location.search).get('orderId')}
+              </div>
+            )}
 
             {/* Delivery scheduling would go here */}
             <Card>
