@@ -865,7 +865,7 @@ export default function PurchaseOrders() {
         {/* Filter Banner */}
         {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('filter') === 'variance_gt_2x' && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
-            <span>Showing POs with lead time variance > 2× plan</span>
+            <span>Showing POs with lead time variance &gt; 2× plan</span>
             <Button variant="outline" size="sm" onClick={() => setLocation('/admin/purchase-orders')}>Clear Filter</Button>
           </div>
         )}
