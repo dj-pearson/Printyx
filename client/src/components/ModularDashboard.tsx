@@ -317,6 +317,61 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
         </div>
       )}
 
+      {/* Lean Alerts Quick Links */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          Lean Alerts Quick Links
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">PO Variance &gt; 2× Plan</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Drill-through to flagged POs</p>
+              <Button size="sm" onClick={() => (window.location.href = '/admin/purchase-orders?filter=variance_gt_2x')}>View</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Missed Meter Cycles</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Devices missing N cycles</p>
+              <Button size="sm" onClick={() => (window.location.href = '/meter-readings?filter=missed_cycles&n=2')}>View</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Service Aging &gt; 5 Days</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Oldest open service tickets</p>
+              <Button size="sm" onClick={() => (window.location.href = '/service-hub?tab=active-tickets&filter=aging_gt_5')}>View</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Proposals Aging &gt; 7 Days</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Old proposals needing action</p>
+              <Button size="sm" onClick={() => (window.location.href = '/proposal-builder?filter=aging&days=7')}>View</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Invoice Issuance Delay &gt; 24h</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Invoices not issued in time</p>
+              <Button size="sm" onClick={() => (window.location.href = '/advanced-billing?filter=issuance_delay_gt_24h')}>View</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
       {/* Debug info - will be removed in production */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mt-8 p-4 bg-muted rounded-lg text-sm">
