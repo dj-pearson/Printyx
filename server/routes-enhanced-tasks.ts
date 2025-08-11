@@ -17,6 +17,12 @@ export function registerEnhancedTaskRoutes(app: Express) {
   app.get("/api/tasks/enhanced", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
+      
+      if (!tenantId) {
+        console.log("Enhanced tasks: Missing tenantId for user:", req.user);
+        return res.status(401).json({ message: "Missing tenant context" });
+      }
+      
       const { projectId, assignedTo, status, priority } = req.query;
 
       let query = db
