@@ -495,3 +495,153 @@ Note: Implement these as URL params and handle at page level to pre‑filter lis
 Implementation notes:
 - Prefer median over mean for cycle times; compute per tenant and overall.
 - Define filters by period (day/week/month) and role (rep/tech/manager).
+
+---
+
+## Page Filter API Contract Map (v1)
+
+- Proposal Builder `/proposal-builder`
+  - `filter=aging&days=N` → show quotes older than N days
+
+- Service Hub `/service-hub`
+  - `tab=overview|phone-in|active-tickets|technician-view`
+  - `filter=aging_gt_N` (active tickets)
+
+- Meter Readings `/meter-readings`
+  - `filter=missed_cycles&n=N` → devices missing N cycles
+
+- Purchase Orders `/admin/purchase-orders`
+  - `filter=variance_gt_2x` → PO lead time variance > 2× plan
+
+- Advanced Billing `/advanced-billing`
+  - `ticketId=...|contractId=...` → filter invoices
+  - `filter=issuance_delay_gt_24h` → invoice issuance delay breaches
+
+Client behavior:
+- Show banner when filter active; provide “Clear Filter” button.
+- Forward relevant params to backend list endpoints.
+
+---
+
+## Reports API Plan (lightweight metrics layer v0)
+
+- GET `/api/reports` with params: `type`, `from`, `to`, `groupBy`, `interval`
+  - Example: `/api/reports?type=service_sla&from=2025-01-01&to=2025-03-31&groupBy=queue,priority&interval=week`
+- Response:
+  - `{ meta: { dims, measures, filters }, rows: [...], totals: {...} }`
+- Report types (initial):
+  - `sales_pipeline`, `proposals_aging`, `po_variance`, `warehouse_fpy`, `service_sla`, `ticket_aging`, `meter_missed`, `invoice_issuance_delay`
+
+---
+
+## RBAC & Tenancy Enforcement (QA plan)
+
+- All list and report endpoints require `tenantId`; role permissions mapped per route
+- Tests:
+  - Deny cross‑tenant data access
+  - Restrict finance endpoints to finance roles
+  - Service operations only for service roles/managers
+  - Dashboard modules filtered by role
+
+---
+
+## Observability & Quality Gates Automation
+
+- Instrument list/report endpoints with timing, error rate, and volume metrics
+- Alerts:
+  - 5xx error rate > 1% over 5m (critical)
+  - P95 latency regression > 2× baseline (warning)
+  - Report job failures > threshold
+  - Event: DoD breach counts spike (tile‑level)
+
+---
+
+## Rollout & Change Management
+
+- Phased enablement of CTAs and filters per area; feature flags where needed
+- Release cadence: weekly; add change log summaries to dashboard
+- Backout plan: toggle flags; revert to default navigation
+
+---
+
+## Training & SOP Mapping
+
+- Create short SOPs per stage:
+  - “From Lead to Quote”, “Quote to Proposal”, “Contracts & Booking”, “PO to Warehouse”, “Delivery to Onboarding”, “Service to Billing”, “Meters to Billing”
+- Embed links to SOPs on page banners when filters/DoD are active
+
+---
+
+## Lean Maturity Roadmap
+
+- Level 1: Wiring Next CTAs, filter drill‑throughs, DoD enforcement
+- Level 2: KPIs on dashboards and breach tiles with auto‑escalations
+- Level 3: Automated report schedules, anomaly detection hooks
+- Level 4: Predictive insights (risk/renewal), closed‑loop improvements
+
+---
+
+## Backend Implementation Checklist (must-have to reach “all or nothing”)
+
+- [ ] Service lifecycle (Intake → Dispatch → Field work → Completion)
+  - [ ] Phone‑in tickets: `GET/POST /api/phone-in-tickets`, `POST /api/phone-in-tickets/:id/convert`
+  - [ ] Search helpers: `/api/phone-tickets/search-companies`, `/api/phone-tickets/search-contacts/:companyId`, `/api/phone-tickets/equipment/:companyId`
+  - [ ] Technician sessions: `POST/GET /api/technician-sessions`, `GET /api/technician-sessions/:sessionId/workflow-steps`, `POST /api/technician-sessions/:sessionId/complete-step`
+  - [ ] Persist photos/signatures/parts usage; unify metrics source across phone‑in and service tickets
+
+- [ ] Billing integration & auto‑invoice
+  - [ ] On service completion, create invoice and link by `ticketId`
+  - [ ] Advanced Billing: support `ticketId`/`contractId` filters in `/api/billing/invoices`
+  - [ ] Invoice issuance delay detection (store completion and issuance timestamps; indexed)
+  - [x] Filters implemented in `server/routes.ts` for `/api/billing/invoices` (`ticketId`, `contractId`, `filter=issuance_delay_gt_24h`)
+  - [ ] DB: Ensure `billing_invoices` has `ticket_id`, `contract_id`, `issuance_delay_hours`, `business_record_id`, `status`, `created_at`
+  - [ ] DB Indexes:
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_bi_tenant_created ON billing_invoices(tenant_id, created_at DESC);`
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_bi_tenant_contract ON billing_invoices(tenant_id, contract_id);`
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_bi_tenant_ticket ON billing_invoices(tenant_id, ticket_id);`
+
+- [ ] Purchase Orders variance
+  - [ ] Persist planned lead time and actual lead/receipt dates
+  - [ ] `/api/purchase-orders?filter=variance_gt_2x` returns only variance > 2× plan
+  - [x] Filter implemented in `server/routes.ts` for `/api/purchase-orders`
+  - [ ] DB: Ensure `approved_date`, `expected_date`, `order_date` columns exist
+  - [ ] DB Index:
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_po_tenant_dates ON purchase_orders(tenant_id, approved_date, expected_date, order_date);`
+
+- [ ] Meter reads “missed cycles”
+  - [ ] Persist meter cadence (per device/contract) and expected next‑read
+  - [ ] `/api/meter-readings?filter=missed_cycles&n=N` returns devices missing N cycles
+  - [x] Implemented in `server/routes.ts`: latest reading per equipment where `reading_date < NOW() - (30*N days)`
+  - [ ] DB Indexes:
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_meter_readings_tenant_equipment_date ON meter_readings(tenant_id, equipment_id, reading_date DESC);`
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_meter_readings_tenant_date ON meter_readings(tenant_id, reading_date DESC);`
+  - [ ] DB Fields confirm:
+    - [ ] `bw_meter_reading`, `color_meter_reading`, `reading_date`, `collection_method`, `reading_notes`
+
+- [ ] Proposal aging
+  - [ ] `/api/proposals?filter=aging&days=N` (or equivalent) returns proposals older than N days (indexed by `createdAt`, status)
+  - [x] Implemented in `server/routes-proposals.ts` supporting `filter=aging&days=N`
+  - [ ] DB Indexes:
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_proposals_tenant_created ON proposals(tenant_id, created_at DESC);`
+    - [ ] `CREATE INDEX IF NOT EXISTS idx_proposals_tenant_status ON proposals(tenant_id, status);`
+
+- [ ] Warehouse kitting FPY
+  - [ ] Persist kitting checklist results and FPY outcome per unit
+  - [ ] Expose FPY query endpoints for tiles/reports
+
+- [ ] Onboarding persistence & linkages
+  - [ ] Ensure onboarding checklists write all required fields; link `orderId|quoteId|businessRecordId`
+  - [ ] Expose checklist status for “Go‑Live” handoff queries
+
+- [ ] DoD enforcement server‑side
+  - [ ] Validate transitions: quote has items, proposal required sections complete, contract eSigned, PO approved, kitting checklist pass, onboarding complete
+  - [ ] Block Next actions if unmet; return actionable error messages
+
+- [ ] Reports API (v0) with RBAC/tenancy
+  - [ ] `GET /api/reports` supports: `sales_pipeline`, `proposals_aging`, `po_variance`, `warehouse_fpy`, `service_sla`, `ticket_aging`, `meter_missed`, `invoice_issuance_delay`
+  - [ ] Response: `{ meta: {dims, measures, filters}, rows: [...], totals: {...} }`
+  - [ ] All queries scoped by `tenantId`; role checks per report type
+
+- [ ] Tests & Observability
+  - [ ] Route and unit tests for each new endpoint; RBAC/tenancy tests
+  - [ ] Emit timing/error metrics; alerts for error rate, P95 regressions, job failures

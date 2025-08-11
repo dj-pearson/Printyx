@@ -5843,6 +5843,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/purchase-orders", requireAuth, async (req, res) => {
     try {
       const { tenantId } = (req as any).user || {};
+      const filter = String((req.query as any)?.filter || "");
+      // Fall back to storage if no filter, else run filtered DB query
+      if (!filter) {
+        const purchaseOrders = await storage.getPurchaseOrders(tenantId);
+        return res.json(purchaseOrders);
+      }
+      if (filter === 'variance_gt_2x') {
+        const result = await db.$client.query(
+          `SELECT * FROM purchase_orders 
+           WHERE tenant_id = $1 
+             AND approved_date IS NOT NULL 
+             AND expected_date IS NOT NULL 
+             AND order_date IS NOT NULL
+             AND (DATE_PART('day', expected_date - approved_date)) > 2 * GREATEST(1, DATE_PART('day', expected_date - order_date))
+           ORDER BY created_at DESC 
+           LIMIT 200`,
+          [tenantId]
+        );
+        return res.json(result.rows);
+      }
+      // Unknown filter → default list
       const purchaseOrders = await storage.getPurchaseOrders(tenantId);
       res.json(purchaseOrders);
     } catch (error) {
@@ -5914,6 +5935,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // ============= METER BILLING API ROUTES =============
+
+  // Meter Readings - list with optional filters
+  app.get("/api/meter-readings", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      const filter = String((req.query as any)?.filter || "");
+      const nParam = String((req.query as any)?.n || "1");
+      const n = Number.parseInt(nParam, 10);
+      const days = Number.isNaN(n) || n <= 0 ? 30 : 30 * n; // monthly cycles approximation
+
+      if (filter === "missed_cycles") {
+        // Return the last reading per equipment where it's older than N cycles
+        // Note: Equipments with no readings won't appear in this list; add an equipment LEFT JOIN if needed later
+        const query = `
+          WITH latest AS (
+            SELECT DISTINCT ON (equipment_id) *
+            FROM meter_readings
+            WHERE tenant_id = $1
+            ORDER BY equipment_id, reading_date DESC
+          )
+          SELECT *
+          FROM latest
+          WHERE reading_date < NOW() - ($2 || ' days')::interval
+          ORDER BY reading_date NULLS FIRST
+          LIMIT 200
+        `;
+        const result = await db.$client.query(query, [tenantId, String(days)]);
+        return res.json(result.rows);
+      }
+
+      // Default: recent readings
+      const result = await db.$client.query(
+        `SELECT * FROM meter_readings WHERE tenant_id = $1 ORDER BY reading_date DESC LIMIT 200`,
+        [tenantId]
+      );
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching meter readings:", error);
+      res.status(500).json({ message: "Failed to fetch meter readings" });
+    }
+  });
+
+  // Create meter reading (accepts UI shape and schema shape)
+  app.post("/api/meter-readings", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      let payload: any;
+      try {
+        // Prefer strict schema if request already matches it
+        payload = insertMeterReadingSchema.parse({ ...req.body, tenantId });
+      } catch {
+        // Map simplified UI fields to schema
+        const {
+          equipmentId,
+          contractId,
+          readingDate,
+          blackMeter,
+          colorMeter,
+          collectionMethod,
+          notes,
+        } = req.body ?? {};
+
+        payload = insertMeterReadingSchema.parse({
+          tenantId,
+          equipmentId,
+          contractId: contractId ?? null,
+          readingDate: readingDate ? new Date(readingDate) : new Date(),
+          bwMeterReading: Number.parseInt(String(blackMeter ?? 0), 10),
+          colorMeterReading: Number.parseInt(String(colorMeter ?? 0), 10),
+          collectionMethod: collectionMethod ?? "manual",
+          readingNotes: notes ?? null,
+        } as any);
+      }
+
+      // Use storage if available to keep persistence consistent
+      const created = await storage.createMeterReading(payload);
+      res.json(created);
+    } catch (error) {
+      console.error("Error creating meter reading:", error);
+      res.status(500).json({ message: "Failed to create meter reading" });
+    }
+  });
 
   // Contract Tiered Rates Management
   app.get(
@@ -9643,14 +9754,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const status = String((req.query as any)?.status || "");
+        const ticketId = String((req.query as any)?.ticketId || "");
+        const contractId = String((req.query as any)?.contractId || "");
+        const filter = String((req.query as any)?.filter || "");
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["bi.tenant_id = $1"];
-        const queryParams = [tenantId];
+        let whereConditions = ["bi.tenant_id = $1"]; 
+        const queryParams: any[] = [tenantId];
 
         if (status && status !== "all") {
           whereConditions.push(`bi.status = $${queryParams.length + 1}`);
           queryParams.push(status);
+        }
+
+        if (ticketId) {
+          whereConditions.push(`bi.ticket_id = $${queryParams.length + 1}`);
+          queryParams.push(ticketId);
+        }
+
+        if (contractId) {
+          whereConditions.push(`bi.contract_id = $${queryParams.length + 1}`);
+          queryParams.push(contractId);
+        }
+
+        if (filter === 'issuance_delay_gt_24h') {
+          whereConditions.push(`bi.created_at > NOW() - INTERVAL '30 days'`);
+          whereConditions.push(`(bi.issuance_delay_hours IS NOT NULL AND bi.issuance_delay_hours > 24)`);
         }
 
         const query = `
