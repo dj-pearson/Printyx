@@ -45,6 +45,7 @@ import {
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useLocation } from "wouter";
 
 interface TechnicianTicketWorkflowProps {
   ticket: any;
@@ -173,6 +174,7 @@ export default function TechnicianTicketWorkflow({
   ticket,
   onClose,
 }: TechnicianTicketWorkflowProps) {
+  const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -610,6 +612,9 @@ export default function TechnicianTicketWorkflow({
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4 mr-2" />
               Equipment Info
+            </Button>
+            <Button size="sm" onClick={() => setLocation(`/advanced-billing?ticketId=${ticket.id}`)}>
+              Complete & Bill
             </Button>
           </div>
         </CardContent>

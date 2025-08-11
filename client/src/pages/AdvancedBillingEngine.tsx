@@ -21,6 +21,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 // Types
 type BillingInvoice = {
@@ -127,6 +128,7 @@ type BillingConfigurationForm = z.infer<typeof billingConfigurationSchema>;
 type BillingAdjustmentForm = z.infer<typeof billingAdjustmentSchema>;
 
 export default function AdvancedBillingEngine() {
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false);
@@ -142,9 +144,20 @@ export default function AdvancedBillingEngine() {
 
   // Fetch invoices
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<BillingInvoice[]>({
-    queryKey: ["/api/billing/invoices", selectedInvoiceStatus],
+    queryKey: [
+      "/api/billing/invoices",
+      selectedInvoiceStatus,
+      typeof window !== 'undefined' ? window.location.search : ''
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ticketId = urlParams.get('ticketId');
+        const contractId = urlParams.get('contractId');
+        if (ticketId) params.append('ticketId', ticketId);
+        if (contractId) params.append('contractId', contractId);
+      }
       if (selectedInvoiceStatus !== "all") params.append("status", selectedInvoiceStatus);
       return await apiRequest(`/api/billing/invoices?${params.toString()}`);
     },
@@ -275,6 +288,23 @@ export default function AdvancedBillingEngine() {
   return (
     <MainLayout>
       <div className="container mx-auto p-6 space-y-6">
+      {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('ticketId') || new URLSearchParams(window.location.search).get('contractId')) && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
+          {new URLSearchParams(window.location.search).get('ticketId') && (
+            <span>Filtering for Service Ticket ID: {new URLSearchParams(window.location.search).get('ticketId')}</span>
+          )}
+          {new URLSearchParams(window.location.search).get('contractId') && (
+            <span className="ml-2">Filtering for Contract ID: {new URLSearchParams(window.location.search).get('contractId')}</span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/advanced-billing')}
+          >
+            Clear Filter
+          </Button>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Advanced Billing Engine</h1>

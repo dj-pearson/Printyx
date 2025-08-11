@@ -45,6 +45,7 @@ import type { MeterReading, Equipment, Contract } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 const createMeterReadingSchema = insertMeterReadingSchema.extend({
   readingDate: z.string(),
@@ -53,6 +54,7 @@ const createMeterReadingSchema = insertMeterReadingSchema.extend({
 type CreateMeterReadingInput = z.infer<typeof createMeterReadingSchema>;
 
 export default function MeterReadings() {
+  const [, setLocation] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -154,7 +156,11 @@ export default function MeterReadings() {
     >
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setLocation('/advanced-billing')}>
+              Open Billing
+            </Button>
+          </div>
           <Dialog
             open={isCreateDialogOpen}
             onOpenChange={setIsCreateDialogOpen}
@@ -419,8 +425,8 @@ export default function MeterReadings() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex justify-end">
-                    <Button variant="outline" size="sm">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setLocation('/advanced-billing')}>
                       <Calculator className="w-4 h-4 mr-2" />
                       Calculate Billing
                     </Button>
