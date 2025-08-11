@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
-import ModularDashboard from "@/components/ModularDashboard";
+import ModularDashboard from "@/components/ModularDashboard-simple";
 
 export default function Dashboard() {
   const { toast } = useToast();
