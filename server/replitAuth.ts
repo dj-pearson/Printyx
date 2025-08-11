@@ -151,19 +151,33 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Add tenant context to user if missing
-  if (!user.tenantId && user.claims?.sub) {
-    try {
-      const dbUser = await storage.getUserById(user.claims.sub);
-      if (dbUser) {
-        user.tenantId = dbUser.tenantId;
-      } else {
-        // Use default tenant if user not found in DB
-        user.tenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
+  // Add tenant context to user if missing - FIXED APPROACH
+  if (!user.tenantId) {
+    console.log("User missing tenantId, user object:", JSON.stringify({
+      hasClaimsSub: !!user.claims?.sub,
+      claims: user.claims,
+      keys: Object.keys(user)
+    }, null, 2));
+    
+    // Try to get from database or use default tenant for demo
+    if (user.claims?.sub) {
+      try {
+        const dbUser = await storage.getUser(user.claims.sub);
+        if (dbUser && dbUser.tenantId) {
+          user.tenantId = dbUser.tenantId;
+          console.log("Set tenantId from DB user:", user.tenantId);
+        } else {
+          user.tenantId = "550e8400-e29b-41d4-a716-446655440000";
+          console.log("DB user not found, using default tenantId");
+        }
+      } catch (error) {
+        console.error("Error fetching user from DB:", error);
+        user.tenantId = "550e8400-e29b-41d4-a716-446655440000";
+        console.log("Error fallback - using default tenantId");
       }
-    } catch (error) {
-      console.error("Error fetching user tenant context:", error);
-      user.tenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
+    } else {
+      user.tenantId = "550e8400-e29b-41d4-a716-446655440000";
+      console.log("No user claims.sub, using default tenantId");
     }
   }
 
