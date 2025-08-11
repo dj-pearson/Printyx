@@ -645,3 +645,76 @@ Client behavior:
 - [ ] Tests & Observability
   - [ ] Route and unit tests for each new endpoint; RBAC/tenancy tests
   - [ ] Emit timing/error metrics; alerts for error rate, P95 regressions, job failures
+
+---
+
+## Backend Progress Snapshot (current)
+
+- Implemented
+  - Proposals aging filter: `GET /api/proposals?filter=aging&days=N` (server/routes-proposals.ts)
+  - Billing invoices filters: `GET /api/billing/invoices?ticketId=...|contractId=...|filter=issuance_delay_gt_24h` (server/routes.ts)
+  - Purchase Orders variance filter: `GET /api/purchase-orders?filter=variance_gt_2x` (server/routes.ts)
+  - Meter readings API: `GET /api/meter-readings` with `filter=missed_cycles&n=N`, `POST /api/meter-readings` (server/routes.ts)
+
+- Frontend wired to these filters with banners and clear-buttons
+  - Proposal Builder, Advanced Billing, Purchase Orders, Meter Readings, Service Hub
+
+---
+
+## Database Migration Plan (indexes and columns)
+
+Execute the following SQL (once per environment/tenant DB):
+
+```sql
+-- Proposals aging filters
+CREATE INDEX IF NOT EXISTS idx_proposals_tenant_created ON proposals(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_proposals_tenant_status ON proposals(tenant_id, status);
+
+-- Billing invoices filters
+CREATE INDEX IF NOT EXISTS idx_bi_tenant_created ON billing_invoices(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bi_tenant_contract ON billing_invoices(tenant_id, contract_id);
+CREATE INDEX IF NOT EXISTS idx_bi_tenant_ticket ON billing_invoices(tenant_id, ticket_id);
+
+-- Purchase orders variance
+CREATE INDEX IF NOT EXISTS idx_po_tenant_dates ON purchase_orders(tenant_id, approved_date, expected_date, order_date);
+
+-- Meter readings missed cycles
+CREATE INDEX IF NOT EXISTS idx_meter_readings_tenant_equipment_date ON meter_readings(tenant_id, equipment_id, reading_date DESC);
+CREATE INDEX IF NOT EXISTS idx_meter_readings_tenant_date ON meter_readings(tenant_id, reading_date DESC);
+```
+
+Column audit (add if missing in respective tables):
+- billing_invoices: `ticket_id`, `contract_id`, `issuance_delay_hours`, `business_record_id`, `status`, `created_at`
+- purchase_orders: `approved_date`, `expected_date`, `order_date`
+- meter_readings: `bw_meter_reading`, `color_meter_reading`, `reading_date`, `collection_method`, `reading_notes`
+
+---
+
+## Next Backend Focus (acceptance criteria)
+
+1) Phone-in tickets and list
+- Endpoints: `GET/POST /api/phone-in-tickets`, `POST /api/phone-in-tickets/:id/convert`
+- AC:
+  - Create persists with tenant; optional convert creates service ticket and links ids
+  - List returns most recent 100 by tenant; supports converted=true|false
+  - Status: Routes mounted (`app.use("/api", enhancedServiceRoutes)`) — implement list query next
+
+2) Technician sessions and workflow
+- Endpoints: `POST/GET /api/technician-sessions`, `GET /api/technician-sessions/:sessionId/workflow-steps`, `POST /api/technician-sessions/:sessionId/complete-step`
+- AC:
+  - Check-in creates session if none open; workflow updates ticket status map; completion writes signatures/photos and closes session
+
+3) Auto-invoice on service completion
+- Hook: on POST /service-tickets/:ticketId/complete → create invoice (link ticketId)
+- AC:
+  - Invoice created within request; invoice list reflects `ticketId` filter; issuance delay computed/stored
+
+4) Warehouse FPY persistence
+- Add tables/fields for kitting checklist and FPY outcome
+- AC:
+  - Persist pass/fail per unit; aggregate endpoint for FPY tile and drill-through
+
+5) Reports API (v0) with RBAC/tenancy
+- Endpoint: `GET /api/reports` (as mapped in Page Filter API Contract Map)
+- AC:
+  - Returns rows + totals; enforces tenant and role scopes; covers at least `service_sla`, `po_variance`, `meter_missed`
