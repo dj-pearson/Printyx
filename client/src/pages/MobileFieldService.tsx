@@ -23,6 +23,7 @@ import {
   Image
 } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import type { UploadResult } from "@uppy/core";
 
 interface GeolocationCoordinates {
@@ -401,7 +402,7 @@ export default function MobileFieldService() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {photos.map((photo: ServicePhoto) => (
                 <div key={photo.id} className="relative group">
-                  <img
+                  <OptimizedImage
                     src={photo.objectPath}
                     alt={photo.description || "Service photo"}
                     className="w-full h-24 object-cover rounded-lg border"
