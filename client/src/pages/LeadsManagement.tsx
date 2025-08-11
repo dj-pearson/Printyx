@@ -1001,6 +1001,13 @@ export default function LeadsManagement() {
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setLocation(`/quotes/new?leadId=${lead.id}`)}
+                              >
+                                <DollarSign className="mr-2 h-4 w-4" />
+                                Create Quote
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem>
                                 <Phone className="mr-2 h-4 w-4" />
                                 Call
@@ -1096,6 +1103,13 @@ export default function LeadsManagement() {
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setLocation(`/quotes/new?leadId=${lead.id}`)}
+                            >
+                              <DollarSign className="mr-2 h-4 w-4" />
+                              Create Quote
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

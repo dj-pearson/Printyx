@@ -284,13 +284,12 @@ export default function ProposalBuilder() {
   };
 
   const handleCreateProposal = () => {
-    // Navigate to actual proposal creation with selected quote and template
+    // Proceed to Contracts/eSign step after building proposal
     const params = new URLSearchParams();
     if (selectedQuote) params.set('quoteId', selectedQuote);
     if (selectedTemplate?.id) params.set('templateId', selectedTemplate.id);
-    params.set('type', 'proposal');
-    
-    setLocation('/quotes/new?' + params.toString());
+    params.set('from', 'proposal-builder');
+    setLocation('/contracts?' + params.toString());
   };
 
   return (
