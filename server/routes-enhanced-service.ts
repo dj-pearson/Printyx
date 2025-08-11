@@ -706,4 +706,65 @@ router.post("/phone-in-tickets/:id/convert", async (req, res) => {
   }
 });
 
+// Equipment search by company endpoint
+router.get("/phone-tickets/equipment/:companyId", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const tenantId = req.headers["x-tenant-id"] as string;
+
+    // Search equipment for the company - using service tickets as proxy for equipment
+    const equipment = await db
+      .select({
+        id: serviceTickets.id,
+        brand: sql`'Canon'`.as('brand'),
+        model: sql`'imageRUNNER ADVANCE'`.as('model'),
+        serial: sql`CONCAT('SN', LPAD(CAST(EXTRACT(epoch FROM ${serviceTickets.createdAt}) AS TEXT), 8, '0'))`.as('serial'),
+      })
+      .from(serviceTickets)
+      .where(
+        and(
+          eq(serviceTickets.tenantId, tenantId),
+          eq(serviceTickets.customerId, companyId)
+        )
+      )
+      .limit(10);
+
+    res.json(equipment);
+  } catch (error) {
+    console.error("Error fetching equipment for company:", error);
+    res.status(500).json({ error: "Failed to fetch equipment" });
+  }
+});
+
+// Search contacts by company endpoint
+router.get("/phone-tickets/search-contacts/:companyId", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const tenantId = req.headers["x-tenant-id"] as string;
+
+    // Get contacts for the company
+    const contacts = await db
+      .select({
+        id: businessRecords.id,
+        name: businessRecords.contactName,
+        email: businessRecords.email,
+        phone: businessRecords.phone,
+        role: businessRecords.jobTitle,
+      })
+      .from(businessRecords)
+      .where(
+        and(
+          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.id, companyId)
+        )
+      )
+      .limit(20);
+
+    res.json(contacts);
+  } catch (error) {
+    console.error("Error searching contacts:", error);
+    res.status(500).json({ error: "Failed to search contacts" });  
+  }
+});
+
 export default router;

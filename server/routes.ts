@@ -14541,6 +14541,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register warehouse FPY routes
   app.use("/api", warehouseFpyRoutes);
 
+  // Register DoD enforcement routes
+  const dodEnforcementRoutes = (await import("./routes-dod-enforcement")).default;
+  app.use("/api", dodEnforcementRoutes);
+
+  // Register enhanced billing routes
+  const enhancedBillingRoutes = (await import("./routes-enhanced-billing")).default;
+  app.use("/api", enhancedBillingRoutes);
+
   // Company search endpoint for phone tickets (placed before other company routes)
   app.get("/api/phone-tickets/search-companies", async (req, res) => {
     try {
