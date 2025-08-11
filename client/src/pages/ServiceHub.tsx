@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Select,
   SelectContent,
@@ -250,6 +251,18 @@ export default function ServiceHub() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          {typeof window !== 'undefined' && window.localStorage?.getItem('phoneInAutoConverted') === '1' && (
+            <div className="md:col-span-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-800 flex items-center justify-between">
+              <span>Phone-in ticket was converted to a service ticket automatically.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.localStorage?.removeItem('phoneInAutoConverted')}
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
           <Card>
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">

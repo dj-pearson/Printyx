@@ -485,7 +485,55 @@ router.post("/service-tickets/:ticketId/complete", async (req, res) => {
       })
       .where(eq(serviceTickets.id, ticketId));
 
-    // If follow-up is required, you might want to create a new ticket here
+    // Auto-invoice on completion (basic; refine pricing/lines as needed)
+    if (!completionData.followUpRequired) {
+      try {
+        // Minimal lookup to associate customer; adapt fields as needed
+        const [ticket] = await db
+          .select({
+            tenantId: serviceTickets.tenantId,
+            customerId: serviceTickets.customerId,
+          })
+          .from(serviceTickets)
+          .where(eq(serviceTickets.id, ticketId))
+          .limit(1);
+
+        if (ticket) {
+          // Use storage to create invoice to keep consistency
+          await storage.createInvoice({
+            tenantId: ticket.tenantId,
+            customerId: ticket.customerId,
+            contractId: null,
+            invoiceNumber: `SVC-${Date.now()}`,
+            invoiceDate: now,
+            dueDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+            poNumber: null,
+            salesRep: null,
+            invoiceType: 'service',
+            subtotalAmount: '0',
+            taxAmount: '0',
+            totalAmount: '0',
+            amountPaid: '0',
+            balanceDue: '0',
+            invoiceStatus: 'open',
+            paymentTerms: 'Net 30',
+            billingPeriodStart: null,
+            billingPeriodEnd: null,
+            monthlyBase: '0',
+            blackCopiesTotal: 0,
+            colorCopiesTotal: 0,
+            blackAmount: '0',
+            colorAmount: '0',
+            status: 'open',
+            paidDate: null,
+            invoiceNotes: `Auto-created for service ticket completion ${ticketId}`,
+            createdBy: (req as any).user?.id || 'system',
+          } as any);
+        }
+      } catch (invErr) {
+        console.error('Auto-invoice creation failed:', invErr);
+      }
+    }
 
     res.json({ success: true, status: ticketStatus });
   } catch (error) {
@@ -601,6 +649,59 @@ router.post("/parts-requests/:requestId/reject", async (req, res) => {
   } catch (error) {
     console.error("Error rejecting parts request:", error);
     res.status(500).json({ error: "Failed to reject parts request" });
+  }
+});
+
+// Convert an existing phone-in ticket to a service ticket
+router.post("/phone-in-tickets/:id/convert", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.headers["x-tenant-id"] as string;
+    if (!tenantId) {
+      return res.status(400).json({ error: "Missing x-tenant-id header" });
+    }
+
+    const [phoneTicket] = await db
+      .select()
+      .from(phoneInTickets)
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
+      .limit(1);
+
+    if (!phoneTicket) {
+      return res.status(404).json({ error: "Phone-in ticket not found" });
+    }
+
+    if (phoneTicket.convertedToTicketId) {
+      return res.status(400).json({ error: "Already converted" });
+    }
+
+    const ticketNumber = `TK-${Date.now()}`;
+    const [serviceTicket] = await db
+      .insert(serviceTickets)
+      .values({
+        tenantId,
+        customerId: phoneTicket.customerId || 'unknown',
+        ticketNumber,
+        title: `${(phoneTicket.issueCategory || '').toString().replace('_', ' ')} - ${phoneTicket.customerName}`,
+        description: phoneTicket.issueDescription,
+        priority: phoneTicket.urgencyLevel || 'medium',
+        status: 'new',
+        customerAddress: phoneTicket.locationAddress,
+        customerPhone: phoneTicket.callerPhone,
+        workOrderNotes: `Converted from phone-in ticket ${id}`,
+        createdBy: phoneTicket.handledBy,
+      })
+      .returning();
+
+    await db
+      .update(phoneInTickets)
+      .set({ convertedToTicketId: serviceTicket.id, convertedAt: new Date() })
+      .where(eq(phoneInTickets.id, id));
+
+    res.json({ phoneTicket: { ...phoneTicket, convertedToTicketId: serviceTicket.id }, serviceTicket });
+  } catch (error) {
+    console.error("Error converting phone-in ticket:", error);
+    res.status(500).json({ error: "Failed to convert phone-in ticket" });
   }
 });
 

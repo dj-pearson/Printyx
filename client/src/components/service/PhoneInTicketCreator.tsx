@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Building2, 
@@ -61,6 +62,7 @@ const phoneTicketSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent', 'emergency']),
   preferredServiceDate: z.string().optional(),
   notes: z.string().optional(),
+  createServiceTicket: z.boolean().optional(),
 });
 
 type PhoneTicketFormData = z.infer<typeof phoneTicketSchema>;
@@ -98,6 +100,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
       priority: "medium",
       preferredServiceDate: "",
       notes: "",
+      createServiceTicket: false,
     },
   });
 
@@ -139,10 +142,43 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
         customerId: selectedCompany?.id,
         contactId: selectedContact?.id,
         equipmentId: selectedEquipment?.id,
+        createServiceTicket: data.createServiceTicket === true,
       });
     },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Phone-in ticket created successfully" });
+    onSuccess: (result: any) => {
+      const newId = result?.phoneTicket?.id || result?.id;
+      const converted = !!result?.serviceTicket;
+      try {
+        if (converted) {
+          window?.localStorage?.setItem('phoneInAutoConverted', '1');
+        }
+      } catch {}
+      toast({
+        title: converted ? "Phone-in created and converted" : "Phone-in created",
+        description: (
+          <div className="flex items-center justify-between w-full">
+            <span>{converted ? "Ticket converted to service ticket" : "Ticket created successfully"}</span>
+            {newId && !converted && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await apiRequest(`/api/phone-in-tickets/${newId}/convert`, "POST");
+                    toast({ title: "Converted", description: "Converted to service ticket" });
+                    queryClient.invalidateQueries({ queryKey: ["/api/service-tickets"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/phone-in-tickets"] });
+                  } catch {
+                    toast({ title: "Conversion failed", description: "Could not convert ticket", variant: "destructive" });
+                  }
+                }}
+              >
+                Convert now
+              </Button>
+            )}
+          </div>
+        ) as any,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/phone-in-tickets"] });
       onClose();
       resetForm();
@@ -713,6 +749,15 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
               />
             )}
           />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            checked={form.watch("createServiceTicket")}
+            onCheckedChange={(val) => form.setValue("createServiceTicket", Boolean(val))}
+            id="createServiceTicket"
+          />
+          <Label htmlFor="createServiceTicket">Create as service ticket now</Label>
         </div>
       </CardContent>
     </Card>
