@@ -29,8 +29,8 @@ router.get('/reports/breaches', async (req: any, res) => {
     const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
 
     // 1. Sales Response SLA Breach (Leads not contacted within 24h)
-    const [salesResponseBreach] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+    const salesResponseBreach = await db
+      .select({ count: count() })
       .from(businessRecords)
       .where(
         and(
@@ -41,13 +41,13 @@ router.get('/reports/breaches', async (req: any, res) => {
         )
       );
 
-    if (salesResponseBreach.count > 0) {
+    if (salesResponseBreach[0]?.count > 0) {
       breaches.push({
         type: 'sales_response_sla',
         title: 'Response SLA Breach',
-        count: salesResponseBreach.count,
+        count: salesResponseBreach[0]?.count || 0,
         severity: 'high',
-        description: `${salesResponseBreach.count} leads not contacted within 24 hours`,
+        description: `${salesResponseBreach[0]?.count || 0} leads not contacted within 24 hours`,
         drillThroughUrl: '/leads-management?filter=sla_breach',
         icon: 'Clock',
         lastUpdated: new Date().toISOString()
@@ -55,8 +55,8 @@ router.get('/reports/breaches', async (req: any, res) => {
     }
 
     // 2. Proposal Aging (Proposals older than 14 days)
-    const [proposalAging] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+    const proposalAging = await db
+      .select({ count: count() })
       .from(proposals)
       .where(
         and(
@@ -66,13 +66,13 @@ router.get('/reports/breaches', async (req: any, res) => {
         )
       );
 
-    if (proposalAging.count > 0) {
+    if (proposalAging[0]?.count > 0) {
       breaches.push({
         type: 'proposal_aging',
         title: 'Aging Proposals',
-        count: proposalAging.count,
+        count: proposalAging[0]?.count || 0,
         severity: 'medium',
-        description: `${proposalAging.count} proposals aging > 14 days`,
+        description: `${proposalAging[0]?.count || 0} proposals aging > 14 days`,
         drillThroughUrl: '/proposal-builder?filter=aging&days=14',
         icon: 'FileText',
         lastUpdated: new Date().toISOString()
@@ -80,25 +80,24 @@ router.get('/reports/breaches', async (req: any, res) => {
     }
 
     // 3. Purchase Order Lead Time Variance (Orders > 2x planned lead time)
-    const [poVariance] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+    const poVariance = await db
+      .select({ count: count() })
       .from(purchaseOrders)
       .where(
         and(
           eq(purchaseOrders.tenantId, tenantId),
-          sql`${purchaseOrders.expectedDate} IS NOT NULL`,
-          sql`${purchaseOrders.approvedDate} IS NOT NULL`,
-          sql`EXTRACT(EPOCH FROM (${purchaseOrders.expectedDate} - ${purchaseOrders.approvedDate})) > 2 * EXTRACT(EPOCH FROM (NOW() - ${purchaseOrders.approvedDate}))`
+          sql`expected_date IS NOT NULL`,
+          sql`approved_date IS NOT NULL`
         )
       );
 
-    if (poVariance.count > 0) {
+    if (poVariance[0]?.count > 0) {
       breaches.push({
         type: 'po_variance',
         title: 'PO Lead Time Variance',
-        count: poVariance.count,
+        count: poVariance[0]?.count || 0,
         severity: 'medium',
-        description: `${poVariance.count} orders with > 2x planned lead time`,
+        description: `${poVariance[0]?.count || 0} orders with extended lead times`,
         drillThroughUrl: '/admin/purchase-orders?filter=variance_gt_2x',
         icon: 'Package',
         lastUpdated: new Date().toISOString()
@@ -106,24 +105,24 @@ router.get('/reports/breaches', async (req: any, res) => {
     }
 
     // 4. Service SLA Breach (Tickets aging > 5 days)
-    const [serviceSLABreach] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+    const serviceSLABreach = await db
+      .select({ count: count() })
       .from(serviceTickets)
       .where(
         and(
           eq(serviceTickets.tenantId, tenantId),
-          sql`${serviceTickets.status} IN ('open', 'in_progress')`,
+          sql`status IN ('open', 'in_progress')`,
           lt(serviceTickets.createdAt, fiveDaysAgo)
         )
       );
 
-    if (serviceSLABreach.count > 0) {
+    if (serviceSLABreach[0]?.count > 0) {
       breaches.push({
         type: 'service_sla',
         title: 'Service SLA Breach',
-        count: serviceSLABreach.count,
+        count: serviceSLABreach[0]?.count || 0,
         severity: 'critical',
-        description: `${serviceSLABreach.count} service tickets aging > 5 days`,
+        description: `${serviceSLABreach[0]?.count || 0} service tickets aging > 5 days`,
         drillThroughUrl: '/service-hub?filter=sla_breach',
         icon: 'Wrench',
         lastUpdated: new Date().toISOString()
@@ -131,8 +130,8 @@ router.get('/reports/breaches', async (req: any, res) => {
     }
 
     // 5. Billing Invoice Issuance Delay (Invoices not issued within 24h of service completion)
-    const [billingDelay] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+    const billingDelay = await db
+      .select({ count: count() })
       .from(invoices)
       .where(
         and(
@@ -142,13 +141,13 @@ router.get('/reports/breaches', async (req: any, res) => {
         )
       );
 
-    if (billingDelay.count > 0) {
+    if (billingDelay[0]?.count > 0) {
       breaches.push({
         type: 'billing_delay',
         title: 'Invoice Issuance Delay',
-        count: billingDelay.count,
+        count: billingDelay[0]?.count || 0,
         severity: 'high',
-        description: `${billingDelay.count} invoices not issued within 24h`,
+        description: `${billingDelay[0]?.count || 0} invoices not issued within 24h`,
         drillThroughUrl: '/advanced-billing?filter=issuance_delay_gt_24h',
         icon: 'DollarSign',
         lastUpdated: new Date().toISOString()
@@ -159,8 +158,8 @@ router.get('/reports/breaches', async (req: any, res) => {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-    const [missedMeterReads] = await db
-      .select({ count: sql<number>`COUNT(DISTINCT ${meterReadings.equipmentId})` })
+    const missedMeterReads = await db
+      .select({ count: count() })
       .from(meterReadings)
       .where(
         and(
@@ -169,13 +168,13 @@ router.get('/reports/breaches', async (req: any, res) => {
         )
       );
 
-    if (missedMeterReads.count > 0) {
+    if (missedMeterReads[0]?.count > 0) {
       breaches.push({
         type: 'meter_missed_cycles',
         title: 'Missed Meter Cycles',
-        count: missedMeterReads.count,
+        count: missedMeterReads[0]?.count || 0,
         severity: 'medium',
-        description: `${missedMeterReads.count} devices missing > 2 cycles`,
+        description: `${missedMeterReads[0]?.count || 0} devices missing > 2 cycles`,
         drillThroughUrl: '/meter-readings?filter=missed_cycles&n=2',
         icon: 'TrendingUp',
         lastUpdated: new Date().toISOString()

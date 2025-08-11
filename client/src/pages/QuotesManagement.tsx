@@ -71,6 +71,7 @@ import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
+import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 
 interface Quote {
   id: string;
@@ -282,6 +283,13 @@ export default function QuotesManagement() {
   return (
     <MainLayout>
       <div className="container mx-auto p-6 space-y-6">
+        {/* Process Help Banner */}
+        <ProcessHelpBanner 
+          processType="lead-to-quote"
+          currentStage="quote-generation"
+          nextStage="proposal-conversion"
+          estimatedTime="2-4 hours"
+        />
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

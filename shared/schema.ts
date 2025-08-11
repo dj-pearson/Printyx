@@ -1556,6 +1556,10 @@ export const invoices = pgTable("invoices", {
   status: varchar("status").default("draft"), // Legacy status field
   paidDate: timestamp("paid_date"),
 
+  // LEAN Metrics Tracking
+  issuanceDelayHours: integer("issuance_delay_hours").default(0), // Time between service completion and invoice issuance
+  issuedAt: timestamp("issued_at"), // When invoice was actually issued/sent
+  
   // System Tracking
   invoiceNotes: text("invoice_notes"), // E-Automate Notes
   createdBy: varchar("created_by").notNull(),
