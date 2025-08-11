@@ -78,6 +78,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useLocation } from "wouter";
 
 // Enhanced form schema with line items
 const purchaseOrderFormSchema = z.object({
@@ -131,6 +132,7 @@ const statusIcons = {
 };
 
 export default function PurchaseOrders() {
+  const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -315,7 +317,17 @@ export default function PurchaseOrders() {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Purchase Order
-              </Button>
+                          </Button>
+                          {/* Release to Warehouse CTA */}
+                          {po.status === "approved" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setLocation(`/warehouse-operations?orderId=${po.id}`)}
+                            >
+                              Release to Warehouse
+                            </Button>
+                          )}
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -332,7 +344,7 @@ export default function PurchaseOrders() {
                 >
                   {/* Basic Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
+                   <FormField
                       control={form.control}
                       name="poNumber"
                       render={({ field }) => (
@@ -345,6 +357,12 @@ export default function PurchaseOrders() {
                         </FormItem>
                       )}
                     />
+                   {/* If navigated with contractId in query, show hint */}
+                   {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('contractId') && (
+                     <div className="md:col-span-2 text-sm text-blue-700 bg-blue-50 p-2 rounded">
+                       Creating PO for Contract ID: {new URLSearchParams(window.location.search).get('contractId')}
+                     </div>
+                   )}
 
                     <FormField
                       control={form.control}
@@ -1181,6 +1199,11 @@ export default function PurchaseOrders() {
                     <Download className="h-4 w-4 mr-2" />
                     Export PDF
                   </Button>
+                  {selectedPO?.status === "approved" && (
+                    <Button onClick={() => setLocation(`/warehouse-operations?orderId=${selectedPO.id}`)}>
+                      Release to Warehouse
+                    </Button>
+                  )}
                   {selectedPO.status === "draft" && (
                     <Button
                       onClick={() =>
