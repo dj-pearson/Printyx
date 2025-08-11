@@ -414,8 +414,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const method = req.method.toUpperCase();
     if (method === "GET" || method === "HEAD" || method === "OPTIONS")
       return next();
-    // Allowlist webhook-like endpoints
+    // Allowlist webhook-like endpoints and authentication endpoints
     const exemptPaths = [
+      "/api/auth/login", // Login must be exempt since user can't get CSRF token before authentication
+      "/api/auth/register", // Registration must be exempt for same reason
       "/api/quickbooks/webhook",
       "/api/salesforce/webhook",
       "/api/integrations/webhook",
