@@ -399,13 +399,9 @@ export default function ProposalBuilder() {
               {selectedQuote && selectedTemplate && (
                 <DoDEnforcementButton
                   recordId={selectedQuote}
-                  validationType="proposal-to-contract"
+                  validationType="quote-to-proposal"
                   onValidClick={() => {
-                    const params = new URLSearchParams();
-                    if (selectedQuote) params.set('quoteId', selectedQuote);
-                    if (selectedTemplate?.id) params.set('templateId', selectedTemplate.id);
-                    params.set('from', 'proposal-builder');
-                    setLocation('/contracts?' + params.toString());
+                    setActiveStep('transform');
                   }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -465,6 +461,15 @@ export default function ProposalBuilder() {
         </div>
 
         <Separator />
+
+        {/* DoD Validation Banner */}
+        {selectedQuote && (
+          <DoDValidationBanner
+            recordId={selectedQuote}
+            validationType="quote-to-proposal"
+            enabled={true}
+          />
+        )}
 
         {/* Quote Selection */}
         {activeStep === 'quote' && (
@@ -1022,7 +1027,7 @@ export default function ProposalBuilder() {
                 </Button>
                 <DoDEnforcementButton
                   recordId={selectedQuote || ''}
-                  validationType="proposal-to-contract"
+                  validationType="quote-to-proposal"
                   onValidClick={() => {
                     const params = new URLSearchParams();
                     if (selectedQuote) params.set('quoteId', selectedQuote);
@@ -1032,7 +1037,7 @@ export default function ProposalBuilder() {
                   }}
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  Create Final Proposal
+                  Send for Contract
                 </DoDEnforcementButton>
               </div>
             </div>

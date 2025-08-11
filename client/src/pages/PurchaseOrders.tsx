@@ -79,6 +79,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
+import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
+import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 
 // Enhanced form schema with line items
 const purchaseOrderFormSchema = z.object({
