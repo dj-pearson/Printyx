@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +52,7 @@ import {
 } from "lucide-react";
 
 export default function ServiceHub() {
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
   const [showPhoneInCreator, setShowPhoneInCreator] = useState(false);
   const [showTechWorkflow, setShowTechWorkflow] = useState(false);
@@ -181,6 +183,13 @@ export default function ServiceHub() {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab) setActiveTab(tab);
+  }, []);
 
   if (ticketsLoading || phoneInLoading) {
     return (
@@ -314,6 +323,14 @@ export default function ServiceHub() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Filter Banner */}
+        {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('filter')?.startsWith('aging_gt_') && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
+            <span>Showing tickets with aging greater than {new URLSearchParams(window.location.search).get('filter')?.split('aging_gt_')[1]} days</span>
+            <Button variant="outline" size="sm" onClick={() => setLocation('/service-hub')}>Clear Filter</Button>
+          </div>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs

@@ -308,3 +308,190 @@ Notes: Routes referenced from `client/src/App.tsx` and navigation from `client/s
 - After wiring, enable dashboard tiles to surface SLA/DoD breaches per stage.
 
 
+
+---
+
+## Lean Governance & Cadence
+
+- Daily: 15‑min standup by function (Sales, Ops, Service, Finance) with 1 KPI and 1 blocker each.
+- Weekly Ops Review: Cross‑functional review of flow metrics and top 3 bottlenecks; commit next kaizen items.
+- Monthly Kaizen: Standard work updates, policy changes, retrospective on flow time improvements.
+- Owners: assign per section below; keep RACI up to date.
+
+## Control Plan & Visual Management
+
+- Control charts and tiles (target vs actual) on role dashboards for:
+  - Sales: response SLA, lead→quote time, proposal acceptance rate
+  - Fulfillment: PO lead time, warehouse FPY, delivery on‑time
+  - Onboarding: install duration, training completion, early ticket rate (<30d)
+  - Service: SLA on‑time %, MTTR, FTF%, backlog aging
+  - Billing/Finance: invoice cycle time, DSO, dispute rate
+- Breach tiles link to filtered lists (drill‑through) and show “Next” corrective action.
+
+## Standard Work by Stage (SWI)
+
+- Every stage must have:
+  - Defined inputs/outputs, required artifacts, and a “Next” CTA validated in UI
+  - Prefilled forms from prior stage context; no duplicate entry
+  - DoD checks enforced in UI (see Quality Gates)
+- Audit list (pass/fail):
+  - Leads → Quotes prefill works from `/leads-management`
+  - Quotes → Proposal Builder deep link with `?quoteId` works
+  - Proposal → Contracts/eSign deep link present
+  - Contracts → PO → Warehouse → Onboarding links present and tested
+  - Onboarding → Customer Success → Meter Readings → Billing links present and tested
+  - Service Hub → Advanced Billing `?ticketId` works
+
+## SLAs & Targets (initial)
+
+- Sales: response < 15 min; lead→quote < 3 days; proposal acceptance > 35%
+- Fulfillment: PO lead time within vendor spec; warehouse FPY > 95%; delivery on‑time > 95%
+- Onboarding: install duration within plan ±20%; training completion 100%
+- Service: response on‑time > 90%; MTTR median < 8h; FTF% > 70%; backlog > 7 days = red
+- Billing: invoice creation < 24h from completion; DSO < 35 days; disputes < 2%
+
+## RACI Snapshot (high‑level)
+
+- Sales funnel (Lead→Close): R = Sales; A = Sales Manager; C = Finance, Ops; I = Service
+- Fulfillment (Order→Warehouse): R = Ops; A = Ops Manager; C = Sales, Vendors; I = Finance
+- Delivery/Onboarding: R = Ops/Implementation; A = Ops Manager; C = Customer Success, Service; I = Sales
+- Service lifecycle: R = Service; A = Service Manager; C = Parts/Warehouse; I = Finance
+- Billing/Collections: R = Finance; A = Controller; C = Sales/Service; I = Exec
+
+## Andon / Escalation Rules
+
+- Auto‑escalate when:
+  - Sales response SLA breach; proposal aging > target
+  - PO lead time variance > 2× plan; backorder flagged without substitution
+  - Warehouse FPY < 90% weekly; kitting checklist fails
+  - Delivery not scheduled within 3 business days of PO approval
+  - Service SLA breach; ticket aging > 5 days; repeat tickets within 14 days
+  - Meter reads missing N cycles; integration health fails
+- Each escalation posts to the owner’s queue and manager summary tile.
+
+## Data Quality & Single Source of Truth (SSOT)
+
+- `business_records` as the customer SSOT; quotes/proposals reference it; contacts unified
+- Quote ⇆ Proposal fields normalized; one set of pricing calculations
+- Tickets unified: phone‑in converts to service ticket with shared metrics source
+- Tenancy/RBAC enforced on all reports and API queries by `tenantId`
+
+## Kaizen Backlog (prioritized)
+
+- P1: Implement missing Service API endpoints noted in `SERVICE_AUDIT_AND_LEAN_FLOW.md` (Intake, Sessions, Steps)
+- P1: Add DoD guards across UI forms to enforce Quality Gates before advancing
+- P1: Role dashboards—add breach tiles with drill‑through filters per Control Plan
+- P2: Warehouse kitting checklist + FPY capture in `/warehouse-operations`
+- P2: Auto‑create invoice on service completion; route to `/advanced-billing?ticketId=...`
+- P2: Meter billing schedules and alerts; resolve missed reads automatically
+- P3: Renewal playbook alerts (lease expiry); auto‑generate “Refresh Proposal” links
+
+---
+
+## DoD Checklists & UI Enforcement (by stage)
+
+- Leads
+  - Required: `companyName`, `primary contact (name/email/phone)`, `leadSource`
+  - UI: Disable “Create Quote” until required fields present; show inline checklist banner
+  - Drill‑through: `/quotes/new?leadId={leadId}` when satisfied
+
+- Quotes
+  - Required: linked `businessRecordId`, at least 1 line item, pricing totals calculated
+  - UI: Disable “Create Proposal” until satisfied; banner shows missing pieces
+  - Drill‑through: `/proposal-builder?quoteId={quoteId}`
+
+- Proposal
+  - Required: Required sections present (`cover_page`, `pricing`), brand profile applied
+  - UI: Enable “Send for eSign” only when required sections complete
+  - Drill‑through: `/contracts?proposalId={proposalId}`
+
+- Contracts
+  - Required: `customerId`, dates, rates, eSign packet prepared
+  - UI: “Book Order” enabled once eSign complete
+  - Drill‑through: `/admin/purchase-orders?contractId={contractId}`
+
+- Purchase Orders
+  - Required: vendor selected, items present, totals > 0, status `approved`
+  - UI: “Release to Warehouse” shown only when `status=approved`
+  - Drill‑through: `/warehouse-operations?orderId={poId}`
+
+- Warehouse / Delivery
+  - Required: kitting checklist pass, asset tags, firmware levels
+  - UI: “Start Install Checklist” enabled when checklist passes
+  - Drill‑through: `/enhanced-onboarding-form?orderId={orderId}`
+
+- Onboarding
+  - Required: training complete, network config, customer sign‑off
+  - UI: “Go‑Live & Handover” enabled then route to Customer Success
+  - Drill‑through: `/customer-success-management`
+
+- Service
+  - Required: workflow steps complete, parts reconciled, photos/signature captured
+  - UI: Show “Complete & Bill” → create invoice
+  - Drill‑through: `/advanced-billing?ticketId={ticketId}`
+
+- Billing
+  - Required: invoice issued within 24h of completion
+  - UI: Filter banner when landing with `ticketId|contractId`, with “Clear Filter”
+
+---
+
+## Breach Tiles & Drill‑Through Specs
+
+- Sales response SLA breach
+  - Tile: “Response SLA Breached (Last 24h)”
+  - Drill‑through: `/leads-management?filter=sla_breach`
+
+- Proposal aging
+  - Tile: “Proposals Aging > 7 days”
+  - Drill‑through: `/proposal-builder?filter=aging&days=7`
+
+- PO lead time variance
+  - Tile: “PO Variance > 2× Plan”
+  - Drill‑through: `/admin/purchase-orders?filter=variance_gt_2x`
+
+- Warehouse FPY < target
+  - Tile: “Warehouse FPY < 95% (7d)”
+  - Drill‑through: `/warehouse-operations?tab=build&filter=fpy_lt_95`
+
+- Delivery not scheduled
+  - Tile: “PO Approved > 3d without Delivery”
+  - Drill‑through: `/warehouse-operations?tab=delivery&filter=unscheduled`
+
+- Service SLA / backlog breach
+  - Tile: “Service SLA Breach / Aging > 5d”
+  - Drill‑through: `/service-hub?tab=active-tickets&filter=aging_gt_5`
+
+- Meter reads missing
+  - Tile: “Missed Meters (N cycles)”
+  - Drill‑through: `/meter-readings?filter=missed_cycles&n=N`
+
+- Billing cycle delay
+  - Tile: “Invoices not issued within 24h”
+  - Drill‑through: `/advanced-billing?filter=issuance_delay_gt_24h`
+
+Note: Implement these as URL params and handle at page level to pre‑filter lists.
+
+---
+
+## KPI Definitions & Formulas (initial set)
+
+- Response SLA (Sales): on‑time responses / total responses
+- Lead→Quote time: median hours from lead created to first quote
+- Proposal acceptance rate: accepted / sent
+- PO lead time variance: actual lead time / planned lead time
+- Warehouse FPY: passed at first attempt / total units processed
+- Delivery on‑time: on‑time deliveries / total deliveries
+- Install duration variance: actual / planned
+- Early ticket rate: tickets in first 30 days post go‑live / installs
+- Service SLA on‑time: on‑time tickets / total tickets
+- MTTR: median hours from opened → resolved
+- FTF%: tickets resolved without follow‑up / total tickets
+- Backlog aging: median age of open tickets in days
+- Invoice cycle time: hours from completion → invoice created
+- DSO: (Accounts Receivable / Total Credit Sales) × days in period
+- Dispute rate: disputed invoices / total invoices
+
+Implementation notes:
+- Prefer median over mean for cycle times; compute per tenant and overall.
+- Define filters by period (day/week/month) and role (rep/tech/manager).
