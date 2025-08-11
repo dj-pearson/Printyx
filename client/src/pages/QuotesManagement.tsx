@@ -70,6 +70,7 @@ import {
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 
 interface Quote {
   id: string;
@@ -516,10 +517,19 @@ export default function QuotesManagement() {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Quote
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleCreateProposal(quote.id)}>
-                                <Wand2 className="h-4 w-4 mr-2" />
-                                Create Proposal
-                              </DropdownMenuItem>
+                              <div className="px-2 py-1">
+                                <DoDEnforcementButton
+                                  recordId={quote.id}
+                                  validationType="quote-to-proposal"
+                                  onValidClick={() => handleCreateProposal(quote.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start h-8 px-2"
+                                >
+                                  <Wand2 className="h-4 w-4 mr-2" />
+                                  Create Proposal
+                                </DoDEnforcementButton>
+                              </div>
                               <DropdownMenuSeparator />
                               
                               {quote.status === 'draft' && (

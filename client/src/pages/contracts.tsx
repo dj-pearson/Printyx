@@ -32,6 +32,8 @@ import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
+import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 
 export default function Contracts() {
   const queryClient = useQueryClient();
