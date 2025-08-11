@@ -95,6 +95,8 @@ import enhancedServiceRoutes from "./routes-enhanced-service";
 import { enhancedRBACRoutes } from "./routes-enhanced-rbac";
 import gpt5Routes from "./routes-ai-gpt5";
 import salesForecastingRoutes from "./routes-sales-forecasting";
+import reportsRoutes from "./routes-reports";
+import warehouseFpyRoutes from "./routes-warehouse-fpy";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -14532,6 +14534,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register enhanced service routes
   app.use("/api", enhancedServiceRoutes);
+
+  // Register reports routes
+  app.use("/api", reportsRoutes);
+
+  // Register warehouse FPY routes
+  app.use("/api", warehouseFpyRoutes);
 
   // Company search endpoint for phone tickets (placed before other company routes)
   app.get("/api/phone-tickets/search-companies", async (req, res) => {
