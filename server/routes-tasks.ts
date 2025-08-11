@@ -10,6 +10,11 @@ export function registerTaskRoutes(app: Express) {
   app.get("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
+      
+      if (!tenantId) {
+        console.log("Basic tasks: Missing tenantId for user:", req.user);
+        return res.status(401).json({ message: "Missing tenant context" });
+      }
       const { assignedTo, my } = req.query;
       
       let userId: string | undefined;
@@ -92,6 +97,11 @@ export function registerTaskRoutes(app: Express) {
   app.get("/api/projects", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
+      
+      if (!tenantId) {
+        console.log("Basic projects: Missing tenantId for user:", req.user);
+        return res.status(401).json({ message: "Missing tenant context" });
+      }
       const projects = await storage.getProjects(tenantId);
       res.json(projects);
     } catch (error) {

@@ -331,6 +331,10 @@ function Router() {
           <Route path="/system-integrations" component={SystemIntegrations} />
           <Route path="/deployment-readiness" component={DeploymentReadiness} />
           <Route path="/task-management" component={TaskManagement} />
+          <Route
+            path="/customer-success-management"
+            component={CustomerSuccessManagement}
+          />
           <Route path="/basic-tasks" component={BasicTaskManagement} />
           <Route path="/pricing-management" component={PricingManagement} />
           <Route

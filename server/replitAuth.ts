@@ -151,6 +151,22 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  // Add tenant context to user if missing
+  if (!user.tenantId && user.claims?.sub) {
+    try {
+      const dbUser = await storage.getUserById(user.claims.sub);
+      if (dbUser) {
+        user.tenantId = dbUser.tenantId;
+      } else {
+        // Use default tenant if user not found in DB
+        user.tenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
+      }
+    } catch (error) {
+      console.error("Error fetching user tenant context:", error);
+      user.tenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
+    }
+  }
+
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
     return next();
