@@ -71,6 +71,54 @@ export {
   insertLocationHistorySchema,
 } from "./mobile-service-schema";
 
+// Re-export enhanced service schemas
+export {
+  phoneInTickets,
+  technicianTicketSessions,
+  ticketPartsRequests,
+  workflowSteps,
+  enhancedTicketStatusEnum,
+  ticketPriorityEnum,
+  issueCategoryEnum,
+  contactMethodEnum,
+  insertPhoneInTicketSchema,
+  insertTechnicianTicketSessionSchema,
+  insertTicketPartsRequestSchema,
+  insertWorkflowStepSchema,
+} from "./enhanced-service-schema";
+
+export type {
+  PhoneInTicket,
+  TechnicianTicketSession,
+  TicketPartsRequest,
+  WorkflowStep,
+  InsertPhoneInTicket,
+  InsertTechnicianTicketSession,
+  InsertTicketPartsRequest,
+  InsertWorkflowStep,
+} from "./enhanced-service-schema";
+
+// Re-export warehouse FPY schemas
+export {
+  warehouseKittingOperations,
+  fpyMetrics,
+  autoInvoiceGeneration,
+  warehouseOperationStatusEnum,
+  kitQualityStatusEnum,
+  insertWarehouseKittingOperationSchema,
+  insertFpyMetricSchema,
+  insertAutoInvoiceGenerationSchema,
+} from "./warehouse-fpy-schema";
+
+export type {
+  WarehouseKittingOperation,
+  FpyMetric,
+  AutoInvoiceGeneration,
+  InsertWarehouseKittingOperation,
+  InsertFpyMetric,
+  InsertAutoInvoiceGeneration,
+} from "./warehouse-fpy-schema";
+
 // Re-export manufacturer integration schemas
 export {
   manufacturerIntegrations,

@@ -14,7 +14,7 @@ import {
   type TechnicianTicketSession,
   type TicketPartsRequest,
 } from "@shared/enhanced-service-schema";
-import { serviceTickets, customers, businessRecords } from "@shared/schema";
+import { serviceTickets, customers, businessRecords, autoInvoiceGeneration, insertAutoInvoiceGenerationSchema } from "@shared/schema";
 
 const router = express.Router();
 
@@ -485,10 +485,9 @@ router.post("/service-tickets/:ticketId/complete", async (req, res) => {
       })
       .where(eq(serviceTickets.id, ticketId));
 
-    // Auto-invoice on completion (basic; refine pricing/lines as needed)
+    // Auto-invoice generation on completion
     if (!completionData.followUpRequired) {
       try {
-        // Minimal lookup to associate customer; adapt fields as needed
         const [ticket] = await db
           .select({
             tenantId: serviceTickets.tenantId,
@@ -499,39 +498,41 @@ router.post("/service-tickets/:ticketId/complete", async (req, res) => {
           .limit(1);
 
         if (ticket) {
-          // Use storage to create invoice to keep consistency
-          await storage.createInvoice({
-            tenantId: ticket.tenantId,
-            customerId: ticket.customerId,
-            contractId: null,
-            invoiceNumber: `SVC-${Date.now()}`,
-            invoiceDate: now,
-            dueDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-            poNumber: null,
-            salesRep: null,
-            invoiceType: 'service',
-            subtotalAmount: '0',
-            taxAmount: '0',
-            totalAmount: '0',
-            amountPaid: '0',
-            balanceDue: '0',
-            invoiceStatus: 'open',
-            paymentTerms: 'Net 30',
-            billingPeriodStart: null,
-            billingPeriodEnd: null,
-            monthlyBase: '0',
-            blackCopiesTotal: 0,
-            colorCopiesTotal: 0,
-            blackAmount: '0',
-            colorAmount: '0',
-            status: 'open',
-            paidDate: null,
-            invoiceNotes: `Auto-created for service ticket completion ${ticketId}`,
-            createdBy: (req as any).user?.id || 'system',
-          } as any);
+          // Get session data for labor calculations
+          const [session] = await db
+            .select({
+              billableHours: technicianTicketSessions.billableHours,
+              partsUsedIds: technicianTicketSessions.partsUsedIds,
+            })
+            .from(technicianTicketSessions)
+            .where(eq(technicianTicketSessions.serviceTicketId, ticketId))
+            .limit(1);
+
+          const laborHours = session?.billableHours || 2; // Default 2 hours
+          const laborRate = 75; // Default rate, should come from company settings
+          const partsTotal = 0; // Calculate from parts used, placeholder for now
+          
+          const invoiceNumber = `SVC-${Date.now()}`;
+          const totalAmount = (Number(laborHours) * laborRate) + partsTotal;
+
+          // Create auto-invoice generation record
+          await db
+            .insert(autoInvoiceGeneration)
+            .values({
+              tenantId: ticket.tenantId,
+              sourceType: 'service_ticket',
+              sourceId: ticketId,
+              invoiceNumber,
+              generationStatus: 'processing',
+              laborHours: laborHours.toString(),
+              laborRate: laborRate.toString(),
+              partsTotal: partsTotal.toString(),
+              totalAmount: totalAmount.toString(),
+              triggeredAt: now,
+            });
         }
       } catch (invErr) {
-        console.error('Auto-invoice creation failed:', invErr);
+        console.error('Auto-invoice generation failed:', invErr);
       }
     }
 

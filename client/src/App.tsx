@@ -24,7 +24,7 @@ import Contracts from "@/pages/contracts";
 const ServiceDispatchOptimization = React.lazy(() => import("@/pages/ServiceDispatchOptimization"));
 import Inventory from "@/pages/inventory";
 import Billing from "@/pages/billing";
-import Reports from "@/pages/reports";
+import Reports from "@/pages/Reports";
 import MeterReadings from "@/pages/MeterReadings";
 import ProductModels from "@/pages/ProductModels";
 import ProductAccessories from "@/pages/ProductAccessories";
