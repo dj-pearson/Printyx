@@ -161,7 +161,7 @@ router.post("/equipment-packages", requireAuth, async (req: any, res) => {
 // Get all proposals
 router.get("/", requireAuth, async (req: any, res) => {
   try {
-    const { status, businessRecordId } = req.query;
+    const { status, businessRecordId, filter, days } = req.query as Record<string, string>;
 
     let baseQuery = db
       .select({
@@ -190,7 +190,7 @@ router.get("/", requireAuth, async (req: any, res) => {
         eq(proposals.businessRecordId, businessRecords.id)
       );
 
-    const conditions = [eq(proposals.tenantId, req.user.tenantId)];
+    const conditions: any[] = [eq(proposals.tenantId, req.user.tenantId)];
 
     if (status) {
       conditions.push(eq(proposals.status, status as string));
@@ -200,6 +200,14 @@ router.get("/", requireAuth, async (req: any, res) => {
       conditions.push(
         eq(proposals.businessRecordId, businessRecordId as string)
       );
+    }
+
+    // Aging filter: proposals older than N days
+    if (filter === "aging" && days) {
+      const n = Number.parseInt(days, 10);
+      if (!Number.isNaN(n) && n > 0) {
+        conditions.push(sql`${proposals.createdAt} < NOW() - INTERVAL '${n} days'`);
+      }
     }
 
     const query = baseQuery.where(and(...conditions));
