@@ -204,7 +204,13 @@ function DroppableStageArea({
 }
 
 // Draggable Deal Card Component
-function DraggableDealCard({ deal }: { deal: Deal }) {
+function DraggableDealCard({
+  deal,
+  onDelete,
+}: {
+  deal: Deal;
+  onDelete: (dealId: string) => void;
+}) {
   const {
     attributes,
     listeners,
@@ -247,7 +253,18 @@ function DraggableDealCard({ deal }: { deal: Deal }) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Edit Deal</DropdownMenuItem>
               <DropdownMenuItem>View Details</DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Delete deal "${deal.title}"? This cannot be undone.`
+                    )
+                  ) {
+                    onDelete(deal.id);
+                  }
+                }}
+              >
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -563,6 +580,23 @@ export default function DealsManagement() {
         variant: "destructive",
       });
       setEditingCloseDate(null);
+    },
+  });
+
+  // Delete deal mutation
+  const deleteDealMutation = useMutation({
+    mutationFn: async (dealId: string) =>
+      apiRequest(`/api/deals/${dealId}`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      toast({ title: "Success", description: "Deal deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete deal",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1229,7 +1263,13 @@ export default function DealsManagement() {
                           {!collapsedStages[stage.id] && (
                             <div className="flex-1 p-2 sm:p-3 space-y-2 overflow-y-auto min-h-0">
                               {(dealsByStage[stage.id] || []).map((deal) => (
-                                <DraggableDealCard key={deal.id} deal={deal} />
+                                <DraggableDealCard
+                                  key={deal.id}
+                                  deal={deal}
+                                  onDelete={(id) =>
+                                    deleteDealMutation.mutate(id)
+                                  }
+                                />
                               ))}
                               {(!dealsByStage[stage.id] ||
                                 dealsByStage[stage.id].length === 0) && (
@@ -1502,7 +1542,18 @@ export default function DealsManagement() {
                                   <DropdownMenuItem>
                                     View Details
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-red-600">
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => {
+                                      if (
+                                        confirm(
+                                          `Delete deal "${deal.title}"? This cannot be undone.`
+                                        )
+                                      ) {
+                                        deleteDealMutation.mutate(deal.id);
+                                      }
+                                    }}
+                                  >
                                     Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
