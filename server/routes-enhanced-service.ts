@@ -170,13 +170,31 @@ router.get("/customers", async (req, res) => {
 router.get("/phone-in-tickets", async (req, res) => {
   try {
     const tenantId = req.headers["x-tenant-id"] as string;
-    const { limit = "50", offset = "0", converted } = req.query;
+    const { limit = "50", offset = "0", converted } = req.query as Record<string, string>;
 
-    // Temporary: Return empty array while fixing Drizzle ORM issues
-    // TODO: Fix Drizzle ORM field selection error
-    const tickets: any[] = [];
+    if (!tenantId) {
+      return res.status(400).json({ error: "Missing x-tenant-id header" });
+    }
 
-    res.json(tickets);
+    const limitNum = Math.min(200, Math.max(1, parseInt(limit || "50", 10)));
+    const offsetNum = Math.max(0, parseInt(offset || "0", 10));
+
+    let where = and(eq(phoneInTickets.tenantId, tenantId));
+    if (converted === 'true') {
+      where = and(where, sql`${phoneInTickets.convertedToTicketId} IS NOT NULL`);
+    } else if (converted === 'false') {
+      where = and(where, sql`${phoneInTickets.convertedToTicketId} IS NULL`);
+    }
+
+    const rows = await db
+      .select()
+      .from(phoneInTickets)
+      .where(where)
+      .orderBy(desc(phoneInTickets.createdAt))
+      .limit(limitNum)
+      .offset(offsetNum);
+
+    res.json(rows);
   } catch (error) {
     console.error("Error fetching phone-in tickets:", error);
     res.status(500).json({ error: "Failed to fetch phone-in tickets" });

@@ -14530,8 +14530,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Service Dispatch routes (converted from mock data to database queries)
   app.use(serviceDispatchRouter);
 
-  // Register enhanced service routes (temporarily disabled to fix phone-in tickets conflict)
-  // app.use("/api", enhancedServiceRoutes);
+  // Register enhanced service routes
+  app.use("/api", enhancedServiceRoutes);
 
   // Company search endpoint for phone tickets (placed before other company routes)
   app.get("/api/phone-tickets/search-companies", async (req, res) => {
