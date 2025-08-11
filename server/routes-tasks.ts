@@ -1,52 +1,73 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import { insertTaskSchema, insertProjectSchema } from "@shared/schema";
 
 // Task management routes using real database data
 export function registerTaskRoutes(app: Express) {
+  // Use the same authentication pattern as other working routes in main routes.ts
+  const requireAuth = async (req: any, res: any, next: any) => {
+    // Check for session-based auth (legacy) or user object (current)
+    const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+
+    if (!isAuthenticated) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    // Get user ID from various sources
+    const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+
+    if (userId && (!req.user || !req.user.tenantId)) {
+      // Fetch full user details from database if missing
+      try {
+        const fullUser = await storage.getUser(userId);
+        if (fullUser) {
+          req.user = {
+            ...req.user,
+            id: fullUser.id,
+            tenantId: fullUser.tenantId,
+            isPlatformUser: fullUser.isPlatformUser,
+            is_platform_user: fullUser.isPlatformUser,
+            email: fullUser.email,
+            firstName: fullUser.firstName,
+            lastName: fullUser.lastName,
+          };
+        }
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+      }
+    }
+
+    // Add user context for backwards compatibility
+    if (!req.user) {
+      req.user = {
+        id: req.session.userId,
+        tenantId: req.session.tenantId || req.user?.tenantId,
+      };
+    } else if (!req.user.tenantId && !req.user.id) {
+      // If we have user claims but no structured user object, build it
+      req.user = {
+        id: req.user.claims?.sub || req.user.id,
+        tenantId: req.user.tenantId || req.session?.tenantId,
+      };
+    }
+
+    next();
+  };
   // Get tasks - filter by assigned user if requested
-  app.get("/api/tasks", async (req: any, res) => {
+  app.get("/api/tasks", requireAuth, async (req: any, res) => {
     try {
-      console.log("Tasks endpoint hit, checking auth...");
-      console.log("req.isAuthenticated():", req.isAuthenticated ? req.isAuthenticated() : "no isAuthenticated method");
-      console.log("req.user:", req.user ? Object.keys(req.user) : "no user");
-      
-      if (!req.isAuthenticated || !req.isAuthenticated()) {
-        console.log("Not authenticated, returning 401");
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const user = req.user as any;
-      console.log("User object structure:", JSON.stringify({
-        hasUser: !!user,
-        keys: user ? Object.keys(user) : [],
-        hasClaims: !!user?.claims,
-        claimsKeys: user?.claims ? Object.keys(user.claims) : [],
-        tenantId: user?.tenantId,
-        expires_at: user?.expires_at
-      }, null, 2));
-
-      // Auto-populate tenantId if missing
-      if (!user.tenantId) {
-        user.tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Default tenant for demo
-        console.log("Set default tenantId for demo");
-      }
-
-      const tenantId = user.tenantId;
+      const tenantId = req.user?.tenantId;
       const { assignedTo, my } = req.query;
       
       let userId: string | undefined;
       if (my === 'true') {
-        userId = user?.claims?.sub;
+        userId = req.user?.id || req.user?.claims?.sub;
       } else if (assignedTo) {
         userId = assignedTo as string;
       }
       
-      console.log(`Fetching tasks for tenant: ${tenantId}, user: ${userId}`);
       const tasks = await storage.getTasks(tenantId, userId);
-      console.log(`Found ${tasks.length} tasks`);
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -55,7 +76,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Get task statistics
-  app.get("/api/tasks/stats", isAuthenticated, async (req: any, res) => {
+  app.get("/api/tasks/stats", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { my } = req.query;
@@ -74,7 +95,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Create new task
-  app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
+  app.post("/api/tasks", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const userId = req.user?.claims?.sub;
@@ -97,7 +118,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Update task
-  app.put("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/tasks/:id", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
@@ -116,35 +137,19 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Get projects
-  app.get("/api/projects", async (req: any, res) => {
+  app.get("/api/projects", requireAuth, async (req: any, res) => {
     try {
-      console.log("Projects endpoint hit, checking auth...");
-      
-      if (!req.isAuthenticated || !req.isAuthenticated()) {
-        console.log("Not authenticated for projects, returning 401");
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const user = req.user as any;
-      
-      // Auto-populate tenantId if missing
-      if (!user.tenantId) {
-        user.tenantId = "550e8400-e29b-41d4-a716-446655440000"; // Default tenant for demo
-      }
-
-      const tenantId = user.tenantId;
+      const tenantId = req.user?.tenantId;
       const { assignedTo, my } = req.query;
       
       let userId: string | undefined;
       if (my === 'true') {
-        userId = user?.claims?.sub;
+        userId = req.user?.id || req.user?.claims?.sub;
       } else if (assignedTo) {
         userId = assignedTo as string;
       }
       
-      console.log(`Fetching projects for tenant: ${tenantId}, user: ${userId}`);
       const projects = await storage.getProjects(tenantId, userId);
-      console.log(`Found ${projects.length} projects`);
       res.json(projects);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -153,7 +158,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Create new project
-  app.post("/api/projects", isAuthenticated, async (req: any, res) => {
+  app.post("/api/projects", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const userId = req.user?.claims?.sub;
