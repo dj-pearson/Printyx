@@ -70,6 +70,7 @@ import {
 import { registerIntegrationRoutes } from "./routes-integrations";
 import { registerTaskRoutes } from "./routes-tasks";
 import { registerEnhancedTaskRoutes } from "./routes-enhanced-tasks";
+import { setupAuth } from "./replitAuth";
 import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
 import { registerWarehouseRoutes } from "./routes-warehouse";
 import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
@@ -407,6 +408,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       name: "sid", // avoid default connect.sid
     })
   );
+
+  // Setup passport authentication
+  await setupAuth(app);
 
   // CSRF protection for state-changing routes (session-based)
   // Exempt specific API endpoints that must be CSRF-free (webhooks, file uploads tokens, public GETs)
