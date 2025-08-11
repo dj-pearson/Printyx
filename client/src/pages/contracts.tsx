@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
+import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 
 export default function Contracts() {
   const queryClient = useQueryClient();
@@ -199,6 +200,14 @@ export default function Contracts() {
       description="Manage service contracts and billing agreements"
     >
       <div className="space-y-6">
+        {/* Process Help Banner */}
+        <ProcessHelpBanner 
+          processType="proposal-to-contract"
+          currentStage="contract-preparation"
+          nextStage="signature-collection"
+          estimatedTime="30-60 min"
+        />
+        
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />

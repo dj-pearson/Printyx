@@ -47,6 +47,7 @@ import BrandManager from '@/components/proposal-builder/BrandManager';
 import RichTextEditor from '@/components/proposal-builder/RichTextEditor';
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
+import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 
 interface ProposalTemplate {
   id: string;
@@ -341,6 +342,14 @@ export default function ProposalBuilder() {
       description="Create professional, customized proposals with templates and branding"
     >
       <div className="space-y-6">
+        {/* Process Help Banner */}
+        <ProcessHelpBanner 
+          processType="quote-to-proposal"
+          currentStage="documentation"
+          nextStage="legal-review"
+          estimatedTime="1-2 hours"
+        />
+        
         {agingFilterDays != null && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
             <span>Showing proposals aging greater than {agingFilterDays} days</span>
