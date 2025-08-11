@@ -134,7 +134,7 @@ function Router() {
   useSeo(pathname);
   React.useEffect(() => {
     if (isAuthenticated) {
-      queryClient.prefetchQuery({ queryKey: ["/api/tasks/enhanced"] });
+      queryClient.prefetchQuery({ queryKey: ["/api/tasks"] });
       queryClient.prefetchQuery({ queryKey: ["/api/customers"] });
       queryClient.prefetchQuery({ queryKey: ["/api/service-tickets"] });
     }

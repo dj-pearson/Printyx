@@ -574,7 +574,7 @@ export default function RoleBasedSidebar() {
                           // Note: we only prefetch a few key lists
                           const prefetches: string[] = [
                             "/api/customers",
-                            "/api/tasks/enhanced",
+                            "/api/tasks",
                             "/api/service-tickets",
                           ];
                           prefetches.forEach((key) => {

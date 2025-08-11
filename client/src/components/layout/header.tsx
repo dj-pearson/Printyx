@@ -36,7 +36,7 @@ export default function Header({ title, description }: HeaderProps) {
             className="text-xl font-bold text-blue-600"
             onMouseEnter={() => {
               // Prefetch common routes for faster nav
-              queryClient.prefetchQuery({ queryKey: ["/api/tasks/enhanced"] });
+              queryClient.prefetchQuery({ queryKey: ["/api/tasks"] });
               queryClient.prefetchQuery({ queryKey: ["/api/customers"] });
               queryClient.prefetchQuery({ queryKey: ["/api/service-tickets"] });
             }}
