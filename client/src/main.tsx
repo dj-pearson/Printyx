@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import App from "./App-simple";
+import App from "./App";
 import "./index.css";
 import NProgress from "nprogress";
 import "nprogress/nprogress.css";
