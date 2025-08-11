@@ -101,6 +101,7 @@ import DatabaseManagement from "@/pages/DatabaseManagement";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
 import SalesPipelineWorkflow from "@/pages/SalesPipelineWorkflow";
 import SalesCommandCenter from "@/pages/SalesCommandCenter";
+import AdvancedAnalytics from "@/pages/AdvancedAnalytics";
 
 import ESignatureIntegration from "@/pages/ESignatureIntegration";
 import PreventiveMaintenanceAutomation from "@/pages/PreventiveMaintenanceAutomation";
@@ -319,6 +320,7 @@ function Router() {
           <Route path="/journal-entries" component={JournalEntries} />
           <Route path="/reports" component={Reports} />
           <Route path="/advanced-reporting" component={AdvancedReporting} />
+          <Route path="/advanced-analytics" component={AdvancedAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route path="/mobile-optimization" component={MobileOptimization} />
           <Route
