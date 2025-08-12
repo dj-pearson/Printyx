@@ -32,7 +32,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
+import { MainLayout } from "@/components/layout/main-layout";
 
 interface User {
   id: string;

@@ -289,11 +289,9 @@ export default function QuoteProposalGeneration() {
   return (
     <MainLayout title="Quote & Proposal Generation" description="Create professional proposals and manage the sales pipeline">
       <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-end items-center">
-        <div>
-        
-        <div className="flex gap-2">
-          <Button 
+        <div className="flex justify-end items-center">
+          <div className="flex gap-2">
+            <Button 
             onClick={() => setLocation('/quotes/new')}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
           >
@@ -517,10 +515,10 @@ export default function QuoteProposalGeneration() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
-      </div>
 
-      <Tabs defaultValue="quotes" className="space-y-4">
+        <Tabs defaultValue="quotes" className="space-y-4">
         <TabsList>
           <TabsTrigger value="quotes">Quotes</TabsTrigger>
           <TabsTrigger value="proposals">Proposals</TabsTrigger>
@@ -881,7 +879,7 @@ export default function QuoteProposalGeneration() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+        </Tabs>
       </div>
     </MainLayout>
   );
