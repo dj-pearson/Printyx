@@ -71,6 +71,7 @@ import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
+import ContextualHelp from "@/components/contextual/ContextualHelp";
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 
 interface Quote {
@@ -283,6 +284,7 @@ export default function QuotesManagement() {
   return (
     <MainLayout title="Quotes Management" description="Create, manage, and track your sales quotes and proposals">
       <div className="container mx-auto p-6 space-y-6">
+        <ContextualHelp page="quotes-management" />
         {/* Process Help Banner */}
         <ProcessHelpBanner 
           processType="lead-to-quote"

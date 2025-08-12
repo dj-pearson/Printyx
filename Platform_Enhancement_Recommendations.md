@@ -375,3 +375,20 @@ The recommended enhancements position Printyx as the first truly intelligent cop
 5. **Unified Data Platform**: Single source of truth connecting all business processes
 
 These enhancements would create significant competitive moats while providing measurable ROI through increased efficiency, better customer satisfaction, and improved business outcomes.
+
+---
+
+## Progress Tracker (current)
+
+- Contextual Help (Quick Win) — Done
+  - Implemented contextual help banners on: Advanced Billing Engine, Service Dispatch Optimization, Service Hub, Product Catalog, Deals Management, Purchase Orders, Quote & Proposal Generation, Quotes Management, Task Management, Advanced Analytics, Enhanced Onboarding Form.
+  - Pending: Quote Builder Page (add contextual help banner).
+
+- Smart Notifications (Quick Win) — Done (baseline)
+  - Header notifications bell wired to `/api/performance/alerts` with dropdown list; critical alerts surface via toast.
+  - Pending: emit additional alert types (billing anomalies, low stock, dispatch delays) and per-page in-context notifications.
+
+- Not tackled in this pass (unchanged)
+  - AI/ML features (e.g., AI route optimization, billing anomaly models, predictive recommendations)
+  - Mobile optimization sweeps, advanced automation, and performance dashboards beyond existing pages
+  - Deeper integrations (QuickBooks/SAP, Google Maps/Waze, e-signature, etc.)

@@ -18,6 +18,7 @@ import {
 import PredictiveInsights from '@/components/analytics/PredictiveInsights';
 import AnomalyDetection from '@/components/analytics/AnomalyDetection';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
+import ContextualHelp from "@/components/contextual/ContextualHelp";
 
 export default function AdvancedAnalytics() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -93,6 +94,7 @@ export default function AdvancedAnalytics() {
   return (
     <MainLayout title="Advanced Analytics" description="Leverage AI and machine learning for predictive insights and automated detection">
       <div className="container mx-auto p-6 space-y-6">
+        <ContextualHelp page="advanced-analytics" />
         {/* Process Help Banner */}
         <ProcessHelpBanner 
           processType="advanced-analytics"
