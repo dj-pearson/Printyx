@@ -65,6 +65,7 @@ import {
   invoices,
   masterProductModels,
   meterReadings,
+  vendors,
 } from "@shared/schema";
 // Mobile routes integrated directly in main routes file
 import { registerIntegrationRoutes } from "./routes-integrations";
@@ -5896,6 +5897,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating purchase order:", error);
       res.status(500).json({ message: "Failed to create purchase order" });
+    }
+  });
+
+  // Low stock suggestions for auto-generating POs
+  app.get("/api/purchase-orders/suggestions/low-stock", requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user || {};
+
+      const items = await db
+        .select({
+          id: inventoryItems.id,
+          itemDescription: inventoryItems.itemDescription,
+          partNumber: inventoryItems.partNumber,
+          quantityOnHand: inventoryItems.quantityOnHand,
+          quantityOnOrder: inventoryItems.quantityOnOrder,
+          reorderPoint: inventoryItems.reorderPoint,
+          reorderQuantity: inventoryItems.reorderQuantity,
+          unitCost: inventoryItems.unitCost,
+          primaryVendor: inventoryItems.primaryVendor,
+        })
+        .from(inventoryItems)
+        .where(
+          and(
+            tenantId ? eq(inventoryItems.tenantId, tenantId) : sql`TRUE`,
+            sql`reorder_point IS NOT NULL AND quantity_on_hand <= reorder_point AND COALESCE(reorder_quantity, 0) > 0 AND primary_vendor IS NOT NULL`
+          )
+        )
+        .orderBy(asc(inventoryItems.primaryVendor), asc(inventoryItems.itemDescription))
+        .limit(500);
+
+      if (!items.length) return res.json({ groups: [] });
+
+      const vendorRows = await db
+        .select({ id: vendors.id, name: vendors.vendorName })
+        .from(vendors)
+        .where(tenantId ? eq(vendors.tenantId, tenantId) : sql`TRUE`);
+      const vendorNameToId = new Map(vendorRows.map(v => [v.name?.toLowerCase(), v.id] as const));
+
+      const groupsMap = new Map<string, any>();
+      for (const it of items) {
+        const key = (it.primaryVendor || "").toLowerCase();
+        if (!key) continue;
+        if (!groupsMap.has(key)) {
+          groupsMap.set(key, {
+            vendorName: it.primaryVendor,
+            vendorId: vendorNameToId.get(key) || null,
+            items: [] as any[],
+          });
+        }
+        const recommendedQty = Number(it.reorderQuantity) || 0;
+        groupsMap.get(key).items.push({
+          inventoryItemId: it.id,
+          partNumber: it.partNumber,
+          itemDescription: it.itemDescription,
+          recommendedQty,
+          unitCost: it.unitCost || 0,
+        });
+      }
+
+      const groups = Array.from(groupsMap.values());
+      res.json({ groups });
+    } catch (error) {
+      console.error("Error building low-stock suggestions:", error);
+      res.status(500).json({ message: "Failed to build suggestions" });
+    }
+  });
+
+  // Generate purchase orders from low-stock suggestions
+  app.post("/api/purchase-orders/generate-from-suggestions", requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId, id: userId } = req.user || {};
+      const { groups, orderDate, expectedDate, description } = req.body || {};
+      if (!Array.isArray(groups) || groups.length === 0) {
+        return res.status(400).json({ message: "No groups provided" });
+      }
+
+      const createdPoIds: string[] = [];
+      for (let i = 0; i < groups.length; i++) {
+        const group = groups[i];
+        if (!group.vendorId || !Array.isArray(group.items) || group.items.length === 0) continue;
+
+        let subtotal = 0;
+        const lineItems = group.items.map((it: any, idx: number) => {
+          const qty = Number(it.quantity || it.recommendedQty || 0);
+          const price = Number(it.unitCost || 0);
+          const total = qty * price;
+          subtotal += total;
+          return {
+            tenantId,
+            purchaseOrderId: "",
+            lineNumber: idx + 1,
+            itemDescription: it.itemDescription || it.partNumber || "Item",
+            itemCode: it.partNumber || null,
+            quantity: qty,
+            unitPrice: price,
+            totalPrice: total,
+          };
+        });
+
+        const poNumber = `PO-${Date.now()}-${i + 1}`;
+        const poData = {
+          tenantId,
+          poNumber,
+          vendorId: group.vendorId,
+          requestedBy: userId,
+          orderDate: orderDate ? new Date(orderDate) : new Date(),
+          expectedDate: expectedDate ? new Date(expectedDate) : null,
+          description: description || `Auto-generated from low stock for ${group.vendorName || group.vendorId}`,
+          subtotal,
+          taxAmount: 0,
+          shippingAmount: 0,
+          totalAmount: subtotal,
+          status: "draft",
+          deliveryAddress: null,
+          specialInstructions: null,
+          approvedBy: null,
+          approvedDate: null,
+          createdBy: userId,
+        } as any;
+
+        const createdPO = await storage.createPurchaseOrder(poData);
+        createdPoIds.push(createdPO.id);
+
+        for (const li of lineItems) {
+          await storage.createPurchaseOrderItem({ ...li, purchaseOrderId: createdPO.id });
+        }
+      }
+
+      res.json({ createdPoIds });
+    } catch (error) {
+      console.error("Error generating purchase orders:", error);
+      res.status(500).json({ message: "Failed to generate purchase orders" });
     }
   });
 

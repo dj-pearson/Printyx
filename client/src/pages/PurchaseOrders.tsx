@@ -83,6 +83,8 @@ import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
+import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
+import MobileFAB from "@/components/layout/MobileFAB";
 
 // Enhanced form schema with line items
 const purchaseOrderFormSchema = z.object({
@@ -310,13 +312,122 @@ export default function PurchaseOrders() {
     form.setValue(`items.${index}.totalPrice`, total);
   };
 
+  function LowStockSuggestionsButton() {
+    const [open, setOpen] = useState(false);
+    const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+    const { data, isLoading } = useQuery<{ groups: any[] }>({
+      queryKey: ["/api/purchase-orders/suggestions/low-stock"],
+      queryFn: () => apiRequest("/api/purchase-orders/suggestions/low-stock", "GET"),
+    });
+
+    const toggleGroup = (vendorId: string) => {
+      setSelectedGroups((prev) =>
+        prev.includes(vendorId)
+          ? prev.filter((id) => id !== vendorId)
+          : [...prev, vendorId]
+      );
+    };
+
+    const handleGenerate = async () => {
+      const groupsToSend = (data?.groups || [])
+        .filter((g) => selectedGroups.includes(g.vendorId))
+        .map((g) => ({
+          vendorId: g.vendorId,
+          vendorName: g.vendorName,
+          items: g.items.map((it: any) => ({
+            itemDescription: it.itemDescription,
+            partNumber: it.partNumber,
+            quantity: it.recommendedQty,
+            unitCost: it.unitCost,
+          })),
+        }));
+
+    if (groupsToSend.length === 0) {
+      setOpen(false);
+      return;
+    }
+
+    await apiRequest("/api/purchase-orders/generate-from-suggestions", "POST", { groups: groupsToSend });
+    setOpen(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/purchase-orders"] });
+  };
+
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline">Generate from Low Stock</Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Low Stock Suggestions</DialogTitle>
+            <DialogDescription>
+              Select vendors to generate draft purchase orders.
+            </DialogDescription>
+          </DialogHeader>
+          {isLoading ? (
+            <div className="p-4 text-sm text-muted-foreground">Loading…</div>
+          ) : (
+            <div className="space-y-3 max-h-[60vh] overflow-auto">
+              {(data?.groups || []).length === 0 ? (
+                <div className="p-3 text-sm text-muted-foreground">No low stock items found.</div>
+              ) : (
+                (data?.groups || []).map((group) => (
+                  <Card key={group.vendorId || group.vendorName}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">
+                          {group.vendorName || "Unknown Vendor"}
+                        </CardTitle>
+                        <Button
+                          variant={selectedGroups.includes(group.vendorId) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleGroup(group.vendorId)}
+                        >
+                          {selectedGroups.includes(group.vendorId) ? "Selected" : "Select"}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="text-xs text-muted-foreground mb-2">
+                        {group.items.length} items
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {group.items.slice(0, 6).map((it: any, idx: number) => (
+                          <div key={idx} className="text-sm">
+                            <div className="font-medium">{it.itemDescription}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {it.partNumber} · Qty {it.recommendedQty}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleGenerate} disabled={selectedGroups.length === 0}>Generate POs</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <MainLayout title="Purchase Orders" description="Manage procurement workflows from vendor selection through receiving">
       <div className="space-y-6">
         <ContextualHelp page="purchase-orders" />
         <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
+        <KpiSummaryBar className="mt-2" />
         {/* Header */}
-        <div className="flex justify-end items-start">
+        <div className="flex justify-between items-start">
+          <div className="flex gap-2">
+            {/* Low stock suggestion modal */}
+            <LowStockSuggestionsButton />
+          </div>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button
@@ -1253,6 +1364,7 @@ export default function PurchaseOrders() {
           </DialogContent>
         </Dialog>
       </div>
+      <MobileFAB onClick={() => setShowCreateDialog(true)} label="New PO" />
     </MainLayout>
   );
 }
