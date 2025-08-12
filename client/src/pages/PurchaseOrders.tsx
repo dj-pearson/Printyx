@@ -81,6 +81,7 @@ import { format } from "date-fns";
 import { useLocation } from "wouter";
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
+import ContextualHelp from "@/components/contextual/ContextualHelp";
 
 // Enhanced form schema with line items
 const purchaseOrderFormSchema = z.object({
@@ -311,6 +312,7 @@ export default function PurchaseOrders() {
   return (
     <MainLayout title="Purchase Orders" description="Manage procurement workflows from vendor selection through receiving">
       <div className="space-y-6">
+        <ContextualHelp page="purchase-orders" />
         {/* Header */}
         <div className="flex justify-end items-start">
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

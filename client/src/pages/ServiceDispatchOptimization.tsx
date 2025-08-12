@@ -16,6 +16,7 @@ import {
   type Technician,
   type ServiceSession
 } from '@shared/schema';
+import ContextualHelp from "@/components/contextual/ContextualHelp";
 
 // Using ServiceTicket and Technician from schema
 // DispatchRecommendation extends ServiceTicket with optimization data
@@ -184,6 +185,9 @@ export default function ServiceDispatchOptimization() {
   return (
     <MainLayout title="Service Dispatch Optimization" description="AI-powered technician assignment and route optimization">
       <div className="container mx-auto p-6">
+      <div className="mb-4">
+        <ContextualHelp page="service-dispatch" />
+      </div>
       <div className="flex justify-end items-center mb-6">
         <div className="flex items-center gap-4">
           <input

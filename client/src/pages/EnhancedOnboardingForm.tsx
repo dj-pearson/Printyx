@@ -74,6 +74,7 @@ import {
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
+import ContextualHelp from "@/components/contextual/ContextualHelp";
 
 // Enhanced onboarding schema with auto-population and machine replacement
 const enhancedOnboardingSchema = z.object({
@@ -1882,6 +1883,7 @@ export default function EnhancedOnboardingForm() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
+            <ContextualHelp page="enhanced-onboarding" />
           </div>
 
           {/* Progress Steps */}

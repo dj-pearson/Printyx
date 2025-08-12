@@ -91,6 +91,7 @@ import { TaskBoardView } from "@/components/tasks/TaskBoardView";
 import { Skeleton } from "@/components/ui/skeleton";
 // import { FixedSizeList as VirtualList, ListChildComponentProps } from "react-window";
 import { apiRequest } from "@/lib/queryClient";
+import ContextualHelp from "@/components/contextual/ContextualHelp";
 
 // Enhanced interfaces for advanced task management functionality
 interface Task {
@@ -442,6 +443,7 @@ export default function TaskManagement() {
       description="Advanced project and task management"
     >
       <div className="space-y-6">
+        <ContextualHelp page="task-management" />
         {/* Header with Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center space-x-4">
