@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import MainLayout from "@/components/layout/main-layout";
 import { Link } from "wouter";
+import ContextualHelp from "@/components/contextual/ContextualHelp";
 import { 
   type MasterProductModel, 
   type EnabledProduct, 
@@ -362,6 +363,9 @@ export default function ProductCatalog() {
 
   return (
     <MainLayout title="Master Product Catalog" description="Browse Printyx's master catalog and enable products for your organization">
+      <div className="mb-4">
+        <ContextualHelp page="product-catalog" />
+      </div>
       <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-4">

@@ -1,4 +1,4 @@
-import { Bell, Search, Settings, User, ChevronDown } from "lucide-react";
+import { Search, Settings, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import SystemAlertBell from "@/components/layout/SystemAlertBell";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -63,17 +64,8 @@ export default function Header({ title, description }: HeaderProps) {
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Notifications - Hidden on small mobile */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hidden sm:flex"
-          >
-            <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-red-500">
-              3
-            </Badge>
-          </Button>
+          {/* Notifications */}
+          <SystemAlertBell />
 
           {/* User Menu */}
           <DropdownMenu>

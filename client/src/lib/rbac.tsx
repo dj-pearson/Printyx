@@ -232,20 +232,20 @@ export class RBACService {
       case 'rep':
         // Remove manager-only fields
         if (dataType === 'customer') {
-          delete filteredData.profitMargin;
-          delete filteredData.internalNotes;
-          delete filteredData.creditScore;
+          delete (filteredData as any).profitMargin;
+          delete (filteredData as any).internalNotes;
+          delete (filteredData as any).creditScore;
         }
         if (dataType === 'sales') {
-          delete filteredData.teamComparison;
-          delete filteredData.managerNotes;
+          delete (filteredData as any).teamComparison;
+          delete (filteredData as any).managerNotes;
         }
         break;
         
       case 'manager':
         if (dataType === 'finance' && this.userContext.role.id !== 'finance_manager') {
-          delete filteredData.detailedFinancials;
-          delete filteredData.creditLimits;
+          delete (filteredData as any).detailedFinancials;
+          delete (filteredData as any).creditLimits;
         }
         break;
     }
@@ -255,7 +255,7 @@ export class RBACService {
 }
 
 // React hook for RBAC context
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const RBACContext = createContext<RBACService | null>(null);
 
@@ -346,3 +346,5 @@ export function applyRBACFilters(
 
   return filteredParams;
 }
+
+
