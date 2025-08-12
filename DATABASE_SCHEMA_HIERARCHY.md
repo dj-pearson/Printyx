@@ -1,12 +1,13 @@
 # Printyx Database Schema Hierarchy & Reference
-*Updated: August 9, 2025*
+*Updated: August 11, 2025*
 
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 152 tables across all business modules
+**Total Tables**: 175 tables across all business modules
 
 ## Recent Schema Updates
+- **Task Management System (Aug 11, 2025)**: Added `tasks` and `projects` tables for comprehensive task and project management. Tasks table includes priority, status, assignments, due dates, and project associations. Projects table includes budget tracking, completion percentage, and timeline management with proper tenant isolation.
 - **Master Product Catalog System (Aug 9, 2025)**: Implemented comprehensive master product catalog system for Printyx/Root Admin maintained product database. Added 4 new tables: `master_product_models` (10 columns), `master_product_accessories` (9 columns), `enabled_products` (13 columns), and `tenant_catalog_settings` (9 columns). Features master catalog browsing, tenant-level product enablement, custom pricing overrides, bulk enablement operations, and integrated catalog management within Product Hub. Supports real copier equipment data from Canon, Xerox, HP, Ricoh, and Lexmark manufacturers.
 - **Sales Forecasting System (Aug 8, 2025)**: Implemented comprehensive sales forecasting with real database integration. Added `sales_forecasts`, `forecast_pipeline_items`, `forecast_metrics`, and `forecast_rules` tables with 37, 37, 25, and 18 columns respectively. Features tenant-based filtering, forecasting analytics, pipeline management, and performance tracking with full API endpoints.
 - **Enhanced RBAC System (Aug 7, 2025)**: Implemented enterprise-grade Role-Based Access Control with 4-tier organizational structure (Platform/Company/Regional/Location) and 8-level role hierarchy. Added 6 new tables: `organizational_units`, `enhanced_roles`, `permissions`, `role_permissions`, `user_role_assignments`, `permission_overrides`, `permission_cache`. Includes nested set model for efficient hierarchy queries, permission inheritance, customizable roles for company admins, and multi-level caching for performance.
@@ -222,6 +223,46 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `created_at` (timestamp) - Creation date
 - `updated_at` (timestamp) - Last update
+
+## Task & Project Management
+
+### Core Task Management
+
+#### `tasks` (Task Management System) ⭐ **New Aug 11, 2025**
+**Purpose**: Individual task tracking and assignment
+**Function**: Task creation, assignment, status tracking, priority management
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Task identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant isolation
+- `title` (text) - Task title
+- `description` (text) - Detailed description
+- `status` (varchar) - Task status (pending, in_progress, completed, cancelled)
+- `priority` (varchar) - Priority level (low, medium, high, urgent)
+- `due_date` (timestamp) - Task deadline
+- `assigned_to` (varchar, FK → users.id) - Assigned user
+- `created_by` (varchar, FK → users.id) - Task creator
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update
+- `project_id` (uuid, FK → projects.id) - Associated project
+- `tags` (text[]) - Task tags for categorization
+- `completion_percentage` (integer) - Progress tracking
+
+#### `projects` (Project Management System) ⭐ **New Aug 11, 2025**
+**Purpose**: Project-level organization and tracking
+**Function**: Project creation, budget tracking, timeline management
+**Fields**:
+- `id` (uuid, PRIMARY KEY) - Project identifier
+- `tenant_id` (uuid, FK → tenants.id) - Tenant isolation
+- `name` (text) - Project name
+- `description` (text) - Project description
+- `status` (varchar) - Project status (active, planning, completed, on_hold)
+- `start_date` (timestamp) - Project start date
+- `end_date` (timestamp) - Project end date
+- `created_by` (varchar, FK → users.id) - Project creator
+- `created_at` (timestamp) - Creation timestamp
+- `updated_at` (timestamp) - Last update
+- `budget` (decimal) - Project budget allocation
+- `completion_percentage` (integer) - Overall project progress
 
 ### Sales Pipeline Management
 
@@ -1508,19 +1549,27 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ## Summary Statistics
 
 - **Core Tables**: 12 (users, tenants, roles, locations, regions, teams, sessions, etc.)
-- **CRM Tables**: 15 (business_records, companies, contacts, leads, deals, activities)
+- **Task Management Tables**: 2 (tasks, projects)
+- **CRM Tables**: 15 (business_records, companies, contacts, leads, deals, activities)  
 - **Product Tables**: 7 (models, accessories, supplies, services, software)
 - **Equipment Tables**: 8 (equipment, customer_equipment, asset_tracking, etc.)
 - **Service Tables**: 12 (tickets, technicians, work_orders, mobile_orders, etc.)
-- **Financial Tables**: 18 (contracts, invoices, billing, commission, accounting)
+- **Financial Tables**: 25 (contracts, invoices, billing, commission, accounting, payables, receivables)
 - **Analytics Tables**: 8 (dashboards, benchmarks, forecasts, reports)
 - **Automation Tables**: 6 (rules, executions, workflows, templates)
-- **Integration Tables**: 12 (QuickBooks, Salesforce, E-Automate, external systems)
+- **Integration Tables**: 15 (QuickBooks, Salesforce, E-Automate, external systems)
 - **Compliance Tables**: 4 (audit_logs, security, compliance tracking)
+- **Additional Business Tables**: 61 (various specialized business operations)
 
-**Total: 148 database tables** supporting comprehensive copier dealer management operations.
+**Total: 175 database tables** supporting comprehensive copier dealer management operations.
 
-## Recent Table Additions (August 8, 2025)
+## Recent Table Additions
+
+### Task Management System (August 11, 2025) - 2 new tables
+- `tasks` (13 columns) - Individual task tracking with priority, status, assignments, and project associations
+- `projects` (11 columns) - Project-level organization with budget tracking, timeline management, and progress monitoring
+
+### Sales Forecasting System (August 8, 2025) - 4 new tables
 
 ### Sales Forecasting System (4 new tables)
 - `sales_forecasts` (37 columns) - Master sales forecasting with comprehensive analytics
