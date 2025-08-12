@@ -63,6 +63,8 @@ export default function Customers() {
     return "cards";
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const form = useForm();
   const queryClient = useQueryClient();
 
@@ -74,11 +76,37 @@ export default function Customers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       setIsEditDialogOpen(false);
+      setEditingCustomer(null);
+      form.reset();
+    },
+  });
+
+  const createCustomerMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('/api/customers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      setIsEditDialogOpen(false);
+      setIsCreating(false);
+      form.reset();
     },
   });
 
   const onSubmit = (data: any) => {
-    updateCustomerMutation.mutate(data);
+    if (isCreating) {
+      createCustomerMutation.mutate(data);
+    } else {
+      updateCustomerMutation.mutate({ ...data, id: editingCustomer?.id });
+    }
+  };
+
+  const handleAddCustomer = () => {
+    setIsCreating(true);
+    setEditingCustomer(null);
+    form.reset();
+    setIsEditDialogOpen(true);
   };
 
   useEffect(() => {
@@ -182,6 +210,7 @@ export default function Customers() {
             <Button
               size="default"
               className="flex items-center gap-2 min-h-11 px-4 py-2"
+              onClick={handleAddCustomer}
             >
               <Plus className="h-4 w-4" />
               Add Customer
@@ -336,6 +365,7 @@ export default function Customers() {
                 <Button
                   size="default"
                   className="flex items-center gap-2 min-h-11 px-4 py-2"
+                  onClick={handleAddCustomer}
                 >
                   <Plus className="h-4 w-4" />
                   Add Customer
@@ -349,7 +379,7 @@ export default function Customers() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Customer</DialogTitle>
+              <DialogTitle>{isCreating ? "Create New Customer" : "Edit Customer"}</DialogTitle>
             </DialogHeader>
             
             <Form {...form}>
@@ -689,6 +719,7 @@ export default function Customers() {
                     onClick={() => {
                       setIsEditDialogOpen(false);
                       setEditingCustomer(null);
+                      setIsCreating(false);
                       form.reset();
                     }}
                   >
@@ -696,11 +727,11 @@ export default function Customers() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={updateCustomerMutation.isPending}
+                    disabled={updateCustomerMutation.isPending || createCustomerMutation.isPending}
                   >
-                    {updateCustomerMutation.isPending
-                      ? "Updating..."
-                      : "Update Customer"}
+                    {updateCustomerMutation.isPending || createCustomerMutation.isPending
+                      ? (isCreating ? "Creating..." : "Updating...")
+                      : (isCreating ? "Create Customer" : "Update Customer")}
                   </Button>
                 </div>
               </form>
