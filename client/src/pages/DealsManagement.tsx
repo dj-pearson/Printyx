@@ -7,7 +7,7 @@ import MainLayout from "@/components/layout/main-layout";
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
 import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
-import MobileFAB from "@/components/layout/MobileFAB";
+import { MobileFAB } from "@/components/ui/mobile-fab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +94,7 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   closestCorners,
@@ -293,6 +294,162 @@ function DroppableStageArea({
   return (
     <div ref={setNodeRef} className="h-full">
       {children}
+    </div>
+  );
+}
+
+// Mobile-Optimized Deal Card Component
+function MobileDealCard({
+  deal,
+  stageColor,
+  onDelete,
+}: {
+  deal: Deal;
+  stageColor: string;
+  onDelete: (dealId: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: deal.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className="bg-white border-2 border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+    >
+      {/* Mobile Deal Header with Drag Handle */}
+      <div className="flex items-center justify-between p-4 pb-3">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-gray-900 text-base line-clamp-2 mb-1">
+            {deal.title}
+          </h4>
+          {deal.companyName && (
+            <div className="flex items-center gap-2 text-gray-600 text-sm">
+              <Building2 className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">{deal.companyName}</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Mobile-friendly drag handle */}
+        <div className="flex items-center gap-3 ml-3">
+          <div
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-3 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+            style={{ minWidth: '44px', minHeight: '44px' }}
+          >
+            <GripVertical className="h-5 w-5 text-gray-400" />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-10 w-10 p-0 touch-manipulation"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem className="py-3">
+                <span className="text-base">Edit Deal</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="py-3">
+                <span className="text-base">View Details</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600 py-3"
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Delete deal "${deal.title}"? This cannot be undone.`
+                    )
+                  ) {
+                    onDelete(deal.id);
+                  }
+                }}
+              >
+                <span className="text-base">Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Deal Amount */}
+      {deal.amount && (
+        <div className="px-4 pb-3">
+          <div className="text-xl font-bold text-green-600">
+            ${parseFloat(deal.amount.toString()).toLocaleString()}
+          </div>
+        </div>
+      )}
+
+      {/* Deal Info Grid */}
+      <div className="px-4 pb-3 space-y-3">
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          {deal.ownerName && (
+            <div className="flex items-center gap-2 text-gray-600">
+              <User className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">{deal.ownerName}</span>
+            </div>
+          )}
+          {deal.expectedCloseDate && (
+            <div className="flex items-center gap-2 text-gray-600">
+              <Calendar className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">
+                {format(new Date(deal.expectedCloseDate), "MMM d")}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="flex items-center justify-between p-4 pt-0">
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="secondary"
+            className={cn(
+              "text-sm px-3 py-1",
+              deal.priority === "high" && "bg-red-100 text-red-800",
+              deal.priority === "medium" && "bg-yellow-100 text-yellow-800", 
+              deal.priority === "low" && "bg-green-100 text-green-800"
+            )}
+          >
+            {deal.priority}
+          </Badge>
+          {deal.source && (
+            <span className="text-xs text-gray-500 capitalize bg-gray-100 px-2 py-1 rounded">
+              {deal.source}
+            </span>
+          )}
+        </div>
+        
+        {deal.probability && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">{deal.probability}%</span>
+            <div 
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: stageColor }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -502,11 +659,17 @@ export default function DealsManagement() {
     }
   }, [visibleColumns]);
 
-  // Drag and drop sensors
+  // Drag and drop sensors optimized for mobile
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 8,
       },
     })
   );
@@ -1072,7 +1235,7 @@ export default function DealsManagement() {
                     <span className="sm:hidden">New</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-lg lg:max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-lg lg:max-w-2xl w-[95vw] md:w-auto">
                   <DialogHeader>
                     <DialogTitle className="text-lg sm:text-xl">
                       Create New Deal
@@ -1094,6 +1257,7 @@ export default function DealsManagement() {
                               <FormControl>
                                 <Input
                                   placeholder="Enter deal title"
+                                  className="mobile-form-input"
                                   {...field}
                                 />
                               </FormControl>
@@ -1163,7 +1327,7 @@ export default function DealsManagement() {
                                       variant="outline"
                                       role="combobox"
                                       className={cn(
-                                        "w-full justify-between",
+                                        "w-full justify-between h-12 touch-manipulation",
                                         !field.value && "text-muted-foreground"
                                       )}
                                     >
@@ -1680,126 +1844,196 @@ export default function DealsManagement() {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              {/* Stage rail for quick navigation (mobile only) */}
-              <div className="flex gap-2 overflow-x-auto pb-2 md:hidden">
-                {stages.map((s) => (
-                  <Button
-                    key={s.id}
-                    variant="outline"
-                    size="sm"
-                    className="whitespace-nowrap"
-                    onClick={() => scrollToStage(s.id)}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full mr-2"
-                      style={{ backgroundColor: s.color }}
-                    />
-                    {s.name}
-                  </Button>
-                ))}
-              </div>
-              <div
-                ref={boardRef}
-                className="grid gap-4 h-full pb-4"
-                style={{
-                  gridTemplateColumns: `repeat(${
-                    stages.length || 1
-                  }, minmax(220px, 1fr))`,
-                }}
-              >
-                {stages.map((stage) => (
-                  <div
-                    key={stage.id}
-                    ref={(el) => (stageRefs.current[stage.id] = el)}
-                    className="min-w-0"
-                  >
-                    <div className="bg-gray-50 rounded-md h-full flex flex-col min-h-80">
-                      <div className="p-2 sm:p-3 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: stage.color }}
-                            />
-                            <h3 className="text-gray-900 text-sm font-medium leading-tight break-words">
-                              {stage.name}
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-2">
+              {/* Mobile Vertical Layout */}
+              <div className="block md:hidden h-full overflow-y-auto">
+                <div className="space-y-4 p-4">
+                  {stages.map((stage) => (
+                    <div
+                      key={stage.id}
+                      ref={(el) => (stageRefs.current[stage.id] = el)}
+                      className="w-full"
+                    >
+                      <div className="bg-white border rounded-lg shadow-sm mobile-kanban-column">
+                        {/* Mobile Stage Header */}
+                        <div className="p-4 border-b bg-gray-50 rounded-t-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-4 h-4 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: stage.color }}
+                              />
+                              <div>
+                                <h3 className="font-semibold text-gray-900 text-base">
+                                  {stage.name}
+                                </h3>
+                                <div className="text-sm text-gray-600">
+                                  {stageAggregates[stage.id]?.count || 0} deals • {formatAmount(stageAggregates[stage.id]?.totalAmount || 0)}
+                                </div>
+                              </div>
+                            </div>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 px-1"
+                              className="h-8 w-8 p-0"
                               onClick={() =>
                                 setCollapsedStages((prev) => ({
                                   ...prev,
                                   [stage.id]: !prev[stage.id],
                                 }))
                               }
-                              title={
-                                collapsedStages[stage.id]
-                                  ? "Expand"
-                                  : "Collapse"
-                              }
                             >
                               {collapsedStages[stage.id] ? "▶" : "▾"}
                             </Button>
                           </div>
                         </div>
-                        <div className="mt-1 text-[12px] font-semibold text-gray-700">
-                          {formatAmount(
-                            stageAggregates[stage.id]?.totalAmount || 0
-                          )}
-                        </div>
-                      </div>
 
-                      <SortableContext
-                        items={(dealsByStage[stage.id] || []).map(
-                          (deal) => deal.id
+                        {/* Mobile Deals List */}
+                        {!collapsedStages[stage.id] && (
+                          <SortableContext
+                            items={(dealsByStage[stage.id] || []).map(
+                              (deal) => deal.id
+                            )}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <DroppableStageArea stageId={stage.id}>
+                              <div className="p-4 space-y-3">
+                                {(dealsByStage[stage.id] || []).length === 0 ? (
+                                  <div className="text-center py-8 text-gray-500">
+                                    No deals in this stage
+                                  </div>
+                                ) : (
+                                  (dealsByStage[stage.id] || []).map((deal) => (
+                                    <div className="mobile-kanban-card">
+                                      <MobileDealCard
+                                        key={deal.id}
+                                        deal={deal}
+                                        stageColor={stage.color}
+                                        onDelete={(id) => deleteDealMutation.mutate(id)}
+                                      />
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </DroppableStageArea>
+                          </SortableContext>
                         )}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <DroppableStageArea stageId={stage.id}>
-                          {!collapsedStages[stage.id] && (
-                            <div className="flex-1 p-2 sm:p-3 space-y-2 overflow-y-auto min-h-0">
-                              {(dealsByStage[stage.id] || []).map((deal) => (
-                                <DraggableDealCard
-                                  key={deal.id}
-                                  deal={deal}
-                                  onDelete={(id) =>
-                                    deleteDealMutation.mutate(id)
-                                  }
-                                />
-                              ))}
-                              {(!dealsByStage[stage.id] ||
-                                dealsByStage[stage.id].length === 0) && (
-                                <div className="text-center py-8 text-gray-500 text-sm">
-                                  No deals in this stage
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </DroppableStageArea>
-                      </SortableContext>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              {/* Desktop Horizontal Layout */}
+              <div className="hidden md:block h-full">
+                <div
+                  ref={boardRef}
+                  className="grid gap-4 h-full pb-4"
+                  style={{
+                    gridTemplateColumns: `repeat(${
+                      stages.length || 1
+                    }, minmax(220px, 1fr))`,
+                  }}
+                >
+                  {stages.map((stage) => (
+                    <div
+                      key={stage.id}
+                      ref={(el) => (stageRefs.current[stage.id] = el)}
+                      className="min-w-0"
+                    >
+                      <div className="bg-gray-50 rounded-md h-full flex flex-col min-h-80">
+                        <div className="p-2 sm:p-3 border-b border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div
+                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: stage.color }}
+                              />
+                              <h3 className="text-gray-900 text-sm font-medium leading-tight break-words">
+                                {stage.name}
+                              </h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-1"
+                                onClick={() =>
+                                  setCollapsedStages((prev) => ({
+                                    ...prev,
+                                    [stage.id]: !prev[stage.id],
+                                  }))
+                                }
+                                title={
+                                  collapsedStages[stage.id]
+                                    ? "Expand"
+                                    : "Collapse"
+                                }
+                              >
+                                {collapsedStages[stage.id] ? "▶" : "▾"}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="mt-1 text-[12px] font-semibold text-gray-700">
+                            {formatAmount(
+                              stageAggregates[stage.id]?.totalAmount || 0
+                            )}
+                          </div>
+                        </div>
+
+                        <SortableContext
+                          items={(dealsByStage[stage.id] || []).map(
+                            (deal) => deal.id
+                          )}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <DroppableStageArea stageId={stage.id}>
+                            {!collapsedStages[stage.id] && (
+                              <div className="flex-1 p-2 sm:p-3 space-y-2 overflow-y-auto min-h-0">
+                                {(dealsByStage[stage.id] || []).map((deal) => (
+                                  <DraggableDealCard
+                                    key={deal.id}
+                                    deal={deal}
+                                    onDelete={(id) =>
+                                      deleteDealMutation.mutate(id)
+                                    }
+                                  />
+                                ))}
+                                {(!dealsByStage[stage.id] ||
+                                  dealsByStage[stage.id].length === 0) && (
+                                  <div className="text-center py-8 text-gray-500 text-sm">
+                                    No deals in this stage
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </DroppableStageArea>
+                        </SortableContext>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <DragOverlay>
                 {activeDeal && (
-                  <div className="bg-white border rounded-lg p-4 shadow-lg rotate-3">
-                    <h4 className="font-medium text-sm text-gray-900">
-                      {activeDeal.title}
-                    </h4>
-                    {activeDeal.amount && (
-                      <div className="text-lg font-semibold text-green-600 mt-1">
-                        $
-                        {parseFloat(
-                          activeDeal.amount.toString()
-                        ).toLocaleString()}
-                      </div>
-                    )}
+                  <div className="bg-white border-2 border-blue-200 rounded-lg shadow-xl transform rotate-2 scale-105 touch-manipulation">
+                    {/* Mobile optimized drag overlay */}
+                    <div className="p-4 md:p-3">
+                      <h4 className="font-semibold text-base md:text-sm text-gray-900 mb-2">
+                        {activeDeal.title}
+                      </h4>
+                      {activeDeal.amount && (
+                        <div className="text-xl md:text-lg font-bold text-green-600 mb-2">
+                          ${parseFloat(activeDeal.amount.toString()).toLocaleString()}
+                        </div>
+                      )}
+                      {activeDeal.companyName && (
+                        <div className="flex items-center gap-2 text-gray-600 text-sm">
+                          <Building2 className="h-4 w-4" />
+                          <span className="truncate">{activeDeal.companyName}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </DragOverlay>
@@ -2232,6 +2466,16 @@ export default function DealsManagement() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Mobile FAB for Creating Deals */}
+        <div className="md:hidden">
+          <MobileFAB 
+            onClick={() => setIsCreateDialogOpen(true)}
+            icon={Plus}
+            label="New Deal"
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+          />
         </div>
       </div>
     </MainLayout>
