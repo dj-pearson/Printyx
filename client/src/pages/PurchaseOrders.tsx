@@ -309,19 +309,10 @@ export default function PurchaseOrders() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Purchase Orders" description="Manage procurement workflows from vendor selection through receiving">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Purchase Orders
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Manage procurement workflows from vendor selection through
-              receiving
-            </p>
-          </div>
+        <div className="flex justify-end items-start">
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button

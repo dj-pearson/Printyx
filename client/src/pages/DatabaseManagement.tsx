@@ -278,17 +278,9 @@ export default function DatabaseManagement() {
   );
 
   return (
-    <MainLayout>
+    <MainLayout title="Database Management" description="Monitor and manage database operations">
       <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Database Management
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Monitor and manage database operations
-            </p>
-          </div>
+        <div className="flex items-center justify-end">
           <div className="flex items-center space-x-2">
             <Badge variant="outline" className="bg-green-50 text-green-700">
               <CheckCircle className="w-4 h-4 mr-1" />

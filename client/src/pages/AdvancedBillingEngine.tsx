@@ -289,7 +289,7 @@ export default function AdvancedBillingEngine() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Advanced Billing Engine" description="Comprehensive billing management with automated cycles and complex pricing scenarios">
       <div className="container mx-auto p-6 space-y-6">
       {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('ticketId') || new URLSearchParams(window.location.search).get('contractId')) && (
         <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
@@ -308,13 +308,7 @@ export default function AdvancedBillingEngine() {
           </Button>
         </div>
       )}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Advanced Billing Engine</h1>
-          <p className="text-muted-foreground mt-2">
-            Comprehensive billing management with automated cycles and complex pricing scenarios
-          </p>
-        </div>
+      <div className="flex justify-end">
         <div className="flex space-x-2">
           <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
             <DialogTrigger asChild>

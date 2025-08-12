@@ -260,7 +260,7 @@ export default function AccountsPayable() {
 
   if (isLoading) {
     return (
-      <MainLayout>
+      <MainLayout title="Accounts Payable" description="Manage vendor payments and outstanding bills">
         <div className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -277,15 +277,9 @@ export default function AccountsPayable() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout title="Accounts Payable" description="Manage vendor bills and payments">
       <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Accounts Payable</h1>
-          <p className="text-sm text-gray-600">
-            Manage vendor bills and payments
-          </p>
-        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>

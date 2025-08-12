@@ -366,7 +366,7 @@ export default function Settings() {
 
   if (settingsLoading) {
     return (
-      <MainLayout>
+      <MainLayout title="Settings" description="Manage your account settings and preferences">
         <div className="flex items-center justify-center h-96">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -375,14 +375,8 @@ export default function Settings() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout title="Settings" description="Manage your account settings and preferences">
       <div className="space-y-6 px-4 sm:px-6 lg:px-0">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Manage your account settings and preferences.
-          </p>
-        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           {/* Mobile Tab Selection Dropdown */}

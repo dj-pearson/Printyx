@@ -287,15 +287,10 @@ export default function QuoteProposalGeneration() {
   ];
 
   return (
-    <MainLayout>
+    <MainLayout title="Quote & Proposal Generation" description="Create professional proposals and manage the sales pipeline">
       <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-end items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Quote & Proposal Generation</h1>
-          <p className="text-muted-foreground">
-            Create professional proposals and manage the sales pipeline
-          </p>
-        </div>
         
         <div className="flex gap-2">
           <Button 

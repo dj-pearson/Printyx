@@ -218,19 +218,9 @@ export default function ServiceHub() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout title="Enhanced Service System" description="Comprehensive service management with phone-in tickets and guided technician workflows">
       <div className="container mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
-        {/* Header */}
-        <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Enhanced Service System
-            </h1>
-            <p className="text-gray-600 mt-1 text-sm md:text-base">
-              Comprehensive service management with phone-in tickets and guided
-              technician workflows
-            </p>
-          </div>
+        <div className="flex flex-col space-y-4 md:flex-row md:items-end md:justify-end md:space-y-0">
           <div className="flex gap-2 flex-col sm:flex-row">
             <Button
               onClick={() => setShowPhoneInCreator(true)}

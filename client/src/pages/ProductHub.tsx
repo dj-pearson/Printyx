@@ -187,19 +187,11 @@ export default function ProductHub() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout 
+      title="Product Management Hub" 
+      description="Centralized management for all product categories and services"
+    >
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Product Management Hub
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Centralized management for all product categories and services
-            </p>
-          </div>
-        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
