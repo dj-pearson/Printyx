@@ -3,6 +3,7 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import PageAlerts from '@/components/contextual/PageAlerts';
 import { Button } from '@/components/ui/button';
 import { 
   BarChart3, 
@@ -95,6 +96,7 @@ export default function AdvancedAnalytics() {
     <MainLayout title="Advanced Analytics" description="Leverage AI and machine learning for predictive insights and automated detection">
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="advanced-analytics" />
+        <PageAlerts categories={["business", "performance"]} severities={["medium","high","critical"]} className="-mt-2" />
         {/* Process Help Banner */}
         <ProcessHelpBanner 
           processType="advanced-analytics"

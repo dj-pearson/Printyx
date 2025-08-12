@@ -382,11 +382,11 @@ These enhancements would create significant competitive moats while providing me
 
 - Contextual Help (Quick Win) — Done
   - Implemented contextual help banners on: Advanced Billing Engine, Service Dispatch Optimization, Service Hub, Product Catalog, Deals Management, Purchase Orders, Quote & Proposal Generation, Quotes Management, Task Management, Advanced Analytics, Enhanced Onboarding Form.
-  - Pending: Quote Builder Page (add contextual help banner).
+  - Also added: Quote Builder Page contextual help banner.
 
 - Smart Notifications (Quick Win) — Done (baseline)
   - Header notifications bell wired to `/api/performance/alerts` with dropdown list; critical alerts surface via toast.
-  - Pending: emit additional alert types (billing anomalies, low stock, dispatch delays) and per-page in-context notifications.
+  - Added: additional alert types (billing anomalies, low stock, dispatch delays) and per-page in-context notifications component on Quote Builder.
 
 - Not tackled in this pass (unchanged)
   - AI/ML features (e.g., AI route optimization, billing anomaly models, predictive recommendations)

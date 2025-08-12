@@ -72,6 +72,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ContextualHelp from "@/components/contextual/ContextualHelp";
+import PageAlerts from "@/components/contextual/PageAlerts";
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 
 interface Quote {
@@ -285,6 +286,7 @@ export default function QuotesManagement() {
     <MainLayout title="Quotes Management" description="Create, manage, and track your sales quotes and proposals">
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="quotes-management" />
+        <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
         {/* Process Help Banner */}
         <ProcessHelpBanner 
           processType="lead-to-quote"

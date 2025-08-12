@@ -58,6 +58,7 @@ import {
   Timer,
 } from "lucide-react";
 import ContextualHelp from "@/components/contextual/ContextualHelp";
+import PageAlerts from "@/components/contextual/PageAlerts";
 
 export default function ServiceHub() {
   const [, setLocation] = useLocation();
@@ -222,6 +223,7 @@ export default function ServiceHub() {
     <MainLayout title="Enhanced Service System" description="Comprehensive service management with phone-in tickets and guided technician workflows">
       <div className="container mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
         <ContextualHelp page="service-hub" />
+        <PageAlerts categories={["business","performance"]} severities={["medium","high","critical"]} className="-mt-2" />
         <div className="flex flex-col space-y-4 md:flex-row md:items-end md:justify-end md:space-y-0">
           <div className="flex gap-2 flex-col sm:flex-row">
             <Button

@@ -82,6 +82,7 @@ import { useLocation } from "wouter";
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ContextualHelp from "@/components/contextual/ContextualHelp";
+import PageAlerts from "@/components/contextual/PageAlerts";
 
 // Enhanced form schema with line items
 const purchaseOrderFormSchema = z.object({
@@ -313,6 +314,7 @@ export default function PurchaseOrders() {
     <MainLayout title="Purchase Orders" description="Manage procurement workflows from vendor selection through receiving">
       <div className="space-y-6">
         <ContextualHelp page="purchase-orders" />
+        <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
         {/* Header */}
         <div className="flex justify-end items-start">
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
