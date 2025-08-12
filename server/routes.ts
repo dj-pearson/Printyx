@@ -4737,6 +4737,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Business Records Import (CSV)
+  app.post(
+    "/api/business-records/import",
+    requireAuth,
+    upload.single("file"),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ error: "Tenant ID is required" });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        console.log("[IMPORT DEBUG] Processing CSV import for tenant:", tenantId);
+        const csvData = await parseCSV(req.file.buffer);
+        console.log("[IMPORT DEBUG] Parsed CSV rows:", csvData.length);
+
+        let imported = 0;
+        let skipped = 0;
+        let duplicates = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < csvData.length; i++) {
+          const row = csvData[i];
+          
+          // Skip empty rows
+          if (!row.companyName || !row.companyName.trim()) {
+            skipped++;
+            continue;
+          }
+
+          try {
+            // Check for duplicates
+            const existing = await storage.getBusinessRecords({
+              tenantId,
+              search: row.companyName.trim(),
+            });
+            
+            if (existing.some((record: any) => 
+              record.companyName.toLowerCase() === row.companyName.toLowerCase().trim()
+            )) {
+              duplicates++;
+              continue;
+            }
+
+            // Transform and validate data
+            const businessRecordData = {
+              tenantId,
+              recordType: "lead",
+              status: "new",
+              companyName: row.companyName.trim(),
+              primaryContactName: row.primaryContactName || "",
+              primaryContactEmail: row.primaryContactEmail || "",
+              primaryContactPhone: row.primaryContactPhone || "",
+              primaryContactTitle: row.primaryContactTitle || "",
+              website: row.website || "",
+              industry: row.industry || "",
+              employeeCount: row.employeeCount ? parseInt(row.employeeCount) : null,
+              annualRevenue: row.annualRevenue ? parseFloat(row.annualRevenue) : null,
+              addressLine1: row.addressLine1 || "",
+              addressLine2: row.addressLine2 || "",
+              city: row.city || "",
+              state: row.state || "",
+              postalCode: row.postalCode || "",
+              country: row.country || "US",
+              phone: row.phone || row.primaryContactPhone || "",
+              fax: row.fax || "",
+              leadSource: row.leadSource || "import",
+              estimatedAmount: row.estimatedAmount ? parseFloat(row.estimatedAmount) : null,
+              probability: row.probability ? parseInt(row.probability) : 50,
+              salesStage: row.salesStage || "new",
+              interestLevel: row.interestLevel || "medium",
+              priority: row.priority || "medium",
+              territory: row.territory || "",
+              notes: row.notes || "",
+              assignedSalesRep: row.assignedSalesRep === "current_user" ? req.user.id : row.assignedSalesRep || req.user.id,
+              ownerId: row.assignedSalesRep === "current_user" ? req.user.id : row.assignedSalesRep || req.user.id,
+              createdBy: req.user.id,
+            };
+
+            await storage.createBusinessRecord(businessRecordData);
+            imported++;
+            
+          } catch (error: any) {
+            console.error(`Error importing row ${i + 1}:`, error);
+            errors.push(`Row ${i + 2}: ${error.message}`);
+            skipped++;
+          }
+        }
+
+        console.log(`[IMPORT DEBUG] Import completed: ${imported} imported, ${skipped} skipped, ${duplicates} duplicates`);
+
+        res.json({
+          success: true,
+          imported,
+          skipped,
+          duplicates,
+          errors,
+          message: `Successfully imported ${imported} leads. ${skipped > 0 ? `${skipped} rows skipped.` : ""} ${duplicates > 0 ? `${duplicates} duplicates found.` : ""}`
+        });
+
+      } catch (error) {
+        console.error("Error importing business records:", error);
+        res.status(500).json({ 
+          success: false,
+          error: "Import failed", 
+          message: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+  );
+
   // Company management routes (new primary business entity)
   app.get(
     "/api/companies",
