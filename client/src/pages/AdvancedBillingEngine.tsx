@@ -22,16 +22,19 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { 
+  type Invoice,
+  type BillingEntry,
+  type BusinessRecord
+} from '@shared/schema';
 
-// Types
-type BillingInvoice = {
-  id: string;
+// Using Invoice from schema - BillingInvoice extends Invoice with additional billing-specific fields
+interface BillingInvoice extends Invoice {
   invoice_number: string;
   invoice_date: string;
   due_date: string;
   billing_period_start: string;
   billing_period_end: string;
-  status: string;
   subtotal: number;
   tax_amount: number;
   total_amount: number;
@@ -41,10 +44,10 @@ type BillingInvoice = {
   payment_terms: string;
   customer_name?: string;
   business_record_name?: string;
-  created_at: string;
-};
+}
 
-type BillingConfiguration = {
+// Using BillingEntry from schema - BillingConfiguration extends BillingEntry with configuration-specific fields
+interface BillingConfiguration extends Omit<BillingEntry, 'id'> {
   id: string;
   configuration_name: string;
   billing_type: string;
@@ -57,7 +60,7 @@ type BillingConfiguration = {
   currency: string;
   tax_rate: number;
   created_at: string;
-};
+}
 
 type BillingCycle = {
   id: string;
@@ -184,7 +187,7 @@ export default function AdvancedBillingEngine() {
   });
 
   // Fetch business records for dropdowns
-  const { data: businessRecords = [] } = useQuery<any[]>({
+  const { data: businessRecords = [] } = useQuery<BusinessRecord[]>({
     queryKey: ["/api/business-records"],
   });
 
@@ -687,9 +690,9 @@ export default function AdvancedBillingEngine() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {businessRecords.map((record: any) => (
+                            {businessRecords.map((record: BusinessRecord) => (
                               <SelectItem key={record.id} value={record.id}>
-                                {record.company_name || record.companyName}
+                                {record.companyName}
                               </SelectItem>
                             ))}
                           </SelectContent>

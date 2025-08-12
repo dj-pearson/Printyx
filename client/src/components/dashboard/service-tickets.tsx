@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Wrench, CheckCircle } from "lucide-react";
+import { type ServiceTicket } from "@shared/schema";
 
 export default function ServiceTickets() {
-  const { data: tickets, isLoading } = useQuery({
+  const { data: tickets, isLoading } = useQuery<ServiceTicket[]>({
     queryKey: ['/api/dashboard/recent-tickets'],
   });
 
@@ -64,7 +65,7 @@ export default function ServiceTickets() {
             </div>
           ))
         ) : tickets && tickets.length > 0 ? (
-          tickets.slice(0, 3).map((ticket: any) => (
+          tickets.slice(0, 3).map((ticket: ServiceTicket) => (
             <div key={ticket.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-4">
                 <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">

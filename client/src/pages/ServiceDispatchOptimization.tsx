@@ -11,16 +11,17 @@ import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { 
+  type ServiceTicket, 
+  type Technician,
+  type ServiceSession
+} from '@shared/schema';
 
-interface DispatchRecommendation {
+// Using ServiceTicket and Technician from schema
+// DispatchRecommendation extends ServiceTicket with optimization data
+interface DispatchRecommendation extends Omit<ServiceTicket, 'id'> {
   id: string;
   ticketId: string;
-  ticketTitle: string;
-  customerName: string;
-  customerAddress: string;
-  priority: string;
-  estimatedDuration: number;
-  requiredSkills: string[];
   recommendedTechnician: {
     id: string;
     name: string;
@@ -60,14 +61,8 @@ interface DispatchRecommendation {
   };
 }
 
-interface TechnicianAvailability {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  currentLocation: string;
-  skills: string[];
-  certifications: string[];
+// TechnicianAvailability extends Technician with availability and performance data
+interface TechnicianAvailability extends Technician {
   availability: {
     totalHours: number;
     bookedHours: number;
@@ -87,7 +82,6 @@ interface TechnicianAvailability {
     customerSatisfaction: number;
     onTimeArrival: number;
   };
-  status: string;
   nextAvailableSlot: string;
   endOfDayAvailable: string;
 }
@@ -305,13 +299,13 @@ export default function ServiceDispatchOptimization() {
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-medium">{rec.ticketTitle}</h4>
+                          <h4 className="font-medium">{rec.title || rec.ticketTitle}</h4>
                           <Badge className={getPriorityColor(rec.priority)}>
                             {rec.priority}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600">{rec.customerName} • {rec.customerAddress}</p>
-                        <p className="text-sm text-gray-600">Duration: {rec.estimatedDuration} min • Skills: {rec.requiredSkills.join(', ')}</p>
+                        <p className="text-sm text-gray-600">Duration: {rec.estimatedDuration} min • Skills: {rec.requiredSkills?.join(', ') || 'N/A'}</p>
                       </div>
                       
                       <div className="text-right">
