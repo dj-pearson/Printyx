@@ -102,7 +102,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
+import { MainLayout } from "@/components/layout/main-layout";
 
 export default function CustomerDetailHubspot() {
   const { slug } = useParams<{ slug: string }>();
@@ -136,6 +136,16 @@ export default function CustomerDetailHubspot() {
     queryKey: ["/api/business-records", slug],
     enabled: !!slug,
   });
+
+  // Determine if this is a lead or customer based on the record type and stage
+  const isLead = customer?.recordType === 'lead' || 
+                 customer?.accountType === 'Lead' || 
+                 customer?.stage === 'new' || 
+                 customer?.stage === 'contacted' || 
+                 customer?.stage === 'qualified' ||
+                 customer?.customerType === 'lead';
+  const backButtonText = isLead ? "Back to Leads" : "Back to Customers";
+  const backButtonPath = isLead ? "/leads-management" : "/customers";
 
   // Fetch company contacts to surface the designated primary contact on the main page
   const { data: companyContacts = [] } = useQuery({
@@ -341,9 +351,9 @@ export default function CustomerDetailHubspot() {
           <p className="text-gray-600 mb-4">
             The customer you're looking for doesn't exist or has been removed.
           </p>
-          <Button onClick={() => setLocation("/customers")}>
+          <Button onClick={() => setLocation(backButtonPath)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Customers
+            {backButtonText}
           </Button>
         </div>
       </MainLayout>
@@ -359,10 +369,10 @@ export default function CustomerDetailHubspot() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocation("/customers")}
+              onClick={() => setLocation(backButtonPath)}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Customers
+              {backButtonText}
             </Button>
             <Separator orientation="vertical" className="h-6" />
             <div className="flex items-center gap-3 min-w-0">
