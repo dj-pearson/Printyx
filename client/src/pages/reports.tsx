@@ -1,177 +1,336 @@
-import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { BarChart3, PieChart, TrendingUp, FileText, Download } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, TrendingUp, Clock, Target, Package, Wrench, DollarSign } from "lucide-react";
+
+interface ServiceSLAReport {
+  totalTickets: number;
+  averageResponseTime: number;
+  slaBreaches: number;
+  slaComplianceRate: number;
+  ticketsByPriority: { priority: string; count: number }[];
+  resolutionTimes: { category: string; avgHours: number }[];
+}
+
+interface PurchaseOrderVarianceReport {
+  totalOrders: number;
+  onTimeOrders: number;
+  delayedOrders: number;
+  avgDeliveryVarianceDays: number;
+  variancesByVendor: { vendor: string; avgVarianceDays: number }[];
+  costVariances: { budgeted: number; actual: number; variance: number }[];
+}
+
+interface MeterReadingMetrics {
+  totalReadings: number;
+  avgPagesPerMonth: number;
+  predictedOverages: number;
+  equipmentUtilization: { equipmentId: string; model: string; utilization: number }[];
+  monthlyTrends: { month: string; totalPages: number }[];
+}
+
+interface WarehouseFPYMetrics {
+  totalOperations: number;
+  firstPassYield: number;
+  qualityTrends: { date: string; fpy: number }[];
+  defectsByType: { type: string; count: number }[];
+  operatorPerformance: { operator: string; fpy: number }[];
+}
 
 export default function Reports() {
+  const [activeTab, setActiveTab] = useState("service-sla");
+
+  // Service SLA Metrics
+  const { data: serviceSLA, isLoading: isLoadingSLA } = useQuery({
+    queryKey: ["/api/reports/service-sla"],
+    enabled: activeTab === "service-sla",
+  });
+
+  // Purchase Order Variance Metrics
+  const { data: poVariance, isLoading: isLoadingPO } = useQuery({
+    queryKey: ["/api/reports/purchase-order-variance"],
+    enabled: activeTab === "purchase-orders",
+  });
+
+  // Meter Reading Metrics
+  const { data: meterMetrics, isLoading: isLoadingMeter } = useQuery({
+    queryKey: ["/api/reports/meter-reading-metrics"],
+    enabled: activeTab === "meter-readings",
+  });
+
+  // Warehouse FPY Metrics
+  const { data: fpyMetrics, isLoading: isLoadingFPY } = useQuery({
+    queryKey: ["/api/warehouse-fpy/metrics"],
+    enabled: activeTab === "warehouse-fpy",
+  });
+
+  const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`;
+  const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
+
   return (
-    <MainLayout 
-      title="Reports" 
-      description="Analytics and insights for your business"
-    >
-        
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Revenue Reports</p>
-                    <p className="text-xs text-gray-500 mt-1">Monthly & quarterly analysis</p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <BarChart3 className="h-6 w-6 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Contract Analysis</p>
-                    <p className="text-xs text-gray-500 mt-1">Profitability & renewals</p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <PieChart className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Service Performance</p>
-                    <p className="text-xs text-gray-500 mt-1">Response times & efficiency</p>
-                  </div>
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-orange-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Custom Reports</p>
-                    <p className="text-xs text-gray-500 mt-1">Build your own</p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-purple-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Quick Reports</h3>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export All
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">Monthly P&L</p>
-                      <p className="text-sm text-gray-600">Profit and loss statement</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">Customer Summary</p>
-                      <p className="text-sm text-gray-600">Contract values and status</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">Service Report</p>
-                      <p className="text-sm text-gray-600">Technician productivity</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">Inventory Report</p>
-                      <p className="text-sm text-gray-600">Stock levels and usage</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Schedule</h3>
-                <div className="space-y-4">
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium text-green-900">Monthly Revenue Report</p>
-                      <span className="text-xs text-green-700 bg-green-200 px-2 py-1 rounded">Active</span>
-                    </div>
-                    <p className="text-sm text-green-700">Next run: 1st of every month</p>
-                  </div>
-
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium text-blue-900">Weekly Service Summary</p>
-                      <span className="text-xs text-blue-700 bg-blue-200 px-2 py-1 rounded">Active</span>
-                    </div>
-                    <p className="text-sm text-blue-700">Next run: Every Monday at 9 AM</p>
-                  </div>
-
-                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium text-orange-900">Inventory Alert Report</p>
-                      <span className="text-xs text-orange-700 bg-orange-200 px-2 py-1 rounded">Active</span>
-                    </div>
-                    <p className="text-sm text-orange-700">Next run: Daily at 8 AM</p>
-                  </div>
-                </div>
-                
-                <Button className="w-full mt-4" variant="outline">
-                  Manage Schedules
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardContent className="py-12">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Advanced Analytics</h3>
-                <p className="text-gray-600 mb-6">Detailed reporting and analytics features coming soon.</p>
-                <Button>
-                  Learn More
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <TrendingUp className="h-8 w-8 text-blue-600" />
+        <div>
+          <h1 className="text-3xl font-bold">LEAN Operations Reports</h1>
+          <p className="text-gray-600">Performance metrics and analytics for operational excellence</p>
         </div>
-    </MainLayout>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="service-sla" className="flex items-center gap-2">
+            <Wrench className="h-4 w-4" />
+            Service SLA
+          </TabsTrigger>
+          <TabsTrigger value="purchase-orders" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Purchase Orders
+          </TabsTrigger>
+          <TabsTrigger value="meter-readings" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Meter Analytics
+          </TabsTrigger>
+          <TabsTrigger value="warehouse-fpy" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Warehouse FPY
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Service SLA Tab */}
+        <TabsContent value="service-sla" className="space-y-6">
+          {isLoadingSLA ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="h-20 bg-gray-200 rounded-t-lg"></CardHeader>
+                  <CardContent className="h-24 bg-gray-100"></CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Service Tickets</CardTitle>
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{serviceSLA?.totalTickets || 0}</div>
+                  <p className="text-xs text-muted-foreground">Active and completed tickets</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Average Response Time</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{serviceSLA?.averageResponseTime?.toFixed(1) || '0'} hrs</div>
+                  <p className="text-xs text-muted-foreground">Time to first response</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">SLA Compliance</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatPercentage(serviceSLA?.slaComplianceRate || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {serviceSLA?.slaBreaches || 0} breaches this month
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-3">
+                <CardHeader>
+                  <CardTitle>Resolution Time by Issue Category</CardTitle>
+                  <CardDescription>Average hours to resolve tickets by category</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {serviceSLA?.resolutionTimes?.map((item) => (
+                      <div key={item.category} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{item.category}</span>
+                        <Badge variant="outline">{item.avgHours.toFixed(1)} hours</Badge>
+                      </div>
+                    )) || <p className="text-gray-500">No resolution data available</p>}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Purchase Orders Tab */}
+        <TabsContent value="purchase-orders" className="space-y-6">
+          {isLoadingPO ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="h-20 bg-gray-200 rounded-t-lg"></CardHeader>
+                  <CardContent className="h-24 bg-gray-100"></CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Purchase Orders</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{poVariance?.totalOrders || 0}</div>
+                  <p className="text-xs text-muted-foreground">This quarter</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">On-Time Delivery</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {poVariance ? formatPercentage(poVariance.onTimeOrders / poVariance.totalOrders) : '0%'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {poVariance?.delayedOrders || 0} delayed orders
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Delivery Variance</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {poVariance?.avgDeliveryVarianceDays?.toFixed(1) || '0'} days
+                  </div>
+                  <p className="text-xs text-muted-foreground">Past scheduled delivery</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Meter Readings Tab */}
+        <TabsContent value="meter-readings" className="space-y-6">
+          {isLoadingMeter ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="h-20 bg-gray-200 rounded-t-lg"></CardHeader>
+                  <CardContent className="h-24 bg-gray-100"></CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Meter Readings</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{meterMetrics?.totalReadings || 0}</div>
+                  <p className="text-xs text-muted-foreground">This month</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Pages/Month</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{meterMetrics?.avgPagesPerMonth?.toLocaleString() || '0'}</div>
+                  <p className="text-xs text-muted-foreground">Across all equipment</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Predicted Overages</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-600">{meterMetrics?.predictedOverages || 0}</div>
+                  <p className="text-xs text-muted-foreground">Equipment units at risk</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Warehouse FPY Tab */}
+        <TabsContent value="warehouse-fpy" className="space-y-6">
+          {isLoadingFPY ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="h-20 bg-gray-200 rounded-t-lg"></CardHeader>
+                  <CardContent className="h-24 bg-gray-100"></CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Operations</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{fpyMetrics?.totalOperations || 0}</div>
+                  <p className="text-xs text-muted-foreground">Kitting operations</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">First Pass Yield</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${(fpyMetrics?.firstPassYield || 0) >= 0.95 ? 'text-green-600' : 
+                    (fpyMetrics?.firstPassYield || 0) >= 0.85 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    {formatPercentage(fpyMetrics?.firstPassYield || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Quality rate target: 95%</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Quality Trend</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {fpyMetrics?.qualityTrends?.length ? 
+                      fpyMetrics.qualityTrends[fpyMetrics.qualityTrends.length - 1]?.fpy ? 
+                        formatPercentage(fpyMetrics.qualityTrends[fpyMetrics.qualityTrends.length - 1].fpy) : 
+                        'N/A' : 
+                      'N/A'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Latest daily FPY</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
