@@ -9,7 +9,9 @@ The platform includes AI-powered analytics (customer churn, CLV, predictive main
 Comprehensive implementation of LEAN End-to-End Playbook requirements including service lifecycle management, warehouse FPY tracking, auto-invoice generation, and Definition of Done (DoD) enforcement for stage transitions. Added complete reporting infrastructure with service SLA metrics, purchase order variance tracking, and billing analytics.
 
 ### Database Performance Optimization (August 2025)
-Implemented comprehensive composite indexes for business_records table to optimize query performance:
+Implemented comprehensive composite indexes across all high-volume tables to optimize query performance:
+
+**business_records table (leads/customers):**
 - Tenant-based composite indexes for general queries (tenant_id, created_at, status)
 - ID-based lookups within tenant context for single record access
 - Record type filtering for leads vs customers distinction
@@ -18,6 +20,14 @@ Implemented comprehensive composite indexes for business_records table to optimi
 - Sales pipeline queries for deal value and probability analysis
 - Lead source analytics for marketing attribution
 - Activity tracking indexes for follow-up and contact management
+
+**Additional tables optimized:**
+- invoices: tenant-customer billing, status tracking, due date management
+- service_tickets: customer service dispatch, technician assignments, priority scheduling
+- quotes: sales pipeline and proposal management
+- contracts: customer relationship management
+- equipment: asset tracking and service management
+- deals: sales pipeline with stage and probability optimization
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
