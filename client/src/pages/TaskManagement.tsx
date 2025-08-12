@@ -93,6 +93,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
+import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
+import MobileFAB from "@/components/layout/MobileFAB";
 
 // Enhanced interfaces for advanced task management functionality
 interface Task {
@@ -445,6 +447,7 @@ export default function TaskManagement() {
     >
       <div className="space-y-6">
         <ContextualHelp page="task-management" />
+        <KpiSummaryBar className="mb-4" />
         <PageAlerts categories={["business","performance"]} severities={["high","critical"]} className="-mt-2" />
         {/* Header with Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

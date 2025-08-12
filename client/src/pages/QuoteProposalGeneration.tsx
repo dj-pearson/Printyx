@@ -66,6 +66,8 @@ import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
+import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
+import MobileFAB from "@/components/layout/MobileFAB";
 
 // Form schemas
 const proposalSchema = z.object({
@@ -292,6 +294,7 @@ export default function QuoteProposalGeneration() {
     <MainLayout title="Quote & Proposal Generation" description="Create professional proposals and manage the sales pipeline">
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="quote-proposal-generation" />
+        <KpiSummaryBar className="mb-4" />
         <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
         <div className="flex justify-end items-center">
           <div className="flex gap-2">
