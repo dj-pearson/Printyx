@@ -78,6 +78,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { LeadsImport } from "@/components/leads/LeadsImport";
 
 interface Lead {
   id: string;
@@ -628,10 +629,7 @@ export default function LeadsManagement() {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button variant="outline" className="w-full sm:w-auto">
-              <Upload className="h-4 w-4 mr-2" />
-              Import
-            </Button>
+            <LeadsImport onImportComplete={() => queryClient.invalidateQueries({ queryKey: ["/api/business-records"] })} />
             <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
               <DialogTrigger asChild>
                 <Button className="w-full sm:w-auto">
