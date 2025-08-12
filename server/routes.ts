@@ -4218,17 +4218,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const tenantId = user.tenantId;
 
-      const contactData = {
+      if (!tenantId) {
+        return res.status(400).json({ error: "Tenant ID is required" });
+      }
+
+      // Validate using Zod schema
+      const contactData = insertCompanyContactSchema.parse({
         ...req.body,
         tenantId,
         ownerId: req.body.ownerId || user.id,
-      };
+      });
 
       const contact = await storage.createCompanyContact(contactData);
       res.status(201).json(contact);
     } catch (error) {
       console.error("Error creating company contact:", error);
-      res.status(500).json({ error: "Failed to create company contact" });
+      res.status(500).json({ error: "Failed to create company contact", details: error.message });
     }
   });
 
@@ -4444,19 +4449,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const tenantId = user.tenantId;
 
-      const contactData = {
+      if (!tenantId) {
+        return res.status(400).json({ error: "Tenant ID is required" });
+      }
+
+      // Validate using Zod schema
+      const contactData = insertCompanyContactSchema.parse({
         ...req.body,
         tenantId,
         ownerId: req.body.ownerId || user.id, // Default to current user if not specified
-        lastContactDate: null,
-        nextFollowUpDate: null,
-      };
+      });
 
       const contact = await storage.createCompanyContact(contactData);
       res.status(201).json(contact);
     } catch (error) {
       console.error("Error creating contact:", error);
-      res.status(500).json({ error: "Failed to create contact" });
+      res.status(500).json({ error: "Failed to create contact", details: error.message });
     }
   });
 
