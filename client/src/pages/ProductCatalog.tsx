@@ -43,45 +43,12 @@ import {
 } from "lucide-react";
 import MainLayout from "@/components/layout/main-layout";
 import { Link } from "wouter";
-
-interface MasterProduct {
-  id: string;
-  manufacturer: string;
-  modelCode: string;
-  displayName: string;
-  specsJson?: any;
-  msrp?: number;
-  dealerCost?: number;
-  marginPercentage?: number;
-  status: string;
-  category?: string;
-  productType?: string;
-  itemType?: "model" | "accessory";
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface EnabledProduct {
-  enabledProductId: string;
-  tenantId: string;
-  source: string;
-  enabled: boolean;
-  customSku?: string;
-  customName?: string;
-  dealerCost?: number;
-  companyPrice?: number;
-  priceOverridden: boolean;
-  enabledAt: string;
-  masterProductId?: string;
-  manufacturer?: string;
-  modelCode?: string;
-  displayName?: string;
-  specsJson?: any;
-  msrp?: number;
-  status?: string;
-  category?: string;
-  productType?: string;
-}
+import { 
+  type MasterProductModel, 
+  type EnabledProduct, 
+  type InsertEnabledProduct,
+  insertEnabledProductSchema 
+} from "@shared/schema";
 
 export default function ProductCatalog() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -125,7 +92,7 @@ export default function ProductCatalog() {
   };
 
   // Fetch master catalog products
-  const { data: masterProducts = [], isLoading: isLoadingMaster } = useQuery({
+  const { data: masterProducts = [], isLoading: isLoadingMaster } = useQuery<MasterProductModel[]>({
     queryKey: [
       "/api/catalog/models",
       {
@@ -142,7 +109,7 @@ export default function ProductCatalog() {
   });
 
   // Fetch enabled products for tenant
-  const { data: enabledProducts = [], isLoading: isLoadingEnabled } = useQuery({
+  const { data: enabledProducts = [], isLoading: isLoadingEnabled } = useQuery<EnabledProduct[]>({
     queryKey: ["/api/enabled-products"],
     queryFn: () => apiRequest("/api/enabled-products"),
   });
@@ -156,7 +123,7 @@ export default function ProductCatalog() {
   // Derive categories from products
   const categories = [
     ...new Set(
-      masterProducts.map((p: MasterProduct) => p.category).filter(Boolean)
+      masterProducts.map((p: MasterProductModel) => p.category).filter(Boolean)
     ),
   ];
 
@@ -318,7 +285,7 @@ export default function ProductCatalog() {
     setSelectedProducts(newSelected);
   };
 
-  const handleEditProduct = (product: MasterProduct) => {
+  const handleEditProduct = (product: MasterProductModel) => {
     setEditingProduct(product.id);
     setEditForm({
       displayName: product.displayName,
@@ -878,7 +845,7 @@ export default function ProductCatalog() {
                     </Card>
                   ))
                 : masterProducts
-                    .filter((product: MasterProduct) => {
+                    .filter((product: MasterProductModel) => {
                       // Search term filter
                       if (
                         searchTerm &&
@@ -918,7 +885,7 @@ export default function ProductCatalog() {
 
                       return true;
                     })
-                    .map((product: MasterProduct) => {
+                    .map((product: MasterProductModel) => {
                       const isEnabled = isProductEnabled(product.id);
                       const isSelected = selectedProducts.has(product.id);
 
