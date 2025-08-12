@@ -78,7 +78,7 @@ import type {
 import { z } from "zod";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 // Utility function to create URL-friendly company names
 const createCompanySlug = (companyName: string): string => {
@@ -91,16 +91,45 @@ const createCompanySlug = (companyName: string): string => {
     .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 };
 
-// New company-centric lead creation schema
+// Enhanced business record creation schema with all database fields
 const createLeadSchema = z.object({
+  // Basic Company Information
   companyName: z.string().min(1, "Company name is required"),
   contactName: z.string().min(1, "Contact name is required"),
   email: z.string().email("Valid email is required"),
   phone: z.string().min(1, "Phone number is required"),
+  website: z.string().url().optional().or(z.literal("")),
+  
+  // Address Information  
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().default("US"),
+  
+  // Lead Information
   leadSource: z.string().min(1, "Lead source is required"),
+  leadStatus: z.string().default("new"),
+  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  
+  // Deal Information
+  dealStage: z.string().default("prospecting"),
+  dealValue: z.string().optional(),
   estimatedValue: z.string().min(1, "Estimated value is required"),
   estimatedCloseDate: z.string().min(1, "Estimated close date is required"),
+  
+  // Assignment and Territory
+  assignedTo: z.string().optional(),
+  territory: z.string().optional(),
+  
+  // Follow-up and Notes
+  lastContactDate: z.string().optional(),
+  nextFollowUp: z.string().optional(),
   notes: z.string().optional(),
+  tags: z.string().optional(), // Comma-separated tags
+  
+  // Record Management
+  recordType: z.literal("lead").default("lead"),
 });
 
 const createQuoteSchema = insertQuoteSchema.extend({
@@ -155,14 +184,43 @@ export default function CRMEnhanced() {
   const leadForm = useForm<CreateLeadInput>({
     resolver: zodResolver(createLeadSchema),
     defaultValues: {
+      // Basic Company Information
       companyName: "",
       contactName: "",
       email: "",
       phone: "",
+      website: "",
+      
+      // Address Information
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "US",
+      
+      // Lead Information
       leadSource: "",
+      leadStatus: "new",
+      priority: "medium",
+      
+      // Deal Information
+      dealStage: "prospecting",
+      dealValue: "",
       estimatedValue: "",
       estimatedCloseDate: "",
+      
+      // Assignment and Territory
+      assignedTo: "",
+      territory: "",
+      
+      // Follow-up and Notes
+      lastContactDate: "",
+      nextFollowUp: "",
       notes: "",
+      tags: "",
+      
+      // Record Management
+      recordType: "lead",
     },
   });
 
@@ -210,18 +268,45 @@ export default function CRMEnhanced() {
         }
       );
 
-      // Create the lead using business records API
+      // Create the lead using business records API with complete field mapping
       return await apiRequest("/api/business-records", "POST", {
+        // Record Management
         recordType: "lead",
-        status: "new",
+        status: data.leadStatus || "new",
+        priority: data.priority,
+        
+        // Basic Information
         companyName: data.companyName,
         primaryContactName: data.contactName,
         primaryContactEmail: data.email,
         primaryContactPhone: data.phone,
+        website: data.website,
+        
+        // Address Information
+        addressLine1: data.address,
+        city: data.city,
+        state: data.state,
+        postalCode: data.zipCode,
+        country: data.country,
+        
+        // Lead Information
         leadSource: data.leadSource,
+        dealStage: data.dealStage,
+        estimatedDealValue: data.dealValue ? parseFloat(data.dealValue) : undefined,
         estimatedAmount: parseFloat(data.estimatedValue),
-        estimatedCloseDate: data.estimatedCloseDate,
+        closeDate: data.estimatedCloseDate,
+        
+        // Assignment and Territory
+        assignedSalesRep: data.assignedTo,
+        territory: data.territory,
+        
+        // Follow-up Information
+        lastContactDate: data.lastContactDate,
+        nextFollowUpDate: data.nextFollowUp,
+        
+        // Notes and Tags
         notes: data.notes,
+        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()) : undefined,
       });
     },
     onSuccess: () => {
@@ -562,6 +647,230 @@ export default function CRMEnhanced() {
                           <FormLabel>Estimated Close Date</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Website Field */}
+                    <FormField
+                      control={leadForm.control}
+                      name="website"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Website</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="url"
+                              placeholder="https://acme.com"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Address Information */}
+                    <div className="grid grid-cols-1 gap-4">
+                      <FormField
+                        control={leadForm.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Address</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="123 Main Street"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={leadForm.control}
+                        name="city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="New York" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={leadForm.control}
+                        name="state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="NY" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={leadForm.control}
+                        name="zipCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ZIP Code</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="10001" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Lead Management */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={leadForm.control}
+                        name="priority"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Priority</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select priority" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={leadForm.control}
+                        name="dealStage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Deal Stage</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select stage" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="prospecting">Prospecting</SelectItem>
+                                <SelectItem value="qualification">Qualification</SelectItem>
+                                <SelectItem value="needs_analysis">Needs Analysis</SelectItem>
+                                <SelectItem value="proposal">Proposal</SelectItem>
+                                <SelectItem value="negotiation">Negotiation</SelectItem>
+                                <SelectItem value="closed_won">Closed Won</SelectItem>
+                                <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Assignment and Territory */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={leadForm.control}
+                        name="assignedTo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Assigned To</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Sales rep ID or name"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={leadForm.control}
+                        name="territory"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Territory</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Northeast, West Coast, etc."
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Follow-up Information */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={leadForm.control}
+                        name="lastContactDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Contact Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={leadForm.control}
+                        name="nextFollowUp"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Next Follow-up Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Tags */}
+                    <FormField
+                      control={leadForm.control}
+                      name="tags"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tags</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="enterprise, copier, urgent (comma-separated)"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

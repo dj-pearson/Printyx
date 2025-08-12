@@ -102,14 +102,21 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Zod schemas for form validation
+// Enhanced Zod schema with complete deal database fields including BANT tracking
 const dealFormSchema = z.object({
+  // Basic Deal Information
   title: z.string().min(1, "Title is required"),
+  dealName: z.string().min(1, "Deal name is required"),
   description: z.string().optional(),
   amount: z.string().optional(),
+  dealValue: z.string().min(1, "Deal value is required"),
+  
+  // Company and Contact Information
   companyId: z.string().min(1, "Company is required"),
   companyName: z.string().min(1, "Company name is required"),
+  businessRecordId: z.string().optional(),
   contactId: z.string().optional(),
+  contactName: z.string().optional(),
   primaryContactName: z.string().optional(),
   primaryContactEmail: z
     .string()
@@ -117,13 +124,49 @@ const dealFormSchema = z.object({
     .optional()
     .or(z.literal("")),
   primaryContactPhone: z.string().optional(),
-  source: z.string().optional(),
-  dealType: z.string().optional(),
-  priority: z.enum(["low", "medium", "high"]).default("medium"),
+  
+  // Deal Stage and Pipeline
+  dealStage: z.string().default("prospecting"),
+  probability: z.string().default("10"),
+  closeDate: z.string().optional(),
   expectedCloseDate: z.string().optional(),
+  actualCloseDate: z.string().optional(),
+  
+  // Lead Source and Assignment
+  leadSource: z.string().optional(),
+  source: z.string().optional(),
+  assignedTo: z.string().optional(),
+  
+  // Product and Competition Information
+  productInterest: z.string().optional(),
   productsInterested: z.string().optional(),
+  competitorInfo: z.string().optional(),
+  
+  // BANT Qualification Framework
+  budgetConfirmed: z.boolean().default(false),
+  authorityConfirmed: z.boolean().default(false),
+  needConfirmed: z.boolean().default(false),
+  timelineConfirmed: z.boolean().default(false),
+  decisionMaker: z.string().optional(),
+  
+  // Sales Process Tracking
+  proposalSent: z.boolean().default(false),
+  contractSent: z.boolean().default(false),
+  
+  // Deal Management
+  dealType: z.string().optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
   estimatedMonthlyValue: z.string().optional(),
+  commissionAmount: z.string().optional(),
+  forecastCategory: z.enum(["pipeline", "best_case", "commit", "omitted"]).default("pipeline"),
+  
+  // Outcome Tracking
+  lostReason: z.string().optional(),
+  winReason: z.string().optional(),
+  
+  // Notes and Tags
   notes: z.string().optional(),
+  tags: z.string().optional(),
 });
 
 type DealFormData = z.infer<typeof dealFormSchema>;
@@ -148,27 +191,74 @@ interface Contact {
 
 interface Deal {
   id: string;
+  tenantId?: string;
+  businessRecordId?: string;
+  
+  // Basic Deal Information
   title: string;
+  dealName?: string;
   description?: string;
   amount?: number;
+  dealValue?: number;
+  
+  // Company and Contact Information
   companyName?: string;
+  contactName?: string;
   primaryContactName?: string;
   primaryContactEmail?: string;
   primaryContactPhone?: string;
+  
+  // Deal Stage and Pipeline
+  dealStage: string;
+  probability: number;
+  closeDate?: string;
+  expectedCloseDate?: string;
+  actualCloseDate?: string;
+  
+  // Lead Source and Assignment
+  leadSource?: string;
   source?: string;
+  assignedTo?: string;
+  
+  // Product and Competition Information
+  productInterest?: string;
+  productsInterested?: string;
+  competitorInfo?: string;
+  
+  // BANT Qualification Framework
+  budgetConfirmed?: boolean;
+  authorityConfirmed?: boolean;
+  needConfirmed?: boolean;
+  timelineConfirmed?: boolean;
+  decisionMaker?: string;
+  
+  // Sales Process Tracking
+  proposalSent?: boolean;
+  contractSent?: boolean;
+  
+  // Deal Management
   dealType?: string;
   priority: string;
-  expectedCloseDate?: string;
-  productsInterested?: string;
   estimatedMonthlyValue?: number;
+  commissionAmount?: number;
+  forecastCategory?: string;
+  
+  // Outcome Tracking
+  lostReason?: string;
+  winReason?: string;
+  
+  // Notes and Tags
   notes?: string;
+  tags?: string | string[];
+  
+  // System Fields
   status: string;
-  probability: number;
   stageId: string;
   stageName?: string;
   stageColor?: string;
   ownerId: string;
   ownerName?: string;
+  createdBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -473,22 +563,65 @@ export default function DealsManagement() {
   const form = useForm<DealFormData>({
     resolver: zodResolver(dealFormSchema),
     defaultValues: {
-      priority: "medium",
+      // Basic Deal Information
       title: "",
+      dealName: "",
       description: "",
       amount: "",
+      dealValue: "",
+      
+      // Company and Contact Information
       companyId: "",
       companyName: "",
+      businessRecordId: "",
       contactId: "",
+      contactName: "",
       primaryContactName: "",
       primaryContactEmail: "",
       primaryContactPhone: "",
-      source: "",
-      dealType: "",
+      
+      // Deal Stage and Pipeline
+      dealStage: "prospecting",
+      probability: "10",
+      closeDate: "",
       expectedCloseDate: "",
+      actualCloseDate: "",
+      
+      // Lead Source and Assignment
+      leadSource: "",
+      source: "",
+      assignedTo: "",
+      
+      // Product and Competition Information
+      productInterest: "",
       productsInterested: "",
+      competitorInfo: "",
+      
+      // BANT Qualification Framework
+      budgetConfirmed: false,
+      authorityConfirmed: false,
+      needConfirmed: false,
+      timelineConfirmed: false,
+      decisionMaker: "",
+      
+      // Sales Process Tracking
+      proposalSent: false,
+      contractSent: false,
+      
+      // Deal Management
+      dealType: "",
+      priority: "medium",
       estimatedMonthlyValue: "",
+      commissionAmount: "",
+      forecastCategory: "pipeline",
+      
+      // Outcome Tracking
+      lostReason: "",
+      winReason: "",
+      
+      // Notes and Tags
       notes: "",
+      tags: "",
     },
   });
 
@@ -497,10 +630,23 @@ export default function DealsManagement() {
     mutationFn: async (data: DealFormData) => {
       const dealData = {
         ...data,
+        // Convert string amounts to numbers
         amount: data.amount ? parseFloat(data.amount) : undefined,
+        dealValue: data.dealValue ? parseFloat(data.dealValue) : undefined,
         estimatedMonthlyValue: data.estimatedMonthlyValue
           ? parseFloat(data.estimatedMonthlyValue)
           : undefined,
+        commissionAmount: data.commissionAmount
+          ? parseFloat(data.commissionAmount)
+          : undefined,
+        // Convert string probability to number
+        probability: data.probability ? parseFloat(data.probability) : undefined,
+        // Convert string tags to array if needed
+        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        // Ensure proper date formatting
+        closeDate: data.closeDate || undefined,
+        expectedCloseDate: data.expectedCloseDate || undefined,
+        actualCloseDate: data.actualCloseDate || undefined,
       };
 
       return await apiRequest("/api/deals", "POST", dealData);
@@ -1113,12 +1259,364 @@ export default function DealsManagement() {
 
                         <FormField
                           control={form.control}
+                          name="dealName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Deal Name *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Q1 2025 Office Equipment"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="dealValue"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Deal Value *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="25000"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="dealStage"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Deal Stage</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select stage" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="prospecting">Prospecting</SelectItem>
+                                  <SelectItem value="qualification">Qualification</SelectItem>
+                                  <SelectItem value="needs_analysis">Needs Analysis</SelectItem>
+                                  <SelectItem value="proposal">Proposal</SelectItem>
+                                  <SelectItem value="negotiation">Negotiation</SelectItem>
+                                  <SelectItem value="closed_won">Closed Won</SelectItem>
+                                  <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="probability"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Probability (%)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  placeholder="75"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
                           name="expectedCloseDate"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Expected Close Date</FormLabel>
                               <FormControl>
                                 <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="leadSource"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Lead Source</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select source" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="website">Website</SelectItem>
+                                  <SelectItem value="referral">Referral</SelectItem>
+                                  <SelectItem value="cold_call">Cold Call</SelectItem>
+                                  <SelectItem value="trade_show">Trade Show</SelectItem>
+                                  <SelectItem value="email">Email Campaign</SelectItem>
+                                  <SelectItem value="social_media">Social Media</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="assignedTo"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Assigned To</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Sales rep ID or name"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="productInterest"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Product Interest</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Canon imageRUNNER, HP LaserJet"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="competitorInfo"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Competitor Info</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Currently using Xerox, considering HP"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="decisionMaker"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Decision Maker</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="John Smith, IT Director"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="forecastCategory"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Forecast Category</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="pipeline">Pipeline</SelectItem>
+                                  <SelectItem value="best_case">Best Case</SelectItem>
+                                  <SelectItem value="commit">Commit</SelectItem>
+                                  <SelectItem value="omitted">Omitted</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* BANT Qualification Section */}
+                        <div className="sm:col-span-2 space-y-4">
+                          <h4 className="text-sm font-medium text-gray-900 border-b pb-2">
+                            BANT Qualification
+                          </h4>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="budgetConfirmed"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel>Budget Confirmed</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="authorityConfirmed"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel>Authority Confirmed</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="needConfirmed"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel>Need Confirmed</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="timelineConfirmed"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel>Timeline Confirmed</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Sales Process Tracking */}
+                        <div className="sm:col-span-2 space-y-4">
+                          <h4 className="text-sm font-medium text-gray-900 border-b pb-2">
+                            Sales Process Tracking
+                          </h4>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="proposalSent"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel>Proposal Sent</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="contractSent"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel>Contract Sent</FormLabel>
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="tags"
+                          render={({ field }) => (
+                            <FormItem className="sm:col-span-2">
+                              <FormLabel>Tags</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="enterprise, urgent, q1-target (comma-separated)"
+                                  {...field}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
