@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import PageAlerts from '@/components/contextual/PageAlerts';
+import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import { Button } from '@/components/ui/button';
 import { 
   BarChart3, 
@@ -96,6 +97,7 @@ export default function AdvancedAnalytics() {
     <MainLayout title="Advanced Analytics" description="Leverage AI and machine learning for predictive insights and automated detection">
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="advanced-analytics" />
+        <KpiSummaryBar className="mb-4" />
         <PageAlerts categories={["business", "performance"]} severities={["medium","high","critical"]} className="-mt-2" />
         {/* Process Help Banner */}
         <ProcessHelpBanner 

@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
+import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
+import MobileFAB from "@/components/layout/MobileFAB";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -930,6 +932,7 @@ export default function DealsManagement() {
       <div className="flex flex-col h-full">
         <div className="mb-4">
           <ContextualHelp page="deals-management" />
+          <KpiSummaryBar className="mt-2 mb-4" />
           <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
         </div>
         <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-end">
