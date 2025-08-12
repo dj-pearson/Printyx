@@ -253,13 +253,24 @@ export default function WarehouseOperations() {
 
   // Update operation status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+    mutationFn: async ({ id, status, operationType }: { id: string; status: string; operationType?: string }) =>
       apiRequest(`/api/warehouse-operations/${id}/status`, "PATCH", { status }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["/api/warehouse-operations"],
       });
-      toast({ title: "Status updated successfully" });
+      
+      // If build operation is completed, guide to installation scheduling
+      if (variables.status === "completed" && variables.operationType === "build") {
+        toast({ 
+          title: "Build completed successfully!",
+          description: "Ready to schedule delivery and installation",
+        });
+        // Automatically switch to delivery tab for next step
+        setActiveTab("delivery");
+      } else {
+        toast({ title: "Status updated successfully" });
+      }
     },
   });
 
@@ -640,6 +651,7 @@ export default function WarehouseOperations() {
                                           updateStatusMutation.mutate({
                                             id: operation.id,
                                             status: "in_progress",
+                                            operationType: operation.operationType,
                                           })
                                         }
                                       >
@@ -655,6 +667,7 @@ export default function WarehouseOperations() {
                                           updateStatusMutation.mutate({
                                             id: operation.id,
                                             status: "completed",
+                                            operationType: operation.operationType,
                                           })
                                         }
                                       >
@@ -757,6 +770,7 @@ export default function WarehouseOperations() {
                                       updateStatusMutation.mutate({
                                         id: operation.id,
                                         status: "in_progress",
+                                        operationType: operation.operationType,
                                       })
                                     }
                                     className="w-full"
@@ -774,6 +788,7 @@ export default function WarehouseOperations() {
                                       updateStatusMutation.mutate({
                                         id: operation.id,
                                         status: "completed",
+                                        operationType: operation.operationType,
                                       })
                                     }
                                     className="w-full"
@@ -884,15 +899,28 @@ export default function WarehouseOperations() {
                   Schedule Delivery
                 </Button>
                 {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('orderId') && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
-                      setLocation(`/enhanced-onboarding-form?orderId=${orderIdFromUrl}`);
-                    }}
-                  >
-                    Start Install Checklist
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
+                        setLocation(`/enhanced-onboarding-form?orderId=${orderIdFromUrl}`);
+                      }}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Schedule Installation
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
+                        setLocation(`/onboarding-dashboard?orderId=${orderIdFromUrl}`);
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Installation Checklist
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
