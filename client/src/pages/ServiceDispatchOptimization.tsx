@@ -18,6 +18,8 @@ import {
 } from '@shared/schema';
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
+import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
+import MobileFAB from "@/components/layout/MobileFAB";
 
 // Using ServiceTicket and Technician from schema
 // DispatchRecommendation extends ServiceTicket with optimization data
@@ -189,6 +191,7 @@ export default function ServiceDispatchOptimization() {
       <div className="mb-4">
         <ContextualHelp page="service-dispatch" />
         <PageAlerts categories={["performance","business"]} severities={["medium","high","critical"]} className="-mt-2 mb-4" />
+        <KpiSummaryBar className="mb-4" />
       </div>
       <div className="flex justify-end items-center mb-6">
         <div className="flex items-center gap-4">
