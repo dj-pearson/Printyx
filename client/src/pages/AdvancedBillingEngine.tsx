@@ -28,6 +28,7 @@ import {
   type BusinessRecord
 } from '@shared/schema';
 import ContextualHelp from "@/components/contextual/ContextualHelp";
+import PageAlerts from "@/components/contextual/PageAlerts";
 
 // Using Invoice from schema - BillingInvoice extends Invoice with additional billing-specific fields
 interface BillingInvoice extends Invoice {
@@ -293,6 +294,7 @@ export default function AdvancedBillingEngine() {
     <MainLayout title="Advanced Billing Engine" description="Comprehensive billing management with automated cycles and complex pricing scenarios">
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="advanced-billing" />
+        <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
       {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('ticketId') || new URLSearchParams(window.location.search).get('contractId')) && (
         <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
           {new URLSearchParams(window.location.search).get('ticketId') && (
