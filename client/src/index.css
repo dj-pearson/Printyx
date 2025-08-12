@@ -74,6 +74,56 @@ div:has([class*="runtime-error"]) {
     touch-action: manipulation;
   }
   
+  /* Enhanced drag and drop mobile support */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Mobile optimized dialogs */
+  [data-radix-dialog-content] {
+    max-height: 90vh;
+    max-width: 95vw;
+  }
+  
+  /* Better mobile form elements */
+  .mobile-form-input {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+  
+  /* Mobile FAB animations */
+  .mobile-fab {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 50;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1);
+  }
+  
+  .mobile-fab:active {
+    transform: scale(0.95);
+  }
+  
+  /* Mobile kanban optimizations */
+  .mobile-kanban-column {
+    min-width: 280px;
+    touch-action: pan-y;
+  }
+  
+  .mobile-kanban-card {
+    touch-action: manipulation;
+    transition: transform 0.2s ease;
+  }
+  
+  .mobile-kanban-card:active {
+    transform: scale(0.98);
+  }
+  
   /* Fix dialog content scrolling */
   [data-radix-dialog-content] {
     max-height: 90vh !important;
