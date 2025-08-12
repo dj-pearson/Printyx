@@ -37,6 +37,8 @@ import {
   Save,
   Send,
   MapPin,
+  FileText,
+  ArrowRight,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
@@ -97,12 +99,14 @@ interface QuoteBuilderProps {
   initialQuoteId?: string;
   onSave?: (quoteId: string) => void;
   onCancel?: () => void;
+  onCreateProposal?: (quoteId: string) => void;
 }
 
 export default function QuoteBuilder({ 
   initialQuoteId, 
   onSave, 
-  onCancel 
+  onCancel,
+  onCreateProposal 
 }: QuoteBuilderProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
@@ -454,6 +458,42 @@ export default function QuoteBuilder({
     }
   };
 
+  const handleCreateProposal = async () => {
+    const formData = form.getValues();
+    if (lineItems.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please add at least one line item before creating a proposal',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // First save the quote if needed
+      let quoteId = initialQuoteId;
+      if (!quoteId) {
+        const savedQuote = await saveQuoteMutation.mutateAsync({ 
+          quote: formData, 
+          lineItems 
+        });
+        quoteId = savedQuote.id;
+      }
+      
+      // Navigate to proposal builder with quote data
+      if (onCreateProposal && quoteId) {
+        onCreateProposal(quoteId);
+      }
+    } catch (error) {
+      console.error('Error creating proposal:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create proposal. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const totals = {
     subtotal: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
     total: lineItems.reduce((sum, item) => sum + item.totalPrice, 0) - discountAmount + taxAmount,
@@ -638,6 +678,17 @@ export default function QuoteBuilder({
             <Send className="h-4 w-4 mr-2" />
             {submitQuoteMutation.isPending ? 'Submitting...' : 'Submit Quote'}
           </Button>
+          {onCreateProposal && (
+            <Button
+              onClick={handleCreateProposal}
+              disabled={saveQuoteMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Create Proposal
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
