@@ -386,7 +386,7 @@ These enhancements would create significant competitive moats while providing me
 
 - Smart Notifications (Quick Win) — Done (baseline)
   - Header notifications bell wired to `/api/performance/alerts` with dropdown list; critical alerts surface via toast.
-  - Added: additional alert types (billing anomalies, low stock, dispatch delays) and per-page in-context notifications component on Quote Builder.
+  - Added: additional alert types (billing anomalies, low stock, dispatch delays) and per-page in-context notifications on key pages (Advanced Billing, Service Dispatch Optimization, Service Hub, Product Catalog, Deals Management, Purchase Orders, Quotes Management, Task Management, Advanced Analytics, Quote & Proposal Generation, Quote Builder).
 
 - Not tackled in this pass (unchanged)
   - AI/ML features (e.g., AI route optimization, billing anomaly models, predictive recommendations)
