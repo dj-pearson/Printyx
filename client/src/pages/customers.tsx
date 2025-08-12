@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
+import { apiRequest } from "@/lib/queryClient";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,10 +64,21 @@ export default function Customers() {
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const form = useForm();
+  const queryClient = useQueryClient();
+
+  const updateCustomerMutation = useMutation({
+    mutationFn: (data: any) => apiRequest(`/api/customers/${data.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      setIsEditDialogOpen(false);
+    },
+  });
 
   const onSubmit = (data: any) => {
-    console.log('Form submitted:', data);
-    setIsEditDialogOpen(false);
+    updateCustomerMutation.mutate(data);
   };
 
   useEffect(() => {
