@@ -39,6 +39,11 @@ export default function QuoteBuilderPage() {
     setLocation('/quotes');
   };
 
+  const handleCreateProposal = (quoteId: string) => {
+    // Navigate to proposal builder with quote data
+    setLocation(`/proposal-builder?quoteId=${quoteId}`);
+  };
+
   return (
     <MainLayout>
       <div className="container mx-auto p-6 space-y-6">
@@ -76,6 +81,7 @@ export default function QuoteBuilderPage() {
           initialQuoteId={quoteId}
           onSave={handleSave}
           onCancel={handleCancel}
+          onCreateProposal={handleCreateProposal}
         />
       </div>
     </MainLayout>
