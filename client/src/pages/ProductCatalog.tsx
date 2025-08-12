@@ -361,9 +361,8 @@ export default function ProductCatalog() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Master Product Catalog" description="Browse Printyx's master catalog and enable products for your organization">
       <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-4">
             <Link href="/product-hub">
@@ -373,15 +372,6 @@ export default function ProductCatalog() {
                 <span className="sm:hidden">Back</span>
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">
-                Master Product Catalog
-              </h1>
-              <p className="text-sm text-muted-foreground hidden sm:block">
-                Browse Printyx's master catalog and enable products for your
-                organization
-              </p>
-            </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             {/* Platform Admin: Import to Master Catalog */}

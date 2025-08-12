@@ -48,14 +48,11 @@ export default function TenantSetup() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout 
+      title="Multi-Tenant Setup" 
+      description="Configure company-specific instances with subdomain or path-based routing"
+    >
       <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Multi-Tenant Setup</h1>
-        <p className="text-muted-foreground mt-2">
-          Configure company-specific instances with subdomain or path-based routing
-        </p>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Configuration Panel */}

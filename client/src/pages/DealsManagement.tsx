@@ -924,19 +924,12 @@ export default function DealsManagement() {
     }).format(value || 0);
 
   return (
-    <MainLayout>
+    <MainLayout title="Deals" description="Manage your sales pipeline and opportunities">
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-              Deals
-            </h1>
-            <p className="text-sm text-gray-600">
-              {filteredDeals.length} deals
-            </p>
+        <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-end">
+          <div className="text-sm text-gray-600 lg:mr-auto">
+            {filteredDeals.length} deals
           </div>
-
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* View Mode Toggle */}
             <div className="flex items-center border rounded-lg p-1">

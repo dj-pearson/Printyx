@@ -182,14 +182,9 @@ export default function ServiceDispatchOptimization() {
   const totalTravelSavings = recommendations.reduce((sum: number, rec: DispatchRecommendation) => sum + rec.routeOptimization.fuelSavings, 0);
 
   return (
-    <MainLayout>
+    <MainLayout title="Service Dispatch Optimization" description="AI-powered technician assignment and route optimization">
       <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Service Dispatch Optimization</h1>
-          <p className="text-gray-600 mt-2">AI-powered technician assignment and route optimization</p>
-        </div>
-        
+      <div className="flex justify-end items-center mb-6">
         <div className="flex items-center gap-4">
           <input
             type="date"

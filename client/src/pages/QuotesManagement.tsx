@@ -281,7 +281,7 @@ export default function QuotesManagement() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Quotes Management" description="Create, manage, and track your sales quotes and proposals">
       <div className="container mx-auto p-6 space-y-6">
         {/* Process Help Banner */}
         <ProcessHelpBanner 
@@ -291,16 +291,8 @@ export default function QuotesManagement() {
           estimatedTime="2-4 hours"
         />
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex justify-end items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Calculator className="h-8 w-8" />
-              Quotes Management
-            </h1>
-            <p className="text-muted-foreground">
-              Create, manage, and track your sales quotes and proposals
-            </p>
-          </div>
           <Button onClick={handleCreateQuote}>
             <Plus className="h-4 w-4 mr-2" />
             New Quote

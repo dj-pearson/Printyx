@@ -91,7 +91,7 @@ export default function AdvancedAnalytics() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Advanced Analytics" description="Leverage AI and machine learning for predictive insights and automated detection">
       <div className="container mx-auto p-6 space-y-6">
         {/* Process Help Banner */}
         <ProcessHelpBanner 
@@ -101,16 +101,8 @@ export default function AdvancedAnalytics() {
           estimatedTime="Real-time"
         />
         {/* Header with Overview */}
-        <div className="flex items-center justify-between">
+        <div className="flex justify-end items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <BarChart3 className="h-8 w-8" />
-              Advanced Analytics
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Leverage AI and machine learning for predictive insights and automated detection
-            </p>
-          </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="flex items-center gap-1">
               <Activity className="h-3 w-3" />

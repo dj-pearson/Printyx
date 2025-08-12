@@ -1878,16 +1878,10 @@ export default function EnhancedOnboardingForm() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Enhanced Onboarding Checklist" description="Create a comprehensive equipment installation and customer onboarding checklist with auto-population and machine replacement tracking">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold">Enhanced Onboarding Checklist</h1>
-          <p className="text-gray-600 mt-2">
-            Create a comprehensive equipment installation and customer
-            onboarding checklist with auto-population and machine replacement
-            tracking.
-          </p>
           </div>
 
           {/* Progress Steps */}
