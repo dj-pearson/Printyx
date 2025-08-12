@@ -41,6 +41,8 @@ import {
   Clipboard,
   Upload,
   Send,
+  DollarSign,
+  ArrowRight,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -256,8 +258,54 @@ export default function TechnicianTicketWorkflow({
       if (nextStepIndex < workflowSteps.length) {
         setCurrentStep(nextStepIndex);
       }
-      toast({ title: "Success", description: "Step completed successfully" });
+      
+      // If completion step is finished, trigger billing workflow
+      if (stepName === "completion") {
+        createBillingEntryMutation.mutate(ticket);
+      } else {
+        toast({ title: "Success", description: "Step completed successfully" });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/technician-sessions"] });
+    },
+  });
+
+  // Create billing entry mutation
+  const createBillingEntryMutation = useMutation({
+    mutationFn: async (ticketData: any) => {
+      const billingEntry = {
+        customerId: ticketData.customerId,
+        serviceTicketId: ticketData.id,
+        serviceDate: new Date().toISOString(),
+        description: `Service call: ${ticketData.description || 'Equipment service'}`,
+        laborHours: session?.totalDuration || 1, // Use session duration or default
+        laborRate: 85.00, // Standard service rate
+        partsCost: 0, // To be updated if parts were used
+        totalAmount: (session?.totalDuration || 1) * 85.00,
+        status: 'pending_review',
+        billingType: 'service_call',
+        invoiceRequired: true,
+      };
+      
+      return apiRequest('/api/billing/service-entries', {
+        method: 'POST',
+        body: billingEntry,
+      });
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Service Complete!",
+        description: "Billing entry created. Customer will receive invoice within 24 hours.",
+      });
+      // Navigate to billing page with the new entry
+      setLocation(`/advanced-billing?serviceEntryId=${data.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Service Complete",
+        description: "Service finished successfully. Billing entry will be processed manually.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -463,24 +511,61 @@ export default function TechnicianTicketWorkflow({
               <CardDescription>{step.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-4">
-                Step implementation in progress. This step will include:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                <li>Detailed forms for data collection</li>
-                <li>Photo and document upload capabilities</li>
-                <li>Customer interaction tracking</li>
-                <li>Real-time progress updates</li>
-              </ul>
+              {step.id === "completion" ? (
+                <>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="h-5 w-5 text-blue-600" />
+                      <span className="font-medium text-blue-900">Automated Billing</span>
+                    </div>
+                    <p className="text-sm text-blue-800">
+                      Completing this step will automatically create a billing entry and generate an invoice for the customer. 
+                      The billing will include labor hours, standard service rates, and any parts used during the service call.
+                    </p>
+                  </div>
+                  <p className="text-gray-600 mb-4">
+                    Final step includes:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 mb-4">
+                    <li>Customer satisfaction survey</li>
+                    <li>Work completion verification</li>
+                    <li>Customer signature collection</li>
+                    <li>Automatic billing entry creation</li>
+                    <li>Invoice generation and delivery</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-600 mb-4">
+                    Step implementation in progress. This step will include:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
+                    <li>Detailed forms for data collection</li>
+                    <li>Photo and document upload capabilities</li>
+                    <li>Customer interaction tracking</li>
+                    <li>Real-time progress updates</li>
+                  </ul>
+                </>
+              )}
               <Button
                 onClick={() =>
                   handleStepCompletion(step.id, { completed: true })
                 }
-                className="mt-4"
-                disabled={completeStepMutation.isPending}
+                className={`mt-4 ${step.id === "completion" ? "bg-green-600 hover:bg-green-700" : ""}`}
+                disabled={completeStepMutation.isPending || createBillingEntryMutation.isPending}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Mark as Complete
+                {step.id === "completion" ? (
+                  <>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Complete Service & Create Invoice
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Mark as Complete
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

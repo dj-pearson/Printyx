@@ -9,10 +9,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar, CheckCircle, Clock, Plus, FileText, Download, Eye, Settings, AlertCircle } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Plus, FileText, Download, Eye, Settings, AlertCircle, ArrowRight, Wrench } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 interface OnboardingChecklist {
   id: string;
@@ -88,6 +89,7 @@ export default function OnboardingDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Fetch onboarding checklists
   const { data: checklists = [], isLoading } = useQuery({
@@ -135,6 +137,45 @@ export default function OnboardingDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to generate PDF",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create service record mutation
+  const createServiceRecordMutation = useMutation({
+    mutationFn: async (checklistData: OnboardingChecklist) => {
+      const serviceRecord = {
+        customerId: checklistData.customerData?.companyName,
+        equipmentId: checklistData.id, // Using checklist ID as equipment reference
+        installationDate: checklistData.actualInstallDate || new Date().toISOString(),
+        serviceType: 'initial_setup',
+        description: `Service record created from completed installation: ${checklistData.checklistTitle}`,
+        status: 'completed',
+        priority: 'normal',
+        siteAddress: checklistData.siteInformation?.address,
+        contactName: checklistData.customerData?.primaryContact,
+        contactPhone: checklistData.customerData?.phone,
+        contactEmail: checklistData.customerData?.email,
+      };
+      
+      return apiRequest('/api/service-tickets', {
+        method: 'POST',
+        body: serviceRecord,
+      });
+    },
+    onSuccess: (data, variables) => {
+      toast({
+        title: "Service Record Created",
+        description: `Installation handoff complete. Service monitoring initiated for ${variables.customerData?.companyName}.`,
+      });
+      // Navigate to service hub with the new service record
+      setLocation(`/service-hub?newServiceId=${data.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create service record. Please try again.",
         variant: "destructive",
       });
     },
@@ -505,6 +546,18 @@ export default function OnboardingDashboard() {
                       <Download className="w-4 h-4 mr-1" />
                       PDF
                     </Button>
+                    {checklist.status === 'completed' && checklist.progressPercentage === 100 && (
+                      <Button
+                        size="sm"
+                        onClick={() => createServiceRecordMutation.mutate(checklist)}
+                        disabled={createServiceRecordMutation.isPending}
+                        className="min-h-8 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Wrench className="w-4 h-4 mr-1" />
+                        Create Service Record
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>

@@ -329,17 +329,7 @@ export default function PurchaseOrders() {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Purchase Order
-                          </Button>
-                          {/* Release to Warehouse CTA */}
-                          {po.status === "approved" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setLocation(`/warehouse-operations?orderId=${po.id}`)}
-                            >
-                              Release to Warehouse
-                            </Button>
-                          )}
+              </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -979,6 +969,20 @@ export default function PurchaseOrders() {
                                 }
                               >
                                 Approve
+                              </Button>
+                            )}
+
+                            {po.status === "approved" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setLocation(`/warehouse-operations?orderId=${po.id}`)
+                                }
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <Truck className="h-4 w-4 mr-1" />
+                                Release to Warehouse
                               </Button>
                             )}
                           </div>
