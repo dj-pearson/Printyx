@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
+import { useForm } from "react-hook-form";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,29 @@ import {
   LayoutGrid,
   Rows,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Customers() {
   const { isAuthenticated } = useAuth();
@@ -37,6 +61,13 @@ export default function Customers() {
     }
     return "cards";
   });
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const form = useForm();
+
+  const onSubmit = (data: any) => {
+    console.log('Form submitted:', data);
+    setIsEditDialogOpen(false);
+  };
 
   useEffect(() => {
     const handler = () => {
