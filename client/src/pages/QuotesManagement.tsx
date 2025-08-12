@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import MainLayout from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Card,
   CardContent,
@@ -293,10 +293,11 @@ export default function QuotesManagement() {
         {/* Header */}
         <div className="flex justify-end items-center">
           <div>
-          <Button onClick={handleCreateQuote}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Quote
-          </Button>
+            <Button onClick={handleCreateQuote}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Quote
+            </Button>
+          </div>
         </div>
 
         {/* Statistics Cards */}

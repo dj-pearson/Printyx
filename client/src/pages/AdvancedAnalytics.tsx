@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import MainLayout from '@/components/layout/main-layout';
+import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -103,15 +103,16 @@ export default function AdvancedAnalytics() {
         {/* Header with Overview */}
         <div className="flex justify-end items-center">
           <div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Activity className="h-3 w-3" />
-              Real-time ML
-            </Badge>
-            <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-              <Brain className="h-3 w-3 mr-1" />
-              AI-Powered
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Activity className="h-3 w-3" />
+                Real-time ML
+              </Badge>
+              <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                <Brain className="h-3 w-3 mr-1" />
+                AI-Powered
+              </Badge>
+            </div>
           </div>
         </div>
 

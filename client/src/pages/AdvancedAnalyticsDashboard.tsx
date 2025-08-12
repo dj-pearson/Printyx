@@ -46,7 +46,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import MainLayout from "@/components/layout/main-layout";
+import { MainLayout } from "@/components/layout/main-layout";
 
 interface AnalyticsData {
   executiveSummary: {

@@ -2877,53 +2877,17 @@ export const onboardingTasks = pgTable("onboarding_tasks", {
 });
 
 // Zod schemas for onboarding system
-export const insertOnboardingChecklistSchema = createInsertSchema(
-  onboardingChecklists
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertOnboardingChecklistSchema = createInsertSchema(onboardingChecklists);
 
-export const insertOnboardingEquipmentSchema = createInsertSchema(
-  onboardingEquipment
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertOnboardingEquipmentSchema = createInsertSchema(onboardingEquipment);
 
-export const insertOnboardingNetworkConfigSchema = createInsertSchema(
-  onboardingNetworkConfig
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertOnboardingNetworkConfigSchema = createInsertSchema(onboardingNetworkConfig);
 
-export const insertOnboardingPrintManagementSchema = createInsertSchema(
-  onboardingPrintManagement
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertOnboardingPrintManagementSchema = createInsertSchema(onboardingPrintManagement);
 
-export const insertOnboardingDynamicSectionSchema = createInsertSchema(
-  onboardingDynamicSections
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertOnboardingDynamicSectionSchema = createInsertSchema(onboardingDynamicSections);
 
-export const insertOnboardingTaskSchema = createInsertSchema(
-  onboardingTasks
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertOnboardingTaskSchema = createInsertSchema(onboardingTasks);
 
 // Types for onboarding system
 export type OnboardingChecklist = typeof onboardingChecklists.$inferSelect;
@@ -3617,138 +3581,48 @@ export type InsertCustomerNumberHistory =
   typeof customerNumberHistory.$inferInsert;
 
 // CRM Goal Management Zod Schemas
-export const insertSalesGoalSchema = createInsertSchema(salesGoals).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertSalesGoalSchema = createInsertSchema(salesGoals);
 
-export const insertSalesTeamSchema = createInsertSchema(salesTeams).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertSalesTeamSchema = createInsertSchema(salesTeams);
 
-export const insertSalesTeamMemberSchema = createInsertSchema(
-  salesTeamMembers
-).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertSalesTeamMemberSchema = createInsertSchema(salesTeamMembers);
 
-export const insertActivityReportSchema = createInsertSchema(
-  activityReports
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertActivityReportSchema = createInsertSchema(activityReports);
 
-export const insertGoalProgressSchema = createInsertSchema(goalProgress).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertGoalProgressSchema = createInsertSchema(goalProgress);
 
 // Analytics Zod Schemas
-export const insertSalesMetricsSchema = createInsertSchema(salesMetrics).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertSalesMetricsSchema = createInsertSchema(salesMetrics);
 
-export const insertConversionFunnelSchema = createInsertSchema(
-  conversionFunnel
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertConversionFunnelSchema = createInsertSchema(conversionFunnel);
 
-export const insertManagerInsightsSchema = createInsertSchema(
-  managerInsights
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertManagerInsightsSchema = createInsertSchema(managerInsights);
 
 // Customer Number Configuration Schemas
-export const insertCustomerNumberConfigSchema = createInsertSchema(
-  customerNumberConfig
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertCustomerNumberConfigSchema = createInsertSchema(customerNumberConfig);
 
-export const insertCustomerNumberHistorySchema = createInsertSchema(
-  customerNumberHistory
-).omit({
-  id: true,
-  generatedAt: true,
-});
+export const insertCustomerNumberHistorySchema = createInsertSchema(customerNumberHistory);
 
 // Legacy types for backward compatibility - moved to main exports
 
 // Insert schemas for forms
-export const insertRoleSchema = createInsertSchema(roles).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertRoleSchema = createInsertSchema(roles);
 
-export const insertTeamSchema = createInsertSchema(teams).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertTeamSchema = createInsertSchema(teams);
 
-export const insertUserCustomerAssignmentSchema = createInsertSchema(
-  userCustomerAssignments
-).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertUserCustomerAssignmentSchema = createInsertSchema(userCustomerAssignments);
 
-export const insertCompanySchema = createInsertSchema(companies).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertCompanySchema = createInsertSchema(companies);
 
-export const insertCompanyContactSchema = createInsertSchema(
-  companyContacts
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertCompanyContactSchema = createInsertSchema(companyContacts);
 
-export const insertLeadSchema = createInsertSchema(leads).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertLeadSchema = createInsertSchema(leads);
 
-export const insertLeadActivitySchema = createInsertSchema(leadActivities).omit(
-  {
-    id: true,
-    createdAt: true,
-    updatedAt: true,
-  }
-);
+export const insertLeadActivitySchema = createInsertSchema(leadActivities);
 
-export const insertLeadContactSchema = createInsertSchema(leadContacts).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertLeadContactSchema = createInsertSchema(leadContacts);
 
-export const insertLeadRelatedRecordSchema = createInsertSchema(
-  leadRelatedRecords
-).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertLeadRelatedRecordSchema = createInsertSchema(leadRelatedRecords);
 
 export const insertQuoteSchema = createInsertSchema(quotes).omit({
   id: true,
@@ -4647,53 +4521,17 @@ export type InsertProspectingCampaign =
   typeof prospectingCampaigns.$inferInsert;
 
 // Zod schemas for enrichment tables
-export const insertEnrichedContactSchema = createInsertSchema(
-  enrichedContacts
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertEnrichedContactSchema = createInsertSchema(enrichedContacts);
 
-export const insertEnrichedCompanySchema = createInsertSchema(
-  enrichedCompanies
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertEnrichedCompanySchema = createInsertSchema(enrichedCompanies);
 
-export const insertEnrichedIntentDataSchema = createInsertSchema(
-  enrichedIntentData
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertEnrichedIntentDataSchema = createInsertSchema(enrichedIntentData);
 
-export const insertEnrichedOrgHierarchySchema = createInsertSchema(
-  enrichedOrgHierarchy
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertEnrichedOrgHierarchySchema = createInsertSchema(enrichedOrgHierarchy);
 
-export const insertEnrichmentActivitySchema = createInsertSchema(
-  enrichmentActivities
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertEnrichmentActivitySchema = createInsertSchema(enrichmentActivities);
 
-export const insertProspectingCampaignSchema = createInsertSchema(
-  prospectingCampaigns
-).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertProspectingCampaignSchema = createInsertSchema(prospectingCampaigns);
 
 // =====================================================================
 // ENRICHMENT RELATIONS
