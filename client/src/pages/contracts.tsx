@@ -32,6 +32,11 @@ import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+import { 
+  type Contract, 
+  type InsertContract,
+  insertContractSchema 
+} from "@shared/schema";
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
@@ -39,7 +44,7 @@ import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 export default function Contracts() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const { data: contracts, isLoading: contractsLoading } = useQuery({
+  const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({
     queryKey: ["/api/contracts"],
   });
 
@@ -478,7 +483,7 @@ export default function Contracts() {
         ) : contracts && Array.isArray(contracts) && contracts.length > 0 ? (
           <div className="space-y-4">
             {Array.isArray(contracts) &&
-              contracts.map((contract: any) => (
+              contracts.map((contract: Contract) => (
                 <Card
                   key={contract.id}
                   className="hover:shadow-md transition-shadow"

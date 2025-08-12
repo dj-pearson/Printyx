@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { MainLayout } from "@/components/layout/main-layout";
 import { useLocation } from "wouter";
+import { 
+  type Equipment, 
+  type CustomerEquipment, 
+  type WarehouseOperation,
+  type Technician,
+  type BusinessRecord
+} from '@shared/schema';
 import {
   Card,
   CardContent,
@@ -201,27 +208,32 @@ export default function WarehouseOperations() {
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
 
   // Fetch warehouse operations
-  const { data: operations = [], isLoading } = useQuery<any[]>({
+  const { data: operations = [], isLoading } = useQuery<WarehouseOperation[]>({
     queryKey: ["/api/warehouse-operations"],
   });
 
   // Fetch equipment for dropdowns
-  const { data: equipment = [] } = useQuery<any[]>({
+  const { data: equipment = [] } = useQuery<Equipment[]>({
     queryKey: ["/api/equipment"],
   });
 
   // Fetch technicians
-  const { data: technicians = [] } = useQuery<any[]>({
+  const { data: technicians = [] } = useQuery<Technician[]>({
     queryKey: ["/api/technicians"],
   });
 
   // Fetch customers
-  const { data: customers = [] } = useQuery<any[]>({
+  const { data: customers = [] } = useQuery<BusinessRecord[]>({
     queryKey: ["/api/customers"],
   });
 
   // Fetch statistics
-  const { data: stats = {} } = useQuery<any>({
+  const { data: stats = {} } = useQuery<{
+    totalOperations?: number;
+    pendingOperations?: number;
+    inProgressOperations?: number;
+    completedOperations?: number;
+  }>({
     queryKey: ["/api/warehouse-operations/stats"],
   });
 
@@ -307,7 +319,7 @@ export default function WarehouseOperations() {
   });
 
   // Filter operations
-  const filteredOperations = operations.filter((op: any) => {
+  const filteredOperations = operations.filter((op: WarehouseOperation) => {
     if (statusFilter !== "all" && op.status !== statusFilter) return false;
     if (
       searchTerm &&
@@ -474,7 +486,7 @@ export default function WarehouseOperations() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {filteredOperations.slice(0, 5).map((operation: any) => {
+                  {filteredOperations.slice(0, 5).map((operation: WarehouseOperation) => {
                     const StatusIcon =
                       statusIcons[
                         operation.operationType as keyof typeof statusIcons
@@ -593,7 +605,7 @@ export default function WarehouseOperations() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredOperations.map((operation: any) => {
+                          {filteredOperations.map((operation: WarehouseOperation) => {
                             const StatusIcon =
                               statusIcons[
                                 operation.status as keyof typeof statusIcons
@@ -685,7 +697,7 @@ export default function WarehouseOperations() {
 
                     {/* Mobile Card View */}
                     <div className="md:hidden space-y-4">
-                      {filteredOperations.map((operation: any) => {
+                      {filteredOperations.map((operation: WarehouseOperation) => {
                         const StatusIcon =
                           statusIcons[
                             operation.status as keyof typeof statusIcons
@@ -1016,7 +1028,7 @@ export default function WarehouseOperations() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {equipment.map((item: any) => (
+                            {equipment.map((item: Equipment) => (
                               <SelectItem key={item.id} value={item.id}>
                                 {item.serialNumber} - {item.model}
                               </SelectItem>
@@ -1075,7 +1087,7 @@ export default function WarehouseOperations() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {technicians.map((tech: any) => (
+                          {technicians.map((tech: Technician) => (
                             <SelectItem key={tech.id} value={tech.id}>
                               {tech.firstName} {tech.lastName}
                             </SelectItem>
@@ -1140,7 +1152,7 @@ export default function WarehouseOperations() {
                       Operation Type
                     </label>
                     <p className="text-sm text-muted-foreground">
-                      {(selectedOperation as any).operationType
+                      {(selectedOperation as WarehouseOperation).operationType
                         ?.replace("_", " ")
                         .toUpperCase()}
                     </p>
@@ -1150,20 +1162,20 @@ export default function WarehouseOperations() {
                     <Badge
                       className={
                         statusColors[
-                          (selectedOperation as any)
+                          (selectedOperation as WarehouseOperation)
                             .status as keyof typeof statusColors
                         ]
                       }
                     >
-                      {(selectedOperation as any).status?.replace("_", " ")}
+                      {(selectedOperation as WarehouseOperation).status?.replace("_", " ")}
                     </Badge>
                   </div>
                 </div>
-                {(selectedOperation as any).notes && (
+                {(selectedOperation as WarehouseOperation).notes && (
                   <div>
                     <label className="text-sm font-medium">Notes</label>
                     <p className="text-sm text-muted-foreground">
-                      {(selectedOperation as any).notes}
+                      {(selectedOperation as WarehouseOperation).notes}
                     </p>
                   </div>
                 )}

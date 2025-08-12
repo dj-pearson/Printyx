@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Package, AlertTriangle } from "lucide-react";
+import { type InventoryItem } from '@shared/schema';
 
 export default function Inventory() {
-  const { data: inventory, isLoading: inventoryLoading } = useQuery({
+  const { data: inventory, isLoading: inventoryLoading } = useQuery<InventoryItem[]>({
     queryKey: ['/api/inventory'],
   });
 
@@ -65,7 +66,7 @@ export default function Inventory() {
 
         {inventory && Array.isArray(inventory) && inventory.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.isArray(inventory) && inventory.map((item: any) => {
+            {Array.isArray(inventory) && inventory.map((item: InventoryItem) => {
               const stockStatus = getStockStatus(item.currentStock, item.reorderPoint);
               const stockBadge = getStockBadge(stockStatus);
               
@@ -95,7 +96,7 @@ export default function Inventory() {
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Cost</p>
                         <p className="text-lg font-semibold text-gray-900">
-                          ${Number(item.unitCost).toFixed(2)}
+                          ${Number(item.unitCost || 0).toFixed(2)}
                         </p>
                       </div>
                     </div>

@@ -22,6 +22,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
+import { 
+  type ServiceTicket, 
+  type Technician, 
+  type InsertServiceTicket,
+  insertServiceTicketSchema 
+} from "@shared/schema";
 import {
   Select,
   SelectContent,
@@ -57,7 +63,7 @@ export default function ServiceHub() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showPhoneInCreator, setShowPhoneInCreator] = useState(false);
   const [showTechWorkflow, setShowTechWorkflow] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -70,13 +76,13 @@ export default function ServiceHub() {
     data: tickets = [],
     isLoading: ticketsLoading,
     refetch,
-  } = useQuery({
+  } = useQuery<ServiceTicket[]>({
     queryKey: ["/api/service-tickets"],
     enabled: isAuthenticated,
   });
 
-  // Fetch phone-in tickets
-  const { data: phoneInTickets = [], isLoading: phoneInLoading } = useQuery({
+  // Fetch phone-in tickets (these might need their own type)
+  const { data: phoneInTickets = [], isLoading: phoneInLoading } = useQuery<any[]>({
     queryKey: ["/api/phone-in-tickets"],
     enabled: isAuthenticated,
   });
@@ -151,7 +157,7 @@ export default function ServiceHub() {
     }
   };
 
-  const filteredTickets = tickets.filter((ticket: any) => {
+  const filteredTickets = tickets.filter((ticket: ServiceTicket) => {
     const matchesSearch =
       ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -456,16 +462,16 @@ export default function ServiceHub() {
                 <CardContent>
                   <div className="space-y-3">
                     {tickets
-                      .filter((t: any) =>
+                      .filter((t: ServiceTicket) =>
                         [
                           "assigned",
                           "en_route",
                           "on_site",
                           "in_progress",
-                        ].includes(t.status)
+                        ].includes(t.status || "")
                       )
                       .slice(0, 5)
-                      .map((ticket: any) => (
+                      .map((ticket: ServiceTicket) => (
                         <div
                           key={ticket.id}
                           className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg space-y-2 sm:space-y-0"
@@ -650,7 +656,7 @@ export default function ServiceHub() {
                 </div>
 
                 <div className="space-y-3">
-                  {filteredTickets.map((ticket: any) => (
+                  {filteredTickets.map((ticket: ServiceTicket) => (
                     <Card key={ticket.id}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
@@ -740,7 +746,7 @@ export default function ServiceHub() {
                             t.status
                           )
                         )
-                        .map((ticket: any) => (
+                        .map((ticket: ServiceTicket) => (
                           <div
                             key={ticket.id}
                             className="flex items-center justify-between p-3 border rounded-lg"

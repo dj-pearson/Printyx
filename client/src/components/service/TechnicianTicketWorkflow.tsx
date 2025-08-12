@@ -48,9 +48,15 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLocation } from "wouter";
+import { 
+  type ServiceTicket, 
+  type ServiceSession, 
+  type InsertServiceSession,
+  insertServiceSessionSchema 
+} from "@shared/schema";
 
 interface TechnicianTicketWorkflowProps {
-  ticket: any;
+  ticket: ServiceTicket;
   onClose: () => void;
 }
 
