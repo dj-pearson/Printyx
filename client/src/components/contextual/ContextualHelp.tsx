@@ -127,6 +127,17 @@ const contentMap: Record<ContextualPageKey, {
       "Use the guided wizard with validation checks",
     ],
   },
+  "advanced-billing": {
+    title: "Advanced Billing Engine",
+    industryContext: "Most copier dealers lose 15-20% revenue to billing errors and missed recurring charges.",
+    quickTips: [
+      "Set up automated billing cycles to reduce manual work by 80%",
+      "Review AI anomaly alerts to catch billing issues early",
+      "Use contract renewal automation for 90-day advance notifications",
+      "Monitor billing health score to maintain 89%+ accuracy",
+    ],
+    seasonal: "Q4 reminder: Review annual contracts for renewal opportunities",
+  },
 };
 
 export default function ContextualHelp({ page, className = "" }: ContextualHelpProps) {
