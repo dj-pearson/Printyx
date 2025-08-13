@@ -272,6 +272,10 @@ function Router() {
             path="/service-dispatch"
             component={ServiceDispatchOptimization}
           />
+          <Route
+            path="/service-dispatch-optimization"
+            component={ServiceDispatchOptimization}
+          />
           <Route path="/mobile-field-service" component={MobileFieldService} />
           <Route path="/product-catalog" component={ProductCatalog} />
           <Route path="/inventory" component={Inventory} />

@@ -138,6 +138,17 @@ const contentMap: Record<ContextualPageKey, {
     ],
     seasonal: "Q4 reminder: Review annual contracts for renewal opportunities",
   },
+  "service-dispatch-optimization": {
+    title: "Service Dispatch Optimization",
+    industryContext: "Optimized routing can save 30+ minutes per technician per day and improve customer satisfaction by 18%.",
+    quickTips: [
+      "Enable AI route optimization to reduce travel time by 23%",
+      "Use real-time tracking to monitor technician locations and traffic",
+      "Check smart dispatch alerts for proactive issue resolution",
+      "Review technician workload distribution for balanced assignments",
+    ],
+    seasonal: "Traffic conditions updated every 5 minutes for optimal routing",
+  },
 };
 
 export default function ContextualHelp({ page, className = "" }: ContextualHelpProps) {
