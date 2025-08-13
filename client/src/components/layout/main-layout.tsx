@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import RoleBasedSidebar from "@/components/layout/role-based-sidebar";
+import { CollapsibleSidebar } from "@/components/layout/CollapsibleSidebar";
 import Header from "@/components/layout/header";
 import MobileBottomNav from "@/components/ui/mobile-bottom-nav";
 
@@ -44,8 +45,13 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-gray-50">
-        {/* Unified Responsive Sidebar */}
-        <RoleBasedSidebar />
+        {/* Collapsible Dropdown Navigation Sidebar */}
+        <CollapsibleSidebar className="w-64 hidden md:flex" />
+        
+        {/* Fallback Mobile Sidebar */}
+        <div className="md:hidden">
+          <RoleBasedSidebar />
+        </div>
         
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header title={title} description={description} />

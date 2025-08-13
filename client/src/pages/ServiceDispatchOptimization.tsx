@@ -5,7 +5,7 @@ import {
   Navigation, MapPin, Clock, User, Route, TrendingUp, Zap, 
   Settings, Bell, Calendar, Smartphone, Users, AlertTriangle,
   CheckCircle, ChevronRight, Filter, Search, Eye, Play,
-  Pause, MoreHorizontal, Target, Timer, Activity
+  Pause, MoreHorizontal, Target, Timer, Activity, Phone
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
