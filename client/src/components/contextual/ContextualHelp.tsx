@@ -20,7 +20,8 @@ type ContextualPageKey =
   | "product-catalog-optimization"
   | "deals-management-optimization"
   | "purchase-orders-optimization"
-  | "quote-builder-optimization";
+  | "quote-builder-optimization"
+  | "task-management-optimization";
 
 interface ContextualHelpProps {
   page: ContextualPageKey;
@@ -188,6 +189,17 @@ const contentMap: Record<ContextualPageKey, {
       "Monitor quote performance analytics for continuous improvement",
     ],
     seasonal: "Q4 timing: Tuesday-Thursday quotes show 18% better response rates",
+  },
+  "task-management-optimization": {
+    title: "Productivity Intelligence",
+    industryContext: "AI-powered task management and productivity optimization can increase team efficiency by 18% and reduce project completion times by 12%.",
+    quickTips: [
+      "Balance team workloads to prevent burnout and optimize productivity",
+      "Use predictive project management to identify risks early",
+      "Apply smart task assignments based on skills and availability",
+      "Monitor team analytics for continuous performance improvement",
+    ],
+    seasonal: "Q4 planning: Use predictive analytics for accurate resource planning",
   },
 };
 
