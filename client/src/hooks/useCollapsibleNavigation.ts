@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 
 export interface NavigationSection {
@@ -21,9 +21,12 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
 
+  // Memoize sections to prevent infinite re-renders
+  const memoizedSections = useMemo(() => sections, [sections?.length, sections?.map(s => s.id).join(',')]);
+
   // Determine which section should be expanded based on current route
   useEffect(() => {
-    const currentSection = sections.find(section => {
+    const currentSection = memoizedSections.find(section => {
       // Check if current route matches the section's main path
       if (location === section.path) return true;
       
@@ -61,7 +64,7 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
 
       return newExpanded;
     });
-  }, [location, sections, userExpandedSections]);
+  }, [location, memoizedSections, userExpandedSections]);
 
   const toggleSection = (sectionId: string) => {
     setUserExpandedSections(prev => {
