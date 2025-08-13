@@ -191,6 +191,7 @@ function Router() {
           <Route path="/business-records" component={BusinessRecords} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
+          <Route path="/opportunities" component={DealsManagement} />
           <Route path="/deals-management" component={DealsManagement} />
           <Route path="/leads-management" component={LeadsManagement} />
           <Route path="/product-hub" component={ProductHub} />
