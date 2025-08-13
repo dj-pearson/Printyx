@@ -119,6 +119,24 @@ export default function CustomerDetailHubspot() {
     financial: false,
     external: false,
     preferences: false,
+    customFields: false,
+    aiInsights: true,
+  });
+
+  // Enhanced states for custom fields and AI insights
+  const [customFields, setCustomFields] = useState<Record<string, any>>({});
+  const [isCustomFieldDialogOpen, setIsCustomFieldDialogOpen] = useState(false);
+  const [newCustomField, setNewCustomField] = useState({
+    name: '',
+    type: 'text',
+    value: '',
+    category: 'general'
+  });
+  const [activityFilter, setActivityFilter] = useState({
+    type: 'all',
+    dateRange: 'last_30_days',
+    assignedTo: 'all',
+    priority: 'all'
   });
 
   // Dialog states
@@ -2093,8 +2111,99 @@ export default function CustomerDetailHubspot() {
 
               <TabsContent value="activities" className="mt-6">
                 <div className="space-y-4">
+                  {/* Enhanced Activity Filters */}
+                  <Card className="p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium">Activity Type</Label>
+                        <Select 
+                          value={activityFilter.type} 
+                          onValueChange={(value) => setActivityFilter(prev => ({ ...prev, type: value }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Activities</SelectItem>
+                            <SelectItem value="call">Calls</SelectItem>
+                            <SelectItem value="email">Emails</SelectItem>
+                            <SelectItem value="meeting">Meetings</SelectItem>
+                            <SelectItem value="note">Notes</SelectItem>
+                            <SelectItem value="task">Tasks</SelectItem>
+                            <SelectItem value="service">Service</SelectItem>
+                            <SelectItem value="billing">Billing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium">Date Range</Label>
+                        <Select 
+                          value={activityFilter.dateRange} 
+                          onValueChange={(value) => setActivityFilter(prev => ({ ...prev, dateRange: value }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="last_7_days">Last 7 Days</SelectItem>
+                            <SelectItem value="last_30_days">Last 30 Days</SelectItem>
+                            <SelectItem value="last_90_days">Last 90 Days</SelectItem>
+                            <SelectItem value="last_year">Last Year</SelectItem>
+                            <SelectItem value="all_time">All Time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium">Assigned To</Label>
+                        <Select 
+                          value={activityFilter.assignedTo} 
+                          onValueChange={(value) => setActivityFilter(prev => ({ ...prev, assignedTo: value }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Team Members</SelectItem>
+                            <SelectItem value="me">My Activities</SelectItem>
+                            <SelectItem value="sales_team">Sales Team</SelectItem>
+                            <SelectItem value="service_team">Service Team</SelectItem>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium">Priority</Label>
+                        <Select 
+                          value={activityFilter.priority} 
+                          onValueChange={(value) => setActivityFilter(prev => ({ ...prev, priority: value }))}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Priorities</SelectItem>
+                            <SelectItem value="high">High Priority</SelectItem>
+                            <SelectItem value="medium">Medium Priority</SelectItem>
+                            <SelectItem value="low">Low Priority</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </Card>
+
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Activity Timeline</h3>
+                    <h3 className="text-lg font-medium flex items-center">
+                      Activity Timeline
+                      <Badge variant="secondary" className="ml-2">
+                        {activityFilter.type === 'all' ? 'All Types' : activityFilter.type}
+                      </Badge>
+                      <Badge variant="outline" className="ml-1">
+                        {activityFilter.dateRange.replace('_', ' ')}
+                      </Badge>
+                    </h3>
                     <div className="flex items-center space-x-2">
                       <Button
                         variant="outline"
@@ -2465,6 +2574,216 @@ export default function CustomerDetailHubspot() {
               )}
             </Card>
 
+            {/* Custom Fields Management */}
+            <Card>
+              <CardHeader
+                className="cursor-pointer"
+                onClick={() => toggleSection('customFields')}
+              >
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center">
+                    <Settings className="h-5 w-5 mr-2" />
+                    Custom Fields
+                  </CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCustomFieldDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Field
+                    </Button>
+                    {expandedSections.customFields ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+
+              {expandedSections.customFields && (
+                <CardContent className="space-y-4">
+                  {Object.keys(customFields).length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.entries(customFields).map(([key, field]: [string, any]) => (
+                        <div key={key} className="p-3 border rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <Label className="font-medium">{field.name}</Label>
+                            <Badge variant="secondary">{field.type}</Badge>
+                          </div>
+                          {field.type === 'text' && (
+                            <Input
+                              value={field.value}
+                              onChange={(e) => setCustomFields(prev => ({
+                                ...prev,
+                                [key]: { ...field, value: e.target.value }
+                              }))}
+                              placeholder={`Enter ${field.name.toLowerCase()}...`}
+                            />
+                          )}
+                          {field.type === 'textarea' && (
+                            <Textarea
+                              value={field.value}
+                              onChange={(e) => setCustomFields(prev => ({
+                                ...prev,
+                                [key]: { ...field, value: e.target.value }
+                              }))}
+                              placeholder={`Enter ${field.name.toLowerCase()}...`}
+                              rows={3}
+                            />
+                          )}
+                          {field.type === 'select' && (
+                            <Select value={field.value} onValueChange={(value) => setCustomFields(prev => ({
+                              ...prev,
+                              [key]: { ...field, value }
+                            }))}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select option..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options?.map((option: string) => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <div className="mt-2 text-xs text-gray-500">
+                            Category: {field.category}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <Settings className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                      <p>No custom fields defined</p>
+                      <p className="text-sm">Click "Add Field" to create custom fields for this customer</p>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+
+            {/* AI Customer Insights */}
+            <Card>
+              <CardHeader
+                className="cursor-pointer"
+                onClick={() => toggleSection('aiInsights')}
+              >
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center">
+                    <Zap className="h-5 w-5 mr-2 text-blue-500" />
+                    AI Customer Insights
+                  </CardTitle>
+                  {expandedSections.aiInsights ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </div>
+              </CardHeader>
+
+              {expandedSections.aiInsights && (
+                <CardContent className="space-y-6">
+                  {/* Customer Health Score */}
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium flex items-center">
+                        <Activity className="h-4 w-4 mr-2 text-green-600" />
+                        Customer Health Score
+                      </h4>
+                      <Badge className="bg-green-100 text-green-800">
+                        <Star className="h-3 w-3 mr-1" />
+                        92% Healthy
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Payment History</p>
+                        <p className="font-semibold text-green-600">Excellent</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Engagement</p>
+                        <p className="font-semibold text-blue-600">High</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Service Usage</p>
+                        <p className="font-semibold text-orange-600">Growing</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Churn Risk</p>
+                        <p className="font-semibold text-green-600">Low (12%)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Predictive Analytics */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2 flex items-center">
+                        <TrendingUp className="h-4 w-4 mr-2 text-purple-600" />
+                        Upsell Opportunities
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Color Upgrade</span>
+                          <Badge variant="outline" className="text-purple-600">89% Match</Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Maintenance Plus</span>
+                          <Badge variant="outline" className="text-blue-600">76% Match</Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Document Management</span>
+                          <Badge variant="outline" className="text-green-600">68% Match</Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2 flex items-center">
+                        <BarChart3 className="h-4 w-4 mr-2 text-orange-600" />
+                        Usage Patterns
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Monthly Volume</span>
+                          <span className="font-medium">↗ +15%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Peak Usage</span>
+                          <span className="font-medium">Mon-Wed</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Efficiency Score</span>
+                          <span className="font-medium text-green-600">94/100</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI Recommendations */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium mb-2 flex items-center text-blue-700">
+                      <Award className="h-4 w-4 mr-2" />
+                      AI Recommendations
+                    </h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Schedule quarterly business review - next optimal date: next week</li>
+                      <li>• Consider proposing color upgrade based on recent print pattern analysis</li>
+                      <li>• Monitor usage spike pattern - may indicate growth opportunity</li>
+                      <li>• Proactive maintenance recommended in 3 weeks based on usage forecasting</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
             {/* Notes */}
             <Card>
               <CardHeader>
@@ -2542,6 +2861,105 @@ export default function CustomerDetailHubspot() {
         recordType="customer"
         recordName={customer.companyName}
       />
+
+      {/* Custom Field Dialog */}
+      <Dialog open={isCustomFieldDialogOpen} onOpenChange={setIsCustomFieldDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Custom Field</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="fieldName">Field Name</Label>
+              <Input
+                id="fieldName"
+                value={newCustomField.name}
+                onChange={(e) => setNewCustomField(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Equipment Preference"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="fieldType">Field Type</Label>
+              <Select 
+                value={newCustomField.type} 
+                onValueChange={(value) => setNewCustomField(prev => ({ ...prev, type: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text Input</SelectItem>
+                  <SelectItem value="textarea">Text Area</SelectItem>
+                  <SelectItem value="select">Dropdown</SelectItem>
+                  <SelectItem value="checkbox">Checkbox</SelectItem>
+                  <SelectItem value="date">Date</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="fieldCategory">Category</Label>
+              <Select 
+                value={newCustomField.category} 
+                onValueChange={(value) => setNewCustomField(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="sales">Sales</SelectItem>
+                  <SelectItem value="service">Service</SelectItem>
+                  <SelectItem value="billing">Billing</SelectItem>
+                  <SelectItem value="technical">Technical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {newCustomField.type === 'select' && (
+              <div>
+                <Label>Options (one per line)</Label>
+                <Textarea
+                  placeholder="Option 1&#10;Option 2&#10;Option 3"
+                  rows={3}
+                  onChange={(e) => {
+                    const options = e.target.value.split('\n').filter(opt => opt.trim());
+                    setNewCustomField(prev => ({ ...prev, options }));
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsCustomFieldDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  const fieldId = `custom_${Date.now()}`;
+                  setCustomFields(prev => ({
+                    ...prev,
+                    [fieldId]: {
+                      ...newCustomField,
+                      value: newCustomField.type === 'checkbox' ? false : ''
+                    }
+                  }));
+                  setNewCustomField({ name: '', type: 'text', value: '', category: 'general' });
+                  setIsCustomFieldDialogOpen(false);
+                  toast({
+                    title: "Custom Field Added",
+                    description: `"${newCustomField.name}" has been added successfully.`,
+                  });
+                }}
+                disabled={!newCustomField.name.trim()}
+              >
+                Add Field
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

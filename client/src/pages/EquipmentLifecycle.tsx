@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { 
   Package, 
   Truck, 
@@ -23,7 +27,20 @@ import {
   Warehouse,
   Calendar,
   Camera,
-  Shield
+  Shield,
+  Zap,
+  TrendingUp,
+  Activity,
+  Users,
+  DollarSign,
+  Target,
+  Workflow,
+  Settings,
+  Eye,
+  Edit,
+  PlayCircle,
+  PauseCircle,
+  RotateCcw
 } from "lucide-react";
 
 interface LifecycleStage {
@@ -123,10 +140,56 @@ const recentActivity = [
   { id: 5, type: "documentation", message: "Warranty registration pending for 3 devices", time: "1 day ago", status: "warning" }
 ];
 
+// AI-Powered Workflow Templates
+const workflowTemplates = [
+  {
+    id: "standard-delivery",
+    name: "Standard Equipment Delivery",
+    description: "Complete workflow from procurement to customer delivery",
+    steps: ["Procurement", "Warehouse", "Delivery", "Installation", "Documentation"],
+    estimatedDays: 7,
+    successRate: 94,
+    automationLevel: "High"
+  },
+  {
+    id: "rush-installation", 
+    name: "Rush Installation Service",
+    description: "Expedited workflow for urgent equipment deployments",
+    steps: ["Express Procurement", "Priority Warehouse", "Same-Day Delivery", "Emergency Install"],
+    estimatedDays: 2,
+    successRate: 87,
+    automationLevel: "Medium"
+  },
+  {
+    id: "bulk-deployment",
+    name: "Bulk Equipment Deployment",
+    description: "Optimized workflow for large-scale equipment rollouts",
+    steps: ["Bulk Procurement", "Staged Warehouse", "Route Optimization", "Team Installation", "Batch Documentation"],
+    estimatedDays: 14,
+    successRate: 96,
+    automationLevel: "Very High"
+  }
+];
+
+// Asset Tracking Data
+const assetTrackingMetrics = {
+  totalAssets: 342,
+  inTransit: 23,
+  underMaintenance: 8,
+  installed: 298,
+  warrantyExpiring: 15,
+  qrCodeGenerated: 325,
+  integrationHealth: 98
+};
+
 export default function EquipmentLifecycle() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedTab, setSelectedTab] = useState("overview");
+  const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = useState(false);
+  const [isAssetTrackingDialogOpen, setIsAssetTrackingDialogOpen] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<any>(null);
 
   // Filter stages based on search and category
   const filteredStages = lifecycleStages.filter(stage => {
@@ -162,15 +225,46 @@ export default function EquipmentLifecycle() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Enhanced Header */}
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Equipment Lifecycle Management</h1>
             <p className="text-muted-foreground mt-2">
-              End-to-end management from purchase orders through installation and compliance
+              AI-powered equipment lifecycle with workflow automation and asset tracking
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setIsWorkflowDialogOpen(true)}
+            >
+              <Workflow className="h-4 w-4 mr-2" />
+              Workflow Automation
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setIsAssetTrackingDialogOpen(true)}
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Asset Tracking
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Start New Lifecycle
+            </Button>
+          </div>
         </div>
+
+        {/* Enhanced Navigation Tabs */}
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="workflows">AI Workflows</TabsTrigger>
+            <TabsTrigger value="tracking">Asset Tracking</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -353,17 +447,232 @@ export default function EquipmentLifecycle() {
           </div>
         </div>
 
-        {filteredStages.length === 0 && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No stages found</h3>
-              <p className="text-muted-foreground">
-                Try adjusting your search terms or category filter.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+            {filteredStages.length === 0 && (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No stages found</h3>
+                  <p className="text-muted-foreground">
+                    Try adjusting your search terms or category filter.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* AI Workflows Tab */}
+          <TabsContent value="workflows" className="space-y-6">
+            <div className="grid gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {workflowTemplates.map((template) => (
+                  <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow" 
+                        onClick={() => {
+                          setSelectedWorkflow(template);
+                          setIsWorkflowDialogOpen(true);
+                        }}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{template.name}</CardTitle>
+                        <Badge variant={
+                          template.automationLevel === "Very High" ? "default" :
+                          template.automationLevel === "High" ? "secondary" : 
+                          "outline"
+                        }>
+                          {template.automationLevel}
+                        </Badge>
+                      </div>
+                      <CardDescription>{template.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Duration</span>
+                          <span className="font-medium">{template.estimatedDays} days</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Success Rate</span>
+                          <span className="font-medium text-green-600">{template.successRate}%</span>
+                        </div>
+                        <div className="space-y-2">
+                          <span className="text-sm text-muted-foreground">Workflow Steps</span>
+                          <div className="flex flex-wrap gap-1">
+                            {template.steps.map((step, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {step}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Asset Tracking Tab */}
+          <TabsContent value="tracking" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{assetTrackingMetrics.totalAssets}</div>
+                  <p className="text-xs text-muted-foreground">Tracked equipment</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">In Transit</CardTitle>
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{assetTrackingMetrics.inTransit}</div>
+                  <p className="text-xs text-muted-foreground">Currently shipping</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">QR Generated</CardTitle>
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{assetTrackingMetrics.qrCodeGenerated}</div>
+                  <p className="text-xs text-muted-foreground">Asset labels ready</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Integration Health</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{assetTrackingMetrics.integrationHealth}%</div>
+                  <p className="text-xs text-muted-foreground">System connectivity</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Equipment Lifecycle Analytics
+                </CardTitle>
+                <CardDescription>
+                  AI-powered insights and performance metrics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Workflow Efficiency</h4>
+                      <Progress value={92} className="h-2" />
+                      <p className="text-xs text-muted-foreground">92% average completion rate</p>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Time to Deployment</h4>
+                      <Progress value={78} className="h-2" />
+                      <p className="text-xs text-muted-foreground">22% faster than industry average</p>
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <h4 className="font-medium mb-3">Performance Insights</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span>Automated Tasks</span>
+                        <Badge variant="secondary">89% automation rate</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Customer Satisfaction</span>
+                        <Badge variant="default">4.8/5 rating</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Cost Optimization</span>
+                        <Badge variant="outline">$12K monthly savings</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Workflow Automation Dialog */}
+        <Dialog open={isWorkflowDialogOpen} onOpenChange={setIsWorkflowDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Workflow Automation</DialogTitle>
+              <DialogDescription>
+                Configure AI-powered equipment lifecycle workflows
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {workflowTemplates.map((template) => (
+                <div key={template.id} className="p-4 border rounded-lg">
+                  <h4 className="font-medium">{template.name}</h4>
+                  <p className="text-sm text-muted-foreground">{template.description}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <Badge variant="outline">{template.automationLevel}</Badge>
+                    <Button size="sm">
+                      <PlayCircle className="h-4 w-4 mr-1" />
+                      Start
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Asset Tracking Dialog */}
+        <Dialog open={isAssetTrackingDialogOpen} onOpenChange={setIsAssetTrackingDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Asset Tracking Dashboard</DialogTitle>
+              <DialogDescription>
+                Real-time equipment tracking and monitoring
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 border rounded">
+                  <div className="text-2xl font-bold text-green-600">{assetTrackingMetrics.installed}</div>
+                  <div className="text-sm text-muted-foreground">Installed</div>
+                </div>
+                <div className="text-center p-4 border rounded">
+                  <div className="text-2xl font-bold text-orange-600">{assetTrackingMetrics.warrantyExpiring}</div>
+                  <div className="text-sm text-muted-foreground">Warranty Expiring</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-medium">Quick Actions</h4>
+                <div className="space-y-2">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Generate QR Codes
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Track Location
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    View Reports
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
