@@ -2136,28 +2136,55 @@ export const productModels = pgTable("product_models", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Product Accessories (Associated with Models)
+// Product Accessories (Master catalog - independent of models)
 export const productAccessories = pgTable("product_accessories", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   tenantId: varchar("tenant_id").notNull(),
-  modelId: varchar("model_id").notNull(), // references productModels.id
 
   // Basic Information
   accessoryCode: varchar("accessory_code").notNull(),
   accessoryName: varchar("accessory_name").notNull(),
+  accessoryType: varchar("accessory_type"), // Document Feeder, Finisher, etc.
   category: varchar("category"),
+  manufacturer: varchar("manufacturer"), // Canon, Xerox, etc.
   description: text("description"),
-  msrp: decimal("msrp", { precision: 10, scale: 2 }),
-  repPrice: decimal("rep_price", { precision: 10, scale: 2 }),
+  
+  // Pricing
+  standardCost: decimal("standard_cost", { precision: 10, scale: 2 }),
+  standardRepPrice: decimal("standard_rep_price", { precision: 10, scale: 2 }),
+  newCost: decimal("new_cost", { precision: 10, scale: 2 }),
+  newRepPrice: decimal("new_rep_price", { precision: 10, scale: 2 }),
+  upgradeCost: decimal("upgrade_cost", { precision: 10, scale: 2 }),
+  upgradeRepPrice: decimal("upgrade_rep_price", { precision: 10, scale: 2 }),
 
-  // Compatibility and Requirements
-  isRequired: boolean("is_required").default(false),
+  // Status and Requirements
   isActive: boolean("is_active").default(true),
+  availableForAll: boolean("available_for_all").default(false),
+  salesRepCredit: boolean("sales_rep_credit").default(false),
+  funding: boolean("funding").default(false),
+  lease: boolean("lease").default(false),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Junction table for accessory-model compatibility (many-to-many)
+export const accessoryModelCompatibility = pgTable("accessory_model_compatibility", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  accessoryId: varchar("accessory_id").notNull(), // references productAccessories.id
+  modelId: varchar("model_id").notNull(), // references productModels.id
+  
+  // Compatibility details
+  isRequired: boolean("is_required").default(false),
+  isOptional: boolean("is_optional").default(true),
+  installationNotes: text("installation_notes"),
+
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // CPC Rates (Copy Per Click rates for service/supplies)
@@ -3137,20 +3164,35 @@ export const productModelsRelations = relations(
       fields: [productModels.tenantId],
       references: [tenants.id],
     }),
-    accessories: many(productAccessories),
+    compatibleAccessories: many(accessoryModelCompatibility),
     cpcRates: many(cpcRates),
   })
 );
 
 export const productAccessoriesRelations = relations(
   productAccessories,
-  ({ one }) => ({
+  ({ one, many }) => ({
     tenant: one(tenants, {
       fields: [productAccessories.tenantId],
       references: [tenants.id],
     }),
+    compatibilities: many(accessoryModelCompatibility),
+  })
+);
+
+export const accessoryModelCompatibilityRelations = relations(
+  accessoryModelCompatibility,
+  ({ one }) => ({
+    tenant: one(tenants, {
+      fields: [accessoryModelCompatibility.tenantId],
+      references: [tenants.id],
+    }),
+    accessory: one(productAccessories, {
+      fields: [accessoryModelCompatibility.accessoryId],
+      references: [productAccessories.id],
+    }),
     model: one(productModels, {
-      fields: [productAccessories.modelId],
+      fields: [accessoryModelCompatibility.modelId],
       references: [productModels.id],
     }),
   })
@@ -3782,6 +3824,13 @@ export const insertProductAccessorySchema = createInsertSchema(
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertAccessoryModelCompatibilitySchema = createInsertSchema(
+  accessoryModelCompatibility
+).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertCpcRateSchema = createInsertSchema(cpcRates).omit({
@@ -4825,6 +4874,7 @@ export type InsertSystemIntegration = z.infer<
 // Product Management Types (consolidated)
 export type ProductModel = typeof productModels.$inferSelect;
 export type ProductAccessory = typeof productAccessories.$inferSelect;
+export type AccessoryModelCompatibility = typeof accessoryModelCompatibility.$inferSelect;
 export type CpcRate = typeof cpcRates.$inferSelect;
 export type ProfessionalService = typeof professionalServices.$inferSelect;
 
@@ -4832,6 +4882,9 @@ export type ProfessionalService = typeof professionalServices.$inferSelect;
 export type InsertProductModel = z.infer<typeof insertProductModelSchema>;
 export type InsertProductAccessory = z.infer<
   typeof insertProductAccessorySchema
+>;
+export type InsertAccessoryModelCompatibility = z.infer<
+  typeof insertAccessoryModelCompatibilitySchema
 >;
 export type InsertCpcRate = z.infer<typeof insertCpcRateSchema>;
 export type InsertProfessionalService = z.infer<

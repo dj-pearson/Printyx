@@ -29,6 +29,7 @@ import {
   insertInvoiceSchema,
   insertProductModelSchema,
   insertProductAccessorySchema,
+  insertAccessoryModelCompatibilitySchema,
   insertCpcRateSchema,
   insertProfessionalServiceSchema,
   insertServiceProductSchema,
@@ -5465,12 +5466,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
-        const validatedData = insertProductAccessorySchema.parse({
+        // Create the accessory first (without modelId since it's no longer in the schema)
+        const accessoryData = insertProductAccessorySchema.parse({
           ...req.body,
-          modelId,
           tenantId,
         });
-        const accessory = await storage.createProductAccessory(validatedData);
+        const accessory = await storage.createProductAccessory(accessoryData);
+        
+        // Then create the compatibility relationship
+        const compatibilityData = insertAccessoryModelCompatibilitySchema.parse({
+          accessoryId: accessory.id,
+          modelId,
+          tenantId,
+          isRequired: req.body.isRequired || false,
+          isOptional: true,
+        });
+        await storage.createAccessoryModelCompatibility(compatibilityData);
+        
         res.json(accessory);
       } catch (error) {
         console.error("Error creating product accessory:", error);
@@ -5504,6 +5516,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error updating product accessory:", error);
         res.status(500).json({ message: "Failed to update product accessory" });
+      }
+    }
+  );
+
+  // Accessory-Model Compatibility Routes
+  app.get(
+    "/api/accessories/:accessoryId/compatibility",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { accessoryId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const compatibilities = await storage.getAccessoryCompatibilities(
+          accessoryId,
+          tenantId
+        );
+        res.json(compatibilities);
+      } catch (error) {
+        console.error("Error fetching accessory compatibilities:", error);
+        res.status(500).json({ message: "Failed to fetch compatibilities" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/models/:modelId/compatibility",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { modelId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const compatibilities = await storage.getModelCompatibilities(
+          modelId,
+          tenantId
+        );
+        res.json(compatibilities);
+      } catch (error) {
+        console.error("Error fetching model compatibilities:", error);
+        res.status(500).json({ message: "Failed to fetch compatibilities" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/accessory-model-compatibility",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const validatedData = insertAccessoryModelCompatibilitySchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const compatibility = await storage.createAccessoryModelCompatibility(
+          validatedData
+        );
+        res.status(201).json(compatibility);
+      } catch (error) {
+        console.error("Error creating accessory compatibility:", error);
+        res.status(500).json({ message: "Failed to create compatibility" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/accessory-model-compatibility/:accessoryId/:modelId",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { accessoryId, modelId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        await storage.deleteAccessoryModelCompatibility(
+          accessoryId,
+          modelId,
+          tenantId
+        );
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting accessory compatibility:", error);
+        res.status(500).json({ message: "Failed to delete compatibility" });
       }
     }
   );
