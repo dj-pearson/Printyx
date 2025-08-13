@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,112 +34,156 @@ import {
   Brain,
   Layers,
   Crown,
-  Globe
+  Globe,
+  Shield,
+  Database,
+  UserCheck,
+  Briefcase,
+  BookOpen,
+  AlertTriangle,
+  Cpu,
+  Hash,
+  Wand2,
+  MapPin,
+  Headphones,
+  Cog,
+  Zap,
+  Smartphone,
+  Rocket
 } from "lucide-react";
 import useCollapsibleNavigation, { NavigationSection } from "@/hooks/useCollapsibleNavigation";
 
-const navigationSections: NavigationSection[] = [
+// Get role-aware navigation sections
+function getNavigationSections(userRole: any): NavigationSection[] {
+  const sections: NavigationSection[] = [];
+
+  if (!userRole) return sections;
+
+  const permissions = userRole.permissions || {};
+  const isPlatformRole = userRole.canAccessAllTenants === true;
+  const isCompanyAdmin = userRole.name?.includes("Admin");
+  const level = userRole.level || 1;
+
+  // Determine URL prefix based on role level and permissions
+  const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
+  const adminPrefix = useAdminRoutes ? "/admin" : "";
+
   // Always visible sections
-  {
+  sections.push({
     id: 'dashboard',
     title: 'Dashboard',
     icon: LayoutDashboard,
     path: '/',
     matchPatterns: ['/dashboard*']
-  },
+  });
 
-  // CRM Hub - Collapsible
-  {
-    id: 'crm',
-    title: 'CRM Hub',
-    icon: Target,
-    path: '/crm',
-    matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/sales-pipeline*'],
-    children: [
-      { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
-      { title: 'Contacts', path: '/contacts', icon: Users },
-      { title: 'Deals Management', path: '/deals-management', icon: Target },
-      { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
-      { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: PieChart },
-      { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: Calendar }
-    ]
-  },
+  // Sales & CRM Hub - Role-aware
+  if (permissions.sales || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'crm',
+      title: 'CRM Hub',
+      icon: Target,
+      path: '/crm',
+      matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*'],
+      children: [
+        { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
+        { title: 'Contacts', path: '/contacts', icon: Users },
+        { title: 'Deals Management', path: '/deals-management', icon: Target },
+        { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
+        { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: PieChart },
+        { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: Calendar },
+        { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
+        { title: 'Proposal Builder', path: '/proposal-builder', icon: Wand2 }
+      ]
+    });
+  }
 
-  // Service Hub - Collapsible
-  {
-    id: 'service',
-    title: 'Service Hub',
-    icon: Wrench,
-    path: '/service-hub',
-    matchPatterns: ['/service*', '/meter-readings*'],
-    children: [
-      { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
-      { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
-      { title: 'Service Billing', path: '/billing', icon: Calculator }
-    ]
-  },
+  // Service Hub - Role-aware
+  if (permissions.service || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'service',
+      title: 'Service Hub',
+      icon: Wrench,
+      path: '/service-hub',
+      matchPatterns: ['/service*', '/meter-readings*', '/technician*'],
+      children: [
+        { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
+        { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
+        { title: 'Service Billing', path: '/billing', icon: Calculator },
+        { title: 'Technician Management', path: '/technician-management', icon: Users }
+      ]
+    });
+  }
 
-  // Product Hub - Collapsible
-  {
-    id: 'products',
-    title: 'Product Hub',
-    icon: Package,
-    path: '/product-hub',
-    matchPatterns: ['/product*', '/supplies*', '/professional-services*', '/managed-services*', '/software-products*'],
-    children: [
-      { title: 'Product Models', path: '/product-models', icon: Package },
-      { title: 'Accessories', path: '/product-accessories', icon: Layers },
-      { title: 'Supplies', path: '/supplies', icon: Package },
-      { title: 'Professional Services', path: '/professional-services', icon: FileText },
-      { title: 'Managed Services', path: '/managed-services', icon: Crown },
-      { title: 'Software Products', path: '/software-products', icon: Monitor }
-    ]
-  },
+  // Product Hub - Role-aware
+  if (permissions.products || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'products',
+      title: 'Product Hub',
+      icon: Package,
+      path: '/product-hub',
+      matchPatterns: ['/product*', '/supplies*', '/professional-services*', '/managed-services*', '/software-products*'],
+      children: [
+        { title: 'Product Models', path: '/product-models', icon: Package },
+        { title: 'Accessories', path: '/product-accessories', icon: Layers },
+        { title: 'Supplies', path: '/supplies', icon: Package },
+        { title: 'Professional Services', path: '/professional-services', icon: FileText },
+        { title: 'Managed Services', path: '/managed-services', icon: Crown },
+        { title: 'Software Products', path: '/software-products', icon: Monitor }
+      ]
+    });
+  }
 
-  // Equipment Lifecycle - Collapsible
-  {
-    id: 'equipment',
-    title: 'Equipment Lifecycle',
-    icon: Truck,
-    path: '/equipment-lifecycle',
-    matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
-    children: [
-      { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
-      { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
-      { title: 'Inventory Management', path: '/inventory', icon: Package }
-    ]
-  },
+  // Equipment Lifecycle - Role-aware
+  if (permissions.inventory || permissions.purchasing || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'equipment',
+      title: 'Equipment Lifecycle',
+      icon: Truck,
+      path: '/equipment-lifecycle',
+      matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
+      children: [
+        { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
+        { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
+        { title: 'Inventory Management', path: '/inventory', icon: Package }
+      ]
+    });
+  }
 
-  // Billing Hub - Collapsible  
-  {
-    id: 'billing',
-    title: 'Billing Hub',
-    icon: DollarSign,
-    path: '/billing-hub',
-    matchPatterns: ['/billing*', '/invoices*', '/accounts*', '/meter-billing*'],
-    children: [
-      { title: 'Invoices', path: '/invoices', icon: FileText },
-      { title: 'Meter Billing', path: '/meter-billing', icon: Calculator },
-      { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
-      { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard }
-    ]
-  },
+  // Billing Hub - Role-aware
+  if (permissions.billing || permissions.finance || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'billing',
+      title: 'Billing Hub',
+      icon: DollarSign,
+      path: '/billing-hub',
+      matchPatterns: ['/billing*', '/invoices*', '/accounts*', '/meter-billing*'],
+      children: [
+        { title: 'Invoices', path: '/invoices', icon: FileText },
+        { title: 'Meter Billing', path: '/meter-billing', icon: Calculator },
+        { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
+        { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard }
+      ]
+    });
+  }
 
-  // Reports - Collapsible
-  {
-    id: 'reports',
-    title: 'Reports',
-    icon: BarChart3,
-    path: '/reports',
-    matchPatterns: ['/reports*', '/advanced-reporting*', '/performance-monitoring*'],
-    children: [
-      { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
-      { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity }
-    ]
-  },
+  // Reports Hub - Role-aware
+  if (permissions.reports || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'reports',
+      title: 'Reports',
+      icon: BarChart3,
+      path: '/reports',
+      matchPatterns: ['/reports*', '/advanced-reporting*', '/performance-monitoring*'],
+      children: [
+        { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
+        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity }
+      ]
+    });
+  }
 
-  // Tasks - Collapsible
-  {
+  // Task Management Hub
+  sections.push({
     id: 'tasks',
     title: 'Tasks',
     icon: CheckSquare,
@@ -148,33 +193,72 @@ const navigationSections: NavigationSection[] = [
       { title: 'Advanced Task Management', path: '/task-management', icon: Brain },
       { title: 'Basic Task Management', path: '/basic-task-management', icon: CheckSquare }
     ]
-  },
+  });
 
-  // Always visible sections
-  {
+  // Always visible core sections
+  sections.push({
     id: 'customers',
     title: 'Customers',
     icon: Building2,
     path: '/customers',
     matchPatterns: ['/customers*']
-  },
+  });
 
-  {
-    id: 'settings',
-    title: 'Settings', 
-    icon: Settings,
-    path: '/settings',
-    matchPatterns: ['/settings*']
-  },
+  // Platform/Admin-specific sections
+  if (isPlatformRole) {
+    sections.push({
+      id: 'platform-admin',
+      title: 'Platform Admin',
+      icon: Crown,
+      path: `${adminPrefix}/platform`,
+      matchPatterns: [`${adminPrefix}/platform*`],
+      children: [
+        { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
+        { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
+        { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
+        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
+        { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
+        { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
+        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
+      ]
+    });
+  }
 
-  {
+  if (isCompanyAdmin || isPlatformRole) {
+    sections.push({
+      id: 'admin',
+      title: 'Administration',
+      icon: Settings,
+      path: `${adminPrefix}/company`,
+      matchPatterns: [`${adminPrefix}/company*`, `${adminPrefix}/admin*`],
+      children: [
+        { title: 'Company Settings', path: `${adminPrefix}/company-settings`, icon: Building2 },
+        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: Users },
+        { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: UserCheck }
+      ]
+    });
+  }
+
+  // Integrations
+  sections.push({
     id: 'integrations',
     title: 'Integrations',
     icon: Plug,
     path: '/integrations',
     matchPatterns: ['/integrations*']
-  }
-];
+  });
+
+  // Settings
+  sections.push({
+    id: 'settings',
+    title: 'Settings',
+    icon: Settings,
+    path: '/settings',
+    matchPatterns: ['/settings*']
+  });
+
+  return sections;
+}
 
 interface CollapsibleSidebarProps {
   className?: string;
@@ -182,6 +266,15 @@ interface CollapsibleSidebarProps {
 
 export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
+  
+  // Fetch user role
+  const { data: userRole } = useQuery({
+    queryKey: ["/api/auth/role"],
+    enabled: isAuthenticated,
+  });
+
+  // Get role-aware navigation sections
+  const navigationSections = getNavigationSections(userRole);
   const {
     expandedSections,
     toggleSection,
