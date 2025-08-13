@@ -479,6 +479,9 @@ function Router() {
           <Route path="/admin/system-security" component={SystemSecurity} />
           <Route path="/admin/tenant-management" component={TenantManagement} />
           <Route path="/admin/user-management" component={UserManagement} />
+          <Route path="/admin/role-management" component={RoleManagement} />
+          <Route path="/admin/system-settings" component={Settings} />
+          <Route path="/admin/platform-analytics" component={AdvancedAnalyticsDashboard} />
           <Route
             path="/platform-configuration"
             component={PlatformConfiguration}
