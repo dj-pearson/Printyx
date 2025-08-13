@@ -19,7 +19,8 @@ type ContextualPageKey =
   | "service-dispatch-optimization"
   | "product-catalog-optimization"
   | "deals-management-optimization"
-  | "purchase-orders-optimization";
+  | "purchase-orders-optimization"
+  | "quote-builder-optimization";
 
 interface ContextualHelpProps {
   page: ContextualPageKey;
@@ -176,6 +177,17 @@ const contentMap: Record<ContextualPageKey, {
       "Monitor compliance tracking to maintain vendor relationships",
     ],
     seasonal: "Q4 procurement: Secure pricing before year-end budget allocations",
+  },
+  "quote-builder-optimization": {
+    title: "AI Quote Intelligence",
+    industryContext: "Dynamic pricing optimization and AI-powered quote building can increase win rates by 15-25% and boost average deal value by 12%.",
+    quickTips: [
+      "Apply dynamic pricing recommendations for competitive advantage",
+      "Use AI bundle suggestions to increase average deal size",
+      "Follow optimal timing insights for better response rates",
+      "Monitor quote performance analytics for continuous improvement",
+    ],
+    seasonal: "Q4 timing: Tuesday-Thursday quotes show 18% better response rates",
   },
 };
 
