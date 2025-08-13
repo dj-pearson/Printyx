@@ -135,6 +135,12 @@ import RoleManagement from "@/pages/RoleManagement";
 import GPT5Dashboard from "@/pages/GPT5Dashboard";
 import DocumentBuilder from "@/pages/DocumentBuilder";
 
+// Platform Admin Pages
+import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
+import SystemSecurity from "@/pages/admin/SystemSecurity";
+import TenantManagement from "@/pages/admin/TenantManagement";
+import UserManagement from "@/pages/admin/UserManagement";
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [pathname] = useLocation();
@@ -467,6 +473,12 @@ function Router() {
           <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
           <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
           <Route path="/root-admin/seo" component={RootAdminSEO} />
+          
+          {/* Platform Admin Routes */}
+          <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
+          <Route path="/admin/system-security" component={SystemSecurity} />
+          <Route path="/admin/tenant-management" component={TenantManagement} />
+          <Route path="/admin/user-management" component={UserManagement} />
           <Route
             path="/platform-configuration"
             component={PlatformConfiguration}
