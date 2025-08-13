@@ -15,7 +15,10 @@ type ContextualPageKey =
   | "quotes-management"
   | "quote-proposal-generation"
   | "advanced-analytics"
-  | "enhanced-onboarding";
+  | "enhanced-onboarding"
+  | "service-dispatch-optimization"
+  | "product-catalog-optimization"
+  | "deals-management-optimization";
 
 interface ContextualHelpProps {
   page: ContextualPageKey;
@@ -33,7 +36,9 @@ const contentMap: Record<ContextualPageKey, {
     industryContext: "Most copier dealers lose 15-20% revenue to billing errors and missed recurring charges.",
     quickTips: [
       "Set up automated billing cycles to reduce manual work by 80%",
-      "Use tiered billing rules for complex pricing scenarios",
+      "Review AI anomaly alerts to catch billing issues early",
+      "Use contract renewal automation for 90-day advance notifications",
+      "Monitor billing health score to maintain 89%+ accuracy",
     ],
     seasonal: "Q4 reminder: Review annual contracts for renewal opportunities",
   },
@@ -127,17 +132,6 @@ const contentMap: Record<ContextualPageKey, {
       "Use the guided wizard with validation checks",
     ],
   },
-  "advanced-billing": {
-    title: "Advanced Billing Engine",
-    industryContext: "Most copier dealers lose 15-20% revenue to billing errors and missed recurring charges.",
-    quickTips: [
-      "Set up automated billing cycles to reduce manual work by 80%",
-      "Review AI anomaly alerts to catch billing issues early",
-      "Use contract renewal automation for 90-day advance notifications",
-      "Monitor billing health score to maintain 89%+ accuracy",
-    ],
-    seasonal: "Q4 reminder: Review annual contracts for renewal opportunities",
-  },
   "service-dispatch-optimization": {
     title: "Service Dispatch Optimization",
     industryContext: "Optimized routing can save 30+ minutes per technician per day and improve customer satisfaction by 18%.",
@@ -159,6 +153,17 @@ const contentMap: Record<ContextualPageKey, {
       "Use demand forecasting to guide purchasing decisions",
     ],
     seasonal: "Market analysis shows 23% seasonal demand variance",
+  },
+  "deals-management-optimization": {
+    title: "AI Deals Intelligence",
+    industryContext: "Predictive deal scoring can improve win rates by 15-25% and reduce sales cycles by 12% on average.",
+    quickTips: [
+      "Monitor deal health scores daily to identify at-risk opportunities",
+      "Apply AI next-best-action recommendations to accelerate deals",
+      "Use competitive battle cards for strategic positioning",
+      "Review pipeline forecasting for accurate revenue predictions",
+    ],
+    seasonal: "Q4 typically sees 15% higher deal volumes - prepare inventory",
   },
 };
 

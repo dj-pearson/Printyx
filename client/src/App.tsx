@@ -74,6 +74,7 @@ import LeadsManagement from "@/pages/LeadsManagement";
 import QuoteProposalGeneration from "@/pages/QuoteProposalGeneration";
 import QuoteBuilderPage from "@/pages/QuoteBuilderPage";
 const ProductCatalogOptimization = React.lazy(() => import("@/pages/ProductCatalogOptimization"));
+const DealsManagementOptimization = React.lazy(() => import("@/pages/DealsManagementOptimization"));
 import QuotesManagement from "@/pages/QuotesManagement";
 import CompanyIdsTest from "@/pages/CompanyIdsTest";
 import QuoteView from "@/pages/QuoteView";
@@ -282,6 +283,10 @@ function Router() {
           <Route
             path="/product-catalog-optimization"
             component={ProductCatalogOptimization}
+          />
+          <Route
+            path="/deals-management-optimization"
+            component={DealsManagementOptimization}
           />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
