@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit } from "lucide-react";
+import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -332,85 +332,106 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
 
   const ProductCard = ({ product }: { product: SoftwareProduct }) => {
     return (
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="h-full flex flex-col hover:shadow-md transition-shadow duration-200">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-lg">{product.productName}</CardTitle>
-              <CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0 space-y-1">
+              <CardTitle className="text-base sm:text-lg leading-tight line-clamp-2">
+                {product.productName}
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 <span className="font-medium">{product.productCode}</span>
                 {product.category && <span className="ml-2 text-muted-foreground">• {product.category}</span>}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              {product.isActive ? (
-                <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
-              ) : (
-                <Badge variant="secondary">Inactive</Badge>
-              )}
-            </div>
+            <Badge 
+              variant={product.isActive ? "default" : "secondary"} 
+              className={`shrink-0 text-xs ${product.isActive ? 'bg-green-100 text-green-800' : ''}`}
+            >
+              {product.isActive ? "Active" : "Inactive"}
+            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-muted-foreground" />
-            <Badge variant="outline">Software</Badge>
-            {product.category && <Badge variant="outline">{product.category}</Badge>}
-            {product.productType && <Badge variant="outline">{product.productType}</Badge>}
+        
+        <CardContent className="flex-1 flex flex-col space-y-3 pt-0">
+          <div className="flex flex-wrap gap-1">
+            <Badge variant="outline" className="text-xs">
+              {product.productType || 'Software'}
+            </Badge>
+            {product.category && (
+              <Badge variant="outline" className="text-xs">
+                {product.category}
+              </Badge>
+            )}
+            {product.paymentType && (
+              <Badge variant="outline" className="text-xs">
+                {product.paymentType}
+              </Badge>
+            )}
           </div>
 
           {product.summary && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
               {product.summary}
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Standard Price</span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                <span className="text-xs font-medium">Standard</span>
               </div>
-              <p className="text-lg font-bold">
+              <p className="text-sm sm:text-base font-bold">
                 {product.standardActive ? formatCurrency(product.standardRepPrice) : "Not Set"}
               </p>
             </div>
 
-            <div className="space-y-2">
-              <span className="text-sm font-medium">New Price</span>
-              <p className="text-lg font-bold text-green-600">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                <span className="text-xs font-medium">New</span>
+              </div>
+              <p className="text-sm sm:text-base font-bold text-green-600">
                 {product.newActive ? formatCurrency(product.newRepPrice) : "Not Set"}
               </p>
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-2" />
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground space-y-1">
-              {product.paymentType && <div>Payment: {product.paymentType}</div>}
-              <div className="flex gap-2">
-                {product.salesRepCredit && <Badge variant="outline" className="text-xs">Rep Credit</Badge>}
-                {product.funding && <Badge variant="outline" className="text-xs">Funding</Badge>}
+          <div className="mt-auto space-y-3">
+            {(product.salesRepCredit || product.funding) && (
+              <div className="flex flex-wrap gap-1">
+                {product.salesRepCredit && (
+                  <Badge variant="outline" className="text-xs">Rep Credit</Badge>
+                )}
+                {product.funding && (
+                  <Badge variant="outline" className="text-xs">Funding</Badge>
+                )}
               </div>
-            </div>
+            )}
+            
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm"
+                className="flex-1 text-xs sm:text-sm py-1 h-8"
                 onClick={() => handleViewDetails(product)}
                 data-testid={`button-view-details-${product.id}`}
               >
-                <Eye className="h-4 w-4 mr-1" />
-                View Details
+                <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                <span className="hidden sm:inline">View Details</span>
+                <span className="sm:hidden">View</span>
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
+                className="flex-1 text-xs sm:text-sm py-1 h-8"
                 onClick={() => handleEdit(product)}
                 data-testid={`button-edit-${product.id}`}
               >
-                <Edit className="h-4 w-4 mr-1" />
+                <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 Edit
               </Button>
             </div>
@@ -423,31 +444,33 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
   return (
     <MainLayout title="Software Products" description="Manage software products and licensing">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Software Products</h1>
-            <p className="text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Software Products</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Manage software solutions and digital products for your customers
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Software
+                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">Add Software</span>
                 </Button>
               </DialogTrigger>
             </Dialog>
             
             <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Upload className="h-4 w-4 mr-2" />
-                  Import CSV
+                  <span className="sm:hidden">Import</span>
+                  <span className="hidden sm:inline">Import CSV</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Import Software Products from CSV</DialogTitle>
                   <DialogDescription>
@@ -1570,8 +1593,8 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
         </Dialog>
 
         {/* Search and Filter Bar */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search software products..."
@@ -1581,7 +1604,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             />
           </div>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
@@ -1596,41 +1619,42 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
 
         {/* Products Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {[...Array(8)].map((_, i) => (
               <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                <CardHeader className="pb-3">
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
                   <div className="h-3 bg-muted rounded w-1/2"></div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-3">
                     <div className="h-3 bg-muted rounded"></div>
                     <div className="h-3 bg-muted rounded w-5/6"></div>
+                    <div className="h-8 bg-muted rounded w-full"></div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-8">
-            <Code className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Software Products Found</h3>
-            <p className="text-muted-foreground text-center mb-4">
+          <Card className="flex flex-col items-center justify-center p-6 sm:p-8">
+            <Code className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2 text-center">No Software Products Found</h3>
+            <p className="text-muted-foreground text-center mb-4 max-w-md">
               {searchTerm || selectedCategory !== "all" 
                 ? "No software products match your current filters. Try adjusting your search criteria."
                 : "Get started by adding your first software product to the catalog."
               }
             </p>
             {!searchTerm && selectedCategory === "all" && (
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={() => setDialogOpen(true)} size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Software Product
               </Button>
             )}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -1638,13 +1662,18 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
         )}
 
         {/* Stats */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-sm text-muted-foreground border-t pt-4">
           <span>
             {filteredProducts.length} of {products.length} software products
           </span>
-          <span>
-            {products.filter(p => p.isActive).length} active products
-          </span>
+          <div className="flex gap-4">
+            <span>
+              {products.filter(p => p.isActive).length} active
+            </span>
+            <span>
+              {products.filter(p => !p.isActive).length} inactive
+            </span>
+          </div>
         </div>
       </div>
     </MainLayout>
