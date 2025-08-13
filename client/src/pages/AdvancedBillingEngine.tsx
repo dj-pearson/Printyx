@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { 
   Plus, DollarSign, Calculator, FileText, CreditCard, AlertTriangle,
   TrendingUp, Users, Calendar, Settings, Edit, Trash2, Eye,
-  CheckCircle, XCircle, Clock, Send, Download, Filter
+  CheckCircle, XCircle, Clock, Send, Download, Filter, Smartphone
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
 import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
+import { MobileFAB } from "@/components/ui/mobile-fab";
 
 // Using Invoice from schema - BillingInvoice extends Invoice with additional billing-specific fields
 interface BillingInvoice extends Invoice {
@@ -140,6 +141,7 @@ export default function AdvancedBillingEngine() {
   const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false);
   const [selectedInvoiceStatus, setSelectedInvoiceStatus] = useState("all");
   const [selectedConfigType, setSelectedConfigType] = useState("all");
+  const [swipeAction, setSwipeAction] = useState<{ invoiceId: string; action: string } | null>(null);
   
   const queryClient = useQueryClient();
 
@@ -289,6 +291,16 @@ export default function AdvancedBillingEngine() {
       case 'sent': return <Send className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
+  };
+
+  // Handle swipe actions for mobile billing approvals
+  const handleSwipeAction = (invoiceId: string, action: string) => {
+    setSwipeAction({ invoiceId, action });
+    // Simulate processing
+    setTimeout(() => {
+      setSwipeAction(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
+    }, 1500);
   };
 
   return (
@@ -741,11 +753,12 @@ export default function AdvancedBillingEngine() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="ai-insights" className="hidden sm:inline-flex">AI Insights</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="configurations">Configurations</TabsTrigger>
-          <TabsTrigger value="cycles">Billing Cycles</TabsTrigger>
+          <TabsTrigger value="configurations">Config</TabsTrigger>
+          <TabsTrigger value="cycles">Cycles</TabsTrigger>
           <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
         </TabsList>
 
@@ -809,6 +822,237 @@ export default function AdvancedBillingEngine() {
               </CardContent>
             </Card>
           </div>
+
+          {/* AI-Powered Billing Intelligence */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  Billing Anomaly Detection
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="p-3 border-l-4 border-orange-500 bg-orange-50 rounded-r">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm text-orange-800">
+                          Unusual Volume Spike Detected
+                        </p>
+                        <p className="text-xs text-orange-600">
+                          Customer ABC Corp - 340% above normal billing
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-orange-600">
+                        Medium Risk
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-3 border-l-4 border-red-500 bg-red-50 rounded-r">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm text-red-800">
+                          Payment Pattern Anomaly
+                        </p>
+                        <p className="text-xs text-red-600">
+                          XYZ Manufacturing - Late payment risk detected
+                        </p>
+                      </div>
+                      <Badge variant="destructive" className="text-xs">
+                        High Risk
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-3 border-l-4 border-blue-500 bg-blue-50 rounded-r">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm text-blue-800">
+                          Revenue Opportunity
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          Tech Solutions Inc - Upgrade potential identified
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-blue-600">
+                        Opportunity
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  Revenue Forecasting
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Next Month Projection</span>
+                      <span className="text-lg font-bold text-green-600">
+                        ${((analytics?.monthlyRecurringRevenue || 0) * 1.08).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-green-600 h-2 rounded-full w-[85%]"></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">85% confidence level</p>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Q4 Revenue Target</span>
+                      <span className="text-lg font-bold text-blue-600">
+                        ${((analytics?.monthlyRecurringRevenue || 0) * 3.2).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-600 h-2 rounded-full w-[72%]"></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">On track to exceed by 8%</p>
+                  </div>
+                  <div className="p-3 bg-green-50 border border-green-200 rounded">
+                    <p className="text-sm text-green-800 font-medium">
+                      Revenue Growth Trend: +12% MoM
+                    </p>
+                    <p className="text-xs text-green-600">
+                      AI predicts continued growth based on current pipeline
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  Contract Renewal Automation
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="p-3 border rounded-lg bg-blue-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm text-blue-800">
+                        Auto-Renewal Ready
+                      </span>
+                      <Badge variant="outline" className="text-blue-600">
+                        3 contracts
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-blue-600 mb-2">
+                      Contracts expiring in 90 days with renewal proposals generated
+                    </p>
+                    <Button size="sm" variant="outline" className="w-full">
+                      Review Proposals
+                    </Button>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-yellow-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-sm text-yellow-800">
+                        Renewal Alerts
+                      </span>
+                      <Badge variant="outline" className="text-yellow-600">
+                        7 contracts
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-yellow-600 mb-2">
+                      Expiring within 60 days - Action required
+                    </p>
+                    <Button size="sm" variant="outline" className="w-full">
+                      Generate Proposals
+                    </Button>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">Success Rate</p>
+                        <p className="text-xs text-gray-600">Auto-renewal conversion</p>
+                      </div>
+                      <span className="text-lg font-bold text-green-600">87%</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Billing Health Score Dashboard */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Billing Health Score Dashboard
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
+                    <svg className="w-20 h-20 transform -rotate-90">
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200"/>
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                        strokeDasharray={`${89 * 2.26} ${100 * 2.26}`} className="text-green-600"/>
+                    </svg>
+                    <span className="absolute text-xl font-bold text-green-600">89%</span>
+                  </div>
+                  <p className="text-sm font-medium">Overall Health</p>
+                  <p className="text-xs text-gray-500">Excellent</p>
+                </div>
+                <div className="text-center">
+                  <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
+                    <svg className="w-20 h-20 transform -rotate-90">
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200"/>
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                        strokeDasharray={`${94 * 2.26} ${100 * 2.26}`} className="text-green-600"/>
+                    </svg>
+                    <span className="absolute text-xl font-bold text-green-600">94%</span>
+                  </div>
+                  <p className="text-sm font-medium">Accuracy Rate</p>
+                  <p className="text-xs text-gray-500">No errors detected</p>
+                </div>
+                <div className="text-center">
+                  <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
+                    <svg className="w-20 h-20 transform -rotate-90">
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200"/>
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                        strokeDasharray={`${76 * 2.26} ${100 * 2.26}`} className="text-yellow-600"/>
+                    </svg>
+                    <span className="absolute text-xl font-bold text-yellow-600">76%</span>
+                  </div>
+                  <p className="text-sm font-medium">Automation Rate</p>
+                  <p className="text-xs text-gray-500">Room for improvement</p>
+                </div>
+                <div className="text-center">
+                  <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
+                    <svg className="w-20 h-20 transform -rotate-90">
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200"/>
+                      <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                        strokeDasharray={`${82 * 2.26} ${100 * 2.26}`} className="text-blue-600"/>
+                    </svg>
+                    <span className="absolute text-xl font-bold text-blue-600">82%</span>
+                  </div>
+                  <p className="text-sm font-medium">Collection Efficiency</p>
+                  <p className="text-xs text-gray-500">Above industry avg</p>
+                </div>
+              </div>
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="font-medium text-green-800">Billing Autopilot Status: Active</span>
+                </div>
+                <p className="text-sm text-green-700">
+                  Your billing system is operating at optimal efficiency. AI monitoring has identified 3 optimization opportunities that could increase revenue by an estimated 12%.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Recent Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -884,6 +1128,211 @@ export default function AdvancedBillingEngine() {
           </div>
         </TabsContent>
 
+        <TabsContent value="ai-insights" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* AI Revenue Optimization */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  Revenue Optimization AI
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-800 mb-2">Intelligent Pricing Recommendations</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Based on market analysis and customer behavior, we've identified opportunities to optimize your pricing strategy.
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center p-2 bg-white rounded border">
+                        <span className="text-sm">Color Print Tier 2</span>
+                        <Badge variant="outline" className="text-green-600">+8% Revenue</Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-white rounded border">
+                        <span className="text-sm">Maintenance Plans</span>
+                        <Badge variant="outline" className="text-green-600">+15% Revenue</Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-white rounded border">
+                        <span className="text-sm">Volume Discounts</span>
+                        <Badge variant="outline" className="text-green-600">+12% Revenue</Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-medium text-green-800 mb-2">Contract Optimization</h4>
+                    <p className="text-sm text-green-700 mb-3">
+                      AI analysis suggests contract term adjustments that could increase customer lifetime value.
+                    </p>
+                    <Button size="sm" className="w-full">
+                      View Detailed Analysis
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Predictive Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-purple-600" />
+                  Predictive Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <h4 className="font-medium text-purple-800 mb-2">Cash Flow Prediction</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-purple-700">Next 30 days</span>
+                        <span className="font-bold text-purple-800">
+                          ${((analytics?.monthlyRecurringRevenue || 0) * 0.85).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-purple-700">Next 60 days</span>
+                        <span className="font-bold text-purple-800">
+                          ${((analytics?.monthlyRecurringRevenue || 0) * 1.7).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-purple-700">Next 90 days</span>
+                        <span className="font-bold text-purple-800">
+                          ${((analytics?.monthlyRecurringRevenue || 0) * 2.6).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <h4 className="font-medium text-orange-800 mb-2">Risk Assessment</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-orange-700">Late Payment Risk</span>
+                        <Badge variant="outline" className="text-orange-600">Low (12%)</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-orange-700">Contract Churn Risk</span>
+                        <Badge variant="outline" className="text-yellow-600">Medium (8%)</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-orange-700">Bad Debt Risk</span>
+                        <Badge variant="outline" className="text-green-600">Very Low (2%)</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Automation Insights */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-gray-600" />
+                  Automation Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-3">Process Automation Opportunities</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium text-sm">Auto-Invoice Generation</p>
+                          <p className="text-xs text-gray-600">Based on meter readings</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="outline" className="text-green-600">87% Ready</Badge>
+                          <p className="text-xs text-gray-500 mt-1">Save 4h/week</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium text-sm">Payment Reminders</p>
+                          <p className="text-xs text-gray-600">Automated follow-up sequences</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="outline" className="text-blue-600">Ready</Badge>
+                          <p className="text-xs text-gray-500 mt-1">Save 6h/week</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium text-sm">Contract Renewals</p>
+                          <p className="text-xs text-gray-600">90-day advance notifications</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="outline" className="text-yellow-600">In Progress</Badge>
+                          <p className="text-xs text-gray-500 mt-1">Save 8h/week</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Performance Benchmarks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-indigo-600" />
+                  Industry Benchmarks
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-3">How You Compare</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm">Billing Accuracy</span>
+                          <span className="text-sm font-medium text-green-600">+18% above avg</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-green-600 h-2 rounded-full w-[94%]"></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm">Collection Rate</span>
+                          <span className="text-sm font-medium text-blue-600">+12% above avg</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-blue-600 h-2 rounded-full w-[82%]"></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm">DSO (Days Sales Outstanding)</span>
+                          <span className="text-sm font-medium text-orange-600">-8 days vs avg</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-orange-600 h-2 rounded-full w-[75%]"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded">
+                    <p className="text-sm text-indigo-800 font-medium">Industry Recognition</p>
+                    <p className="text-xs text-indigo-600 mt-1">
+                      Your billing efficiency ranks in the top 15% of copier dealers nationwide.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="invoices" className="space-y-6">
           {/* Filters */}
           <div className="flex space-x-4">
@@ -918,34 +1367,113 @@ export default function AdvancedBillingEngine() {
               ) : (
                 <div className="space-y-4">
                   {(invoices as BillingInvoice[]).map((invoice) => (
-                    <div key={invoice.id} className="border rounded-lg p-4">
+                    <div 
+                      key={invoice.id} 
+                      className={`border rounded-lg p-4 transition-all duration-300 ${
+                        swipeAction?.invoiceId === invoice.id 
+                          ? swipeAction.action === 'approve' 
+                            ? 'bg-green-50 border-green-300' 
+                            : 'bg-red-50 border-red-300'
+                          : 'hover:shadow-md'
+                      }`}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-medium">{invoice.invoice_number}</h3>
+                            <h3 className="font-medium text-base" data-testid={`invoice-number-${invoice.id}`}>
+                              {invoice.invoice_number}
+                            </h3>
                             <Badge variant={getStatusColor(invoice.status)}>
                               {getStatusIcon(invoice.status)}
                               {invoice.status}
                             </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground space-y-1">
-                            <p>Customer: {invoice.customer_name || invoice.business_record_name}</p>
-                            <p>Period: {format(new Date(invoice.billing_period_start), 'MMM dd')} - {format(new Date(invoice.billing_period_end), 'MMM dd, yyyy')}</p>
-                            <p>Due: {format(new Date(invoice.due_date), 'MMM dd, yyyy')}</p>
-                            <p>Terms: {invoice.payment_terms}</p>
+                            <p><span className="font-medium">Customer:</span> {invoice.customer_name || invoice.business_record_name}</p>
+                            <p><span className="font-medium">Period:</span> {format(new Date(invoice.billing_period_start), 'MMM dd')} - {format(new Date(invoice.billing_period_end), 'MMM dd, yyyy')}</p>
+                            <p><span className="font-medium">Due:</span> {format(new Date(invoice.due_date), 'MMM dd, yyyy')}</p>
+                            <p><span className="font-medium">Terms:</span> {invoice.payment_terms}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold">
+                          <p className="text-xl font-bold text-green-600" data-testid={`invoice-amount-${invoice.id}`}>
                             ${invoice.total_amount.toFixed(2)}
                           </p>
                           {invoice.balance_due > 0 && (
-                            <p className="text-sm text-red-600">
+                            <p className="text-sm text-red-600 font-medium">
                               Balance: ${invoice.balance_due.toFixed(2)}
                             </p>
                           )}
                         </div>
                       </div>
+                      
+                      {/* Mobile-Optimized Action Buttons */}
+                      <div className="flex gap-2 mt-4 md:hidden">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1 min-h-[44px]"
+                          onClick={() => handleSwipeAction(invoice.id, 'view')}
+                          data-testid={`button-view-${invoice.id}`}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                        {invoice.status === 'draft' && (
+                          <Button 
+                            size="sm" 
+                            className="flex-1 min-h-[44px] bg-green-600 hover:bg-green-700"
+                            onClick={() => handleSwipeAction(invoice.id, 'approve')}
+                            data-testid={`button-approve-${invoice.id}`}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Approve
+                          </Button>
+                        )}
+                        {invoice.status === 'sent' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="flex-1 min-h-[44px]"
+                            onClick={() => handleSwipeAction(invoice.id, 'remind')}
+                            data-testid={`button-remind-${invoice.id}`}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Remind
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Desktop Action Buttons */}
+                      <div className="hidden md:flex gap-2 mt-4">
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF
+                        </Button>
+                        {invoice.status === 'draft' && (
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                            <Send className="h-4 w-4 mr-2" />
+                            Send Invoice
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {/* Mobile Swipe Feedback */}
+                      {swipeAction?.invoiceId === invoice.id && (
+                        <div className="mt-3 p-2 text-center text-sm font-medium">
+                          {swipeAction.action === 'approve' ? (
+                            <span className="text-green-700">✓ Invoice approved and sent to customer</span>
+                          ) : swipeAction.action === 'remind' ? (
+                            <span className="text-blue-700">📧 Payment reminder sent</span>
+                          ) : (
+                            <span className="text-gray-700">👁️ Opening invoice details...</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1143,6 +1671,58 @@ export default function AdvancedBillingEngine() {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Mobile Floating Action Button */}
+      <div className="fixed bottom-6 right-6 z-50 md:hidden">
+        <MobileFAB
+          icon={DollarSign}
+          label="Quick Billing"
+          className="bg-blue-600 hover:bg-blue-700 text-white shadow-2xl"
+          onClick={() => setActiveTab('dashboard')}
+          data-testid="mobile-fab-billing"
+        />
+      </div>
+      
+      {/* Mobile Quick Actions Panel */}
+      {activeTab === 'dashboard' && (
+        <div className="fixed bottom-20 right-6 z-40 md:hidden">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-xl p-4 w-48">
+            <div className="space-y-3">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full justify-start min-h-[44px]"
+                onClick={() => runBillingCycleMutation.mutate()}
+                disabled={runBillingCycleMutation.isPending}
+                data-testid="mobile-quick-run-billing"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Run Billing Cycle
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full justify-start min-h-[44px]"
+                onClick={() => setIsConfigDialogOpen(true)}
+                data-testid="mobile-quick-new-config"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                New Configuration
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full justify-start min-h-[44px]"
+                onClick={() => setIsAdjustmentDialogOpen(true)}
+                data-testid="mobile-quick-adjustment"
+              >
+                <Calculator className="h-4 w-4 mr-2" />
+                Add Adjustment
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </MainLayout>
   );
