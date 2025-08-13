@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter } from "lucide-react";
+import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,8 @@ export default function SoftwareProducts() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SoftwareProduct | null>(null);
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -48,6 +50,27 @@ export default function SoftwareProducts() {
       toast({
         title: "Error",
         description: "Failed to create software product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const csvImportMutation = useMutation({
+    mutationFn: async (csvData: string) => {
+      return await apiRequest('/api/software-products/import-csv', 'POST', { csvData });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
+      setCsvDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "CSV data imported successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to import CSV data",
         variant: "destructive",
       });
     },
@@ -91,6 +114,51 @@ export default function SoftwareProducts() {
 
   const onSubmit = (data: InsertSoftwareProduct) => {
     createProductMutation.mutate(data);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'text/csv') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csvData = e.target?.result as string;
+        csvImportMutation.mutate(csvData);
+      };
+      reader.readAsText(file);
+    } else {
+      toast({
+        title: "Invalid File",
+        description: "Please select a valid CSV file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateSampleCSV = () => {
+    const sampleData = `productCode,productName,productType,category,accessoryType,paymentType,description,standardCost,standardRepPrice,newCost,newRepPrice,upgradeCost,upgradeRepPrice,isActive,availableForAll,salesRepCredit,funding,lease
+SW-DMS-001,Document Management Suite,Application,Document Management,Software License,Monthly,Advanced document workflow and management solution,150.00,299.00,120.00,249.00,100.00,199.00,TRUE,TRUE,TRUE,TRUE,FALSE
+SW-PRT-002,Print Management Pro,License,Print Management,Add-on Module,Annual,Comprehensive print monitoring and cost control,200.00,399.00,180.00,349.00,150.00,299.00,TRUE,TRUE,TRUE,TRUE,TRUE
+SW-UNI-003,UniFlow License,License,UniFlow,Software License,Perpetual,UniFlow document workflow solution,500.00,999.00,450.00,899.00,400.00,799.00,TRUE,FALSE,TRUE,TRUE,FALSE
+SW-PCU-004,Papercut MF,Application,Papercut,Cloud Subscription,Monthly,Print management and cost recovery solution,100.00,199.00,80.00,159.00,60.00,119.00,TRUE,TRUE,TRUE,TRUE,FALSE
+SW-PLG-005,PrinterLogic Suite,License,PrinterLogic,Software License,Annual,Enterprise printer management solution,300.00,599.00,250.00,499.00,200.00,399.00,TRUE,FALSE,TRUE,TRUE,TRUE
+SW-SEC-006,Security Scanner Pro,Application,Security Software,Support Package,Monthly,Document security and compliance scanning,75.00,149.00,60.00,119.00,50.00,99.00,TRUE,TRUE,TRUE,FALSE,FALSE
+SW-WFL-007,Workflow Automation,Plugin,Workflow Automation,Add-on Module,Annual,Automated document processing workflows,250.00,499.00,200.00,399.00,175.00,349.00,TRUE,TRUE,TRUE,TRUE,FALSE
+SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,Monthly,Multi-device cloud synchronization service,50.00,99.00,40.00,79.00,30.00,59.00,TRUE,TRUE,FALSE,TRUE,FALSE`;
+
+    const blob = new Blob([sampleData], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'software_products_sample.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Sample Downloaded",
+      description: "Sample CSV file has been downloaded to help guide your import",
+    });
   };
 
   // Get unique categories from products
@@ -205,13 +273,78 @@ export default function SoftwareProducts() {
               Manage software solutions and digital products for your customers
             </p>
           </div>
+          <div className="flex gap-2">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Software
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+            
+            <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import CSV
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Import Software Products from CSV</DialogTitle>
+                  <DialogDescription>
+                    Upload a CSV file to import multiple software products at once. Download the sample file for reference.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-medium">CSV Template</h3>
+                        <p className="text-sm text-muted-foreground">Download a sample CSV with example software products and variations</p>
+                      </div>
+                      <Button variant="outline" onClick={generateSampleCSV}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Sample
+                      </Button>
+                    </div>
+                    
+                    <div className="bg-muted p-4 rounded-md">
+                      <h4 className="font-medium mb-2">Helpful Variations Included:</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>• <strong>Product Types:</strong> Application, License, Cloud Service, Plugin, Driver</div>
+                        <div>• <strong>Categories:</strong> Document Management, UniFlow, Papercut, PrinterLogic, Print Management, Security Software</div>
+                        <div>• <strong>Payment Types:</strong> Monthly, Annual, Perpetual</div>
+                        <div>• <strong>Accessory Types:</strong> Software License, Add-on Module, Cloud Subscription, Support Package</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Upload CSV File</h3>
+                    <div className="space-y-4">
+                      <Input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileUpload}
+                        disabled={csvImportMutation.isPending}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Select a CSV file containing your software product data. The file should include columns for 
+                        productCode, productName, productType, category, paymentType, and pricing information.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+          
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Software
-              </Button>
-            </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>New Price Book List: Software</DialogTitle>
@@ -327,6 +460,9 @@ export default function SoftwareProducts() {
                                 <SelectItem value="">--None--</SelectItem>
                                 <SelectItem value="Document Management">Document Management</SelectItem>
                                 <SelectItem value="Print Management">Print Management</SelectItem>
+                                <SelectItem value="UniFlow">UniFlow</SelectItem>
+                                <SelectItem value="Papercut">Papercut</SelectItem>
+                                <SelectItem value="PrinterLogic">PrinterLogic</SelectItem>
                                 <SelectItem value="Security Software">Security Software</SelectItem>
                                 <SelectItem value="Workflow Automation">Workflow Automation</SelectItem>
                                 <SelectItem value="Cloud Solutions">Cloud Solutions</SelectItem>

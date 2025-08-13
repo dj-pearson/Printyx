@@ -51,7 +51,8 @@ import {
   Smartphone,
   Rocket,
   ClipboardList,
-  FileSignature
+  FileSignature,
+  Code
 } from "lucide-react";
 
 interface NavigationItem {
@@ -165,7 +166,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Accessories', path: '/product-accessories', icon: Layers },
         { title: 'Supplies', path: '/supplies', icon: Package },
         { title: 'Professional Services', path: '/professional-services', icon: FileText },
-        { title: 'Managed Services', path: '/managed-services', icon: Crown }
+        { title: 'Managed Services', path: '/managed-services', icon: Crown },
+        { title: 'Software Products', path: '/software-products', icon: Code }
       ]
     });
   }
