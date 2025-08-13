@@ -61,6 +61,11 @@ import {
   PhoneCall,
   Send,
   UserCheck,
+  Handshake,
+  BookOpen,
+  Presentation,
+  ScrollText,
+  UserRoundCheck,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -90,6 +95,8 @@ const createCompanySlug = (companyName: string): string => {
     .trim()
     .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 };
+
+
 
 // Enhanced business record creation schema with all database fields
 const createLeadSchema = z.object({
@@ -180,6 +187,88 @@ export default function CRMEnhanced() {
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
+
+  // Dynamic action button configuration based on sales status
+  const getLeadActionButton = (status: string, leadId: string) => {
+    const statusNormalized = status.toLowerCase().replace(/[_\s]/g, "");
+    
+    switch (statusNormalized) {
+      case "new":
+        return {
+          text: "Meeting",
+          icon: Handshake,
+          action: () => {
+            console.log("Opening meeting booking popup for lead:", leadId);
+            toast({
+              title: "Meeting",
+              description: "Meeting booking functionality coming soon!",
+            });
+          },
+          className: "bg-blue-600 hover:bg-blue-700 text-white",
+        };
+      case "appointmentscheduled":
+      case "qualifiedtobuy":
+        return {
+          text: "Quote",
+          icon: DollarSign,
+          action: () => setLocation(`/quotes/new?leadId=${leadId}`),
+          className: "bg-blue-600 hover:bg-blue-700 text-white",
+        };
+      case "presentationscheduled":
+        return {
+          text: "Proposal",
+          icon: Presentation,
+          action: () => setLocation(`/proposal-builder?leadId=${leadId}`),
+          className: "bg-blue-600 hover:bg-blue-700 text-white",
+        };
+      case "decisionmakerboughtin":
+        return {
+          text: "Contract",
+          icon: ScrollText,
+          action: () => {
+            console.log("Opening contract section for lead:", leadId);
+            toast({
+              title: "Contract",
+              description: "Contract management functionality coming soon!",
+            });
+          },
+          className: "bg-blue-600 hover:bg-blue-700 text-white",
+        };
+      case "contractsent":
+      case "closedwon":
+        return {
+          text: "Convert to Customer",
+          icon: UserRoundCheck,
+          action: () => {
+            console.log("Converting lead to customer:", leadId);
+            toast({
+              title: "Convert to Customer",
+              description: "Lead conversion functionality coming soon!",
+            });
+          },
+          className: "bg-green-600 hover:bg-green-700 text-white",
+        };
+      case "qualified":
+        return {
+          text: "Quote",
+          icon: DollarSign,
+          action: () => setLocation(`/quotes/new?leadId=${leadId}`),
+          className: "bg-blue-600 hover:bg-blue-700 text-white",
+        };
+      default:
+        return {
+          text: "Qualify",
+          icon: CheckCircle,
+          action: () => {
+            updateLeadStatusMutation.mutate({
+              leadId: leadId,
+              status: "qualified",
+            });
+          },
+          className: "bg-blue-600 hover:bg-blue-700 text-white",
+        };
+    }
+  };
 
   const leadForm = useForm<CreateLeadInput>({
     resolver: zodResolver(createLeadSchema),
@@ -1230,41 +1319,26 @@ export default function CRMEnhanced() {
 
                       <div className="flex justify-between items-center pt-2 border-t">
                         <div className="flex gap-2">
-                          {lead.status === "new" && (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                updateLeadStatusMutation.mutate({
-                                  leadId: lead.id,
-                                  status: "qualified",
-                                })
-                              }
-                              disabled={updateLeadStatusMutation.isPending}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Qualify
-                            </Button>
-                          )}
-                          {lead.status === "qualified" && (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                updateLeadStatusMutation.mutate({
-                                  leadId: lead.id,
-                                  status: "proposal",
-                                })
-                              }
-                              disabled={updateLeadStatusMutation.isPending}
-                            >
-                              <FileText className="w-4 h-4 mr-1" />
-                              Create Proposal
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline">
+                          {(() => {
+                            const actionButton = getLeadActionButton(lead.status || "new", lead.id);
+                            const IconComponent = actionButton.icon;
+                            return (
+                              <Button
+                                size="sm"
+                                onClick={actionButton.action}
+                                className={actionButton.className}
+                                data-testid={`button-${actionButton.text.toLowerCase().replace(/\s+/g, "-")}-${lead.id}`}
+                              >
+                                <IconComponent className="w-4 h-4 mr-1" />
+                                {actionButton.text}
+                              </Button>
+                            );
+                          })()}
+                          <Button size="sm" variant="outline" data-testid={`button-call-${lead.id}`}>
                             <PhoneCall className="w-4 h-4 mr-1" />
                             Call
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" data-testid={`button-email-${lead.id}`}>
                             <Mail className="w-4 h-4 mr-1" />
                             Email
                           </Button>
