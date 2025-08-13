@@ -264,17 +264,20 @@ export function RoleAwareCollapsibleSidebar({ className }: RoleAwareCollapsibleS
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
 
-  // Fetch user role
-  const { data: userRole } = useQuery({
-    queryKey: ["/api/auth/role"],
-    enabled: isAuthenticated,
-  });
+  // Use role from user object instead of separate API call
+  const userRole = user?.role;
 
   // Stable navigation sections
   const navigationSections = useMemo(() => 
     createNavigationSections(userRole), 
     [userRole?.name, userRole?.canAccessAllTenants, userRole?.level, JSON.stringify(userRole?.permissions)]
   );
+
+  console.log('Navigation Debug:', {
+    userRole,
+    navigationSections: navigationSections?.length,
+    sections: navigationSections?.map(s => s.title)
+  });
 
   // Auto-expand based on current route
   useEffect(() => {
@@ -329,7 +332,26 @@ export function RoleAwareCollapsibleSidebar({ className }: RoleAwareCollapsibleS
   const isActive = (path: string) => location === path || location.startsWith(path + '/');
 
   if (!isAuthenticated) {
-    return null;
+    return (
+      <div className={`bg-white border-r border-gray-200 ${className}`}>
+        <div className="p-4">
+          <div className="text-gray-500">Not authenticated</div>
+        </div>
+      </div>
+    );
+  }
+
+
+
+  if (!navigationSections || navigationSections.length === 0) {
+    return (
+      <div className={`bg-white border-r border-gray-200 ${className}`}>
+        <div className="p-4">
+          <div className="text-gray-500">No navigation sections available</div>
+          <div className="text-xs text-gray-400 mt-1">Role: {JSON.stringify(userRole)}</div>
+        </div>
+      </div>
+    );
   }
 
   const renderNavigationItem = (section: NavigationSection) => {
