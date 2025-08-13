@@ -21,7 +21,8 @@ type ContextualPageKey =
   | "deals-management-optimization"
   | "purchase-orders-optimization"
   | "quote-builder-optimization"
-  | "task-management-optimization";
+  | "task-management-optimization"
+  | "quotes-management-optimization";
 
 interface ContextualHelpProps {
   page: ContextualPageKey;
@@ -200,6 +201,17 @@ const contentMap: Record<ContextualPageKey, {
       "Monitor team analytics for continuous performance improvement",
     ],
     seasonal: "Q4 planning: Use predictive analytics for accurate resource planning",
+  },
+  "quotes-management-optimization": {
+    title: "Quote Success Intelligence",
+    industryContext: "AI-powered quote management and success prediction can increase conversion rates by 19% and improve quote-to-close ratios by 15%.",
+    quickTips: [
+      "Monitor high-risk quotes and take immediate action to prevent losses",
+      "Use engagement tracking to identify optimal follow-up timing",
+      "Apply automated nurturing campaigns for consistent prospect engagement",
+      "Leverage competitive analysis to strengthen quote positioning",
+    ],
+    seasonal: "Q4 timing: Following up on day 3 increases acceptance by 19%",
   },
 };
 

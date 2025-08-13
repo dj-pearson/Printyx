@@ -78,6 +78,7 @@ const DealsManagementOptimization = React.lazy(() => import("@/pages/DealsManage
 const PurchaseOrdersOptimization = React.lazy(() => import("@/pages/PurchaseOrdersOptimization"));
 const QuoteBuilderOptimization = React.lazy(() => import("@/pages/QuoteBuilderOptimization"));
 const TaskManagementOptimization = React.lazy(() => import("@/pages/TaskManagementOptimization"));
+const QuotesManagementOptimization = React.lazy(() => import("@/pages/QuotesManagementOptimization"));
 import QuotesManagement from "@/pages/QuotesManagement";
 import CompanyIdsTest from "@/pages/CompanyIdsTest";
 import QuoteView from "@/pages/QuoteView";
@@ -302,6 +303,10 @@ function Router() {
           <Route
             path="/task-management-optimization"
             component={TaskManagementOptimization}
+          />
+          <Route
+            path="/quotes-management-optimization"
+            component={QuotesManagementOptimization}
           />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
