@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download } from "lucide-react";
+import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,8 @@ export default function SoftwareProducts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SoftwareProduct | null>(null);
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +52,29 @@ export default function SoftwareProducts() {
       toast({
         title: "Error",
         description: "Failed to create software product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: async (data: { id: string } & InsertSoftwareProduct) => {
+      return await apiRequest(`/api/software-products/${data.id}`, 'PUT', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
+      setEditDialogOpen(false);
+      editForm.reset();
+      setSelectedProduct(null);
+      toast({
+        title: "Success",
+        description: "Software product updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update software product",
         variant: "destructive",
       });
     },
@@ -127,8 +152,95 @@ export default function SoftwareProducts() {
     },
   });
 
+  // Create form for new products
   const onSubmit = (data: InsertSoftwareProduct) => {
     createProductMutation.mutate(data);
+  };
+
+  // Edit form for existing products  
+  const editForm = useForm<InsertSoftwareProduct>({
+    resolver: zodResolver(insertSoftwareProductSchema),
+    defaultValues: {
+      tenantId: "",
+      productCode: "",
+      productName: "",
+      productType: null,
+      category: null,
+      accessoryType: null,
+      description: null,
+      summary: null,
+      note: null,
+      eaNotes: null,
+      configNote: null,
+      relatedProducts: null,
+      isActive: true,
+      availableForAll: false,
+      repostEdit: false,
+      salesRepCredit: true,
+      funding: true,
+      lease: false,
+      paymentType: null,
+      standardActive: false,
+      standardCost: null,
+      standardRepPrice: null,
+      newActive: false,
+      newCost: null,
+      newRepPrice: null,
+      upgradeActive: false,
+      upgradeCost: null,
+      upgradeRepPrice: null,
+      priceBookId: null,
+      tempKey: null,
+    },
+  });
+
+  const onEditSubmit = (data: InsertSoftwareProduct) => {
+    if (selectedProduct) {
+      updateProductMutation.mutate({ ...data, id: selectedProduct.id });
+    }
+  };
+
+  const handleViewDetails = (product: SoftwareProduct) => {
+    setSelectedProduct(product);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleEdit = (product: SoftwareProduct) => {
+    setSelectedProduct(product);
+    // Reset the edit form with the product's current values
+    editForm.reset({
+      tenantId: product.tenantId || "",
+      productCode: product.productCode || "",
+      productName: product.productName || "",
+      productType: product.productType || null,
+      category: product.category || null,
+      accessoryType: product.accessoryType || null,
+      description: product.description || null,
+      summary: product.summary || null,
+      note: product.note || null,
+      eaNotes: product.eaNotes || null,
+      configNote: product.configNote || null,
+      relatedProducts: product.relatedProducts || null,
+      isActive: product.isActive ?? true,
+      availableForAll: product.availableForAll ?? false,
+      repostEdit: product.repostEdit ?? false,
+      salesRepCredit: product.salesRepCredit ?? true,
+      funding: product.funding ?? true,
+      lease: product.lease ?? false,
+      paymentType: product.paymentType || null,
+      standardActive: product.standardActive ?? false,
+      standardCost: product.standardCost || null,
+      standardRepPrice: product.standardRepPrice || null,
+      newActive: product.newActive ?? false,
+      newCost: product.newCost || null,
+      newRepPrice: product.newRepPrice || null,
+      upgradeActive: product.upgradeActive ?? false,
+      upgradeCost: product.upgradeCost || null,
+      upgradeRepPrice: product.upgradeRepPrice || null,
+      priceBookId: product.priceBookId || null,
+      tempKey: product.tempKey || null,
+    });
+    setEditDialogOpen(true);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,14 +371,26 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 {product.funding && <Badge variant="outline" className="text-xs">Funding</Badge>}
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSelectedProduct(product)}
-            >
-              <Edit3 className="h-4 w-4 mr-1" />
-              View Details
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleViewDetails(product)}
+                data-testid={`button-view-details-${product.id}`}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                View Details
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleEdit(product)}
+                data-testid={`button-edit-${product.id}`}
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -942,6 +1066,485 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* View Details Dialog */}
+        <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{selectedProduct?.productName}</DialogTitle>
+              <DialogDescription>
+                View detailed information for this software product
+              </DialogDescription>
+            </DialogHeader>
+            {selectedProduct && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Product Code</h4>
+                      <p className="font-medium">{selectedProduct.productCode}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Category</h4>
+                      <p>{selectedProduct.category || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Product Type</h4>
+                      <p>{selectedProduct.productType || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Payment Type</h4>
+                      <p>{selectedProduct.paymentType || "Not specified"}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
+                      <Badge variant={selectedProduct.isActive ? "default" : "secondary"}>
+                        {selectedProduct.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Features</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProduct.salesRepCredit && <Badge variant="outline">Sales Rep Credit</Badge>}
+                        {selectedProduct.funding && <Badge variant="outline">Funding Available</Badge>}
+                        {selectedProduct.lease && <Badge variant="outline">Lease Option</Badge>}
+                        {selectedProduct.availableForAll && <Badge variant="outline">Available for All</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold">Pricing Information</h4>
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h5 className="font-medium">Standard Pricing</h5>
+                        <Badge variant={selectedProduct.standardActive ? "default" : "secondary"}>
+                          {selectedProduct.standardActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-sm text-muted-foreground">Cost: {formatCurrency(selectedProduct.standardCost)}</div>
+                        <div className="text-lg font-bold">Rep: {formatCurrency(selectedProduct.standardRepPrice)}</div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h5 className="font-medium">New Pricing</h5>
+                        <Badge variant={selectedProduct.newActive ? "default" : "secondary"}>
+                          {selectedProduct.newActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-sm text-muted-foreground">Cost: {formatCurrency(selectedProduct.newCost)}</div>
+                        <div className="text-lg font-bold">Rep: {formatCurrency(selectedProduct.newRepPrice)}</div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h5 className="font-medium">Upgrade Pricing</h5>
+                        <Badge variant={selectedProduct.upgradeActive ? "default" : "secondary"}>
+                          {selectedProduct.upgradeActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-sm text-muted-foreground">Cost: {formatCurrency(selectedProduct.upgradeCost)}</div>
+                        <div className="text-lg font-bold">Rep: {formatCurrency(selectedProduct.upgradeRepPrice)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {(selectedProduct.description || selectedProduct.summary) && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-semibold">Description</h4>
+                      {selectedProduct.summary && (
+                        <div>
+                          <h5 className="text-sm font-medium text-muted-foreground mb-1">Summary</h5>
+                          <p className="text-sm">{selectedProduct.summary}</p>
+                        </div>
+                      )}
+                      {selectedProduct.description && (
+                        <div>
+                          <h5 className="text-sm font-medium text-muted-foreground mb-1">Description</h5>
+                          <p className="text-sm">{selectedProduct.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setDetailsDialogOpen(false)}>
+                    Close
+                  </Button>
+                  <Button type="button" onClick={() => {
+                    setDetailsDialogOpen(false);
+                    handleEdit(selectedProduct);
+                  }}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Product
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Product Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Software Product</DialogTitle>
+              <DialogDescription>
+                Modify the software product information and pricing
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Basic Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="productCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product Code</FormLabel>
+                          <FormControl>
+                            <Input placeholder="SW-001" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="productName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Software Product Name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="productType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product Type</FormLabel>
+                          <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="--None--" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">--None--</SelectItem>
+                              <SelectItem value="Application">Application</SelectItem>
+                              <SelectItem value="License">License</SelectItem>
+                              <SelectItem value="Cloud Service">Cloud Service</SelectItem>
+                              <SelectItem value="Plugin">Plugin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="--None--" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">--None--</SelectItem>
+                              <SelectItem value="Document Management">Document Management</SelectItem>
+                              <SelectItem value="UniFlow">UniFlow</SelectItem>
+                              <SelectItem value="Papercut">Papercut</SelectItem>
+                              <SelectItem value="PrinterLogic">PrinterLogic</SelectItem>
+                              <SelectItem value="Print Management">Print Management</SelectItem>
+                              <SelectItem value="Security Software">Security Software</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="paymentType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Type</FormLabel>
+                          <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="--None--" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">--None--</SelectItem>
+                              <SelectItem value="Monthly">Monthly</SelectItem>
+                              <SelectItem value="Annual">Annual</SelectItem>
+                              <SelectItem value="Perpetual">Perpetual</SelectItem>
+                              <SelectItem value="Per-user">Per-user</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={editForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Describe the software product features and capabilities..."
+                            className="min-h-[80px]"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <label className="text-sm font-medium">Active</label>
+                        </div>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="availableForAll"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <label className="text-sm font-medium">Available for All</label>
+                        </div>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Pricing */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Pricing & Options</h3>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="salesRepCredit"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <label className="text-sm font-medium">Sales Rep Credit</label>
+                        </div>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="funding"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <label className="text-sm font-medium">Funding</label>
+                        </div>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="lease"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <label className="text-sm font-medium">Lease</label>
+                        </div>
+                      )}
+                    />
+                  </div>
+
+                  {/* Standard Pricing */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="standardActive"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <label className="text-sm font-medium">Standard Active</label>
+                        </div>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name="standardCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Standard Cost</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="500.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="standardRepPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Standard Rep Price</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="599.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* New Pricing */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="newActive"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <label className="text-sm font-medium">New Active</label>
+                        </div>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name="newCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Cost</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="450.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="newRepPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Rep Price</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="549.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={updateProductMutation.isPending}>
+                    {updateProductMutation.isPending ? "Updating..." : "Update Product"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
 
         {/* Search and Filter Bar */}
         <div className="flex items-center gap-4">
