@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Database, Server, Lock, Shield, Activity, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { MainLayout } from "@/components/layout/main-layout";
 
 export default function SystemSecurity() {
   const [activeTab, setActiveTab] = useState("infrastructure");
@@ -17,8 +18,9 @@ export default function SystemSecurity() {
   });
 
   return (
-    <div className="space-y-6">
-      <div>
+    <MainLayout>
+      <div className="space-y-6">
+        <div>
         <h1 className="text-3xl font-bold text-gray-900">System Security</h1>
         <p className="text-gray-600 mt-2">
           Infrastructure security monitoring, database protection, and system hardening
@@ -456,6 +458,7 @@ export default function SystemSecurity() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
