@@ -56,21 +56,36 @@ export default function SoftwareProducts() {
   });
 
   const csvImportMutation = useMutation({
-    mutationFn: async (csvData: string) => {
-      return await apiRequest('/api/software-products/import-csv', 'POST', { csvData });
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/software-products/import', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Import failed');
+      }
+      
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
       setCsvDialogOpen(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       toast({
-        title: "Success",
-        description: "CSV data imported successfully",
+        title: "Import Completed",
+        description: `Successfully imported ${data.imported} products. ${data.skipped > 0 ? `Skipped ${data.skipped} rows.` : ''}`,
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to import CSV data",
+        title: "Import Failed",
+        description: "Failed to import CSV data. Please check your file format.",
         variant: "destructive",
       });
     },
@@ -118,13 +133,8 @@ export default function SoftwareProducts() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'text/csv') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const csvData = e.target?.result as string;
-        csvImportMutation.mutate(csvData);
-      };
-      reader.readAsText(file);
+    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
+      csvImportMutation.mutate(file);
     } else {
       toast({
         title: "Invalid File",
@@ -385,7 +395,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Application">Application</SelectItem>
                                 <SelectItem value="License">License</SelectItem>
                                 <SelectItem value="Cloud Service">Cloud Service</SelectItem>
@@ -433,7 +443,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Software License">Software License</SelectItem>
                                 <SelectItem value="Add-on Module">Add-on Module</SelectItem>
                                 <SelectItem value="Cloud Subscription">Cloud Subscription</SelectItem>
@@ -457,7 +467,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Document Management">Document Management</SelectItem>
                                 <SelectItem value="Print Management">Print Management</SelectItem>
                                 <SelectItem value="UniFlow">UniFlow</SelectItem>
@@ -695,10 +705,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
-                                <SelectItem value="License">License</SelectItem>
-                                <SelectItem value="Subscription">Subscription</SelectItem>
-                                <SelectItem value="One-time">One-time</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
+                                <SelectItem value="Monthly">Monthly</SelectItem>
+                                <SelectItem value="Annual">Annual</SelectItem>
+                                <SelectItem value="Perpetual">Perpetual</SelectItem>
                                 <SelectItem value="Per-user">Per-user</SelectItem>
                               </SelectContent>
                             </Select>
