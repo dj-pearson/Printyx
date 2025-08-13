@@ -196,7 +196,29 @@ export default function SoftwareProducts() {
 
   const onEditSubmit = (data: InsertSoftwareProduct) => {
     if (selectedProduct) {
-      updateProductMutation.mutate({ ...data, id: selectedProduct.id });
+      // Convert empty strings back to null for database storage
+      const sanitizedData = {
+        ...data,
+        productType: data.productType === "" ? null : data.productType,
+        category: data.category === "" ? null : data.category,
+        accessoryType: data.accessoryType === "" ? null : data.accessoryType,
+        paymentType: data.paymentType === "" ? null : data.paymentType,
+        description: data.description === "" ? null : data.description,
+        summary: data.summary === "" ? null : data.summary,
+        note: data.note === "" ? null : data.note,
+        eaNotes: data.eaNotes === "" ? null : data.eaNotes,
+        configNote: data.configNote === "" ? null : data.configNote,
+        relatedProducts: data.relatedProducts === "" ? null : data.relatedProducts,
+        standardCost: data.standardCost === "" ? null : data.standardCost,
+        standardRepPrice: data.standardRepPrice === "" ? null : data.standardRepPrice,
+        newCost: data.newCost === "" ? null : data.newCost,
+        newRepPrice: data.newRepPrice === "" ? null : data.newRepPrice,
+        upgradeCost: data.upgradeCost === "" ? null : data.upgradeCost,
+        upgradeRepPrice: data.upgradeRepPrice === "" ? null : data.upgradeRepPrice,
+        priceBookId: data.priceBookId === "" ? null : data.priceBookId,
+        tempKey: data.tempKey === "" ? null : data.tempKey,
+      };
+      updateProductMutation.mutate({ ...sanitizedData, id: selectedProduct.id });
     }
   };
 
@@ -208,37 +230,38 @@ export default function SoftwareProducts() {
   const handleEdit = (product: SoftwareProduct) => {
     setSelectedProduct(product);
     // Reset the edit form with the product's current values
+    // Convert null values to empty strings for Select components
     editForm.reset({
       tenantId: product.tenantId || "",
       productCode: product.productCode || "",
       productName: product.productName || "",
-      productType: product.productType || null,
-      category: product.category || null,
-      accessoryType: product.accessoryType || null,
-      description: product.description || null,
-      summary: product.summary || null,
-      note: product.note || null,
-      eaNotes: product.eaNotes || null,
-      configNote: product.configNote || null,
-      relatedProducts: product.relatedProducts || null,
+      productType: product.productType || "",
+      category: product.category || "",
+      accessoryType: product.accessoryType || "",
+      description: product.description || "",
+      summary: product.summary || "",
+      note: product.note || "",
+      eaNotes: product.eaNotes || "",
+      configNote: product.configNote || "",
+      relatedProducts: product.relatedProducts || "",
       isActive: product.isActive ?? true,
       availableForAll: product.availableForAll ?? false,
       repostEdit: product.repostEdit ?? false,
       salesRepCredit: product.salesRepCredit ?? true,
       funding: product.funding ?? true,
       lease: product.lease ?? false,
-      paymentType: product.paymentType || null,
+      paymentType: product.paymentType || "",
       standardActive: product.standardActive ?? false,
-      standardCost: product.standardCost || null,
-      standardRepPrice: product.standardRepPrice || null,
+      standardCost: product.standardCost || "",
+      standardRepPrice: product.standardRepPrice || "",
       newActive: product.newActive ?? false,
-      newCost: product.newCost || null,
-      newRepPrice: product.newRepPrice || null,
+      newCost: product.newCost || "",
+      newRepPrice: product.newRepPrice || "",
       upgradeActive: product.upgradeActive ?? false,
-      upgradeCost: product.upgradeCost || null,
-      upgradeRepPrice: product.upgradeRepPrice || null,
-      priceBookId: product.priceBookId || null,
-      tempKey: product.tempKey || null,
+      upgradeCost: product.upgradeCost || "",
+      upgradeRepPrice: product.upgradeRepPrice || "",
+      priceBookId: product.priceBookId || "",
+      tempKey: product.tempKey || "",
     });
     setEditDialogOpen(true);
   };
