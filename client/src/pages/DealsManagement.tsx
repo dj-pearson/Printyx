@@ -1091,7 +1091,7 @@ export default function DealsManagement() {
     }).format(value || 0);
 
   return (
-    <MainLayout title="Deals" description="Manage your sales pipeline and opportunities">
+    <MainLayout title="Opportunities" description="Manage your sales pipeline and opportunities">
       <div className="flex flex-col h-full">
         <div className="mb-4">
           <ContextualHelp page="deals-management" />
@@ -1223,7 +1223,7 @@ export default function DealsManagement() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Create Deal Button */}
+              {/* Create Opportunity Button */}
               <Dialog
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
@@ -1231,14 +1231,14 @@ export default function DealsManagement() {
                 <DialogTrigger asChild>
                   <Button className="gap-2 flex-1 sm:flex-none">
                     <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Create Deal</span>
+                    <span className="hidden sm:inline">+ Opportunity</span>
                     <span className="sm:hidden">New</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-lg lg:max-w-2xl w-[95vw] md:w-auto">
                   <DialogHeader>
                     <DialogTitle className="text-lg sm:text-xl">
-                      Create New Deal
+                      Create New Opportunity
                     </DialogTitle>
                   </DialogHeader>
 
@@ -1253,10 +1253,10 @@ export default function DealsManagement() {
                           name="title"
                           render={({ field }) => (
                             <FormItem className="sm:col-span-2">
-                              <FormLabel>Deal Title *</FormLabel>
+                              <FormLabel>Opportunity Title *</FormLabel>
                               <FormControl>
                                 <Input
-                                  placeholder="Enter deal title"
+                                  placeholder="Enter opportunity title"
                                   className="mobile-form-input"
                                   {...field}
                                 />
@@ -1271,7 +1271,7 @@ export default function DealsManagement() {
                           name="amount"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Deal Amount</FormLabel>
+                              <FormLabel>Opportunity Amount</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -1463,7 +1463,7 @@ export default function DealsManagement() {
                           name="dealStage"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Deal Stage</FormLabel>
+                              <FormLabel>Opportunity Stage</FormLabel>
                               <Select
                                 onValueChange={field.onChange}
                                 defaultValue={field.value}
@@ -1797,7 +1797,7 @@ export default function DealsManagement() {
                               <FormLabel>Description</FormLabel>
                               <FormControl>
                                 <Textarea
-                                  placeholder="Deal description..."
+                                  placeholder="Opportunity description..."
                                   {...field}
                                 />
                               </FormControl>
@@ -1823,7 +1823,7 @@ export default function DealsManagement() {
                         >
                           {createDealMutation.isPending
                             ? "Creating..."
-                            : "Create Deal"}
+                            : "Create Opportunity"}
                         </Button>
                       </div>
                     </form>
