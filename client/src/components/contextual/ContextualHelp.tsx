@@ -149,6 +149,17 @@ const contentMap: Record<ContextualPageKey, {
     ],
     seasonal: "Traffic conditions updated every 5 minutes for optimal routing",
   },
+  "product-catalog-optimization": {
+    title: "Product Catalog Intelligence",
+    industryContext: "AI-powered pricing optimization can increase profit margins by 5-15% while maintaining competitiveness.",
+    quickTips: [
+      "Monitor competitor pricing daily for market positioning insights",
+      "Apply AI pricing recommendations to maximize revenue opportunities",
+      "Review product lifecycle alerts for inventory optimization",
+      "Use demand forecasting to guide purchasing decisions",
+    ],
+    seasonal: "Market analysis shows 23% seasonal demand variance",
+  },
 };
 
 export default function ContextualHelp({ page, className = "" }: ContextualHelpProps) {

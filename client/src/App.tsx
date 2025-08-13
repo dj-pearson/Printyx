@@ -73,6 +73,7 @@ import TermsAndConditions from "@/pages/legal/TermsAndConditions";
 import LeadsManagement from "@/pages/LeadsManagement";
 import QuoteProposalGeneration from "@/pages/QuoteProposalGeneration";
 import QuoteBuilderPage from "@/pages/QuoteBuilderPage";
+const ProductCatalogOptimization = React.lazy(() => import("@/pages/ProductCatalogOptimization"));
 import QuotesManagement from "@/pages/QuotesManagement";
 import CompanyIdsTest from "@/pages/CompanyIdsTest";
 import QuoteView from "@/pages/QuoteView";
@@ -278,6 +279,10 @@ function Router() {
           />
           <Route path="/mobile-field-service" component={MobileFieldService} />
           <Route path="/product-catalog" component={ProductCatalog} />
+          <Route
+            path="/product-catalog-optimization"
+            component={ProductCatalogOptimization}
+          />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
           <Route path="/admin/product-models" component={ProductModels} />
