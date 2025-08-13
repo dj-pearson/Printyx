@@ -6842,14 +6842,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/software-products/import",
     upload.single("file"),
     requireAuth,
-    requireAuth,
     async (req: any, res) => {
-      res.json({
-        success: false,
-        imported: 0,
-        skipped: 0,
-        errors: ["Import for Software Products not yet implemented"],
-      });
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "CSV file is required" });
+        }
+
+        const csvData = file.buffer.toString('utf-8');
+        const lines = csvData.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+        
+        let imported = 0;
+        let skipped = 0;
+        const errors: string[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          try {
+            const values = line.split(',').map(v => v.trim());
+            const productData: any = {
+              tenantId,
+              productCode: values[0] || '',
+              productName: values[1] || '',
+              productType: values[2] || 'none',
+              category: values[3] || 'none',
+              accessoryType: values[4] || 'none',
+              paymentType: values[5] || 'none',
+              description: values[6] || '',
+              standardCost: parseFloat(values[7]) || 0,
+              standardRepPrice: parseFloat(values[8]) || 0,
+              newCost: parseFloat(values[9]) || 0,
+              newRepPrice: parseFloat(values[10]) || 0,
+              upgradeCost: parseFloat(values[11]) || 0,
+              upgradeRepPrice: parseFloat(values[12]) || 0,
+              isActive: values[13] === 'TRUE' || values[13] === 'true',
+              availableForAll: values[14] === 'TRUE' || values[14] === 'true',
+              salesRepCredit: values[15] === 'TRUE' || values[15] === 'true',
+              funding: values[16] === 'TRUE' || values[16] === 'true',
+              lease: values[17] === 'TRUE' || values[17] === 'true',
+            };
+
+            await storage.createSoftwareProduct(productData);
+            imported++;
+          } catch (error) {
+            console.error(`Error importing row ${i}:`, error);
+            errors.push(`Row ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            skipped++;
+          }
+        }
+
+        res.json({
+          success: imported > 0,
+          imported,
+          skipped,
+          errors: errors.slice(0, 10), // Limit errors to first 10
+        });
+      } catch (error) {
+        console.error("Error importing software products:", error);
+        res.status(500).json({ message: "Failed to import software products" });
+      }
     }
   );
 
