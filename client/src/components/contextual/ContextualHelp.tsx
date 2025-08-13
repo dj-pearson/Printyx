@@ -22,7 +22,8 @@ type ContextualPageKey =
   | "purchase-orders-optimization"
   | "quote-builder-optimization"
   | "task-management-optimization"
-  | "quotes-management-optimization";
+  | "quotes-management-optimization"
+  | "quote-proposal-generation-optimization";
 
 interface ContextualHelpProps {
   page: ContextualPageKey;
@@ -212,6 +213,17 @@ const contentMap: Record<ContextualPageKey, {
       "Leverage competitive analysis to strengthen quote positioning",
     ],
     seasonal: "Q4 timing: Following up on day 3 increases acceptance by 19%",
+  },
+  "quote-proposal-generation-optimization": {
+    title: "Proposal Intelligence",
+    industryContext: "AI-powered proposal generation can reduce creation time by 45% and increase success rates by 40%, with proposals featuring ROI calculations showing 67% higher acceptance rates.",
+    quickTips: [
+      "Use intelligent template selection for optimal customer matching",
+      "Apply dynamic content personalization based on industry and company size",
+      "Leverage AI content generation for compelling executive summaries",
+      "Monitor proposal performance analytics for continuous improvement",
+    ],
+    seasonal: "Q4 opportunity: Proposals with ROI calculations have 40% higher acceptance rates",
   },
 };
 
