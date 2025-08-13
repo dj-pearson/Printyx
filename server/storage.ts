@@ -26,6 +26,7 @@ import {
   invoiceLineItems,
   productModels,
   productAccessories,
+  accessoryModelCompatibility,
   cpcRates,
   professionalServices,
   serviceProducts,
@@ -79,6 +80,7 @@ import {
   type Invoice,
   type ProductModel,
   type ProductAccessory,
+  type AccessoryModelCompatibility,
   type CpcRate,
   type ProfessionalService,
   type ServiceProduct,
@@ -103,6 +105,7 @@ import {
   type InsertSystemIntegration,
   type InsertProductModel,
   type InsertProductAccessory,
+  type InsertAccessoryModelCompatibility,
   type InsertCpcRate,
   type InsertProfessionalService,
   type InsertServiceProduct,
@@ -440,6 +443,24 @@ export interface IStorage {
   createProductAccessory(
     accessory: InsertProductAccessory
   ): Promise<ProductAccessory>;
+
+  // Accessory-Model Compatibility operations
+  getAccessoryCompatibilities(
+    accessoryId: string,
+    tenantId: string
+  ): Promise<AccessoryModelCompatibility[]>;
+  getModelCompatibilities(
+    modelId: string,
+    tenantId: string
+  ): Promise<AccessoryModelCompatibility[]>;
+  createAccessoryModelCompatibility(
+    compatibility: InsertAccessoryModelCompatibility
+  ): Promise<AccessoryModelCompatibility>;
+  deleteAccessoryModelCompatibility(
+    accessoryId: string,
+    modelId: string,
+    tenantId: string
+  ): Promise<void>;
 
   getCpcRates(modelId: string, tenantId: string): Promise<CpcRate[]>;
   createCpcRate(rate: InsertCpcRate): Promise<CpcRate>;
@@ -2429,12 +2450,27 @@ export class DatabaseStorage implements IStorage {
     modelId: string,
     tenantId: string
   ): Promise<ProductAccessory[]> {
+    // Get accessories compatible with this model via the junction table
+    const accessoryIds = await db
+      .select({ accessoryId: accessoryModelCompatibility.accessoryId })
+      .from(accessoryModelCompatibility)
+      .where(
+        and(
+          eq(accessoryModelCompatibility.modelId, modelId),
+          eq(accessoryModelCompatibility.tenantId, tenantId)
+        )
+      );
+
+    if (accessoryIds.length === 0) {
+      return [];
+    }
+
     return await db
       .select()
       .from(productAccessories)
       .where(
         and(
-          eq(productAccessories.modelId, modelId),
+          inArray(productAccessories.id, accessoryIds.map(a => a.accessoryId)),
           eq(productAccessories.tenantId, tenantId)
         )
       )
@@ -2467,6 +2503,63 @@ export class DatabaseStorage implements IStorage {
       )
       .returning();
     return result;
+  }
+
+  // Accessory-Model Compatibility operations
+  async getAccessoryCompatibilities(
+    accessoryId: string,
+    tenantId: string
+  ): Promise<AccessoryModelCompatibility[]> {
+    return await db
+      .select()
+      .from(accessoryModelCompatibility)
+      .where(
+        and(
+          eq(accessoryModelCompatibility.accessoryId, accessoryId),
+          eq(accessoryModelCompatibility.tenantId, tenantId)
+        )
+      );
+  }
+
+  async getModelCompatibilities(
+    modelId: string,
+    tenantId: string
+  ): Promise<AccessoryModelCompatibility[]> {
+    return await db
+      .select()
+      .from(accessoryModelCompatibility)
+      .where(
+        and(
+          eq(accessoryModelCompatibility.modelId, modelId),
+          eq(accessoryModelCompatibility.tenantId, tenantId)
+        )
+      );
+  }
+
+  async createAccessoryModelCompatibility(
+    compatibility: InsertAccessoryModelCompatibility
+  ): Promise<AccessoryModelCompatibility> {
+    const [result] = await db
+      .insert(accessoryModelCompatibility)
+      .values(compatibility)
+      .returning();
+    return result;
+  }
+
+  async deleteAccessoryModelCompatibility(
+    accessoryId: string,
+    modelId: string,
+    tenantId: string
+  ): Promise<void> {
+    await db
+      .delete(accessoryModelCompatibility)
+      .where(
+        and(
+          eq(accessoryModelCompatibility.accessoryId, accessoryId),
+          eq(accessoryModelCompatibility.modelId, modelId),
+          eq(accessoryModelCompatibility.tenantId, tenantId)
+        )
+      );
   }
 
   async getCpcRates(modelId: string, tenantId: string): Promise<CpcRate[]> {

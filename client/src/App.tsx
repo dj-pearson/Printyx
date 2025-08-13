@@ -28,6 +28,7 @@ import Reports from "@/pages/Reports";
 import MeterReadings from "@/pages/MeterReadings";
 import ProductModels from "@/pages/ProductModels";
 import ProductAccessories from "@/pages/ProductAccessories";
+import EnhancedProductAccessories from "@/pages/EnhancedProductAccessories";
 import ProfessionalServices from "@/pages/ProfessionalServices";
 import ServiceProducts from "@/pages/ServiceProducts";
 import SoftwareProducts from "@/pages/SoftwareProducts";
@@ -331,10 +332,11 @@ function Router() {
             path="/admin/product-management-hub"
             component={ProductManagementHub}
           />
-          <Route path="/product-accessories" component={ProductAccessories} />
+          <Route path="/product-accessories" component={EnhancedProductAccessories} />
+          <Route path="/product-accessories-legacy" component={ProductAccessories} />
           <Route
             path="/admin/product-accessories"
-            component={ProductAccessories}
+            component={EnhancedProductAccessories}
           />
           <Route
             path="/professional-services"
