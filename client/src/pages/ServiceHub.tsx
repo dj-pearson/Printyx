@@ -64,6 +64,8 @@ import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
 import MobileFAB from "@/components/layout/MobileFAB";
 import PageAlerts from "@/components/contextual/PageAlerts";
 import { useCrossModuleIntegration, useWorkflowAutomation } from "@/hooks/useCrossModuleIntegration";
+import { useMobileDetection } from "@/hooks/useExternalIntegrations";
+import { MobileServiceDispatch } from "@/components/mobile/MobileServiceDispatch";
 import { CustomerEquipmentProfile } from "@/components/CustomerEquipmentProfile";
 
 export default function ServiceHub() {
@@ -85,6 +87,7 @@ export default function ServiceHub() {
   const queryClient = useQueryClient();
   const crossModule = useCrossModuleIntegration();
   const workflowAutomation = useWorkflowAutomation();
+  const { isMobile } = useMobileDetection();
 
   // Fetch service tickets
   const {
