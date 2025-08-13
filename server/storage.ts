@@ -2805,6 +2805,18 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updateSoftwareProduct(
+    id: string,
+    product: InsertSoftwareProduct
+  ): Promise<SoftwareProduct> {
+    const [result] = await db
+      .update(softwareProducts)
+      .set(product)
+      .where(eq(softwareProducts.id, id))
+      .returning();
+    return result;
+  }
+
   // Product Models - fallback implementation
   async getAllProductModels(tenantId: string): Promise<any[]> {
     try {
