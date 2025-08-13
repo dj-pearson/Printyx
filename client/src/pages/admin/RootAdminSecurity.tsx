@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, AlertTriangle, Lock, Key, Activity, Users, Database, Globe } from "lucide-react";
+import { MainLayout } from "@/components/layout/main-layout";
 
 export default function RootAdminSecurity() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -24,8 +25,9 @@ export default function RootAdminSecurity() {
   });
 
   return (
-    <div className="space-y-6">
-      <div>
+    <MainLayout>
+      <div className="space-y-6">
+        <div>
         <h1 className="text-3xl font-bold text-gray-900">Root Admin Security</h1>
         <p className="text-gray-600 mt-2">
           Comprehensive security monitoring and management for the entire Printyx platform
@@ -40,9 +42,9 @@ export default function RootAdminSecurity() {
             <Shield className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">98.5%</div>
+            <div className="text-2xl font-bold text-green-600">{securityMetrics?.securityScore || "Loading..."}</div>
             <Badge variant="outline" className="mt-2 text-green-600 border-green-200">
-              Excellent
+              {securityMetrics?.securityStatus || "Loading..."}
             </Badge>
           </CardContent>
         </Card>
@@ -53,9 +55,9 @@ export default function RootAdminSecurity() {
             <AlertTriangle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">2</div>
+            <div className="text-2xl font-bold text-orange-600">{activeThreats?.length || "0"}</div>
             <Badge variant="outline" className="mt-2 text-orange-600 border-orange-200">
-              Low Risk
+              {securityMetrics?.threatLevel || "Loading..."}
             </Badge>
           </CardContent>
         </Card>
@@ -66,7 +68,7 @@ export default function RootAdminSecurity() {
             <Lock className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{securityMetrics?.failedLogins || "0"}</div>
             <p className="text-xs text-gray-500 mt-2">Last 24 hours</p>
           </CardContent>
         </Card>
@@ -77,20 +79,21 @@ export default function RootAdminSecurity() {
             <Key className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">847</div>
+            <div className="text-2xl font-bold">{securityMetrics?.activeApiKeys || "0"}</div>
             <p className="text-xs text-gray-500 mt-2">Active across platform</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Security Alerts */}
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Security Notice:</strong> 2 suspicious login attempts detected from IP 192.168.1.100. 
-          Automatic blocking has been applied.
-        </AlertDescription>
-      </Alert>
+      {activeThreats && activeThreats.length > 0 && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Security Notice:</strong> {activeThreats.length} security threat(s) detected. Review required.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
@@ -112,27 +115,21 @@ export default function RootAdminSecurity() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <div>
-                      <p className="font-medium">Failed login attempt blocked</p>
-                      <p className="text-sm text-gray-500">IP: 192.168.1.100</p>
-                    </div>
-                    <Badge variant="destructive">High</Badge>
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <div>
-                      <p className="font-medium">New admin user created</p>
-                      <p className="text-sm text-gray-500">Tenant: Acme Corp</p>
-                    </div>
-                    <Badge variant="secondary">Medium</Badge>
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <p className="font-medium">API rate limit exceeded</p>
-                      <p className="text-sm text-gray-500">Endpoint: /api/customers</p>
-                    </div>
-                    <Badge variant="outline">Low</Badge>
-                  </div>
+                  {auditLogs && auditLogs.length > 0 ? (
+                    auditLogs.slice(0, 5).map((log: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between py-2 border-b">
+                        <div>
+                          <p className="font-medium">{log.action}</p>
+                          <p className="text-sm text-gray-500">{log.details}</p>
+                        </div>
+                        <Badge variant={log.severity === 'high' ? 'destructive' : log.severity === 'medium' ? 'secondary' : 'outline'}>
+                          {log.severity}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No recent security events</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -148,19 +145,19 @@ export default function RootAdminSecurity() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span>Total Tenants</span>
-                    <span className="font-semibold">156</span>
+                    <span className="font-semibold">{securityMetrics?.totalTenants || "Loading..."}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Active Users</span>
-                    <span className="font-semibold">2,847</span>
+                    <span className="font-semibold">{securityMetrics?.activeUsers || "Loading..."}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>Admin Users</span>
-                    <span className="font-semibold">89</span>
+                    <span className="font-semibold">{securityMetrics?.adminUsers || "Loading..."}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>API Requests (24h)</span>
-                    <span className="font-semibold">1,234,567</span>
+                    <span className="font-semibold">{securityMetrics?.apiRequests24h || "Loading..."}</span>
                   </div>
                 </div>
               </CardContent>
@@ -352,6 +349,7 @@ export default function RootAdminSecurity() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

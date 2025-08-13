@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, Users, DollarSign, Activity, Plus, Edit, Trash2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MainLayout } from "@/components/layout/main-layout";
 
 export default function TenantManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -42,45 +43,12 @@ export default function TenantManagement() {
     },
   });
 
-  const mockTenants = tenants || [
-    {
-      id: "tenant-1",
-      name: "Acme Corporation",
-      domain: "acme.printyx.com",
-      status: "active",
-      plan: "enterprise",
-      users: 45,
-      revenue: 12500,
-      lastActivity: "2024-01-15",
-      createdAt: "2023-06-15",
-    },
-    {
-      id: "tenant-2", 
-      name: "TechStart Solutions",
-      domain: "techstart.printyx.com",
-      status: "trial",
-      plan: "professional",
-      users: 12,
-      revenue: 2400,
-      lastActivity: "2024-01-14",
-      createdAt: "2024-01-01",
-    },
-    {
-      id: "tenant-3",
-      name: "Global Industries",
-      domain: "global.printyx.com", 
-      status: "active",
-      plan: "enterprise",
-      users: 156,
-      revenue: 45000,
-      lastActivity: "2024-01-15",
-      createdAt: "2022-03-20",
-    },
-  ];
+
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <MainLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Tenant Management</h1>
           <p className="text-gray-600 mt-2">
@@ -141,8 +109,8 @@ export default function TenantManagement() {
             <Building2 className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <p className="text-xs text-green-600 mt-2">+12% from last month</p>
+            <div className="text-2xl font-bold">{tenantStats?.totalTenants || "Loading..."}</div>
+            <p className="text-xs text-green-600 mt-2">{tenantStats?.tenantGrowth || "Loading..."}</p>
           </CardContent>
         </Card>
 
@@ -152,8 +120,8 @@ export default function TenantManagement() {
             <Users className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,847</div>
-            <p className="text-xs text-green-600 mt-2">+8% from last month</p>
+            <div className="text-2xl font-bold">{tenantStats?.activeUsers || "Loading..."}</div>
+            <p className="text-xs text-green-600 mt-2">{tenantStats?.userGrowth || "Loading..."}</p>
           </CardContent>
         </Card>
 
@@ -163,8 +131,8 @@ export default function TenantManagement() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$284,750</div>
-            <p className="text-xs text-green-600 mt-2">+15% from last month</p>
+            <div className="text-2xl font-bold">{tenantStats?.totalRevenue || "Loading..."}</div>
+            <p className="text-xs text-green-600 mt-2">{tenantStats?.revenueGrowth || "Loading..."}</p>
           </CardContent>
         </Card>
 
@@ -174,8 +142,8 @@ export default function TenantManagement() {
             <Activity className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">73%</div>
-            <p className="text-xs text-green-600 mt-2">+5% from last month</p>
+            <div className="text-2xl font-bold">{tenantStats?.conversionRate || "Loading..."}</div>
+            <p className="text-xs text-green-600 mt-2">{tenantStats?.conversionTrend || "Loading..."}</p>
           </CardContent>
         </Card>
       </div>
@@ -196,19 +164,23 @@ export default function TenantManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockTenants.slice(0, 5).map((tenant) => (
-                    <div key={tenant.id} className="flex items-center justify-between py-2 border-b">
-                      <div>
-                        <p className="font-medium">{tenant.name}</p>
-                        <p className="text-sm text-gray-500">{tenant.domain}</p>
+                  {tenants && tenants.length > 0 ? (
+                    tenants.slice(0, 5).map((tenant: any) => (
+                      <div key={tenant.id} className="flex items-center justify-between py-2 border-b">
+                        <div>
+                          <p className="font-medium">{tenant.name}</p>
+                          <p className="text-sm text-gray-500">{tenant.domain}</p>
+                        </div>
+                        <Badge 
+                          variant={tenant.status === 'active' ? 'default' : 'secondary'}
+                        >
+                          {tenant.status}
+                        </Badge>
                       </div>
-                      <Badge 
-                        variant={tenant.status === 'active' ? 'default' : 'secondary'}
-                      >
-                        {tenant.status}
-                      </Badge>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No recent tenant activity</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -298,34 +270,40 @@ export default function TenantManagement() {
                     <div>Revenue</div>
                     <div>Actions</div>
                   </div>
-                  {mockTenants.map((tenant) => (
-                    <div key={tenant.id} className="grid grid-cols-7 gap-4 p-4 border-b items-center">
-                      <div>
-                        <p className="font-medium">{tenant.name}</p>
-                        <p className="text-sm text-gray-500">ID: {tenant.id}</p>
+                  {tenants && tenants.length > 0 ? (
+                    tenants.map((tenant: any) => (
+                      <div key={tenant.id} className="grid grid-cols-7 gap-4 p-4 border-b items-center">
+                        <div>
+                          <p className="font-medium">{tenant.name}</p>
+                          <p className="text-sm text-gray-500">ID: {tenant.id}</p>
+                        </div>
+                        <div className="text-sm">{tenant.domain}</div>
+                        <div>
+                          <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
+                            {tenant.status}
+                          </Badge>
+                        </div>
+                        <div className="capitalize">{tenant.plan}</div>
+                        <div>{tenant.users}</div>
+                        <div>${tenant.revenue?.toLocaleString() || 0}</div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="text-sm">{tenant.domain}</div>
-                      <div>
-                        <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
-                          {tenant.status}
-                        </Badge>
-                      </div>
-                      <div className="capitalize">{tenant.plan}</div>
-                      <div>{tenant.users}</div>
-                      <div>${tenant.revenue.toLocaleString()}</div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-gray-500">
+                      No tenants found
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -427,6 +405,7 @@ export default function TenantManagement() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

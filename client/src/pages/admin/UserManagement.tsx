@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, UserPlus, UserCheck, UserX, Shield, Eye, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MainLayout } from "@/components/layout/main-layout";
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -26,45 +27,12 @@ export default function UserManagement() {
     queryKey: ["/api/admin/user-stats"],
   });
 
-  const mockUsers = users || [
-    {
-      id: "user-1",
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@acme.com",
-      role: "Company Admin",
-      tenant: "Acme Corporation",
-      status: "active",
-      lastLogin: "2024-01-15 10:30",
-      createdAt: "2023-06-15",
-    },
-    {
-      id: "user-2",
-      firstName: "Jane",
-      lastName: "Smith", 
-      email: "jane.smith@techstart.com",
-      role: "Sales Manager",
-      tenant: "TechStart Solutions",
-      status: "active",
-      lastLogin: "2024-01-14 16:45",
-      createdAt: "2024-01-01",
-    },
-    {
-      id: "user-3",
-      firstName: "Mike",
-      lastName: "Johnson",
-      email: "mike.johnson@global.com",
-      role: "Regional Manager",
-      tenant: "Global Industries",
-      status: "suspended",
-      lastLogin: "2024-01-10 09:15",
-      createdAt: "2022-03-20",
-    },
-  ];
+
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <MainLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
           <p className="text-gray-600 mt-2">
@@ -139,8 +107,8 @@ export default function UserManagement() {
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,847</div>
-            <p className="text-xs text-green-600 mt-2">+8% from last month</p>
+            <div className="text-2xl font-bold">{userStats?.totalUsers || "Loading..."}</div>
+            <p className="text-xs text-green-600 mt-2">{userStats?.userGrowth || "Loading..."}</p>
           </CardContent>
         </Card>
 
@@ -150,8 +118,8 @@ export default function UserManagement() {
             <UserCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,654</div>
-            <p className="text-xs text-green-600 mt-2">93.2% active rate</p>
+            <div className="text-2xl font-bold">{userStats?.activeUsers || "Loading..."}</div>
+            <p className="text-xs text-green-600 mt-2">{userStats?.activeRate || "Loading..."}</p>
           </CardContent>
         </Card>
 
@@ -161,8 +129,8 @@ export default function UserManagement() {
             <UserX className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">193</div>
-            <p className="text-xs text-red-600 mt-2">6.8% suspended</p>
+            <div className="text-2xl font-bold">{userStats?.suspendedUsers || "Loading..."}</div>
+            <p className="text-xs text-red-600 mt-2">{userStats?.suspendedRate || "Loading..."}</p>
           </CardContent>
         </Card>
 
@@ -172,8 +140,8 @@ export default function UserManagement() {
             <Shield className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">89</div>
-            <p className="text-xs text-gray-500 mt-2">3.1% of total</p>
+            <div className="text-2xl font-bold">{userStats?.adminUsers || "Loading..."}</div>
+            <p className="text-xs text-gray-500 mt-2">{userStats?.adminPercentage || "Loading..."}</p>
           </CardContent>
         </Card>
       </div>
@@ -194,27 +162,31 @@ export default function UserManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockUsers.slice(0, 5).map((user) => (
-                    <div key={user.id} className="flex items-center justify-between py-2 border-b">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src="" />
-                          <AvatarFallback className="bg-blue-100 text-blue-600">
-                            {user.firstName[0]}{user.lastName[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{user.firstName} {user.lastName}</p>
-                          <p className="text-sm text-gray-500">{user.email}</p>
+                  {users && users.length > 0 ? (
+                    users.slice(0, 5).map((user: any) => (
+                      <div key={user.id} className="flex items-center justify-between py-2 border-b">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src="" />
+                            <AvatarFallback className="bg-blue-100 text-blue-600">
+                              {user.firstName?.[0] || 'U'}{user.lastName?.[0] || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.firstName} {user.lastName}</p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
                         </div>
+                        <Badge 
+                          variant={user.status === 'active' ? 'default' : 'destructive'}
+                        >
+                          {user.status}
+                        </Badge>
                       </div>
-                      <Badge 
-                        variant={user.status === 'active' ? 'default' : 'destructive'}
-                      >
-                        {user.status}
-                      </Badge>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No recent user activity</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -324,42 +296,48 @@ export default function UserManagement() {
                     <div>Last Login</div>
                     <div>Actions</div>
                   </div>
-                  {mockUsers.map((user) => (
-                    <div key={user.id} className="grid grid-cols-7 gap-4 p-4 border-b items-center">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src="" />
-                          <AvatarFallback className="bg-blue-100 text-blue-600">
-                            {user.firstName[0]}{user.lastName[0]}
-                          </AvatarFallback>
-                        </Avatar>
+                  {users && users.length > 0 ? (
+                    users.map((user: any) => (
+                      <div key={user.id} className="grid grid-cols-7 gap-4 p-4 border-b items-center">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src="" />
+                            <AvatarFallback className="bg-blue-100 text-blue-600">
+                              {user.firstName?.[0] || 'U'}{user.lastName?.[0] || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.firstName} {user.lastName}</p>
+                            <p className="text-xs text-gray-500">ID: {user.id}</p>
+                          </div>
+                        </div>
+                        <div className="text-sm">{user.email}</div>
+                        <div className="text-sm">{user.tenant}</div>
+                        <div className="text-sm">{user.role}</div>
                         <div>
-                          <p className="font-medium">{user.firstName} {user.lastName}</p>
-                          <p className="text-xs text-gray-500">ID: {user.id}</p>
+                          <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
+                            {user.status}
+                          </Badge>
+                        </div>
+                        <div className="text-sm">{user.lastLogin}</div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="text-sm">{user.email}</div>
-                      <div className="text-sm">{user.tenant}</div>
-                      <div className="text-sm">{user.role}</div>
-                      <div>
-                        <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
-                          {user.status}
-                        </Badge>
-                      </div>
-                      <div className="text-sm">{user.lastLogin}</div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-gray-500">
+                      No users found
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -489,6 +467,7 @@ export default function UserManagement() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 }
