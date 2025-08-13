@@ -63,6 +63,7 @@ import ContextualHelp from "@/components/contextual/ContextualHelp";
 import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
 import MobileFAB from "@/components/layout/MobileFAB";
 import PageAlerts from "@/components/contextual/PageAlerts";
+import { useCrossModuleIntegration, useWorkflowAutomation } from "@/hooks/useCrossModuleIntegration";
 import { CustomerEquipmentProfile } from "@/components/CustomerEquipmentProfile";
 
 export default function ServiceHub() {
@@ -82,6 +83,8 @@ export default function ServiceHub() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const crossModule = useCrossModuleIntegration();
+  const workflowAutomation = useWorkflowAutomation();
 
   // Fetch service tickets
   const {

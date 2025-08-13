@@ -44,6 +44,7 @@ import { CustomerProposals } from "@/components/customer/CustomerProposals";
 import { CustomerContracts } from "@/components/customer/CustomerContracts";
 import { CustomerQuotes } from "@/components/customer/CustomerQuotes";
 import { CustomerMeterReadings } from "@/components/customer/CustomerMeterReadings";
+import { CrossModuleIntegration } from "@/components/CrossModuleIntegration";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -654,6 +655,13 @@ export default function CustomerDetailHubspot() {
                     >
                       <Gauge className="h-4 w-4" />
                       <span className="hidden sm:inline">Meter Reads</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="integrations"
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Activity className="h-4 w-4" />
+                      <span className="hidden sm:inline">Integrations</span>
                     </TabsTrigger>
                   </div>
                 </TabsList>
@@ -2308,6 +2316,13 @@ export default function CustomerDetailHubspot() {
                 <CustomerMeterReadings
                   customerId={customer?.id || ""}
                   customerName={customer?.companyName || "Unknown Customer"}
+                />
+              </TabsContent>
+
+              <TabsContent value="integrations" className="mt-6">
+                <CrossModuleIntegration 
+                  customerId={customer?.id || ""} 
+                  equipmentId={customer?.equipment?.[0]?.id}
                 />
               </TabsContent>
             </Tabs>
