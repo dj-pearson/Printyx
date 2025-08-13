@@ -5641,6 +5641,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.put(
+    "/api/software-products/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const validatedData = insertSoftwareProductSchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const product = await storage.updateSoftwareProduct(id, validatedData);
+        res.json(product);
+      } catch (error) {
+        console.error("Error updating software product:", error);
+        res.status(500).json({ message: "Failed to update software product" });
+      }
+    }
+  );
+
   // Supplies
   app.get("/api/supplies", requireAuth, requireAuth, async (req: any, res) => {
     try {
