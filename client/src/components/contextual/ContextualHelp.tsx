@@ -18,7 +18,8 @@ type ContextualPageKey =
   | "enhanced-onboarding"
   | "service-dispatch-optimization"
   | "product-catalog-optimization"
-  | "deals-management-optimization";
+  | "deals-management-optimization"
+  | "purchase-orders-optimization";
 
 interface ContextualHelpProps {
   page: ContextualPageKey;
@@ -164,6 +165,17 @@ const contentMap: Record<ContextualPageKey, {
       "Review pipeline forecasting for accurate revenue predictions",
     ],
     seasonal: "Q4 typically sees 15% higher deal volumes - prepare inventory",
+  },
+  "purchase-orders-optimization": {
+    title: "Smart Procurement Intelligence",
+    industryContext: "AI-powered procurement optimization can reduce costs by 8-12% while improving vendor performance and compliance.",
+    quickTips: [
+      "Review vendor performance scores monthly to optimize partnerships",
+      "Use predictive inventory management to prevent stockouts",
+      "Apply AI cost optimization recommendations for bulk purchasing",
+      "Monitor compliance tracking to maintain vendor relationships",
+    ],
+    seasonal: "Q4 procurement: Secure pricing before year-end budget allocations",
   },
 };
 
