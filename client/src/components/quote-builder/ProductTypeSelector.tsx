@@ -45,10 +45,11 @@ import {
   Plus,
   DollarSign,
   Tag,
+  Code,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
-type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'supplies' | 'managed_services';
+type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'supplies' | 'managed_services' | 'software_products';
 
 interface ProductTypeOption {
   value: ProductType;
@@ -119,6 +120,13 @@ const productTypes: ProductTypeOption[] = [
     description: 'IT support and managed solutions',
     icon: Monitor,
     endpoint: '/api/managed-services',
+  },
+  {
+    value: 'software_products',
+    label: 'Software Products',
+    description: 'Software licenses and digital solutions',
+    icon: Code,
+    endpoint: '/api/software-products',
   },
 ];
 
