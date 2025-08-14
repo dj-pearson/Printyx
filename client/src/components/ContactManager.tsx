@@ -132,14 +132,11 @@ export function ContactManager({
   // Create contact mutation - using standardized endpoint
   const createContactMutation = useMutation({
     mutationFn: async (contactData: Partial<Contact>) => {
-      console.log("Creating contact with data:", { ...contactData, companyId });
       const payload = {
         ...contactData,
         companyId,
-        // Remove the companyName from the payload as it's not needed for the API
       };
       delete payload.companyName;
-      console.log("Final API payload:", payload);
       return apiRequest(`/api/company-contacts`, "POST", payload);
     },
     onSuccess: () => {
@@ -150,7 +147,6 @@ export function ContactManager({
       toast({ title: "Success", description: "Contact created successfully" });
     },
     onError: (error: any) => {
-      console.error("Create contact mutation error:", error);
       toast({
         title: "Error",
         description: `Failed to create contact: ${error.message || 'Unknown error'}`,
@@ -726,7 +722,6 @@ function ContactForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("ContactForm handleSubmit called with formData:", formData);
     onSubmit(formData);
   };
 
