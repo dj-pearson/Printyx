@@ -1384,10 +1384,16 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
     const tenantId = req.user.tenantId;
 
     // Check if user has manager-level access
-    // This is a simple check - you may want to implement more sophisticated role checking
     const userRole = req.user.roleId?.toLowerCase() || '';
-    const salesRepRoles = ['sales_rep', 'salesperson', 'sales'];
-    const isManager = !salesRepRoles.some(role => userRole.includes(role));
+    console.log('Backend role check - userRole:', userRole, 'user:', req.user);
+    
+    // For admin and manager roles, always allow access
+    const isManager = userRole.includes('admin') || 
+                     userRole.includes('root') || 
+                     userRole.includes('manager') ||
+                     userRole.includes('director') ||
+                     userRole.includes('supervisor') ||
+                     (!['sales_rep', 'salesperson', 'sales'].some(role => userRole.includes(role)));
     
     if (!isManager) {
       return res.status(403).json({ error: 'Access denied. Manager level access required.' });

@@ -136,8 +136,19 @@ export default function QuoteView() {
   // Check if user has manager-level access (above sales rep)
   const canViewManagerExport = () => {
     if (!user?.roleId) return false;
+    
+    console.log('User role check:', user.roleId, 'User object:', user);
+    
+    // For root admin and admin roles, always allow access
+    if (user.roleId.toLowerCase().includes('admin') || 
+        user.roleId.toLowerCase().includes('root') || 
+        user.roleId.toLowerCase().includes('manager') ||
+        user.roleId.toLowerCase().includes('director') ||
+        user.roleId.toLowerCase().includes('supervisor')) {
+      return true;
+    }
+    
     // Sales reps typically have role like 'sales_rep', 'salesperson', etc.
-    // Anyone above would have roles like 'sales_manager', 'manager', 'director', 'admin', etc.
     const salesRepRoles = ['sales_rep', 'salesperson', 'sales'];
     return !salesRepRoles.some(role => user.roleId?.toLowerCase().includes(role));
   };
@@ -286,9 +297,8 @@ export default function QuoteView() {
   // Calculate totals with adjustments applied
   const adjustedSubtotal = adjustedLineItems.reduce((sum, item) => sum + item.adjustedTotalPrice, 0);
   
-  // Calculate tax properly - if stored tax is 0, calculate based on 8.25% default rate
-  const taxRate = 8.25; // This should match the default in PricingCalculator
-  const calculatedTaxAmount = storedTaxAmount > 0 ? storedTaxAmount : (adjustedSubtotal * taxRate) / 100;
+  // Use stored tax amount directly - don't recalculate if it's been set to 0
+  const calculatedTaxAmount = storedTaxAmount;
   
   const finalTotal = adjustedSubtotal + calculatedTaxAmount;
 
@@ -541,7 +551,7 @@ export default function QuoteView() {
               
               {/* Tax - Always show */}
               <div className="flex justify-between items-center py-3 border-t border-gray-100 text-lg">
-                <span className="text-gray-700 font-medium">Tax ({taxRate}%)</span>
+                <span className="text-gray-700 font-medium">Tax</span>
                 <span className="font-semibold">{formatCurrency(calculatedTaxAmount)}</span>
               </div>
               
