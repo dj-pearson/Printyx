@@ -425,7 +425,10 @@ function validateSoftwareProductData(row: any): any {
 
   // Parse pricing values
   const standardCost = parseDecimal(getFieldValue('standard_cost'));
-  const standardRepPrice = parseDecimal(getFieldValue('standard_rep_price'));
+  const standardRepPriceRaw = getFieldValue('standard_rep_price');
+  console.log(`Debug: standardRepPriceRaw for ${productCode}:`, standardRepPriceRaw, typeof standardRepPriceRaw);
+  const standardRepPrice = parseDecimal(standardRepPriceRaw);
+  console.log(`Debug: standardRepPrice after parseDecimal for ${productCode}:`, standardRepPrice);
   const newCost = parseDecimal(getFieldValue('new_cost'));
   const newRepPrice = parseDecimal(getFieldValue('new_rep_price'));
   const upgradeCost = parseDecimal(getFieldValue('upgrade_cost'));
@@ -7528,6 +7531,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const csvData = await parseCSV(req.file.buffer);
+        
+        // Debug: Log first row structure to understand CSV parsing
+        if (csvData.length > 0) {
+          console.log('First CSV row keys:', Object.keys(csvData[0]));
+          console.log('First CSV row standard_rep_price value:', csvData[0]['standard_rep_price']);
+          console.log('First CSV row standardRepPrice value:', csvData[0]['standardRepPrice']);
+        }
         
         let imported = 0;
         let skipped = 0;
