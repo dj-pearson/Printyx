@@ -8542,115 +8542,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth,
     async (req: any, res) => {
       try {
-        const tenantId = req.session?.tenantId || req.user?.tenantId;
+        const tenantId = req.user?.tenantId;
+        
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
 
-        // 1) Persisted system alerts (last 24h) - temporarily disabled due to query issue
-        const persistedAlerts = [];
+        const alerts = [];
 
-        // 2) Computed alerts: Low stock
-        const lowStockItems = await db
-          .select({
-            id: inventoryItems.id,
-            name: inventoryItems.itemDescription,
-            currentStock: inventoryItems.quantityOnHand,
-            minThreshold: inventoryItems.reorderPoint,
-            category: inventoryItems.itemCategory,
-          })
-          .from(inventoryItems)
-          .where(
-            and(
-              tenantId ? eq(inventoryItems.tenantId, tenantId) : sql`TRUE`,
-              sql`quantity_on_hand <= reorder_point`
+        try {
+          // 1) Low stock alerts
+          const lowStockItems = await db
+            .select({
+              id: inventoryItems.id,
+              name: inventoryItems.itemDescription,
+              category: inventoryItems.itemCategory,
+              currentStock: inventoryItems.quantityOnHand,
+              minThreshold: inventoryItems.reorderPoint,
+              reorderQuantity: inventoryItems.reorderQuantity,
+              primaryVendor: inventoryItems.primaryVendor,
+            })
+            .from(inventoryItems)
+            .where(
+              and(
+                eq(inventoryItems.tenantId, tenantId),
+                sql`quantity_on_hand <= reorder_point`
+              )
             )
-          )
-          .orderBy(asc(inventoryItems.quantityOnHand))
-          .limit(20);
+            .orderBy(asc(inventoryItems.quantityOnHand))
+            .limit(20);
 
-        const lowStockAlerts = lowStockItems.map((item) => ({
-          id: `low_stock_${item.id}`,
-          type: "warning",
-          category: "business",
-          message: `${item.name} is running low (${item.currentStock} remaining, reorder at ${item.minThreshold})`,
-          severity: "medium",
-          createdAt: new Date().toISOString(),
-        }));
+          alerts.push(
+            ...lowStockItems.map((item) => ({
+              id: `low_stock_${item.id}`,
+              type: "low_stock",
+              severity: "medium",
+              title: `Low Stock: ${item.name}`,
+              message: `${item.name} is running low (${item.currentStock} remaining, reorder at ${item.minThreshold})`,
+              category: "business",
+              timestamp: new Date().toISOString(),
+            }))
+          );
+        } catch (error) {
+          console.warn("Failed to fetch low stock alerts:", error);
+        }
 
-        // 3) Computed alerts: Dispatch delays (scheduled in the past, not completed)
-        const delayedTickets = await db
-          .select({
-            id: serviceTickets.id,
-            ticketNumber: serviceTickets.ticketNumber,
-            title: serviceTickets.title,
-            scheduledDate: serviceTickets.scheduledDate,
-            status: serviceTickets.status,
-          })
-          .from(serviceTickets)
-          .where(
-            and(
-              tenantId ? eq(serviceTickets.tenantId, tenantId) : sql`TRUE`,
-              sql`scheduled_date IS NOT NULL AND scheduled_date < NOW() AND status <> 'completed' AND status <> 'cancelled'`
+        try {
+          // 2) Dispatch delay alerts
+          const delayedTickets = await db
+            .select({
+              id: serviceTickets.id,
+              ticketNumber: serviceTickets.ticketNumber,
+              title: serviceTickets.title,
+              scheduledDate: serviceTickets.scheduledDate,
+              status: serviceTickets.status,
+            })
+            .from(serviceTickets)
+            .where(
+              and(
+                eq(serviceTickets.tenantId, tenantId),
+                sql`scheduled_date < NOW()`,
+                sql`status NOT IN ('completed', 'cancelled')`
+              )
             )
-          )
-          .orderBy(desc(serviceTickets.scheduledDate))
-          .limit(20);
+            .orderBy(asc(serviceTickets.scheduledDate))
+            .limit(10);
 
-        const dispatchDelayAlerts = delayedTickets.map((t) => ({
-          id: `dispatch_delay_${t.id}`,
-          type: "warning",
-          category: "performance",
-          message: `Dispatch delay: Ticket ${t.ticketNumber} (${t.title}) scheduled for ${new Date(
-            (t as any).scheduledDate
-          ).toLocaleString()} remains ${t.status}.`,
-          severity: "high",
-          createdAt: new Date().toISOString(),
-        }));
+          alerts.push(
+            ...delayedTickets.map((ticket) => ({
+              id: `dispatch_delay_${ticket.id}`,
+              type: "dispatch_delay",
+              severity: "high",
+              title: `Dispatch Delay: Ticket ${ticket.ticketNumber}`,
+              message: `Service ticket ${ticket.ticketNumber} (${ticket.title}) was scheduled for ${new Date(ticket.scheduledDate!).toLocaleString()} but is still ${ticket.status}.`,
+              category: "performance",
+              timestamp: new Date().toISOString(),
+            }))
+          );
+        } catch (error) {
+          console.warn("Failed to fetch dispatch delay alerts:", error);
+        }
 
-        // 4) Computed alerts: Billing anomalies (issuance delay > 24h or overdue)
-        const billingAnomalies = await db
-          .select({
-            id: invoices.id,
-            invoiceNumber: invoices.invoiceNumber,
-            issuanceDelayHours: invoices.issuanceDelayHours,
-            invoiceStatus: invoices.invoiceStatus,
-            dueDate: invoices.dueDate,
-            totalAmount: invoices.totalAmount,
-          })
-          .from(invoices)
-          .where(
-            and(
-              tenantId ? eq(invoices.tenantId, tenantId) : sql`TRUE`,
-              sql`(issuance_delay_hours IS NOT NULL AND issuance_delay_hours > 24) OR (due_date IS NOT NULL AND due_date < NOW() AND invoice_status <> 'paid')`
+        try {
+          // 3) Billing anomaly alerts
+          const billingAnomalies = await db
+            .select({
+              id: invoices.id,
+              invoiceNumber: invoices.invoiceNumber,
+              invoiceDate: invoices.invoiceDate,
+              dueDate: invoices.dueDate,
+              invoiceStatus: invoices.invoiceStatus,
+              issuanceDelayHours: invoices.issuanceDelayHours,
+            })
+            .from(invoices)
+            .where(
+              and(
+                eq(invoices.tenantId, tenantId),
+                sql`(issuance_delay_hours > 24) OR (invoice_status = 'overdue')`
+              )
             )
-          )
-          .orderBy(desc(invoices.updatedAt))
-          .limit(50);
+            .orderBy(desc(invoices.invoiceDate))
+            .limit(10);
 
-        const billingAlerts = billingAnomalies.map((inv) => {
-          const isDelay = (inv as any).issuanceDelayHours && Number((inv as any).issuanceDelayHours) > 24;
-          const isOverdue = (inv as any).dueDate && new Date((inv as any).dueDate) < new Date() && (inv as any).invoiceStatus !== "paid";
-          return {
-            id: `billing_${inv.id}`,
-            type: isDelay ? "warning" : "error",
-            category: "business",
-            message: isDelay
-              ? `Invoice ${inv.invoiceNumber} issuance delay ${(inv as any).issuanceDelayHours}h > 24h`
-              : `Invoice ${inv.invoiceNumber} is overdue (amount ${inv.totalAmount})`,
-            severity: isOverdue ? "high" : "medium",
-            createdAt: new Date().toISOString(),
-          };
-        });
+          alerts.push(
+            ...billingAnomalies.map((invoice) => ({
+              id: `billing_anomaly_${invoice.id}`,
+              type: "billing_anomaly",
+              severity: invoice.invoiceStatus === 'overdue' ? "critical" : "medium",
+              title: `Billing Anomaly: Invoice ${invoice.invoiceNumber}`,
+              message: invoice.invoiceStatus === 'overdue'
+                ? `Invoice ${invoice.invoiceNumber} is overdue since ${new Date(invoice.dueDate!).toLocaleDateString()}.`
+                : `Invoice ${invoice.invoiceNumber} had an issuance delay of ${invoice.issuanceDelayHours} hours.`,
+              category: "business",
+              timestamp: new Date().toISOString(),
+            }))
+          );
+        } catch (error) {
+          console.warn("Failed to fetch billing anomaly alerts:", error);
+        }
 
-        const combined = [
-          ...persistedAlerts,
-          ...lowStockAlerts,
-          ...dispatchDelayAlerts,
-          ...billingAlerts,
-        ];
-
-        res.json(combined);
+        res.json(alerts);
       } catch (error) {
-        console.error("Error fetching system alerts:", error);
-        res.status(500).json({ error: "Failed to fetch system alerts" });
+        console.error("Error fetching alerts:", error);
+        res.status(500).json({ message: "Failed to fetch alerts" });
       }
     }
   );
