@@ -103,7 +103,7 @@ function LeadContactForm({
     title: "",
     email: "",
     phone: "",
-    isPrimaryContact: false,
+    isPrimary: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,13 +185,13 @@ function LeadContactForm({
 
       <div className="flex items-center space-x-2">
         <Checkbox
-          id="isPrimaryContact"
-          checked={formData.isPrimaryContact}
+          id="isPrimary"
+          checked={formData.isPrimary}
           onCheckedChange={(checked) => 
-            setFormData({ ...formData, isPrimaryContact: !!checked })
+            setFormData({ ...formData, isPrimary: !!checked })
           }
         />
-        <Label htmlFor="isPrimaryContact">Set as primary contact</Label>
+        <Label htmlFor="isPrimary">Set as primary contact</Label>
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
