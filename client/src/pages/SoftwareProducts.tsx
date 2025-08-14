@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit, Sparkles, Trash2, CheckSquare, Square } from "lucide-react";
+import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit, Sparkles, TrendingUp, Trash2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -399,12 +399,14 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
     return matchesSearch && matchesCategory;
   });
 
-  const formatCurrency = (value: string | null) => {
-    if (!value) return "$0.00";
+  const formatCurrency = (value: string | number | null | undefined) => {
+    if (!value || value === null || value === undefined) return "$0.00";
+    const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numericValue)) return "$0.00";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-    }).format(parseFloat(value));
+    }).format(numericValue);
   };
 
   const ProductCard = ({ product }: { product: SoftwareProduct }) => {
@@ -481,6 +483,16 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
               </div>
               <p className="text-sm sm:text-base font-bold text-green-600">
                 {product.newActive ? formatCurrency(product.newRepPrice) : "Not Set"}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
+                <span className="text-xs font-medium">Upgrade</span>
+              </div>
+              <p className="text-sm sm:text-base font-bold text-blue-600">
+                {product.upgradeActive ? formatCurrency(product.upgradeRepPrice) : "Not Set"}
               </p>
             </div>
           </div>
