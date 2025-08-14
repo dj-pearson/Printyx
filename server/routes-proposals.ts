@@ -472,8 +472,8 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
     }
 
     console.log("📝 PATCH /api/proposals/:id - Updating proposal:", id);
-    console.log("📝 Update data:", updateData);
-    console.log("📝 Line items to update:", lineItemsToUpdate);
+    console.log("📝 Update data:", JSON.stringify(updateData, null, 2));
+    console.log("📝 Line items to update:", JSON.stringify(lineItemsToUpdate, null, 2));
 
     const [proposal] = await db
       .update(proposals)
@@ -512,19 +512,41 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
         })
       );
 
-      console.log("📦 Inserting line items:", lineItemsData);
+      console.log("📦 Inserting line items:", JSON.stringify(lineItemsData, null, 2));
 
       const insertedLineItems = await db
         .insert(proposalLineItems)
         .values(lineItemsData)
         .returning();
 
-      console.log("✅ Inserted line items:", insertedLineItems);
+      console.log("✅ Successfully inserted", insertedLineItems.length, "line items");
     }
 
-    res.json(proposal);
+    // Fetch the updated proposal with line items for response
+    const updatedProposalWithLineItems = await db
+      .select()
+      .from(proposals)
+      .where(
+        and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId))
+      )
+      .limit(1);
+
+    const updatedLineItems = await db
+      .select()
+      .from(proposalLineItems)
+      .where(
+        and(eq(proposalLineItems.proposalId, id), eq(proposalLineItems.tenantId, req.user.tenantId))
+      );
+
+    const proposalWithLineItems = {
+      ...updatedProposalWithLineItems[0],
+      lineItems: updatedLineItems
+    };
+
+    console.log("✅ Returning updated proposal with", updatedLineItems.length, "line items");
+    res.json(proposalWithLineItems);
   } catch (error) {
-    console.error("Error updating proposal:", error);
+    console.error("❌ Error updating proposal:", error);
     res.status(500).json({ error: "Failed to update proposal" });
   }
 });
