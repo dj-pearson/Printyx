@@ -205,6 +205,24 @@ div:has([class*="runtime-error"]) {
   --radius: 0.5rem;
 }
 
+/* Enhanced sidebar collapsed state - ensure text is completely hidden */
+.group[data-collapsible="icon"] [data-sidebar="menu-button"] > span:not([class*="icon"]):not([class*="w-"]) {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.group[data-collapsible="icon"] [data-sidebar="menu-button"] {
+  justify-content: center !important;
+}
+
+/* Force sidebar to proper collapsed width */
+.group[data-collapsible="icon"] {
+  width: 2.5rem !important;
+  min-width: 2.5rem !important;
+}
+
 .dark {
   --background: hsl(240, 10%, 3.9%);
   --foreground: hsl(0, 0%, 98%);
