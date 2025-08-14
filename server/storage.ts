@@ -2929,8 +2929,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
-          eq(systemAlerts.resolved, false),
-          ne(systemAlerts.type, "info")
+          eq(systemAlerts.isRead, false),
+          ne(systemAlerts.category, "info")
         )
       );
 

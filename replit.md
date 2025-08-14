@@ -130,6 +130,14 @@ The Printyx platform has successfully completed all critical modules with compre
 - **API Integration**: Full CRUD operations for accessory-model compatibility with proper validation and error handling
 - **Data Migration Success**: Seamlessly migrated existing direct modelId relationships to new junction table structure without data loss
 
+#### Enhanced Product Models Import Deduplication (August 14, 2025)
+- **Smart Deduplication Logic**: Updated CSV import to check both product code AND product name (handles manufacturer speed license scenarios)
+- **Database Constraint Enhancement**: Modified unique constraint from `(tenant_id, product_code)` to `(tenant_id, product_code, product_name)`
+- **Required Accessories Validation**: Enhanced import process validates required accessories exist before importing models
+- **Speed License Support**: Allows same product codes with different product names (e.g., base unit vs. speed license)
+- **Updated Sample CSV**: Created comprehensive sample CSV with all product model fields and proper header structure
+- **Enhanced Validation Function**: Updated `validateProductModelData()` to handle new CSV format with all product model fields
+
 ### UI/UX Decisions
 - Consistent navigation layout.
 - Card-based interface for product categories.
