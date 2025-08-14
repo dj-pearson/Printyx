@@ -1,0 +1,4 @@
+product_code,product_name,vendor,standard_cost,standard_rep_price,is_active
+SW-DMS-001,Document Management Suite,Canon,150.00,299.00,TRUE
+SW-SEC-002,Security Software Pro,HP,200.00,399.00,TRUE
+SW-BACKUP-003,Backup Solution Enterprise,Xerox,100.00,199.00,TRUE
