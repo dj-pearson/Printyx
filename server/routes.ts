@@ -5543,6 +5543,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.post(
+    "/api/accessories/:accessoryId/compatibility",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { accessoryId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const validatedData = insertAccessoryModelCompatibilitySchema.parse({
+          ...req.body,
+          accessoryId,
+          tenantId,
+        });
+        const compatibility = await storage.createAccessoryModelCompatibility(
+          validatedData
+        );
+        res.status(201).json(compatibility);
+      } catch (error) {
+        console.error("Error creating accessory compatibility:", error);
+        res.status(500).json({ message: "Failed to create compatibility" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/accessories/:accessoryId/compatibility/:modelId",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { accessoryId, modelId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        await storage.deleteAccessoryModelCompatibility(
+          accessoryId,
+          modelId,
+          tenantId
+        );
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting accessory compatibility:", error);
+        res.status(500).json({ message: "Failed to delete compatibility" });
+      }
+    }
+  );
+
   app.get(
     "/api/models/:modelId/compatibility",
     requireAuth,
