@@ -250,38 +250,51 @@ function validateProductModelData(row: any): any {
   if (!row["Product Code"]) errors.push("Product Code is required");
   if (!row["Product Name"]) errors.push("Product Name is required");
 
+  // Parse required accessories and validate format
+  let requiredAccessories = null;
+  if (row["Required Accessories"]) {
+    const accessoryString = row["Required Accessories"].trim();
+    if (accessoryString) {
+      // Support both comma and semicolon separated values
+      const accessories = accessoryString.split(/[,;]/).map(a => a.trim()).filter(a => a.length > 0);
+      if (accessories.length > 0) {
+        requiredAccessories = accessories.join(',');
+      }
+    }
+  }
+
+  // Parse boolean values
+  const parseBoolean = (value: any): boolean => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const lower = value.toLowerCase().trim();
+      return lower === 'true' || lower === 'yes' || lower === '1';
+    }
+    return false;
+  };
+
   return {
     isValid: errors.length === 0,
     errors,
     data: {
       productCode: row["Product Code"]?.trim(),
       productName: row["Product Name"]?.trim(),
+      category: row["Category"]?.trim() || "MFP",
       manufacturer: row["Manufacturer"]?.trim() || null,
-      model: row["Model"]?.trim() || null,
       description: row["Description"]?.trim() || null,
-      category: row["Category"]?.trim() || null,
-      colorPrint: row["Color Print"]?.toLowerCase() === "yes",
-      bwPrint: row["BW Print"]?.toLowerCase() === "yes",
-      colorCopy: row["Color Copy"]?.toLowerCase() === "yes",
-      bwCopy: row["BW Copy"]?.toLowerCase() === "yes",
-      standardCost: row["Standard Cost"]
-        ? parseFloat(row["Standard Cost"])
-        : null,
-      standardRepPrice: row["Standard Rep Price"]
-        ? parseFloat(row["Standard Rep Price"])
-        : null,
-      newCost: row["New Cost"] ? parseFloat(row["New Cost"]) : null,
-      newRepPrice: row["New Rep Price"]
-        ? parseFloat(row["New Rep Price"])
-        : null,
-      upgradeCost: row["Upgrade Cost"] ? parseFloat(row["Upgrade Cost"]) : null,
-      upgradeRepPrice: row["Upgrade Rep Price"]
-        ? parseFloat(row["Upgrade Rep Price"])
-        : null,
-      isActive: true,
-      availableForAll: false,
-      salesRepCredit: true,
-      funding: true,
+      msrp: row["MSRP"] ? parseFloat(row["MSRP"].toString().replace(/[,$]/g, '')) : null,
+      colorMode: row["Color Mode"]?.trim() || null,
+      colorSpeed: row["Color Speed"]?.trim() || null,
+      bwSpeed: row["BW Speed"]?.trim() || null,
+      productFamily: row["Product Family"]?.trim() || null,
+      requiredAccessories,
+      newActive: parseBoolean(row["New Active"]),
+      newRepPrice: row["New Rep Price"] ? parseFloat(row["New Rep Price"].toString().replace(/[,$]/g, '')) : null,
+      upgradeActive: parseBoolean(row["Upgrade Active"]),
+      upgradeRepPrice: row["Upgrade Rep Price"] ? parseFloat(row["Upgrade Rep Price"].toString().replace(/[,$]/g, '')) : null,
+      lexmarkActive: parseBoolean(row["Lexmark Active"]),
+      lexmarkRepPrice: row["Lexmark Rep Price"] ? parseFloat(row["Lexmark Rep Price"].toString().replace(/[,$]/g, '')) : null,
+      isActive: row["Is Active"] !== undefined ? parseBoolean(row["Is Active"]) : true,
     },
   };
 }
@@ -7119,6 +7132,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Skip this entry - both code and name match an existing model
               skipped++;
               continue;
+            }
+            
+            // Validate required accessories exist before importing
+            if (productData.requiredAccessories) {
+              const requiredCodes = productData.requiredAccessories
+                .split(',')
+                .map(code => code.trim())
+                .filter(code => code.length > 0);
+              
+              if (requiredCodes.length > 0) {
+                const existingAccessories = await storage.getProductAccessoriesByCodes(requiredCodes, tenantId);
+                const existingCodes = existingAccessories.map(acc => acc.accessoryCode);
+                const missingCodes = requiredCodes.filter(code => !existingCodes.includes(code));
+                
+                if (missingCodes.length > 0) {
+                  // Remove missing accessory codes from required accessories to prevent future errors
+                  const validCodes = requiredCodes.filter(code => existingCodes.includes(code));
+                  productData.requiredAccessories = validCodes.length > 0 ? validCodes.join(',') : null;
+                  
+                  // Log warning but continue with valid accessories only
+                  console.warn(`Row ${i + 2}: Missing required accessories [${missingCodes.join(', ')}] for model ${productData.productCode}. Proceeding with valid accessories only.`);
+                }
+              }
             }
             
             // Create the new model (either new code or same code with different name)
