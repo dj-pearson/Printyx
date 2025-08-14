@@ -94,7 +94,10 @@ router.post("/proposal-templates", requireAuth, async (req: any, res) => {
 router.put("/proposal-templates/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const updateData = { ...req.body, updatedAt: new Date() };
+    const { updatedAt, ...restData } = req.body;
+    
+    // Don't manually set updatedAt, let database handle it
+    const updateData = restData;
 
     const [template] = await db
       .update(proposalTemplates)
@@ -387,9 +390,10 @@ router.post("/", requireAuth, async (req: any, res) => {
 router.put("/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const updateData = { ...req.body, updatedAt: new Date() };
-    const lineItemsToUpdate = updateData.lineItems;
-    delete updateData.lineItems; // Handle line items separately
+    const { lineItems: lineItemsToUpdate, updatedAt, ...restData } = req.body;
+    
+    // Don't manually set updatedAt, let database handle it
+    const updateData = restData;
 
     const [proposal] = await db
       .update(proposals)
@@ -440,9 +444,11 @@ router.put("/:id", requireAuth, async (req: any, res) => {
 router.patch("/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const updateData = { ...req.body, updatedAt: new Date() };
-    const lineItemsToUpdate = updateData.lineItems;
-    delete updateData.lineItems; // Handle line items separately
+    const { lineItems: lineItemsToUpdate, ...restData } = req.body;
+    
+    // Remove updatedAt from body if present and let database handle it
+    delete restData.updatedAt;
+    const updateData = restData;
 
     console.log("📝 PATCH /api/proposals/:id - Updating proposal:", id);
     console.log("📝 Update data:", updateData);

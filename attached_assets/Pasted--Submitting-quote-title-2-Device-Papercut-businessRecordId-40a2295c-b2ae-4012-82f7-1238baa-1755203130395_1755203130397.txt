@@ -1,0 +1,37 @@
+📤 Submitting quote: {title: '2 Device Papercut', businessRecordId: '40a2295c-b2ae-4012-82f7-1238baa293fe', contactId: '', billingAddress: {…}, pricingType: 'new', …}
+injected.js:253  PATCH https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+await in apiRequest
+mutationFn @ QuoteBuilder.tsx:306
+fn @ @tanstack_react-query.js?v=3b3e4a15:1189
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+execute @ @tanstack_react-query.js?v=3b3e4a15:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=3b3e4a15:2630
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3295
+onSubmit @ QuoteBuilder.tsx:433
+(anonymous) @ chunk-4BFJKWC4.js?v=3b3e4a15:1465
+await in (anonymous)
+callCallback2 @ chunk-RPCDYKBN.js?v=3b3e4a15:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3b3e4a15:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3b3e4a15:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3b3e4a15:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3b3e4a15:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3b3e4a15:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3b3e4a15:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3b3e4a15:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3b3e4a15:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449Understand this error
+Console.js:61 ❌ Quote save error: Error: 500: {"error":"Failed to update proposal"}
+    at throwIfResNotOk (queryClient.ts:7:11)
+    at async apiRequest (queryClient.ts:95:3)
+    at async Object.mutationFn (QuoteBuilder.tsx:306:16)
