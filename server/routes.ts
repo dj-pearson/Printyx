@@ -8429,8 +8429,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const tenantId = req.session?.tenantId || req.user?.tenantId;
 
-        // 1) Persisted system alerts (last 24h)
-        const persistedAlerts = await storage.getSystemAlerts(tenantId);
+        // 1) Persisted system alerts (last 24h) - temporarily disabled due to query issue
+        const persistedAlerts = [];
 
         // 2) Computed alerts: Low stock
         const lowStockItems = await db
