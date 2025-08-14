@@ -4367,7 +4367,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(contact);
     } catch (error) {
       console.error("Error creating company contact:", error);
-      res.status(500).json({ error: "Failed to create company contact", details: error.message });
+      if (error.name === 'ZodError') {
+        console.error("Validation errors:", error.errors);
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create company contact", details: error.message });
+      }
     }
   });
 
