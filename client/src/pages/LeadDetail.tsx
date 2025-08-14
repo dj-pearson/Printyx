@@ -85,6 +85,127 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 
+// Lead Contact Form Component
+function LeadContactForm({ 
+  leadId, 
+  onSuccess, 
+  onCancel 
+}: {
+  leadId: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    title: "",
+    email: "",
+    phone: "",
+    isPrimaryContact: false,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      console.log("Creating lead contact:", { leadId, formData });
+      
+      const response = await apiRequest(`/api/leads/${leadId}/contacts`, {
+        method: 'POST',
+        data: formData,
+      });
+
+      console.log("Lead contact created successfully:", response);
+      onSuccess();
+    } catch (error) {
+      console.error("Error creating lead contact:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create contact. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="firstName">First Name *</Label>
+          <Input
+            id="firstName"
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="lastName">Last Name *</Label>
+          <Input
+            id="lastName"
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="title">Title</Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="phone">Phone</Label>
+        <Input
+          id="phone"
+          value={formData.phone}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+        />
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="isPrimaryContact"
+          checked={formData.isPrimaryContact}
+          onCheckedChange={(checked) => 
+            setFormData({ ...formData, isPrimaryContact: !!checked })
+          }
+        />
+        <Label htmlFor="isPrimaryContact">Set as primary contact</Label>
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Creating..." : "Create Contact"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export default function LeadDetailHubspot() {
   const { slug } = useParams();
   const [, setLocation] = useLocation();
@@ -2211,6 +2332,30 @@ export default function LeadDetailHubspot() {
         recordType="lead"
         recordName={lead.companyName}
       />
+
+      {/* Contact Creation Dialog */}
+      <Dialog
+        open={dialogs.editRecord}
+        onOpenChange={(open) => setDialogs((prev) => ({ ...prev, editRecord: open }))}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Contact</DialogTitle>
+          </DialogHeader>
+          <LeadContactForm
+            leadId={id}
+            onSuccess={() => {
+              setDialogs((prev) => ({ ...prev, editRecord: false }));
+              queryClient.invalidateQueries({ queryKey: ["/api/leads", id, "contacts"] });
+              toast({
+                title: "Success",
+                description: "Contact created successfully",
+              });
+            }}
+            onCancel={() => setDialogs((prev) => ({ ...prev, editRecord: false }))}
+          />
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
