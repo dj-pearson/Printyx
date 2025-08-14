@@ -2442,6 +2442,19 @@ export class DatabaseStorage implements IStorage {
     return model;
   }
 
+  async getProductModelByCode(
+    productCode: string,
+    tenantId: string
+  ): Promise<ProductModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(productModels)
+      .where(
+        and(eq(productModels.productCode, productCode), eq(productModels.tenantId, tenantId))
+      );
+    return model;
+  }
+
   async createProductModel(model: InsertProductModel): Promise<ProductModel> {
     const [result] = await db.insert(productModels).values(model).returning();
     return result;
@@ -2498,6 +2511,19 @@ export class DatabaseStorage implements IStorage {
       .from(productAccessories)
       .where(eq(productAccessories.tenantId, tenantId))
       .orderBy(productAccessories.accessoryName);
+  }
+
+  async getProductAccessoryByCode(
+    accessoryCode: string,
+    tenantId: string
+  ): Promise<ProductAccessory | undefined> {
+    const [accessory] = await db
+      .select()
+      .from(productAccessories)
+      .where(
+        and(eq(productAccessories.accessoryCode, accessoryCode), eq(productAccessories.tenantId, tenantId))
+      );
+    return accessory;
   }
 
   async getTenantProductAccessories(
@@ -2916,6 +2942,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(professionalServices.productName);
   }
 
+  async getProfessionalServiceByCode(
+    productCode: string,
+    tenantId: string
+  ): Promise<ProfessionalService | undefined> {
+    const [service] = await db
+      .select()
+      .from(professionalServices)
+      .where(
+        and(eq(professionalServices.productCode, productCode), eq(professionalServices.tenantId, tenantId))
+      );
+    return service;
+  }
+
   async createProfessionalService(
     service: InsertProfessionalService
   ): Promise<ProfessionalService> {
@@ -2974,6 +3013,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(softwareProducts.productName);
   }
 
+  async getSoftwareProductByCode(
+    productCode: string,
+    tenantId: string
+  ): Promise<SoftwareProduct | undefined> {
+    const [product] = await db
+      .select()
+      .from(softwareProducts)
+      .where(
+        and(eq(softwareProducts.productCode, productCode), eq(softwareProducts.tenantId, tenantId))
+      );
+    return product;
+  }
+
   async createSoftwareProduct(
     product: InsertSoftwareProduct
   ): Promise<SoftwareProduct> {
@@ -2986,12 +3038,15 @@ export class DatabaseStorage implements IStorage {
 
   async updateSoftwareProduct(
     id: string,
-    product: InsertSoftwareProduct
-  ): Promise<SoftwareProduct> {
+    product: Partial<SoftwareProduct>,
+    tenantId: string
+  ): Promise<SoftwareProduct | undefined> {
     const [result] = await db
       .update(softwareProducts)
-      .set(product)
-      .where(eq(softwareProducts.id, id))
+      .set({ ...product, updatedAt: new Date() })
+      .where(
+        and(eq(softwareProducts.id, id), eq(softwareProducts.tenantId, tenantId))
+      )
       .returning();
     return result;
   }
@@ -3031,6 +3086,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(managedServices.productName);
   }
 
+  async getManagedServiceByCode(
+    productCode: string,
+    tenantId: string
+  ): Promise<ManagedService | undefined> {
+    const [service] = await db
+      .select()
+      .from(managedServices)
+      .where(
+        and(eq(managedServices.productCode, productCode), eq(managedServices.tenantId, tenantId))
+      );
+    return service;
+  }
+
   // Supplies
   async getAllSupplies(tenantId: string): Promise<Supply[]> {
     return await db
@@ -3038,6 +3106,19 @@ export class DatabaseStorage implements IStorage {
       .from(supplies)
       .where(eq(supplies.tenantId, tenantId))
       .orderBy(supplies.productName);
+  }
+
+  async getSupplyByCode(
+    productCode: string,
+    tenantId: string
+  ): Promise<Supply | undefined> {
+    const [supply] = await db
+      .select()
+      .from(supplies)
+      .where(
+        and(eq(supplies.productCode, productCode), eq(supplies.tenantId, tenantId))
+      );
+    return supply;
   }
 
   async createSupply(supply: InsertSupply): Promise<Supply> {

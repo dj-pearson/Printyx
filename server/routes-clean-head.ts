@@ -326,6 +326,126 @@ function validateManagedServiceData(row: any): any {
   };
 }
 
+// Helper function to validate and transform accessory data
+function validateAccessoryData(row: any): any {
+  const errors: string[] = [];
+
+  if (!row["Product Code"]) errors.push("Product Code is required");
+  if (!row["Product Name"]) errors.push("Product Name is required");
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    data: {
+      accessoryCode: row["Product Code"]?.trim(),
+      accessoryName: row["Product Name"]?.trim(),
+      accessoryType: row["Accessory Type"]?.trim() || null,
+      manufacturer: row["Manufacturer"]?.trim() || null,
+      category: row["Category"]?.trim() || null,
+      description: row["Description"]?.trim() || null,
+      standardCost: row["Standard Cost"]
+        ? parseFloat(row["Standard Cost"])
+        : null,
+      standardRepPrice: row["Standard Rep Price"]
+        ? parseFloat(row["Standard Rep Price"])
+        : null,
+      newCost: row["New Cost"] ? parseFloat(row["New Cost"]) : null,
+      newRepPrice: row["New Rep Price"]
+        ? parseFloat(row["New Rep Price"])
+        : null,
+      upgradeCost: row["Upgrade Cost"] ? parseFloat(row["Upgrade Cost"]) : null,
+      upgradeRepPrice: row["Upgrade Rep Price"]
+        ? parseFloat(row["Upgrade Rep Price"])
+        : null,
+      isActive: true,
+      availableForAll: false,
+      salesRepCredit: true,
+      funding: true,
+    },
+  };
+}
+
+// Helper function to validate and transform professional service data
+function validateProfessionalServiceData(row: any): any {
+  const errors: string[] = [];
+
+  if (!row["Product Code"]) errors.push("Product Code is required");
+  if (!row["Product Name"]) errors.push("Product Name is required");
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    data: {
+      productCode: row["Product Code"]?.trim(),
+      productName: row["Product Name"]?.trim(),
+      category: "Professional Services",
+      accessoryType: row["Accessory Type"]?.trim() || null,
+      manufacturer: row["Manufacturer"]?.trim() || null,
+      model: row["Model"]?.trim() || null,
+      description: row["Description"]?.trim() || null,
+      newRepPrice: row["New Rep Price"]
+        ? parseFloat(row["New Rep Price"])
+        : null,
+      upgradeRepPrice: row["Upgrade Rep Price"]
+        ? parseFloat(row["Upgrade Rep Price"])
+        : null,
+      lexmarkRepPrice: row["Lexmark Rep Price"]
+        ? parseFloat(row["Lexmark Rep Price"])
+        : null,
+      graphicRepPrice: row["Graphic Rep Price"]
+        ? parseFloat(row["Graphic Rep Price"])
+        : null,
+      newActive: !!row["New Rep Price"],
+      upgradeActive: !!row["Upgrade Rep Price"],
+      lexmarkActive: !!row["Lexmark Rep Price"],
+      graphicActive: !!row["Graphic Rep Price"],
+      isActive: true,
+      salesRepCredit: true,
+      funding: true,
+    },
+  };
+}
+
+// Helper function to validate and transform software product data
+function validateSoftwareProductData(row: any): any {
+  const errors: string[] = [];
+
+  if (!row["Product Code"]) errors.push("Product Code is required");
+  if (!row["Product Name"]) errors.push("Product Name is required");
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    data: {
+      productCode: row["Product Code"]?.trim(),
+      productName: row["Product Name"]?.trim(),
+      productType: row["Product Type"]?.trim() || "Software",
+      category: row["Category"]?.trim() || "Software",
+      description: row["Description"]?.trim() || null,
+      standardCost: row["Standard Cost"]
+        ? parseFloat(row["Standard Cost"])
+        : null,
+      standardRepPrice: row["Standard Rep Price"]
+        ? parseFloat(row["Standard Rep Price"])
+        : null,
+      newCost: row["New Cost"] ? parseFloat(row["New Cost"]) : null,
+      newRepPrice: row["New Rep Price"]
+        ? parseFloat(row["New Rep Price"])
+        : null,
+      upgradeCost: row["Upgrade Cost"] ? parseFloat(row["Upgrade Cost"]) : null,
+      upgradeRepPrice: row["Upgrade Rep Price"]
+        ? parseFloat(row["Upgrade Rep Price"])
+        : null,
+      standardActive: !!row["Standard Rep Price"],
+      newActive: !!row["New Rep Price"],
+      upgradeActive: !!row["Upgrade Rep Price"],
+      isActive: true,
+      salesRepCredit: true,
+      funding: true,
+    },
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session management
   const pgStore = connectPg(session);
@@ -6399,6 +6519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const csvData = await parseCSV(req.file.buffer);
 
         let imported = 0;
+        let updated = 0;
         let skipped = 0;
         const errors: string[] = [];
 
@@ -6414,8 +6535,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             const productData = { ...validation.data, tenantId };
-            await storage.createProductModel(productData);
-            imported++;
+            
+            // Check if product with same code already exists for this tenant
+            const existingProduct = await storage.getProductModelByCode(
+              validation.data.productCode,
+              tenantId
+            );
+
+            if (existingProduct) {
+              // Update existing product with new data
+              await storage.updateProductModel(existingProduct.id, productData, tenantId);
+              updated++;
+            } else {
+              // Create new product
+              await storage.createProductModel(productData);
+              imported++;
+            }
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
@@ -6429,8 +6564,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           success: errors.length === 0,
           imported,
+          updated,
           skipped,
           errors,
+          message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
         console.error("Error importing product models:", error);
@@ -6458,6 +6595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const csvData = await parseCSV(req.file.buffer);
 
         let imported = 0;
+        let updated = 0;
         let skipped = 0;
         const errors: string[] = [];
 
@@ -6473,8 +6611,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             const supplyData = { ...validation.data, tenantId };
-            await storage.createSupply(supplyData);
-            imported++;
+            
+            // Check if supply with same code already exists for this tenant
+            const existingSupply = await storage.getSupplyByCode(
+              validation.data.productCode,
+              tenantId
+            );
+
+            if (existingSupply) {
+              // Update existing supply with new data
+              await storage.updateSupply(existingSupply.id, supplyData, tenantId);
+              updated++;
+            } else {
+              // Create new supply
+              await storage.createSupply(supplyData);
+              imported++;
+            }
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
@@ -6488,8 +6640,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           success: errors.length === 0,
           imported,
+          updated,
           skipped,
           errors,
+          message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
         console.error("Error importing supplies:", error);
@@ -6517,6 +6671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const csvData = await parseCSV(req.file.buffer);
 
         let imported = 0;
+        let updated = 0;
         let skipped = 0;
         const errors: string[] = [];
 
@@ -6532,8 +6687,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             const serviceData = { ...validation.data, tenantId };
-            await storage.createManagedService(serviceData);
-            imported++;
+            
+            // Check if managed service with same code already exists for this tenant
+            const existingService = await storage.getManagedServiceByCode(
+              validation.data.productCode,
+              tenantId
+            );
+
+            if (existingService) {
+              // Update existing service with new data
+              await storage.updateManagedService(existingService.id, serviceData, tenantId);
+              updated++;
+            } else {
+              // Create new service
+              await storage.createManagedService(serviceData);
+              imported++;
+            }
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
@@ -6547,8 +6716,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           success: errors.length === 0,
           imported,
+          updated,
           skipped,
           errors,
+          message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
         console.error("Error importing managed services:", error);
@@ -6557,37 +6728,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Placeholder endpoints for other product types
+  // Product Accessories Import
   app.post(
     "/api/product-accessories/import",
     upload.single("file"),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
-      res.json({
-        success: false,
-        imported: 0,
-        skipped: 0,
-        errors: ["Import for Product Accessories not yet implemented"],
-      });
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const csvData = await parseCSV(req.file.buffer);
+
+        let imported = 0;
+        let updated = 0;
+        let skipped = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < csvData.length; i++) {
+          const row = csvData[i];
+          const validation = validateAccessoryData(row);
+
+          if (!validation.isValid) {
+            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            skipped++;
+            continue;
+          }
+
+          try {
+            const accessoryData = { ...validation.data, tenantId };
+            
+            // Check if accessory with same code already exists for this tenant
+            const existingAccessory = await storage.getProductAccessoryByCode(
+              validation.data.accessoryCode,
+              tenantId
+            );
+
+            if (existingAccessory) {
+              // Update existing accessory with new data
+              await storage.updateProductAccessory(existingAccessory.id, accessoryData, tenantId);
+              updated++;
+            } else {
+              // Create new accessory
+              await storage.createProductAccessory(accessoryData);
+              imported++;
+            }
+          } catch (error) {
+            errors.push(
+              `Row ${i + 2}: Failed to import - ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            );
+            skipped++;
+          }
+        }
+
+        res.json({
+          success: errors.length === 0,
+          imported,
+          updated,
+          skipped,
+          errors,
+          message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
+        });
+      } catch (error) {
+        console.error("Error importing product accessories:", error);
+        res.status(500).json({ message: "Failed to import product accessories" });
+      }
     },
   );
 
+  // Professional Services Import
   app.post(
     "/api/professional-services/import",
     upload.single("file"),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
-      res.json({
-        success: false,
-        imported: 0,
-        skipped: 0,
-        errors: ["Import for Professional Services not yet implemented"],
-      });
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const csvData = await parseCSV(req.file.buffer);
+
+        let imported = 0;
+        let updated = 0;
+        let skipped = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < csvData.length; i++) {
+          const row = csvData[i];
+          const validation = validateProfessionalServiceData(row);
+
+          if (!validation.isValid) {
+            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            skipped++;
+            continue;
+          }
+
+          try {
+            const serviceData = { ...validation.data, tenantId };
+            
+            // Check if professional service with same code already exists for this tenant
+            const existingService = await storage.getProfessionalServiceByCode(
+              validation.data.productCode,
+              tenantId
+            );
+
+            if (existingService) {
+              // Update existing service with new data
+              await storage.updateProfessionalService(existingService.id, serviceData, tenantId);
+              updated++;
+            } else {
+              // Create new service
+              await storage.createProfessionalService(serviceData);
+              imported++;
+            }
+          } catch (error) {
+            errors.push(
+              `Row ${i + 2}: Failed to import - ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            );
+            skipped++;
+          }
+        }
+
+        res.json({
+          success: errors.length === 0,
+          imported,
+          updated,
+          skipped,
+          errors,
+          message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
+        });
+      } catch (error) {
+        console.error("Error importing professional services:", error);
+        res.status(500).json({ message: "Failed to import professional services" });
+      }
     },
   );
 
+  // Service Products Import (deprecated - keeping for compatibility)
   app.post(
     "/api/service-products/import",
     upload.single("file"),
@@ -6598,23 +6891,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         imported: 0,
         skipped: 0,
-        errors: ["Import for Service Products not yet implemented"],
+        errors: ["Service Products import deprecated - use Professional Services import instead"],
       });
     },
   );
 
+  // Software Products Import
   app.post(
     "/api/software-products/import",
     upload.single("file"),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
-      res.json({
-        success: false,
-        imported: 0,
-        skipped: 0,
-        errors: ["Import for Software Products not yet implemented"],
-      });
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const csvData = await parseCSV(req.file.buffer);
+
+        let imported = 0;
+        let updated = 0;
+        let skipped = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < csvData.length; i++) {
+          const row = csvData[i];
+          const validation = validateSoftwareProductData(row);
+
+          if (!validation.isValid) {
+            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            skipped++;
+            continue;
+          }
+
+          try {
+            const productData = { ...validation.data, tenantId };
+            
+            // Check if software product with same code already exists for this tenant
+            const existingProduct = await storage.getSoftwareProductByCode(
+              validation.data.productCode,
+              tenantId
+            );
+
+            if (existingProduct) {
+              // Update existing product with new data
+              await storage.updateSoftwareProduct(existingProduct.id, productData, tenantId);
+              updated++;
+            } else {
+              // Create new product
+              await storage.createSoftwareProduct(productData);
+              imported++;
+            }
+          } catch (error) {
+            errors.push(
+              `Row ${i + 2}: Failed to import - ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            );
+            skipped++;
+          }
+        }
+
+        res.json({
+          success: errors.length === 0,
+          imported,
+          updated,
+          skipped,
+          errors,
+          message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
+        });
+      } catch (error) {
+        console.error("Error importing software products:", error);
+        res.status(500).json({ message: "Failed to import software products" });
+      }
     },
   );
 
