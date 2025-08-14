@@ -482,14 +482,37 @@ export default function LeadDetailHubspot() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => {
-                  console.log("Add Contacts button clicked");
-                  setDialogs(prev => ({ ...prev, editRecord: true }));
+                onClick={async () => {
+                  console.log("Add Contacts button clicked - DIRECT TEST");
+                  // Direct API test
+                  try {
+                    const response = await apiRequest(`/api/leads/${id}/contacts`, {
+                      method: 'POST',
+                      data: {
+                        firstName: "Test",
+                        lastName: "Contact",
+                        email: "test@test.com",
+                        isPrimary: false,
+                      },
+                    });
+                    console.log("DIRECT API SUCCESS:", response);
+                    toast({
+                      title: "Success",
+                      description: "Test contact created directly",
+                    });
+                  } catch (error) {
+                    console.error("DIRECT API ERROR:", error);
+                    toast({
+                      title: "Error",
+                      description: "API test failed: " + error.message,
+                      variant: "destructive",
+                    });
+                  }
                 }}
                 className="text-xs"
               >
                 <UserPlus className="h-3 w-3 mr-1" />
-                Add Contacts
+                Test API Direct
               </Button>
               <Button 
                 variant="outline" 
