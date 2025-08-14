@@ -265,7 +265,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
   return sections;
 };
 
-export function RoleAwareCollapsibleSidebar({ className }: RoleAwareCollapsibleSidebarProps) {
+export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
