@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Package, Edit3, Tag, DollarSign } from "lucide-react";
+import { Plus, Search, Package, Edit3, Tag, DollarSign, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,6 +69,27 @@ export default function ProductModels() {
       toast({
         title: "Error",
         description: "Failed to update product model",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteModelMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/product-models/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
+      setSelectedModel(null);
+      toast({
+        title: "Success",
+        description: "Product model deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete product model",
         variant: "destructive",
       });
     },
@@ -954,13 +975,29 @@ export default function ProductModels() {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setSelectedModel(null)}>
-                    Cancel
+                <div className="flex justify-between">
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    onClick={() => {
+                      if (selectedModel && confirm('Are you sure you want to delete this product model? This action cannot be undone.')) {
+                        deleteModelMutation.mutate(selectedModel.id);
+                      }
+                    }}
+                    disabled={deleteModelMutation.isPending}
+                    data-testid="button-delete-model"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteModelMutation.isPending ? "Deleting..." : "Delete"}
                   </Button>
-                  <Button type="submit" disabled={updateModelMutation.isPending}>
-                    {updateModelMutation.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setSelectedModel(null)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={updateModelMutation.isPending}>
+                      {updateModelMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>

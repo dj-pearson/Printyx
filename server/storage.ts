@@ -2436,6 +2436,16 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async deleteProductModel(id: string, tenantId: string): Promise<boolean> {
+    const [result] = await db
+      .delete(productModels)
+      .where(
+        and(eq(productModels.id, id), eq(productModels.tenantId, tenantId))
+      )
+      .returning();
+    return !!result;
+  }
+
   async getAllProductAccessories(
     tenantId: string
   ): Promise<ProductAccessory[]> {
