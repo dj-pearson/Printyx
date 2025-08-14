@@ -2455,6 +2455,61 @@ export class DatabaseStorage implements IStorage {
     return model;
   }
 
+  async getRequiredAccessoriesForModel(
+    modelId: string,
+    tenantId: string
+  ): Promise<ProductAccessory[]> {
+    // Get the product model to check for required accessories
+    const model = await this.getProductModel(modelId, tenantId);
+    if (!model || !model.requiredAccessories) {
+      return [];
+    }
+
+    // Parse required accessory codes (comma-separated)
+    const requiredCodes = model.requiredAccessories
+      .split(',')
+      .map(code => code.trim())
+      .filter(code => code.length > 0);
+
+    if (requiredCodes.length === 0) {
+      return [];
+    }
+
+    // Get accessories by their codes
+    const accessories = await db
+      .select()
+      .from(productAccessories)
+      .where(
+        and(
+          inArray(productAccessories.accessoryCode, requiredCodes),
+          eq(productAccessories.tenantId, tenantId)
+        )
+      );
+
+    return accessories;
+  }
+
+  async getProductAccessoriesByCodes(
+    accessoryCodes: string[],
+    tenantId: string
+  ): Promise<ProductAccessory[]> {
+    if (accessoryCodes.length === 0) {
+      return [];
+    }
+
+    const accessories = await db
+      .select()
+      .from(productAccessories)
+      .where(
+        and(
+          inArray(productAccessories.accessoryCode, accessoryCodes),
+          eq(productAccessories.tenantId, tenantId)
+        )
+      );
+
+    return accessories;
+  }
+
   async createProductModel(model: InsertProductModel): Promise<ProductModel> {
     const [result] = await db.insert(productModels).values(model).returning();
     return result;

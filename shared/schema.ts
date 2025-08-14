@@ -2123,6 +2123,9 @@ export const productModels = pgTable("product_models", {
   bwSpeed: varchar("bw_speed"),
   productFamily: varchar("product_family"),
 
+  // Required Accessories (comma-separated accessory codes)
+  requiredAccessories: text("required_accessories"),
+
   // Pricing tiers
   newActive: boolean("new_active").default(false),
   newRepPrice: decimal("new_rep_price", { precision: 10, scale: 2 }),
