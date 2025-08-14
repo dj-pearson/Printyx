@@ -7483,19 +7483,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  // Placeholder endpoints for other product types
+  // Product Accessories import endpoint
   app.post(
     "/api/product-accessories/import",
     upload.single("file"),
     requireAuth,
-    requireAuth,
     async (req: any, res) => {
-      res.json({
-        success: false,
-        imported: 0,
-        skipped: 0,
-        errors: ["Import for Product Accessories not yet implemented"],
-      });
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const csvText = req.file.buffer.toString("utf-8");
+        const results = await new Promise((resolve, reject) => {
+          const records: any[] = [];
+          const stream = Readable.from([csvText])
+            .pipe(csv())
+            .on("data", (data) => records.push(data))
+            .on("end", () => resolve(records))
+            .on("error", reject);
+        });
+
+        const tenant = await storage.getCurrentTenant(req.user.id);
+        if (!tenant) {
+          return res.status(400).json({ message: "No tenant found" });
+        }
+
+        let imported = 0;
+        let skipped = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < results.length; i++) {
+          const row = results[i];
+
+          try {
+            // Map CSV fields to database schema
+            const accessoryData = {
+              tenantId: tenant.id,
+              accessoryCode: row.accessory_code?.trim(),
+              accessoryName: row.accessory_name?.trim(),
+              accessoryType: row.accessory_type?.trim() || null,
+              category: row.category?.trim() || null,
+              manufacturer: row.manufacturer?.trim() || null,
+              description: row.description?.trim() || null,
+              
+              // Pricing fields
+              standardCost: row.standard_cost ? parseFloat(row.standard_cost) : null,
+              standardRepPrice: row.standard_rep_price ? parseFloat(row.standard_rep_price) : null,
+              newCost: row.new_cost ? parseFloat(row.new_cost) : null,
+              newRepPrice: row.new_rep_price ? parseFloat(row.new_rep_price) : null,
+              upgradeCost: row.upgrade_cost ? parseFloat(row.upgrade_cost) : null,
+              upgradeRepPrice: row.upgrade_rep_price ? parseFloat(row.upgrade_rep_price) : null,
+              
+              // Boolean fields with proper conversion
+              isActive: row.is_active === "TRUE" || row.is_active === "true" || row.is_active === true,
+              availableForAll: row.available_for_all === "TRUE" || row.available_for_all === "true" || row.available_for_all === true,
+              salesRepCredit: row.sales_rep_credit === "TRUE" || row.sales_rep_credit === "true" || row.sales_rep_credit === true,
+              funding: row.funding === "TRUE" || row.funding === "true" || row.funding === true,
+              lease: row.lease === "TRUE" || row.lease === "true" || row.lease === true,
+            };
+
+            // Validation
+            if (!accessoryData.accessoryCode || !accessoryData.accessoryName) {
+              errors.push(`Row ${i + 2}: Missing required fields (accessory_code, accessory_name)`);
+              skipped++;
+              continue;
+            }
+
+            // Check if accessory already exists
+            const existing = await db
+              .select()
+              .from(productAccessories)
+              .where(
+                and(
+                  eq(productAccessories.tenantId, tenant.id),
+                  eq(productAccessories.accessoryCode, accessoryData.accessoryCode)
+                )
+              )
+              .limit(1);
+
+            if (existing.length > 0) {
+              // Update existing accessory
+              await db
+                .update(productAccessories)
+                .set({
+                  ...accessoryData,
+                  updatedAt: new Date(),
+                })
+                .where(eq(productAccessories.id, existing[0].id));
+              imported++;
+            } else {
+              // Create new accessory
+              await db.insert(productAccessories).values(accessoryData);
+              imported++;
+            }
+          } catch (error) {
+            console.error(`Error processing row ${i + 2}:`, error);
+            errors.push(
+              `Row ${i + 2}: Failed to import - ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`
+            );
+            skipped++;
+          }
+        }
+
+        res.json({
+          success: errors.length === 0,
+          imported,
+          skipped,
+          errors,
+        });
+      } catch (error) {
+        console.error("Error importing product accessories:", error);
+        res.status(500).json({ message: "Failed to import product accessories" });
+      }
     }
   );
 

@@ -84,15 +84,23 @@ export default function ProductAccessories() {
     resolver: zodResolver(insertProductAccessorySchema),
     defaultValues: {
       tenantId: "",
-      modelId: "",
       accessoryCode: "",
       accessoryName: "",
-      category: "Finishing",
+      accessoryType: "Document Feeder",
+      category: null,
+      manufacturer: "",
       description: null,
-      msrp: null,
-      repPrice: null,
-      isRequired: false,
+      standardCost: null,
+      standardRepPrice: null,
+      newCost: null,
+      newRepPrice: null,
+      upgradeCost: null,
+      upgradeRepPrice: null,
       isActive: true,
+      availableForAll: false,
+      salesRepCredit: false,
+      funding: false,
+      lease: false,
     },
   });
 
@@ -102,13 +110,7 @@ export default function ProductAccessories() {
   });
 
   const onSubmit = (data: InsertProductAccessory) => {
-    // Create accessories for all selected models
-    selectedModels.forEach(modelId => {
-      createAccessoryMutation.mutate({
-        ...data,
-        modelId
-      });
-    });
+    createAccessoryMutation.mutate(data);
   };
 
   const onEditSubmit = (data: Partial<ProductAccessory>) => {
@@ -317,7 +319,7 @@ export default function ProductAccessories() {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="category"
+                        name="accessoryType"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Accessory Type</FormLabel>
@@ -328,7 +330,8 @@ export default function ProductAccessories() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="Finishing">Finishing</SelectItem>
+                                <SelectItem value="Document Feeder">Document Feeder</SelectItem>
+                                <SelectItem value="Finisher">Finisher</SelectItem>
                                 <SelectItem value="Paper Handling">Paper Handling</SelectItem>
                                 <SelectItem value="Security">Security</SelectItem>
                                 <SelectItem value="Connectivity">Connectivity</SelectItem>
@@ -339,30 +342,89 @@ export default function ProductAccessories() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="manufacturer"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Manufacturer</FormLabel>
+                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Canon">Canon</SelectItem>
+                                <SelectItem value="Xerox">Xerox</SelectItem>
+                                <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
+                                <SelectItem value="HP">HP</SelectItem>
+                                <SelectItem value="Brother">Brother</SelectItem>
+                                <SelectItem value="Lexmark">Lexmark</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Finishing Products" value={field.value || ""} onChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <div className="space-y-3">
                         <label className="text-sm font-medium">Options</label>
                         <div className="space-y-2">
                           <FormField
                             control={form.control}
-                            name="isRequired"
+                            name="salesRepCredit"
                             render={({ field }) => (
                               <div className="flex items-center space-x-2">
                                 <Checkbox
                                   checked={!!field.value}
                                   onCheckedChange={field.onChange}
                                 />
-                                <label className="text-sm">Repost Edit</label>
+                                <label className="text-sm">Sales Rep Credit</label>
                               </div>
                             )}
                           />
-                          <div className="flex items-center space-x-2">
-                            <Checkbox checked />
-                            <label className="text-sm">Sales Rep Credit</label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox checked />
-                            <label className="text-sm">Funding</label>
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="funding"
+                            render={({ field }) => (
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={!!field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                                <label className="text-sm">Funding</label>
+                              </div>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="lease"
+                            render={({ field }) => (
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={!!field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                                <label className="text-sm">Lease</label>
+                              </div>
+                            )}
+                          />
                         </div>
                       </div>
                     </div>
@@ -381,56 +443,19 @@ export default function ProductAccessories() {
                           </div>
                         )}
                       />
-                      <div className="flex items-center space-x-2">
-                        <Checkbox />
-                        <label className="text-sm font-medium">Available for All</label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Product Model Selection */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Compatible Models</h3>
-                    
-                    <div className="space-y-4">
-                      <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
-                        <SelectTrigger className="w-64">
-                          <SelectValue placeholder="Filter by manufacturer" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Manufacturers</SelectItem>
-                          {manufacturers.map(manufacturer => (
-                            <SelectItem key={manufacturer} value={manufacturer}>{manufacturer}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <div className="grid grid-cols-2 gap-4 max-h-64 overflow-y-auto border rounded-lg p-4">
-                        {filteredModels.map(model => (
-                          <div key={model.id} className="flex items-center space-x-2">
+                      <FormField
+                        control={form.control}
+                        name="availableForAll"
+                        render={({ field }) => (
+                          <div className="flex items-center space-x-2">
                             <Checkbox
-                              checked={selectedModels.includes(model.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedModels([...selectedModels, model.id]);
-                                } else {
-                                  setSelectedModels(selectedModels.filter(id => id !== model.id));
-                                }
-                              }}
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
                             />
-                            <label className="text-sm font-medium">{model.productName}</label>
-                            <span className="text-xs text-muted-foreground">({model.productCode})</span>
+                            <label className="text-sm font-medium">Available for All</label>
                           </div>
-                        ))}
-                      </div>
-                      
-                      {selectedModels.length > 0 && (
-                        <div className="text-sm text-muted-foreground">
-                          {selectedModels.length} model(s) selected
-                        </div>
-                      )}
+                        )}
+                      />
                     </div>
                   </div>
 
@@ -476,18 +501,18 @@ export default function ProductAccessories() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Pricing Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
-                        name="msrp"
+                        name="standardCost"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>MSRP</FormLabel>
+                            <FormLabel>Standard Cost</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
                                 step="0.01" 
-                                placeholder="8500.00" 
+                                placeholder="5500.00" 
                                 value={field.value || ""} 
                                 onChange={field.onChange} 
                               />
@@ -496,28 +521,12 @@ export default function ProductAccessories() {
                           </FormItem>
                         )}
                       />
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Payment Type</label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="--None--" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="purchase">Purchase</SelectItem>
-                            <SelectItem value="lease">Lease</SelectItem>
-                            <SelectItem value="rental">Rental</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="repPrice"
+                        name="standardRepPrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Rep Price</FormLabel>
+                            <FormLabel>Standard Rep Price</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -531,6 +540,91 @@ export default function ProductAccessories() {
                           </FormItem>
                         )}
                       />
+                      <div></div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="newCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Cost</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="5200.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="newRepPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Rep Price</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="6500.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div></div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="upgradeCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Upgrade Cost</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="4800.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="upgradeRepPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Upgrade Rep Price</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="6000.00" 
+                                value={field.value || ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div></div>
                     </div>
                   </div>
 
@@ -538,7 +632,7 @@ export default function ProductAccessories() {
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={createAccessoryMutation.isPending || selectedModels.length === 0}>
+                    <Button type="submit" disabled={createAccessoryMutation.isPending}>
                       {createAccessoryMutation.isPending ? "Creating..." : "Create Accessory"}
                     </Button>
                   </div>
