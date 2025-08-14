@@ -6118,6 +6118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put(
     "/api/software-products/:id",
     requireAuth,
+    requireAuth,
     async (req: any, res) => {
       try {
         const { id } = req.params;
@@ -6129,7 +6130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...req.body,
           tenantId,
         });
-        const product = await storage.updateSoftwareProduct(id, validatedData);
+        const product = await storage.updateSoftwareProduct(id, validatedData, tenantId);
         res.json(product);
       } catch (error) {
         console.error("Error updating software product:", error);
@@ -8422,8 +8423,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(
     "/api/performance/alerts",
-    requireAuth,
-    requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
