@@ -101,9 +101,14 @@ SUP-001,Black Toner Cartridge,Toner,Standard,Main Warehouse,50,High-yield black 
 IT-001,Network Monitoring Service,Network Management,Premium,24x7,15 minutes,Yes,Yes,Comprehensive network monitoring with proactive management,299.00,279.00,259.00,319.00`,
 };
 
-export default function ProductImport() {
+type ProductImportProps = {
+  productType?: string;
+  onImportComplete?: () => void;
+};
+
+export default function ProductImport({ productType, onImportComplete }: ProductImportProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedProductType, setSelectedProductType] = useState<string>("");
+  const [selectedProductType, setSelectedProductType] = useState<string>(productType || "");
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -154,6 +159,10 @@ export default function ProductImport() {
           queryClient.invalidateQueries({
             queryKey: [selectedType.endpoint.replace("/import", "")],
           });
+        }
+
+        if (onImportComplete) {
+          try { onImportComplete(); } catch {}
         }
 
         toast({
@@ -242,24 +251,26 @@ export default function ProductImport() {
 
         <div className="space-y-6">
           {/* Product Type Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Product Type</label>
-            <Select
-              value={selectedProductType}
-              onValueChange={setSelectedProductType}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select product type to import" />
-              </SelectTrigger>
-              <SelectContent>
-                {productTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!productType && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Product Type</label>
+              <Select
+                value={selectedProductType}
+                onValueChange={setSelectedProductType}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product type to import" />
+                </SelectTrigger>
+                <SelectContent>
+                  {productTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Template Download */}
           {selectedProductType && (

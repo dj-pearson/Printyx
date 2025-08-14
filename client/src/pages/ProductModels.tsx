@@ -18,7 +18,7 @@ import { insertProductModelSchema, type ProductModel, type InsertProductModel } 
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
-import ProductImport from "@/components/product-import/ProductImport";
+import ManagementToolbar from "@/components/product-management/ManagementToolbar";
 
 export default function ProductModels() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -315,17 +315,26 @@ export default function ProductModels() {
             {model.colorSpeed && <span>Color: {model.colorSpeed}ppm</span>}
             {model.bwSpeed && <span className="ml-3">B/W: {model.bwSpeed}ppm</span>}
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => {
-              console.log('Setting selected model:', model);
-              setSelectedModel(model);
-            }}
-          >
-            <Edit3 className="h-4 w-4 mr-1" />
-            View Details
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                console.log('Setting selected model:', model);
+                setSelectedModel(model);
+              }}
+            >
+              <Edit3 className="h-4 w-4 mr-1" />
+              View
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => deleteModelMutation.mutate(model.id)}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -334,23 +343,25 @@ export default function ProductModels() {
   return (
     <MainLayout title="Product Models" description="Manage product models and specifications">
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Product Models</h1>
-          <p className="text-muted-foreground">
-            Manage your copier and MFP product catalog with pricing tiers
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <ProductImport />
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Model
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <ManagementToolbar
+          title="Product Models"
+          description="Manage your copier and MFP product catalog with pricing tiers"
+          searchPlaceholder="Search models..."
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onAddClick={() => setDialogOpen(true)}
+          productTypeForImport="product-models"
+          bulkMode={bulkMode}
+          onToggleBulkMode={() => setBulkMode(!bulkMode)}
+          selectedCount={selectedIds.size}
+          totalCount={models.length}
+          onBulkDelete={handleBulkDelete}
+        />
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <span />
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Product Model</DialogTitle>
               <DialogDescription>

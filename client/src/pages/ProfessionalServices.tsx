@@ -18,13 +18,16 @@ import { insertProfessionalServiceSchema, type ProfessionalService, type InsertP
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
-import ProductImport from "@/components/product-import/ProductImport";
+import ManagementToolbar from "@/components/product-management/ManagementToolbar";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ProfessionalServices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ProfessionalService | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -100,6 +103,37 @@ export default function ProfessionalServices() {
     createServiceMutation.mutate(data);
   };
 
+  const deleteServiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/professional-services/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/professional-services'] });
+      setSelectedIds(new Set());
+      toast({ title: 'Deleted', description: 'Service deleted' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to delete service', variant: 'destructive' });
+    }
+  });
+
+  const toggleItemSelection = (id: string) => {
+    const copy = new Set(selectedIds);
+    if (copy.has(id)) copy.delete(id); else copy.add(id);
+    setSelectedIds(copy);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      try { await apiRequest(`/api/professional-services/${id}`, 'DELETE'); } catch {}
+    }
+    queryClient.invalidateQueries({ queryKey: ['/api/professional-services'] });
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    toast({ title: 'Deleted', description: `Deleted ${ids.length} services` });
+  };
+
   // Get unique categories from services
   const categories = Array.from(new Set(services.map(s => s.category).filter(Boolean)));
 
@@ -129,12 +163,17 @@ export default function ProfessionalServices() {
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
-            <div className="space-y-1">
+            <div className="flex items-start gap-3">
+              {bulkMode && (
+                <Checkbox checked={selectedIds.has(service.id)} onCheckedChange={() => toggleItemSelection(service.id)} />
+              )}
+              <div className="space-y-1">
               <CardTitle className="text-lg">{service.productName}</CardTitle>
               <CardDescription>
                 <span className="font-medium">{service.productCode}</span>
                 {service.category && <span className="ml-2 text-muted-foreground">• {service.category}</span>}
               </CardDescription>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {service.isActive ? (
@@ -182,14 +221,23 @@ export default function ProfessionalServices() {
               {service.manufacturer && <div>Manufacturer: {service.manufacturer}</div>}
               {service.units && <div>Units: {service.units}</div>}
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSelectedService(service)}
-            >
-              <Edit3 className="h-4 w-4 mr-1" />
-              View Details
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSelectedService(service)}
+              >
+                <Edit3 className="h-4 w-4 mr-1" />
+                View
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => deleteServiceMutation.mutate(service.id)}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -199,28 +247,25 @@ export default function ProfessionalServices() {
   return (
     <MainLayout title="Professional Services" description="Manage professional service offerings and pricing">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Professional Services</h1>
-            <p className="text-muted-foreground">
-              Manage service offerings and professional solutions for your customers
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <ProductImport 
-              productType="professional-services"
-              onImportComplete={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/professional-services'] });
-              }}
-            />
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Service
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <ManagementToolbar
+          title="Professional Services"
+          description="Manage service offerings and professional solutions for your customers"
+          searchPlaceholder="Search services..."
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onAddClick={() => setDialogOpen(true)}
+          productTypeForImport="professional-services"
+          bulkMode={bulkMode}
+          onToggleBulkMode={() => setBulkMode(!bulkMode)}
+          selectedCount={selectedIds.size}
+          totalCount={services.length}
+          onBulkDelete={handleBulkDelete}
+        />
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <span />
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>New Price Book List: Professional Service</DialogTitle>
                 <DialogDescription>
