@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, useSidebar } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
   Target,
@@ -269,7 +270,7 @@ export function RoleAwareCollapsibleSidebar({ className }: RoleAwareCollapsibleS
   const [location] = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
-  const [isCollapsed, setIsCollapsed] = useState(false);
+
 
   // Use role from user object instead of separate API call
   const userRole = user?.role;
@@ -427,81 +428,120 @@ export function RoleAwareCollapsibleSidebar({ className }: RoleAwareCollapsibleS
     );
   };
 
+  const { open, openMobile, isMobile } = useSidebar();
+  const sidebarOpen = isMobile ? openMobile : open;
+
   return (
-    <div className={`bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} ${className}`}>
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center gap-3 px-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-semibold text-sm">P</span>
               </div>
-              {!isCollapsed && (
-                <div>
-                  <h1 className="font-semibold text-gray-900">Printyx</h1>
-                  <p className="text-xs text-gray-500">Business Management</p>
-                </div>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="h-8 w-8 p-0 md:hidden"
-              data-testid="sidebar-collapse-toggle"
-            >
-              {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className={`flex-1 p-4 space-y-2 overflow-y-auto ${isCollapsed ? 'px-2' : ''}`}>
-          {isCollapsed ? (
-            // Collapsed navigation - show only icons
-            <div className="space-y-2">
-              {navigationSections.map((section) => (
-                <Link key={section.id} href={section.path}>
-                  <Button
-                    variant={isActive(section.path) ? "secondary" : "ghost"}
-                    className="w-full p-2 h-auto"
-                    title={section.title}
-                    data-testid={`nav-${section.id}-collapsed`}
-                  >
-                    <section.icon className="h-5 w-5" />
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            // Full navigation
-            navigationSections.map(renderNavigationItem)
-          )}
-        </nav>
-
-        {/* User Profile */}
-        <div className="p-4 border-t border-gray-200">
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <Avatar className="w-8 h-8">
-              <AvatarImage src={user?.avatar} />
-              <AvatarFallback className="bg-blue-100 text-blue-600">
-                {user?.username?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.username || 'User'}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {userRole?.name || 'User'}
-                </p>
+              <div className="group-data-[collapsible=icon]:hidden">
+                <h1 className="font-semibold text-gray-900">Printyx</h1>
+                <p className="text-xs text-gray-500">Business Management</p>
               </div>
-            )}
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationSections.map((section) => {
+                const shouldShowAsActive = section.children
+                  ? section.children.some(child => isActive(child.path)) || isActive(section.path) ||
+                    (section.matchPatterns?.some(pattern => isActive(pattern)) ?? false)
+                  : isActive(section.path) || (section.matchPatterns?.some(pattern => isActive(pattern)) ?? false);
+
+                if (section.children) {
+                  return (
+                    <Collapsible key={section.id} open={isExpanded(section.id)} onOpenChange={() => toggleSection(section.id)}>
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton 
+                            className="w-full justify-between" 
+                            data-active={shouldShowAsActive}
+                            data-testid={`nav-${section.id}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <section.icon className="h-4 w-4" />
+                              <span>{section.title}</span>
+                            </div>
+                            {isExpanded(section.id) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenu>
+                            {section.children.map((child) => (
+                              <SidebarMenuItem key={child.path}>
+                                <SidebarMenuButton 
+                                  asChild 
+                                  data-active={isActive(child.path)}
+                                  data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                                >
+                                  <Link href={child.path}>
+                                    <child.icon className="h-4 w-4" />
+                                    <span>{child.title}</span>
+                                  </Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            ))}
+                          </SidebarMenu>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                }
+
+                return (
+                  <SidebarMenuItem key={section.id}>
+                    <SidebarMenuButton 
+                      asChild 
+                      data-active={shouldShowAsActive}
+                      data-testid={`nav-${section.id}`}
+                    >
+                      <Link href={section.path}>
+                        <section.icon className="h-4 w-4" />
+                        <span>{section.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* User Profile Footer */}
+      <div className="mt-auto p-4 border-t">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={user?.avatar} />
+            <AvatarFallback className="bg-blue-100 text-blue-600">
+              {user?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="group-data-[collapsible=icon]:hidden flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user?.username || 'User'}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {userRole?.name || 'User'}
+            </p>
           </div>
         </div>
       </div>
-    </div>
+    </Sidebar>
   );
 }
