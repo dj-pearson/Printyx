@@ -3968,6 +3968,7 @@ export const softwareProducts = pgTable("software_products", {
   tenantId: varchar("tenant_id").notNull(),
   productCode: varchar("product_code").notNull(),
   productName: varchar("product_name").notNull(),
+  vendor: varchar("vendor"),
   productType: varchar("product_type"),
   category: varchar("category"),
   accessoryType: varchar("accessory_type"),
