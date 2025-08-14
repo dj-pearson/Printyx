@@ -5437,6 +5437,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Bulk delete product models
+  app.delete(
+    "/api/product-models/bulk-delete",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { ids } = req.body;
+        const tenantId = req.user?.tenantId;
+        
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+          return res.status(400).json({ error: 'Invalid or empty ids array' });
+        }
+
+        console.log('Bulk deleting master models:', ids);
+        const results = [];
+        
+        for (const id of ids) {
+          try {
+            // Check if this is a master product model (since that's what the frontend displays)
+            const existingMasterModel = await storage.getMasterProductModel(id);
+            if (existingMasterModel) {
+              // Delete from master product models table
+              const result = await storage.deleteMasterProductModel(id);
+              results.push({ id, success: result });
+              console.log(`Delete result for master model ${id}:`, result);
+            } else {
+              // Fallback: check tenant product models table
+              const existingModel = await storage.getProductModel(id, tenantId);
+              if (existingModel) {
+                const result = await storage.deleteProductModel(id, tenantId);
+                results.push({ id, success: result });
+                console.log(`Delete result for tenant model ${id}:`, result);
+              } else {
+                results.push({ id, success: false, error: 'Product model not found' });
+              }
+            }
+          } catch (error) {
+            console.error(`Error deleting model ${id}:`, error);
+            results.push({ id, success: false, error: error.message });
+          }
+        }
+        
+        const successful = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+        
+        console.log(`Bulk delete complete: ${successful} successful, ${failed} failed`);
+        res.json({ 
+          message: `Successfully deleted ${successful} of ${ids.length} product models`,
+          successful,
+          failed,
+          results 
+        });
+      } catch (error) {
+        console.error('Error in bulk delete:', error);
+        res.status(500).json({ error: 'Failed to perform bulk delete' });
+      }
+    }
+  );
+
   // Product Accessories
   app.get(
     "/api/product-accessories",
