@@ -1,0 +1,20 @@
+accessory_code,accessory_name,category,description,msrp,rep_price,is_required,is_active,created_at,updated_at,accessory_type,manufacturer,standard_cost,standard_rep_price,new_cost,new_rep_price,upgrade_cost,upgrade_rep_price,available_for_all,sales_rep_credit,funding,lease
+6611C002AA,Canon System Base Unit Model 6611C002AA,,,,,FALSE,TRUE,"""2025-08-14T15:45:26.210Z""","""2025-08-14T15:45:26.210Z""",,Canon,,,,,,,FALSE,FALSE,FALSE,FALSE
+CN-FINISHER-SR,Inner Finisher SR-1,Finishing,Internal finishing unit for booklet making and saddle stitching,2495,1895,FALSE,TRUE,"""2025-08-01T19:00:13.768Z""","""2025-08-13T23:51:39.314Z""",,Canon,,,,,,,FALSE,FALSE,FALSE,FALSE
+CN-TRAY-A1,Paper Tray A1,Paper Handling,Additional paper tray for 550 sheets,385,275,FALSE,TRUE,"""2025-08-01T19:00:13.768Z""","""2025-08-14T01:06:15.331Z""",Tray,Canon,,,,,,,FALSE,FALSE,FALSE,FALSE
+FINISHER-SR5020,Saddle Stitching Finisher SR5020,Finishing,Stapling and saddle-stitching finisher with hole punching capability,8500,6800,FALSE,TRUE,"""2025-08-01T02:55:57.004Z""","""2025-08-01T02:55:57.004Z""",,,,,,,,,FALSE,FALSE,FALSE,FALSE
+HP-TRAY-550,HP 550-Sheet Feeder,Paper Handling,Additional paper input tray for high-volume printing,299,225,FALSE,TRUE,"""2025-08-01T19:00:13.768Z""","""2025-08-13T23:51:25.543Z""",,HP,,,,,,,FALSE,FALSE,FALSE,FALSE
+XR-WIFI-KIT,Wireless Network Kit,Connectivity,Wi-Fi connectivity module for wireless printing,149,119,FALSE,TRUE,"""2025-08-01T19:00:13.768Z""","""2025-08-01T19:00:13.768Z""",,,,,,,,,FALSE,FALSE,FALSE,FALSE
+PRX-80031BKU,"WAVE ID Plus Mini Keystroke iClass ID/SE/SEOS Black
+USB Reader",Card Reader,"WAVE ID Plus Mini Keystroke iClass ID/SE/SEOS Black
+USB Reader",297,223.74,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,rfIDEAS,198,223.74,198,223.74,198,223.74,TRUE,TRUE,TRUE,TRUE
+3575BA82AA,MiCard PLUS C,Card Reader,MiCard PLUS C,249,204.53,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,181,204.53,181,204.53,181,204.53,TRUE,TRUE,TRUE,TRUE
+3575BA60AA,MiCard PLUS Ci,Card Reader,MiCard PLUS Ci,291,240.69,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,213,240.69,213,240.69,213,240.69,TRUE,TRUE,TRUE,TRUE
+3575BA61AA,MiCard PLUS BLE,Card Reader,MiCard PLUS BLE,383,324.31,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,287,324.31,287,324.31,287,324.31,TRUE,TRUE,TRUE,TRUE
+3575B956AA,MiCard v3 Multi,Card Reader,MiCard v3 Multi,155,132.21,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,117,132.21,117,132.21,117,132.21,TRUE,TRUE,TRUE,TRUE
+3575BA62AA,MiCard MultiTech4-NT-P,Card Reader,MiCard MultiTech4-NT-P,227,192.1,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,170,192.1,170,192.1,170,192.1,TRUE,TRUE,TRUE,TRUE
+3575BA63AA,MiCard MultiTech4-NT-PI,Card Reader,MiCard MultiTech4-NT-PI,303,256.51,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,227,256.51,227,256.51,227,256.51,TRUE,TRUE,TRUE,TRUE
+3575BA64AA,MiCard MultiTech4-NT-P LEGIC,Card Reader,MiCard MultiTech4-NT-P LEGIC,344,291.54,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,258,291.54,258,291.54,258,291.54,TRUE,TRUE,TRUE,TRUE
+3575BA76AA,MiCard MultiTech4-NT-P BLE,Card Reader,MiCard MultiTech4-NT-P BLE,335,282.5,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,250,282.5,250,282.5,250,282.5,TRUE,TRUE,TRUE,TRUE
+3575BA77AA,MiCard MultiTech4-NT-PI BLE,Card Reader,MiCard MultiTech4-NT-PI BLE,395,333.35,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,295,333.35,295,333.35,295,333.35,TRUE,TRUE,TRUE,TRUE
+3575B052AA,MiCard Magnetic Card Reader - 1-9 Readers,Card Reader,MiCard Magnetic Card Reader - 1-9 Readers,172,143.51,FALSE,TRUE,"""2025-08-14T19:00:13.768Z""","""2025-08-14T19:00:13.768Z""",Card Reader,Canon,127,143.51,127,143.51,127,143.51,TRUE,TRUE,TRUE,TRUE
