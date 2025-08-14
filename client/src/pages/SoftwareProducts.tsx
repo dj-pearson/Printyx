@@ -305,9 +305,20 @@ export default function SoftwareProducts() {
 
   const handleEdit = (product: SoftwareProduct) => {
     setSelectedProduct(product);
+    
+    // Debug logging to see what data we're getting
+    console.log('Editing product:', product.productName);
+    console.log('Category:', product.category);
+    console.log('isActive:', product.isActive);
+    console.log('salesRepCredit:', product.salesRepCredit);
+    console.log('funding:', product.funding);
+    console.log('lease:', product.lease);
+    console.log('standardRepPrice:', product.standardRepPrice);
+    console.log('Full product object:', product);
+    
     // Reset the edit form with the product's current values
     // Convert null values to empty strings for Select components
-    editForm.reset({
+    const formData = {
       tenantId: product.tenantId || "",
       productCode: product.productCode || "",
       productName: product.productName || "",
@@ -339,7 +350,10 @@ export default function SoftwareProducts() {
       upgradeRepPrice: product.upgradeRepPrice || "",
       priceBookId: product.priceBookId || "",
       tempKey: product.tempKey || "",
-    });
+    };
+    
+    console.log('Form data being set:', formData);
+    editForm.reset(formData);
     setEditDialogOpen(true);
   };
 
