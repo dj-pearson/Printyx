@@ -2910,11 +2910,50 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  // Product Models - fallback implementation
-  async getAllProductModels(tenantId: string): Promise<any[]> {
+  // Product Models - get from master database and tenant-specific models
+  async getProductModels(tenantId: string): Promise<any[]> {
     try {
-      // For now, return empty array until product models table is properly set up
-      return [];
+      // Get tenant-specific product models
+      const tenantModels = await db
+        .select({
+          id: productModels.id,
+          modelName: productModels.productName,
+          manufacturer: productModels.manufacturer,
+          category: productModels.category,
+          productFamily: productModels.productFamily,
+          productType: sql<string>`COALESCE(${productModels.category}, 'MFP')`.as('productType'),
+        })
+        .from(productModels)
+        .where(eq(productModels.tenantId, tenantId))
+        .orderBy(productModels.manufacturer, productModels.productName);
+
+      // Get master product models to supplement tenant models
+      const masterModels = await db
+        .select({
+          id: masterProductModels.id,
+          modelName: masterProductModels.displayName,
+          manufacturer: masterProductModels.manufacturer,
+          category: masterProductModels.category,
+          productFamily: sql<string>`COALESCE(${masterProductModels.category}, 'Equipment')`.as('productFamily'),
+          productType: sql<string>`COALESCE(${masterProductModels.productType}, 'multifunction')`.as('productType'),
+        })
+        .from(masterProductModels)
+        .where(eq(masterProductModels.status, 'active'))
+        .orderBy(masterProductModels.manufacturer, masterProductModels.displayName);
+
+      // Combine both datasets, preferring tenant-specific data
+      const combinedModels = [...tenantModels, ...masterModels];
+      
+      // Remove duplicates based on manufacturer and model name
+      const uniqueModels = combinedModels.reduce((acc, model) => {
+        const key = `${model.manufacturer}-${model.modelName}`;
+        if (!acc.has(key)) {
+          acc.set(key, model);
+        }
+        return acc;
+      }, new Map());
+
+      return Array.from(uniqueModels.values());
     } catch (error) {
       console.error("Error in getAllProductModels:", error);
       return [];
