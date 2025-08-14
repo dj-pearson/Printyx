@@ -1344,15 +1344,6 @@ router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
     const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
 
     const html = generateQuoteHTML(quote, lineItems, company, contact, false);
-    
-    // Temporary workaround: Return HTML for now instead of PDF due to Chrome dependency issues
-    res.set({
-      'Content-Type': 'text/html',
-      'Content-Disposition': `attachment; filename="Quote-${quote.proposalNumber}.html"`
-    });
-    return res.send(html);
-    
-    /* PDF generation temporarily disabled - Chrome dependency issue
     const browser = await puppeteer.launch({ 
       headless: true,
       args: [
@@ -1390,7 +1381,6 @@ router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
     });
     
     res.send(pdf);
-    */ // End of temporarily disabled PDF generation
   } catch (error) {
     console.error('PDF export error:', error);
     res.status(500).json({ error: 'Failed to generate PDF' });
@@ -1426,15 +1416,6 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
     const costInfo = await getProductCostInfo(lineItems, pricingType);
 
     const html = generateQuoteHTML(quote, lineItems, company, contact, true, costInfo);
-    
-    // Temporary workaround: Return HTML for now instead of PDF due to Chrome dependency issues
-    res.set({
-      'Content-Type': 'text/html',
-      'Content-Disposition': `attachment; filename="Quote-Manager-${quote.proposalNumber}.html"`
-    });
-    return res.send(html);
-    
-    /* PDF generation temporarily disabled - Chrome dependency issue
     const browser = await puppeteer.launch({ 
       headless: true,
       args: [
@@ -1472,7 +1453,6 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
     });
     
     res.send(pdf);
-    */ // End of temporarily disabled PDF generation
   } catch (error) {
     console.error('Manager PDF export error:', error);
     res.status(500).json({ error: 'Failed to generate manager PDF' });
