@@ -2930,7 +2930,7 @@ export class DatabaseStorage implements IStorage {
         and(
           tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
           eq(systemAlerts.isRead, false),
-          ne(systemAlerts.category, "info")
+          ne(systemAlerts.severity, "info")
         )
       );
 
@@ -2941,7 +2941,19 @@ export class DatabaseStorage implements IStorage {
 
   async getSystemAlerts(tenantId?: string): Promise<SystemAlert[]> {
     return await db
-      .select()
+      .select({
+        id: systemAlerts.id,
+        tenantId: systemAlerts.tenantId,
+        title: systemAlerts.title,
+        message: systemAlerts.message,
+        severity: systemAlerts.severity,
+        category: systemAlerts.category,
+        isRead: systemAlerts.isRead,
+        createdAt: systemAlerts.createdAt,
+        updatedAt: systemAlerts.updatedAt,
+        expiresAt: systemAlerts.expiresAt,
+        metadata: systemAlerts.metadata,
+      })
       .from(systemAlerts)
       .where(tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`)
       .where(
