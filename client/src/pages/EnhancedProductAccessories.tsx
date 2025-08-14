@@ -1,28 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Package, Edit3, Tag, DollarSign, Filter, Link2, Trash2, Check, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { 
-  insertProductAccessorySchema, 
-  insertAccessoryModelCompatibilitySchema,
-  type ProductAccessory, 
-  type InsertProductAccessory, 
-  type ProductModel,
-  type AccessoryModelCompatibility,
-  type InsertAccessoryModelCompatibility
-} from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Search, Plus, Edit, Link as LinkIcon, Settings } from "lucide-react";
+import { insertProductAccessorySchema, type ProductAccessory, type InsertProductAccessory, type ProductModel, type AccessoryModelCompatibility, type InsertAccessoryModelCompatibility } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
@@ -53,31 +44,6 @@ export default function EnhancedProductAccessories() {
     enabled: !!selectedAccessory?.id,
   });
 
-  // Filter models by manufacturer and remove duplicates
-  const getAvailableModels = () => {
-    if (!selectedAccessory?.manufacturer) return [];
-    
-    const manufacturerModels = models.filter(model => 
-      model.manufacturer === selectedAccessory.manufacturer
-    );
-    
-    // Remove already compatible models
-    const availableModels = manufacturerModels.filter(model => 
-      !compatibilities.some(comp => comp.modelId === model.id)
-    );
-    
-    // Remove duplicates based on modelName
-    const uniqueModels = availableModels.reduce((acc, model) => {
-      const exists = acc.find(m => m.modelName === model.modelName);
-      if (!exists) {
-        acc.push(model);
-      }
-      return acc;
-    }, [] as ProductModel[]);
-    
-    return uniqueModels;
-  };
-
   const form = useForm<InsertProductAccessory>({
     resolver: zodResolver(insertProductAccessorySchema),
     defaultValues: {
@@ -105,125 +71,85 @@ export default function EnhancedProductAccessories() {
     },
   });
 
-  const compatibilityForm = useForm<InsertAccessoryModelCompatibility>({
-    resolver: zodResolver(insertAccessoryModelCompatibilitySchema),
-    defaultValues: {
-      isRequired: false,
-      isOptional: true,
-      installationNotes: "",
-    },
-  });
-
   const createAccessoryMutation = useMutation({
     mutationFn: async (data: InsertProductAccessory) => {
       return await apiRequest('/api/product-accessories', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
-      setDialogOpen(false);
+      toast({ title: "Accessory created successfully" });
       form.reset();
-      toast({
-        title: "Success",
-        description: "Product accessory created successfully",
-      });
+      setDialogOpen(false);
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to create product accessory",
-        variant: "destructive",
+    onError: (error) => {
+      toast({ 
+        title: "Error creating accessory", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
       });
     },
   });
 
   const updateAccessoryMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ProductAccessory> }) => {
-      return await apiRequest(`/api/product-accessories/${id}`, 'PATCH', data);
+    mutationFn: async (data: InsertProductAccessory) => {
+      return await apiRequest(`/api/product-accessories/${editingAccessory!.id}`, 'PATCH', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
+      toast({ title: "Accessory updated successfully" });
+      form.reset();
+      setDialogOpen(false);
       setEditingAccessory(null);
-      toast({
-        title: "Success",
-        description: "Product accessory updated successfully",
-      });
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update product accessory",
-        variant: "destructive",
+    onError: (error) => {
+      toast({ 
+        title: "Error updating accessory", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
       });
     },
   });
 
+  // Mutations for compatibility management
   const createCompatibilityMutation = useMutation({
     mutationFn: async (data: InsertAccessoryModelCompatibility) => {
-      return await apiRequest('/api/accessory-model-compatibility', 'POST', data);
+      return await apiRequest(`/api/accessories/${data.accessoryId}/compatibility`, 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/accessories', selectedAccessory?.id, 'compatibility'] });
-      compatibilityForm.reset();
-      toast({
-        title: "Success",
-        description: "Accessory compatibility added successfully",
-      });
+      toast({ title: "Model linked successfully" });
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to add compatibility",
-        variant: "destructive",
+    onError: (error) => {
+      toast({ 
+        title: "Error linking model", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
       });
     },
   });
 
   const deleteCompatibilityMutation = useMutation({
     mutationFn: async ({ accessoryId, modelId }: { accessoryId: string; modelId: string }) => {
-      return await apiRequest(`/api/accessory-model-compatibility/${accessoryId}/${modelId}`, 'DELETE');
+      return await apiRequest(`/api/accessories/${accessoryId}/compatibility/${modelId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/accessories', selectedAccessory?.id, 'compatibility'] });
-      toast({
-        title: "Success",
-        description: "Compatibility removed successfully",
-      });
+      toast({ title: "Model unlinked successfully" });
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to remove compatibility",
-        variant: "destructive",
+    onError: (error) => {
+      toast({ 
+        title: "Error unlinking model", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
       });
     },
   });
-
-  const filteredAccessories = accessories.filter(accessory => {
-    const matchesSearch = !searchTerm || 
-      accessory.accessoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      accessory.accessoryCode.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesManufacturer = selectedManufacturer === "all" || accessory.manufacturer === selectedManufacturer;
-    const matchesType = selectedType === "all" || accessory.accessoryType === selectedType;
-    return matchesSearch && matchesManufacturer && matchesType;
-  });
-
-  const manufacturers = Array.from(new Set(accessories.map(a => a.manufacturer).filter(Boolean)));
-  const accessoryTypes = Array.from(new Set(accessories.map(a => a.accessoryType).filter(Boolean)));
 
   const onSubmit = (data: InsertProductAccessory) => {
     if (editingAccessory) {
-      updateAccessoryMutation.mutate({ id: editingAccessory.id, data });
+      updateAccessoryMutation.mutate(data);
     } else {
       createAccessoryMutation.mutate(data);
-    }
-  };
-
-  const onCompatibilitySubmit = (data: InsertAccessoryModelCompatibility) => {
-    if (selectedAccessory) {
-      createCompatibilityMutation.mutate({
-        ...data,
-        accessoryId: selectedAccessory.id,
-      });
     }
   };
 
@@ -233,45 +159,51 @@ export default function EnhancedProductAccessories() {
     setDialogOpen(true);
   };
 
-  const handleNewAccessory = () => {
-    setEditingAccessory(null);
-    form.reset();
-    setDialogOpen(true);
-  };
-
-  const handleViewCompatibility = (accessory: ProductAccessory) => {
+  const handleManageCompatibility = (accessory: ProductAccessory) => {
     setSelectedAccessory(accessory);
     setCompatibilityDialogOpen(true);
   };
 
-  const getCompatibleModelNames = (accessoryId: string) => {
-    const accessoryCompatibilities = compatibilities.filter(c => c.accessoryId === accessoryId);
-    return accessoryCompatibilities
-      .map(comp => models.find(m => m.id === comp.modelId)?.modelName)
-      .filter(Boolean)
-      .join(', ');
-  };
+  const filteredAccessories = accessories.filter(accessory => {
+    const matchesSearch = accessory.accessoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         accessory.accessoryCode.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesManufacturer = selectedManufacturer === "all" || accessory.manufacturer === selectedManufacturer;
+    const matchesType = selectedType === "all" || accessory.accessoryType === selectedType;
+    
+    return matchesSearch && matchesManufacturer && matchesType;
+  });
+
+  const manufacturers = Array.from(new Set(accessories.map(a => a.manufacturer).filter(Boolean)));
+  const accessoryTypes = Array.from(new Set(accessories.map(a => a.accessoryType).filter(Boolean)));
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading accessories...</div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-8" data-testid="enhanced-product-accessories-page">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold" data-testid="page-title">Product Accessories</h1>
-            <p className="text-muted-foreground" data-testid="page-description">
-              Manage your product accessory catalog with model compatibility
-            </p>
+            <h1 className="text-3xl font-bold">Enhanced Product Accessories</h1>
+            <p className="text-muted-foreground">Manage product accessories and model compatibility</p>
           </div>
-          <Button onClick={handleNewAccessory} data-testid="button-create-accessory">
+          <Button onClick={() => setDialogOpen(true)} data-testid="button-add-accessory">
             <Plus className="h-4 w-4 mr-2" />
             Add Accessory
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search accessories..."
@@ -281,8 +213,9 @@ export default function EnhancedProductAccessories() {
               data-testid="input-search"
             />
           </div>
+          
           <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
-            <SelectTrigger className="w-48" data-testid="select-manufacturer">
+            <SelectTrigger data-testid="select-manufacturer">
               <SelectValue placeholder="All Manufacturers" />
             </SelectTrigger>
             <SelectContent>
@@ -294,8 +227,9 @@ export default function EnhancedProductAccessories() {
               ))}
             </SelectContent>
           </Select>
+
           <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-48" data-testid="select-type">
+            <SelectTrigger data-testid="select-type">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
@@ -307,121 +241,89 @@ export default function EnhancedProductAccessories() {
               ))}
             </SelectContent>
           </Select>
+
+          <div className="flex items-center text-sm text-muted-foreground">
+            {filteredAccessories.length} of {accessories.length} accessories
+          </div>
         </div>
 
         {/* Accessories Grid */}
-        {isLoading ? (
-          <div className="text-center py-8" data-testid="loading-state">Loading accessories...</div>
-        ) : filteredAccessories.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground" data-testid="empty-state">
-            No accessories found
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAccessories.map(accessory => (
-              <Card key={accessory.id} className="relative" data-testid={`card-accessory-${accessory.id}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg" data-testid={`text-name-${accessory.id}`}>
-                        {accessory.accessoryName}
-                      </CardTitle>
-                      <CardDescription data-testid={`text-code-${accessory.id}`}>
-                        {accessory.accessoryCode}
-                      </CardDescription>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditAccessory(accessory)}
-                        data-testid={`button-edit-${accessory.id}`}
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewCompatibility(accessory)}
-                        data-testid={`button-compatibility-${accessory.id}`}
-                      >
-                        <Link2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAccessories.map(accessory => (
+            <Card key={accessory.id} className="hover:shadow-md transition-shadow" data-testid={`accessory-card-${accessory.id}`}>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-lg font-semibold">{accessory.accessoryName}</CardTitle>
+                  <Badge variant={accessory.isActive ? "default" : "secondary"}>
+                    {accessory.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Code: {accessory.accessoryCode}</p>
+                  <p className="text-sm text-muted-foreground">{accessory.manufacturer} • {accessory.accessoryType}</p>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="font-medium">Standard Cost:</span>
+                    <p>${accessory.standardCost}</p>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {accessory.manufacturer && (
-                    <div className="flex items-center space-x-2">
-                      <Tag className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm" data-testid={`text-manufacturer-${accessory.id}`}>
-                        {accessory.manufacturer}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {accessory.accessoryType && (
-                    <Badge variant="secondary" data-testid={`badge-type-${accessory.id}`}>
-                      {accessory.accessoryType}
-                    </Badge>
-                  )}
+                  <div>
+                    <span className="font-medium">Rep Price:</span>
+                    <p>${accessory.standardRepPrice}</p>
+                  </div>
+                </div>
+                
+                {accessory.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">{accessory.description}</p>
+                )}
+                
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleEditAccessory(accessory)}
+                    data-testid={`button-edit-${accessory.id}`}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleManageCompatibility(accessory)}
+                    data-testid={`button-compatibility-${accessory.id}`}
+                  >
+                    <LinkIcon className="h-4 w-4 mr-1" />
+                    Models
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-                  {/* Pricing Info */}
-                  <div className="space-y-2">
-                    {accessory.standardRepPrice && (
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Standard Price:</span>
-                        <span className="font-medium" data-testid={`price-standard-${accessory.id}`}>
-                          ${Number(accessory.standardRepPrice).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    {accessory.newRepPrice && (
-                      <div className="flex justify-between items-center text-sm">
-                        <span>New Price:</span>
-                        <span className="font-medium" data-testid={`price-new-${accessory.id}`}>
-                          ${Number(accessory.newRepPrice).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Status Indicators */}
-                  <div className="flex flex-wrap gap-2">
-                    {accessory.isActive && <Badge variant="outline" className="text-green-600">Active</Badge>}
-                    {accessory.availableForAll && <Badge variant="outline">Available for All</Badge>}
-                    {accessory.salesRepCredit && <Badge variant="outline">Sales Credit</Badge>}
-                    {accessory.funding && <Badge variant="outline">Funding</Badge>}
-                    {accessory.lease && <Badge variant="outline">Lease</Badge>}
-                  </div>
-
-                  {/* Compatible Models Preview */}
-                  <div className="text-sm text-muted-foreground">
-                    <div className="font-medium">Compatible Models:</div>
-                    <div className="truncate" data-testid={`compatible-models-${accessory.id}`}>
-                      {getCompatibleModelNames(accessory.id) || "No compatibilities set"}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        {filteredAccessories.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No accessories found matching your criteria</p>
           </div>
         )}
 
-        {/* Create/Edit Accessory Dialog */}
+        {/* Add/Edit Accessory Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle data-testid="dialog-title">
+              <DialogTitle data-testid="accessory-dialog-title">
                 {editingAccessory ? "Edit Accessory" : "Add New Accessory"}
               </DialogTitle>
               <DialogDescription>
-                {editingAccessory ? "Update accessory details" : "Create a new product accessory"}
+                {editingAccessory ? "Update accessory information" : "Create a new product accessory"}
               </DialogDescription>
             </DialogHeader>
             
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -430,7 +332,7 @@ export default function EnhancedProductAccessories() {
                       <FormItem>
                         <FormLabel>Accessory Code *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-accessory-code" />
+                          <Input {...field} placeholder="ACC-001" data-testid="input-accessory-code" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -444,20 +346,22 @@ export default function EnhancedProductAccessories() {
                       <FormItem>
                         <FormLabel>Accessory Name *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-accessory-name" />
+                          <Input {...field} placeholder="Finisher Unit" data-testid="input-accessory-name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="manufacturer"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Manufacturer *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-manufacturer">
                               <SelectValue placeholder="Select manufacturer" />
@@ -469,11 +373,6 @@ export default function EnhancedProductAccessories() {
                             <SelectItem value="Xerox">Xerox</SelectItem>
                             <SelectItem value="Ricoh">Ricoh</SelectItem>
                             <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
-                            <SelectItem value="Sharp">Sharp</SelectItem>
-                            <SelectItem value="Brother">Brother</SelectItem>
-                            <SelectItem value="Kyocera">Kyocera</SelectItem>
-                            <SelectItem value="Lexmark">Lexmark</SelectItem>
-                            <SelectItem value="Toshiba">Toshiba</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -486,46 +385,23 @@ export default function EnhancedProductAccessories() {
                     name="accessoryType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Accessory Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormLabel>Type *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-accessory-type">
-                              <SelectValue placeholder="Select accessory type" />
+                              <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Document Feeder">Document Feeder</SelectItem>
-                            <SelectItem value="Paper Tray">Paper Tray</SelectItem>
                             <SelectItem value="Finisher">Finisher</SelectItem>
-                            <SelectItem value="Stapler">Stapler</SelectItem>
-                            <SelectItem value="Hole Punch">Hole Punch</SelectItem>
-                            <SelectItem value="Booklet Maker">Booklet Maker</SelectItem>
-                            <SelectItem value="Duplex Unit">Duplex Unit</SelectItem>
-                            <SelectItem value="Memory Module">Memory Module</SelectItem>
-                            <SelectItem value="Fax Module">Fax Module</SelectItem>
-                            <SelectItem value="Network Card">Network Card</SelectItem>
-                            <SelectItem value="Hard Drive">Hard Drive</SelectItem>
+                            <SelectItem value="Feeder">Feeder</SelectItem>
+                            <SelectItem value="Tray">Tray</SelectItem>
                             <SelectItem value="Stand">Stand</SelectItem>
-                            <SelectItem value="Caster Base">Caster Base</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="Memory">Memory</SelectItem>
+                            <SelectItem value="Network">Network</SelectItem>
+                            <SelectItem value="Security">Security</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="partNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Part Number</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-part-number" />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -538,7 +414,7 @@ export default function EnhancedProductAccessories() {
                       <FormItem>
                         <FormLabel>Category</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-category" />
+                          <Input {...field} placeholder="Optional category" data-testid="input-category" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -553,181 +429,99 @@ export default function EnhancedProductAccessories() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea {...field} data-testid="textarea-description" />
+                        <Textarea {...field} placeholder="Accessory description..." data-testid="textarea-description" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <Separator />
-                
-                {/* Pricing Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Pricing</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="standardCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Standard Cost</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-standard-cost" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="standardRepPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Standard Rep Price</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-standard-rep-price" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="newCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Cost</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-new-cost" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="newRepPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Rep Price</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-new-rep-price" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="upgradeCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Upgrade Cost</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-upgrade-cost" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="upgradeRepPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Upgrade Rep Price</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.01" data-testid="input-upgrade-rep-price" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="standardCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Standard Cost</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="0.00" data-testid="input-standard-cost" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="standardRepPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Standard Rep Price</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="0.00" data-testid="input-standard-rep-price" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="partNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Part Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="PN123456" data-testid="input-part-number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                <Separator />
-                
-                {/* Status & Options */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Status & Options</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="isActive"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between">
-                          <FormLabel>Active</FormLabel>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-is-active" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="availableForAll"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between">
-                          <FormLabel>Available for All</FormLabel>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-available-for-all" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="salesRepCredit"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between">
-                          <FormLabel>Sales Rep Credit</FormLabel>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-sales-rep-credit" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="funding"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between">
-                          <FormLabel>Funding</FormLabel>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-funding" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="lease"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center justify-between">
-                          <FormLabel>Lease</FormLabel>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-lease" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Weight</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="5.2 lbs" data-testid="input-weight" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="dimensions"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dimensions</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="12x8x6 inches" data-testid="input-dimensions" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="warrantyPeriod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Warranty Period</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="12 months" data-testid="input-warranty" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="flex justify-end space-x-2">
@@ -760,168 +554,113 @@ export default function EnhancedProductAccessories() {
             </DialogHeader>
             
             <div className="space-y-6">
-              {/* Add New Compatibility */}
-              <div className="border rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-4">Add Model Compatibility</h3>
-                <Form {...compatibilityForm}>
-                  <form onSubmit={compatibilityForm.handleSubmit(onCompatibilitySubmit)} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={compatibilityForm.control}
-                        name="modelId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Compatible Model *</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-compatible-model">
-                                  <SelectValue placeholder="Select a model" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {(() => {
-                                  const availableModels = getAvailableModels();
-                                  
-                                  if (availableModels.length === 0) {
-                                    return (
-                                      <div className="p-2 text-muted-foreground text-sm">
-                                        {selectedAccessory?.manufacturer 
-                                          ? `No compatible ${selectedAccessory.manufacturer} models available`
-                                          : "Please set accessory manufacturer first"
-                                        }
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  return availableModels.map(model => (
-                                    <SelectItem key={model.id} value={model.id}>
-                                      {model.modelName} ({model.productType || model.category}) - {model.manufacturer}
-                                    </SelectItem>
-                                  ));
-                                })()}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+              {/* Available Models for Linking */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Available {selectedAccessory?.manufacturer} Models</h3>
+                <p className="text-sm text-muted-foreground">
+                  Link this accessory to compatible models from the same manufacturer
+                </p>
+                
+                {!selectedAccessory?.manufacturer ? (
+                  <p className="text-muted-foreground" data-testid="no-manufacturer">
+                    Please set the accessory manufacturer first to see available models
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {(() => {
+                      const manufacturerModels = models.filter(model => 
+                        model.manufacturer === selectedAccessory.manufacturer
+                      );
                       
-                      <div className="space-y-3">
-                        <FormField
-                          control={compatibilityForm.control}
-                          name="isRequired"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl>
-                                <Checkbox 
-                                  checked={field.value} 
-                                  onCheckedChange={field.onChange} 
-                                  data-testid="checkbox-is-required"
-                                />
-                              </FormControl>
-                              <FormLabel>Required Accessory</FormLabel>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                      if (manufacturerModels.length === 0) {
+                        return (
+                          <p className="text-muted-foreground" data-testid="no-models">
+                            No {selectedAccessory.manufacturer} models found in the system
+                          </p>
+                        );
+                      }
+                      
+                      return manufacturerModels.map(model => {
+                        const isLinked = compatibilities.some(comp => comp.modelId === model.id);
                         
-                        <FormField
-                          control={compatibilityForm.control}
-                          name="isOptional"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl>
-                                <Checkbox 
-                                  checked={field.value} 
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-is-optional"
-                                />
-                              </FormControl>
-                              <FormLabel>Optional Accessory</FormLabel>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    
-                    <FormField
-                      control={compatibilityForm.control}
-                      name="installationNotes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Installation Notes</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              {...field} 
-                              placeholder="Any special installation requirements or notes..."
-                              data-testid="textarea-installation-notes"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button 
-                      type="submit" 
-                      disabled={createCompatibilityMutation.isPending}
-                      data-testid="button-add-compatibility"
-                    >
-                      Add Compatibility
-                    </Button>
-                  </form>
-                </Form>
+                        return (
+                          <div 
+                            key={model.id}
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                            data-testid={`model-${model.id}`}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium" data-testid={`model-name-${model.id}`}>
+                                {model.modelName}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {model.manufacturer} • {model.productType || model.category || 'MFP'}
+                              </div>
+                            </div>
+                            <Button
+                              variant={isLinked ? "destructive" : "default"}
+                              size="sm"
+                              onClick={() => {
+                                if (isLinked) {
+                                  // Unlink the model
+                                  const compatibility = compatibilities.find(comp => comp.modelId === model.id);
+                                  if (compatibility) {
+                                    deleteCompatibilityMutation.mutate({
+                                      accessoryId: compatibility.accessoryId,
+                                      modelId: compatibility.modelId
+                                    });
+                                  }
+                                } else {
+                                  // Link the model
+                                  createCompatibilityMutation.mutate({
+                                    accessoryId: selectedAccessory.id,
+                                    modelId: model.id,
+                                    isRequired: false,
+                                    isOptional: true,
+                                    installationNotes: ""
+                                  });
+                                }
+                              }}
+                              disabled={createCompatibilityMutation.isPending || deleteCompatibilityMutation.isPending}
+                              data-testid={`button-${isLinked ? 'unlink' : 'link'}-${model.id}`}
+                            >
+                              {isLinked ? 'Unlink' : 'Link'}
+                            </Button>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
               </div>
 
-              {/* Existing Compatibilities */}
+              {/* Current Linked Models Summary */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Current Compatibilities</h3>
                 {compatibilities.length === 0 ? (
                   <p className="text-muted-foreground" data-testid="no-compatibilities">
-                    No model compatibilities set for this accessory
+                    No models linked to this accessory yet
                   </p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {compatibilities.map(compatibility => {
                       const model = models.find(m => m.id === compatibility.modelId);
                       return (
                         <div 
                           key={`${compatibility.accessoryId}-${compatibility.modelId}`} 
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                          data-testid={`compatibility-${compatibility.id}`}
+                          className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded"
+                          data-testid={`linked-model-${compatibility.id}`}
                         >
                           <div className="flex-1">
-                            <div className="font-medium" data-testid={`model-name-${compatibility.id}`}>
+                            <div className="text-sm font-medium text-green-800 dark:text-green-200">
                               {model?.modelName || 'Unknown Model'}
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-xs text-green-600 dark:text-green-400">
                               {model?.manufacturer} • {model?.productType || model?.category || 'MFP'}
                             </div>
-                            {compatibility.installationNotes && (
-                              <div className="text-sm text-muted-foreground mt-1">
-                                Notes: {compatibility.installationNotes}
-                              </div>
-                            )}
                           </div>
-                          <div className="flex items-center space-x-2">
-                            {compatibility.isRequired && (
-                              <Badge variant="destructive" size="sm">Required</Badge>
-                            )}
-                            {compatibility.isOptional && (
-                              <Badge variant="secondary" size="sm">Optional</Badge>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteCompatibilityMutation.mutate({
-                                accessoryId: compatibility.accessoryId,
-                                modelId: compatibility.modelId
-                              })}
-                              data-testid={`button-remove-${compatibility.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <div className="text-xs text-green-600 dark:text-green-400">
+                            ✓ Linked
                           </div>
                         </div>
                       );
