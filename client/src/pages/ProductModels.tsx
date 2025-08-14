@@ -136,25 +136,27 @@ export default function ProductModels() {
 
   // Populate edit form when selectedModel changes
   useEffect(() => {
+    console.log('useEffect triggered, selectedModel:', selectedModel);
     if (selectedModel) {
+      console.log('Resetting form with selectedModel data');
       editForm.reset({
-        productCode: selectedModel.productCode,
-        productName: selectedModel.productName,
-        category: selectedModel.category,
-        manufacturer: selectedModel.manufacturer,
-        description: selectedModel.description,
-        msrp: selectedModel.msrp,
-        colorMode: selectedModel.colorMode,
-        colorSpeed: selectedModel.colorSpeed,
-        bwSpeed: selectedModel.bwSpeed,
-        productFamily: selectedModel.productFamily,
-        newActive: selectedModel.newActive,
-        newRepPrice: selectedModel.newRepPrice,
-        upgradeActive: selectedModel.upgradeActive,
-        upgradeRepPrice: selectedModel.upgradeRepPrice,
-        lexmarkActive: selectedModel.lexmarkActive,
-        lexmarkRepPrice: selectedModel.lexmarkRepPrice,
-        isActive: selectedModel.isActive,
+        productCode: selectedModel.productCode || selectedModel.modelCode || '',
+        productName: selectedModel.productName || selectedModel.modelName || '',
+        category: selectedModel.category || '',
+        manufacturer: selectedModel.manufacturer || '',
+        description: selectedModel.description || '',
+        msrp: selectedModel.msrp || '',
+        colorMode: selectedModel.colorMode || '',
+        colorSpeed: selectedModel.colorSpeed || '',
+        bwSpeed: selectedModel.bwSpeed || '',
+        productFamily: selectedModel.productFamily || '',
+        newActive: selectedModel.newActive || false,
+        newRepPrice: selectedModel.newRepPrice || '',
+        upgradeActive: selectedModel.upgradeActive || false,
+        upgradeRepPrice: selectedModel.upgradeRepPrice || '',
+        lexmarkActive: selectedModel.lexmarkActive || false,
+        lexmarkRepPrice: selectedModel.lexmarkRepPrice || '',
+        isActive: selectedModel.isActive ?? true,
       });
     }
   }, [selectedModel, editForm]);
@@ -254,7 +256,10 @@ export default function ProductModels() {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setSelectedModel(model)}
+            onClick={() => {
+              console.log('Setting selected model:', model);
+              setSelectedModel(model);
+            }}
           >
             <Edit3 className="h-4 w-4 mr-1" />
             View Details
@@ -983,7 +988,10 @@ export default function ProductModels() {
                     variant="destructive" 
                     onClick={() => {
                       if (selectedModel && confirm('Are you sure you want to delete this product model? This action cannot be undone.')) {
+                        console.log('Deleting model with ID:', selectedModel.id);
                         deleteModelMutation.mutate(selectedModel.id);
+                      } else {
+                        console.log('Delete cancelled or selectedModel is null:', selectedModel);
                       }
                     }}
                     disabled={deleteModelMutation.isPending}
