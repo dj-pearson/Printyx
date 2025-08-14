@@ -133,12 +133,16 @@ export function ContactManager({
   const createContactMutation = useMutation({
     mutationFn: async (contactData: Partial<Contact>) => {
       console.log("Creating contact with data:", { ...contactData, companyId });
+      const payload = {
+        ...contactData,
+        companyId,
+        // Remove the companyName from the payload as it's not needed for the API
+      };
+      delete payload.companyName;
+      console.log("Final API payload:", payload);
       return apiRequest(`/api/company-contacts`, {
         method: "POST",
-        data: {
-          ...contactData,
-          companyId,
-        },
+        data: payload,
       });
     },
     onSuccess: () => {
@@ -148,10 +152,11 @@ export function ContactManager({
       setIsCreateContactOpen(false);
       toast({ title: "Success", description: "Contact created successfully" });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Create contact mutation error:", error);
       toast({
         title: "Error",
-        description: "Failed to create contact",
+        description: `Failed to create contact: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     },
