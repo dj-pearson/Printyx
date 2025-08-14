@@ -19,7 +19,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 import ManagementToolbar from "@/components/product-management/ManagementToolbar";
-import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ProfessionalServices() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -919,7 +918,6 @@ export default function ProfessionalServices() {
               </Form>
             </DialogContent>
           </Dialog>
-          </div>
 
         {/* Search and Filter Bar */}
         <div className="flex items-center gap-4">

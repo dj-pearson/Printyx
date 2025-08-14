@@ -791,7 +791,6 @@ export default function Supplies() {
               </Form>
             </DialogContent>
           </Dialog>
-        </div>
       </div>
 
       {/* Search and Filter Bar */}

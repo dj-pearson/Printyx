@@ -655,9 +655,8 @@ export default function ProductModels() {
                 </div>
               </form>
             </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Search and Filter Bar */}
         <div className="flex items-center gap-4">
@@ -1132,6 +1131,6 @@ export default function ProductModels() {
         </DialogContent>
       </Dialog>
     </div>
-  </MainLayout>
+    </MainLayout>
   );
 }
