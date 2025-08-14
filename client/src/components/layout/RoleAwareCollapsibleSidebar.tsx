@@ -440,9 +440,9 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-semibold text-sm">P</span>
               </div>
-              <div className="group-data-[collapsible=icon]:hidden">
-                <h1 className="font-semibold text-gray-900">Printyx</h1>
-                <p className="text-xs text-gray-500">Business Management</p>
+              <div className="group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:w-0 overflow-hidden transition-all duration-200">
+                <h1 className="font-semibold text-gray-900 whitespace-nowrap">Printyx</h1>
+                <p className="text-xs text-gray-500 whitespace-nowrap">Business Management</p>
               </div>
             </div>
           </SidebarMenuItem>
