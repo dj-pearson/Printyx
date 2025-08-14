@@ -3191,9 +3191,9 @@ export const accessoryModelCompatibilityRelations = relations(
       fields: [accessoryModelCompatibility.accessoryId],
       references: [productAccessories.id],
     }),
-    model: one(productModels, {
+    model: one(masterProductModels, {
       fields: [accessoryModelCompatibility.modelId],
-      references: [productModels.id],
+      references: [masterProductModels.id],
     }),
   })
 );
