@@ -65,6 +65,7 @@ import {
   Eye,
 } from "lucide-react";
 import { format } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Contact {
   id: string;
@@ -130,11 +131,16 @@ export function ContactManager({
 
   // Create contact mutation - using standardized endpoint
   const createContactMutation = useMutation({
-    mutationFn: async (contactData: Partial<Contact>) =>
-      apiRequest(`/api/company-contacts`, "POST", {
-        ...contactData,
-        companyId,
-      }),
+    mutationFn: async (contactData: Partial<Contact>) => {
+      console.log("Creating contact with data:", { ...contactData, companyId });
+      return apiRequest(`/api/company-contacts`, {
+        method: "POST",
+        data: {
+          ...contactData,
+          companyId,
+        },
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/company-contacts`, { companyId }],
@@ -718,6 +724,7 @@ function ContactForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("ContactForm handleSubmit called with formData:", formData);
     onSubmit(formData);
   };
 
