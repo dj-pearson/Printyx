@@ -140,10 +140,7 @@ export function ContactManager({
       };
       delete payload.companyName;
       console.log("Final API payload:", payload);
-      return apiRequest(`/api/company-contacts`, {
-        method: "POST",
-        data: payload,
-      });
+      return apiRequest(`/api/company-contacts`, "POST", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

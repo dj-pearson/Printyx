@@ -1,0 +1,143 @@
+Console.js:61 Create contact mutation error: TypeError: method.toUpperCase is not a function
+    at apiRequest (queryClient.ts:58:12)
+    at Object.mutationFn (ContactManager.tsx:143:14)
+Mt.forEach.n.<computed>	@	Console.js:61
+onError	@	ContactManager.tsx:156
+await in execute		
+onSubmit	@	ContactManager.tsx:291
+handleSubmit	@	ContactManager.tsx:733
+
+Console.js:61 Navigation Debug: 
+{userRole: {…}, navigationSections: 12, sections: Array(12)}
+navigationSections
+: 
+12
+sections
+: 
+(12) ['Dashboard', 'Platform Admin', 'CRM Hub', 'Service Hub', 'Product Hub', 'Equipment Lifecycle', 'Billing Hub', 'Reports', 'Task Management', 'Customers', 'Integrations', 'Settings']
+userRole
+: 
+{id: 'root-admin-role', name: 'Root Administrator', code: 'ROOT_ADMIN', roleType: 'platform_admin', department: 'platform', …}
+[[Prototype]]
+: 
+Object
+Console.js:61 ContactForm handleSubmit called with formData: 
+{salutation: '', firstName: 'Jeremy', lastName: 'Swim', title: '', department: 'IT', …}
+companyId
+: 
+"40a2295c-b2ae-4012-82f7-1238baa293fe"
+companyName
+: 
+"St Luke - The Evangelist"
+department
+: 
+"IT"
+email
+: 
+"jeremy.swim@slte.org"
+firstName
+: 
+"Jeremy"
+isPrimaryContact
+: 
+false
+lastName
+: 
+"Swim"
+leadStatus
+: 
+"new"
+mobile
+: 
+""
+phone
+: 
+"(515) 964-1278"
+salutation
+: 
+""
+title
+: 
+""
+[[Prototype]]
+: 
+Object
+Console.js:61 Creating contact with data: 
+{salutation: '', firstName: 'Jeremy', lastName: 'Swim', title: '', department: 'IT', …}
+companyId
+: 
+"40a2295c-b2ae-4012-82f7-1238baa293fe"
+companyName
+: 
+"St Luke - The Evangelist"
+department
+: 
+"IT"
+email
+: 
+"jeremy.swim@slte.org"
+firstName
+: 
+"Jeremy"
+isPrimaryContact
+: 
+false
+lastName
+: 
+"Swim"
+leadStatus
+: 
+"new"
+mobile
+: 
+""
+phone
+: 
+"(515) 964-1278"
+salutation
+: 
+""
+title
+: 
+""
+[[Prototype]]
+: 
+Object
+Console.js:61 Final API payload: 
+{salutation: '', firstName: 'Jeremy', lastName: 'Swim', title: '', department: 'IT', …}
+companyId
+: 
+"40a2295c-b2ae-4012-82f7-1238baa293fe"
+department
+: 
+"IT"
+email
+: 
+"jeremy.swim@slte.org"
+firstName
+: 
+"Jeremy"
+isPrimaryContact
+: 
+false
+lastName
+: 
+"Swim"
+leadStatus
+: 
+"new"
+mobile
+: 
+""
+phone
+: 
+"(515) 964-1278"
+salutation
+: 
+""
+title
+: 
+""
+[[Prototype]]
+: 
+Object
