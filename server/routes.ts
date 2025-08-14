@@ -5511,6 +5511,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
+
+        // Check if codes parameter is provided for filtering
+        const codesParam = req.query.codes as string;
+        if (codesParam) {
+          const codes = codesParam.split(',').map(code => code.trim());
+          const accessories = await storage.getProductAccessoriesByCodes(codes, tenantId);
+          return res.json(accessories);
+        }
+
         const accessories = await storage.getAllProductAccessories(tenantId);
         res.json(accessories);
       } catch (error) {

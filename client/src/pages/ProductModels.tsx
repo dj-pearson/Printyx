@@ -206,6 +206,7 @@ export default function ProductModels() {
         category: selectedModel.category || '',
         manufacturer: selectedModel.manufacturer || '',
         description: selectedModel.description || '',
+        requiredAccessories: selectedModel.requiredAccessories || '',
         msrp: selectedModel.msrp || '',
         colorMode: selectedModel.colorMode || '',
         colorSpeed: selectedModel.colorSpeed || '',
@@ -310,11 +311,19 @@ export default function ProductModels() {
 
         <Separator />
 
-        <div className="flex items-center justify-between">
+        <div className="space-y-2">
           <div className="text-sm text-muted-foreground">
             {model.colorSpeed && <span>Color: {model.colorSpeed}ppm</span>}
             {model.bwSpeed && <span className="ml-3">B/W: {model.bwSpeed}ppm</span>}
           </div>
+          {model.requiredAccessories && (
+            <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+              <span className="font-medium">Required Accessories:</span> {model.requiredAccessories}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end">
           <div className="flex gap-2">
             <Button 
               variant="outline" 
@@ -480,6 +489,24 @@ export default function ProductModels() {
                       <FormControl>
                         <Textarea 
                           placeholder="High-performance production printer with advanced finishing options..."
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="requiredAccessories"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Required Accessories</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter comma-separated accessory codes (e.g., 6611C002AA, 6612C002AA)"
                           value={field.value || ""}
                           onChange={field.onChange}
                         />
@@ -902,6 +929,24 @@ export default function ProductModels() {
                       <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea 
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="requiredAccessories"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Required Accessories</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter comma-separated accessory codes (e.g., 6611C002AA, 6612C002AA)"
                           value={field.value || ""}
                           onChange={field.onChange}
                         />

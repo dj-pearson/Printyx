@@ -214,6 +214,7 @@ function validateProductModelData(row: any): any {
       model: row["Model"]?.trim() || null,
       description: row["Description"]?.trim() || null,
       category: row["Category"]?.trim() || null,
+      requiredAccessories: row["Required Accessory"]?.trim() || null,
       colorPrint: row["Color Print"]?.toLowerCase() === "yes",
       bwPrint: row["BW Print"]?.toLowerCase() === "yes",
       colorCopy: row["Color Copy"]?.toLowerCase() === "yes",
@@ -6989,6 +6990,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error fetching CPC rates:", error);
         res.status(500).json({ message: "Failed to fetch CPC rates" });
+      }
+    },
+  );
+
+  // Get required accessories for a product model
+  app.get(
+    "/api/product-models/:modelId/required-accessories",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { modelId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        
+        const requiredAccessories = await storage.getRequiredAccessoriesForModel(modelId, tenantId);
+        res.json(requiredAccessories);
+      } catch (error) {
+        console.error("Error fetching required accessories:", error);
+        res.status(500).json({ message: "Failed to fetch required accessories" });
       }
     },
   );

@@ -17,6 +17,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useRequiredAccessories, addRequiredAccessoriesToQuote, getRequiredAccessoriesInfo } from '@/lib/useRequiredAccessories';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -122,7 +125,7 @@ export default function LineItemManager({
   const [editingItem, setEditingItem] = useState<LineItem | null>(null);
   const [parentProductForAccessory, setParentProductForAccessory] = useState<string | undefined>();
 
-  const handleProductSelect = (product: any) => {
+  const handleProductSelect = async (product: any) => {
     // Ensure product name is not empty or undefined
     const productName = product.productName || product.name || product.description || 'Unnamed Product';
     const productCode = product.productCode || product.code || product.sku || '';
@@ -144,7 +147,51 @@ export default function LineItemManager({
       margin: calculateMargin(getProductPrice(product, pricingType), product.unitCost || 0),
     };
 
+    // Add the main product
     onAddItem(newItem);
+
+    // If this is a product model, automatically add required accessories
+    if (product.type === 'product_models' && product.requiredAccessories) {
+      // Parse required accessory codes
+      const requiredCodes = product.requiredAccessories
+        .split(',')
+        .map((code: string) => code.trim())
+        .filter((code: string) => code.length > 0);
+
+      if (requiredCodes.length > 0) {
+        // Fetch matching accessories from product accessories catalog
+        try {
+          const response = await fetch(`/api/product-accessories?codes=${requiredCodes.join(',')}`);
+          if (response.ok) {
+            const requiredAccessories = await response.json();
+            
+            // Add each required accessory as a line item
+            requiredAccessories.forEach((accessory: any) => {
+              const accessoryItem: Omit<LineItem, 'lineNumber'> = {
+                isSubline: false,
+                productType: 'product_accessories',
+                productId: accessory.id,
+                productCode: accessory.accessoryCode,
+                productName: `${accessory.accessoryName} (Required for ${productName})`,
+                description: `Required accessory for ${productName}`,
+                quantity: 1,
+                msrp: accessory.standardRepPrice || 0,
+                listPrice: getProductPrice(accessory, pricingType),
+                unitPrice: getProductPrice(accessory, pricingType),
+                totalPrice: parseFloat(getProductPrice(accessory, pricingType).toString()),
+                unitCost: 0,
+                margin: 0,
+                notes: `Auto-added required accessory for ${productName}`,
+              };
+              onAddItem(accessoryItem);
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to fetch required accessories:', error);
+        }
+      }
+    }
+
     setShowProductSelector(false);
     setParentProductForAccessory(undefined);
   };
