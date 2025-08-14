@@ -658,42 +658,41 @@ export default function ProductModels() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
 
-      {/* Search and Filter Bar */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search models..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search and Filter Bar */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search models..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map(category => (
+                <SelectItem key={category} value={category}>{category}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant={bulkMode ? "default" : "outline"}
+            onClick={() => {
+              setBulkMode(!bulkMode);
+              setSelectedIds(new Set());
+            }}
+            data-testid="button-bulk-mode"
+          >
+            {bulkMode ? <Square className="h-4 w-4 mr-2" /> : <CheckSquare className="h-4 w-4 mr-2" />}
+            {bulkMode ? "Exit Bulk" : "Bulk Select"}
+          </Button>
         </div>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map(category => (
-              <SelectItem key={category} value={category}>{category}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant={bulkMode ? "default" : "outline"}
-          onClick={() => {
-            setBulkMode(!bulkMode);
-            setSelectedIds(new Set());
-          }}
-          data-testid="button-bulk-mode"
-        >
-          {bulkMode ? <Square className="h-4 w-4 mr-2" /> : <CheckSquare className="h-4 w-4 mr-2" />}
-          {bulkMode ? "Exit Bulk" : "Bulk Select"}
-        </Button>
-      </div>
 
       {/* Bulk Operations Toolbar */}
       {bulkMode && (
@@ -1132,7 +1131,7 @@ export default function ProductModels() {
           )}
         </DialogContent>
       </Dialog>
-      </div>
-    </MainLayout>
+    </div>
+  </MainLayout>
   );
 }
