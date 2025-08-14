@@ -443,6 +443,7 @@ export interface IStorage {
   createProductAccessory(
     accessory: InsertProductAccessory
   ): Promise<ProductAccessory>;
+  deleteProductAccessory(id: string, tenantId: string): Promise<boolean>;
 
   // Accessory-Model Compatibility operations
   getAccessoryCompatibilities(
@@ -557,8 +558,33 @@ export interface IStorage {
   getAllServiceProducts(tenantId: string): Promise<ServiceProduct[]>;
   getAllSoftwareProducts(tenantId: string): Promise<SoftwareProduct[]>;
   getAllProfessionalServices(tenantId: string): Promise<ProfessionalService[]>;
+  createProfessionalService(
+    service: InsertProfessionalService
+  ): Promise<ProfessionalService>;
+  updateProfessionalService(
+    id: string,
+    data: Partial<ProfessionalService>,
+    tenantId: string
+  ): Promise<ProfessionalService | undefined>;
+  deleteProfessionalService(id: string, tenantId: string): Promise<boolean>;
   getAllSupplies(tenantId: string): Promise<Supply[]>;
+  createSupply(supply: InsertSupply): Promise<Supply>;
+  updateSupply(
+    id: string,
+    data: Partial<Supply>,
+    tenantId: string
+  ): Promise<Supply | undefined>;
+  deleteSupply(id: string, tenantId: string): Promise<boolean>;
   getAllManagedServices(tenantId: string): Promise<ManagedService[]>;
+  createManagedService(
+    service: InsertManagedService
+  ): Promise<ManagedService>;
+  updateManagedService(
+    id: string,
+    data: Partial<ManagedService>,
+    tenantId: string
+  ): Promise<ManagedService | undefined>;
+  deleteManagedService(id: string, tenantId: string): Promise<boolean>;
 
   // Pricing System
   getCompanyPricingSettings(
@@ -2515,6 +2541,18 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async deleteProductAccessory(
+    id: string,
+    tenantId: string
+  ): Promise<boolean> {
+    const result = await db
+      .delete(productAccessories)
+      .where(
+        and(eq(productAccessories.id, id), eq(productAccessories.tenantId, tenantId))
+      );
+    return result.rowCount > 0;
+  }
+
   async updateProductAccessory(
     id: string,
     accessory: Partial<ProductAccessory>,
@@ -2888,6 +2926,26 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updateProfessionalService(
+    id: string,
+    data: Partial<ProfessionalService>,
+    tenantId: string
+  ): Promise<ProfessionalService | undefined> {
+    const [result] = await db
+      .update(professionalServices)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(professionalServices.id, id), eq(professionalServices.tenantId, tenantId)))
+      .returning();
+    return result;
+  }
+
+  async deleteProfessionalService(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(professionalServices)
+      .where(and(eq(professionalServices.id, id), eq(professionalServices.tenantId, tenantId)));
+    return result.rowCount > 0;
+  }
+
   // Service Products
   async getAllServiceProducts(tenantId: string): Promise<ServiceProduct[]> {
     return await db
@@ -2987,6 +3045,26 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updateSupply(
+    id: string,
+    data: Partial<Supply>,
+    tenantId: string
+  ): Promise<Supply | undefined> {
+    const [result] = await db
+      .update(supplies)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(supplies.id, id), eq(supplies.tenantId, tenantId)))
+      .returning();
+    return result;
+  }
+
+  async deleteSupply(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(supplies)
+      .where(and(eq(supplies.id, id), eq(supplies.tenantId, tenantId)));
+    return result.rowCount > 0;
+  }
+
   async createManagedService(
     service: InsertManagedService
   ): Promise<ManagedService> {
@@ -2995,6 +3073,26 @@ export class DatabaseStorage implements IStorage {
       .values(service)
       .returning();
     return result;
+  }
+
+  async updateManagedService(
+    id: string,
+    data: Partial<ManagedService>,
+    tenantId: string
+  ): Promise<ManagedService | undefined> {
+    const [result] = await db
+      .update(managedServices)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(managedServices.id, id), eq(managedServices.tenantId, tenantId)))
+      .returning();
+    return result;
+  }
+
+  async deleteManagedService(id: string, tenantId: string): Promise<boolean> {
+    const result = await db
+      .delete(managedServices)
+      .where(and(eq(managedServices.id, id), eq(managedServices.tenantId, tenantId)));
+    return result.rowCount > 0;
   }
 
   // Contact operations (used for company contacts)

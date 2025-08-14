@@ -17,13 +17,15 @@ import { insertManagedServiceSchema, type ManagedService, type InsertManagedServ
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
-import ProductImport from "@/components/product-import/ProductImport";
+import ManagementToolbar from "@/components/product-management/ManagementToolbar";
 
 export default function ManagedServices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedServiceType, setSelectedServiceType] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ManagedService | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -98,6 +100,37 @@ export default function ManagedServices() {
     createServiceMutation.mutate(data);
   };
 
+  const deleteServiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/managed-services/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/managed-services'] });
+      setSelectedIds(new Set());
+      toast({ title: 'Deleted', description: 'Managed service deleted' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to delete managed service', variant: 'destructive' });
+    }
+  });
+
+  const toggleItemSelection = (id: string) => {
+    const copy = new Set(selectedIds);
+    if (copy.has(id)) copy.delete(id); else copy.add(id);
+    setSelectedIds(copy);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      try { await apiRequest(`/api/managed-services/${id}`, 'DELETE'); } catch {}
+    }
+    queryClient.invalidateQueries({ queryKey: ['/api/managed-services'] });
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    toast({ title: 'Deleted', description: `Deleted ${ids.length} managed services` });
+  };
+
   // Get unique service types from services
   const serviceTypes = Array.from(new Set(services.map(s => s.serviceType).filter(Boolean)));
 
@@ -127,12 +160,17 @@ export default function ManagedServices() {
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-lg">{service.productName}</CardTitle>
-              <CardDescription>
-                <span className="font-medium">{service.productCode}</span>
-                {service.serviceType && <span className="ml-2 text-muted-foreground">• {service.serviceType}</span>}
-              </CardDescription>
+            <div className="flex items-start gap-3">
+              {bulkMode && (
+                <Checkbox checked={selectedIds.has(service.id)} onCheckedChange={() => toggleItemSelection(service.id)} />
+              )}
+              <div className="space-y-1">
+                <CardTitle className="text-lg">{service.productName}</CardTitle>
+                <CardDescription>
+                  <span className="font-medium">{service.productCode}</span>
+                  {service.serviceType && <span className="ml-2 text-muted-foreground">• {service.serviceType}</span>}
+                </CardDescription>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {service.isActive ? (
@@ -221,14 +259,23 @@ export default function ManagedServices() {
                 {service.funding && <Badge variant="outline" className="text-xs">Funding</Badge>}
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSelectedService(service)}
-            >
-              <Edit3 className="h-4 w-4 mr-1" />
-              View Details
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSelectedService(service)}
+              >
+                <Edit3 className="h-4 w-4 mr-1" />
+                View
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => deleteServiceMutation.mutate(service.id)}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -245,16 +292,25 @@ export default function ManagedServices() {
               Manage IT services, managed solutions, and technology support offerings
             </p>
           </div>
-          <div className="flex gap-2">
-            <ProductImport />
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add IT Service
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <ManagementToolbar
+            title="IT & Managed Services"
+            description="Manage IT services, managed solutions, and technology support offerings"
+            searchPlaceholder="Search managed services..."
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            onAddClick={() => setDialogOpen(true)}
+            productTypeForImport="managed-services"
+            bulkMode={bulkMode}
+            onToggleBulkMode={() => setBulkMode(!bulkMode)}
+            selectedCount={selectedIds.size}
+            totalCount={services.length}
+            onBulkDelete={handleBulkDelete}
+          />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <span />
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>New Price Book List: IT/Managed Service</DialogTitle>
                 <DialogDescription>

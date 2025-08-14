@@ -17,7 +17,7 @@ import { insertProductAccessorySchema, type ProductAccessory, type InsertProduct
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
-import ProductImport from "@/components/product-import/ProductImport";
+import ManagementToolbar from "@/components/product-management/ManagementToolbar";
 
 export default function EnhancedProductAccessories() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,6 +27,8 @@ export default function EnhancedProductAccessories() {
   const [compatibilityDialogOpen, setCompatibilityDialogOpen] = useState(false);
   const [selectedAccessory, setSelectedAccessory] = useState<ProductAccessory | null>(null);
   const [editingAccessory, setEditingAccessory] = useState<ProductAccessory | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -111,6 +113,20 @@ export default function EnhancedProductAccessories() {
     },
   });
 
+  const deleteAccessoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/product-accessories/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
+      setSelectedIds(new Set());
+      toast({ title: 'Accessory deleted' });
+    },
+    onError: (error) => {
+      toast({ title: 'Error deleting accessory', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    }
+  });
+
   // Mutations for compatibility management
   const createCompatibilityMutation = useMutation({
     mutationFn: async (data: InsertAccessoryModelCompatibility) => {
@@ -177,6 +193,23 @@ export default function EnhancedProductAccessories() {
   const manufacturers = Array.from(new Set(accessories.map(a => a.manufacturer).filter(Boolean)));
   const accessoryTypes = Array.from(new Set(accessories.map(a => a.accessoryType).filter(Boolean)));
 
+  const toggleItemSelection = (id: string) => {
+    const copy = new Set(selectedIds);
+    if (copy.has(id)) copy.delete(id); else copy.add(id);
+    setSelectedIds(copy);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      try { await apiRequest(`/api/product-accessories/${id}`, 'DELETE'); } catch {}
+    }
+    queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    toast({ title: 'Deleted', description: `Deleted ${ids.length} accessories` });
+  };
+
   if (isLoading) {
     return (
       <MainLayout>
@@ -190,25 +223,20 @@ export default function EnhancedProductAccessories() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Enhanced Product Accessories</h1>
-            <p className="text-muted-foreground">Manage product accessories and model compatibility</p>
-          </div>
-          <div className="flex gap-2">
-            <ProductImport 
-              productType="product-accessories"
-              onImportComplete={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
-              }}
-            />
-            <Button onClick={() => setDialogOpen(true)} data-testid="button-add-accessory">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Accessory
-            </Button>
-          </div>
-        </div>
+        <ManagementToolbar
+          title="Product Accessories"
+          description="Manage product accessories and model compatibility"
+          searchPlaceholder="Search accessories..."
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onAddClick={() => setDialogOpen(true)}
+          productTypeForImport="product-accessories"
+          bulkMode={bulkMode}
+          onToggleBulkMode={() => setBulkMode(!bulkMode)}
+          selectedCount={selectedIds.size}
+          totalCount={accessories.length}
+          onBulkDelete={handleBulkDelete}
+        />
 
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -262,7 +290,12 @@ export default function EnhancedProductAccessories() {
             <Card key={accessory.id} className="hover:shadow-md transition-shadow" data-testid={`accessory-card-${accessory.id}`}>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg font-semibold">{accessory.accessoryName}</CardTitle>
+                  <div className="flex items-start gap-3">
+                    {bulkMode && (
+                      <Checkbox checked={selectedIds.has(accessory.id)} onCheckedChange={() => toggleItemSelection(accessory.id)} />
+                    )}
+                    <CardTitle className="text-lg font-semibold">{accessory.accessoryName}</CardTitle>
+                  </div>
                   <Badge variant={accessory.isActive ? "default" : "secondary"}>
                     {accessory.isActive ? "Active" : "Inactive"}
                   </Badge>
@@ -306,6 +339,13 @@ export default function EnhancedProductAccessories() {
                   >
                     <LinkIcon className="h-4 w-4 mr-1" />
                     Models
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => deleteAccessoryMutation.mutate(accessory.id)}
+                  >
+                    Delete
                   </Button>
                 </div>
               </CardContent>

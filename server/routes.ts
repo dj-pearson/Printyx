@@ -5567,6 +5567,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.delete(
+    "/api/product-accessories/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const success = await storage.deleteProductAccessory(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: "Product accessory not found" });
+        }
+        res.json({ message: "Product accessory deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting product accessory:", error);
+        res.status(500).json({ message: "Failed to delete product accessory" });
+      }
+    }
+  );
+
   app.post(
     "/api/product-models/:modelId/accessories",
     requireAuth,
@@ -5820,6 +5842,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.patch(
+    "/api/professional-services/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const updated = await storage.updateProfessionalService(id, req.body, tenantId);
+        if (!updated) {
+          return res.status(404).json({ message: "Professional service not found" });
+        }
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating professional service:", error);
+        res.status(500).json({ message: "Failed to update professional service" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/professional-services/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const success = await storage.deleteProfessionalService(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: "Professional service not found" });
+        }
+        res.json({ message: "Professional service deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting professional service:", error);
+        res.status(500).json({ message: "Failed to delete professional service" });
+      }
+    }
+  );
+
   // Service Products
   app.get(
     "/api/service-products",
@@ -5962,6 +6030,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch(
+    "/api/supplies/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const updated = await storage.updateSupply(id, req.body, tenantId);
+        if (!updated) {
+          return res.status(404).json({ message: "Supply not found" });
+        }
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating supply:", error);
+        res.status(500).json({ message: "Failed to update supply" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/supplies/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const success = await storage.deleteSupply(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: "Supply not found" });
+        }
+        res.json({ message: "Supply deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting supply:", error);
+        res.status(500).json({ message: "Failed to delete supply" });
+      }
+    }
+  );
+
   // Managed Services
   app.get(
     "/api/managed-services",
@@ -6101,6 +6215,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error creating managed service:", error);
         res.status(500).json({ message: "Failed to create managed service" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/managed-services/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const updated = await storage.updateManagedService(id, req.body, tenantId);
+        if (!updated) {
+          return res.status(404).json({ message: "Managed service not found" });
+        }
+        res.json(updated);
+      } catch (error) {
+        console.error("Error updating managed service:", error);
+        res.status(500).json({ message: "Failed to update managed service" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/managed-services/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const success = await storage.deleteManagedService(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: "Managed service not found" });
+        }
+        res.json({ message: "Managed service deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting managed service:", error);
+        res.status(500).json({ message: "Failed to delete managed service" });
       }
     }
   );
