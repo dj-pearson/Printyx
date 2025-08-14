@@ -372,7 +372,7 @@ export default function ServiceProducts() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Maintenance">Maintenance</SelectItem>
                                 <SelectItem value="Support">Support</SelectItem>
                                 <SelectItem value="Extended Warranty">Extended Warranty</SelectItem>
@@ -517,7 +517,7 @@ export default function ServiceProducts() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Monthly">Monthly</SelectItem>
                                 <SelectItem value="Annual">Annual</SelectItem>
                                 <SelectItem value="One-time">One-time</SelectItem>

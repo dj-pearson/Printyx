@@ -338,7 +338,7 @@ export default function ProfessionalServices() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Installation">Installation</SelectItem>
                                 <SelectItem value="Training">Training</SelectItem>
                                 <SelectItem value="Maintenance">Maintenance</SelectItem>
@@ -561,7 +561,7 @@ export default function ProfessionalServices() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="One-time">One-time</SelectItem>
                                 <SelectItem value="Monthly">Monthly</SelectItem>
                                 <SelectItem value="Hourly">Hourly</SelectItem>
@@ -760,7 +760,7 @@ export default function ProfessionalServices() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Canon">Canon</SelectItem>
                                 <SelectItem value="HP">HP</SelectItem>
                                 <SelectItem value="Xerox">Xerox</SelectItem>
@@ -840,7 +840,7 @@ export default function ProfessionalServices() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">--None--</SelectItem>
+                                <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Each">Each</SelectItem>
                                 <SelectItem value="Hour">Hour</SelectItem>
                                 <SelectItem value="Day">Day</SelectItem>
