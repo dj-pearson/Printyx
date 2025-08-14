@@ -5388,56 +5388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.delete(
-    "/api/product-models/:id",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        
-        // Check if this is a master product model (since that's what the frontend displays)
-        const existingMasterModel = await storage.getMasterProductModel(id);
-        if (existingMasterModel) {
-          // Delete from master product models table
-          const deleted = await storage.deleteMasterProductModel(id);
-          console.log(`Delete result for master model ${id}:`, deleted);
-          
-          if (!deleted) {
-            console.log(`Delete failed: No rows affected for master model ${id}`);
-            return res.status(404).json({ message: "Product model not found or could not be deleted" });
-          }
-          res.json({ message: "Product model deleted successfully" });
-          return;
-        }
-        
-        // Fallback: check tenant product models table
-        const existingModel = await storage.getProductModel(id, tenantId);
-        if (!existingModel) {
-          console.log(`Delete failed: Product model ${id} not found in either table`);
-          return res.status(404).json({ message: "Product model not found" });
-        }
-        
-        const deleted = await storage.deleteProductModel(id, tenantId);
-        console.log(`Delete result for model ${id}:`, deleted);
-        
-        if (!deleted) {
-          console.log(`Delete failed: No rows affected for model ${id} in tenant ${tenantId}`);
-          return res.status(404).json({ message: "Product model not found or could not be deleted" });
-        }
-        res.json({ message: "Product model deleted successfully" });
-      } catch (error) {
-        console.error("Error deleting product model:", error);
-        res.status(500).json({ message: "Failed to delete product model" });
-      }
-    }
-  );
-
-  // Bulk delete product models
+  // Bulk delete product models (must be before single delete route)
   app.delete(
     "/api/product-models/bulk-delete",
     requireAuth,
@@ -5496,6 +5447,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error in bulk delete:', error);
         res.status(500).json({ error: 'Failed to perform bulk delete' });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/product-models/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        
+        // Check if this is a master product model (since that's what the frontend displays)
+        const existingMasterModel = await storage.getMasterProductModel(id);
+        if (existingMasterModel) {
+          // Delete from master product models table
+          const deleted = await storage.deleteMasterProductModel(id);
+          console.log(`Delete result for master model ${id}:`, deleted);
+          
+          if (!deleted) {
+            console.log(`Delete failed: No rows affected for master model ${id}`);
+            return res.status(404).json({ message: "Product model not found or could not be deleted" });
+          }
+          res.json({ message: "Product model deleted successfully" });
+          return;
+        }
+        
+        // Fallback: check tenant product models table
+        const existingModel = await storage.getProductModel(id, tenantId);
+        if (!existingModel) {
+          console.log(`Delete failed: Product model ${id} not found in either table`);
+          return res.status(404).json({ message: "Product model not found" });
+        }
+        
+        const deleted = await storage.deleteProductModel(id, tenantId);
+        console.log(`Delete result for model ${id}:`, deleted);
+        
+        if (!deleted) {
+          console.log(`Delete failed: No rows affected for model ${id} in tenant ${tenantId}`);
+          return res.status(404).json({ message: "Product model not found or could not be deleted" });
+        }
+        res.json({ message: "Product model deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting product model:", error);
+        res.status(500).json({ message: "Failed to delete product model" });
       }
     }
   );
