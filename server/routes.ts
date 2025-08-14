@@ -5400,10 +5400,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
         
-        // First check if the product model exists
+        // Check if this is a master product model (since that's what the frontend displays)
+        const existingMasterModel = await storage.getMasterProductModel(id);
+        if (existingMasterModel) {
+          // Delete from master product models table
+          const deleted = await storage.deleteMasterProductModel(id);
+          console.log(`Delete result for master model ${id}:`, deleted);
+          
+          if (!deleted) {
+            console.log(`Delete failed: No rows affected for master model ${id}`);
+            return res.status(404).json({ message: "Product model not found or could not be deleted" });
+          }
+          res.json({ message: "Product model deleted successfully" });
+          return;
+        }
+        
+        // Fallback: check tenant product models table
         const existingModel = await storage.getProductModel(id, tenantId);
         if (!existingModel) {
-          console.log(`Delete failed: Product model ${id} not found for tenant ${tenantId}`);
+          console.log(`Delete failed: Product model ${id} not found in either table`);
           return res.status(404).json({ message: "Product model not found" });
         }
         

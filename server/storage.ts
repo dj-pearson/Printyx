@@ -2446,6 +2446,24 @@ export class DatabaseStorage implements IStorage {
     return !!result;
   }
 
+  // Delete from master product models table (used by the ProductModels page)
+  async deleteMasterProductModel(id: string): Promise<boolean> {
+    const [result] = await db
+      .delete(masterProductModels)
+      .where(eq(masterProductModels.id, id))
+      .returning();
+    return !!result;
+  }
+
+  // Check if master product model exists
+  async getMasterProductModel(id: string): Promise<any | undefined> {
+    const [model] = await db
+      .select()
+      .from(masterProductModels)
+      .where(eq(masterProductModels.id, id));
+    return model;
+  }
+
   async getAllProductAccessories(
     tenantId: string
   ): Promise<ProductAccessory[]> {
