@@ -1077,36 +1077,53 @@ async function createContractFromProposal(
 
 // Helper function to get quote data with all related information
 async function getQuoteDataForExport(proposalId: string, tenantId: string) {
+  console.log(`🔍 Fetching quote data for proposal ${proposalId}, tenant ${tenantId}`);
+  
   const [quote] = await db
     .select()
     .from(proposals)
     .where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)));
 
   if (!quote) {
-    throw new Error('Quote not found');
+    throw new Error(`Quote not found: ${proposalId}`);
   }
+
+  console.log(`📋 Found quote: ${quote.proposalNumber} - ${quote.title}`);
 
   const lineItems = await db
     .select()
     .from(proposalLineItems)
-    .where(and(eq(proposalLineItems.proposalId, proposalId), eq(proposalLineItems.tenantId, tenantId)));
+    .where(and(eq(proposalLineItems.proposalId, proposalId), eq(proposalLineItems.tenantId, tenantId)))
+    .orderBy(proposalLineItems.lineNumber);
+
+  console.log(`📦 Found ${lineItems.length} line items`);
 
   // Get company/customer info
   let company = null;
   let contact = null;
   
   if (quote.businessRecordId) {
-    [company] = await db
-      .select()
-      .from(businessRecords)
-      .where(and(eq(businessRecords.id, quote.businessRecordId), eq(businessRecords.tenantId, tenantId)));
+    try {
+      [company] = await db
+        .select()
+        .from(businessRecords)
+        .where(and(eq(businessRecords.id, quote.businessRecordId), eq(businessRecords.tenantId, tenantId)));
+      console.log(`🏢 Found company: ${company?.companyName || 'Unknown'}`);
+    } catch (error) {
+      console.warn(`Failed to fetch company data for ${quote.businessRecordId}:`, error);
+    }
   }
 
   if (quote.contactId) {
-    [contact] = await db
-      .select() 
-      .from(companyContacts)
-      .where(and(eq(companyContacts.id, quote.contactId), eq(companyContacts.tenantId, tenantId)));
+    try {
+      [contact] = await db
+        .select() 
+        .from(companyContacts)
+        .where(and(eq(companyContacts.id, quote.contactId), eq(companyContacts.tenantId, tenantId)));
+      console.log(`👤 Found contact: ${contact?.firstName} ${contact?.lastName}`);
+    } catch (error) {
+      console.warn(`Failed to fetch contact data for ${quote.contactId}:`, error);
+    }
   }
 
   return { quote, lineItems, company, contact };
@@ -1114,6 +1131,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
 
 // Helper function to get product cost information
 async function getProductCostInfo(lineItems: any[], pricingType: string) {
+  console.log(`💰 Getting cost info for ${lineItems.length} items with pricing type: ${pricingType}`);
   const costInfo = [];
 
   for (const item of lineItems) {
@@ -1130,50 +1148,63 @@ async function getProductCostInfo(lineItems: any[], pricingType: string) {
       repPriceField = 'upgradeRepPrice';
     }
 
-    // Get product details from appropriate table based on itemType
-    if (item.itemType === 'product_models') {
-      [product] = await db
-        .select()
-        .from(productModels)
-        .where(eq(productModels.id, item.productId));
-    } else if (item.itemType === 'service_products') {
-      [product] = await db
-        .select()
-        .from(serviceProducts)
-        .where(eq(serviceProducts.id, item.productId));
-    } else if (item.itemType === 'software_products') {
-      [product] = await db
-        .select()
-        .from(softwareProducts)
-        .where(eq(softwareProducts.id, item.productId));
-    } else if (item.itemType === 'supplies') {
-      [product] = await db
-        .select()
-        .from(supplies)
-        .where(eq(supplies.id, item.productId));
-    } else if (item.itemType === 'professional_services') {
-      [product] = await db
-        .select()
-        .from(professionalServices)
-        .where(eq(professionalServices.id, item.productId));
-    } else if (item.itemType === 'product_accessories') {
-      [product] = await db
-        .select()
-        .from(productAccessories)
-        .where(eq(productAccessories.id, item.productId));
+    try {
+      // Get product details from appropriate table based on itemType
+      if (item.productId && item.itemType === 'product_models') {
+        [product] = await db
+          .select()
+          .from(productModels)
+          .where(eq(productModels.id, item.productId));
+      } else if (item.productId && item.itemType === 'service_products') {
+        [product] = await db
+          .select()
+          .from(serviceProducts)
+          .where(eq(serviceProducts.id, item.productId));
+      } else if (item.productId && item.itemType === 'software_products') {
+        [product] = await db
+          .select()
+          .from(softwareProducts)
+          .where(eq(softwareProducts.id, item.productId));
+      } else if (item.productId && item.itemType === 'supplies') {
+        [product] = await db
+          .select()
+          .from(supplies)
+          .where(eq(supplies.id, item.productId));
+      } else if (item.productId && item.itemType === 'professional_services') {
+        [product] = await db
+          .select()
+          .from(professionalServices)
+          .where(eq(professionalServices.id, item.productId));
+      } else if (item.productId && item.itemType === 'product_accessories') {
+        [product] = await db
+          .select()
+          .from(productAccessories)
+          .where(eq(productAccessories.id, item.productId));
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch product details for item ${item.id}:`, error);
     }
 
-    const cost = product && costField ? product[costField] : '0.00';
-    const repPrice = product && repPriceField ? product[repPriceField] : item.unitPrice;
+    // Default values if product not found or fields missing
+    const defaultCost = '0.00';
+    const defaultPrice = item.unitPrice || '0.00';
+
+    const cost = product && costField && product[costField] ? product[costField] : defaultCost;
+    const repPrice = product && repPriceField && product[repPriceField] ? product[repPriceField] : defaultPrice;
+
+    const costNum = parseFloat(cost);
+    const repPriceNum = parseFloat(repPrice);
+    const margin = repPriceNum > 0 ? ((repPriceNum - costNum) / repPriceNum) * 100 : 0;
 
     costInfo.push({
       ...item,
-      cost: parseFloat(cost || '0'),
-      repPrice: parseFloat(repPrice || item.unitPrice),
-      margin: repPrice && cost ? ((parseFloat(repPrice) - parseFloat(cost)) / parseFloat(repPrice)) * 100 : 0
+      cost: costNum,
+      repPrice: repPriceNum,
+      margin: margin
     });
   }
 
+  console.log(`💰 Generated cost info for ${costInfo.length} items`);
   return costInfo;
 }
 
@@ -1337,15 +1368,24 @@ function generateQuoteHTML(quote: any, lineItems: any[], company: any, contact: 
 
 // Export PDF endpoint
 router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
+  let browser = null;
   try {
     const { id } = req.params;
     const tenantId = req.user.tenantId;
 
+    console.log(`📄 PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
+
     const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
+    
+    console.log(`📄 PDF Export: Retrieved quote data - ${lineItems.length} line items`);
 
     const html = generateQuoteHTML(quote, lineItems, company, contact, false);
-    const browser = await puppeteer.launch({ 
-      headless: true,
+    
+    console.log(`📄 PDF Export: Generated HTML (${html.length} chars)`);
+    
+    // Enhanced Puppeteer configuration for Replit environment
+    browser = await puppeteer.launch({ 
+      headless: "new",
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -1356,12 +1396,28 @@ router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
         '--single-process',
         '--disable-gpu',
         '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ]
+        '--disable-features=VizDisplayCompositor',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--memory-pressure-off',
+        '--max_old_space_size=4096'
+      ],
+      timeout: 30000
     });
+    
     const page = await browser.newPage();
     
-    await page.setContent(html);
+    // Set viewport and wait for fonts to load
+    await page.setViewport({ width: 1200, height: 800 });
+    
+    console.log(`📄 PDF Export: Setting HTML content`);
+    await page.setContent(html, { 
+      waitUntil: 'networkidle0',
+      timeout: 20000 
+    });
+    
+    console.log(`📄 PDF Export: Generating PDF`);
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -1370,31 +1426,51 @@ router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
         right: '20px',
         bottom: '20px',
         left: '20px'
-      }
+      },
+      timeout: 30000
     });
     
     await browser.close();
+    browser = null;
+    
+    console.log(`📄 PDF Export: Generated PDF (${pdf.length} bytes)`);
     
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Quote-${quote.proposalNumber}.pdf"`
+      'Content-Disposition': `attachment; filename="Quote-${quote.proposalNumber}.pdf"`,
+      'Content-Length': pdf.length.toString()
     });
     
     res.send(pdf);
   } catch (error) {
-    console.error('PDF export error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    console.error('📄 PDF export error:', error);
+    
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError);
+      }
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate PDF',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
 // Manager PDF Export endpoint (with cost information)
 router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) => {
+  let browser = null;
   try {
     const { id } = req.params;
     const tenantId = req.user.tenantId;
 
+    console.log(`📊 Manager PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
+
     // Check if user has manager-level access
-    const userRole = req.user.roleId?.toLowerCase() || '';
+    const userRole = req.user.role?.toLowerCase() || req.user.roleId?.toLowerCase() || '';
     
     // For admin and manager roles, always allow access
     const isManager = userRole.includes('admin') || 
@@ -1405,19 +1481,28 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
                      (!['sales_rep', 'salesperson', 'sales'].some(role => userRole.includes(role)));
     
     if (!isManager) {
+      console.log(`📊 Manager PDF Export: Access denied for role: ${userRole}`);
       return res.status(403).json({ error: 'Access denied. Manager level access required.' });
     }
 
     const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
+    
+    console.log(`📊 Manager PDF Export: Retrieved quote data - ${lineItems.length} line items`);
     
     // Get pricing type - assume 'new' if not available in quote data
     // In a production system, this should be stored with the quote when created
     const pricingType = 'new'; // Default to 'new' pricing for now
     const costInfo = await getProductCostInfo(lineItems, pricingType);
 
+    console.log(`📊 Manager PDF Export: Retrieved cost info for ${costInfo.length} items`);
+
     const html = generateQuoteHTML(quote, lineItems, company, contact, true, costInfo);
-    const browser = await puppeteer.launch({ 
-      headless: true,
+    
+    console.log(`📊 Manager PDF Export: Generated HTML (${html.length} chars)`);
+    
+    // Enhanced Puppeteer configuration for Replit environment
+    browser = await puppeteer.launch({ 
+      headless: "new",
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -1428,12 +1513,28 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
         '--single-process',
         '--disable-gpu',
         '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ]
+        '--disable-features=VizDisplayCompositor',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--memory-pressure-off',
+        '--max_old_space_size=4096'
+      ],
+      timeout: 30000
     });
+    
     const page = await browser.newPage();
     
-    await page.setContent(html);
+    // Set viewport and wait for fonts to load
+    await page.setViewport({ width: 1200, height: 800 });
+    
+    console.log(`📊 Manager PDF Export: Setting HTML content`);
+    await page.setContent(html, { 
+      waitUntil: 'networkidle0',
+      timeout: 20000 
+    });
+    
+    console.log(`📊 Manager PDF Export: Generating PDF`);
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -1442,20 +1543,37 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
         right: '20px',
         bottom: '20px',
         left: '20px'
-      }
+      },
+      timeout: 30000
     });
     
     await browser.close();
+    browser = null;
+    
+    console.log(`📊 Manager PDF Export: Generated PDF (${pdf.length} bytes)`);
     
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Quote-Manager-${quote.proposalNumber}.pdf"`
+      'Content-Disposition': `attachment; filename="Quote-Manager-${quote.proposalNumber}.pdf"`,
+      'Content-Length': pdf.length.toString()
     });
     
     res.send(pdf);
   } catch (error) {
-    console.error('Manager PDF export error:', error);
-    res.status(500).json({ error: 'Failed to generate manager PDF' });
+    console.error('📊 Manager PDF export error:', error);
+    
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError);
+      }
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate manager PDF',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
