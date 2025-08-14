@@ -281,11 +281,7 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
     [userRole?.name, userRole?.canAccessAllTenants, userRole?.level, JSON.stringify(userRole?.permissions)]
   );
 
-  console.log('Navigation Debug:', {
-    userRole,
-    navigationSections: navigationSections?.length,
-    sections: navigationSections?.map(s => s.title)
-  });
+  // Debug removed for cleaner console output
 
   // Auto-expand based on current route
   useEffect(() => {
