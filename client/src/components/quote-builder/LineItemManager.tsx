@@ -65,7 +65,7 @@ import {
 } from 'lucide-react';
 import ProductTypeSelector from './ProductTypeSelector';
 
-type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'supplies' | 'managed_services';
+type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'software_products' | 'supplies' | 'managed_services';
 
 interface LineItem {
   id?: string;
@@ -100,6 +100,7 @@ const productTypeIcons = {
   product_accessories: Wrench,
   professional_services: UserCheck,
   service_products: Cog,
+  software_products: Hash,
   supplies: ShoppingCart,
   managed_services: Monitor,
 };
@@ -109,6 +110,7 @@ const productTypeLabels = {
   product_accessories: 'Accessory',
   professional_services: 'Professional Service',
   service_products: 'Service Product',
+  software_products: 'Software Product',
   supplies: 'Supply',
   managed_services: 'Managed Service',
 };
@@ -268,6 +270,10 @@ export default function LineItemManager({
 
   const getProductTypeIcon = (type: ProductType) => {
     const Icon = productTypeIcons[type];
+    if (!Icon) {
+      console.warn(`Missing icon for product type: ${type}`);
+      return <Package className="h-4 w-4" />; // fallback icon
+    }
     return <Icon className="h-4 w-4" />;
   };
 
