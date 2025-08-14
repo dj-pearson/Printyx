@@ -385,6 +385,55 @@ function validateManagedServiceData(row: any): any {
   };
 }
 
+function validateSoftwareProductData(row: any): any {
+  const errors: string[] = [];
+
+  // Handle both snake_case and Title Case headers
+  const productCode = row["product_code"] || row["Product Code"];
+  const productName = row["product_name"] || row["Product Name"];
+
+  if (!productCode) errors.push("Product Code is required");
+  if (!productName) errors.push("Product Name is required");
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    data: {
+      productCode: productCode?.trim(),
+      productName: productName?.trim(),
+      vendor: (row["vendor"] || row["Vendor"])?.trim() || null,
+      productType: (row["product_type"] || row["Product Type"])?.trim() || "Software",
+      category: (row["category"] || row["Category"])?.trim() || "Software",
+      accessoryType: (row["accessoryType"] || row["Accessory Type"])?.trim() || null,
+      paymentType: (row["paymentType"] || row["Payment Type"])?.trim() || null,
+      description: (row["description"] || row["Description"])?.trim() || null,
+      standardCost: row["standard_cost"] || row["Standard Cost"]
+        ? parseFloat(row["standard_cost"] || row["Standard Cost"])
+        : null,
+      standardRepPrice: row["standard_rep_price"] || row["Standard Rep Price"]
+        ? parseFloat(row["standard_rep_price"] || row["Standard Rep Price"])
+        : null,
+      newCost: row["new_cost"] || row["New Cost"]
+        ? parseFloat(row["new_cost"] || row["New Cost"])
+        : null,
+      newRepPrice: row["new_rep_price"] || row["New Rep Price"]
+        ? parseFloat(row["new_rep_price"] || row["New Rep Price"])
+        : null,
+      upgradeCost: row["upgrade_cost"] || row["Upgrade Cost"]
+        ? parseFloat(row["upgrade_cost"] || row["Upgrade Cost"])
+        : null,
+      upgradeRepPrice: row["upgrade_rep_price"] || row["Upgrade Rep Price"]
+        ? parseFloat(row["upgrade_rep_price"] || row["Upgrade Rep Price"])
+        : null,
+      isActive: (row["is_active"] || row["Is Active"])?.toString().toLowerCase() === "true",
+      availableForAll: (row["available_for_all"] || row["Available For All"])?.toString().toLowerCase() === "true",
+      salesRepCredit: (row["sales_rep_credit"] || row["Sales Rep Credit"])?.toString().toLowerCase() === "true",
+      funding: (row["funding"] || row["Funding"])?.toString().toLowerCase() === "true",
+      lease: (row["lease"] || row["Lease"])?.toString().toLowerCase() === "true",
+    },
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Basic API rate limiting (per-IP)
   const apiLimiter = rateLimit({
@@ -7402,66 +7451,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth,
     async (req: any, res) => {
       try {
+        if (!req.file) {
+          return res.status(400).json({ message: "No file uploaded" });
+        }
+
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
 
-        const file = req.file;
-        if (!file) {
-          return res.status(400).json({ message: "CSV file is required" });
-        }
-
-        const csvData = file.buffer.toString('utf-8');
-        const lines = csvData.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim());
+        const csvData = await parseCSV(req.file.buffer);
         
         let imported = 0;
         let skipped = 0;
         const errors: string[] = [];
 
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
+        for (let i = 0; i < csvData.length; i++) {
+          const row = csvData[i];
+          const validation = validateSoftwareProductData(row);
+
+          if (!validation.isValid) {
+            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            skipped++;
+            continue;
+          }
 
           try {
-            const values = line.split(',').map(v => v.trim());
-            const productData: any = {
-              tenantId,
-              productCode: values[0] || '',
-              productName: values[1] || '',
-              productType: values[2] || 'none',
-              category: values[3] || 'none',
-              accessoryType: values[4] || 'none',
-              paymentType: values[5] || 'none',
-              description: values[6] || '',
-              standardCost: parseFloat(values[7]) || 0,
-              standardRepPrice: parseFloat(values[8]) || 0,
-              newCost: parseFloat(values[9]) || 0,
-              newRepPrice: parseFloat(values[10]) || 0,
-              upgradeCost: parseFloat(values[11]) || 0,
-              upgradeRepPrice: parseFloat(values[12]) || 0,
-              isActive: values[13] === 'TRUE' || values[13] === 'true',
-              availableForAll: values[14] === 'TRUE' || values[14] === 'true',
-              salesRepCredit: values[15] === 'TRUE' || values[15] === 'true',
-              funding: values[16] === 'TRUE' || values[16] === 'true',
-              lease: values[17] === 'TRUE' || values[17] === 'true',
-            };
-
+            const productData = { ...validation.data, tenantId };
             await storage.createSoftwareProduct(productData);
             imported++;
           } catch (error) {
-            console.error(`Error importing row ${i}:`, error);
-            errors.push(`Row ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            errors.push(
+              `Row ${i + 2}: Failed to import - ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`
+            );
             skipped++;
           }
         }
 
         res.json({
-          success: imported > 0,
+          success: errors.length === 0,
           imported,
           skipped,
-          errors: errors.slice(0, 10), // Limit errors to first 10
+          errors,
         });
       } catch (error) {
         console.error("Error importing software products:", error);
