@@ -122,6 +122,7 @@ export default function SoftwareProducts() {
       tenantId: "",
       productCode: "",
       productName: "",
+      vendor: null,
       productType: null,
       category: null,
       accessoryType: null,
@@ -164,6 +165,7 @@ export default function SoftwareProducts() {
       tenantId: "",
       productCode: "",
       productName: "",
+      vendor: null,
       productType: null,
       category: null,
       accessoryType: null,
@@ -235,6 +237,7 @@ export default function SoftwareProducts() {
       tenantId: product.tenantId || "",
       productCode: product.productCode || "",
       productName: product.productName || "",
+      vendor: product.vendor || "",
       productType: product.productType || "",
       category: product.category || "",
       accessoryType: product.accessoryType || "",
@@ -341,6 +344,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 <span className="font-medium">{product.productCode}</span>
+                {product.vendor && <span className="ml-2 text-muted-foreground">• {product.vendor}</span>}
                 {product.category && <span className="ml-2 text-muted-foreground">• {product.category}</span>}
               </CardDescription>
             </div>
@@ -552,6 +556,22 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="vendor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Vendor</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Microsoft" value={field.value || ""} onChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="productType"
@@ -1291,6 +1311,19 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                   </div>
                   
                   <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="vendor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vendor</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Microsoft" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={editForm.control}
                       name="productType"
