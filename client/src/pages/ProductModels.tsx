@@ -86,10 +86,12 @@ export default function ProductModels() {
         description: "Product model deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Delete error:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete product model";
       toast({
         title: "Error",
-        description: "Failed to delete product model",
+        description: errorMessage,
         variant: "destructive",
       });
     },

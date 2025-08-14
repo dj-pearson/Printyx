@@ -5399,9 +5399,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
-        const deleted = await storage.deleteProductModel(id, tenantId);
-        if (!deleted) {
+        
+        // First check if the product model exists
+        const existingModel = await storage.getProductModel(id, tenantId);
+        if (!existingModel) {
+          console.log(`Delete failed: Product model ${id} not found for tenant ${tenantId}`);
           return res.status(404).json({ message: "Product model not found" });
+        }
+        
+        const deleted = await storage.deleteProductModel(id, tenantId);
+        console.log(`Delete result for model ${id}:`, deleted);
+        
+        if (!deleted) {
+          console.log(`Delete failed: No rows affected for model ${id} in tenant ${tenantId}`);
+          return res.status(404).json({ message: "Product model not found or could not be deleted" });
         }
         res.json({ message: "Product model deleted successfully" });
       } catch (error) {
