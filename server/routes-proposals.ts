@@ -393,7 +393,17 @@ router.put("/:id", requireAuth, async (req: any, res) => {
     const { lineItems: lineItemsToUpdate, updatedAt, ...restData } = req.body;
     
     // Don't manually set updatedAt, let database handle it
-    const updateData = restData;
+    // Convert date strings to proper Date objects for timestamp fields
+    const updateData = { ...restData };
+    if (updateData.validUntil && typeof updateData.validUntil === 'string') {
+      updateData.validUntil = new Date(updateData.validUntil);
+    }
+    if (updateData.estimatedStartDate && typeof updateData.estimatedStartDate === 'string') {
+      updateData.estimatedStartDate = new Date(updateData.estimatedStartDate);
+    }
+    if (updateData.estimatedEndDate && typeof updateData.estimatedEndDate === 'string') {
+      updateData.estimatedEndDate = new Date(updateData.estimatedEndDate);
+    }
 
     const [proposal] = await db
       .update(proposals)
@@ -448,7 +458,18 @@ router.patch("/:id", requireAuth, async (req: any, res) => {
     
     // Remove updatedAt from body if present and let database handle it
     delete restData.updatedAt;
-    const updateData = restData;
+    
+    // Convert date strings to proper Date objects for timestamp fields
+    const updateData = { ...restData };
+    if (updateData.validUntil && typeof updateData.validUntil === 'string') {
+      updateData.validUntil = new Date(updateData.validUntil);
+    }
+    if (updateData.estimatedStartDate && typeof updateData.estimatedStartDate === 'string') {
+      updateData.estimatedStartDate = new Date(updateData.estimatedStartDate);
+    }
+    if (updateData.estimatedEndDate && typeof updateData.estimatedEndDate === 'string') {
+      updateData.estimatedEndDate = new Date(updateData.estimatedEndDate);
+    }
 
     console.log("📝 PATCH /api/proposals/:id - Updating proposal:", id);
     console.log("📝 Update data:", updateData);
