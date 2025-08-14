@@ -333,6 +333,7 @@ function Router() {
             component={ProductManagementHub}
           />
           <Route path="/product-accessories" component={EnhancedProductAccessories} />
+          <Route path="/enhanced-product-accessories" component={EnhancedProductAccessories} />
           <Route path="/product-accessories-legacy" component={ProductAccessories} />
           <Route
             path="/admin/product-accessories"
