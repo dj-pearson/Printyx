@@ -11,9 +11,16 @@ import {
   deals,
   dealStages,
   contracts,
+  productModels,
+  serviceProducts, 
+  softwareProducts,
+  supplies,
+  professionalServices,
+  productAccessories
 } from "../shared/schema.js";
-import { businessRecords } from "../shared/schema.js";
+import { businessRecords, companyContacts } from "../shared/schema.js";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
+import puppeteer from 'puppeteer';
 import {
   insertProposalSchema,
   insertProposalLineItemSchema,
@@ -1065,5 +1072,366 @@ async function createContractFromProposal(
     return null;
   }
 }
+
+// ============= PDF EXPORT FUNCTIONALITY =============
+
+// Helper function to get quote data with all related information
+async function getQuoteDataForExport(proposalId: string, tenantId: string) {
+  const [quote] = await db
+    .select()
+    .from(proposals)
+    .where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)));
+
+  if (!quote) {
+    throw new Error('Quote not found');
+  }
+
+  const lineItems = await db
+    .select()
+    .from(proposalLineItems)
+    .where(and(eq(proposalLineItems.proposalId, proposalId), eq(proposalLineItems.tenantId, tenantId)));
+
+  // Get company/customer info
+  let company = null;
+  let contact = null;
+  
+  if (quote.businessRecordId) {
+    [company] = await db
+      .select()
+      .from(businessRecords)
+      .where(and(eq(businessRecords.id, quote.businessRecordId), eq(businessRecords.tenantId, tenantId)));
+  }
+
+  if (quote.contactId) {
+    [contact] = await db
+      .select() 
+      .from(companyContacts)
+      .where(and(eq(companyContacts.id, quote.contactId), eq(companyContacts.tenantId, tenantId)));
+  }
+
+  return { quote, lineItems, company, contact };
+}
+
+// Helper function to get product cost information
+async function getProductCostInfo(lineItems: any[], pricingType: string) {
+  const costInfo = [];
+
+  for (const item of lineItems) {
+    let product = null;
+    let costField = null;
+    let repPriceField = null;
+
+    // Determine which cost/rep_price fields to use based on pricing type
+    if (pricingType === 'new') {
+      costField = 'newCost';
+      repPriceField = 'newRepPrice';
+    } else if (pricingType === 'upgrade') {
+      costField = 'upgradeCost';
+      repPriceField = 'upgradeRepPrice';
+    }
+
+    // Get product details from appropriate table based on itemType
+    if (item.itemType === 'product_models') {
+      [product] = await db
+        .select()
+        .from(productModels)
+        .where(eq(productModels.id, item.productId));
+    } else if (item.itemType === 'service_products') {
+      [product] = await db
+        .select()
+        .from(serviceProducts)
+        .where(eq(serviceProducts.id, item.productId));
+    } else if (item.itemType === 'software_products') {
+      [product] = await db
+        .select()
+        .from(softwareProducts)
+        .where(eq(softwareProducts.id, item.productId));
+    } else if (item.itemType === 'supplies') {
+      [product] = await db
+        .select()
+        .from(supplies)
+        .where(eq(supplies.id, item.productId));
+    } else if (item.itemType === 'professional_services') {
+      [product] = await db
+        .select()
+        .from(professionalServices)
+        .where(eq(professionalServices.id, item.productId));
+    } else if (item.itemType === 'product_accessories') {
+      [product] = await db
+        .select()
+        .from(productAccessories)
+        .where(eq(productAccessories.id, item.productId));
+    }
+
+    const cost = product && costField ? product[costField] : '0.00';
+    const repPrice = product && repPriceField ? product[repPriceField] : item.unitPrice;
+
+    costInfo.push({
+      ...item,
+      cost: parseFloat(cost || '0'),
+      repPrice: parseFloat(repPrice || item.unitPrice),
+      margin: repPrice && cost ? ((parseFloat(repPrice) - parseFloat(cost)) / parseFloat(repPrice)) * 100 : 0
+    });
+  }
+
+  return costInfo;
+}
+
+// Generate HTML template for quote PDF
+function generateQuoteHTML(quote: any, lineItems: any[], company: any, contact: any, isManagerExport = false, costInfo: any[] = []) {
+  const currentDate = new Date().toLocaleDateString();
+  const validUntil = quote.validUntil ? new Date(quote.validUntil).toLocaleDateString() : 'Not specified';
+  
+  const companyName = company?.companyName || `${company?.firstName || ''} ${company?.lastName || ''}`.trim() || 'Customer';
+  const contactName = contact ? `${contact.firstName || ''} ${contact.lastName || ''}`.trim() : '';
+  
+  let lineItemsHTML = '';
+  let subtotal = 0;
+
+  if (isManagerExport && costInfo.length > 0) {
+    // Manager export with cost information
+    lineItemsHTML = costInfo.map(item => {
+      const totalPrice = item.quantity * parseFloat(item.unitPrice);
+      const totalCost = item.quantity * item.cost;
+      subtotal += totalPrice;
+      
+      return `
+        <tr>
+          <td class="border-b py-2 px-3 text-left">${item.productName}</td>
+          <td class="border-b py-2 px-3 text-center">${item.quantity}</td>
+          <td class="border-b py-2 px-3 text-right">$${item.cost.toFixed(2)}</td>
+          <td class="border-b py-2 px-3 text-right">$${parseFloat(item.unitPrice).toFixed(2)}</td>
+          <td class="border-b py-2 px-3 text-right">$${totalCost.toFixed(2)}</td>
+          <td class="border-b py-2 px-3 text-right">$${totalPrice.toFixed(2)}</td>
+          <td class="border-b py-2 px-3 text-right">${item.margin.toFixed(1)}%</td>
+        </tr>
+      `;
+    }).join('');
+  } else {
+    // Regular export without cost information
+    lineItemsHTML = lineItems.map(item => {
+      const totalPrice = item.quantity * parseFloat(item.unitPrice);
+      subtotal += totalPrice;
+      
+      return `
+        <tr>
+          <td class="border-b py-2 px-3 text-left">${item.productName}</td>
+          <td class="border-b py-2 px-3 text-left">${item.description || ''}</td>
+          <td class="border-b py-2 px-3 text-center">${item.quantity}</td>
+          <td class="border-b py-2 px-3 text-right">$${parseFloat(item.unitPrice).toFixed(2)}</td>
+          <td class="border-b py-2 px-3 text-right">$${totalPrice.toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const taxAmount = parseFloat(quote.taxAmount || '0');
+  const discountAmount = parseFloat(quote.discountAmount || '0');
+  const total = subtotal + taxAmount - discountAmount;
+
+  const tableHeaders = isManagerExport ? 
+    `<tr class="bg-gray-100">
+      <th class="border-b-2 py-3 px-3 text-left font-semibold">Product</th>
+      <th class="border-b-2 py-3 px-3 text-center font-semibold">Qty</th>
+      <th class="border-b-2 py-3 px-3 text-right font-semibold">Cost</th>
+      <th class="border-b-2 py-3 px-3 text-right font-semibold">Rep Price</th>
+      <th class="border-b-2 py-3 px-3 text-right font-semibold">Total Cost</th>
+      <th class="border-b-2 py-3 px-3 text-right font-semibold">Total Price</th>
+      <th class="border-b-2 py-3 px-3 text-right font-semibold">Margin</th>
+    </tr>` :
+    `<tr class="bg-gray-100">
+      <th class="border-b-2 py-3 px-3 text-left font-semibold">Product</th>
+      <th class="border-b-2 py-3 px-3 text-left font-semibold">Description</th>
+      <th class="border-b-2 py-3 px-3 text-center font-semibold">Quantity</th>
+      <th class="border-b-2 py-3 px-3 text-right font-semibold">Unit Price</th>
+      <th class="border-b-2 py-3 px-3 text-right font-semibold">Total</th>
+    </tr>`;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Quote ${quote.proposalNumber}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
+        .header { background: #1e3a8a; color: white; padding: 30px; margin: -20px -20px 30px -20px; }
+        .header h1 { margin: 0; font-size: 28px; }
+        .header p { margin: 5px 0; opacity: 0.9; }
+        .quote-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .info-section h3 { margin: 0 0 10px 0; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f3f4f6; font-weight: bold; }
+        .totals { margin-top: 30px; }
+        .totals table { width: 300px; margin-left: auto; }
+        .totals .total-row { font-weight: bold; background-color: #f9fafb; }
+        .manager-note { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; margin-top: 20px; border-radius: 5px; }
+        .manager-note h4 { margin: 0 0 10px 0; color: #92400e; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>${quote.title}</h1>
+        <p>Quote #${quote.proposalNumber} ${isManagerExport ? ' - MANAGER EXPORT WITH COST DETAILS' : ''}</p>
+        <p>Generated on ${currentDate}</p>
+      </div>
+
+      <div class="quote-info">
+        <div class="info-section">
+          <h3>Quote Information</h3>
+          <p><strong>Status:</strong> ${quote.status}</p>
+          <p><strong>Valid Until:</strong> ${validUntil}</p>
+          <p><strong>Created:</strong> ${new Date(quote.createdAt).toLocaleDateString()}</p>
+        </div>
+        <div class="info-section">
+          <h3>Customer Information</h3>
+          <p><strong>Company:</strong> ${companyName}</p>
+          ${contactName ? `<p><strong>Contact:</strong> ${contactName}</p>` : ''}
+          ${company?.email ? `<p><strong>Email:</strong> ${company.email}</p>` : ''}
+          ${company?.phone ? `<p><strong>Phone:</strong> ${company.phone}</p>` : ''}
+        </div>
+      </div>
+
+      <h3>Line Items</h3>
+      <table>
+        ${tableHeaders}
+        ${lineItemsHTML}
+      </table>
+
+      <div class="totals">
+        <table>
+          <tr>
+            <td>Subtotal:</td>
+            <td class="text-right">$${subtotal.toFixed(2)}</td>
+          </tr>
+          ${discountAmount > 0 ? `
+            <tr>
+              <td>Discount:</td>
+              <td class="text-right">-$${discountAmount.toFixed(2)}</td>
+            </tr>
+          ` : ''}
+          ${taxAmount > 0 ? `
+            <tr>
+              <td>Tax:</td>
+              <td class="text-right">$${taxAmount.toFixed(2)}</td>
+            </tr>
+          ` : ''}
+          <tr class="total-row">
+            <td><strong>Total:</strong></td>
+            <td class="text-right"><strong>$${total.toFixed(2)}</strong></td>
+          </tr>
+        </table>
+      </div>
+
+      ${isManagerExport ? `
+        <div class="manager-note">
+          <h4>Manager Export Notice</h4>
+          <p>This export includes cost information and profit margins for management review. This document is confidential and should not be shared with customers.</p>
+        </div>
+      ` : ''}
+    </body>
+    </html>
+  `;
+}
+
+// Export PDF endpoint
+router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+
+    const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
+
+    const html = generateQuoteHTML(quote, lineItems, company, contact, false);
+    
+    const browser = await puppeteer.launch({ 
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    const page = await browser.newPage();
+    
+    await page.setContent(html);
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+    
+    await browser.close();
+    
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="Quote-${quote.proposalNumber}.pdf"`
+    });
+    
+    res.send(pdf);
+  } catch (error) {
+    console.error('PDF export error:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
+// Manager PDF Export endpoint (with cost information)
+router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+
+    // Check if user has manager-level access
+    // This is a simple check - you may want to implement more sophisticated role checking
+    const userRole = req.user.roleId?.toLowerCase() || '';
+    const salesRepRoles = ['sales_rep', 'salesperson', 'sales'];
+    const isManager = !salesRepRoles.some(role => userRole.includes(role));
+    
+    if (!isManager) {
+      return res.status(403).json({ error: 'Access denied. Manager level access required.' });
+    }
+
+    const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
+    
+    // Get pricing type - assume 'new' if not available in quote data
+    // In a production system, this should be stored with the quote when created
+    const pricingType = 'new'; // Default to 'new' pricing for now
+    const costInfo = await getProductCostInfo(lineItems, pricingType);
+
+    const html = generateQuoteHTML(quote, lineItems, company, contact, true, costInfo);
+    
+    const browser = await puppeteer.launch({ 
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    const page = await browser.newPage();
+    
+    await page.setContent(html);
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+    
+    await browser.close();
+    
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="Quote-Manager-${quote.proposalNumber}.pdf"`
+    });
+    
+    res.send(pdf);
+  } catch (error) {
+    console.error('Manager PDF export error:', error);
+    res.status(500).json({ error: 'Failed to generate manager PDF' });
+  }
+});
 
 export default router;
