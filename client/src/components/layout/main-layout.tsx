@@ -43,7 +43,7 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-gray-50">
         {/* Integrated Sidebar Component - Works with SidebarProvider */}
         <RoleAwareCollapsibleSidebar />
