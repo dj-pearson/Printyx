@@ -395,6 +395,22 @@ function validateSoftwareProductData(row: any): any {
   if (!productCode) errors.push("Product Code is required");
   if (!productName) errors.push("Product Name is required");
 
+  // Helper function to parse boolean values
+  const parseBoolean = (value: any): boolean => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true' || value === '1';
+    }
+    return false;
+  };
+
+  // Helper function to parse decimal values
+  const parseDecimal = (value: any): number | null => {
+    if (!value || value === '') return null;
+    const parsed = parseFloat(value.toString());
+    return isNaN(parsed) ? null : parsed;
+  };
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -402,34 +418,43 @@ function validateSoftwareProductData(row: any): any {
       productCode: productCode?.trim(),
       productName: productName?.trim(),
       vendor: (row["vendor"] || row["Vendor"])?.trim() || null,
-      productType: (row["product_type"] || row["Product Type"])?.trim() || "Software",
-      category: (row["category"] || row["Category"])?.trim() || "Software",
-      accessoryType: (row["accessoryType"] || row["Accessory Type"])?.trim() || null,
-      paymentType: (row["paymentType"] || row["Payment Type"])?.trim() || null,
+      productType: (row["product_type"] || row["Product Type"])?.trim() || null,
+      category: (row["category"] || row["Category"])?.trim() || null,
+      accessoryType: (row["accessory_type"] || row["Accessory Type"])?.trim() || null,
+      paymentType: (row["payment_type"] || row["Payment Type"])?.trim() || null,
       description: (row["description"] || row["Description"])?.trim() || null,
-      standardCost: row["standard_cost"] || row["Standard Cost"]
-        ? parseFloat(row["standard_cost"] || row["Standard Cost"])
-        : null,
-      standardRepPrice: row["standard_rep_price"] || row["Standard Rep Price"]
-        ? parseFloat(row["standard_rep_price"] || row["Standard Rep Price"])
-        : null,
-      newCost: row["new_cost"] || row["New Cost"]
-        ? parseFloat(row["new_cost"] || row["New Cost"])
-        : null,
-      newRepPrice: row["new_rep_price"] || row["New Rep Price"]
-        ? parseFloat(row["new_rep_price"] || row["New Rep Price"])
-        : null,
-      upgradeCost: row["upgrade_cost"] || row["Upgrade Cost"]
-        ? parseFloat(row["upgrade_cost"] || row["Upgrade Cost"])
-        : null,
-      upgradeRepPrice: row["upgrade_rep_price"] || row["Upgrade Rep Price"]
-        ? parseFloat(row["upgrade_rep_price"] || row["Upgrade Rep Price"])
-        : null,
-      isActive: (row["is_active"] || row["Is Active"])?.toString().toLowerCase() === "true",
-      availableForAll: (row["available_for_all"] || row["Available For All"])?.toString().toLowerCase() === "true",
-      salesRepCredit: (row["sales_rep_credit"] || row["Sales Rep Credit"])?.toString().toLowerCase() === "true",
-      funding: (row["funding"] || row["Funding"])?.toString().toLowerCase() === "true",
-      lease: (row["lease"] || row["Lease"])?.toString().toLowerCase() === "true",
+      summary: (row["summary"] || row["Summary"])?.trim() || null,
+      note: (row["note"] || row["Note"])?.trim() || null,
+      eaNotes: (row["ea_notes"] || row["EA Notes"])?.trim() || null,
+      configNote: (row["config_note"] || row["Config Note"])?.trim() || null,
+      relatedProducts: (row["related_products"] || row["Related Products"])?.trim() || null,
+      
+      // Flags
+      isActive: parseBoolean(row["is_active"] || row["Is Active"]),
+      availableForAll: parseBoolean(row["available_for_all"] || row["Available For All"]),
+      repostEdit: parseBoolean(row["repost_edit"] || row["Repost Edit"]),
+      salesRepCredit: parseBoolean(row["sales_rep_credit"] || row["Sales Rep Credit"]),
+      funding: parseBoolean(row["funding"] || row["Funding"]),
+      lease: parseBoolean(row["lease"] || row["Lease"]),
+      
+      // Standard Pricing
+      standardActive: parseBoolean(row["standard_active"] || row["Standard Active"]),
+      standardCost: parseDecimal(row["standard_cost"] || row["Standard Cost"]),
+      standardRepPrice: parseDecimal(row["standard_rep_price"] || row["Standard Rep Price"]),
+      
+      // New Pricing
+      newActive: parseBoolean(row["new_active"] || row["New Active"]),
+      newCost: parseDecimal(row["new_cost"] || row["New Cost"]),
+      newRepPrice: parseDecimal(row["new_rep_price"] || row["New Rep Price"]),
+      
+      // Upgrade Pricing
+      upgradeActive: parseBoolean(row["upgrade_active"] || row["Upgrade Active"]),
+      upgradeCost: parseDecimal(row["upgrade_cost"] || row["Upgrade Cost"]),
+      upgradeRepPrice: parseDecimal(row["upgrade_rep_price"] || row["Upgrade Rep Price"]),
+      
+      // System Information
+      priceBookId: (row["price_book_id"] || row["Price Book ID"])?.trim() || null,
+      tempKey: (row["temp_key"] || row["Temp Key"])?.trim() || null,
     },
   };
 }
