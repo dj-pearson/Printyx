@@ -364,7 +364,7 @@ export default function QuoteView() {
                 className="text-white border-white/30 hover:bg-white/20"
               >
                 <Download className="h-4 w-4 mr-2" />
-                {exportPdfMutation.isPending ? 'Exporting...' : 'Export PDF'}
+                {exportPdfMutation.isPending ? 'Exporting...' : 'Export HTML'}
               </Button>
               <Button 
                 variant="outline"
@@ -373,7 +373,7 @@ export default function QuoteView() {
                 className="text-white border-white/30 hover:bg-white/20"
               >
                 <DollarSign className="h-4 w-4 mr-2" />
-                {exportManagerPdfMutation.isPending ? 'Exporting...' : 'Manager Export'}
+                {exportManagerPdfMutation.isPending ? 'Exporting...' : 'Manager Export (HTML)'}
               </Button>
             </div>
           </div>
