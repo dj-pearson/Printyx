@@ -2910,24 +2910,10 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  // Product Models - get from master database and tenant-specific models
+  // Product Models - get from master database only for accessory compatibility
   async getProductModels(tenantId: string): Promise<any[]> {
     try {
-      // Get tenant-specific product models
-      const tenantModels = await db
-        .select({
-          id: productModels.id,
-          modelName: productModels.productName,
-          manufacturer: productModels.manufacturer,
-          category: productModels.category,
-          productFamily: productModels.productFamily,
-          productType: sql<string>`COALESCE(${productModels.category}, 'MFP')`.as('productType'),
-        })
-        .from(productModels)
-        .where(eq(productModels.tenantId, tenantId))
-        .orderBy(productModels.manufacturer, productModels.productName);
-
-      // Get master product models to supplement tenant models
+      // Only get master product models since accessory compatibility references this table
       const masterModels = await db
         .select({
           id: masterProductModels.id,
@@ -2941,21 +2927,9 @@ export class DatabaseStorage implements IStorage {
         .where(eq(masterProductModels.status, 'active'))
         .orderBy(masterProductModels.manufacturer, masterProductModels.displayName);
 
-      // Combine both datasets, preferring tenant-specific data
-      const combinedModels = [...tenantModels, ...masterModels];
-      
-      // Remove duplicates based on manufacturer and model name
-      const uniqueModels = combinedModels.reduce((acc, model) => {
-        const key = `${model.manufacturer}-${model.modelName}`;
-        if (!acc.has(key)) {
-          acc.set(key, model);
-        }
-        return acc;
-      }, new Map());
-
-      return Array.from(uniqueModels.values());
+      return masterModels;
     } catch (error) {
-      console.error("Error in getAllProductModels:", error);
+      console.error("Error in getProductModels:", error);
       return [];
     }
   }
