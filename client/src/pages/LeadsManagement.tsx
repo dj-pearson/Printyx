@@ -1030,86 +1030,156 @@ export default function LeadsManagement() {
               <Card key={lead.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <div
-                      className="cursor-pointer"
-                      onClick={() => handleLeadClick(lead)}
-                    >
-                      <CardTitle className="text-lg text-blue-600 hover:text-blue-800">
-                        {lead.name}
-                      </CardTitle>
-                      <CardDescription>{lead.companyName}</CardDescription>
-                    </div>
-                    <Checkbox
-                      checked={selectedLeads.includes(lead.id)}
-                      onCheckedChange={() => toggleLeadSelection(lead.id)}
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">{lead.email}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">{lead.phone}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">
-                        {formatCurrency(lead.estimatedValue)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex space-x-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CardTitle 
+                          className="text-lg cursor-pointer text-blue-600 hover:text-blue-800"
+                          onClick={() => handleLeadClick(lead)}
+                        >
+                          {lead.companyName || "Unknown Company"}
+                        </CardTitle>
                         <Badge
                           className={
                             statusColors[
                               lead.status as keyof typeof statusColors
-                            ] || "bg-gray-100"
+                            ] || "bg-gray-100 text-gray-800"
                           }
                         >
                           {lead.status}
                         </Badge>
-                        <Badge
-                          className={
-                            priorityColors[
-                              lead.priority as keyof typeof priorityColors
-                            ] || "bg-gray-100"
-                          }
-                        >
-                          {lead.priority}
-                        </Badge>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleLeadClick(lead)}
+                      <CardDescription className="text-sm">
+                        {lead.name} • {lead.jobTitle || "Contact"}
+                      </CardDescription>
+                      {lead.leadSource && (
+                        <CardDescription className="text-xs text-gray-500 mt-1">
+                          Source: {lead.leadSource}
+                        </CardDescription>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="text-lg font-semibold text-right">
+                        {formatCurrency(lead.estimatedValue)}
+                      </div>
+                      <Checkbox
+                        checked={selectedLeads.includes(lead.id)}
+                        onCheckedChange={() => toggleLeadSelection(lead.id)}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Contact Information Grid */}
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      {lead.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="truncate">{lead.email}</span>
+                        </div>
+                      )}
+                      {lead.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span>{lead.phone}</span>
+                        </div>
+                      )}
+                      {lead.address && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="truncate text-xs">
+                            {lead.city && lead.state ? `${lead.city}, ${lead.state}` : lead.address}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Additional Information */}
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                      {lead.lastActivity && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-gray-400" />
+                          <span>Last: {new Date(lead.lastActivity).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      {lead.priority && (
+                        <div className="flex items-center gap-1">
+                          <Target className="h-3 w-3 text-gray-400" />
+                          <Badge
+                            variant="outline"
+                            className={`text-xs px-1 py-0 ${
+                              priorityColors[
+                                lead.priority as keyof typeof priorityColors
+                              ] || "bg-gray-100 text-gray-800"
+                            }`}
                           >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setEditingLead(lead)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setLocation(`/quotes/new?leadId=${lead.id}`)}
-                            >
-                              <DollarSign className="mr-2 h-4 w-4" />
-                              Create Quote
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {lead.priority}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Notes Preview */}
+                    {lead.notes && (
+                      <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                        {lead.notes.length > 80 ? `${lead.notes.substring(0, 80)}...` : lead.notes}
+                      </p>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2 pt-2 border-t">
+                      <div className="flex flex-wrap gap-1">
+                        <Button 
+                          size="sm" 
+                          onClick={() => setLocation(`/quotes/new?leadId=${lead.id}`)}
+                          className="flex-1 min-w-0"
+                          data-testid={`button-quote-${lead.id}`}
+                        >
+                          <DollarSign className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline">Quote</span>
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1 min-w-0"
+                          data-testid={`button-call-${lead.id}`}
+                        >
+                          <Phone className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline">Call</span>
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1 min-w-0"
+                          data-testid={`button-email-${lead.id}`}
+                        >
+                          <Mail className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline">Email</span>
+                        </Button>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingLead(lead)}
+                          className="flex-1"
+                          data-testid={`button-edit-${lead.id}`}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          <span className="text-xs">Edit</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleLeadClick(lead)}
+                          className="flex-1"
+                          data-testid={`button-details-${lead.id}`}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          <span className="text-xs">Details</span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

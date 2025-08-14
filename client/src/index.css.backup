@@ -73,10 +73,9 @@ div:has([class*="runtime-error"]) {
     min-width: 44px;
     touch-action: manipulation;
   }
-}
-
-/* Enhanced drag and drop mobile support */
-.touch-manipulation {
+  
+  /* Enhanced drag and drop mobile support */
+  .touch-manipulation {
     touch-action: manipulation;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -142,10 +141,11 @@ div:has([class*="runtime-error"]) {
     -webkit-overflow-scrolling: touch;
   }
   
-/* Improve mobile focus styles */
-:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
+  /* Improve mobile focus styles */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 /* Base layer customizations */
