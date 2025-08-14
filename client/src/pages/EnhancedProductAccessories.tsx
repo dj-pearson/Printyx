@@ -17,6 +17,7 @@ import { insertProductAccessorySchema, type ProductAccessory, type InsertProduct
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
+import ProductImport from "@/components/product-import/ProductImport";
 
 export default function EnhancedProductAccessories() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -195,10 +196,18 @@ export default function EnhancedProductAccessories() {
             <h1 className="text-3xl font-bold">Enhanced Product Accessories</h1>
             <p className="text-muted-foreground">Manage product accessories and model compatibility</p>
           </div>
-          <Button onClick={() => setDialogOpen(true)} data-testid="button-add-accessory">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Accessory
-          </Button>
+          <div className="flex gap-2">
+            <ProductImport 
+              productType="product-accessories"
+              onImportComplete={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
+              }}
+            />
+            <Button onClick={() => setDialogOpen(true)} data-testid="button-add-accessory">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Accessory
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}

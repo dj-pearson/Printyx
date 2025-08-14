@@ -157,29 +157,20 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
 
   // Product Hub
   if (permissions.products || isPlatformRole || isCompanyAdmin) {
-    const productChildren = [
-      { title: 'Product Models', path: '/product-models', icon: Package },
-      { title: 'Product Accessories', path: '/product-accessories', icon: Layers },
-      { title: 'Supplies', path: '/supplies', icon: Package },
-      { title: 'Professional Services', path: '/professional-services', icon: FileText },
-      { title: 'Managed Services', path: '/managed-services', icon: Crown },
-      { title: 'Software Products', path: '/software-products', icon: Code }
-    ];
-
-    // Add master catalog management for root admin
-    if (isPlatformRole) {
-      productChildren.push(
-        { title: 'Master Catalog Accessories', path: '/enhanced-product-accessories', icon: Wand2 }
-      );
-    }
-
     sections.push({
       id: 'products',
       title: 'Product Hub',
       icon: Package,
       path: '/product-hub',
-      matchPatterns: ['/product*', '/supplies*', '/professional-services*', '/managed-services*', '/software-products*', '/enhanced-product-accessories*'],
-      children: productChildren
+      matchPatterns: ['/product*', '/supplies*', '/professional-services*', '/managed-services*', '/software-products*'],
+      children: [
+        { title: 'Product Models', path: '/product-models', icon: Package },
+        { title: 'Product Accessories', path: '/product-accessories', icon: Layers },
+        { title: 'Supplies', path: '/supplies', icon: Package },
+        { title: 'Professional Services', path: '/professional-services', icon: FileText },
+        { title: 'Managed Services', path: '/managed-services', icon: Crown },
+        { title: 'Software Products', path: '/software-products', icon: Code }
+      ]
     });
   }
 

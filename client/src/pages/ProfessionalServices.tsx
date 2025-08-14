@@ -18,6 +18,7 @@ import { insertProfessionalServiceSchema, type ProfessionalService, type InsertP
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
+import ProductImport from "@/components/product-import/ProductImport";
 
 export default function ProfessionalServices() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -205,14 +206,21 @@ export default function ProfessionalServices() {
               Manage service offerings and professional solutions for your customers
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Service
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="flex gap-2">
+            <ProductImport 
+              productType="professional-services"
+              onImportComplete={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/professional-services'] });
+              }}
+            />
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Service
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>New Price Book List: Professional Service</DialogTitle>
                 <DialogDescription>
@@ -866,6 +874,7 @@ export default function ProfessionalServices() {
               </Form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Search and Filter Bar */}
