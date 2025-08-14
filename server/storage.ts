@@ -3136,6 +3136,33 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async deleteSoftwareProduct(
+    id: string,
+    tenantId: string
+  ): Promise<boolean> {
+    const result = await db
+      .delete(softwareProducts)
+      .where(
+        and(eq(softwareProducts.id, id), eq(softwareProducts.tenantId, tenantId))
+      );
+    return result.rowCount > 0;
+  }
+
+  async bulkDeleteSoftwareProducts(
+    ids: string[],
+    tenantId: string
+  ): Promise<number> {
+    const result = await db
+      .delete(softwareProducts)
+      .where(
+        and(
+          inArray(softwareProducts.id, ids),
+          eq(softwareProducts.tenantId, tenantId)
+        )
+      );
+    return result.rowCount || 0;
+  }
+
   // Product Models - get from master database only for accessory compatibility
   async getProductModels(tenantId: string): Promise<any[]> {
     try {
