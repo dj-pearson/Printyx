@@ -137,9 +137,9 @@ export default function ProductModels() {
   }, [selectedModel, editForm]);
 
   const filteredModels = models.filter(model => {
-    const matchesSearch = model.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         model.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (model.manufacturer && model.manufacturer.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = (model.productName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (model.productCode || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (model.manufacturer || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || model.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
