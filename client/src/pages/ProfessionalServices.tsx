@@ -920,7 +920,6 @@ export default function ProfessionalServices() {
             </DialogContent>
           </Dialog>
           </div>
-        </div>
 
         {/* Search and Filter Bar */}
         <div className="flex items-center gap-4">

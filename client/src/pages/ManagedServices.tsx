@@ -933,10 +933,9 @@ export default function ManagedServices() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
 
-      {/* Search and Filter Bar */}
-      <div className="flex items-center gap-4">
+        {/* Search and Filter Bar */}
+        <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
