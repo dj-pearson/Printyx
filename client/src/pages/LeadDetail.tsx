@@ -484,6 +484,7 @@ export default function LeadDetailHubspot() {
                 size="sm" 
                 onClick={async () => {
                   console.log("Add Contacts button clicked - DIRECT TEST");
+                  alert("Button clicked! Check console for API test results...");
                   // Direct API test
                   try {
                     const response = await apiRequest(`/api/leads/${id}/contacts`, {
@@ -496,12 +497,14 @@ export default function LeadDetailHubspot() {
                       },
                     });
                     console.log("DIRECT API SUCCESS:", response);
+                    alert("SUCCESS: Contact created!");
                     toast({
                       title: "Success",
                       description: "Test contact created directly",
                     });
                   } catch (error) {
                     console.error("DIRECT API ERROR:", error);
+                    alert("ERROR: " + error.message);
                     toast({
                       title: "Error",
                       description: "API test failed: " + error.message,
@@ -509,10 +512,10 @@ export default function LeadDetailHubspot() {
                     });
                   }
                 }}
-                className="text-xs"
+                className="text-xs bg-red-500 text-white"
               >
                 <UserPlus className="h-3 w-3 mr-1" />
-                Test API Direct
+                🔴 API TEST
               </Button>
               <Button 
                 variant="outline" 
