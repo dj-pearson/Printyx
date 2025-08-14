@@ -482,7 +482,10 @@ export default function LeadDetailHubspot() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => setDialogs(prev => ({ ...prev, editRecord: true }))}
+                onClick={() => {
+                  console.log("Add Contacts button clicked");
+                  setDialogs(prev => ({ ...prev, editRecord: true }));
+                }}
                 className="text-xs"
               >
                 <UserPlus className="h-3 w-3 mr-1" />
@@ -2350,7 +2353,10 @@ export default function LeadDetailHubspot() {
       {/* Contact Creation Dialog */}
       <Dialog
         open={dialogs.editRecord}
-        onOpenChange={(open) => setDialogs((prev) => ({ ...prev, editRecord: open }))}
+        onOpenChange={(open) => {
+          console.log("Dialog open state changed:", open);
+          setDialogs((prev) => ({ ...prev, editRecord: open }));
+        }}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -2359,6 +2365,7 @@ export default function LeadDetailHubspot() {
           <LeadContactForm
             leadId={id}
             onSuccess={() => {
+              console.log("Contact creation success callback triggered");
               setDialogs((prev) => ({ ...prev, editRecord: false }));
               queryClient.invalidateQueries({ queryKey: ["/api/leads", id, "contacts"] });
               toast({
@@ -2366,7 +2373,10 @@ export default function LeadDetailHubspot() {
                 description: "Contact created successfully",
               });
             }}
-            onCancel={() => setDialogs((prev) => ({ ...prev, editRecord: false }))}
+            onCancel={() => {
+              console.log("Contact creation cancelled");
+              setDialogs((prev) => ({ ...prev, editRecord: false }));
+            }}
           />
         </DialogContent>
       </Dialog>
