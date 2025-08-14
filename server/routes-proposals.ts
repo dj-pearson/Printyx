@@ -1383,67 +1383,173 @@ router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
     
     console.log(`📄 PDF Export: Generated HTML (${html.length} chars)`);
     
-    // Enhanced Puppeteer configuration for Replit environment
-    browser = await puppeteer.launch({ 
-      headless: "new",
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
-        '--memory-pressure-off',
-        '--max_old_space_size=4096'
-      ],
-      timeout: 30000
-    });
+    // Check if we're in a browser environment like Replit
+    const isReplit = process.env.REPL_ID || process.env.REPLIT || false;
+    console.log(`📄 PDF Export: Environment check - isReplit: ${isReplit}`);
     
-    const page = await browser.newPage();
-    
-    // Set viewport and wait for fonts to load
-    await page.setViewport({ width: 1200, height: 800 });
-    
-    console.log(`📄 PDF Export: Setting HTML content`);
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0',
-      timeout: 20000 
-    });
-    
-    console.log(`📄 PDF Export: Generating PDF`);
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
-      },
-      timeout: 30000
-    });
-    
-    await browser.close();
-    browser = null;
-    
-    console.log(`📄 PDF Export: Generated PDF (${pdf.length} bytes)`);
-    
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Quote-${quote.proposalNumber}.pdf"`,
-      'Content-Length': pdf.length.toString()
-    });
-    
-    res.send(pdf);
+    try {
+      // Enhanced Puppeteer configuration for various environments
+      const puppeteerOptions = {
+        headless: "new" as const,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox', 
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--memory-pressure-off',
+          '--max_old_space_size=4096',
+          '--disable-extensions',
+          '--disable-plugins',
+          '--disable-default-apps',
+          '--disable-background-networking',
+          '--disable-sync'
+        ],
+        timeout: 30000
+      };
+
+      console.log(`📄 PDF Export: Launching browser with options:`, JSON.stringify(puppeteerOptions, null, 2));
+      
+      browser = await puppeteer.launch(puppeteerOptions);
+      
+      console.log(`📄 PDF Export: Browser launched successfully`);
+      
+      const page = await browser.newPage();
+      
+      // Set viewport and wait for fonts to load
+      await page.setViewport({ width: 1200, height: 800 });
+      
+      console.log(`📄 PDF Export: Setting HTML content`);
+      await page.setContent(html, { 
+        waitUntil: 'networkidle0',
+        timeout: 20000 
+      });
+      
+      console.log(`📄 PDF Export: Generating PDF`);
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20px',
+          right: '20px',
+          bottom: '20px',
+          left: '20px'
+        },
+        timeout: 30000
+      });
+      
+      await browser.close();
+      browser = null;
+      
+      console.log(`📄 PDF Export: Generated PDF (${pdf.length} bytes)`);
+      
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="Quote-${quote.proposalNumber}.pdf"`,
+        'Content-Length': pdf.length.toString()
+      });
+      
+      res.send(pdf);
+    } catch (puppeteerError) {
+      console.error('📄 Puppeteer failed, trying fallback:', puppeteerError);
+      
+      // Fallback: Return a printable HTML page
+      const printableHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Quote ${quote.proposalNumber}</title>
+          <style>
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .quote-info { margin-bottom: 20px; }
+            .line-items table { width: 100%; border-collapse: collapse; }
+            .line-items th, .line-items td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .line-items th { background-color: #f2f2f2; }
+            .total { font-weight: bold; font-size: 1.2em; margin-top: 20px; }
+          </style>
+          <script>
+            window.onload = function() {
+              document.getElementById('printBtn').onclick = function() {
+                window.print();
+              };
+            }
+          </script>
+        </head>
+        <body>
+          <div class="no-print" style="background: #ffeb3b; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
+            <strong>PDF Generation Notice:</strong> The server-side PDF generation is temporarily unavailable. 
+            Please use your browser's print function (Ctrl+P / Cmd+P) and select "Save as PDF" to create a PDF of this quote.
+            <button id="printBtn" style="margin-left: 10px; padding: 5px 10px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer;">Print / Save as PDF</button>
+          </div>
+          
+          <div class="header">
+            <h1>Quote #${quote.proposalNumber}</h1>
+            <h2>${quote.title}</h2>
+          </div>
+          
+          <div class="quote-info">
+            <p><strong>Customer:</strong> ${company?.companyName || 'N/A'}</p>
+            <p><strong>Contact:</strong> ${contact ? `${contact.firstName} ${contact.lastName}` : 'N/A'}</p>
+            <p><strong>Valid Until:</strong> ${new Date(quote.validUntil).toLocaleDateString()}</p>
+            <p><strong>Created:</strong> ${new Date(quote.createdAt).toLocaleDateString()}</p>
+          </div>
+          
+          <div class="line-items">
+            <h3>Line Items</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Description</th>
+                  <th>Qty</th>
+                  <th>Unit Price</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lineItems.map((item: any, index: number) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.productName || item.description || 'N/A'}</td>
+                    <td>${item.quantity}</td>
+                    <td>$${parseFloat(item.unitPrice || '0').toFixed(2)}</td>
+                    <td>$${parseFloat(item.totalPrice || '0').toFixed(2)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="total">
+            <p>Total: $${parseFloat(quote.totalAmount || '0').toFixed(2)}</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.set({
+        'Content-Type': 'text/html',
+        'Content-Disposition': 'inline'
+      });
+      
+      res.send(printableHtml);
+    }
   } catch (error) {
     console.error('📄 PDF export error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
     if (browser) {
       try {
@@ -1455,7 +1561,8 @@ router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
     
     res.status(500).json({ 
       error: 'Failed to generate PDF',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });
@@ -1500,12 +1607,16 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
     
     console.log(`📊 Manager PDF Export: Generated HTML (${html.length} chars)`);
     
-    // Enhanced Puppeteer configuration for Replit environment
-    browser = await puppeteer.launch({ 
-      headless: "new",
+    // Check if we're in a browser environment like Replit
+    const isReplit = process.env.REPL_ID || process.env.REPLIT || false;
+    console.log(`📊 Manager PDF Export: Environment check - isReplit: ${isReplit}`);
+    
+    // Enhanced Puppeteer configuration for various environments
+    const puppeteerOptions = {
+      headless: "new" as const,
       args: [
         '--no-sandbox',
-        '--disable-setuid-sandbox',
+        '--disable-setuid-sandbox', 
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
@@ -1518,49 +1629,168 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
         '--disable-backgrounding-occluded-windows',
         '--disable-renderer-backgrounding',
         '--memory-pressure-off',
-        '--max_old_space_size=4096'
+        '--max_old_space_size=4096',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--disable-default-apps',
+        '--disable-background-networking',
+        '--disable-sync'
       ],
-      timeout: 30000
-    });
+      timeout: 30000,
+      // Add executable path for Replit if needed
+      ...(isReplit && { executablePath: '/nix/store/*/bin/chromium' })
+    };
+
+    console.log(`📊 Manager PDF Export: Launching browser with options:`, JSON.stringify(puppeteerOptions, null, 2));
     
-    const page = await browser.newPage();
-    
-    // Set viewport and wait for fonts to load
-    await page.setViewport({ width: 1200, height: 800 });
-    
-    console.log(`📊 Manager PDF Export: Setting HTML content`);
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0',
-      timeout: 20000 
-    });
-    
-    console.log(`📊 Manager PDF Export: Generating PDF`);
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
-      },
-      timeout: 30000
-    });
-    
-    await browser.close();
-    browser = null;
-    
-    console.log(`📊 Manager PDF Export: Generated PDF (${pdf.length} bytes)`);
-    
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Quote-Manager-${quote.proposalNumber}.pdf"`,
-      'Content-Length': pdf.length.toString()
-    });
-    
-    res.send(pdf);
+    try {
+      browser = await puppeteer.launch(puppeteerOptions);
+      
+      console.log(`📊 Manager PDF Export: Browser launched successfully`);
+      
+      const page = await browser.newPage();
+      
+      // Set viewport and wait for fonts to load
+      await page.setViewport({ width: 1200, height: 800 });
+      
+      console.log(`📊 Manager PDF Export: Setting HTML content`);
+      await page.setContent(html, { 
+        waitUntil: 'networkidle0',
+        timeout: 20000 
+      });
+      
+      console.log(`📊 Manager PDF Export: Generating PDF`);
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20px',
+          right: '20px',
+          bottom: '20px',
+          left: '20px'
+        },
+        timeout: 30000
+      });
+      
+      await browser.close();
+      browser = null;
+      
+      console.log(`📊 Manager PDF Export: Generated PDF (${pdf.length} bytes)`);
+      
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="Quote-Manager-${quote.proposalNumber}.pdf"`,
+        'Content-Length': pdf.length.toString()
+      });
+      
+      res.send(pdf);
+    } catch (puppeteerError) {
+      console.error('📊 Puppeteer failed for manager export, trying fallback:', puppeteerError);
+      
+      // Fallback: Return a printable HTML page with cost information
+      const printableHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Manager Quote ${quote.proposalNumber}</title>
+          <style>
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .quote-info { margin-bottom: 20px; }
+            .line-items table { width: 100%; border-collapse: collapse; }
+            .line-items th, .line-items td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .line-items th { background-color: #f2f2f2; }
+            .manager-info { background-color: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+            .cost-column { background-color: #e8f4f8; }
+            .total { font-weight: bold; font-size: 1.2em; margin-top: 20px; }
+          </style>
+          <script>
+            window.onload = function() {
+              document.getElementById('printBtn').onclick = function() {
+                window.print();
+              };
+            }
+          </script>
+        </head>
+        <body>
+          <div class="no-print" style="background: #ffeb3b; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
+            <strong>PDF Generation Notice:</strong> The server-side PDF generation is temporarily unavailable. 
+            Please use your browser's print function (Ctrl+P / Cmd+P) and select "Save as PDF" to create a PDF of this manager quote.
+            <button id="printBtn" style="margin-left: 10px; padding: 5px 10px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer;">Print / Save as PDF</button>
+          </div>
+          
+          <div class="manager-info">
+            <strong>MANAGER EXPORT:</strong> This document includes cost information and is intended for internal use only.
+          </div>
+          
+          <div class="header">
+            <h1>Manager Quote #${quote.proposalNumber}</h1>
+            <h2>${quote.title}</h2>
+          </div>
+          
+          <div class="quote-info">
+            <p><strong>Customer:</strong> ${company?.companyName || 'N/A'}</p>
+            <p><strong>Contact:</strong> ${contact ? `${contact.firstName} ${contact.lastName}` : 'N/A'}</p>
+            <p><strong>Valid Until:</strong> ${new Date(quote.validUntil).toLocaleDateString()}</p>
+            <p><strong>Created:</strong> ${new Date(quote.createdAt).toLocaleDateString()}</p>
+          </div>
+          
+          <div class="line-items">
+            <h3>Line Items with Cost Information</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Description</th>
+                  <th>Qty</th>
+                  <th class="cost-column">Cost</th>
+                  <th>Unit Price</th>
+                  <th class="cost-column">Margin</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lineItems.map((item: any, index: number) => {
+                  const cost = parseFloat(item.cost || '0');
+                  const unitPrice = parseFloat(item.unitPrice || '0');
+                  const margin = unitPrice > 0 ? ((unitPrice - cost) / unitPrice * 100).toFixed(1) : '0';
+                  return `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td>${item.productName || item.description || 'N/A'}</td>
+                      <td>${item.quantity}</td>
+                      <td class="cost-column">$${cost.toFixed(2)}</td>
+                      <td>$${unitPrice.toFixed(2)}</td>
+                      <td class="cost-column">${margin}%</td>
+                      <td>$${parseFloat(item.totalPrice || '0').toFixed(2)}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="total">
+            <p>Total: $${parseFloat(quote.totalAmount || '0').toFixed(2)}</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.set({
+        'Content-Type': 'text/html',
+        'Content-Disposition': 'inline'
+      });
+      
+      res.send(printableHtml);
+    }
   } catch (error) {
     console.error('📊 Manager PDF export error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
     if (browser) {
       try {
@@ -1572,7 +1802,8 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
     
     res.status(500).json({ 
       error: 'Failed to generate manager PDF',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });
