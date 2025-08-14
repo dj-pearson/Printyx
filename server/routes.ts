@@ -7504,9 +7504,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .on("error", reject);
         });
 
-        const tenant = await storage.getCurrentTenant(req.user.id);
-        if (!tenant) {
-          return res.status(400).json({ message: "No tenant found" });
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
         }
 
         let imported = 0;
@@ -7519,7 +7519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             // Map CSV fields to database schema
             const accessoryData = {
-              tenantId: tenant.id,
+              tenantId,
               accessoryCode: row.accessory_code?.trim(),
               accessoryName: row.accessory_name?.trim(),
               accessoryType: row.accessory_type?.trim() || null,
@@ -7556,7 +7556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .from(productAccessories)
               .where(
                 and(
-                  eq(productAccessories.tenantId, tenant.id),
+                  eq(productAccessories.tenantId, tenantId),
                   eq(productAccessories.accessoryCode, accessoryData.accessoryCode)
                 )
               )
