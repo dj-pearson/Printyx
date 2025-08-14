@@ -5364,7 +5364,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(
     "/api/leads/:id/contacts",
     requireAuth,
-    requireAuth,
     async (req: any, res) => {
       try {
         const { id } = req.params;
@@ -5384,7 +5383,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/leads/:id/contacts",
     requireAuth,
-    requireAuth,
     async (req: any, res) => {
       try {
         const { id } = req.params;
@@ -5392,11 +5390,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
-        const contactData = {
+        // Validate using Zod schema
+        const contactData = insertLeadContactSchema.parse({
           ...req.body,
           leadId: id,
           tenantId,
-        };
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        
+        console.log('Creating lead contact with data:', contactData);
         const contact = await storage.createLeadContact(contactData);
         res.json(contact);
       } catch (error) {
