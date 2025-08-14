@@ -5388,6 +5388,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.delete(
+    "/api/product-models/:id",
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const deleted = await storage.deleteProductModel(id, tenantId);
+        if (!deleted) {
+          return res.status(404).json({ message: "Product model not found" });
+        }
+        res.json({ message: "Product model deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting product model:", error);
+        res.status(500).json({ message: "Failed to delete product model" });
+      }
+    }
+  );
+
   // Product Accessories
   app.get(
     "/api/product-accessories",
