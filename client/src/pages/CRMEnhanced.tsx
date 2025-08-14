@@ -1200,21 +1200,21 @@ export default function CRMEnhanced() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="leads">Sales Pipeline</TabsTrigger>
-            <TabsTrigger value="quotes">Quotes</TabsTrigger>
-            <TabsTrigger value="interactions">Interactions</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="leads" className="text-xs sm:text-sm">Sales Pipeline</TabsTrigger>
+            <TabsTrigger value="quotes" className="text-xs sm:text-sm">Quotes</TabsTrigger>
+            <TabsTrigger value="interactions" className="text-xs sm:text-sm">Interactions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="leads" className="space-y-4">
             {/* Filters */}
-            <div className="flex gap-4">
-              <div className="relative flex-1 max-w-md">
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="relative flex-1 max-w-full sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input placeholder="Search leads..." className="pl-10" />
               </div>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1275,7 +1275,7 @@ export default function CRMEnhanced() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         {lead.email && (
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4 text-gray-400" />
@@ -1317,8 +1317,8 @@ export default function CRMEnhanced() {
                         </p>
                       )}
 
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-3 pt-2 border-t sm:flex-row sm:justify-between sm:items-center">
+                        <div className="flex flex-wrap gap-2">
                           {(() => {
                             const actionButton = getLeadActionButton(lead.status || "new", lead.id);
                             const IconComponent = actionButton.icon;
@@ -1329,21 +1329,21 @@ export default function CRMEnhanced() {
                                 className={actionButton.className}
                                 data-testid={`button-${actionButton.text.toLowerCase().replace(/\s+/g, "-")}-${lead.id}`}
                               >
-                                <IconComponent className="w-4 h-4 mr-1" />
-                                {actionButton.text}
+                                <IconComponent className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">{actionButton.text}</span>
                               </Button>
                             );
                           })()}
                           <Button size="sm" variant="outline" data-testid={`button-call-${lead.id}`}>
-                            <PhoneCall className="w-4 h-4 mr-1" />
-                            Call
+                            <PhoneCall className="w-4 h-4 mr-1 sm:mr-1" />
+                            <span className="hidden sm:inline">Call</span>
                           </Button>
                           <Button size="sm" variant="outline" data-testid={`button-email-${lead.id}`}>
-                            <Mail className="w-4 h-4 mr-1" />
-                            Email
+                            <Mail className="w-4 h-4 mr-1 sm:mr-1" />
+                            <span className="hidden sm:inline">Email</span>
                           </Button>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -1354,7 +1354,8 @@ export default function CRMEnhanced() {
                             }
                           >
                             <UserCheck className="w-4 h-4 mr-1" />
-                            Add Contacts
+                            <span className="hidden sm:inline">Add Contacts</span>
+                            <span className="sm:hidden">Contacts</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -1365,7 +1366,8 @@ export default function CRMEnhanced() {
                               setLocation(`/leads/${urlSlug}`);
                             }}
                           >
-                            View Details
+                            <span className="hidden sm:inline">View Details</span>
+                            <span className="sm:hidden">Details</span>
                           </Button>
                         </div>
                       </div>
