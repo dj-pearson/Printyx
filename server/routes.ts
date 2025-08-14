@@ -67,6 +67,7 @@ import {
   masterProductModels,
   meterReadings,
   vendors,
+  productAccessories,
 } from "@shared/schema";
 // Mobile routes integrated directly in main routes file
 import { registerIntegrationRoutes } from "./routes-integrations";

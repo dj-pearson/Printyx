@@ -84,7 +84,6 @@ export default function ProductAccessories() {
   const form = useForm<InsertProductAccessory>({
     resolver: zodResolver(insertProductAccessorySchema),
     defaultValues: {
-      tenantId: "",
       accessoryCode: "",
       accessoryName: "",
       accessoryType: "Document Feeder",
@@ -113,7 +112,10 @@ export default function ProductAccessories() {
   const onSubmit = (data: InsertProductAccessory) => {
     console.log("Submitting accessory data:", data);
     console.log("Form errors:", form.formState.errors);
-    createAccessoryMutation.mutate(data);
+    
+    // Remove tenantId from client data - server will add it
+    const { tenantId, ...submitData } = data;
+    createAccessoryMutation.mutate(submitData as InsertProductAccessory);
   };
 
   const onEditSubmit = (data: Partial<ProductAccessory>) => {
