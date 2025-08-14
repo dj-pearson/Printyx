@@ -448,49 +448,56 @@ function validateSoftwareProductData(row: any): any {
     ? parseBoolean(upgradeActiveFromCSV)
     : (upgradeRepPrice !== null || upgradeCost !== null); // Auto-enable if pricing exists
 
+  const data = {
+    productCode: productCode?.trim(),
+    productName: productName?.trim(),
+    vendor: getFieldValue('vendor')?.trim() || null,
+    productType: getFieldValue('product_type')?.trim() || null,
+    category: getFieldValue('category')?.trim() || null,
+    accessoryType: getFieldValue('accessory_type')?.trim() || null,
+    paymentType: getFieldValue('payment_type')?.trim() || null,
+    description: getFieldValue('description')?.trim() || null,
+    summary: getFieldValue('summary')?.trim() || null,
+    note: getFieldValue('note')?.trim() || null,
+    eaNotes: getFieldValue('ea_notes')?.trim() || null,
+    configNote: getFieldValue('config_note')?.trim() || null,
+    relatedProducts: getFieldValue('related_products')?.trim() || null,
+    
+    // Flags
+    isActive: parseBoolean(getFieldValue('is_active')),
+    availableForAll: parseBoolean(getFieldValue('available_for_all')),
+    repostEdit: parseBoolean(getFieldValue('repost_edit')),
+    salesRepCredit: parseBoolean(getFieldValue('sales_rep_credit')),
+    funding: parseBoolean(getFieldValue('funding')),
+    lease: parseBoolean(getFieldValue('lease')),
+    
+    // Pricing with smart active flag detection
+    standardActive,
+    standardCost,
+    standardRepPrice,
+    
+    newActive,
+    newCost,
+    newRepPrice,
+    
+    upgradeActive,
+    upgradeCost,
+    upgradeRepPrice,
+    
+    // System Information
+    priceBookId: getFieldValue('price_book_id')?.trim() || null,
+    tempKey: getFieldValue('temp_key')?.trim() || null,
+  };
+
+  // Debug logging for first few rows
+  if (productCode && (standardRepPrice || standardCost)) {
+    console.log(`Validation debug for ${productCode}: standardRepPrice=${standardRepPrice}, standardCost=${standardCost}, standardActive=${standardActive}`);
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
-    data: {
-      productCode: productCode?.trim(),
-      productName: productName?.trim(),
-      vendor: getFieldValue('vendor')?.trim() || null,
-      productType: getFieldValue('product_type')?.trim() || null,
-      category: getFieldValue('category')?.trim() || null,
-      accessoryType: getFieldValue('accessory_type')?.trim() || null,
-      paymentType: getFieldValue('payment_type')?.trim() || null,
-      description: getFieldValue('description')?.trim() || null,
-      summary: getFieldValue('summary')?.trim() || null,
-      note: getFieldValue('note')?.trim() || null,
-      eaNotes: getFieldValue('ea_notes')?.trim() || null,
-      configNote: getFieldValue('config_note')?.trim() || null,
-      relatedProducts: getFieldValue('related_products')?.trim() || null,
-      
-      // Flags
-      isActive: parseBoolean(getFieldValue('is_active')),
-      availableForAll: parseBoolean(getFieldValue('available_for_all')),
-      repostEdit: parseBoolean(getFieldValue('repost_edit')),
-      salesRepCredit: parseBoolean(getFieldValue('sales_rep_credit')),
-      funding: parseBoolean(getFieldValue('funding')),
-      lease: parseBoolean(getFieldValue('lease')),
-      
-      // Pricing with smart active flag detection
-      standardActive,
-      standardCost,
-      standardRepPrice,
-      
-      newActive,
-      newCost,
-      newRepPrice,
-      
-      upgradeActive,
-      upgradeCost,
-      upgradeRepPrice,
-      
-      // System Information
-      priceBookId: getFieldValue('price_book_id')?.trim() || null,
-      tempKey: getFieldValue('temp_key')?.trim() || null,
-    },
+    data,
   };
 }
 
@@ -7538,6 +7545,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             const productData = { ...validation.data, tenantId };
+            // Debug logging for standardRepPrice issue
+            if (productData.productCode && (productData.standardRepPrice || productData.standardCost)) {
+              console.log(`Importing ${productData.productCode}: standardActive=${productData.standardActive}, standardCost=${productData.standardCost}, standardRepPrice=${productData.standardRepPrice}`);
+            }
             await storage.createSoftwareProduct(productData);
             imported++;
           } catch (error) {
