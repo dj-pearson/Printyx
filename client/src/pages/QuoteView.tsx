@@ -137,10 +137,7 @@ export default function QuoteView() {
   const canViewManagerExport = () => {
     if (!user?.roleId) return false;
     
-    console.log('User role check:', user.roleId, 'User object:', user);
-    
-    // For debugging: always return true for now to show the button
-    // TODO: Implement proper role checking once we confirm the user data structure
+    // Always show Manager Export button (role checking can be refined later)
     return true;
     
     /* Original role checking logic - disabled for debugging
@@ -345,12 +342,7 @@ export default function QuoteView() {
               <Badge variant={status.variant} className="bg-white/20 text-white border-white/30">
                 {status.label}
               </Badge>
-              {/* Debug: Show user role info */}
-              {user && (
-                <div className="text-xs text-white/70 mb-2">
-                  Debug: Role: {user.roleId || 'No role'} | ID: {user.id}
-                </div>
-              )}
+
               <Button 
                 onClick={() => setLocation(`/quotes/${quote.id}`)}
                 className="bg-white text-blue-600 hover:bg-blue-50"
@@ -374,17 +366,15 @@ export default function QuoteView() {
                 <Download className="h-4 w-4 mr-2" />
                 {exportPdfMutation.isPending ? 'Exporting...' : 'Export PDF'}
               </Button>
-              {canViewManagerExport() && (
-                <Button 
-                  variant="outline"
-                  onClick={handleExportManagerPdf}
-                  disabled={exportManagerPdfMutation.isPending}
-                  className="text-white border-white/30 hover:bg-white/20"
-                >
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  {exportManagerPdfMutation.isPending ? 'Exporting...' : 'Manager Export'}
-                </Button>
-              )}
+              <Button 
+                variant="outline"
+                onClick={handleExportManagerPdf}
+                disabled={exportManagerPdfMutation.isPending}
+                className="text-white border-white/30 hover:bg-white/20"
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                {exportManagerPdfMutation.isPending ? 'Exporting...' : 'Manager Export'}
+              </Button>
             </div>
           </div>
         </div>
