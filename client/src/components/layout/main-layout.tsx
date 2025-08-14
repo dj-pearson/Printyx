@@ -43,17 +43,12 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="flex min-h-screen w-full bg-gray-50">
-        {/* Role-Aware Collapsible Navigation Sidebar - Desktop */}
-        <RoleAwareCollapsibleSidebar className="hidden md:flex" />
+        {/* Integrated Sidebar Component - Works with SidebarProvider */}
+        <RoleAwareCollapsibleSidebar />
         
-        {/* Role-Aware Collapsible Navigation Sidebar - Mobile */}
-        <div className="md:hidden">
-          <RoleAwareCollapsibleSidebar />
-        </div>
-        
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <SidebarInset className="flex-1 flex flex-col overflow-hidden">
           <Header title={title} description={description} />
           
           <main className="flex-1 overflow-auto">
@@ -61,7 +56,7 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
               {children}
             </div>
           </main>
-        </div>
+        </SidebarInset>
         
         {/* Mobile Bottom Navigation - Only show on small screens */}
         <div className="md:hidden">

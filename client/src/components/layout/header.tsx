@@ -26,7 +26,7 @@ export default function Header({ title, description }: HeaderProps) {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-white backdrop-blur-sm shadow-sm">
       <div className="flex h-16 items-center px-4 lg:px-6">
         {/* Sidebar Toggle - Enhanced for mobile visibility */}
         <SidebarTrigger className="mr-3 h-9 w-9 hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:mr-4" />
