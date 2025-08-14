@@ -45,12 +45,12 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-gray-50">
-        {/* Role-Aware Collapsible Navigation Sidebar */}
+        {/* Role-Aware Collapsible Navigation Sidebar - Desktop */}
         <RoleAwareCollapsibleSidebar className="w-64 hidden md:flex" />
         
-        {/* Fallback Mobile Sidebar */}
+        {/* Role-Aware Collapsible Navigation Sidebar - Mobile */}
         <div className="md:hidden">
-          <RoleBasedSidebar />
+          <RoleAwareCollapsibleSidebar className="w-64" />
         </div>
         
         <div className="flex-1 flex flex-col overflow-hidden">

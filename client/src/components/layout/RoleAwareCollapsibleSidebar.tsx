@@ -114,6 +114,18 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
       ]
     });
+
+    // Master Catalog Hub - Only for platform admin
+    sections.push({
+      id: 'master-catalog',
+      title: 'Master Catalog',
+      icon: Database,
+      path: '/master-catalog',
+      matchPatterns: ['/enhanced-product-accessories*', '/master-*'],
+      children: [
+        { title: 'Enhanced Accessories', path: '/enhanced-product-accessories', icon: Wand2 }
+      ]
+    });
   }
 
   // CRM Hub
