@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit, Sparkles } from "lucide-react";
+import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit, Sparkles, Trash2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,8 @@ export default function SoftwareProducts() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SoftwareProduct | null>(null);
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -75,6 +77,53 @@ export default function SoftwareProducts() {
       toast({
         title: "Error",
         description: "Failed to update software product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/software-products/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
+      setSelectedProduct(null);
+      toast({
+        title: "Success",
+        description: "Software product deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Delete error:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete software product";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiRequest('/api/software-products/bulk-delete', 'DELETE', { ids });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
+      setSelectedIds(new Set());
+      setBulkMode(false);
+      toast({
+        title: "Success",
+        description: `Successfully deleted ${selectedIds.size} software products`,
+      });
+    },
+    onError: (error: any) => {
+      console.error('Bulk delete error:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete software products";
+      toast({
+        title: "Error",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -224,6 +273,31 @@ export default function SoftwareProducts() {
     }
   };
 
+  const handleBulkDelete = () => {
+    if (selectedIds.size > 0) {
+      console.log('Bulk deleting items:', Array.from(selectedIds));
+      bulkDeleteMutation.mutate(Array.from(selectedIds));
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredProducts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const handleSelectProduct = (id: string) => {
+    const newSelectedIds = new Set(selectedIds);
+    if (newSelectedIds.has(id)) {
+      newSelectedIds.delete(id);
+    } else {
+      newSelectedIds.add(id);
+    }
+    setSelectedIds(newSelectedIds);
+  };
+
   const handleViewDetails = (product: SoftwareProduct) => {
     setSelectedProduct(product);
     setDetailsDialogOpen(true);
@@ -338,6 +412,15 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
       <Card className="h-full flex flex-col hover:shadow-md transition-shadow duration-200">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
+            {bulkMode && (
+              <div className="flex items-center pt-1">
+                <Checkbox
+                  checked={selectedIds.has(product.id)}
+                  onCheckedChange={() => handleSelectProduct(product.id)}
+                  data-testid={`checkbox-select-${product.id}`}
+                />
+              </div>
+            )}
             <div className="flex-1 min-w-0 space-y-1">
               <CardTitle className="text-base sm:text-lg leading-tight line-clamp-2">
                 {product.productName}
@@ -416,29 +499,41 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
               </div>
             )}
             
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="flex-1 text-xs sm:text-sm py-1 h-8"
-                onClick={() => handleViewDetails(product)}
-                data-testid={`button-view-details-${product.id}`}
-              >
-                <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                <span className="hidden sm:inline">View Details</span>
-                <span className="sm:hidden">View</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="flex-1 text-xs sm:text-sm py-1 h-8"
-                onClick={() => handleEdit(product)}
-                data-testid={`button-edit-${product.id}`}
-              >
-                <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                Edit
-              </Button>
-            </div>
+            {!bulkMode && (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex-1 text-xs sm:text-sm py-1 h-8"
+                  onClick={() => handleViewDetails(product)}
+                  data-testid={`button-view-details-${product.id}`}
+                >
+                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden sm:inline">View Details</span>
+                  <span className="sm:hidden">View</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex-1 text-xs sm:text-sm py-1 h-8"
+                  onClick={() => handleEdit(product)}
+                  data-testid={`button-edit-${product.id}`}
+                >
+                  <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  className="text-xs sm:text-sm py-1 h-8"
+                  onClick={() => deleteProductMutation.mutate(product.id)}
+                  data-testid={`button-delete-${product.id}`}
+                >
+                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1624,6 +1719,46 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Bulk Mode Controls */}
+        <div className="flex justify-between items-center">
+          <Button 
+            variant={bulkMode ? "default" : "outline"} 
+            size="sm" 
+            onClick={() => {
+              setBulkMode(!bulkMode);
+              setSelectedIds(new Set());
+            }}
+            data-testid="button-bulk-mode"
+          >
+            <CheckSquare className="h-4 w-4 mr-2" />
+            {bulkMode ? 'Exit Bulk Mode' : 'Bulk Mode'}
+          </Button>
+          
+          {bulkMode && selectedIds.size > 0 && (
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm" 
+                onClick={handleSelectAll}
+                data-testid="button-select-all"
+              >
+                <Square className="h-4 w-4 mr-2" />
+                {selectedIds.size === filteredProducts.length ? 'Deselect All' : 'Select All'}
+              </Button>
+              <Button 
+                variant="destructive"
+                size="sm" 
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteMutation.isPending}
+                data-testid="button-bulk-delete"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected ({selectedIds.size})
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Search and Filter Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
