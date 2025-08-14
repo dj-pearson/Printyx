@@ -1,5 +1,5 @@
 import { useRoute } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { ArrowLeft, Edit, Send, Eye, FileText, Building2, User, Calendar, Dollar
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 
 interface Quote {
@@ -71,6 +73,8 @@ interface LineItem {
 export default function QuoteView() {
   const [match, params] = useRoute('/quotes/:quoteId/view');
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const quoteId = params?.quoteId;
 
   // Fetch quote details
@@ -127,6 +131,98 @@ export default function QuoteView() {
 
   const getContactDisplayName = (contact: Contact) => {
     return `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Unknown Contact';
+  };
+
+  // Check if user has manager-level access (above sales rep)
+  const canViewManagerExport = () => {
+    if (!user?.roleId) return false;
+    // Sales reps typically have role like 'sales_rep', 'salesperson', etc.
+    // Anyone above would have roles like 'sales_manager', 'manager', 'director', 'admin', etc.
+    const salesRepRoles = ['sales_rep', 'salesperson', 'sales'];
+    return !salesRepRoles.some(role => user.roleId?.toLowerCase().includes(role));
+  };
+
+  // PDF Export Mutations
+  const exportPdfMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/proposals/${quoteId}/export/pdf`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to export PDF');
+      }
+      
+      return response.blob();
+    },
+    onSuccess: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Quote-${quote?.proposalNumber || 'Unknown'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "PDF exported successfully",
+        description: "Your quote has been downloaded as a PDF.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Export failed",
+        description: "Could not export the PDF. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const exportManagerPdfMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/proposals/${quoteId}/export/manager-pdf`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to export manager PDF');
+      }
+      
+      return response.blob();
+    },
+    onSuccess: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Quote-Manager-${quote?.proposalNumber || 'Unknown'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Manager PDF exported successfully",
+        description: "Your quote with cost details has been downloaded as a PDF.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Export failed",
+        description: "Could not export the manager PDF. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExportPdf = () => {
+    exportPdfMutation.mutate();
+  };
+
+  const handleExportManagerPdf = () => {
+    exportManagerPdfMutation.mutate();
   };
 
   const statusConfig = {
@@ -249,11 +345,24 @@ export default function QuoteView() {
               </Button>
               <Button 
                 variant="outline"
+                onClick={handleExportPdf}
+                disabled={exportPdfMutation.isPending}
                 className="text-white border-white/30 hover:bg-white/20"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export PDF
+                {exportPdfMutation.isPending ? 'Exporting...' : 'Export PDF'}
               </Button>
+              {canViewManagerExport() && (
+                <Button 
+                  variant="outline"
+                  onClick={handleExportManagerPdf}
+                  disabled={exportManagerPdfMutation.isPending}
+                  className="text-white border-white/30 hover:bg-white/20"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  {exportManagerPdfMutation.isPending ? 'Exporting...' : 'Manager Export'}
+                </Button>
+              )}
             </div>
           </div>
         </div>
