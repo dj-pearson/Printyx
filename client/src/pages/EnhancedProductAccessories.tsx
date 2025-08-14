@@ -53,6 +53,31 @@ export default function EnhancedProductAccessories() {
     enabled: !!selectedAccessory?.id,
   });
 
+  // Filter models by manufacturer and remove duplicates
+  const getAvailableModels = () => {
+    if (!selectedAccessory?.manufacturer) return [];
+    
+    const manufacturerModels = models.filter(model => 
+      model.manufacturer === selectedAccessory.manufacturer
+    );
+    
+    // Remove already compatible models
+    const availableModels = manufacturerModels.filter(model => 
+      !compatibilities.some(comp => comp.modelId === model.id)
+    );
+    
+    // Remove duplicates based on modelName
+    const uniqueModels = availableModels.reduce((acc, model) => {
+      const exists = acc.find(m => m.modelName === model.modelName);
+      if (!exists) {
+        acc.push(model);
+      }
+      return acc;
+    }, [] as ProductModel[]);
+    
+    return uniqueModels;
+  };
+
   const form = useForm<InsertProductAccessory>({
     resolver: zodResolver(insertProductAccessorySchema),
     defaultValues: {
@@ -68,6 +93,10 @@ export default function EnhancedProductAccessories() {
       newRepPrice: "",
       upgradeCost: "",
       upgradeRepPrice: "",
+      partNumber: "",
+      weight: "",
+      dimensions: "",
+      warrantyPeriod: "",
       isActive: true,
       availableForAll: false,
       salesRepCredit: false,
@@ -427,10 +456,26 @@ export default function EnhancedProductAccessories() {
                     name="manufacturer"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Manufacturer</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-manufacturer" />
-                        </FormControl>
+                        <FormLabel>Manufacturer *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-manufacturer">
+                              <SelectValue placeholder="Select manufacturer" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Canon">Canon</SelectItem>
+                            <SelectItem value="HP">HP</SelectItem>
+                            <SelectItem value="Xerox">Xerox</SelectItem>
+                            <SelectItem value="Ricoh">Ricoh</SelectItem>
+                            <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
+                            <SelectItem value="Sharp">Sharp</SelectItem>
+                            <SelectItem value="Brother">Brother</SelectItem>
+                            <SelectItem value="Kyocera">Kyocera</SelectItem>
+                            <SelectItem value="Lexmark">Lexmark</SelectItem>
+                            <SelectItem value="Toshiba">Toshiba</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -442,8 +487,58 @@ export default function EnhancedProductAccessories() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Accessory Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-accessory-type">
+                              <SelectValue placeholder="Select accessory type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Document Feeder">Document Feeder</SelectItem>
+                            <SelectItem value="Paper Tray">Paper Tray</SelectItem>
+                            <SelectItem value="Finisher">Finisher</SelectItem>
+                            <SelectItem value="Stapler">Stapler</SelectItem>
+                            <SelectItem value="Hole Punch">Hole Punch</SelectItem>
+                            <SelectItem value="Booklet Maker">Booklet Maker</SelectItem>
+                            <SelectItem value="Duplex Unit">Duplex Unit</SelectItem>
+                            <SelectItem value="Memory Module">Memory Module</SelectItem>
+                            <SelectItem value="Fax Module">Fax Module</SelectItem>
+                            <SelectItem value="Network Card">Network Card</SelectItem>
+                            <SelectItem value="Hard Drive">Hard Drive</SelectItem>
+                            <SelectItem value="Stand">Stand</SelectItem>
+                            <SelectItem value="Caster Base">Caster Base</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="partNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Part Number</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g., Document Feeder, Finisher" data-testid="input-accessory-type" />
+                          <Input {...field} data-testid="input-part-number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-category" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -684,13 +779,26 @@ export default function EnhancedProductAccessories() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {models
-                                  .filter(model => !compatibilities.some(comp => comp.modelId === model.id))
-                                  .map(model => (
+                                {(() => {
+                                  const availableModels = getAvailableModels();
+                                  
+                                  if (availableModels.length === 0) {
+                                    return (
+                                      <div className="p-2 text-muted-foreground text-sm">
+                                        {selectedAccessory?.manufacturer 
+                                          ? `No compatible ${selectedAccessory.manufacturer} models available`
+                                          : "Please set accessory manufacturer first"
+                                        }
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return availableModels.map(model => (
                                     <SelectItem key={model.id} value={model.id}>
-                                      {model.modelName} - {model.manufacturer}
+                                      {model.modelName} ({model.productType || model.category}) - {model.manufacturer}
                                     </SelectItem>
-                                  ))}
+                                  ));
+                                })()}
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -788,7 +896,7 @@ export default function EnhancedProductAccessories() {
                               {model?.modelName || 'Unknown Model'}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {model?.manufacturer} • {model?.category}
+                              {model?.manufacturer} • {model?.productType || model?.category || 'MFP'}
                             </div>
                             {compatibility.installationNotes && (
                               <div className="text-sm text-muted-foreground mt-1">
