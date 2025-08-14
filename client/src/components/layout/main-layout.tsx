@@ -46,11 +46,11 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-gray-50">
         {/* Role-Aware Collapsible Navigation Sidebar - Desktop */}
-        <RoleAwareCollapsibleSidebar className="w-64 hidden md:flex" />
+        <RoleAwareCollapsibleSidebar className="hidden md:flex" />
         
         {/* Role-Aware Collapsible Navigation Sidebar - Mobile */}
         <div className="md:hidden">
-          <RoleAwareCollapsibleSidebar className="w-64" />
+          <RoleAwareCollapsibleSidebar />
         </div>
         
         <div className="flex-1 flex flex-col overflow-hidden">

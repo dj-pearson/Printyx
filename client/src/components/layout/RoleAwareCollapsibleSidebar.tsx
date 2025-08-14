@@ -52,7 +52,9 @@ import {
   Rocket,
   ClipboardList,
   FileSignature,
-  Code
+  Code,
+  Menu,
+  X
 } from "lucide-react";
 
 interface NavigationItem {
@@ -267,6 +269,7 @@ export function RoleAwareCollapsibleSidebar({ className }: RoleAwareCollapsibleS
   const [location] = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Use role from user object instead of separate API call
   const userRole = user?.role;
@@ -425,43 +428,77 @@ export function RoleAwareCollapsibleSidebar({ className }: RoleAwareCollapsibleS
   };
 
   return (
-    <div className={`bg-white border-r border-gray-200 ${className}`}>
+    <div className={`bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} ${className}`}>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">P</span>
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-semibold text-sm">P</span>
+              </div>
+              {!isCollapsed && (
+                <div>
+                  <h1 className="font-semibold text-gray-900">Printyx</h1>
+                  <p className="text-xs text-gray-500">Business Management</p>
+                </div>
+              )}
             </div>
-            <div>
-              <h1 className="font-semibold text-gray-900">Printyx</h1>
-              <p className="text-xs text-gray-500">Business Management</p>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="h-8 w-8 p-0 md:hidden"
+              data-testid="sidebar-collapse-toggle"
+            >
+              {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navigationSections.map(renderNavigationItem)}
+        <nav className={`flex-1 p-4 space-y-2 overflow-y-auto ${isCollapsed ? 'px-2' : ''}`}>
+          {isCollapsed ? (
+            // Collapsed navigation - show only icons
+            <div className="space-y-2">
+              {navigationSections.map((section) => (
+                <Link key={section.id} href={section.path}>
+                  <Button
+                    variant={isActive(section.path) ? "secondary" : "ghost"}
+                    className="w-full p-2 h-auto"
+                    title={section.title}
+                    data-testid={`nav-${section.id}-collapsed`}
+                  >
+                    <section.icon className="h-5 w-5" />
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            // Full navigation
+            navigationSections.map(renderNavigationItem)
+          )}
         </nav>
 
         {/* User Profile */}
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
             <Avatar className="w-8 h-8">
               <AvatarImage src={user?.avatar} />
               <AvatarFallback className="bg-blue-100 text-blue-600">
                 {user?.username?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.username || 'User'}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {userRole?.name || 'User'}
-              </p>
-            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user?.username || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {userRole?.name || 'User'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
