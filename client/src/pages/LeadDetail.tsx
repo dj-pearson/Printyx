@@ -108,10 +108,23 @@ function LeadContactForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submission started", { leadId, formData });
+    
+    // Validate required fields
+    if (!formData.firstName || !formData.lastName) {
+      console.error("Validation failed: Missing required fields");
+      toast({
+        title: "Validation Error",
+        description: "First name and last name are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      console.log("Creating lead contact:", { leadId, formData });
+      console.log("Making API request to create lead contact:", { leadId, formData });
       
       const response = await apiRequest(`/api/leads/${leadId}/contacts`, {
         method: 'POST',
@@ -122,9 +135,10 @@ function LeadContactForm({
       onSuccess();
     } catch (error) {
       console.error("Error creating lead contact:", error);
+      console.error("Error details:", error.response?.data || error.message);
       toast({
         title: "Error",
-        description: "Failed to create contact. Please try again.",
+        description: error.response?.data?.message || "Failed to create contact. Please try again.",
         variant: "destructive",
       });
     } finally {
