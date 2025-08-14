@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Package, Edit3, Tag, DollarSign, Trash2 } from "lucide-react";
+import { Plus, Search, Package, Edit3, Tag, DollarSign, Trash2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +25,8 @@ export default function ProductModels() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ProductModel | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -97,6 +100,30 @@ export default function ProductModels() {
     },
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return await apiRequest('/api/product-models/bulk-delete', 'DELETE', { ids });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
+      setSelectedIds(new Set());
+      setBulkMode(false);
+      toast({
+        title: "Success",
+        description: `Successfully deleted ${selectedIds.size} product models`,
+      });
+    },
+    onError: (error: any) => {
+      console.error('Bulk delete error:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete product models";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
   const form = useForm<InsertProductModel>({
     resolver: zodResolver(insertProductModelSchema),
     defaultValues: {
@@ -134,6 +161,40 @@ export default function ProductModels() {
     }
   };
 
+  // Helper functions for bulk operations
+  const toggleAllSelection = () => {
+    if (selectedIds.size === filteredModels.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredModels.map(model => model.id)));
+    }
+  };
+
+  const toggleItemSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size > 0) {
+      console.log('Bulk deleting items:', Array.from(selectedIds));
+      bulkDeleteMutation.mutate(Array.from(selectedIds));
+    }
+  };
+
+  const filteredModels = models.filter(model => {
+    const matchesSearch = (model.productName || model.modelName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (model.productCode || model.modelCode || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (model.manufacturer || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || model.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
   // Populate edit form when selectedModel changes
   useEffect(() => {
     console.log('useEffect triggered, selectedModel:', selectedModel);
@@ -161,14 +222,6 @@ export default function ProductModels() {
     }
   }, [selectedModel, editForm]);
 
-  const filteredModels = models.filter(model => {
-    const matchesSearch = (model.productName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (model.productCode || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (model.manufacturer || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || model.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
   const categories = Array.from(new Set(models.map(m => m.category))).filter(Boolean);
 
   const formatCurrency = (value: string | null) => {
@@ -183,12 +236,21 @@ export default function ProductModels() {
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{model.productName}</CardTitle>
-            <CardDescription>
-              <span className="font-medium">{model.productCode}</span>
-              {model.manufacturer && <span className="ml-2 text-muted-foreground">• {model.manufacturer}</span>}
-            </CardDescription>
+          <div className="flex items-center gap-3">
+            {bulkMode && (
+              <Checkbox
+                checked={selectedIds.has(model.id)}
+                onCheckedChange={() => toggleItemSelection(model.id)}
+                data-testid={`checkbox-${model.id}`}
+              />
+            )}
+            <div className="space-y-1">
+              <CardTitle className="text-lg">{model.productName || model.modelName}</CardTitle>
+              <CardDescription>
+                <span className="font-medium">{model.productCode || model.modelCode}</span>
+                {model.manufacturer && <span className="ml-2 text-muted-foreground">• {model.manufacturer}</span>}
+              </CardDescription>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {model.isActive ? (
@@ -609,7 +671,52 @@ export default function ProductModels() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant={bulkMode ? "default" : "outline"}
+          onClick={() => {
+            setBulkMode(!bulkMode);
+            setSelectedIds(new Set());
+          }}
+          data-testid="button-bulk-mode"
+        >
+          {bulkMode ? <Square className="h-4 w-4 mr-2" /> : <CheckSquare className="h-4 w-4 mr-2" />}
+          {bulkMode ? "Exit Bulk" : "Bulk Select"}
+        </Button>
       </div>
+
+      {/* Bulk Operations Toolbar */}
+      {bulkMode && (
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+          <div className="flex items-center gap-4">
+            <Checkbox
+              checked={selectedIds.size === filteredModels.length && filteredModels.length > 0}
+              onCheckedChange={toggleAllSelection}
+              data-testid="checkbox-select-all"
+            />
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size === 0 
+                ? "Select items to perform bulk operations"
+                : `${selectedIds.size} of ${filteredModels.length} items selected`
+              }
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
+              onClick={handleBulkDelete}
+              data-testid="button-bulk-delete"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {bulkDeleteMutation.isPending 
+                ? `Deleting ${selectedIds.size}...` 
+                : `Delete ${selectedIds.size} Selected`
+              }
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Models Grid */}
       {isLoading ? (
