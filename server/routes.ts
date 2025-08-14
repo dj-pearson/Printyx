@@ -6676,23 +6676,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await db
         .select({
           id: inventoryItems.id,
-          itemDescription: inventoryItems.itemDescription,
+          itemDescription: inventoryItems.name,
           partNumber: inventoryItems.partNumber,
-          quantityOnHand: inventoryItems.quantityOnHand,
-          quantityOnOrder: inventoryItems.quantityOnOrder,
+          quantityOnHand: inventoryItems.currentStock,
+          quantityOnOrder: inventoryItems.currentStock,
           reorderPoint: inventoryItems.reorderPoint,
-          reorderQuantity: inventoryItems.reorderQuantity,
+          reorderQuantity: inventoryItems.reorderPoint,
           unitCost: inventoryItems.unitCost,
-          primaryVendor: inventoryItems.primaryVendor,
+          primaryVendor: inventoryItems.supplier,
         })
         .from(inventoryItems)
         .where(
           and(
             tenantId ? eq(inventoryItems.tenantId, tenantId) : sql`TRUE`,
-            sql`reorder_point IS NOT NULL AND quantity_on_hand <= reorder_point AND COALESCE(reorder_quantity, 0) > 0 AND primary_vendor IS NOT NULL`
+            sql`reorder_point IS NOT NULL AND current_stock <= reorder_point AND COALESCE(reorder_point, 0) > 0 AND supplier IS NOT NULL`
           )
         )
-        .orderBy(asc(inventoryItems.primaryVendor), asc(inventoryItems.itemDescription))
+        .orderBy(asc(inventoryItems.supplier), asc(inventoryItems.name))
         .limit(500);
 
       if (!items.length) return res.json({ groups: [] });
@@ -8555,21 +8555,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const lowStockItems = await db
             .select({
               id: inventoryItems.id,
-              name: inventoryItems.itemDescription,
-              category: inventoryItems.itemCategory,
-              currentStock: inventoryItems.quantityOnHand,
+              name: inventoryItems.name,
+              category: inventoryItems.category,
+              currentStock: inventoryItems.currentStock,
               minThreshold: inventoryItems.reorderPoint,
-              reorderQuantity: inventoryItems.reorderQuantity,
-              primaryVendor: inventoryItems.primaryVendor,
+              reorderQuantity: inventoryItems.reorderPoint, // Using reorderPoint as proxy for reorderQuantity
+              primaryVendor: inventoryItems.supplier,
             })
             .from(inventoryItems)
             .where(
               and(
                 eq(inventoryItems.tenantId, tenantId),
-                sql`quantity_on_hand <= reorder_point`
+                sql`current_stock <= reorder_point`
               )
             )
-            .orderBy(asc(inventoryItems.quantityOnHand))
+            .orderBy(asc(inventoryItems.currentStock))
             .limit(20);
 
           alerts.push(
@@ -8629,30 +8629,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .select({
               id: invoices.id,
               invoiceNumber: invoices.invoiceNumber,
-              invoiceDate: invoices.invoiceDate,
+              createdAt: invoices.createdAt,
               dueDate: invoices.dueDate,
-              invoiceStatus: invoices.invoiceStatus,
-              issuanceDelayHours: invoices.issuanceDelayHours,
+              status: invoices.status,
+              totalAmount: invoices.totalAmount,
             })
             .from(invoices)
             .where(
               and(
                 eq(invoices.tenantId, tenantId),
-                sql`(issuance_delay_hours > 24) OR (invoice_status = 'overdue')`
+                sql`(status = 'overdue') OR (due_date < NOW() AND status = 'pending')`
               )
             )
-            .orderBy(desc(invoices.invoiceDate))
+            .orderBy(desc(invoices.createdAt))
             .limit(10);
 
           alerts.push(
             ...billingAnomalies.map((invoice) => ({
               id: `billing_anomaly_${invoice.id}`,
               type: "billing_anomaly",
-              severity: invoice.invoiceStatus === 'overdue' ? "critical" : "medium",
-              title: `Billing Anomaly: Invoice ${invoice.invoiceNumber}`,
-              message: invoice.invoiceStatus === 'overdue'
+              severity: invoice.status === 'overdue' ? "critical" : "medium",
+              title: `Billing Issue: Invoice ${invoice.invoiceNumber}`,
+              message: invoice.status === 'overdue'
                 ? `Invoice ${invoice.invoiceNumber} is overdue since ${new Date(invoice.dueDate!).toLocaleDateString()}.`
-                : `Invoice ${invoice.invoiceNumber} had an issuance delay of ${invoice.issuanceDelayHours} hours.`,
+                : `Invoice ${invoice.invoiceNumber} is past due (Due: ${new Date(invoice.dueDate!).toLocaleDateString()}).`,
               category: "business",
               timestamp: new Date().toISOString(),
             }))
@@ -11216,7 +11216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const invoice of sampleInvoices) {
           const invoiceQuery = `
           INSERT INTO billing_invoices (
-            tenant_id, business_record_id, invoice_number, invoice_date, due_date,
+            tenant_id, customer_id, invoice_number, created_at, due_date,
             billing_period_start, billing_period_end, subtotal, total_amount,
             balance_due, billing_cycle_id, auto_generated
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
