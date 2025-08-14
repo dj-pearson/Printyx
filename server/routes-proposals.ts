@@ -1179,14 +1179,6 @@ async function getProductCostInfo(lineItems: any[], pricingType: string) {
 
 // Generate HTML template for quote PDF
 function generateQuoteHTML(quote: any, lineItems: any[], company: any, contact: any, isManagerExport = false, costInfo: any[] = []) {
-  console.log('=== generateQuoteHTML Debug ===');
-  console.log('Quote:', quote?.proposalNumber, 'ID:', quote?.id);
-  console.log('LineItems count:', lineItems?.length);
-  console.log('Company:', company?.companyName || company?.firstName);
-  console.log('Contact:', contact?.firstName, contact?.lastName);
-  console.log('IsManagerExport:', isManagerExport);
-  console.log('CostInfo count:', costInfo?.length);
-  
   const currentDate = new Date().toLocaleDateString();
   const validUntil = quote.validUntil ? new Date(quote.validUntil).toLocaleDateString() : 'Not specified';
   
@@ -1346,21 +1338,17 @@ function generateQuoteHTML(quote: any, lineItems: any[], company: any, contact: 
 // Export PDF endpoint
 router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
   try {
-    console.log('=== PDF Export Started ===');
     const { id } = req.params;
     const tenantId = req.user.tenantId;
-    console.log('Exporting quote ID:', id, 'for tenant:', tenantId);
 
     const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
-    console.log('Quote data retrieved for export');
 
     const html = generateQuoteHTML(quote, lineItems, company, contact, false);
     
     // Temporary workaround: Return HTML for now instead of PDF due to Chrome dependency issues
-    console.log('Sending HTML response, length:', html.length);
     res.set({
       'Content-Type': 'text/html',
-      'Content-Disposition': `inline; filename="Quote-${quote.proposalNumber}.html"`
+      'Content-Disposition': `attachment; filename="Quote-${quote.proposalNumber}.html"`
     });
     return res.send(html);
     
@@ -1412,14 +1400,11 @@ router.get("/:id/export/pdf", requireAuth, async (req: any, res: any) => {
 // Manager PDF Export endpoint (with cost information)
 router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) => {
   try {
-    console.log('=== Manager PDF Export Started ===');
     const { id } = req.params;
     const tenantId = req.user.tenantId;
-    console.log('Exporting Manager quote ID:', id, 'for tenant:', tenantId);
 
     // Check if user has manager-level access
     const userRole = req.user.roleId?.toLowerCase() || '';
-    console.log('Backend role check - userRole:', userRole, 'user:', req.user);
     
     // For admin and manager roles, always allow access
     const isManager = userRole.includes('admin') || 
@@ -1443,10 +1428,9 @@ router.get("/:id/export/manager-pdf", requireAuth, async (req: any, res: any) =>
     const html = generateQuoteHTML(quote, lineItems, company, contact, true, costInfo);
     
     // Temporary workaround: Return HTML for now instead of PDF due to Chrome dependency issues
-    console.log('Sending Manager HTML response, length:', html.length);
     res.set({
       'Content-Type': 'text/html',
-      'Content-Disposition': `inline; filename="Quote-Manager-${quote.proposalNumber}.html"`
+      'Content-Disposition': `attachment; filename="Quote-Manager-${quote.proposalNumber}.html"`
     });
     return res.send(html);
     
