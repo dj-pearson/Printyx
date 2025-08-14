@@ -5395,8 +5395,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...req.body,
           leadId: id,
           tenantId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
         });
         
         console.log('Creating lead contact with data:', contactData);
@@ -5404,7 +5402,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(contact);
       } catch (error) {
         console.error("Error creating lead contact:", error);
-        res.status(500).json({ message: "Failed to create lead contact" });
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack,
+          requestBody: req.body,
+        });
+        res.status(500).json({ 
+          message: "Failed to create lead contact",
+          details: error.message 
+        });
       }
     }
   );
@@ -5412,7 +5418,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Lead related records
   app.get(
     "/api/leads/:id/related-records",
-    requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
