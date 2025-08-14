@@ -6019,30 +6019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  // Delete software product
-  app.delete(
-    "/api/software-products/:id",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const success = await storage.deleteSoftwareProduct(id, tenantId);
-        if (!success) {
-          return res.status(404).json({ message: "Software product not found" });
-        }
-        res.json({ message: "Software product deleted successfully" });
-      } catch (error) {
-        console.error("Error deleting software product:", error);
-        res.status(500).json({ message: "Failed to delete software product" });
-      }
-    }
-  );
-
-  // Bulk delete software products
+  // Bulk delete software products (must be before single delete route)
   app.delete(
     "/api/software-products/bulk-delete",
     requireAuth,
@@ -6064,6 +6041,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error bulk deleting software products:", error);
         res.status(500).json({ message: "Failed to bulk delete software products" });
+      }
+    }
+  );
+
+  // Delete software product
+  app.delete(
+    "/api/software-products/:id",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+        const success = await storage.deleteSoftwareProduct(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: "Software product not found" });
+        }
+        res.json({ message: "Software product deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting software product:", error);
+        res.status(500).json({ message: "Failed to delete software product" });
       }
     }
   );
