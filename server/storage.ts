@@ -2455,6 +2455,24 @@ export class DatabaseStorage implements IStorage {
     return model;
   }
 
+  async getProductModelByCodeAndName(
+    productCode: string,
+    productName: string,
+    tenantId: string
+  ): Promise<ProductModel | undefined> {
+    const [model] = await db
+      .select()
+      .from(productModels)
+      .where(
+        and(
+          eq(productModels.productCode, productCode),
+          eq(productModels.productName, productName),
+          eq(productModels.tenantId, tenantId)
+        )
+      );
+    return model;
+  }
+
   async getRequiredAccessoriesForModel(
     modelId: string,
     tenantId: string

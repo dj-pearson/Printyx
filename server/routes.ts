@@ -7106,6 +7106,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             const productData = { ...validation.data, tenantId };
+            
+            // Enhanced deduplication: Check both product code AND product name
+            // Only skip if BOTH match (handles speed license scenario)
+            const existingModel = await storage.getProductModelByCodeAndName(
+              productData.productCode,
+              productData.productName,
+              tenantId
+            );
+            
+            if (existingModel) {
+              // Skip this entry - both code and name match an existing model
+              skipped++;
+              continue;
+            }
+            
+            // Create the new model (either new code or same code with different name)
             await storage.createProductModel(productData);
             imported++;
           } catch (error) {

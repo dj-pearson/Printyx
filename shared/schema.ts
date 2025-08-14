@@ -2103,6 +2103,9 @@ export const documents = pgTable("documents", {
 });
 
 // Product Management System - Models (Top-level products like copiers)
+// NOTE: Enhanced deduplication allows same product codes with different product names
+// (handles manufacturer scenarios where base units and speed licenses share same item number)
+// Constraint: UNIQUE(tenant_id, product_code, product_name)
 export const productModels = pgTable("product_models", {
   id: varchar("id")
     .primaryKey()
