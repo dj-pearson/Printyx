@@ -136,6 +136,8 @@ import RoleManagement from "@/pages/RoleManagement";
 import GPT5Dashboard from "@/pages/GPT5Dashboard";
 import DocumentBuilder from "@/pages/DocumentBuilder";
 import TechnicianManagement from "@/pages/TechnicianManagement";
+import VehicleManagement from "@/pages/VehicleManagement";
+import AssetManagement from "@/pages/AssetManagement";
 
 // Platform Admin Pages
 import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
@@ -293,6 +295,8 @@ function Router() {
             component={ServiceDispatchOptimization}
           />
           <Route path="/technician-management" component={TechnicianManagement} />
+          <Route path="/vehicle-management" component={VehicleManagement} />
+          <Route path="/asset-management" component={AssetManagement} />
           <Route path="/mobile-field-service" component={MobileFieldService} />
           <Route path="/product-catalog" component={ProductCatalog} />
           <Route
