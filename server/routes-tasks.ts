@@ -134,8 +134,27 @@ export function registerTaskRoutes(app: Express) {
     }
   });
 
-  // Update task
+  // Update task (PUT method)
   app.put("/api/tasks/:id", requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const taskId = req.params.id;
+      
+      const task = await storage.updateTask(taskId, req.body, tenantId);
+      
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  // Update task (PATCH method)
+  app.patch("/api/tasks/:id", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
@@ -177,8 +196,10 @@ export function registerTaskRoutes(app: Express) {
   // Create new project
   app.post("/api/projects", requireAuth, async (req: any, res) => {
     try {
+      console.log("Creating project - request body:", req.body);
       const tenantId = req.user?.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
+      console.log("Creating project - tenant:", tenantId, "user:", userId);
       
       // Convert string dates to Date objects and clean up data
       const projectData = { ...req.body };
@@ -194,13 +215,18 @@ export function registerTaskRoutes(app: Express) {
         projectData.customerId = null;
       }
       
+      console.log("Creating project - processed data:", projectData);
+      
       const validatedData = insertProjectSchema.parse({
         ...projectData,
         tenantId,
         createdBy: userId
       });
       
+      console.log("Creating project - validated data:", validatedData);
+      
       const project = await storage.createProject(validatedData);
+      console.log("Creating project - created:", project);
       res.status(201).json(project);
     } catch (error) {
       console.error("Error creating project:", error);
