@@ -16068,6 +16068,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerIntegrationRoutes(app);
   registerTaskRoutes(app);
   registerEnhancedTaskRoutes(app);
+
+  // Unified activities endpoint for CRM dashboard
+  app.get("/api/activities", async (req: any, res) => {
+    try {
+      const tenantId = req.headers["x-tenant-id"] || req.session?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: "Tenant ID is required" });
+      }
+
+      // Get all activities across all business records for this tenant
+      const allActivities = await storage.getAllActivities(tenantId);
+      res.json(allActivities);
+    } catch (error) {
+      console.error("Error fetching all activities:", error);
+      res.status(500).json({ message: "Failed to fetch activities" });
+    }
+  });
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
   registerTechnicianManagementRoutes(app);

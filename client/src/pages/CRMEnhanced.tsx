@@ -181,7 +181,7 @@ export default function CRMEnhanced() {
   const { data: interactions, isLoading: isLoadingInteractions } = useQuery<
     CustomerInteraction[]
   >({
-    queryKey: ["/api/customer-interactions"],
+    queryKey: ["/api/activities"],
   });
 
   const { data: customers } = useQuery<Customer[]>({
@@ -441,7 +441,7 @@ export default function CRMEnhanced() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/customer-interactions"],
+        queryKey: ["/api/activities"],
       });
       setIsCreateInteractionOpen(false);
       interactionForm.reset();
