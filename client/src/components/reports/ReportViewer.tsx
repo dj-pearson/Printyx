@@ -494,17 +494,215 @@ interface ReportChartProps {
 }
 
 function ReportChart({ data, metadata }: ReportChartProps) {
-  // Placeholder for chart implementation
-  // In a real implementation, you'd use a charting library like Recharts or Chart.js
-  return (
-    <div className="flex items-center justify-center h-full text-gray-500">
-      <div className="text-center">
-        <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-        <p>Chart visualization coming soon</p>
-        <p className="text-sm">Data contains {data.length} records</p>
+  const { LineChart, BarChart, PieChart, AreaChart } = require('@/components/charts/ChartComponents');
+  const { getThemeForCategory } = require('@/lib/brandTheme');
+  
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="text-center">
+          <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+          <p>No data available for visualization</p>
+        </div>
       </div>
-    </div>
+    );
+  }
+
+  // Auto-detect chart type based on data structure
+  const chartType = detectChartType(data);
+  const category = metadata?.report_category || 'default';
+  const theme = getThemeForCategory(category);
+
+  // Format data for charts
+  const chartData = formatDataForChart(data, chartType);
+
+  switch (chartType) {
+    case 'line':
+      return (
+        <LineChart
+          data={chartData}
+          height={400}
+          xDataKey="name"
+          lines={[
+            { dataKey: 'value', name: 'Value', color: theme.primary },
+            { dataKey: 'target', name: 'Target', color: theme.secondary, strokeDasharray: '5 5' }
+          ]}
+          showGrid={true}
+          showLegend={true}
+          formatTooltip={(value, name) => {
+            if (typeof value === 'number' && value > 1000) {
+              return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(value);
+            }
+            return value?.toLocaleString();
+          }}
+        />
+      );
+
+    case 'bar':
+      return (
+        <BarChart
+          data={chartData}
+          height={400}
+          xDataKey="name"
+          bars={[
+            { dataKey: 'value', name: 'Value', color: theme.primary },
+            { dataKey: 'comparison', name: 'Previous Period', color: theme.secondary }
+          ]}
+          showGrid={true}
+          showLegend={true}
+          formatTooltip={(value, name) => {
+            if (typeof value === 'number' && value > 1000) {
+              return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(value);
+            }
+            return value?.toLocaleString();
+          }}
+        />
+      );
+
+    case 'pie':
+      return (
+        <PieChart
+          data={chartData}
+          height={400}
+          dataKey="value"
+          nameKey="name"
+          showLabels={true}
+          showLegend={true}
+          formatTooltip={(value, name) => {
+            const total = chartData.reduce((sum: number, item: any) => sum + item.value, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${value?.toLocaleString()} (${percentage}%)`;
+          }}
+        />
+      );
+
+    case 'area':
+      return (
+        <AreaChart
+          data={chartData}
+          height={400}
+          xDataKey="name"
+          areas={[
+            { dataKey: 'value', name: 'Value', color: theme.primary },
+            { dataKey: 'cumulative', name: 'Cumulative', color: theme.secondary }
+          ]}
+          showGrid={true}
+          showLegend={true}
+          formatTooltip={(value, name) => {
+            if (typeof value === 'number' && value > 1000) {
+              return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(value);
+            }
+            return value?.toLocaleString();
+          }}
+        />
+      );
+
+    default:
+      return (
+        <BarChart
+          data={chartData}
+          height={400}
+          xDataKey="name"
+          bars={[{ dataKey: 'value', name: 'Value', color: theme.primary }]}
+          showGrid={true}
+          showLegend={false}
+        />
+      );
+  }
+}
+
+// Helper function to detect appropriate chart type
+function detectChartType(data: any[]): string {
+  if (!data || data.length === 0) return 'bar';
+  
+  const firstItem = data[0];
+  const keys = Object.keys(firstItem);
+  
+  // Check for time-series data
+  const hasDateField = keys.some(key => 
+    key.toLowerCase().includes('date') || 
+    key.toLowerCase().includes('time') ||
+    key.toLowerCase().includes('month') ||
+    key.toLowerCase().includes('day')
   );
+  
+  // Check for categorical data with percentages
+  const hasPercentageField = keys.some(key => 
+    key.toLowerCase().includes('percentage') ||
+    key.toLowerCase().includes('percent') ||
+    key.toLowerCase().includes('share')
+  );
+  
+  // Detect chart type based on data characteristics
+  if (hasDateField && data.length > 5) {
+    return 'line'; // Time series data
+  } else if (hasPercentageField || data.length <= 8) {
+    return 'pie'; // Categorical data with few categories
+  } else if (data.length > 10) {
+    return 'area'; // Large datasets
+  } else {
+    return 'bar'; // Default to bar chart
+  }
+}
+
+// Helper function to format data for charts
+function formatDataForChart(data: any[], chartType: string): any[] {
+  if (!data || data.length === 0) return [];
+  
+  return data.map((item, index) => {
+    const keys = Object.keys(item);
+    
+    // Find the main value field
+    const valueField = keys.find(key => 
+      typeof item[key] === 'number' && 
+      !key.toLowerCase().includes('id') &&
+      !key.toLowerCase().includes('index')
+    ) || keys[1];
+    
+    // Find the name/label field
+    const nameField = keys.find(key => 
+      typeof item[key] === 'string' &&
+      !key.toLowerCase().includes('id')
+    ) || keys[0];
+    
+    // Format the chart data point
+    const formatted: any = {
+      name: item[nameField] || `Item ${index + 1}`,
+      value: item[valueField] || 0
+    };
+    
+    // Add additional fields based on chart type
+    if (chartType === 'line' || chartType === 'bar') {
+      // Look for comparison values
+      const comparisonField = keys.find(key => 
+        key.toLowerCase().includes('previous') ||
+        key.toLowerCase().includes('target') ||
+        key.toLowerCase().includes('goal')
+      );
+      
+      if (comparisonField) {
+        formatted.comparison = item[comparisonField];
+        formatted.target = item[comparisonField];
+      }
+    }
+    
+    if (chartType === 'area') {
+      // Calculate cumulative values
+      formatted.cumulative = data.slice(0, index + 1)
+        .reduce((sum, d) => sum + (d[valueField] || 0), 0);
+    }
+    
+    return formatted;
+  });
 }
 
 // Helper function to format cell values
