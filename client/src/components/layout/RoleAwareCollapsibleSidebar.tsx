@@ -122,11 +122,11 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
 
   }
 
-  // CRM Hub
+  // Sales Hub
   if (permissions.sales || isPlatformRole || isCompanyAdmin) {
     sections.push({
       id: 'crm',
-      title: 'CRM Hub',
+      title: 'Sales Hub',
       icon: Target,
       path: '/crm',
       matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*'],
