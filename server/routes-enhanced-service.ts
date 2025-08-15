@@ -187,7 +187,32 @@ router.get("/phone-in-tickets", async (req, res) => {
     }
 
     const rows = await db
-      .select()
+      .select({
+        id: phoneInTickets.id,
+        tenantId: phoneInTickets.tenantId,
+        callerName: phoneInTickets.callerName,
+        callerPhone: phoneInTickets.callerPhone,
+        callerEmail: phoneInTickets.callerEmail,
+        callerRole: phoneInTickets.callerRole,
+        customerId: phoneInTickets.customerId,
+        customerName: phoneInTickets.customerName,
+        locationAddress: phoneInTickets.locationAddress,
+        locationBuilding: phoneInTickets.locationBuilding,
+        locationFloor: phoneInTickets.locationFloor,
+        locationRoom: phoneInTickets.locationRoom,
+        equipmentId: phoneInTickets.equipmentId,
+        equipmentBrand: phoneInTickets.equipmentBrand,
+        equipmentModel: phoneInTickets.equipmentModel,
+        equipmentSerial: phoneInTickets.equipmentSerial,
+        issueCategory: phoneInTickets.issueCategory,
+        issueDescription: phoneInTickets.issueDescription,
+        urgencyLevel: phoneInTickets.urgencyLevel,
+        contactMethod: phoneInTickets.contactMethod,
+        convertedToTicketId: phoneInTickets.convertedToTicketId,
+        convertedAt: phoneInTickets.convertedAt,
+        createdAt: phoneInTickets.createdAt,
+        updatedAt: phoneInTickets.updatedAt,
+      })
       .from(phoneInTickets)
       .where(where)
       .orderBy(desc(phoneInTickets.createdAt))
