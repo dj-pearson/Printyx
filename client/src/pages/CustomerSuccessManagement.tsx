@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
+import MainLayout from '@/components/layout/main-layout';
 
 interface CustomerHealthScore {
   customerId: string;
@@ -164,14 +165,17 @@ export default function CustomerSuccessManagement() {
 
   if (healthLoading) {
     return (
-      <div className="container mx-auto p-6">
+      <MainLayout 
+        title="Customer Success Management"
+        description="Monitor customer health, usage patterns, and satisfaction"
+      >
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading customer success data...</p>
           </div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
@@ -183,7 +187,10 @@ export default function CustomerSuccessManagement() {
   const totalAlerts = healthScores.reduce((sum, score) => sum + score.alerts.length, 0);
 
   return (
-    <div className="container mx-auto p-6">
+    <MainLayout 
+      title="Customer Success Management"
+      description="Monitor customer health, usage patterns, and satisfaction"
+    >
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Customer Success Management</h1>
@@ -832,6 +839,6 @@ export default function CustomerSuccessManagement() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </MainLayout>
   );
 }
