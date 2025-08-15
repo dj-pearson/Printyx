@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Target,
@@ -428,26 +429,26 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
   const sidebarOpen = isMobile ? openMobile : open;
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+    <Sidebar collapsible="icon" className="bg-slate-50 border-r border-slate-200" {...props}>
+      <SidebarHeader className="border-b border-slate-200 bg-white">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center gap-3 px-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">P</span>
+            <div className="flex items-center gap-3 px-2 py-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
+                <Globe className="h-6 w-6 text-white" />
               </div>
               <div className="group-data-[collapsible=icon]:hidden">
-                <h1 className="font-semibold text-gray-900">Printyx</h1>
-                <p className="text-xs text-gray-500">Business Management</p>
+                <h1 className="text-xl font-bold text-slate-900">Printyx</h1>
+                <p className="text-xs text-slate-600 font-medium">Business Management</p>
               </div>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       
-      <SidebarContent>
+      <SidebarContent className="py-6 px-4">
         <SidebarGroup>
-          <SidebarGroupContent>
+          <SidebarGroupContent className="space-y-3">
             <SidebarMenu>
               {navigationSections.map((section) => {
                 const shouldShowAsActive = section.children
@@ -461,33 +462,63 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
                       <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton 
-                            className="w-full justify-between" 
+                            className={cn(
+                              "w-full justify-between py-3 px-4 rounded-lg transition-all duration-200",
+                              shouldShowAsActive
+                                ? "bg-slate-800 hover:bg-slate-700 text-white" 
+                                : "hover:bg-slate-100 text-slate-700",
+                              "font-semibold text-sm mb-1"
+                            )}
                             data-active={shouldShowAsActive}
                             data-testid={`nav-${section.id}`}
                           >
-                            <div className="flex items-center gap-2">
-                              <section.icon className="h-4 w-4" />
-                              <span>{section.title}</span>
+                            <div className="flex items-center gap-3">
+                              <section.icon className={cn(
+                                "h-5 w-5", 
+                                shouldShowAsActive ? "text-white" : "text-slate-600"
+                              )} />
+                              <span className="font-semibold">{section.title}</span>
                             </div>
                             {isExpanded(section.id) ? (
-                              <ChevronDown className="h-4 w-4" />
+                              <ChevronDown className={cn(
+                                "h-4 w-4", 
+                                shouldShowAsActive ? "text-white" : "text-slate-500"
+                              )} />
                             ) : (
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRight className={cn(
+                                "h-4 w-4", 
+                                shouldShowAsActive ? "text-white" : "text-slate-500"
+                              )} />
                             )}
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
+                        <CollapsibleContent className="ml-2 mt-1">
                           <SidebarMenu>
                             {section.children.map((child) => (
                               <SidebarMenuItem key={child.path}>
                                 <SidebarMenuButton 
                                   asChild 
+                                  className={cn(
+                                    "py-2.5 px-4 ml-6 rounded-md transition-all duration-200 text-sm font-normal",
+                                    "border-l-2 border-transparent hover:border-slate-300",
+                                    isActive(child.path)
+                                      ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500" 
+                                      : "hover:bg-slate-50 text-slate-600"
+                                  )}
                                   data-active={isActive(child.path)}
                                   data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
                                 >
                                   <Link href={child.path}>
-                                    <child.icon className="h-4 w-4" />
+                                    <child.icon className={cn(
+                                      "h-4 w-4", 
+                                      isActive(child.path) ? "text-blue-600" : "text-slate-500"
+                                    )} />
                                     <span>{child.title}</span>
+                                    {isActive(child.path) && (
+                                      <Badge className="ml-auto bg-blue-600 text-white text-xs">
+                                        Active
+                                      </Badge>
+                                    )}
                                   </Link>
                                 </SidebarMenuButton>
                               </SidebarMenuItem>
@@ -503,12 +534,27 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
                   <SidebarMenuItem key={section.id}>
                     <SidebarMenuButton 
                       asChild 
+                      className={cn(
+                        "py-3 px-4 rounded-lg transition-all duration-200",
+                        shouldShowAsActive
+                          ? "bg-slate-800 hover:bg-slate-700 text-white" 
+                          : "hover:bg-slate-100 text-slate-700",
+                        "font-semibold text-sm mb-1"
+                      )}
                       data-active={shouldShowAsActive}
                       data-testid={`nav-${section.id}`}
                     >
                       <Link href={section.path}>
-                        <section.icon className="h-4 w-4" />
-                        <span>{section.title}</span>
+                        <section.icon className={cn(
+                          "h-5 w-5", 
+                          shouldShowAsActive ? "text-white" : "text-slate-600"
+                        )} />
+                        <span className="font-semibold">{section.title}</span>
+                        {shouldShowAsActive && (
+                          <Badge className="ml-auto bg-blue-600 text-white text-xs">
+                            Active
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
