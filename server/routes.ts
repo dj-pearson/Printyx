@@ -16127,6 +16127,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
     .catch((err) => console.error("Failed to load catalog routes:", err));
 
+  // Register Reporting System routes
+  import("./routes-reporting")
+    .then(({ default: reportingRouter }) => {
+      app.use('/api', reportingRouter);
+      console.log('✅ Reporting routes registered');
+    })
+    .catch((err) => console.error("Failed to load reporting routes:", err));
+
   // Seed master catalog on startup (development only)
   if (process.env.NODE_ENV === "development") {
     import("./catalog-seed")
