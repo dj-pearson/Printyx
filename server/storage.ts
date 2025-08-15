@@ -2336,33 +2336,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllActivities(tenantId: string): Promise<any[]> {
-    const result = await db
-      .select({
-        id: businessRecordActivities.id,
-        businessRecordId: businessRecordActivities.businessRecordId,
-        activityType: businessRecordActivities.activityType,
-        interactionType: businessRecordActivities.activityType, // Alias for compatibility
-        subject: businessRecordActivities.subject,
-        description: businessRecordActivities.description,
-        activityDate: businessRecordActivities.activityDate,
-        outcome: businessRecordActivities.outcome,
-        nextAction: businessRecordActivities.nextAction,
-        followUpDate: businessRecordActivities.followUpDate,
-        createdAt: businessRecordActivities.createdAt,
-        updatedAt: businessRecordActivities.updatedAt,
-        // Join business record data for context
-        companyName: businessRecords.companyName,
-        recordType: businessRecords.recordType,
-      })
-      .from(businessRecordActivities)
-      .leftJoin(
-        businessRecords,
-        eq(businessRecordActivities.businessRecordId, businessRecords.id)
-      )
-      .where(eq(businessRecordActivities.tenantId, tenantId))
-      .orderBy(desc(businessRecordActivities.createdAt));
+    try {
+      // First get all activities for this tenant
+      const activities = await db
+        .select()
+        .from(businessRecordActivities)
+        .where(eq(businessRecordActivities.tenantId, tenantId))
+        .orderBy(desc(businessRecordActivities.createdAt));
 
-    return result;
+      // Then get business records for context
+      const businessRecordIds = [...new Set(activities.map(a => a.businessRecordId))];
+      const records = businessRecordIds.length > 0 ? await db
+        .select({
+          id: businessRecords.id,
+          companyName: businessRecords.companyName,
+          recordType: businessRecords.recordType,
+        })
+        .from(businessRecords)
+        .where(inArray(businessRecords.id, businessRecordIds)) : [];
+
+      const recordsMap = new Map(records.map(r => [r.id, r]));
+
+      // Combine activities with business record context
+      return activities.map(activity => {
+        const record = recordsMap.get(activity.businessRecordId);
+        return {
+          ...activity,
+          interactionType: activity.activityType, // Alias for compatibility
+          companyName: record?.companyName || 'Unknown Company',
+          recordType: record?.recordType || 'unknown',
+        };
+      });
+    } catch (error) {
+      console.error("Error in getAllActivities:", error);
+      return [];
+    }
   }
 
   // Backward compatible methods for leads
