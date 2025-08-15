@@ -467,6 +467,7 @@ function Router() {
           />
           <Route path="/predictive-analytics" component={PredictiveAnalytics} />
           <Route path="/integration-hub" component={IntegrationHub} />
+          <Route path="/integrations" component={IntegrationHub} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route
             path="/social-media-generator"
