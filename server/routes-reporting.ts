@@ -24,6 +24,7 @@ import {
   AuthenticatedRequest 
 } from './reporting-rbac-middleware';
 import { reportingCache, reportCacheMiddleware } from './cache-service';
+import { exportService } from './export-service';
 
 const router = express.Router();
 
@@ -433,6 +434,259 @@ function calculateTrendAnalysis(data: any[]): any {
     percentage_change: percentageChange,
     confidence_level: data.length >= 5 ? 85 : data.length >= 3 ? 65 : 30
   };
+}
+
+// =====================================================================
+// EXPORT ENDPOINTS
+// =====================================================================
+
+// POST /api/reporting/reports/export - Export report data
+router.post('/reports/export', 
+  requireReportPermission('canExportReports'),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const user = req.user!;
+      const { report_id, parameters, format, email_recipients, filename } = req.body;
+
+      // Validate input
+      if (!report_id || !format) {
+        return res.status(400).json({ 
+          error: 'Missing required fields: report_id and format' 
+        });
+      }
+
+      if (!['csv', 'xlsx', 'pdf'].includes(format)) {
+        return res.status(400).json({ 
+          error: 'Invalid format. Supported formats: csv, xlsx, pdf' 
+        });
+      }
+
+      // Check if user has access to this report
+      const reportDef = await db.select().from(reportDefinitions)
+        .where(
+          and(
+            eq(reportDefinitions.id, report_id),
+            eq(reportDefinitions.tenantId, user.tenantId),
+            eq(reportDefinitions.isActive, true)
+          )
+        )
+        .limit(1);
+
+      if (reportDef.length === 0) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+
+      const report = reportDef[0];
+
+      // Check permissions for this specific report
+      const requiredPerms = report.requiredPermissions as Record<string, boolean>;
+      const hasAccess = Object.keys(requiredPerms).every(perm => user.permissions[perm]);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ 
+          error: 'Insufficient permissions for this report' 
+        });
+      }
+
+      // Check if report supports export
+      if (!report.supportsExport) {
+        return res.status(400).json({ 
+          error: 'This report does not support export functionality' 
+        });
+      }
+
+      // Initiate export
+      const exportResult = await exportService.exportReport(
+        user.tenantId,
+        user.id,
+        {
+          report_id,
+          parameters: parameters || {},
+          format,
+          email_recipients,
+          filename
+        }
+      );
+
+      // Log export activity
+      await db.insert(userReportActivity).values({
+        tenantId: user.tenantId,
+        userId: user.id,
+        activityType: 'export_report',
+        reportDefinitionId: report_id,
+        sessionId: req.sessionID || '',
+        ipAddress: req.ip || '',
+        userAgent: req.get('User-Agent') || '',
+        parameters: { format, filename }
+      });
+
+      res.json(exportResult);
+
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      res.status(500).json({ error: 'Failed to export report' });
+    }
+  }
+);
+
+// GET /api/reporting/exports/:exportId/download - Download exported file
+router.get('/exports/:exportId/download', 
+  requireReportPermission('canExportReports'),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { exportId } = req.params;
+      const user = req.user!;
+
+      // Get export file
+      const exportFile = await exportService.getExportFile(exportId);
+      
+      if (!exportFile) {
+        return res.status(404).json({ error: 'Export file not found or expired' });
+      }
+
+      // Set appropriate headers
+      const contentType = getContentType(exportFile.filename);
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${exportFile.filename}"`);
+
+      // Stream the file
+      const fs = require('fs');
+      const stream = fs.createReadStream(exportFile.filePath);
+      
+      stream.on('error', (error: any) => {
+        console.error('Error streaming export file:', error);
+        res.status(500).json({ error: 'Failed to download file' });
+      });
+
+      stream.pipe(res);
+
+    } catch (error) {
+      console.error('Error downloading export:', error);
+      res.status(500).json({ error: 'Failed to download export' });
+    }
+  }
+);
+
+// GET /api/reporting/exports/stats - Get export statistics
+router.get('/exports/stats',
+  requireReportPermission('canViewReports'),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const stats = await exportService.getExportStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Error getting export stats:', error);
+      res.status(500).json({ error: 'Failed to get export statistics' });
+    }
+  }
+);
+
+// =====================================================================
+// DASHBOARD SUMMARY ENDPOINTS
+// =====================================================================
+
+// GET /api/reporting/dashboard/summary - Get dashboard summary for user
+router.get('/dashboard/summary',
+  requireReportPermission('canViewReports'),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const user = req.user!;
+      const { category } = req.query;
+
+      // Get user's available reports
+      const reportsQuery = db.select().from(reportDefinitions)
+        .where(
+          and(
+            eq(reportDefinitions.tenantId, user.tenantId),
+            eq(reportDefinitions.isActive, true)
+          )
+        );
+
+      const reports = await reportsQuery;
+
+      // Filter reports based on user permissions
+      const availableReports = reports.filter(report => {
+        const requiredPerms = report.requiredPermissions as Record<string, boolean>;
+        return Object.keys(requiredPerms).every(perm => user.permissions[perm]);
+      });
+
+      // Get KPIs
+      const kpisQuery = db.select().from(kpiDefinitions)
+        .where(
+          and(
+            eq(kpiDefinitions.tenantId, user.tenantId),
+            eq(kpiDefinitions.isActive, true)
+          )
+        );
+
+      const kpis = await kpisQuery;
+
+      // Filter KPIs based on user permissions
+      const availableKpis = kpis.filter(kpi => {
+        const requiredPerms = kpi.requiredPermissions as Record<string, boolean>;
+        return Object.keys(requiredPerms).every(perm => user.permissions[perm]);
+      });
+
+      // Group reports by category
+      const reportsByCategory = availableReports.reduce((acc, report) => {
+        if (!acc[report.category]) {
+          acc[report.category] = [];
+        }
+        acc[report.category].push(report);
+        return acc;
+      }, {} as Record<string, typeof availableReports>);
+
+      // Recent activity (last 10 report views)
+      const recentActivity = await db.select()
+        .from(userReportActivity)
+        .where(
+          and(
+            eq(userReportActivity.tenantId, user.tenantId),
+            eq(userReportActivity.userId, user.id)
+          )
+        )
+        .orderBy(desc(userReportActivity.createdAt))
+        .limit(10);
+
+      res.json({
+        summary: {
+          total_reports: availableReports.length,
+          total_kpis: availableKpis.length,
+          reports_by_category: Object.keys(reportsByCategory).map(category => ({
+            category,
+            count: reportsByCategory[category].length
+          })),
+          user_permissions: Object.keys(user.permissions).filter(p => user.permissions[p]),
+          access_scope: user.accessScope
+        },
+        reports: availableReports,
+        kpis: availableKpis,
+        recent_activity: recentActivity
+      });
+
+    } catch (error) {
+      console.error('Error getting dashboard summary:', error);
+      res.status(500).json({ error: 'Failed to get dashboard summary' });
+    }
+  }
+);
+
+// =====================================================================
+// HELPER FUNCTIONS
+// =====================================================================
+
+function getContentType(filename: string): string {
+  const extension = filename.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'csv':
+      return 'text/csv';
+    case 'xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'pdf':
+      return 'application/pdf';
+    default:
+      return 'application/octet-stream';
+  }
 }
 
 export default router;
