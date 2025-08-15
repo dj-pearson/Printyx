@@ -136,18 +136,13 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
         { title: 'Contacts', path: '/contacts', icon: Users },
         { title: 'Opportunities', path: '/opportunities', icon: Target },
-        { title: 'Deals Management', path: '/deals-management', icon: Target },
         { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
         { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
-        { title: 'Quotes Management', path: '/quotes-management', icon: FileText },
         { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
-        { title: 'Quote Builder', path: '/quote-builder-page', icon: FileText },
-        { title: 'Proposal Builder', path: '/proposal-builder', icon: Wand2 },
         { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
         { title: 'Contracts', path: '/contracts', icon: FileSignature },
         { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
         { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
-        { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: Target },
         { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck }
       ]
     });
@@ -191,7 +186,6 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Product Catalog', path: '/product-catalog', icon: Package },
         { title: 'Product Models', path: '/product-models', icon: Package },
         { title: 'Product Accessories', path: '/product-accessories', icon: Layers },
-        { title: 'Enhanced Accessories', path: '/enhanced-product-accessories', icon: Layers },
         { title: 'Supplies', path: '/supplies', icon: Package },
         { title: 'Professional Services', path: '/professional-services', icon: FileText },
         { title: 'Managed Services', path: '/managed-services', icon: Crown },
