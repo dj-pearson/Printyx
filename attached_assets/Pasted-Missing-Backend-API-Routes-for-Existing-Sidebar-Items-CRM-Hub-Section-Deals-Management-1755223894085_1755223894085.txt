@@ -1,0 +1,48 @@
+Missing Backend API Routes for Existing Sidebar Items:
+
+  CRM Hub Section:
+
+  - Deals Management (/deals-management) - Page exists but no backend routes
+  - Opportunities (/opportunities) - Referenced in sidebar but no page or backend routes
+
+  Service Hub Section:
+
+  - Technician Management (/technician-management) - Referenced in sidebar but no dedicated
+  backend routes
+
+  Product Hub Section:
+
+  - Product Models (/product-models) - Page exists but no comprehensive backend routes
+  - Product Accessories (/product-accessories) - Page exists but limited backend support
+  - Supplies (/supplies) - Page exists but needs backend route enhancement
+  - Professional Services (/professional-services) - Page exists but backend routes may be
+  incomplete
+  - Software Products (/software-products) - Page exists but no dedicated backend routes
+
+  Equipment Lifecycle Section:
+
+  - Purchase Orders (/purchase-orders) - Page exists, has backend routes, but may need
+  enhancement
+  - Warehouse Operations (/warehouse-operations) - Page exists, has backend routes
+  - Inventory Management (/inventory) - Basic page exists but needs comprehensive backend
+  support
+
+  Billing Hub Section:
+
+  - Invoices (/invoices) - Page exists but may need enhanced backend support
+  - Accounts Receivable (/accounts-receivable) - Page exists but needs backend integration
+  - Accounts Payable (/accounts-payable) - Page exists but needs backend integration
+
+  Task Management Section:
+
+  - Advanced Tasks (/task-management) - Page exists, has backend routes
+  - Basic Tasks (/basic-task-management) - Page exists but needs backend integration
+
+  Platform Admin Section (for platform roles):
+
+  - Root Admin Security (/admin/root-admin-security) - Page exists but needs backend routes
+  - System Security (/admin/system-security) - Page exists but needs backend routes
+  - Tenant Management (/admin/tenant-management) - Page exists but needs enhanced backend
+  support
+  - User Management (/admin/user-management) - Page exists but needs backend enhancement
+  - Platform Analytics (/admin/platform-analytics) - Referenced but no page or backend
