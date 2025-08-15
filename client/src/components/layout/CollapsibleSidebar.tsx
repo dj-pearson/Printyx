@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Target,
@@ -303,36 +304,63 @@ export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
         >
           <CollapsibleTrigger asChild>
             <Button
-              variant={shouldShowAsActive ? "secondary" : "ghost"}
-              className={`w-full justify-between h-auto py-3 px-4 ${isChild ? 'ml-4 w-[calc(100%-1rem)]' : ''}`}
+              variant="ghost"
+              className={cn(
+                "w-full justify-between h-auto py-3 px-4 rounded-lg transition-all duration-200",
+                shouldShowAsActive
+                  ? "bg-slate-800 hover:bg-slate-700 text-white" 
+                  : "hover:bg-slate-100 text-slate-700",
+                "font-semibold text-sm"
+              )}
               data-testid={`nav-${section.id}`}
             >
               <div className="flex items-center gap-3">
-                <section.icon className="h-5 w-5" />
-                <span className="font-medium">{section.title}</span>
+                <section.icon className={cn(
+                  "h-5 w-5", 
+                  shouldShowAsActive ? "text-white" : "text-slate-600"
+                )} />
+                <span className="font-semibold">{section.title}</span>
               </div>
               {isExpanded(section.id) ? (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className={cn(
+                  "h-4 w-4", 
+                  shouldShowAsActive ? "text-white" : "text-slate-500"
+                )} />
               ) : (
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className={cn(
+                  "h-4 w-4", 
+                  shouldShowAsActive ? "text-white" : "text-slate-500"
+                )} />
               )}
             </Button>
           </CollapsibleTrigger>
           
-          <CollapsibleContent className="space-y-1 pl-4">
+          <CollapsibleContent className="space-y-1 pl-2 mt-1">
             {section.children?.map((child) => (
               <Link key={child.path} href={child.path}>
                 <Button
-                  variant={isActive(child.path) ? "secondary" : "ghost"}
-                  className="w-full justify-start h-auto py-2 px-4 ml-8"
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start h-auto py-2.5 px-4 ml-6 rounded-md transition-all duration-200",
+                    "border-l-2 border-transparent hover:border-slate-300",
+                    isActive(child.path)
+                      ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500" 
+                      : "hover:bg-slate-50 text-slate-600",
+                    "text-sm font-normal"
+                  )}
                   data-testid={`nav-child-${child.path.replace('/', '')}`}
                 >
                   <div className="flex items-center gap-3">
-                    {child.icon && <child.icon className="h-4 w-4" />}
-                    <span className="text-sm">{child.title}</span>
+                    {child.icon && (
+                      <child.icon className={cn(
+                        "h-4 w-4", 
+                        isActive(child.path) ? "text-blue-600" : "text-slate-500"
+                      )} />
+                    )}
+                    <span>{child.title}</span>
                   </div>
                   {isActive(child.path) && (
-                    <Badge variant="secondary" className="ml-auto">
+                    <Badge variant="default" className="ml-auto bg-blue-600 text-white text-xs">
                       Active
                     </Badge>
                   )}
@@ -346,16 +374,25 @@ export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
       return (
         <Link key={section.id} href={section.path}>
           <Button
-            variant={isCurrentlyActive ? "secondary" : "ghost"}
-            className={`w-full justify-start h-auto py-3 px-4 ${isChild ? 'ml-4 w-[calc(100%-1rem)]' : ''}`}
+            variant="ghost"
+            className={cn(
+              "w-full justify-start h-auto py-3 px-4 rounded-lg transition-all duration-200",
+              isCurrentlyActive
+                ? "bg-slate-800 hover:bg-slate-700 text-white" 
+                : "hover:bg-slate-100 text-slate-700",
+              "font-semibold text-sm"
+            )}
             data-testid={`nav-${section.id}`}
           >
             <div className="flex items-center gap-3">
-              <section.icon className="h-5 w-5" />
-              <span className="font-medium">{section.title}</span>
+              <section.icon className={cn(
+                "h-5 w-5", 
+                isCurrentlyActive ? "text-white" : "text-slate-600"
+              )} />
+              <span className="font-semibold">{section.title}</span>
             </div>
             {isCurrentlyActive && (
-              <Badge variant="secondary" className="ml-auto">
+              <Badge variant="default" className="ml-auto bg-blue-600 text-white text-xs">
                 Active
               </Badge>
             )}
@@ -366,39 +403,39 @@ export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white border-r border-gray-200 ${className}`}>
+    <div className={`flex flex-col h-full bg-slate-50 border-r border-slate-200 ${className}`}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-slate-200 bg-white">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Globe className="h-5 w-5 text-white" />
+          <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
+            <Globe className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Printyx</h1>
-            <p className="text-xs text-gray-500">Business Management</p>
+            <h1 className="text-xl font-bold text-slate-900">Printyx</h1>
+            <p className="text-xs text-slate-600 font-medium">Business Management</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-2 px-3">
+      <div className="flex-1 overflow-y-auto py-6 space-y-3 px-4">
         {navigationSections.map((section) => renderNavigationItem(section))}
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-slate-200 bg-white">
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-9 w-9 ring-2 ring-slate-200">
             <AvatarImage src={user?.picture} alt={user?.name} />
-            <AvatarFallback>
+            <AvatarFallback className="bg-slate-600 text-white font-semibold">
               {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="text-sm font-semibold text-slate-900 truncate">
               {user?.name || 'User'}
             </p>
-            <p className="text-xs text-gray-500 truncate">
+            <p className="text-xs text-slate-600 truncate">
               {user?.email || 'user@example.com'}
             </p>
           </div>
