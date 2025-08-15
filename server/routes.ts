@@ -16139,6 +16139,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
     .catch((err) => console.error("Failed to load reporting routes:", err));
 
+  // Initialize WebSocket service for real-time updates
+  import("./websocket-service")
+    .then(({ webSocketService }) => {
+      webSocketService.initialize(server);
+      console.log('✅ WebSocket service initialized');
+    })
+    .catch((err) => console.error("Failed to initialize WebSocket service:", err));
+
   // Seed master catalog on startup (development only)
   if (process.env.NODE_ENV === "development") {
     import("./catalog-seed")

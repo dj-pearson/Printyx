@@ -1461,8 +1461,21 @@ CREATE INDEX idx_mv_sales_region_date ON mv_daily_sales_metrics(region_id, repor
   - Chart view placeholder ready for visualization library
   - Auto-refresh functionality for real-time reports
   - Export functionality integration
-- [ ] Export service implementation (CSV, XLSX, PDF backend)
-- [ ] Real-time data updates with WebSocket integration
+- [x] **Export service implementation** - ✅ COMPLETED
+  - Created `server/export-service.ts` with multi-format export capabilities
+  - CSV export with formatted headers and data transformation
+  - Excel export with styling, auto-fit columns, and summary rows
+  - PDF export with professional table formatting and pagination
+  - Automatic file cleanup and download URL generation
+  - Export endpoints integrated into reporting API
+- [x] **Real-time data updates with WebSocket integration** - ✅ COMPLETED
+  - Created `server/websocket-service.ts` for live data streaming
+  - WebSocket server with authentication and permission validation
+  - Channel-based subscriptions for reports and KPIs
+  - Heartbeat monitoring and automatic reconnection
+  - Created `client/src/hooks/useWebSocket.ts` for React integration
+  - Real-time KPI and report hooks with auto-subscription
+  - Connection state management and error handling
 
 ### Phase 3: Executive Integration (Weeks 9-12)
 #### ✅ Goals
