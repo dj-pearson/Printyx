@@ -4833,6 +4833,8 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  dueDate: z.coerce.date().optional(),
 });
 
 export const insertProjectSchema = createInsertSchema(projects).omit({
