@@ -1398,83 +1398,151 @@ export default function CRMEnhanced() {
           </TabsContent>
 
           <TabsContent value="quotes" className="space-y-4">
-            <div className="text-center py-12">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Quote Management
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Generate and track quotes for leads and customers.
-              </p>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Quotes</h3>
               <Button onClick={() => setIsCreateQuoteOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Quote
               </Button>
             </div>
+            
+            {isLoadingQuotes ? (
+              <div className="text-center py-8">
+                <div className="animate-pulse">Loading quotes...</div>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {quotes?.map((quote) => (
+                  <Card key={quote.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-base">{quote.title}</CardTitle>
+                          <CardDescription className="text-sm text-gray-600">
+                            {quote.description}
+                          </CardDescription>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold">${parseFloat(quote.totalAmount || "0").toLocaleString()}</div>
+                          <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'draft' ? 'secondary' : 'outline'}>
+                            {quote.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center text-sm text-gray-500">
+                        <span>
+                          {quote.businessRecordId && customers?.find(c => c.id === quote.businessRecordId)?.companyName || 'Unknown Customer'}
+                        </span>
+                        <span>{format(new Date(quote.createdAt || new Date()), 'MMM dd, yyyy')}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )) || []}
+
+                {quotes?.length === 0 && (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No quotes yet
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        Create your first quote to start tracking opportunities.
+                      </p>
+                      <Button onClick={() => setIsCreateQuoteOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create First Quote
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="interactions" className="space-y-4">
-            <div className="grid gap-4">
-              {interactions?.map((interaction) => (
-                <Card key={interaction.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        {getInteractionIcon(interaction.activityType)}
-                        <CardTitle className="text-base">
-                          {interaction.subject}
-                        </CardTitle>
-                        <Badge variant="outline">
-                          {interaction.activityType}
-                        </Badge>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Recent Interactions</h3>
+              <Button onClick={() => setIsCreateInteractionOpen(true)}>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Log Interaction
+              </Button>
+            </div>
+
+            {isLoadingInteractions ? (
+              <div className="text-center py-8">
+                <div className="animate-pulse">Loading interactions...</div>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {interactions?.map((interaction) => (
+                  <Card key={interaction.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          {getInteractionIcon(interaction.interactionType || interaction.activityType)}
+                          <CardTitle className="text-base">
+                            {interaction.subject}
+                          </CardTitle>
+                          <Badge variant="outline">
+                            {interaction.interactionType || interaction.activityType}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {format(
+                            new Date(interaction.createdAt || new Date()),
+                            "MMM dd, HH:mm"
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {format(
-                          new Date(interaction.createdAt || new Date()),
-                          "MMM dd, HH:mm"
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-700 mb-2">
+                        {interaction.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-500">
+                          {interaction.businessRecordId && customers?.find(c => c.id === interaction.businessRecordId)?.companyName || 'Unknown Customer'}
+                        </div>
+                        {interaction.outcome && (
+                          <Badge
+                            className={`${
+                              interaction.outcome === "positive"
+                                ? "bg-green-50 text-green-700"
+                                : interaction.outcome === "negative"
+                                ? "bg-red-50 text-red-700"
+                                : "bg-gray-50 text-gray-700"
+                            }`}
+                          >
+                            {(interaction.outcome || "").replace("_", " ")}
+                          </Badge>
                         )}
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-700 mb-2">
-                      {interaction.description}
-                    </p>
-                    {interaction.outcome && (
-                      <Badge
-                        className={`${
-                          interaction.outcome === "positive"
-                            ? "bg-green-50 text-green-700"
-                            : interaction.outcome === "negative"
-                            ? "bg-red-50 text-red-700"
-                            : "bg-gray-50 text-gray-700"
-                        }`}
-                      >
-                        {(interaction.outcome || "").replace("_", " ")}
-                      </Badge>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                )) || []}
 
-              {interactions?.length === 0 && (
-                <Card>
-                  <CardContent className="p-12 text-center">
-                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      No interactions logged
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Start tracking customer communications and interactions.
-                    </p>
-                    <Button onClick={() => setIsCreateInteractionOpen(true)}>
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Log First Interaction
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                {interactions?.length === 0 && (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No interactions logged
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        Start tracking customer communications and interactions.
+                      </p>
+                      <Button onClick={() => setIsCreateInteractionOpen(true)}>
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Log First Interaction
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
