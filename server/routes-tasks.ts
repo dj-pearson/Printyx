@@ -98,10 +98,16 @@ export function registerTaskRoutes(app: Express) {
   app.post("/api/tasks", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
+      
+      // Convert string dates to Date objects
+      const taskData = { ...req.body };
+      if (taskData.dueDate && typeof taskData.dueDate === 'string') {
+        taskData.dueDate = new Date(taskData.dueDate);
+      }
       
       const validatedData = insertTaskSchema.parse({
-        ...req.body,
+        ...taskData,
         tenantId,
         createdBy: userId
       });
