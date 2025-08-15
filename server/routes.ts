@@ -73,6 +73,12 @@ import {
 import { registerIntegrationRoutes } from "./routes-integrations";
 import { registerTaskRoutes } from "./routes-tasks";
 import { registerEnhancedTaskRoutes } from "./routes-enhanced-tasks";
+import { registerDealsManagementRoutes } from "./routes-deals-management";
+import { registerOpportunitiesRoutes } from "./routes-opportunities";
+import { registerTechnicianManagementRoutes } from "./routes-technician-management";
+import { registerProductModelsRoutes } from "./routes-product-models";
+import { registerSoftwareProductsRoutes } from "./routes-software-products";
+import { registerInvoicesRoutes } from "./routes-invoices";
 import { setupAuth } from "./replitAuth";
 import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
 import { registerWarehouseRoutes } from "./routes-warehouse";
@@ -16062,6 +16068,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerIntegrationRoutes(app);
   registerTaskRoutes(app);
   registerEnhancedTaskRoutes(app);
+  registerDealsManagementRoutes(app);
+  registerOpportunitiesRoutes(app);
+  registerTechnicianManagementRoutes(app);
+  registerProductModelsRoutes(app);
+  registerSoftwareProductsRoutes(app);
+  registerInvoicesRoutes(app);
   registerPurchaseOrderRoutes(app);
   registerWarehouseRoutes(app);
   registerServiceAnalysisRoutes(app);
