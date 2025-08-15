@@ -107,6 +107,7 @@ import { enhancedRBACRoutes } from "./routes-enhanced-rbac";
 import gpt5Routes from "./routes-ai-gpt5";
 import salesForecastingRoutes from "./routes-sales-forecasting";
 import reportsRoutes from "./routes-reports";
+import reportingArchitectureRoutes from "./routes-reporting-architecture";
 import warehouseFpyRoutes from "./routes-warehouse-fpy";
 import {
   getCompanyPricingSettings,
@@ -15765,7 +15766,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register enhanced service routes
   app.use("/api", enhancedServiceRoutes);
 
-  // Register reports routes
+  // Register new reporting architecture routes FIRST (takes precedence)
+  app.use("/api", reportingArchitectureRoutes);
+
+  // Register legacy reports routes
   app.use("/api", reportsRoutes);
 
   // Register warehouse FPY routes
