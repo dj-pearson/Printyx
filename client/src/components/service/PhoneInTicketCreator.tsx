@@ -140,8 +140,12 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
       return await apiRequest("/api/phone-in-tickets", "POST", {
         ...data,
         customerId: selectedCompany?.id,
+        customerName: selectedCompany?.companyName || selectedCompany?.name || data.companyName,
         contactId: selectedContact?.id,
         equipmentId: selectedEquipment?.id,
+        urgencyLevel: data.priority, // Map priority to urgencyLevel for database
+        contactMethod: "phone", // Required field
+        handledBy: "dispatch", // Required field - could be current user
         createServiceTicket: data.createServiceTicket === true,
       });
     },
@@ -196,7 +200,12 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
   const createContactMutation = useMutation({
     mutationFn: async (contactData: any) => {
       return await apiRequest("/api/contacts", "POST", {
-        ...contactData,
+        name: contactData.name,
+        email: contactData.email || "",
+        phone: contactData.phone,
+        role: contactData.role || "user",
+        companyName: selectedCompany?.companyName || selectedCompany?.name || "",
+        businessRecordId: selectedCompany?.id,
         companyId: selectedCompany?.id,
         customerId: selectedCompany?.id,
       });
