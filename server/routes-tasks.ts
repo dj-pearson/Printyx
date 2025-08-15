@@ -100,10 +100,21 @@ export function registerTaskRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
       
-      // Convert string dates to Date objects
+      // Convert string dates to Date objects and clean up data
       const taskData = { ...req.body };
       if (taskData.dueDate && typeof taskData.dueDate === 'string') {
         taskData.dueDate = new Date(taskData.dueDate);
+      }
+      
+      // Clean up invalid UUID fields
+      if (taskData.customerId === 'none' || taskData.customerId === '') {
+        taskData.customerId = null;
+      }
+      if (taskData.projectId === 'none' || taskData.projectId === '') {
+        taskData.projectId = null;
+      }
+      if (taskData.assignedTo === 'none' || taskData.assignedTo === '') {
+        taskData.assignedTo = null;
       }
       
       const validatedData = insertTaskSchema.parse({
@@ -167,10 +178,24 @@ export function registerTaskRoutes(app: Express) {
   app.post("/api/projects", requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
+      
+      // Convert string dates to Date objects and clean up data
+      const projectData = { ...req.body };
+      if (projectData.startDate && typeof projectData.startDate === 'string') {
+        projectData.startDate = new Date(projectData.startDate);
+      }
+      if (projectData.endDate && typeof projectData.endDate === 'string') {
+        projectData.endDate = new Date(projectData.endDate);
+      }
+      
+      // Clean up invalid UUID fields
+      if (projectData.customerId === 'none' || projectData.customerId === '') {
+        projectData.customerId = null;
+      }
       
       const validatedData = insertProjectSchema.parse({
-        ...req.body,
+        ...projectData,
         tenantId,
         createdBy: userId
       });

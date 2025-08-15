@@ -260,7 +260,7 @@ function TaskCard({
         )}
 
         {/* Tags */}
-        {task.tags.length > 0 && (
+        {task.tags && task.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {task.tags.slice(0, 3).map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs">
