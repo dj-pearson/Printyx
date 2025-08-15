@@ -2335,6 +2335,36 @@ export class DatabaseStorage implements IStorage {
     return newActivity;
   }
 
+  async getAllActivities(tenantId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: businessRecordActivities.id,
+        businessRecordId: businessRecordActivities.businessRecordId,
+        activityType: businessRecordActivities.activityType,
+        interactionType: businessRecordActivities.activityType, // Alias for compatibility
+        subject: businessRecordActivities.subject,
+        description: businessRecordActivities.description,
+        activityDate: businessRecordActivities.activityDate,
+        outcome: businessRecordActivities.outcome,
+        nextAction: businessRecordActivities.nextAction,
+        followUpDate: businessRecordActivities.followUpDate,
+        createdAt: businessRecordActivities.createdAt,
+        updatedAt: businessRecordActivities.updatedAt,
+        // Join business record data for context
+        companyName: businessRecords.companyName,
+        recordType: businessRecords.recordType,
+      })
+      .from(businessRecordActivities)
+      .leftJoin(
+        businessRecords,
+        eq(businessRecordActivities.businessRecordId, businessRecords.id)
+      )
+      .where(eq(businessRecordActivities.tenantId, tenantId))
+      .orderBy(desc(businessRecordActivities.createdAt));
+
+    return result;
+  }
+
   // Backward compatible methods for leads
   async getLeadActivities(leadId: string, tenantId: string): Promise<any[]> {
     return await this.getBusinessRecordActivities(leadId, tenantId);
