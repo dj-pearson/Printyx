@@ -135,6 +135,7 @@ import ComprehensiveOnboardingForm from "@/pages/ComprehensiveOnboardingForm";
 import RoleManagement from "@/pages/RoleManagement";
 import GPT5Dashboard from "@/pages/GPT5Dashboard";
 import DocumentBuilder from "@/pages/DocumentBuilder";
+import TechnicianManagement from "@/pages/TechnicianManagement";
 
 // Platform Admin Pages
 import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
@@ -291,6 +292,7 @@ function Router() {
             path="/service-dispatch-optimization"
             component={ServiceDispatchOptimization}
           />
+          <Route path="/technician-management" component={TechnicianManagement} />
           <Route path="/mobile-field-service" component={MobileFieldService} />
           <Route path="/product-catalog" component={ProductCatalog} />
           <Route
