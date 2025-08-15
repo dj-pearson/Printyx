@@ -155,9 +155,11 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Service Hub',
       icon: Wrench,
       path: '/service-hub',
-      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*'],
+      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*', '/vehicle*', '/asset*'],
       children: [
         { title: 'Service Hub', path: '/service-hub', icon: Wrench },
+        { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
+        { title: 'Asset Management', path: '/asset-management', icon: Package },
         { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
         { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
         { title: 'Preventive Maintenance', path: '/preventive-maintenance-scheduling', icon: Calendar },
