@@ -132,18 +132,18 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*'],
       children: [
         { title: 'CRM Dashboard', path: '/crm', icon: Target },
-        { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
         { title: 'Contacts', path: '/contacts', icon: Users },
         { title: 'Opportunities', path: '/opportunities', icon: Target },
         { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
         { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
-        { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
         { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
+        { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
         { title: 'Contracts', path: '/contracts', icon: FileSignature },
-        { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
+        { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
+        { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
         { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
-        { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck }
+        { title: 'Commission Management', path: '/commission-management', icon: DollarSign }
       ]
     });
   }
@@ -158,17 +158,17 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*'],
       children: [
         { title: 'Service Hub', path: '/service-hub', icon: Wrench },
-        { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
-        { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
-        { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp },
+        { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
         { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
-        { title: 'Technician Management', path: '/technician-management', icon: Users },
         { title: 'Preventive Maintenance', path: '/preventive-maintenance-scheduling', icon: Calendar },
         { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
-        { title: 'Mobile Service App', path: '/mobile-service-app', icon: Smartphone },
+        { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
+        { title: 'Technician Management', path: '/technician-management', icon: Users },
         { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
         { title: 'Mobile Field Operations', path: '/mobile-field-operations', icon: Activity },
-        { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor }
+        { title: 'Mobile Service App', path: '/mobile-service-app', icon: Smartphone },
+        { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
+        { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp }
       ]
     });
   }
@@ -187,9 +187,9 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Product Models', path: '/product-models', icon: Package },
         { title: 'Product Accessories', path: '/product-accessories', icon: Layers },
         { title: 'Supplies', path: '/supplies', icon: Package },
+        { title: 'Software Products', path: '/software-products', icon: Code },
         { title: 'Professional Services', path: '/professional-services', icon: FileText },
         { title: 'Managed Services', path: '/managed-services', icon: Crown },
-        { title: 'Software Products', path: '/software-products', icon: Code },
         { title: 'Service Products', path: '/service-products', icon: Wrench }
       ]
     });
@@ -205,11 +205,11 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
       children: [
         { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
-        { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog },
         { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
         { title: 'PO Optimization', path: '/purchase-orders-optimization', icon: ShoppingCart },
         { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
-        { title: 'Inventory Management', path: '/inventory', icon: Package }
+        { title: 'Inventory Management', path: '/inventory', icon: Package },
+        { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog }
       ]
     });
   }
@@ -224,12 +224,12 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       matchPatterns: ['/billing*', '/invoices*', '/accounts*', '/meter-billing*', '/journal*', '/chart-of-accounts*', '/financial*'],
       children: [
         { title: 'Billing Hub', path: '/billing', icon: DollarSign },
+        { title: 'Chart of Accounts', path: '/chart-of-accounts', icon: Database },
         { title: 'Advanced Billing Engine', path: '/advanced-billing-engine', icon: Zap },
-        { title: 'Invoices', path: '/invoices', icon: FileText },
         { title: 'Meter Billing', path: '/meter-billing', icon: Calculator },
+        { title: 'Invoices', path: '/invoices', icon: FileText },
         { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
         { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard },
-        { title: 'Chart of Accounts', path: '/chart-of-accounts', icon: Database },
         { title: 'Journal Entries', path: '/journal-entries', icon: BookOpen },
         { title: 'Financial Forecasting', path: '/financial-forecasting', icon: TrendingUp }
       ]
@@ -246,13 +246,13 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       matchPatterns: ['/reports*', '/advanced-reporting*', '/performance-monitoring*', '/analytics*', '/executive*', '/financial-intelligence*', '/predictive*'],
       children: [
         { title: 'Reports Hub', path: '/reports', icon: BarChart3 },
+        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
         { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
         { title: 'Advanced Analytics', path: '/advanced-analytics', icon: Brain },
-        { title: 'AI Analytics Dashboard', path: '/ai-analytics-dashboard', icon: Brain },
-        { title: 'Executive Dashboard', path: '/executive-dashboard', icon: Crown },
         { title: 'Financial Intelligence', path: '/financial-intelligence-dashboard', icon: PieChart },
         { title: 'Predictive Analytics', path: '/predictive-analytics', icon: TrendingUp },
-        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity }
+        { title: 'AI Analytics Dashboard', path: '/ai-analytics-dashboard', icon: Brain },
+        { title: 'Executive Dashboard', path: '/executive-dashboard', icon: Crown }
       ]
     });
   }
