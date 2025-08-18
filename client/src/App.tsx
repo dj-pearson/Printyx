@@ -142,6 +142,7 @@ import AssetManagement from "@/pages/AssetManagement";
 // Platform Admin Pages
 import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
 import SystemSecurity from "@/pages/admin/SystemSecurity";
+import DatabaseUpdaterPage from "@/pages/admin/DatabaseUpdaterPage";
 import TenantManagement from "@/pages/admin/TenantManagement";
 import UserManagement from "@/pages/admin/UserManagement";
 
@@ -488,6 +489,7 @@ function Router() {
           {/* Platform Admin Routes */}
           <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
           <Route path="/admin/system-security" component={SystemSecurity} />
+          <Route path="/admin/database-updater" component={DatabaseUpdaterPage} />
           <Route path="/admin/tenant-management" component={TenantManagement} />
           <Route path="/admin/user-management" component={UserManagement} />
           <Route path="/admin/role-management" component={RoleManagement} />
