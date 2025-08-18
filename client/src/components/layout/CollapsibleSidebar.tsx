@@ -285,14 +285,20 @@ interface CollapsibleSidebarProps {
 export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
 
-  // Debug: Log role data from user object
-  console.log('SIDEBAR MOUNT DEBUG:', {
-    isAuthenticated,
-    user,
-    userRole: user?.role,
-    userRoleType: typeof user?.role,
-    hasUserRole: !!user?.role
-  });
+  // Force console log regardless of conditions
+  React.useEffect(() => {
+    console.log('SIDEBAR MOUNT DEBUG - FORCED:', {
+      isAuthenticated,
+      user,
+      userRole: user?.role,
+      userRoleType: typeof user?.role,
+      hasUserRole: !!user?.role,
+      userRoleName: user?.role?.name,
+      userRoleCanAccessAllTenants: user?.role?.canAccessAllTenants,
+      userRoleLevel: user?.role?.level,
+      timestamp: new Date().toISOString()
+    });
+  }, [user, isAuthenticated]);
 
   // Get role-aware navigation sections using user.role directly
   const navigationSections = getNavigationSections(user?.role);
