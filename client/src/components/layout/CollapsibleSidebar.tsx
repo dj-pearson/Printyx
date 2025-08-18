@@ -64,6 +64,18 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   const isPlatformRole = userRole.canAccessAllTenants === true;
   const isCompanyAdmin = userRole.name?.includes("Admin");
   const level = userRole.level || 1;
+  
+  // Debug: Always log the user role to console
+  console.log('SIDEBAR DEBUG - User Role Analysis:', {
+    userRole,
+    permissions,
+    isPlatformRole,
+    isCompanyAdmin,
+    level,
+    canAccessAllTenants: userRole.canAccessAllTenants,
+    roleName: userRole.name,
+    roleCode: userRole.code
+  });
 
   // Determine URL prefix based on role level and permissions
   const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
