@@ -5,10 +5,12 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { createObjectCsvWriter } from 'csv-writer';
-import ExcelJS from 'exceljs';
-import PDFDocument from 'pdfkit';
-import { db } from './storage';
+// Note: Temporarily commenting out problematic imports
+// const csvWriter = require('csv-writer');
+// const createObjectCsvWriter = csvWriter.createObjectCsvWriter;
+// import ExcelJS from 'exceljs';
+// import PDFDocument from 'pdfkit';
+import { db } from './db';
 import { reportExecutions } from '../shared/reporting-schema';
 import { eq } from 'drizzle-orm';
 

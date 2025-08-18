@@ -64,6 +64,18 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   const isPlatformRole = userRole.canAccessAllTenants === true;
   const isCompanyAdmin = userRole.name?.includes("Admin");
   const level = userRole.level || 1;
+  
+  // Debug: Always log the user role to console
+  console.log('SIDEBAR DEBUG - User Role Analysis:', {
+    userRole,
+    permissions,
+    isPlatformRole,
+    isCompanyAdmin,
+    level,
+    canAccessAllTenants: userRole.canAccessAllTenants,
+    roleName: userRole.name,
+    roleCode: userRole.code
+  });
 
   // Determine URL prefix based on role level and permissions
   const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
@@ -205,23 +217,28 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     matchPatterns: ['/customers*']
   });
 
-  // Platform/Admin-specific sections
+  // Platform/Admin-specific sections - Root Admin only
   if (isPlatformRole) {
+    console.log('DEBUG - Platform Role detected, User role:', userRole);
+    
+    const platformChildren = [
+      { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
+      { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
+      { title: 'Database Updater', path: `${adminPrefix}/database-updater`, icon: Database },
+      { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
+      { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
+      { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
+      { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
+      { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
+    ];
+
     sections.push({
       id: 'platform-admin',
       title: 'Platform Admin',
       icon: Crown,
       path: `${adminPrefix}/platform`,
       matchPatterns: [`${adminPrefix}/platform*`],
-      children: [
-        { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
-        { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
-        { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
-        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
-        { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
-        { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
-        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
-      ]
+      children: platformChildren
     });
   }
 
@@ -267,15 +284,24 @@ interface CollapsibleSidebarProps {
 
 export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
-  
-  // Fetch user role
-  const { data: userRole } = useQuery({
-    queryKey: ["/api/auth/role"],
-    enabled: isAuthenticated,
-  });
 
-  // Get role-aware navigation sections
-  const navigationSections = getNavigationSections(userRole);
+  // Force console log regardless of conditions
+  React.useEffect(() => {
+    console.log('SIDEBAR MOUNT DEBUG - FORCED:', {
+      isAuthenticated,
+      user,
+      userRole: user?.role,
+      userRoleType: typeof user?.role,
+      hasUserRole: !!user?.role,
+      userRoleName: user?.role?.name,
+      userRoleCanAccessAllTenants: user?.role?.canAccessAllTenants,
+      userRoleLevel: user?.role?.level,
+      timestamp: new Date().toISOString()
+    });
+  }, [user, isAuthenticated]);
+
+  // Get role-aware navigation sections using user.role directly
+  const navigationSections = getNavigationSections(user?.role);
   const {
     expandedSections,
     toggleSection,
