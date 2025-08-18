@@ -205,24 +205,38 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     matchPatterns: ['/customers*']
   });
 
-  // Platform/Admin-specific sections - Enhanced access for Database Updater
-  if (isPlatformRole || isCompanyAdmin || level >= 4) {
+  // Platform/Admin-specific sections - Root Admin only
+  if (isPlatformRole) {
+    const platformChildren = [
+      { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
+      { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
+      { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
+      { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
+      { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
+      { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
+      { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
+    ];
+
+    // Database Updater - Root Admin only (canAccessAllTenants === true)
+    // Debug: Check user role structure
+    console.log('DEBUG - User role for Database Updater:', {
+      userRole,
+      canAccessAllTenants: userRole.canAccessAllTenants,
+      name: userRole.name,
+      level: userRole.level
+    });
+    
+    if (userRole.canAccessAllTenants === true) {
+      platformChildren.splice(2, 0, { title: 'Database Updater', path: `${adminPrefix}/database-updater`, icon: Database });
+    }
+
     sections.push({
       id: 'platform-admin',
       title: 'Platform Admin',
       icon: Crown,
       path: `${adminPrefix}/platform`,
       matchPatterns: [`${adminPrefix}/platform*`],
-      children: [
-        { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
-        { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
-        { title: 'Database Updater', path: `${adminPrefix}/database-updater`, icon: Database },
-        { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
-        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
-        { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
-        { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
-        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
-      ]
+      children: platformChildren
     });
   }
 
