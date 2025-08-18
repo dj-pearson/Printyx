@@ -16139,6 +16139,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
     .catch((err) => console.error("Failed to load reporting routes:", err));
 
+  // Register Database Updater System routes
+  import("./database-updater/api/updater-routes")
+    .then(({ default: updaterRoutes }) => {
+      app.use('/api/database-updater', updaterRoutes);
+      console.log('✅ Database Updater routes registered');
+    })
+    .catch((err) => console.error("Failed to load database updater routes:", err));
+
+  // Initialize Database Updater Manager
+  import("./database-updater")
+    .then(({ startDatabaseUpdater }) => {
+      startDatabaseUpdater({
+        enableScheduling: true,
+        logLevel: 'info'
+      }).then(() => {
+        console.log('✅ Database Updater system started');
+      });
+    })
+    .catch((err) => console.error("Failed to start Database Updater system:", err));
+
   // Initialize WebSocket service for real-time updates
   import("./websocket-service")
     .then(({ webSocketService }) => {
