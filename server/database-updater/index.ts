@@ -59,4 +59,5 @@ export function checkUpdaterHealth() {
 }
 
 // Default export
+import { DatabaseUpdaterManager } from './DatabaseUpdaterManager';
 export default DatabaseUpdaterManager;

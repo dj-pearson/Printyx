@@ -216,6 +216,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       children: [
         { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
         { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
+        { title: 'Database Updater', path: `${adminPrefix}/database-updater`, icon: Database },
         { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
         { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
         { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
