@@ -14,7 +14,12 @@
     "prepare": "husky install",
     "test:e2e": "playwright test",
     "db:push": "drizzle-kit push",
-    "db:push:forecast": "drizzle-kit push --config=drizzle.forecasting.config.ts"
+    "db:push:forecast": "drizzle-kit push --config=drizzle.forecasting.config.ts",
+    "updater": "tsx server/database-updater/cli/updater-cli.ts",
+    "updater:start": "tsx server/database-updater/cli/updater-cli.ts start",
+    "updater:status": "tsx server/database-updater/cli/updater-cli.ts status",
+    "updater:test": "tsx server/database-updater/cli/updater-cli.ts test",
+    "example": "tsx server/database-updater/examples/basic-usage.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
@@ -72,6 +77,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "commander": "^12.0.0",
     "compression": "^1.8.1",
     "connect-pg-simple": "^10.0.0",
     "context7": "^1.0.3",
@@ -99,6 +105,7 @@
     "memorystore": "^1.6.7",
     "multer": "^2.0.2",
     "next-themes": "^0.4.6",
+    "node-cron": "^3.0.3",
     "node-quickbooks": "^2.0.46",
     "nprogress": "^0.2.0",
     "openai": "^5.12.1",
