@@ -205,8 +205,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     matchPatterns: ['/customers*']
   });
 
-  // Platform/Admin-specific sections
-  if (isPlatformRole) {
+  // Platform/Admin-specific sections - Enhanced access for Database Updater
+  if (isPlatformRole || isCompanyAdmin || level >= 4) {
     sections.push({
       id: 'platform-admin',
       title: 'Platform Admin',
