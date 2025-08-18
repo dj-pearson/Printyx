@@ -1,26 +1,110 @@
 # Printyx Database Schema Hierarchy & Reference
-*Updated: August 11, 2025*
+*Updated: August 18, 2025*
 
 ## Overview
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
-**Total Tables**: 175 tables across all business modules
+**Total Tables**: 264 tables across all business modules
 
 ## Recent Schema Updates
+- **🎯 Comprehensive Reporting Architecture (Aug 18, 2025)**: Implemented Phase 1 reporting architecture with 8 comprehensive tables: `report_definitions` (26 columns), `kpi_definitions` (27 columns), `kpi_values` (25 columns), `report_executions` (24 columns), `report_schedules` (18 columns), `dashboard_layouts` (17 columns), `user_report_activity` (19 columns), and `user_report_preferences` (14 columns). Features advanced KPI management, real-time reporting, dashboard customization, user activity tracking, permission-based access, and comprehensive analytics. Includes working API endpoints at `/api/reporting/reports` and `/api/reporting/kpis` with proper tenant security.
+- **Enhanced Product Accessories (Aug 14, 2025)**: Implemented many-to-many relationship architecture with `accessory_model_compatibility` junction table (7 columns). Features manufacturer-based compatibility filtering, smart accessory-model relationships, bulk compatibility operations, and enhanced data structure with part numbers, weight, dimensions, and warranty information.
 - **Task Management System (Aug 11, 2025)**: Added `tasks` and `projects` tables for comprehensive task and project management. Tasks table includes priority, status, assignments, due dates, and project associations. Projects table includes budget tracking, completion percentage, and timeline management with proper tenant isolation.
 - **Master Product Catalog System (Aug 9, 2025)**: Implemented comprehensive master product catalog system for Printyx/Root Admin maintained product database. Added 4 new tables: `master_product_models` (10 columns), `master_product_accessories` (9 columns), `enabled_products` (13 columns), and `tenant_catalog_settings` (9 columns). Features master catalog browsing, tenant-level product enablement, custom pricing overrides, bulk enablement operations, and integrated catalog management within Product Hub. Supports real copier equipment data from Canon, Xerox, HP, Ricoh, and Lexmark manufacturers.
 - **Sales Forecasting System (Aug 8, 2025)**: Implemented comprehensive sales forecasting with real database integration. Added `sales_forecasts`, `forecast_pipeline_items`, `forecast_metrics`, and `forecast_rules` tables with 37, 37, 25, and 18 columns respectively. Features tenant-based filtering, forecasting analytics, pipeline management, and performance tracking with full API endpoints.
 - **Enhanced RBAC System (Aug 7, 2025)**: Implemented enterprise-grade Role-Based Access Control with 4-tier organizational structure (Platform/Company/Regional/Location) and 8-level role hierarchy. Added 6 new tables: `organizational_units`, `enhanced_roles`, `permissions`, `role_permissions`, `user_role_assignments`, `permission_overrides`, `permission_cache`. Includes nested set model for efficient hierarchy queries, permission inheritance, customizable roles for company admins, and multi-level caching for performance.
 - **Comprehensive Onboarding System (Aug 7, 2025)**: Added comprehensive onboarding checklist system with `onboarding_checklists`, `onboarding_dynamic_sections`, `onboarding_equipment`, `onboarding_tasks`, `onboarding_network_config`, and `onboarding_print_management` tables for managing equipment installation and customer onboarding processes. Includes multi-step workflow with equipment details, network configuration, security setup, and dynamic sections.
-- **Database Schema Alignment (Aug 7, 2025)**: Fixed schema inconsistencies by adding missing columns to onboarding_checklists table (customer_id, equipment_details, assigned_technician_id, estimated_duration, business_hours, description, quote_id, order_id)
-- **Proposal Builder System (Aug 6, 2025)**: Enhanced proposals and quotes system with comprehensive quote-to-proposal conversion, template management, section configuration, and content management
-- **Customer Self-Service Portal**: Added 8 comprehensive tables for customer portal functionality including access management, service requests, meter submissions, supply orders, payments, notifications, and activity logging
-- **Manufacturer Integration System**: Enhanced device registration and metrics tracking with manufacturer_integrations, device_registrations, device_metrics, and integration_audit_logs tables
-- **Service Dispatch System**: Connected to real database with proper authentication using service_tickets and technicians tables
-- **Multi-tenant Architecture**: Full tenant isolation across all new tables with proper foreign key relationships
-- **Enum Types**: Added customer portal specific enums (customer_portal_status, service_request_status, service_request_priority, service_request_type, supply_order_status, payment_status, payment_method, notification_type, meter_submission_method)
 
 ## Core System Architecture
+
+### 🚀 NEW: Comprehensive Reporting Architecture (8 Tables)
+
+#### `report_definitions` (26 columns)
+**Purpose**: Defines available reports with metadata, permissions, and configuration
+**Function**: Report catalog management, security, and configuration storage
+**Key Fields**:
+- `id`, `tenant_id`, `name`, `code`, `description`, `category`
+- `sql_query` (text) - Report SQL query
+- `default_parameters`, `available_filters`, `available_groupings` (jsonb)
+- `required_permissions` (jsonb) - RBAC integration
+- `organizational_scope` - Access scope control
+- `default_visualization` - Chart/table configuration
+- `cache_duration`, `query_timeout`, `max_row_limit`
+- `supports_drill_down`, `supports_export`, `is_real_time`
+- `version`, `tags` (jsonb), `created_by`, `created_at`, `updated_at`
+
+#### `kpi_definitions` (27 columns)
+**Purpose**: Defines Key Performance Indicators with calculation logic and targets
+**Function**: KPI management, calculation automation, and performance tracking
+**Key Fields**:
+- `id`, `tenant_id`, `name`, `code`, `description`, `category`
+- `calculation_sql` (text) - KPI calculation logic
+- `target_value` (numeric), `target_type` - Performance targets
+- `display_format`, `prefix`, `suffix`, `decimal_places`
+- `color_scheme` (jsonb), `alert_enabled`, `alert_thresholds` (jsonb)
+- `required_permissions` (jsonb), `organizational_scope`
+- `refresh_frequency`, `cache_duration`, `is_high_priority`
+- `tags` (jsonb), `created_by`, `created_at`, `updated_at`
+
+#### `kpi_values` (25 columns)
+**Purpose**: Stores calculated KPI values with historical tracking
+**Function**: KPI data storage, variance analysis, and performance monitoring
+**Key Fields**:
+- `id`, `tenant_id`, `kpi_definition_id`
+- `location_id`, `region_id`, `user_id`, `team_id`, `department_id`
+- `date_value`, `time_period`, `fiscal_year`, `fiscal_quarter`
+- `actual_value` (numeric), `target_value`, `variance_value`, `variance_percentage`
+- `performance_level`, `is_target_met`, `alert_triggered`
+- `calculation_timestamp`, `data_freshness`, `source_query`
+- `data_quality_score`, `confidence_level`, `created_at`
+
+#### `report_executions` (24 columns)
+**Purpose**: Tracks report execution history and performance metrics
+**Function**: Audit trail, performance monitoring, and usage analytics
+**Key Fields**:
+- `id`, `tenant_id`, `report_definition_id`, `user_id`, `schedule_id`
+- `parameters`, `filters` (jsonb)
+- `execution_time_ms`, `row_count`, `data_size`, `cache_hit`
+- `export_format`, `file_path`, `file_size`, `download_count`
+- `status`, `error_message`, `error_code`
+- `started_at`, `completed_at`, `session_id`, `ip_address`, `user_agent`
+
+#### `report_schedules` (18 columns)
+**Purpose**: Manages automated report scheduling and delivery
+**Function**: Report automation, email delivery, and scheduling management
+
+#### `dashboard_layouts` (17 columns)
+**Purpose**: Stores custom dashboard configurations and widget arrangements
+**Function**: Dashboard personalization, layout management, and sharing
+**Key Fields**:
+- `id`, `tenant_id`, `user_id`, `name`, `description`, `category`
+- `layout`, `widgets` (jsonb) - Dashboard configuration
+- `is_public`, `allowed_roles`, `allowed_users` (jsonb)
+- `is_default`, `display_order`, `is_active`
+- `created_by`, `created_at`, `updated_at`
+
+#### `user_report_activity` (19 columns)
+**Purpose**: Tracks user interactions with reports and dashboards
+**Function**: Usage analytics, user behavior tracking, and engagement metrics
+**Key Fields**:
+- `id`, `tenant_id`, `user_id`, `activity_type`
+- `report_definition_id`, `kpi_definition_id`, `session_id`
+- `parameters` (jsonb), `duration_seconds`, `load_time_ms`
+- `error_occurred`, `scroll_depth`, `export_count`, `share_count`
+
+#### `user_report_preferences` (14 columns)
+**Purpose**: Stores user-specific report preferences and settings
+**Function**: Personalization, default settings, and user experience optimization
+
+### Enhanced Product Management Architecture
+
+#### `accessory_model_compatibility` (7 columns)
+**Purpose**: Junction table managing many-to-many relationships between accessories and product models
+**Function**: Flexible accessory-model compatibility with manufacturer-based filtering
+**Key Fields**:
+- `id` (uuid), `tenant_id`, `accessory_id` (uuid), `model_id` (uuid)
+- `is_required`, `is_optional`, `installation_notes`
+- `created_at`
 
 ### Multi-Tenancy & Authentication Layer
 
@@ -1584,5 +1668,310 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - Rule-based automation for consistency and efficiency
 - Comprehensive tenant-based filtering and security
 
+## Complete Table Inventory (264 Tables)
+
+### 🚀 NEW: Reporting & Analytics (8 tables)
+- `dashboard_layouts` - Custom dashboard configurations
+- `kpi_definitions` - Key Performance Indicator definitions  
+- `kpi_values` - Calculated KPI values and metrics
+- `report_definitions` - Report catalog and metadata
+- `report_executions` - Report execution history and performance
+- `report_schedules` - Automated report scheduling
+- `user_report_activity` - User interaction tracking
+- `user_report_preferences` - User report preferences
+
+### Core System & Authentication (15 tables)
+- `sessions` - User session management
+- `users` - User accounts and profiles
+- `tenants` - Multi-tenant company management
+- `roles` - User role definitions
+- `teams` - Team organization
+- `locations` - Physical location management
+- `regions` - Regional organization
+- `organizational_units` - Hierarchical organization structure
+- `enhanced_roles` - Advanced RBAC roles
+- `permissions` - System permissions catalog
+- `role_permissions` - Role-permission assignments
+- `user_role_assignments` - User-role assignments
+- `permission_overrides` - Custom permission overrides
+- `permission_cache` - Permission caching for performance
+- `security_sessions` - Enhanced security session tracking
+
+### Product Management & Inventory (22 tables)
+- `master_product_models` - Master product catalog
+- `master_product_accessories` - Master accessory catalog
+- `master_product_accessory_relationships` - Product-accessory relationships
+- `enabled_products` - Tenant-enabled products
+- `tenant_catalog_settings` - Catalog configuration
+- `product_models` - Tenant-specific product models
+- `product_accessories` - Tenant-specific accessories
+- `accessory_model_compatibility` - Many-to-many accessory compatibility
+- `product_pricing` - Product pricing configurations
+- `product_tags` - Product categorization tags
+- `inventory_items` - Inventory management
+- `supplies` - Supply inventory tracking
+- `software_products` - Software product catalog
+- `enhanced_products` - Enhanced product configurations
+- `enabled_products` - Product enablement management
+- `tenant_enabled_products` - Tenant product enablement
+- `supply_orders` - Supply order management
+- `supply_order_items` - Supply order line items
+- `customer_supply_orders` - Customer self-service supply orders
+- `customer_supply_order_items` - Customer supply order items
+- `parts_orders` - Parts order management
+- `parts_order_items` - Parts order line items
+
+### CRM & Customer Management (25 tables)
+- `business_records` - Unified leads and customers
+- `customers` - Customer management
+- `companies` - Company profiles
+- `company_contacts` - Company contact management
+- `enhanced_contacts` - Enhanced contact features
+- `customer_contacts` - Customer-specific contacts
+- `customer_activities` - Customer activity tracking
+- `customer_interactions` - Customer interaction history
+- `customer_related_records` - Customer relationships
+- `lead_activities` - Lead activity tracking
+- `lead_contacts` - Lead contact management
+- `lead_related_records` - Lead relationships
+- `leads` - Lead management
+- `business_record_activities` - Business record activities
+- `enriched_companies` - Enriched company data
+- `enriched_contacts` - Enriched contact data
+- `enriched_intent_data` - Intent data tracking
+- `enriched_org_hierarchy` - Organizational hierarchy
+- `enrichment_activities` - Data enrichment activities
+- `prospecting_campaigns` - Prospecting campaign management
+- `customer_equipment` - Customer equipment tracking
+- `customer_portal_access` - Customer portal access management
+- `customer_portal_activity_log` - Portal activity logging
+- `customer_notifications` - Customer notification system
+- `customer_service_requests` - Self-service request management
+
+### Sales & Deals Management (18 tables)
+- `deals` - Sales deal management
+- `deal_stages` - Deal pipeline stages
+- `deal_activities` - Deal activity tracking
+- `opportunities` - Sales opportunity tracking
+- `quotes` - Quote management
+- `quote_line_items` - Quote line items
+- `quote_pricing` - Quote pricing configurations
+- `quote_pricing_line_items` - Quote pricing details
+- `proposals` - Proposal management
+- `proposal_templates` - Proposal templates
+- `proposal_sections` - Proposal section management
+- `proposal_template_sections` - Template section configuration
+- `proposal_content_blocks` - Content block management
+- `proposal_line_items` - Proposal line items
+- `proposal_comments` - Proposal collaboration
+- `proposal_approvals` - Approval workflow
+- `proposal_analytics` - Proposal performance analytics
+- `sales_forecasts` - Sales forecasting
+
+### Service Management (35 tables)
+- `service_tickets` - Service ticket management
+- `service_ticket_updates` - Ticket update tracking
+- `service_calls` - Service call management
+- `service_call_analysis` - Call analysis and metrics
+- `service_templates` - Service templates
+- `service_requests` - Service request management
+- `service_contracts` - Service contract management
+- `service_products` - Service-related products
+- `service_parts_used` - Parts usage tracking
+- `service_performance_metrics` - Service performance tracking
+- `service_trend_analysis` - Service trend analytics
+- `service_photos` - Service documentation photos
+- `technicians` - Technician management
+- `technician_availability` - Technician scheduling
+- `technician_certifications` - Certification tracking
+- `technician_locations` - Technician location tracking
+- `technician_performance_analytics` - Performance analytics
+- `technician_sessions` - Session management
+- `technician_ticket_sessions` - Ticket session tracking
+- `technician_time_tracking` - Time tracking
+- `field_technicians` - Field technician management
+- `field_work_orders` - Field work order management
+- `phone_in_tickets` - Phone-based ticket system
+- `ticket_parts_requests` - Parts request management
+- `mobile_app_sessions` - Mobile app session tracking
+- `mobile_field_metrics` - Mobile field performance
+- `mobile_field_orders` - Mobile field orders
+- `mobile_order_line_items` - Mobile order items
+- `mobile_parts_inventory` - Mobile parts tracking
+- `mobile_service_sessions` - Mobile service sessions
+- `mobile_work_orders` - Mobile work orders
+- `maintenance_notifications` - Maintenance notifications
+- `maintenance_schedules` - Maintenance scheduling
+- `maintenance_tasks` - Maintenance task management
+- `managed_services` - Managed service offerings
+
+### Billing & Financial (30 tables)
+- `invoices` - Invoice management
+- `invoice_line_items` - Invoice line items
+- `billing_cycles` - Billing cycle management
+- `billing_configurations` - Billing system configuration
+- `billing_invoices` - Enhanced billing invoices
+- `billing_line_items` - Enhanced billing line items
+- `billing_adjustments` - Billing adjustments
+- `auto_invoice_generation` - Automated invoicing
+- `meter_readings` - Meter reading management
+- `customer_meter_submissions` - Self-service meter submissions
+- `customer_payments` - Payment tracking
+- `payment_methods` - Payment method management
+- `payment_schedules` - Payment scheduling
+- `payment_terms` - Payment terms configuration
+- `accounts_payable` - Accounts payable management
+- `accounts_receivable` - Accounts receivable tracking
+- `gl_accounts` - General ledger accounts
+- `chart_of_accounts` - Chart of accounts
+- `budget_vs_actual` - Budget analysis
+- `cash_flow_projections` - Cash flow forecasting
+- `financial_forecasts` - Financial forecasting
+- `financial_kpis` - Financial KPI tracking
+- `vendor_bills` - Vendor bill management
+- `vendors` - Vendor management
+- `profitability_analysis` - Profitability tracking
+- `performance_benchmarks` - Performance benchmarking
+- `qb_customers` - QuickBooks customer sync
+- `qb_invoices` - QuickBooks invoice sync
+- `qb_items` - QuickBooks item sync
+- `qb_vendors` - QuickBooks vendor sync
+
+### Commission Management (15 tables)
+- `commission_plans` - Commission plan management
+- `commission_structures` - Commission structure definitions
+- `commission_calculations` - Commission calculations
+- `commission_calculation_details` - Detailed calculations
+- `commission_transactions` - Transaction tracking
+- `commission_payments` - Payment processing
+- `commission_adjustments` - Manual adjustments
+- `commission_disputes` - Dispute management
+- `commission_dispute_history` - Dispute history tracking
+- `commission_analytics` - Analytics and reporting
+- `commission_bonuses` - Bonus management
+- `commission_plan_tiers` - Tiered commission plans
+- `commission_product_rates` - Product-specific rates
+- `commission_sales_data` - Sales data integration
+- `commission_sales_transactions` - Transaction details
+
+### Equipment & Asset Management (25 tables)
+- `equipment` - Equipment management
+- `equipment_lifecycle` - Lifecycle tracking
+- `equipment_lifecycle_stages` - Lifecycle stage management
+- `equipment_installations` - Installation tracking
+- `equipment_packages` - Equipment package management
+- `equipment_purchase_orders` - Purchase order management
+- `equipment_delivery_schedules` - Delivery scheduling
+- `equipment_status_monitoring` - Status monitoring
+- `equipment_asset_tracking` - Asset tracking
+- `device_registrations` - Device registration
+- `device_metrics` - Device performance metrics
+- `device_telemetry` - IoT telemetry data
+- `device_performance_trends` - Performance trending
+- `iot_devices` - IoT device management
+- `predictive_alerts` - Predictive maintenance alerts
+- `monitoring_dashboards` - Equipment monitoring dashboards
+- `installation_schedules` - Installation scheduling
+- `demo_schedules` - Demo scheduling
+- `demo_equipment_requirements` - Demo requirements
+- `demo_outcomes` - Demo result tracking
+- `delivery_schedules` - Delivery management
+- `warehouse_operations` - Warehouse operations
+- `warehouse_kitting_operations` - Kitting operations
+- `fpy_metrics` - First Pass Yield metrics
+- `gps_tracking_points` - GPS tracking data
+
+### Task & Project Management (8 tables)
+- `tasks` - Task management
+- `projects` - Project management
+- `automated_tasks` - Automated task management
+- `time_tracking_entries` - Time tracking
+- `workflow_templates` - Workflow templates
+- `workflow_steps` - Workflow step definitions
+- `workflow_executions` - Workflow execution tracking
+- `workflow_step_executions` - Step execution tracking
+
+### Onboarding & Installation (6 tables)
+- `onboarding_checklists` - Installation checklists
+- `onboarding_dynamic_sections` - Custom checklist sections
+- `onboarding_equipment` - Equipment installation tracking
+- `onboarding_tasks` - Installation task management
+- `onboarding_network_config` - Network configuration
+- `onboarding_print_management` - Print management setup
+
+### Integration & External Systems (25 tables)
+- `manufacturer_integrations` - Manufacturer API integrations
+- `third_party_integrations` - Third-party system integrations
+- `system_integrations` - System integration management
+- `integration_audit_logs` - Integration audit trails
+- `quickbooks_integrations` - QuickBooks integration
+- `system_permissions` - System-level permissions
+- `compliance_documents` - Compliance documentation
+- `compliance_settings` - Compliance configuration
+- `data_access_logs` - Data access auditing
+- `audit_logs` - System audit logs
+- `gdpr_requests` - GDPR compliance requests
+- `encrypted_fields` - Field-level encryption
+- `social_media_posts` - Social media integration
+- `social_media_cron_jobs` - Social media automation
+- `voice_notes` - Voice note integration
+- `seo_pages` - SEO page management
+- `seo_settings` - SEO configuration
+- `cpc_rates` - Cost-per-click rate management
+- `conversion_funnel` - Conversion tracking
+- `activity_reports` - Activity reporting
+- `business_intelligence_dashboards` - BI dashboards
+- `process_automation_logs` - Process automation logs
+- `automation_rules` - Business rule automation
+- `system_alerts` - System alert management
+- `performance_metrics` - System performance metrics
+
+### Forecasting & Analytics (15 tables)
+- `forecast_line_items` - Forecast line items
+- `forecast_metrics` - Forecasting metrics
+- `forecast_pipeline_items` - Pipeline forecasting
+- `forecast_rules` - Forecasting rules
+- `sales_metrics` - Sales performance metrics
+- `sales_goals` - Sales goal management
+- `sales_quotas` - Sales quota tracking
+- `sales_representatives` - Sales rep management
+- `sales_teams` - Sales team organization
+- `sales_team_members` - Team membership
+- `goal_progress` - Goal progress tracking
+- `manager_insights` - Management analytics
+- `predictive_alerts` - Predictive analytics alerts
+- `contract_tiered_rates` - Tiered contract rates
+- `contracts` - Contract management
+
+### Document & Content Management (8 tables)
+- `documents` - Document management
+- `knowledge_base_articles` - Knowledge base
+- `professional_services` - Professional service offerings
+- `company_branding_profiles` - Brand management
+- `company_pricing_settings` - Pricing configuration
+- `customer_number_config` - Customer numbering
+- `customer_number_history` - Number history tracking
+- `location_history` - Location change history
+
+### Employee & HR Management (5 tables)
+- `employees` - Employee management
+- `employee_commission_assignments` - Commission assignments
+- `user_customer_assignments` - Customer assignments
+- `user_location_assignments` - Location assignments
+- `user_settings` - User preference settings
+
+### Purchase Order & Procurement (10 tables)
+- `purchase_orders` - Purchase order management
+- `purchase_order_items` - Purchase order items
+- `po_line_items` - PO line item details
+- `equipment_purchase_orders` - Equipment-specific POs
+- `mobile_parts_inventory` - Mobile parts tracking
+- `parts_order_items` - Parts order items
+- `parts_orders` - Parts order management
+- `customer_supply_orders` - Customer supply orders
+- `customer_supply_order_items` - Customer supply items
+- `supply_order_items` - Supply order items
+
 ---
-*This schema represents a production-ready multi-tenant SaaS platform with enterprise-grade features for copier dealer management, CRM, service dispatch, financial management, sales forecasting, and business intelligence.*
+
+*This document serves as the comprehensive reference for the Printyx database architecture. All 264 tables are designed with multi-tenant support, proper indexing, and optimized for the specific business requirements of copier dealers. The recent addition of the comprehensive reporting architecture provides advanced analytics, KPI management, and business intelligence capabilities.*
