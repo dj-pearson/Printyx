@@ -284,15 +284,18 @@ interface CollapsibleSidebarProps {
 
 export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
-  
-  // Fetch user role
-  const { data: userRole } = useQuery({
-    queryKey: ["/api/auth/role"],
-    enabled: isAuthenticated,
+
+  // Debug: Log role data from user object
+  console.log('SIDEBAR MOUNT DEBUG:', {
+    isAuthenticated,
+    user,
+    userRole: user?.role,
+    userRoleType: typeof user?.role,
+    hasUserRole: !!user?.role
   });
 
-  // Get role-aware navigation sections
-  const navigationSections = getNavigationSections(userRole);
+  // Get role-aware navigation sections using user.role directly
+  const navigationSections = getNavigationSections(user?.role);
   const {
     expandedSections,
     toggleSection,
