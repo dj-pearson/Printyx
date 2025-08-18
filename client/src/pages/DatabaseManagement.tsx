@@ -91,16 +91,20 @@ interface QueryLog {
   status: "success" | "error";
 }
 
-interface DatabaseUpdaterStatus {
-  isRunning: boolean;
-  updaters: Array<{
-    name: string;
-    isEnabled: boolean;
-    lastExecution?: string;
+interface DatabaseUpdaterApiResponse {
+  success: boolean;
+  data: {
+    isRunning: boolean;
+    updaters: Array<{
+      name: string;
+      isEnabled: boolean;
+      lastExecution?: string;
+      config: any;
+    }>;
+    nextExecutions: Record<string, string | null>;
     config: any;
-  }>;
-  nextExecutions: Record<string, string | null>;
-  config: any;
+  };
+  timestamp: string;
 }
 
 export default function DatabaseManagement() {
@@ -130,7 +134,7 @@ export default function DatabaseManagement() {
   });
 
   // Fetch database updater status
-  const { data: updaterStatus, isLoading: updaterLoading } = useQuery({
+  const { data: updaterStatus, isLoading: updaterLoading } = useQuery<DatabaseUpdaterApiResponse>({
     queryKey: ["/api/database-updater/status"],
     refetchInterval: 10000,
   });
@@ -722,12 +726,12 @@ export default function DatabaseManagement() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Status</span>
                     <Badge 
-                      className={updaterStatus?.isRunning 
+                      className={updaterStatus?.data?.isRunning 
                         ? "bg-green-100 text-green-800" 
                         : "bg-red-100 text-red-800"
                       }
                     >
-                      {updaterStatus?.isRunning ? (
+                      {updaterStatus?.data?.isRunning ? (
                         <><CheckCircle className="w-3 h-3 mr-1" />Running</>
                       ) : (
                         <><Pause className="w-3 h-3 mr-1" />Stopped</>
@@ -737,25 +741,25 @@ export default function DatabaseManagement() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Target Tenant</span>
                     <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {updaterStatus?.config?.targetTenantId?.slice(0, 8)}...
+                      {updaterStatus?.data?.config?.targetTenantId?.slice(0, 8)}...
                     </code>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Target Customer</span>
                     <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {updaterStatus?.config?.targetCustomerId || 'cust-1'}
+                      {updaterStatus?.data?.config?.targetCustomerId || 'cust-1'}
                     </code>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Total Updaters</span>
                     <span className="text-sm font-semibold">
-                      {updaterStatus?.updaters?.length || 0}
+                      {updaterStatus?.data?.updaters?.length || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Enabled</span>
                     <span className="text-sm font-semibold">
-                      {updaterStatus?.updaters?.filter(u => u.isEnabled)?.length || 0}
+                      {updaterStatus?.data?.updaters?.filter(u => u.isEnabled)?.length || 0}
                     </span>
                   </div>
                 </CardContent>
@@ -773,7 +777,7 @@ export default function DatabaseManagement() {
                   <Button
                     className="w-full"
                     onClick={() => startUpdaterMutation.mutate()}
-                    disabled={startUpdaterMutation.isPending || updaterStatus?.isRunning}
+                    disabled={startUpdaterMutation.isPending || updaterStatus?.data?.isRunning}
                   >
                     {startUpdaterMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -786,7 +790,7 @@ export default function DatabaseManagement() {
                     className="w-full"
                     variant="outline"
                     onClick={() => stopUpdaterMutation.mutate()}
-                    disabled={stopUpdaterMutation.isPending || !updaterStatus?.isRunning}
+                    disabled={stopUpdaterMutation.isPending || !updaterStatus?.data?.isRunning}
                   >
                     {stopUpdaterMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -818,19 +822,19 @@ export default function DatabaseManagement() {
                   <div>
                     <div className="text-xs font-medium text-gray-600 mb-1">Business Activities</div>
                     <code className="text-xs bg-blue-50 px-2 py-1 rounded block">
-                      {updaterStatus?.config?.scheduleConfig?.businessActivities || 'Every 2 hours, 9-5 PM'}
+                      {updaterStatus?.data?.config?.scheduleConfig?.businessActivities || 'Every 2 hours, 9-5 PM'}
                     </code>
                   </div>
                   <div>
                     <div className="text-xs font-medium text-gray-600 mb-1">Service Tickets</div>
                     <code className="text-xs bg-green-50 px-2 py-1 rounded block">
-                      {updaterStatus?.config?.scheduleConfig?.serviceTickets || 'Every 6 hours'}
+                      {updaterStatus?.data?.config?.scheduleConfig?.serviceTickets || 'Every 6 hours'}
                     </code>
                   </div>
                   <div>
                     <div className="text-xs font-medium text-gray-600 mb-1">New Leads</div>
                     <code className="text-xs bg-purple-50 px-2 py-1 rounded block">
-                      {updaterStatus?.config?.scheduleConfig?.newLeads || 'Daily at 10 AM'}
+                      {updaterStatus?.data?.config?.scheduleConfig?.newLeads || 'Daily at 10 AM'}
                     </code>
                   </div>
                 </CardContent>
@@ -847,7 +851,12 @@ export default function DatabaseManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {updaterStatus?.updaters?.map((updater, index) => (
+                  {updaterLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
+                      <span className="ml-2 text-gray-600">Loading updaters...</span>
+                    </div>
+                  ) : updaterStatus?.data?.updaters?.map((updater, index) => (
                     <Card key={updater.name} className="border">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
