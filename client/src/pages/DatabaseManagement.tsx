@@ -43,9 +43,14 @@ import {
   BarChart3,
   Archive,
   Shield,
+  Cog,
+  Zap,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import MainLayout from "@/components/layout/main-layout";
+import { apiRequest } from "@/lib/queryClient";
 
 interface DatabaseStats {
   totalSize: string;
@@ -86,6 +91,18 @@ interface QueryLog {
   status: "success" | "error";
 }
 
+interface DatabaseUpdaterStatus {
+  isRunning: boolean;
+  updaters: Array<{
+    name: string;
+    isEnabled: boolean;
+    lastExecution?: string;
+    config: any;
+  }>;
+  nextExecutions: Record<string, string | null>;
+  config: any;
+}
+
 export default function DatabaseManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -112,6 +129,12 @@ export default function DatabaseManagement() {
     refetchInterval: 30000,
   });
 
+  // Fetch database updater status
+  const { data: updaterStatus, isLoading: updaterLoading } = useQuery({
+    queryKey: ["/api/database-updater/status"],
+    refetchInterval: 10000,
+  });
+
   // Execute SQL Query mutation
   const executeQueryMutation = useMutation({
     mutationFn: async (query: string) =>
@@ -135,6 +158,80 @@ export default function DatabaseManagement() {
       toast({
         title: "Query Error",
         description: error.message || "Failed to execute query",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Database updater control mutations
+  const startUpdaterMutation = useMutation({
+    mutationFn: () => apiRequest("/api/database-updater/start", "POST"),
+    onSuccess: () => {
+      toast({
+        title: "Database Updater Started",
+        description: "The database updater system is now running",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Start Updater",
+        description: error.message || "Could not start the database updater",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const stopUpdaterMutation = useMutation({
+    mutationFn: () => apiRequest("/api/database-updater/stop", "POST"),
+    onSuccess: () => {
+      toast({
+        title: "Database Updater Stopped",
+        description: "The database updater system has been stopped",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Stop Updater",
+        description: error.message || "Could not stop the database updater",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const executeUpdaterMutation = useMutation({
+    mutationFn: (updaterName: string) => 
+      apiRequest(`/api/database-updater/execute/${updaterName}`, "POST"),
+    onSuccess: (data, updaterName) => {
+      toast({
+        title: "Updater Executed Successfully",
+        description: `${updaterName} has been executed successfully`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+    },
+    onError: (error: any, updaterName) => {
+      toast({
+        title: "Updater Execution Failed",
+        description: `Failed to execute ${updaterName}: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dryRunUpdaterMutation = useMutation({
+    mutationFn: (updaterName: string) => 
+      apiRequest(`/api/database-updater/dry-run/${updaterName}`, "POST"),
+    onSuccess: (data, updaterName) => {
+      toast({
+        title: "Dry Run Completed",
+        description: `Dry run for ${updaterName} completed successfully`,
+      });
+    },
+    onError: (error: any, updaterName) => {
+      toast({
+        title: "Dry Run Failed",
+        description: `Dry run for ${updaterName} failed: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -379,9 +476,10 @@ export default function DatabaseManagement() {
         </div>
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Tables</TabsTrigger>
             <TabsTrigger value="queries">Query Console</TabsTrigger>
+            <TabsTrigger value="updater">Database Updater</TabsTrigger>
             <TabsTrigger value="backups">Backups</TabsTrigger>
             <TabsTrigger value="logs">Query Logs</TabsTrigger>
             <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
@@ -605,6 +703,253 @@ export default function DatabaseManagement() {
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Database Updater */}
+          <TabsContent value="updater" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* System Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Cog className="w-5 h-5" />
+                    <span>System Status</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Status</span>
+                    <Badge 
+                      className={updaterStatus?.isRunning 
+                        ? "bg-green-100 text-green-800" 
+                        : "bg-red-100 text-red-800"
+                      }
+                    >
+                      {updaterStatus?.isRunning ? (
+                        <><CheckCircle className="w-3 h-3 mr-1" />Running</>
+                      ) : (
+                        <><Pause className="w-3 h-3 mr-1" />Stopped</>
+                      )}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Target Tenant</span>
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                      {updaterStatus?.config?.targetTenantId?.slice(0, 8)}...
+                    </code>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Target Customer</span>
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                      {updaterStatus?.config?.targetCustomerId || 'cust-1'}
+                    </code>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Total Updaters</span>
+                    <span className="text-sm font-semibold">
+                      {updaterStatus?.updaters?.length || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Enabled</span>
+                    <span className="text-sm font-semibold">
+                      {updaterStatus?.updaters?.filter(u => u.isEnabled)?.length || 0}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* System Controls */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Play className="w-5 h-5" />
+                    <span>System Controls</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    className="w-full"
+                    onClick={() => startUpdaterMutation.mutate()}
+                    disabled={startUpdaterMutation.isPending || updaterStatus?.isRunning}
+                  >
+                    {startUpdaterMutation.isPending ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="w-4 h-4 mr-2" />
+                    )}
+                    Start System
+                  </Button>
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => stopUpdaterMutation.mutate()}
+                    disabled={stopUpdaterMutation.isPending || !updaterStatus?.isRunning}
+                  >
+                    {stopUpdaterMutation.isPending ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Pause className="w-4 h-4 mr-2" />
+                    )}
+                    Stop System
+                  </Button>
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] })}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh Status
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Schedule Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Clock className="w-5 h-5" />
+                    <span>Schedules</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 mb-1">Business Activities</div>
+                    <code className="text-xs bg-blue-50 px-2 py-1 rounded block">
+                      {updaterStatus?.config?.scheduleConfig?.businessActivities || 'Every 2 hours, 9-5 PM'}
+                    </code>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 mb-1">Service Tickets</div>
+                    <code className="text-xs bg-green-50 px-2 py-1 rounded block">
+                      {updaterStatus?.config?.scheduleConfig?.serviceTickets || 'Every 6 hours'}
+                    </code>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 mb-1">New Leads</div>
+                    <code className="text-xs bg-purple-50 px-2 py-1 rounded block">
+                      {updaterStatus?.config?.scheduleConfig?.newLeads || 'Daily at 10 AM'}
+                    </code>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Updaters List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Database className="w-5 h-5" />
+                  <span>Data Updaters</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {updaterStatus?.updaters?.map((updater, index) => (
+                    <Card key={updater.name} className="border">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <Badge 
+                                className={updater.isEnabled 
+                                  ? "bg-green-100 text-green-800" 
+                                  : "bg-gray-100 text-gray-800"
+                                }
+                              >
+                                {updater.isEnabled ? (
+                                  <><CheckCircle className="w-3 h-3 mr-1" />Enabled</>
+                                ) : (
+                                  <><Pause className="w-3 h-3 mr-1" />Disabled</>
+                                )}
+                              </Badge>
+                              <h3 className="font-medium">
+                                {updater.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </h3>
+                            </div>
+                            <div className="text-sm text-gray-600 mb-3">
+                              {updater.name === 'business_record_activities' && (
+                                <>
+                                  <Users className="w-4 h-4 inline mr-1" />
+                                  Generates realistic CRM activities (calls, emails, meetings, demos)
+                                </>
+                              )}
+                              {updater.name === 'service_tickets' && (
+                                <>
+                                  <Settings className="w-4 h-4 inline mr-1" />
+                                  Creates service requests with realistic scenarios and error codes
+                                </>
+                              )}
+                              {updater.name === 'business_records' && (
+                                <>
+                                  <TrendingUp className="w-4 h-4 inline mr-1" />
+                                  Adds new leads with industry-appropriate company data
+                                </>
+                              )}
+                            </div>
+                            {updater.lastExecution && (
+                              <div className="text-xs text-gray-500">
+                                Last execution: {format(new Date(updater.lastExecution), "MMM dd, HH:mm")}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => dryRunUpdaterMutation.mutate(updater.name)}
+                              disabled={dryRunUpdaterMutation.isPending}
+                            >
+                              {dryRunUpdaterMutation.isPending ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => executeUpdaterMutation.mutate(updater.name)}
+                              disabled={executeUpdaterMutation.isPending || !updater.isEnabled}
+                            >
+                              {executeUpdaterMutation.isPending ? (
+                                <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                              ) : (
+                                <Zap className="w-4 h-4 mr-1" />
+                              )}
+                              Execute
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )) || (
+                    <div className="text-center py-8 text-gray-500">
+                      <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                      Loading updater status...
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-900 mb-1">Database Updater Information</h4>
+                      <p className="text-sm text-blue-800">
+                        This system automatically injects realistic data into your database tables for testing and development. 
+                        All data is generated for tenant <code className="bg-blue-100 px-1 rounded">550e8400-e29b-41d4-a716-446655440000</code> 
+                        {" "}and customer <code className="bg-blue-100 px-1 rounded">cust-1</code>.
+                      </p>
+                      <ul className="text-sm text-blue-800 mt-2 space-y-1">
+                        <li>• <strong>Dry Run</strong>: Test without affecting the database</li>
+                        <li>• <strong>Execute</strong>: Run the updater and insert data</li>
+                        <li>• <strong>Scheduled</strong>: Automatic execution based on CRON schedules</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

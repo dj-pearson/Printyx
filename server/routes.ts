@@ -15783,6 +15783,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const enhancedBillingRoutes = (await import("./routes-enhanced-billing")).default;
   app.use("/api", enhancedBillingRoutes);
 
+  // Register database updater routes
+  const { default: updaterRoutes } = await import("./database-updater/api/updater-routes");
+  app.use("/api/database-updater", updaterRoutes);
+
   // Company search endpoint for phone tickets (placed before other company routes)
   app.get("/api/phone-tickets/search-companies", async (req, res) => {
     try {
