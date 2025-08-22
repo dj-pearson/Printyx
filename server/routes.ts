@@ -16151,17 +16151,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
     .catch((err) => console.error("Failed to load database updater routes:", err));
 
-  // Initialize Database Updater Manager
-  import("./database-updater")
-    .then(({ startDatabaseUpdater }) => {
-      startDatabaseUpdater({
-        enableScheduling: true,
-        logLevel: 'info'
-      }).then(() => {
-        console.log('✅ Database Updater system started');
-      });
-    })
-    .catch((err) => console.error("Failed to start Database Updater system:", err));
+  // Initialize Database Updater Manager (TEMPORARILY DISABLED to stop continuous execution)
+  // import("./database-updater")
+  //   .then(({ startDatabaseUpdater }) => {
+  //     startDatabaseUpdater({
+  //       enableScheduling: true,
+  //       logLevel: 'info'
+  //     }).then(() => {
+  //       console.log('✅ Database Updater system started');
+  //     });
+  //   })
+  //   .catch((err) => console.error("Failed to start Database Updater system:", err));
+  
+  console.log('⚠️ Database Updater system is temporarily disabled to stop continuous execution');
 
   // Seed master catalog on startup (development only)
   if (process.env.NODE_ENV === "development") {
