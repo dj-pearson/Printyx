@@ -214,6 +214,98 @@ router.get('/metrics', async (req, res) => {
 });
 
 /**
+ * POST /api/database-updater/disable/:updaterName  
+ * Disable a specific updater by updating configuration
+ */
+router.post('/disable/:updaterName', async (req, res) => {
+  try {
+    const { updaterName } = req.params;
+    const manager = getUpdaterManager();
+    const status = manager.getStatus();
+    
+    // Find the updater and disable it through config
+    const updater = status.updaters.find(u => u.name === updaterName);
+    if (!updater) {
+      return res.status(404).json({
+        success: false,
+        error: `Updater ${updaterName} not found`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    // Update config to disable this updater
+    const newConfig = {
+      ...status.config,
+      enabledUpdaters: status.config.enabledUpdaters || [],
+    };
+    
+    // Remove from enabled list 
+    newConfig.enabledUpdaters = newConfig.enabledUpdaters.filter((name: string) => name !== updaterName);
+    
+    await manager.updateConfiguration(newConfig);
+    
+    res.json({
+      success: true,
+      message: `Updater ${updaterName} has been disabled`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error(`Failed to disable updater: ${req.params.updaterName}`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/database-updater/enable/:updaterName
+ * Enable a specific updater by updating configuration
+ */
+router.post('/enable/:updaterName', async (req, res) => {
+  try {
+    const { updaterName } = req.params;
+    const manager = getUpdaterManager();
+    const status = manager.getStatus();
+    
+    // Find the updater and enable it through config
+    const updater = status.updaters.find(u => u.name === updaterName);
+    if (!updater) {
+      return res.status(404).json({
+        success: false,
+        error: `Updater ${updaterName} not found`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    // Update config to enable this updater
+    const newConfig = {
+      ...status.config,
+      enabledUpdaters: status.config.enabledUpdaters || [],
+    };
+    
+    // Add to enabled list if not already there
+    if (!newConfig.enabledUpdaters.includes(updaterName)) {
+      newConfig.enabledUpdaters.push(updaterName);
+    }
+    
+    await manager.updateConfiguration(newConfig);
+    
+    res.json({
+      success: true,
+      message: `Updater ${updaterName} has been enabled`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error(`Failed to enable updater: ${req.params.updaterName}`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * POST /api/database-updater/dry-run/:updaterName
  * Execute updater in dry-run mode
  */

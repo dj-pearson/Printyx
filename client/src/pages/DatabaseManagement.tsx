@@ -241,6 +241,44 @@ export default function DatabaseManagement() {
     },
   });
 
+  const disableUpdaterMutation = useMutation({
+    mutationFn: (updaterName: string) => 
+      apiRequest(`/api/database-updater/disable/${updaterName}`, "POST"),
+    onSuccess: (data, updaterName) => {
+      toast({
+        title: "Updater Disabled",
+        description: `${updaterName} has been disabled successfully`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+    },
+    onError: (error: any, updaterName) => {
+      toast({
+        title: "Failed to Disable Updater",
+        description: `Could not disable ${updaterName}: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const enableUpdaterMutation = useMutation({
+    mutationFn: (updaterName: string) => 
+      apiRequest(`/api/database-updater/enable/${updaterName}`, "POST"),
+    onSuccess: (data, updaterName) => {
+      toast({
+        title: "Updater Enabled",
+        description: `${updaterName} has been enabled successfully`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+    },
+    onError: (error: any, updaterName) => {
+      toast({
+        title: "Failed to Enable Updater",
+        description: `Could not enable ${updaterName}: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Loading state
   if (resourcesLoading || tablesLoading) {
     return (
@@ -790,7 +828,7 @@ export default function DatabaseManagement() {
                     className="w-full"
                     variant="outline"
                     onClick={() => stopUpdaterMutation.mutate()}
-                    disabled={stopUpdaterMutation.isPending || !updaterStatus?.data?.isRunning}
+                    disabled={stopUpdaterMutation.isPending}
                   >
                     {stopUpdaterMutation.isPending ? (
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -910,6 +948,7 @@ export default function DatabaseManagement() {
                               variant="outline"
                               onClick={() => dryRunUpdaterMutation.mutate(updater.name)}
                               disabled={dryRunUpdaterMutation.isPending}
+                              data-testid={`button-dryrun-${updater.name}`}
                             >
                               {dryRunUpdaterMutation.isPending ? (
                                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -917,10 +956,40 @@ export default function DatabaseManagement() {
                                 <Eye className="w-4 h-4" />
                               )}
                             </Button>
+                            {updater.isEnabled ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => disableUpdaterMutation.mutate(updater.name)}
+                                disabled={disableUpdaterMutation.isPending}
+                                data-testid={`button-disable-${updater.name}`}
+                              >
+                                {disableUpdaterMutation.isPending ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Pause className="w-4 h-4" />
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => enableUpdaterMutation.mutate(updater.name)}
+                                disabled={enableUpdaterMutation.isPending}
+                                data-testid={`button-enable-${updater.name}`}
+                              >
+                                {enableUpdaterMutation.isPending ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Play className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               onClick={() => executeUpdaterMutation.mutate(updater.name)}
                               disabled={executeUpdaterMutation.isPending || !updater.isEnabled}
+                              data-testid={`button-execute-${updater.name}`}
                             >
                               {executeUpdaterMutation.isPending ? (
                                 <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
@@ -953,7 +1022,8 @@ export default function DatabaseManagement() {
                       </p>
                       <ul className="text-sm text-blue-800 mt-2 space-y-1">
                         <li>• <strong>Dry Run</strong>: Test without affecting the database</li>
-                        <li>• <strong>Execute</strong>: Run the updater and insert data</li>
+                        <li>• <strong>Disable/Enable</strong>: Stop or start individual updaters</li>
+                        <li>• <strong>Execute</strong>: Run the updater and insert data (only when enabled)</li>
                         <li>• <strong>Scheduled</strong>: Automatic execution based on CRON schedules</li>
                       </ul>
                     </div>
