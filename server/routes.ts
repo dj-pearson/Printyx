@@ -16182,13 +16182,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // Initialize WebSocket service for real-time updates after server is created
-  import("./websocket-service")
-    .then(({ webSocketService }) => {
-      webSocketService.initialize(httpServer);
-      console.log('✅ WebSocket service initialized');
-    })
-    .catch((err) => console.error("Failed to initialize WebSocket service:", err));
+  // Initialize WebSocket service for real-time updates (TEMPORARILY DISABLED to fix Vite WebSocket conflict)
+  // import("./websocket-service")
+  //   .then(({ webSocketService }) => {
+  //     webSocketService.initialize(httpServer);
+  //     console.log('✅ WebSocket service initialized');
+  //   })
+  //   .catch((err) => console.error("Failed to initialize WebSocket service:", err));
+  
+  console.log('⚠️ Custom WebSocket service is temporarily disabled to resolve Vite WebSocket conflict');
 
   return httpServer;
 }

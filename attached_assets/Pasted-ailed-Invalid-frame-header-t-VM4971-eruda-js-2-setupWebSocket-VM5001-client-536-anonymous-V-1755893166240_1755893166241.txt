@@ -1,0 +1,108 @@
+ailed: Invalid frame header
+t @ VM4971 eruda.js:2
+setupWebSocket @ VM5001 client:536
+(anonymous) @ VM5001 client:531Understand this error
+VM4971 eruda.js:2 [vite] server connection lost. Polling for restart...
+_app-93eb3240ec099ac8.js:16  GET https://dotdevproxy.worf.repl.co/__reachability net::ERR_CERT_AUTHORITY_INVALID
+(anonymous) @ _app-93eb3240ec099ac8.js:16
+(anonymous) @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+e @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+o @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+n @ main-53f59a8a7461d5f2.js:1
+c @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+e @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+o @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+n @ main-53f59a8a7461d5f2.js:1
+c @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+e @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ _app-93eb3240ec099ac8.js:1
+(anonymous) @ main-53f59a8a7461d5f2.js:1
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1
+Promise.then
+n @ main-53f59a8a7461d5f2.js:1
+u @ main-53f59a8a7461d5f2.js:1Understand this error
+VM5219 eruda.js:2 WebSocket connection to 'wss://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/?token=WCxwjkoeTatY' failed: Invalid frame header
+t @ VM5219 eruda.js:2
+setupWebSocket @ VM5249 client:536
+(anonymous) @ VM5249 client:531Understand this error
+VM5219 eruda.js:2 [vite] server connection lost. Polling for restart...
+VM5443 eruda.js:2 WebSocket connection to 'wss://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/?token=WCxwjkoeTatY' failed: Invalid frame header
+t @ VM5443 eruda.js:2
+setupWebSocket @ VM5473 client:536
+(anonymous) @ VM5473 client:531Understand this error
+VM5443 eruda.js:2 [vite] server connection lost. Polling for restart...
+VM5670 eruda.js:2 WebSocket connection to 'wss://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/?token=WCxwjkoeTatY' failed: Invalid frame header
+t @ VM5670 eruda.js:2
+setupWebSocket @ VM5700 client:536
+(anonymous) @ VM5700 client:531Understand this error
+VM5670 eruda.js:2 [vite] server connection lost. Polling for restart...
+VM5895 eruda.js:2 WebSocket connection to 'wss://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/?token=WCxwjkoeTatY' failed: Invalid frame header
+t @ VM5895 eruda.js:2
+setupWebSocket @ VM5924 client:536
+(anonymous) @ VM5924 client:531Understand this error
+VM5895 eruda.js:2 [vite] server connection lost. Polling for restart...
+VM6116 eruda.js:2 WebSocket connection to 'wss://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/?token=WCxwjkoeTatY' failed: Invalid frame header
+t @ VM6116 eruda.js:2
+setupWebSocket @ VM6146 client:536
+(anonymous) @ VM6146 client:531Understand this error
+VM6116 eruda.js:2 [vite] server connection lost. Polling for restart...
+VM6338 eruda.js:2 WebSocket connection to 'wss://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/?token=WCxwjkoeTatY' failed: Invalid frame header
+t @ VM6338 eruda.js:2
+setupWebSocket @ VM6367 client:536
+(anonymous) @ VM6367 client:531Understand this error
+VM6338 eruda.js:2 [vite] server connection lost. Polling for restart...
+VM6567 eruda.js:2 WebSocket connection to 'wss://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/?token=WCxwjkoeTatY' failed: Invalid frame header
+t @ VM6567 eruda.js:2
+setupWebSocket @ VM6597 client:536
+(anonymous) @ VM6597 client:531Understand this error
+VM6567 eruda.js:2 [vite] server connection lost. Polling for restart...
