@@ -65,7 +65,33 @@ export default function Customers() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const form = useForm();
+  const form = useForm({
+    defaultValues: {
+      companyName: "",
+      website: "",
+      industry: "",
+      companySize: "",
+      primaryContactName: "",
+      primaryContactTitle: "",
+      primaryContactEmail: "",
+      primaryContactPhone: "",
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "",
+      priority: "medium",
+      customerTier: "",
+      assignedSalesRep: "",
+      leadSource: "",
+      tags: "",
+      notes: "",
+      estimatedDealValue: "",
+      expectedCloseDate: "",
+      probability: "",
+    }
+  });
   const queryClient = useQueryClient();
 
   const updateCustomerMutation = useMutation({
@@ -619,7 +645,7 @@ export default function Customers() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Priority</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue />
