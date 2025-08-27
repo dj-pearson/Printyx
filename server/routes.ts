@@ -5566,7 +5566,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Clean up numeric fields - convert empty strings to null
         const cleanedData = { ...req.body };
-        const numericFields = ['msrp', 'newRepPrice', 'upgradeRepPrice', 'cost', 'weight', 'warrantyMonths'];
+        const numericFields = [
+          'msrp', 'newRepPrice', 'upgradeRepPrice', 'lexmarkRepPrice',
+          'cost', 'weight', 'warrantyMonths', 'standardCost', 'standardRepPrice',
+          'newCost', 'upgradeCost', 'minVolume', 'maxVolume', 'baseRate',
+          'cpc', 'cpcOverage'
+        ];
         
         numericFields.forEach(field => {
           if (cleanedData[field] === '' || cleanedData[field] === undefined) {
