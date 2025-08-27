@@ -54,8 +54,9 @@ export async function apiRequest(
   }
 
   // Attach CSRF only for state-changing methods
+  const safeMethod = method || "GET";
   const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(
-    method.toUpperCase()
+    safeMethod.toUpperCase()
   );
   if (isMutating && !("x-csrf-token" in requestHeaders)) {
     const token = await getCsrfToken();
@@ -63,7 +64,7 @@ export async function apiRequest(
   }
 
   let res = await fetch(url, {
-    method,
+    method: safeMethod,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
@@ -76,7 +77,7 @@ export async function apiRequest(
     if (token) {
       (requestHeaders as any)["x-csrf-token"] = token;
       res = await fetch(url, {
-        method,
+        method: safeMethod,
         headers: requestHeaders,
         body: body ? JSON.stringify(body) : undefined,
         credentials: "include",

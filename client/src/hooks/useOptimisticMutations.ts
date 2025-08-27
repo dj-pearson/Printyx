@@ -13,7 +13,7 @@ export function useOptimisticCustomerMutation() {
 
   return useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/business-records', { method: 'POST', body: JSON.stringify(data) });
+      return await apiRequest('/api/business-records', 'POST', data);
     },
     onMutate: async (newCustomer) => {
       // Cancel outgoing refetches
@@ -57,7 +57,7 @@ export function useOptimisticServiceTicketMutation() {
 
   return useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/service-tickets', { method: 'POST', body: JSON.stringify(data) });
+      return await apiRequest('/api/service-tickets', 'POST', data);
     },
     onMutate: async (newTicket) => {
       await queryClient.cancelQueries({ queryKey: ['/api/service-tickets'] });
@@ -97,10 +97,7 @@ export function useOptimisticTicketStatusUpdate() {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return await apiRequest(`/api/service-tickets/${id}`, { 
-        method: 'PATCH', 
-        body: JSON.stringify({ status }) 
-      });
+      return await apiRequest(`/api/service-tickets/${id}`, 'PATCH', { status });
     },
     onMutate: async ({ id, status }) => {
       await queryClient.cancelQueries({ queryKey: ['/api/service-tickets'] });
