@@ -47,6 +47,7 @@ import {
   masterProductAccessories,
   enabledProducts,
   masterProductAccessoryRelationships,
+  enhancedContacts,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -3384,6 +3385,33 @@ export class DatabaseStorage implements IStorage {
         and(eq(leadContacts.id, contactId), eq(leadContacts.tenantId, tenantId))
       );
     return result.rowCount > 0;
+  }
+
+  // Get contacts by company name from enhanced_contacts table
+  async getContactsByCompanyName(
+    companyName: string,
+    tenantId: string
+  ): Promise<any[]> {
+    return await db
+      .select({
+        id: enhancedContacts.id,
+        firstName: enhancedContacts.firstName,
+        lastName: enhancedContacts.lastName,
+        email: enhancedContacts.email,
+        workPhone: enhancedContacts.workPhone,
+        mobilePhone: enhancedContacts.mobilePhone,
+        title: enhancedContacts.title,
+        department: enhancedContacts.department,
+        isPrimary: enhancedContacts.isPrimaryContact,
+      })
+      .from(enhancedContacts)
+      .where(
+        and(
+          eq(enhancedContacts.companyName, companyName),
+          eq(enhancedContacts.tenantId, tenantId)
+        )
+      )
+      .orderBy(enhancedContacts.firstName, enhancedContacts.lastName);
   }
 
   // ============= ACCOUNTING OPERATIONS =============

@@ -4739,6 +4739,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // Get contacts for a specific business record
+  app.get(
+    "/api/business-records/:id/contacts",
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        const { id } = req.params;
+
+        if (!tenantId) {
+          return res.status(400).json({ message: "Tenant ID is required" });
+        }
+
+        // First, get the business record to get the company name
+        const businessRecord = await storage.getBusinessRecord(id, tenantId);
+        if (!businessRecord) {
+          return res.status(404).json({ message: "Business record not found" });
+        }
+
+        // Get contacts by company name from enhanced_contacts table
+        const contacts = await storage.getContactsByCompanyName(businessRecord.companyName, tenantId);
+        res.json(contacts || []);
+      } catch (error) {
+        console.error("Error fetching business record contacts:", error);
+        res.status(500).json({ message: "Failed to fetch contacts" });
+      }
+    }
+  );
+
   app.get(
     "/api/customers/:id",
     requireAuth,
