@@ -60,9 +60,17 @@ export default function ProductModels() {
     mutationFn: async ({ id, data }: { id: string; data: Partial<ProductModel> }) => {
       return await apiRequest(`/api/product-models/${id}`, 'PATCH', data);
     },
-    onSuccess: () => {
+    onSuccess: (updatedModel, { id }) => {
+      console.log('Update successful, updated model:', updatedModel);
+      // Invalidate and refetch the query cache
       queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
-      setSelectedModel(null);
+      queryClient.refetchQueries({ queryKey: ['/api/product-models'] });
+      
+      // Update the selectedModel with the fresh data to reflect changes in the form
+      if (selectedModel && selectedModel.id === id) {
+        setSelectedModel({ ...selectedModel, ...updatedModel });
+      }
+      
       toast({
         title: "Success",
         description: "Product model updated successfully",
