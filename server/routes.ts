@@ -5563,7 +5563,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
-        const model = await storage.updateProductModel(id, req.body, tenantId);
+
+        // Clean up numeric fields - convert empty strings to null
+        const cleanedData = { ...req.body };
+        const numericFields = ['msrp', 'newRepPrice', 'upgradeRepPrice', 'cost', 'weight', 'warrantyMonths'];
+        
+        numericFields.forEach(field => {
+          if (cleanedData[field] === '' || cleanedData[field] === undefined) {
+            cleanedData[field] = null;
+          } else if (cleanedData[field] && typeof cleanedData[field] === 'string') {
+            const parsed = parseFloat(cleanedData[field]);
+            cleanedData[field] = isNaN(parsed) ? null : parsed;
+          }
+        });
+
+        const model = await storage.updateProductModel(id, cleanedData, tenantId);
         if (!model) {
           return res.status(404).json({ message: "Product model not found" });
         }
