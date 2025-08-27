@@ -2629,6 +2629,19 @@ export class DatabaseStorage implements IStorage {
     return model;
   }
 
+  // Update master product model
+  async updateMasterProductModel(
+    id: string,
+    model: Partial<any>
+  ): Promise<any | undefined> {
+    const [result] = await db
+      .update(masterProductModels)
+      .set({ ...model, updatedAt: new Date() })
+      .where(eq(masterProductModels.id, id))
+      .returning();
+    return result;
+  }
+
   async getAllProductAccessories(
     tenantId: string
   ): Promise<ProductAccessory[]> {

@@ -5582,7 +5582,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
 
-        const model = await storage.updateProductModel(id, cleanedData, tenantId);
+        // First check if this is a master product model (displayed in ProductModels page)
+        const existingMasterModel = await storage.getMasterProductModel(id);
+        let model;
+        
+        if (existingMasterModel) {
+          // Update master product model
+          model = await storage.updateMasterProductModel(id, cleanedData);
+        } else {
+          // Update regular product model
+          model = await storage.updateProductModel(id, cleanedData, tenantId);
+        }
+        
         if (!model) {
           return res.status(404).json({ message: "Product model not found" });
         }
