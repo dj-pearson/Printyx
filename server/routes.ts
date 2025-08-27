@@ -5497,7 +5497,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!tenantId) {
           return res.status(400).json({ message: "Tenant ID is required" });
         }
-        const models = await storage.getProductModels(tenantId);
+        // Use master product models for product browsing (includes Production category)
+        const models = await storage.browseMasterProducts({});
         res.json(models);
       } catch (error) {
         console.error("Error fetching product models:", error);
