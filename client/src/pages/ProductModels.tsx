@@ -66,10 +66,8 @@ export default function ProductModels() {
       queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
       queryClient.refetchQueries({ queryKey: ['/api/product-models'] });
       
-      // Update the selectedModel with the fresh data to reflect changes in the form
-      if (selectedModel && selectedModel.id === id) {
-        setSelectedModel({ ...selectedModel, ...updatedModel });
-      }
+      // Close the edit dialog and clear selectedModel
+      setSelectedModel(null);
       
       toast({
         title: "Success",
