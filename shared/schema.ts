@@ -6087,6 +6087,15 @@ export const masterProductModels = pgTable(
     msrp: decimal("msrp", { precision: 10, scale: 2 }),
     dealerCost: decimal("dealer_cost", { precision: 10, scale: 2 }),
     marginPercentage: decimal("margin_percentage", { precision: 5, scale: 2 }),
+    
+    // Pricing tiers (matching productModels schema)
+    newActive: boolean("new_active").default(false),
+    newRepPrice: decimal("new_rep_price", { precision: 10, scale: 2 }),
+    upgradeActive: boolean("upgrade_active").default(false),
+    upgradeRepPrice: decimal("upgrade_rep_price", { precision: 10, scale: 2 }),
+    lexmarkActive: boolean("lexmark_active").default(false),
+    lexmarkRepPrice: decimal("lexmark_rep_price", { precision: 10, scale: 2 }),
+    
     status: varchar("status").notNull().default("active"),
     discontinuedAt: timestamp("discontinued_at"),
     version: varchar("version").notNull().default("1.0"),
