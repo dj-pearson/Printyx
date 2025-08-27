@@ -793,6 +793,13 @@ export class DatabaseStorage implements IStorage {
         msrp: masterProductModels.msrp,
         dealerCost: masterProductModels.dealerCost,
         marginPercentage: masterProductModels.marginPercentage,
+        // Add pricing tier fields
+        newActive: masterProductModels.newActive,
+        newRepPrice: masterProductModels.newRepPrice,
+        upgradeActive: masterProductModels.upgradeActive,
+        upgradeRepPrice: masterProductModels.upgradeRepPrice,
+        lexmarkActive: masterProductModels.lexmarkActive,
+        lexmarkRepPrice: masterProductModels.lexmarkRepPrice,
         status: masterProductModels.status,
         discontinuedAt: masterProductModels.discontinuedAt,
         version: masterProductModels.version,
