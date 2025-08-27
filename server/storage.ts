@@ -2462,7 +2462,21 @@ export class DatabaseStorage implements IStorage {
   // Product Management Implementation
   async getProductModels(tenantId: string): Promise<ProductModel[]> {
     return await db
-      .select()
+      .select({
+        id: productModels.id,
+        productCode: productModels.productCode,
+        productName: productModels.productName,
+        description: productModels.description,
+        category: productModels.category,
+        manufacturer: productModels.manufacturer,
+        msrp: productModels.msrp,
+        newRepPrice: productModels.newRepPrice,
+        upgradeRepPrice: productModels.upgradeRepPrice,
+        isActive: productModels.isActive,
+        tenantId: productModels.tenantId,
+        createdAt: productModels.createdAt,
+        updatedAt: productModels.updatedAt,
+      })
       .from(productModels)
       .where(eq(productModels.tenantId, tenantId))
       .orderBy(productModels.productName);
