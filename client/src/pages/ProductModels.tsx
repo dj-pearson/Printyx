@@ -374,7 +374,7 @@ export default function ProductModels() {
             <DialogHeader>
               <DialogTitle>Add New Product Model</DialogTitle>
               <DialogDescription>
-                Create a new copier or MFP model with pricing information
+                Create a new product model including copiers, production equipment, MFPs, and other devices with pricing information
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -424,8 +424,10 @@ export default function ProductModels() {
                           <SelectContent>
                             <SelectItem value="MFP">MFP</SelectItem>
                             <SelectItem value="Production Printer">Production Printer</SelectItem>
+                            <SelectItem value="Production">Production</SelectItem>
                             <SelectItem value="Wide Format">Wide Format</SelectItem>
                             <SelectItem value="Desktop">Desktop</SelectItem>
+                            <SelectItem value="Software">Software</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -450,6 +452,8 @@ export default function ProductModels() {
                             <SelectItem value="HP">HP</SelectItem>
                             <SelectItem value="Xerox">Xerox</SelectItem>
                             <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
+                            <SelectItem value="Duplo">Duplo</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -865,7 +869,10 @@ export default function ProductModels() {
                             <SelectItem value="MFP">MFP</SelectItem>
                             <SelectItem value="Printer">Printer</SelectItem>
                             <SelectItem value="Production Printer">Production Printer</SelectItem>
+                            <SelectItem value="Production">Production</SelectItem>
                             <SelectItem value="Wide Format">Wide Format</SelectItem>
+                            <SelectItem value="Desktop">Desktop</SelectItem>
+                            <SelectItem value="Software">Software</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -891,6 +898,8 @@ export default function ProductModels() {
                             <SelectItem value="Xerox">Xerox</SelectItem>
                             <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
                             <SelectItem value="Kyocera">Kyocera</SelectItem>
+                            <SelectItem value="Duplo">Duplo</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
