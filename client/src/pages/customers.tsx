@@ -95,10 +95,7 @@ export default function Customers() {
   const queryClient = useQueryClient();
 
   const updateCustomerMutation = useMutation({
-    mutationFn: (data: any) => apiRequest(`/api/customers/${data.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: any) => apiRequest(`/api/customers/${data.id}`, 'PATCH', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       setIsEditDialogOpen(false);
@@ -108,10 +105,7 @@ export default function Customers() {
   });
 
   const createCustomerMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/customers', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: any) => apiRequest('/api/customers', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       setIsEditDialogOpen(false);
