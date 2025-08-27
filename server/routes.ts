@@ -4791,6 +4791,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const validatedData = insertCustomerSchema.parse({
           ...req.body,
           tenantId: tenantId,
+          createdBy: req.user.id,
+          // Convert string fields to appropriate types
+          probability: req.body.probability ? parseFloat(req.body.probability) : null,
+          estimatedDealValue: req.body.estimatedDealValue ? parseFloat(req.body.estimatedDealValue) : null,
         });
 
         const customer = await storage.createCustomer(validatedData);
