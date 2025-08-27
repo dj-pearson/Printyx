@@ -4792,6 +4792,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...req.body,
           tenantId: tenantId,
           createdBy: req.user.id,
+          recordType: 'customer', // Ensure it's created as a customer, not a lead
           // Convert string fields to appropriate types
           probability: req.body.probability ? parseFloat(req.body.probability) : null,
           estimatedDealValue: req.body.estimatedDealValue ? parseFloat(req.body.estimatedDealValue) : null,
