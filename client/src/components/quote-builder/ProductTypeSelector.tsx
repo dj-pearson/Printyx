@@ -157,6 +157,7 @@ export default function ProductTypeSelector({
       }
       
       const response = await apiRequest(url, 'GET');
+      console.log('API Response for', url, ':', response);
       return response;
     },
     enabled: !!selectedTypeOption,
