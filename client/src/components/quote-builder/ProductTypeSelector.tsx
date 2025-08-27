@@ -169,11 +169,16 @@ export default function ProductTypeSelector({
 
   // Filter products
   const filteredProducts = products.filter((product) => {
-    if (!product.isActive) return false;
+    // Check for active status - handle both field names
+    const isActive = product.isActive !== false && product.status !== 'inactive';
+    if (!isActive) return false;
     
     const matchesSearch = 
       (product.productName && product.productName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.modelName && product.modelName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.displayName && product.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (product.productCode && product.productCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.modelCode && product.modelCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
