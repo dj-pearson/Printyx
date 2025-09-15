@@ -11,12 +11,15 @@ import {
   customerPayments,
   customerNotifications,
   customerPortalActivityLog,
+  customerMaintenanceAppointments,
+  technicianAvailabilitySlots,
   type CustomerPortalAccess,
   type CustomerServiceRequest,
   type CustomerMeterSubmission,
   type CustomerSupplyOrder,
   type CustomerPayment,
   type CustomerNotification,
+  type CustomerMaintenanceAppointment,
   type InsertCustomerPortalAccess,
   type InsertCustomerServiceRequest,
   type InsertCustomerMeterSubmission,
@@ -25,6 +28,10 @@ import {
   type InsertCustomerPayment,
   type InsertCustomerNotification,
   type InsertCustomerPortalActivityLog,
+  type InsertCustomerMaintenanceAppointment,
+  type MaintenanceSchedulingRequest,
+  type AvailabilityRequest,
+  type RescheduleAppointmentRequest,
   type UsageAnalytics,
   type UsageAnalyticsRequest,
   type EquipmentUsageSummary,
@@ -1575,5 +1582,277 @@ export class CustomerPortalService {
       })),
       dailyPattern: analytics.peakUsage.hourlyPeaks
     };
+  }
+
+  // =============================================================================
+  // MAINTENANCE SCHEDULING METHODS
+  // =============================================================================
+
+  /**
+   * Get available time slots for maintenance appointments
+   */
+  async getAvailableTimeSlots(
+    tenantId: string,
+    customerId: string,
+    request: AvailabilityRequest
+  ): Promise<{
+    date: string;
+    availableSlots: Array<{
+      time: string;
+      duration: number;
+      technicianId: string;
+      technicianName: string;
+      isAvailable: boolean;
+    }>;
+  }> {
+    try {
+      const requestDate = new Date(request.date);
+      
+      // Generate standard business hours time slots (8 AM - 5 PM)
+      const timeSlots = [];
+      for (let hour = 8; hour < 17; hour++) {
+        timeSlots.push({
+          time: `${hour.toString().padStart(2, '0')}:00`,
+          duration: request.duration,
+          technicianId: 'tech-1', // Mock technician for now
+          technicianName: 'Service Technician',
+          isAvailable: true
+        });
+      }
+
+      // For demo purposes, mark some random slots as unavailable
+      const unavailableIndices = [2, 5, 7]; // 10 AM, 1 PM, 3 PM
+      unavailableIndices.forEach(index => {
+        if (timeSlots[index]) {
+          timeSlots[index].isAvailable = false;
+        }
+      });
+
+      await this.logActivity(tenantId, customerId, null, 'availability_check', `Checked availability for ${request.date}`);
+
+      return {
+        date: request.date,
+        availableSlots: timeSlots
+      };
+    } catch (error) {
+      console.error('Error getting available time slots:', error);
+      throw new Error('Failed to get available time slots');
+    }
+  }
+
+  /**
+   * Book a maintenance appointment
+   */
+  async bookMaintenanceAppointment(
+    tenantId: string,
+    customerId: string,
+    portalUserId: string,
+    request: MaintenanceSchedulingRequest
+  ): Promise<CustomerMaintenanceAppointment> {
+    try {
+      const confirmationCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+      const appointmentDate = new Date(request.appointmentDate);
+
+      const [appointment] = await db.insert(customerMaintenanceAppointments)
+        .values({
+          tenantId,
+          customerId,
+          portalUserId,
+          equipmentId: request.equipmentId,
+          equipmentName: request.equipmentId ? `Equipment ${request.equipmentId}` : undefined,
+          maintenanceType: request.maintenanceType,
+          appointmentDate,
+          appointmentTime: request.appointmentTime,
+          duration: request.duration,
+          description: request.description,
+          specialInstructions: request.specialInstructions,
+          confirmationCode,
+          contactMethod: request.contactMethod,
+          customerPhone: request.customerPhone,
+          customerEmail: request.customerEmail,
+          assignedTechnicianId: 'tech-1', // Mock assignment for now
+          technicianName: 'Service Technician',
+          status: 'requested'
+        })
+        .returning();
+
+      await this.logActivity(tenantId, customerId, portalUserId, 'appointment_booked', 
+        `Booked ${request.maintenanceType} appointment for ${request.appointmentDate}`);
+
+      return appointment;
+    } catch (error) {
+      console.error('Error booking maintenance appointment:', error);
+      throw new Error('Failed to book maintenance appointment');
+    }
+  }
+
+  /**
+   * Get customer maintenance appointments
+   */
+  async getCustomerAppointments(
+    tenantId: string,
+    customerId: string,
+    options: {
+      status?: string;
+      includeCompleted?: boolean;
+      limit?: number;
+    } = {}
+  ): Promise<CustomerMaintenanceAppointment[]> {
+    try {
+      const conditions = [
+        eq(customerMaintenanceAppointments.tenantId, tenantId),
+        eq(customerMaintenanceAppointments.customerId, customerId)
+      ];
+
+      if (options.status) {
+        conditions.push(eq(customerMaintenanceAppointments.status, options.status as any));
+      }
+
+      if (!options.includeCompleted) {
+        conditions.push(sql`${customerMaintenanceAppointments.status} != 'completed'`);
+      }
+
+      let query = db.select()
+        .from(customerMaintenanceAppointments)
+        .where(and(...conditions))
+        .orderBy(desc(customerMaintenanceAppointments.appointmentDate));
+
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+
+      const appointments = await query;
+
+      await this.logActivity(tenantId, customerId, null, 'appointments_viewed', 'Viewed maintenance appointments');
+
+      return appointments;
+    } catch (error) {
+      console.error('Error getting customer appointments:', error);
+      throw new Error('Failed to get customer appointments');
+    }
+  }
+
+  /**
+   * Reschedule a maintenance appointment
+   */
+  async rescheduleAppointment(
+    tenantId: string,
+    customerId: string,
+    portalUserId: string,
+    request: RescheduleAppointmentRequest
+  ): Promise<CustomerMaintenanceAppointment> {
+    try {
+      // First check if appointment exists and belongs to customer
+      const [existingAppointment] = await db.select()
+        .from(customerMaintenanceAppointments)
+        .where(and(
+          eq(customerMaintenanceAppointments.id, request.appointmentId),
+          eq(customerMaintenanceAppointments.tenantId, tenantId),
+          eq(customerMaintenanceAppointments.customerId, customerId)
+        ));
+
+      if (!existingAppointment) {
+        throw new Error('Appointment not found');
+      }
+
+      if (existingAppointment.status === 'completed' || existingAppointment.status === 'cancelled') {
+        throw new Error('Cannot reschedule completed or cancelled appointment');
+      }
+
+      const newDate = new Date(request.newDate);
+      const rescheduleCount = (existingAppointment.rescheduleCount || 0) + 1;
+
+      const [updatedAppointment] = await db.update(customerMaintenanceAppointments)
+        .set({
+          originalDate: existingAppointment.originalDate || existingAppointment.appointmentDate,
+          appointmentDate: newDate,
+          appointmentTime: request.newTime,
+          rescheduleCount,
+          rescheduleReason: request.reason,
+          status: 'rescheduled',
+          updatedAt: new Date()
+        })
+        .where(eq(customerMaintenanceAppointments.id, request.appointmentId))
+        .returning();
+
+      await this.logActivity(tenantId, customerId, portalUserId, 'appointment_rescheduled', 
+        `Rescheduled appointment to ${request.newDate} at ${request.newTime}`);
+
+      return updatedAppointment;
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      throw new Error('Failed to reschedule appointment');
+    }
+  }
+
+  /**
+   * Cancel a maintenance appointment
+   */
+  async cancelAppointment(
+    tenantId: string,
+    customerId: string,
+    portalUserId: string,
+    appointmentId: string,
+    reason?: string
+  ): Promise<CustomerMaintenanceAppointment> {
+    try {
+      // First check if appointment exists and belongs to customer
+      const [existingAppointment] = await db.select()
+        .from(customerMaintenanceAppointments)
+        .where(and(
+          eq(customerMaintenanceAppointments.id, appointmentId),
+          eq(customerMaintenanceAppointments.tenantId, tenantId),
+          eq(customerMaintenanceAppointments.customerId, customerId)
+        ));
+
+      if (!existingAppointment) {
+        throw new Error('Appointment not found');
+      }
+
+      if (existingAppointment.status === 'completed') {
+        throw new Error('Cannot cancel completed appointment');
+      }
+
+      const [cancelledAppointment] = await db.update(customerMaintenanceAppointments)
+        .set({
+          status: 'cancelled',
+          rescheduleReason: reason || 'Cancelled by customer',
+          updatedAt: new Date()
+        })
+        .where(eq(customerMaintenanceAppointments.id, appointmentId))
+        .returning();
+
+      await this.logActivity(tenantId, customerId, portalUserId, 'appointment_cancelled', 
+        `Cancelled appointment: ${reason || 'No reason provided'}`);
+
+      return cancelledAppointment;
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      throw new Error('Failed to cancel appointment');
+    }
+  }
+
+  /**
+   * Get appointment details by ID
+   */
+  async getAppointmentById(
+    tenantId: string,
+    customerId: string,
+    appointmentId: string
+  ): Promise<CustomerMaintenanceAppointment | null> {
+    try {
+      const [appointment] = await db.select()
+        .from(customerMaintenanceAppointments)
+        .where(and(
+          eq(customerMaintenanceAppointments.id, appointmentId),
+          eq(customerMaintenanceAppointments.tenantId, tenantId),
+          eq(customerMaintenanceAppointments.customerId, customerId)
+        ));
+
+      return appointment || null;
+    } catch (error) {
+      console.error('Error getting appointment by ID:', error);
+      throw new Error('Failed to get appointment details');
+    }
   }
 }
