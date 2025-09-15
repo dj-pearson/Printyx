@@ -513,6 +513,137 @@ export const customerNotificationsRelations = relations(customerNotifications, (
   }),
 }));
 
+// Maintenance Scheduling Enums
+export const maintenanceTypeEnum = pgEnum('maintenance_type', [
+  'routine_maintenance',
+  'preventive_maintenance', 
+  'deep_cleaning',
+  'firmware_update',
+  'parts_replacement',
+  'calibration',
+  'inspection'
+]);
+
+export const appointmentStatusEnum = pgEnum('appointment_status', [
+  'requested',
+  'confirmed',
+  'in_progress',
+  'completed',
+  'cancelled',
+  'rescheduled'
+]);
+
+// Customer Maintenance Appointments
+export const customerMaintenanceAppointments = pgTable("customer_maintenance_appointments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: varchar("tenant_id").notNull(),
+  customerId: varchar("customer_id").notNull(),
+  portalUserId: varchar("portal_user_id").references(() => customerPortalAccess.id),
+  
+  // Equipment information
+  equipmentId: varchar("equipment_id"),
+  equipmentName: varchar("equipment_name"),
+  equipmentMake: varchar("equipment_make"),
+  equipmentModel: varchar("equipment_model"),
+  equipmentSerial: varchar("equipment_serial"),
+  equipmentLocation: varchar("equipment_location"),
+  
+  // Appointment details
+  maintenanceType: maintenanceTypeEnum("maintenance_type").notNull(),
+  appointmentDate: timestamp("appointment_date").notNull(),
+  appointmentTime: varchar("appointment_time").notNull(), // HH:MM format
+  duration: integer("duration").notNull().default(60), // minutes
+  timeZone: varchar("time_zone").default("America/New_York"),
+  
+  // Assignment
+  assignedTechnicianId: varchar("assigned_technician_id"),
+  technicianName: varchar("technician_name"),
+  
+  // Status and confirmation
+  status: appointmentStatusEnum("status").notNull().default('requested'),
+  confirmationCode: varchar("confirmation_code"),
+  confirmedAt: timestamp("confirmed_at"),
+  
+  // Service details
+  description: text("description"),
+  serviceNotes: text("service_notes"),
+  specialInstructions: text("special_instructions"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
+  
+  // Customer contact preferences
+  contactMethod: varchar("contact_method").default('email'), // email, phone, text
+  customerPhone: varchar("customer_phone"),
+  customerEmail: varchar("customer_email"),
+  
+  // Rescheduling tracking
+  originalDate: timestamp("original_date"),
+  rescheduleCount: integer("reschedule_count").default(0),
+  rescheduleReason: text("reschedule_reason"),
+  
+  // Integration with service requests
+  serviceRequestId: varchar("service_request_id"),
+  serviceTicketId: varchar("service_ticket_id"),
+  
+  // Notifications
+  reminderSent: boolean("reminder_sent").default(false),
+  reminderSentAt: timestamp("reminder_sent_at"),
+  confirmationSent: boolean("confirmation_sent").default(false),
+  
+  // Completion tracking
+  completedAt: timestamp("completed_at"),
+  customerSatisfactionRating: integer("customer_satisfaction_rating"), // 1-5
+  customerFeedback: text("customer_feedback"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Technician Availability Slots (for scheduling logic)
+export const technicianAvailabilitySlots = pgTable("technician_availability_slots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: varchar("tenant_id").notNull(),
+  technicianId: varchar("technician_id").notNull(),
+  technicianName: varchar("technician_name"),
+  
+  // Time slot
+  date: timestamp("date").notNull(),
+  startTime: varchar("start_time").notNull(), // HH:MM format
+  endTime: varchar("end_time").notNull(), // HH:MM format
+  duration: integer("duration").notNull(), // minutes
+  
+  // Availability status
+  isAvailable: boolean("is_available").default(true),
+  isBlocked: boolean("is_blocked").default(false),
+  blockReason: varchar("block_reason"),
+  
+  // Appointment assignment
+  appointmentId: varchar("appointment_id").references(() => customerMaintenanceAppointments.id),
+  appointmentType: varchar("appointment_type"), // maintenance, service, demo
+  
+  // Location and travel
+  serviceArea: varchar("service_area"),
+  maxTravelDistance: integer("max_travel_distance"), // miles
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Relations for maintenance scheduling
+export const customerMaintenanceAppointmentsRelations = relations(customerMaintenanceAppointments, ({ one }) => ({
+  portalUser: one(customerPortalAccess, {
+    fields: [customerMaintenanceAppointments.portalUserId],
+    references: [customerPortalAccess.id],
+  }),
+}));
+
+export const technicianAvailabilitySlotsRelations = relations(technicianAvailabilitySlots, ({ one }) => ({
+  appointment: one(customerMaintenanceAppointments, {
+    fields: [technicianAvailabilitySlots.appointmentId],
+    references: [customerMaintenanceAppointments.id],
+  }),
+}));
+
 // Zod schemas for validation
 export const insertCustomerPortalAccessSchema = createInsertSchema(customerPortalAccess);
 export const insertCustomerServiceRequestSchema = createInsertSchema(customerServiceRequests);
@@ -522,6 +653,44 @@ export const insertCustomerSupplyOrderItemSchema = createInsertSchema(customerSu
 export const insertCustomerPaymentSchema = createInsertSchema(customerPayments);
 export const insertCustomerNotificationSchema = createInsertSchema(customerNotifications);
 export const insertCustomerPortalActivityLogSchema = createInsertSchema(customerPortalActivityLog);
+export const insertCustomerMaintenanceAppointmentSchema = createInsertSchema(customerMaintenanceAppointments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertTechnicianAvailabilitySlotSchema = createInsertSchema(technicianAvailabilitySlots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Maintenance Scheduling Request Schemas
+export const maintenanceSchedulingRequestSchema = z.object({
+  equipmentId: z.string().optional(),
+  maintenanceType: z.enum(['routine_maintenance', 'preventive_maintenance', 'deep_cleaning', 'firmware_update', 'parts_replacement', 'calibration', 'inspection']),
+  appointmentDate: z.string(),
+  appointmentTime: z.string(),
+  duration: z.number().min(30).max(480).default(60),
+  description: z.string().optional(),
+  specialInstructions: z.string().optional(),
+  contactMethod: z.enum(['email', 'phone', 'text']).default('email'),
+  customerPhone: z.string().optional(),
+  customerEmail: z.string().optional(),
+});
+
+export const availabilityRequestSchema = z.object({
+  date: z.string(),
+  duration: z.number().min(30).max(480).default(60),
+  serviceArea: z.string().optional(),
+  equipmentId: z.string().optional(),
+});
+
+export const rescheduleAppointmentSchema = z.object({
+  appointmentId: z.string(),
+  newDate: z.string(),
+  newTime: z.string(),
+  reason: z.string().optional(),
+});
 
 // TypeScript types
 export type CustomerPortalAccess = typeof customerPortalAccess.$inferSelect;
@@ -540,6 +709,15 @@ export type CustomerNotification = typeof customerNotifications.$inferSelect;
 export type InsertCustomerNotification = typeof customerNotifications.$inferInsert;
 export type CustomerPortalActivityLog = typeof customerPortalActivityLog.$inferSelect;
 export type InsertCustomerPortalActivityLog = typeof customerPortalActivityLog.$inferInsert;
+export type CustomerMaintenanceAppointment = typeof customerMaintenanceAppointments.$inferSelect;
+export type InsertCustomerMaintenanceAppointment = typeof customerMaintenanceAppointments.$inferInsert;
+export type TechnicianAvailabilitySlot = typeof technicianAvailabilitySlots.$inferSelect;
+export type InsertTechnicianAvailabilitySlot = typeof technicianAvailabilitySlots.$inferInsert;
+
+// Maintenance Scheduling Request Types
+export type MaintenanceSchedulingRequest = z.infer<typeof maintenanceSchedulingRequestSchema>;
+export type AvailabilityRequest = z.infer<typeof availabilityRequestSchema>;
+export type RescheduleAppointmentRequest = z.infer<typeof rescheduleAppointmentSchema>;
 
 // Equipment Health Validation Schemas
 export const equipmentHealthStatusEnum = pgEnum('equipment_health_status', [

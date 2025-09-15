@@ -14,10 +14,16 @@ import {
   scheduleMaintenanceRequestSchema,
   usageAnalyticsRequestSchema,
   equipmentUsageDetailRequestSchema,
+  maintenanceSchedulingRequestSchema,
+  availabilityRequestSchema,
+  rescheduleAppointmentSchema,
   type EquipmentHealthRequest,
   type ScheduleMaintenanceRequest,
   type UsageAnalyticsRequest,
-  type EquipmentUsageDetailRequest
+  type EquipmentUsageDetailRequest,
+  type MaintenanceSchedulingRequest,
+  type AvailabilityRequest,
+  type RescheduleAppointmentRequest
 } from '../shared/customer-portal-schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { CustomerPortalService } from './services/customer-portal-service';
@@ -594,6 +600,299 @@ router.get('/equipment-usage/:equipmentId', requireCustomerPortalAuth, async (re
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch equipment usage details',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// =============================================================================
+// MAINTENANCE SCHEDULING ENDPOINTS
+// =============================================================================
+
+// Get available time slots for maintenance scheduling
+router.get('/maintenance-availability', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    const validation = availabilityRequestSchema.safeParse(req.query);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid request parameters',
+        errors: validation.error.errors 
+      });
+    }
+
+    const availabilityRequest = validation.data;
+    const availability = await customerPortalService.getAvailableTimeSlots(
+      tenantId,
+      customerId,
+      availabilityRequest
+    );
+
+    res.json({ 
+      success: true, 
+      data: availability 
+    });
+  } catch (error) {
+    console.error('Error fetching available time slots:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch available time slots',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Book a maintenance appointment
+router.post('/maintenance-appointments', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const portalUserId = req.customerPortalUser?.id;
+
+    if (!tenantId || !customerId || !portalUserId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant, customer, or portal user context' 
+      });
+    }
+
+    const validation = maintenanceSchedulingRequestSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid appointment data',
+        errors: validation.error.errors 
+      });
+    }
+
+    const appointmentRequest = validation.data;
+    const appointment = await customerPortalService.bookMaintenanceAppointment(
+      tenantId,
+      customerId,
+      portalUserId,
+      appointmentRequest
+    );
+
+    res.status(201).json({ 
+      success: true, 
+      data: appointment,
+      message: 'Maintenance appointment booked successfully'
+    });
+  } catch (error) {
+    console.error('Error booking maintenance appointment:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to book maintenance appointment',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get customer maintenance appointments
+router.get('/maintenance-appointments', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    const { status, includeCompleted, limit } = req.query;
+    const options = {
+      status: status as string,
+      includeCompleted: includeCompleted === 'true',
+      limit: limit ? parseInt(limit as string) : undefined
+    };
+
+    const appointments = await customerPortalService.getCustomerAppointments(
+      tenantId,
+      customerId,
+      options
+    );
+
+    res.json({ 
+      success: true, 
+      data: appointments 
+    });
+  } catch (error) {
+    console.error('Error fetching customer appointments:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch customer appointments',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get specific appointment details
+router.get('/maintenance-appointments/:appointmentId', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const { appointmentId } = req.params;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    const appointment = await customerPortalService.getAppointmentById(
+      tenantId,
+      customerId,
+      appointmentId
+    );
+
+    if (!appointment) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Appointment not found' 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      data: appointment 
+    });
+  } catch (error) {
+    console.error('Error fetching appointment details:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch appointment details',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Reschedule a maintenance appointment
+router.put('/maintenance-appointments/:appointmentId/reschedule', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const portalUserId = req.customerPortalUser?.id;
+    const { appointmentId } = req.params;
+
+    if (!tenantId || !customerId || !portalUserId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant, customer, or portal user context' 
+      });
+    }
+
+    const validation = rescheduleAppointmentSchema.safeParse({
+      appointmentId,
+      ...req.body
+    });
+    if (!validation.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid reschedule data',
+        errors: validation.error.errors 
+      });
+    }
+
+    const rescheduleRequest = validation.data;
+    const updatedAppointment = await customerPortalService.rescheduleAppointment(
+      tenantId,
+      customerId,
+      portalUserId,
+      rescheduleRequest
+    );
+
+    res.json({ 
+      success: true, 
+      data: updatedAppointment,
+      message: 'Appointment rescheduled successfully'
+    });
+  } catch (error) {
+    console.error('Error rescheduling appointment:', error);
+    
+    if (error.message === 'Appointment not found') {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Appointment not found' 
+      });
+    }
+    
+    if (error.message.includes('Cannot reschedule')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: error.message 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to reschedule appointment',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Cancel a maintenance appointment
+router.delete('/maintenance-appointments/:appointmentId', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const portalUserId = req.customerPortalUser?.id;
+    const { appointmentId } = req.params;
+    const { reason } = req.body;
+
+    if (!tenantId || !customerId || !portalUserId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant, customer, or portal user context' 
+      });
+    }
+
+    const cancelledAppointment = await customerPortalService.cancelAppointment(
+      tenantId,
+      customerId,
+      portalUserId,
+      appointmentId,
+      reason
+    );
+
+    res.json({ 
+      success: true, 
+      data: cancelledAppointment,
+      message: 'Appointment cancelled successfully'
+    });
+  } catch (error) {
+    console.error('Error cancelling appointment:', error);
+    
+    if (error.message === 'Appointment not found') {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Appointment not found' 
+      });
+    }
+    
+    if (error.message.includes('Cannot cancel')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: error.message 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to cancel appointment',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
