@@ -636,3 +636,160 @@ export type EquipmentHealth = z.infer<typeof equipmentHealthSchema>;
 export type EquipmentHealthRequest = z.infer<typeof equipmentHealthRequestSchema>;
 export type EquipmentHealthResponse = z.infer<typeof equipmentHealthResponseSchema>;
 export type ScheduleMaintenanceRequest = z.infer<typeof scheduleMaintenanceRequestSchema>;
+
+// =====================================================================
+// USAGE ANALYTICS SCHEMAS
+// =====================================================================
+
+// Usage Analytics Data Types
+export const usageTypeEnum = pgEnum('usage_type', [
+  'total',
+  'black_white',
+  'color', 
+  'large_format',
+  'scan',
+  'fax'
+]);
+
+export const periodTypeEnum = pgEnum('period_type', [
+  'daily',
+  'weekly', 
+  'monthly',
+  'quarterly',
+  'yearly'
+]);
+
+// Usage trend data point
+export const usageTrendSchema = z.object({
+  date: z.string(),
+  period: z.string(),
+  totalImpressions: z.number().min(0),
+  blackWhiteImpressions: z.number().min(0),
+  colorImpressions: z.number().min(0),
+  largeFormatImpressions: z.number().min(0),
+  scanImpressions: z.number().min(0),
+  faxImpressions: z.number().min(0),
+  costEstimate: z.number().min(0),
+  efficiency: z.number().min(0)
+});
+
+// Equipment usage summary
+export const equipmentUsageSummarySchema = z.object({
+  equipmentId: z.string().uuid(),
+  equipmentName: z.string(),
+  serialNumber: z.string(),
+  totalImpressions: z.number().min(0),
+  monthlyAverage: z.number().min(0),
+  utilizationRate: z.number().min(0).max(100),
+  costPerPage: z.number().min(0),
+  efficiency: z.number().min(0).max(100),
+  lastReading: z.string(),
+  trendDirection: z.enum(['up', 'down', 'stable'])
+});
+
+// Usage analytics metrics
+export const usageAnalyticsMetricsSchema = z.object({
+  totalVolume: z.number().min(0),
+  averageDaily: z.number().min(0),
+  averageMonthly: z.number().min(0),
+  colorRatio: z.number().min(0).max(100),
+  peakDay: z.string(),
+  peakVolume: z.number().min(0),
+  totalCost: z.number().min(0),
+  costPerPage: z.number().min(0),
+  efficiencyScore: z.number().min(0).max(100),
+  carbonFootprint: z.number().min(0),
+  paperSaved: z.number().min(0)
+});
+
+// Cost breakdown
+export const costBreakdownSchema = z.object({
+  blackWhiteCost: z.number().min(0),
+  colorCost: z.number().min(0),
+  largeFormatCost: z.number().min(0),
+  scanCost: z.number().min(0),
+  maintenanceCost: z.number().min(0),
+  supplyCost: z.number().min(0),
+  totalCost: z.number().min(0)
+});
+
+// Peak usage analysis
+export const peakUsageAnalysisSchema = z.object({
+  hourlyPeaks: z.array(z.object({
+    hour: z.number().min(0).max(23),
+    averageVolume: z.number().min(0)
+  })),
+  dailyPeaks: z.array(z.object({
+    dayOfWeek: z.number().min(0).max(6),
+    averageVolume: z.number().min(0)
+  })),
+  monthlyPeaks: z.array(z.object({
+    month: z.number().min(1).max(12),
+    averageVolume: z.number().min(0)
+  }))
+});
+
+// Usage comparison data
+export const usageComparisonSchema = z.object({
+  current: usageAnalyticsMetricsSchema,
+  previous: usageAnalyticsMetricsSchema,
+  industry: usageAnalyticsMetricsSchema.optional(),
+  percentageChange: z.number(),
+  trendDirection: z.enum(['up', 'down', 'stable'])
+});
+
+// Main usage analytics schema
+export const usageAnalyticsSchema = z.object({
+  timeRange: z.string(),
+  lastUpdated: z.string(),
+  metrics: usageAnalyticsMetricsSchema,
+  trends: z.array(usageTrendSchema),
+  equipmentUsage: z.array(equipmentUsageSummarySchema),
+  costBreakdown: costBreakdownSchema,
+  peakUsage: peakUsageAnalysisSchema,
+  comparison: usageComparisonSchema,
+  recommendations: z.array(z.object({
+    type: z.enum(['cost_saving', 'efficiency', 'environmental', 'maintenance']),
+    title: z.string(),
+    description: z.string(),
+    impact: z.enum(['low', 'medium', 'high']),
+    effort: z.enum(['low', 'medium', 'high'])
+  }))
+});
+
+// Usage Analytics API Request/Response Schemas
+export const usageAnalyticsRequestSchema = z.object({
+  timeRange: z.enum(['7d', '30d', '90d', '6m', '1y']).default('30d'),
+  equipmentIds: z.array(z.string().uuid()).optional(),
+  includeComparison: z.boolean().default(true),
+  includeCosts: z.boolean().default(true),
+  includeRecommendations: z.boolean().default(true),
+  periodType: z.enum(['daily', 'weekly', 'monthly']).default('daily')
+});
+
+export const usageAnalyticsResponseSchema = z.object({
+  success: z.boolean(),
+  data: usageAnalyticsSchema,
+  meta: z.object({
+    totalReadings: z.number(),
+    timeRange: z.string(),
+    lastUpdated: z.string(),
+    equipmentCount: z.number()
+  })
+});
+
+// Equipment usage detail request
+export const equipmentUsageDetailRequestSchema = z.object({
+  equipmentId: z.string().uuid(),
+  timeRange: z.enum(['7d', '30d', '90d', '6m', '1y']).default('30d'),
+  includeHourlyBreakdown: z.boolean().default(false),
+  includeCostAnalysis: z.boolean().default(true)
+});
+
+export type UsageTrend = z.infer<typeof usageTrendSchema>;
+export type EquipmentUsageSummary = z.infer<typeof equipmentUsageSummarySchema>;
+export type UsageAnalyticsMetrics = z.infer<typeof usageAnalyticsMetricsSchema>;
+export type UsageAnalytics = z.infer<typeof usageAnalyticsSchema>;
+export type UsageAnalyticsRequest = z.infer<typeof usageAnalyticsRequestSchema>;
+export type UsageAnalyticsResponse = z.infer<typeof usageAnalyticsResponseSchema>;
+export type EquipmentUsageDetailRequest = z.infer<typeof equipmentUsageDetailRequestSchema>;

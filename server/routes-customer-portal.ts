@@ -12,8 +12,12 @@ import {
 import { 
   equipmentHealthRequestSchema,
   scheduleMaintenanceRequestSchema,
+  usageAnalyticsRequestSchema,
+  equipmentUsageDetailRequestSchema,
   type EquipmentHealthRequest,
-  type ScheduleMaintenanceRequest 
+  type ScheduleMaintenanceRequest,
+  type UsageAnalyticsRequest,
+  type EquipmentUsageDetailRequest
 } from '../shared/customer-portal-schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { CustomerPortalService } from './services/customer-portal-service';
@@ -444,6 +448,152 @@ router.get('/equipment-analytics/:equipmentId', requireCustomerPortalAuth, async
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch equipment usage analytics',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// =====================================================================
+// USAGE ANALYTICS ENDPOINTS
+// =====================================================================
+
+// Get comprehensive usage analytics - NEW ENDPOINT for analytics dashboard
+router.get('/usage-analytics', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    // Validate and parse query parameters
+    const validationResult = usageAnalyticsRequestSchema.safeParse(req.query);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid request parameters',
+        errors: validationResult.error.errors
+      });
+    }
+
+    const options: UsageAnalyticsRequest = validationResult.data;
+    
+    // Use authenticated user's context - NO client-provided IDs
+    const tenantId = req.user.tenantId;
+    const customerId = req.user.customerId || req.customerPortalUser?.customerId;
+    
+    if (!tenantId || !customerId) {
+      return res.status(403).json({ 
+        success: false,
+        message: "Access denied: missing tenant or customer context" 
+      });
+    }
+
+    // Verify customer access 
+    await customerPortalService.verifyCustomerAccess(tenantId, customerId);
+
+    const analytics = await customerPortalService.getUsageAnalytics(
+      tenantId,
+      customerId,
+      options
+    );
+
+    const meta = {
+      totalReadings: 0, // Will be calculated in service
+      timeRange: options.timeRange,
+      lastUpdated: analytics.lastUpdated,
+      equipmentCount: analytics.equipmentUsage.length
+    };
+
+    res.json({ 
+      success: true, 
+      data: analytics,
+      meta 
+    });
+  } catch (error) {
+    console.error('Error fetching usage analytics:', error);
+    
+    if (error.message === 'CUSTOMER_ACCESS_DENIED') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied: customer does not belong to your account',
+        code: 'CUSTOMER_ACCESS_DENIED'
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch usage analytics',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get detailed equipment usage analytics
+router.get('/equipment-usage/:equipmentId', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const equipmentId = req.params.equipmentId;
+    
+    // Validate and parse query parameters
+    const validationResult = equipmentUsageDetailRequestSchema.safeParse(req.query);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid request parameters',
+        errors: validationResult.error.errors
+      });
+    }
+
+    const options: EquipmentUsageDetailRequest = validationResult.data;
+    
+    if (!equipmentId) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Equipment ID is required" 
+      });
+    }
+
+    // Use authenticated user's context - NO client-provided IDs
+    const tenantId = req.user.tenantId;
+    const customerId = req.user.customerId || req.customerPortalUser?.customerId;
+    
+    if (!tenantId || !customerId) {
+      return res.status(403).json({ 
+        success: false,
+        message: "Access denied: missing tenant or customer context" 
+      });
+    }
+
+    // Verify equipment belongs to customer (prevent IDOR)
+    await customerPortalService.verifyEquipmentOwnership(tenantId, customerId, equipmentId);
+
+    // Get detailed analytics for specific equipment
+    const analytics = await customerPortalService.getUsageAnalytics(
+      tenantId,
+      customerId,
+      {
+        timeRange: options.timeRange,
+        equipmentIds: [equipmentId],
+        includeComparison: options.includeCostAnalysis,
+        includeCosts: options.includeCostAnalysis,
+        includeRecommendations: true,
+        periodType: options.includeHourlyBreakdown ? 'daily' : 'weekly'
+      }
+    );
+
+    res.json({ 
+      success: true, 
+      data: analytics,
+      equipment: analytics.equipmentUsage.find(eq => eq.equipmentId === equipmentId)
+    });
+  } catch (error) {
+    console.error('Error fetching equipment usage details:', error);
+    
+    if (error.message === 'EQUIPMENT_ACCESS_DENIED') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied: equipment does not belong to your account',
+        code: 'EQUIPMENT_ACCESS_DENIED'
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch equipment usage details',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
