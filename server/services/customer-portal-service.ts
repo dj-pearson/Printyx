@@ -629,4 +629,372 @@ export class CustomerPortalService {
       }
     ];
   }
+
+  /**
+   * Verify customer access - ensure customer belongs to tenant
+   */
+  async verifyCustomerAccess(tenantId: string, customerId: string): Promise<void> {
+    try {
+      const [customer] = await db.select()
+        .from(customerPortalAccess)
+        .where(and(
+          eq(customerPortalAccess.tenantId, tenantId),
+          eq(customerPortalAccess.customerId, customerId),
+          eq(customerPortalAccess.status, 'active')
+        ));
+
+      if (!customer) {
+        throw new Error('CUSTOMER_ACCESS_DENIED');
+      }
+    } catch (error) {
+      if (error.message === 'CUSTOMER_ACCESS_DENIED') {
+        throw error;
+      }
+      console.error('Error verifying customer access:', error);
+      throw new Error('CUSTOMER_ACCESS_DENIED');
+    }
+  }
+
+  /**
+   * Verify equipment ownership - ensure equipment belongs to customer
+   */
+  async verifyEquipmentOwnership(tenantId: string, customerId: string, equipmentId: string): Promise<void> {
+    try {
+      // In a real implementation, this would check against your equipment/contracts tables
+      // For now, we'll check if the equipment ID follows expected patterns and belongs to the customer
+      
+      // First verify customer access
+      await this.verifyCustomerAccess(tenantId, customerId);
+      
+      // Mock equipment ownership verification - in reality this would query equipment tables
+      // that have foreign keys to customers and tenants
+      const mockEquipmentOwnership = {
+        'eq-001': ['demo-customer-001', 'customer-001'],
+        'eq-002': ['demo-customer-001', 'customer-001'],
+        'eq-003': ['demo-customer-002', 'customer-002']
+      };
+
+      const allowedCustomers = mockEquipmentOwnership[equipmentId];
+      if (!allowedCustomers || !allowedCustomers.includes(customerId)) {
+        throw new Error('EQUIPMENT_ACCESS_DENIED');
+      }
+    } catch (error) {
+      if (error.message === 'EQUIPMENT_ACCESS_DENIED' || error.message === 'CUSTOMER_ACCESS_DENIED') {
+        throw error;
+      }
+      console.error('Error verifying equipment ownership:', error);
+      throw new Error('EQUIPMENT_ACCESS_DENIED');
+    }
+  }
+
+  /**
+   * Get equipment health data with comprehensive monitoring
+   */
+  async getEquipmentHealthData(
+    tenantId: string, 
+    customerId: string, 
+    timeRange: string = '30d',
+    options: {
+      equipmentIds?: string[];
+      includeAlerts?: boolean;
+      includeMetrics?: boolean;
+    } = {}
+  ): Promise<any[]> {
+    // In a real implementation, this would fetch from IoT sensors, equipment APIs, 
+    // service history, and usage analytics
+    // For now, return comprehensive mock data
+    
+    const mockHealthData = [
+      {
+        id: 'eq-001',
+        equipmentName: 'Canon C3530i - Reception',
+        make: 'Canon',
+        model: 'imageRUNNER ADVANCE C3530i',
+        serialNumber: 'CAN123456789',
+        location: 'Reception Desk',
+        overallHealthScore: 92,
+        status: 'excellent',
+        lastServiceDate: '2024-11-15',
+        nextServiceDue: '2025-02-15',
+        totalPrintCount: 145680,
+        monthlyAverage: 4500,
+        predictedMaintenanceDate: '2025-01-28',
+        healthMetrics: {
+          tonerLevels: [
+            { color: 'black', level: 78, status: 'good' },
+            { color: 'cyan', level: 45, status: 'warning' },
+            { color: 'magenta', level: 82, status: 'good' },
+            { color: 'yellow', level: 67, status: 'good' }
+          ],
+          paperLevels: 85,
+          drumLifeRemaining: 73,
+          fuserLifeRemaining: 89,
+          temperature: 72,
+          humidity: 45,
+          errorCount: 2,
+          jamRate: 0.8
+        },
+        recentActivity: [
+          { date: '2024-12-01', type: 'print', count: 156 },
+          { date: '2024-12-02', type: 'copy', count: 89 },
+          { date: '2024-12-03', type: 'scan', count: 45 },
+          { date: '2024-12-04', type: 'print', count: 178 },
+          { date: '2024-12-05', type: 'copy', count: 92 }
+        ],
+        alerts: [
+          {
+            id: 'alert-001',
+            type: 'warning',
+            message: 'Cyan toner level is low (45%)',
+            timestamp: '2024-12-05T10:30:00Z',
+            resolved: false
+          }
+        ],
+        connectionStatus: {
+          isOnline: true,
+          lastSeen: '2024-12-05T11:45:00Z',
+          signalStrength: 95,
+          ipAddress: '192.168.1.101'
+        }
+      },
+      {
+        id: 'eq-002',
+        equipmentName: 'HP LaserJet Pro - Accounting',
+        make: 'HP',
+        model: 'LaserJet Pro MFP M428fdw',
+        serialNumber: 'HP987654321',
+        location: 'Accounting Department',
+        overallHealthScore: 76,
+        status: 'good',
+        lastServiceDate: '2024-10-20',
+        nextServiceDue: '2025-01-20',
+        totalPrintCount: 98456,
+        monthlyAverage: 3200,
+        predictedMaintenanceDate: '2025-01-15',
+        healthMetrics: {
+          tonerLevels: [
+            { color: 'black', level: 23, status: 'critical' }
+          ],
+          paperLevels: 92,
+          drumLifeRemaining: 45,
+          fuserLifeRemaining: 67,
+          temperature: 75,
+          humidity: 42,
+          errorCount: 5,
+          jamRate: 1.2
+        },
+        recentActivity: [
+          { date: '2024-12-01', type: 'print', count: 98 },
+          { date: '2024-12-02', type: 'scan', count: 34 },
+          { date: '2024-12-03', type: 'print', count: 112 },
+          { date: '2024-12-04', type: 'copy', count: 23 },
+          { date: '2024-12-05', type: 'print', count: 145 }
+        ],
+        alerts: [
+          {
+            id: 'alert-002',
+            type: 'critical',
+            message: 'Black toner level critically low (23%) - order replacement immediately',
+            timestamp: '2024-12-05T09:15:00Z',
+            resolved: false
+          },
+          {
+            id: 'alert-003',
+            type: 'warning',
+            message: 'Drum life at 45% - consider scheduling replacement',
+            timestamp: '2024-12-04T14:20:00Z',
+            resolved: false
+          }
+        ],
+        connectionStatus: {
+          isOnline: true,
+          lastSeen: '2024-12-05T11:42:00Z',
+          signalStrength: 87,
+          ipAddress: '192.168.1.102'
+        }
+      },
+      {
+        id: 'eq-003',
+        equipmentName: 'Xerox WorkCentre - Conference Room',
+        make: 'Xerox',
+        model: 'WorkCentre 6515',
+        serialNumber: 'XER456789123',
+        location: 'Conference Room A',
+        overallHealthScore: 58,
+        status: 'warning',
+        lastServiceDate: '2024-09-10',
+        nextServiceDue: '2024-12-10',
+        totalPrintCount: 67834,
+        monthlyAverage: 2100,
+        predictedMaintenanceDate: '2024-12-08',
+        healthMetrics: {
+          tonerLevels: [
+            { color: 'black', level: 67, status: 'good' },
+            { color: 'cyan', level: 12, status: 'critical' },
+            { color: 'magenta', level: 34, status: 'warning' },
+            { color: 'yellow', level: 8, status: 'critical' }
+          ],
+          paperLevels: 15,
+          drumLifeRemaining: 23,
+          fuserLifeRemaining: 34,
+          temperature: 78,
+          humidity: 48,
+          errorCount: 12,
+          jamRate: 3.4
+        },
+        recentActivity: [
+          { date: '2024-12-01', type: 'print', count: 67 },
+          { date: '2024-12-02', type: 'copy', count: 45 },
+          { date: '2024-12-03', type: 'scan', count: 23 },
+          { date: '2024-12-04', type: 'print', count: 89 },
+          { date: '2024-12-05', type: 'copy', count: 56 }
+        ],
+        alerts: [
+          {
+            id: 'alert-004',
+            type: 'critical',
+            message: 'Multiple toner cartridges critically low - service required',
+            timestamp: '2024-12-05T08:00:00Z',
+            resolved: false
+          },
+          {
+            id: 'alert-005',
+            type: 'critical',
+            message: 'Paper tray nearly empty (15%)',
+            timestamp: '2024-12-05T10:45:00Z',
+            resolved: false
+          },
+          {
+            id: 'alert-006',
+            type: 'warning',
+            message: 'Service overdue - scheduled maintenance required',
+            timestamp: '2024-12-05T07:30:00Z',
+            resolved: false
+          }
+        ],
+        connectionStatus: {
+          isOnline: true,
+          lastSeen: '2024-12-05T11:30:00Z',
+          signalStrength: 72,
+          ipAddress: '192.168.1.103'
+        }
+      }
+    ];
+
+    // Apply filters based on options
+    let filteredData = mockHealthData;
+    
+    if (options.equipmentIds && options.equipmentIds.length > 0) {
+      filteredData = filteredData.filter(equipment => 
+        options.equipmentIds!.includes(equipment.id)
+      );
+    }
+    
+    if (options.includeAlerts === false) {
+      filteredData = filteredData.map(equipment => ({
+        ...equipment,
+        alerts: []
+      }));
+    }
+    
+    if (options.includeMetrics === false) {
+      filteredData = filteredData.map(equipment => ({
+        ...equipment,
+        healthMetrics: null
+      }));
+    }
+    
+    // Filter data based on time range if needed
+    // In a real implementation, you would query actual data based on timeRange
+    return filteredData;
+  }
+
+  /**
+   * Schedule equipment maintenance
+   */
+  async scheduleEquipmentMaintenance(
+    tenantId: string,
+    customerId: string,
+    customerPortalUserId: string,
+    equipmentId: string,
+    preferredDate: string,
+    maintenanceType: string,
+    notes?: string,
+    urgency: string = 'medium'
+  ): Promise<any> {
+    const maintenanceNumber = await this.generateRequestNumber(tenantId, 'MAINT');
+
+    // In a real implementation, this would create a maintenance request
+    // For now, return mock response
+    const maintenanceRequest = {
+      id: `maint-${Date.now()}`,
+      maintenanceNumber,
+      equipmentId,
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      maintenanceType,
+      preferredDate,
+      notes,
+      status: 'scheduled',
+      createdAt: new Date().toISOString()
+    };
+
+    // Create notification
+    await this.createNotification({
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      type: 'service_update',
+      title: 'Maintenance Scheduled',
+      message: `Maintenance request #${maintenanceNumber} has been scheduled for ${new Date(preferredDate).toLocaleDateString()}.`,
+    });
+
+    await this.logActivity(tenantId, customerId, customerPortalUserId, 'schedule_maintenance', 
+      `Scheduled maintenance #${maintenanceNumber}`, 'maintenance', maintenanceRequest.id);
+
+    return maintenanceRequest;
+  }
+
+  /**
+   * Get equipment usage analytics
+   */
+  async getEquipmentUsageAnalytics(
+    tenantId: string,
+    customerId: string,
+    equipmentId: string,
+    timeRange: string = '30d'
+  ): Promise<any> {
+    // In a real implementation, this would aggregate usage data from equipment APIs
+    // For now, return mock analytics data
+    return {
+      totalUsage: 12450,
+      averageDaily: 415,
+      peakUsageDay: 'Tuesday',
+      mostUsedFunction: 'print',
+      usageByFunction: {
+        print: 68,
+        copy: 18,
+        scan: 12,
+        fax: 2
+      },
+      monthlyTrend: [
+        { month: 'Oct', usage: 11200 },
+        { month: 'Nov', usage: 12800 },
+        { month: 'Dec', usage: 12450 }
+      ],
+      dailyPattern: [
+        { hour: 8, usage: 45 },
+        { hour: 9, usage: 120 },
+        { hour: 10, usage: 98 },
+        { hour: 11, usage: 87 },
+        { hour: 12, usage: 34 },
+        { hour: 13, usage: 23 },
+        { hour: 14, usage: 67 },
+        { hour: 15, usage: 89 },
+        { hour: 16, usage: 76 },
+        { hour: 17, usage: 45 }
+      ]
+    };
+  }
 }

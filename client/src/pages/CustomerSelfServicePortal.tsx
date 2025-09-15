@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Plus, Search, Filter, Bell, Clock, CheckCircle, AlertCircle,
   Package, Wrench, HelpCircle, FileText, User, Settings,
-  Monitor, Printer, Calendar, Star, Phone, Mail, MessageSquare
+  Monitor, Printer, Calendar, Star, Phone, Mail, MessageSquare, Heart
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
+import { EquipmentHealthDashboard } from "@/components/customer-portal/EquipmentHealthDashboard";
+import { useAuth } from "@/hooks/useAuth";
 
 // Types
 type ServiceRequest = {
@@ -119,6 +121,27 @@ export default function CustomerSelfServicePortal() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+
+  // Redirect to login if not authenticated
+  if (!authLoading && !isAuthenticated) {
+    window.location.href = '/login';
+    return null;
+  }
+
+  // Show loading while authentication is being checked
+  if (authLoading || !user) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   // Fetch service requests
   const { data: serviceRequests = [], isLoading: serviceRequestsLoading } = useQuery<ServiceRequest[]>({
@@ -470,10 +493,11 @@ export default function CustomerSelfServicePortal() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1 sm:gap-0">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
           <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Dashboard</TabsTrigger>
           <TabsTrigger value="service-requests" className="text-xs sm:text-sm px-2 py-2">Requests</TabsTrigger>
           <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">Equipment</TabsTrigger>
+          <TabsTrigger value="equipment-health" className="text-xs sm:text-sm px-2 py-2">Health</TabsTrigger>
           <TabsTrigger value="knowledge-base" className="text-xs sm:text-sm px-2 py-2">Help</TabsTrigger>
           <TabsTrigger value="profile" className="text-xs sm:text-sm px-2 py-2">Profile</TabsTrigger>
         </TabsList>
@@ -707,6 +731,10 @@ export default function CustomerSelfServicePortal() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="equipment-health" className="space-y-6">
+          <EquipmentHealthDashboard />
         </TabsContent>
 
         <TabsContent value="knowledge-base" className="space-y-6">

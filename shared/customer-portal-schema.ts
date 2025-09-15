@@ -540,3 +540,99 @@ export type CustomerNotification = typeof customerNotifications.$inferSelect;
 export type InsertCustomerNotification = typeof customerNotifications.$inferInsert;
 export type CustomerPortalActivityLog = typeof customerPortalActivityLog.$inferSelect;
 export type InsertCustomerPortalActivityLog = typeof customerPortalActivityLog.$inferInsert;
+
+// Equipment Health Validation Schemas
+export const equipmentHealthStatusEnum = pgEnum('equipment_health_status', [
+  'excellent',
+  'good', 
+  'warning',
+  'critical',
+  'offline'
+]);
+
+export const healthMetricSchema = z.object({
+  tonerLevels: z.array(z.object({
+    color: z.string(),
+    level: z.number().min(0).max(100),
+    status: z.string()
+  })),
+  paperLevels: z.number().min(0).max(100),
+  drumLifeRemaining: z.number().min(0).max(100),
+  fuserLifeRemaining: z.number().min(0).max(100),
+  temperature: z.number(),
+  humidity: z.number().min(0).max(100),
+  errorCount: z.number().min(0),
+  jamRate: z.number().min(0)
+});
+
+export const recentActivitySchema = z.object({
+  date: z.string(),
+  type: z.enum(['print', 'scan', 'copy', 'fax']),
+  count: z.number().min(0)
+});
+
+export const alertSchema = z.object({
+  id: z.string(),
+  type: z.enum(['warning', 'critical', 'info']),
+  message: z.string(),
+  timestamp: z.string(),
+  resolved: z.boolean()
+});
+
+export const connectionStatusSchema = z.object({
+  isOnline: z.boolean(),
+  lastSeen: z.string(),
+  signalStrength: z.number().min(0).max(100),
+  ipAddress: z.string().ip()
+});
+
+export const equipmentHealthSchema = z.object({
+  id: z.string().uuid(),
+  equipmentName: z.string().min(1),
+  make: z.string().min(1),
+  model: z.string().min(1),
+  serialNumber: z.string().min(1),
+  location: z.string().min(1),
+  overallHealthScore: z.number().min(0).max(100),
+  status: z.enum(['excellent', 'good', 'warning', 'critical', 'offline']),
+  lastServiceDate: z.string(),
+  nextServiceDue: z.string(),
+  totalPrintCount: z.number().min(0),
+  monthlyAverage: z.number().min(0),
+  predictedMaintenanceDate: z.string(),
+  healthMetrics: healthMetricSchema,
+  recentActivity: z.array(recentActivitySchema),
+  alerts: z.array(alertSchema),
+  connectionStatus: connectionStatusSchema
+});
+
+// Equipment Health API Request/Response Schemas
+export const equipmentHealthRequestSchema = z.object({
+  timeRange: z.enum(['7d', '30d', '90d', '1y']).default('30d'),
+  equipmentIds: z.array(z.string().uuid()).optional(),
+  includeAlerts: z.boolean().default(true),
+  includeMetrics: z.boolean().default(true)
+});
+
+export const equipmentHealthResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.array(equipmentHealthSchema),
+  meta: z.object({
+    totalCount: z.number(),
+    timeRange: z.string(),
+    lastUpdated: z.string()
+  }).optional()
+});
+
+export const scheduleMaintenanceRequestSchema = z.object({
+  equipmentId: z.string().uuid(),
+  preferredDate: z.string(),
+  maintenanceType: z.enum(['routine', 'preventive', 'repair', 'upgrade']),
+  notes: z.string().optional(),
+  urgency: z.enum(['low', 'medium', 'high', 'urgent']).default('medium')
+});
+
+export type EquipmentHealth = z.infer<typeof equipmentHealthSchema>;
+export type EquipmentHealthRequest = z.infer<typeof equipmentHealthRequestSchema>;
+export type EquipmentHealthResponse = z.infer<typeof equipmentHealthResponseSchema>;
+export type ScheduleMaintenanceRequest = z.infer<typeof scheduleMaintenanceRequestSchema>;
