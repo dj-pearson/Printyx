@@ -58,7 +58,7 @@ const getResponsiveFontSize = (baseFontSize: number = 12, isMobile: boolean = fa
 };
 
 // Brand color palette - easily customizable
-export const BRAND_COLORS = {
+const BRAND_COLORS = {
   primary: '#366092',
   secondary: '#4A90E2',
   accent: '#7ED321',
@@ -70,7 +70,7 @@ export const BRAND_COLORS = {
   dark: '#2C3E50'
 };
 
-export const CHART_COLORS = [
+const CHART_COLORS = [
   BRAND_COLORS.primary,
   BRAND_COLORS.secondary,
   BRAND_COLORS.accent,
@@ -791,7 +791,7 @@ interface MetricCardProps {
   onClick?: () => void;
 }
 
-export function MetricCard({
+function MetricCard({
   title,
   value,
   change,
