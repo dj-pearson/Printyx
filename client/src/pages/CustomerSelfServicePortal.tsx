@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
 import { EquipmentHealthDashboard } from "@/components/customer-portal/EquipmentHealthDashboard";
+import { UsageAnalyticsDashboard } from "@/components/customer-portal/UsageAnalyticsDashboard";
 import { useAuth } from "@/hooks/useAuth";
 
 // Types
@@ -493,11 +494,12 @@ export default function CustomerSelfServicePortal() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-1 sm:gap-0">
           <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Dashboard</TabsTrigger>
           <TabsTrigger value="service-requests" className="text-xs sm:text-sm px-2 py-2">Requests</TabsTrigger>
           <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">Equipment</TabsTrigger>
           <TabsTrigger value="equipment-health" className="text-xs sm:text-sm px-2 py-2">Health</TabsTrigger>
+          <TabsTrigger value="usage-analytics" className="text-xs sm:text-sm px-2 py-2">Analytics</TabsTrigger>
           <TabsTrigger value="knowledge-base" className="text-xs sm:text-sm px-2 py-2">Help</TabsTrigger>
           <TabsTrigger value="profile" className="text-xs sm:text-sm px-2 py-2">Profile</TabsTrigger>
         </TabsList>
@@ -735,6 +737,10 @@ export default function CustomerSelfServicePortal() {
 
         <TabsContent value="equipment-health" className="space-y-6">
           <EquipmentHealthDashboard />
+        </TabsContent>
+
+        <TabsContent value="usage-analytics" className="space-y-6">
+          <UsageAnalyticsDashboard />
         </TabsContent>
 
         <TabsContent value="knowledge-base" className="space-y-6">
