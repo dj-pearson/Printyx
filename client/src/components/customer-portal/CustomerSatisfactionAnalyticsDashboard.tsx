@@ -255,7 +255,7 @@ export function CustomerSatisfactionAnalyticsDashboard({
             </CardHeader>
             <CardContent>
               {analytics.trends && analytics.trends.length > 0 ? (
-                <div className="h-80">
+                <div className="h-64 sm:h-80">
                   <LineChart
                     data={analytics.trends}
                     xKey="date"
@@ -265,8 +265,8 @@ export function CustomerSatisfactionAnalyticsDashboard({
                   />
                 </div>
               ) : (
-                <div className="h-40 flex items-center justify-center text-muted-foreground">
-                  <p>No trend data available for selected period</p>
+                <div className="h-32 sm:h-40 flex items-center justify-center text-muted-foreground">
+                  <p className="text-sm sm:text-base">No trend data available for selected period</p>
                 </div>
               )}
             </CardContent>
@@ -308,7 +308,7 @@ export function CustomerSatisfactionAnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 {analytics.trends && analytics.trends.length > 0 ? (
-                  <div className="h-40">
+                  <div className="h-32 sm:h-40">
                     <BarChart
                       data={analytics.trends.slice(-7)} // Last 7 data points
                       xKey="date"
@@ -318,8 +318,8 @@ export function CustomerSatisfactionAnalyticsDashboard({
                     />
                   </div>
                 ) : (
-                  <div className="h-40 flex items-center justify-center text-muted-foreground">
-                    <p>No response data available</p>
+                  <div className="h-32 sm:h-40 flex items-center justify-center text-muted-foreground">
+                    <p className="text-sm sm:text-base">No response data available</p>
                   </div>
                 )}
               </CardContent>
