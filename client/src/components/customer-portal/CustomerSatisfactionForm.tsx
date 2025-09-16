@@ -347,7 +347,7 @@ export const CustomerSatisfactionForm = ({
         return (
           <div className="space-y-6">
             <div className="flex justify-center">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 sm:space-x-3">
                 {Array.from({ length: scale.max - scale.min + 1 }, (_, i) => {
                   const value = scale.min + i;
                   const isSelected = currentResponse.rating_value === value;
@@ -357,8 +357,8 @@ export const CustomerSatisfactionForm = ({
                       type="button"
                       onClick={() => updateResponse('rating_value', value)}
                       className={`
-                        flex items-center justify-center w-12 h-12 rounded-full border-2 
-                        transition-all duration-200 font-semibold
+                        flex items-center justify-center w-14 h-14 sm:w-12 sm:h-12 rounded-full border-2 
+                        transition-all duration-200 font-semibold touch-target
                         ${isSelected 
                           ? 'bg-blue-500 border-blue-500 text-white scale-110' 
                           : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300 hover:scale-105'
@@ -388,7 +388,7 @@ export const CustomerSatisfactionForm = ({
               <p className="text-sm text-gray-600 mb-4">
                 How likely are you to recommend our service to a friend or colleague?
               </p>
-              <div className="flex justify-center flex-wrap gap-2">
+              <div className="flex justify-center flex-wrap gap-2 sm:gap-3">
                 {Array.from({ length: 11 }, (_, i) => {
                   const isSelected = currentResponse.rating_value === i;
                   return (
@@ -397,8 +397,8 @@ export const CustomerSatisfactionForm = ({
                       type="button"
                       onClick={() => updateResponse('rating_value', i)}
                       className={`
-                        flex items-center justify-center w-10 h-10 rounded-lg border-2 
-                        transition-all duration-200 font-semibold text-sm
+                        flex items-center justify-center w-12 h-12 sm:w-10 sm:h-10 rounded-lg border-2 
+                        transition-all duration-200 font-semibold text-sm touch-target
                         ${isSelected 
                           ? 'bg-blue-500 border-blue-500 text-white' 
                           : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300'

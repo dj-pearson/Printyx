@@ -311,13 +311,13 @@ export const MaintenanceSchedulingComponent = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3">
                 {availableDates.map((date) => (
                   <Button
                     key={date}
                     variant={selectedDate === date ? "default" : "outline"}
                     onClick={() => setSelectedDate(date)}
-                    className="p-3 h-auto flex flex-col"
+                    className="p-4 h-auto flex flex-col min-h-[48px] touch-target"
                     data-testid={`date-button-${date}`}
                   >
                     <span className="text-xs font-medium">
@@ -348,14 +348,14 @@ export const MaintenanceSchedulingComponent = () => {
                     <p className="mt-2 text-gray-600 dark:text-gray-400">Loading available times...</p>
                   </div>
                 ) : availabilityData?.data?.availableSlots ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {availabilityData.data.availableSlots.map((slot: AvailableSlot, index: number) => (
                       <Button
                         key={index}
                         variant={slot.isAvailable ? "outline" : "secondary"}
                         disabled={!slot.isAvailable}
                         onClick={() => handleSlotSelect(slot, selectedDate)}
-                        className={`p-4 h-auto flex flex-col ${
+                        className={`p-4 h-auto flex flex-col min-h-[56px] touch-target ${
                           slot.isAvailable 
                             ? "hover:bg-blue-50 dark:hover:bg-blue-900 border-blue-200 dark:border-blue-800" 
                             : "opacity-50 cursor-not-allowed"
