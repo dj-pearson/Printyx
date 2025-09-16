@@ -388,7 +388,7 @@ export function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalytics
 
         {/* Usage Patterns */}
         <TabsContent value="patterns" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -407,7 +407,7 @@ export function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalytics
                   }))}
                   xKey="name"
                   yKey="value"
-                  height={250}
+                  height={window.innerWidth < 640 ? 200 : 250}
                   data-testid="chart-daily-patterns"
                 />
               </CardContent>
@@ -431,7 +431,7 @@ export function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalytics
                   }))}
                   xKey="hour"
                   yKey="volume"
-                  height={250}
+                  height={window.innerWidth < 640 ? 200 : 250}
                   data-testid="chart-hourly-patterns"
                 />
               </CardContent>
