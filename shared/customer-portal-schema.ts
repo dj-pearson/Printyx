@@ -427,6 +427,37 @@ export const customerNotifications = pgTable('customer_notifications', {
   unreadPortalIdx: index('unread_portal_notifications_idx').on(table.isPortalRead),
 }));
 
+// Service Request Status History
+export const customerServiceRequestStatusHistory = pgTable('customer_service_request_status_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  serviceRequestId: uuid('service_request_id').references(() => customerServiceRequests.id).notNull(),
+  
+  // Status change details
+  previousStatus: serviceRequestStatusEnum('previous_status'),
+  newStatus: serviceRequestStatusEnum('new_status').notNull(),
+  changeReason: text('change_reason'),
+  customerVisibleNotes: text('customer_visible_notes'),
+  internalNotes: text('internal_notes'),
+  
+  // Changed by
+  changedByType: varchar('changed_by_type', { length: 50 }).notNull(), // customer, dealer_user, system, technician
+  changedById: uuid('changed_by_id'), // References users table or portal access
+  changedByName: varchar('changed_by_name', { length: 255 }).notNull(),
+  
+  // Expected completion (if status indicates progress)
+  estimatedCompletionDate: timestamp('estimated_completion_date'),
+  actualCompletionDate: timestamp('actual_completion_date'),
+  
+  // Metadata
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantIdx: index('status_history_tenant_idx').on(table.tenantId),
+  serviceRequestIdx: index('status_history_request_idx').on(table.serviceRequestId),
+  statusIdx: index('status_history_status_idx').on(table.newStatus),
+  timelineIdx: index('status_history_timeline_idx').on(table.serviceRequestId, table.createdAt),
+}));
+
 // Customer Portal Activity Log
 export const customerPortalActivityLog = pgTable('customer_portal_activity_log', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -468,6 +499,14 @@ export const customerServiceRequestsRelations = relations(customerServiceRequest
     references: [customerPortalAccess.id],
   }),
   notifications: many(customerNotifications),
+  statusHistory: many(customerServiceRequestStatusHistory),
+}));
+
+export const customerServiceRequestStatusHistoryRelations = relations(customerServiceRequestStatusHistory, ({ one }) => ({
+  serviceRequest: one(customerServiceRequests, {
+    fields: [customerServiceRequestStatusHistory.serviceRequestId],
+    references: [customerServiceRequests.id],
+  }),
 }));
 
 export const customerSupplyOrdersRelations = relations(customerSupplyOrders, ({ one, many }) => ({
@@ -647,6 +686,7 @@ export const technicianAvailabilitySlotsRelations = relations(technicianAvailabi
 // Zod schemas for validation
 export const insertCustomerPortalAccessSchema = createInsertSchema(customerPortalAccess);
 export const insertCustomerServiceRequestSchema = createInsertSchema(customerServiceRequests);
+export const insertCustomerServiceRequestStatusHistorySchema = createInsertSchema(customerServiceRequestStatusHistory);
 export const insertCustomerMeterSubmissionSchema = createInsertSchema(customerMeterSubmissions);
 export const insertCustomerSupplyOrderSchema = createInsertSchema(customerSupplyOrders);
 export const insertCustomerSupplyOrderItemSchema = createInsertSchema(customerSupplyOrderItems);
@@ -697,6 +737,8 @@ export type CustomerPortalAccess = typeof customerPortalAccess.$inferSelect;
 export type InsertCustomerPortalAccess = typeof customerPortalAccess.$inferInsert;
 export type CustomerServiceRequest = typeof customerServiceRequests.$inferSelect;
 export type InsertCustomerServiceRequest = typeof customerServiceRequests.$inferInsert;
+export type CustomerServiceRequestStatusHistory = typeof customerServiceRequestStatusHistory.$inferSelect;
+export type InsertCustomerServiceRequestStatusHistory = typeof customerServiceRequestStatusHistory.$inferInsert;
 export type CustomerMeterSubmission = typeof customerMeterSubmissions.$inferSelect;
 export type InsertCustomerMeterSubmission = typeof customerMeterSubmissions.$inferInsert;
 export type CustomerSupplyOrder = typeof customerSupplyOrders.$inferSelect;
@@ -971,3 +1013,16 @@ export type UsageAnalytics = z.infer<typeof usageAnalyticsSchema>;
 export type UsageAnalyticsRequest = z.infer<typeof usageAnalyticsRequestSchema>;
 export type UsageAnalyticsResponse = z.infer<typeof usageAnalyticsResponseSchema>;
 export type EquipmentUsageDetailRequest = z.infer<typeof equipmentUsageDetailRequestSchema>;
+
+// Service request status update schema  
+export const updateServiceRequestStatusSchema = z.object({
+  newStatus: z.enum(['submitted', 'acknowledged', 'assigned', 'in_progress', 'on_hold', 'completed', 'cancelled']),
+  changeReason: z.string().optional(),
+  customerVisibleNotes: z.string().optional(), 
+  internalNotes: z.string().optional(),
+  estimatedCompletionDate: z.string().optional(),
+  actualCompletionDate: z.string().optional(),
+  changedByName: z.string().min(1)
+});
+
+export type UpdateServiceRequestStatusRequest = z.infer<typeof updateServiceRequestStatusSchema>;
