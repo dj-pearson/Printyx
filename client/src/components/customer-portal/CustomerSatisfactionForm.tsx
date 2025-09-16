@@ -185,16 +185,16 @@ export const CustomerSatisfactionForm = ({
     if (surveyData?.data?.existingResponses && surveyData.data.questions) {
       const responses = surveyData.data.questions.map((question: SatisfactionQuestion) => {
         const existingResponse = surveyData.data.existingResponses.find(
-          (r: SatisfactionResponse) => r.questionId === question.id
+          (r: SatisfactionResponse) => r.question_id === question.id
         );
         return {
-          questionId: question.id,
-          ratingValue: existingResponse?.ratingValue,
-          textValue: existingResponse?.textValue || '',
-          selectedOptions: existingResponse?.selectedOptions || [],
-          booleanValue: existingResponse?.booleanValue,
-          timeSpentSeconds: existingResponse?.timeSpentSeconds,
-          responseOrder: existingResponse?.responseOrder,
+          question_id: question.id,
+          rating_value: existingResponse?.rating_value,
+          text_value: existingResponse?.text_value || '',
+          selected_options: existingResponse?.selected_options || [],
+          boolean_value: existingResponse?.boolean_value,
+          time_spent_seconds: existingResponse?.time_spent_seconds,
+          response_order: existingResponse?.response_order,
         };
       });
       form.setValue('responses', responses);
@@ -250,14 +250,24 @@ export const CustomerSatisfactionForm = ({
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   const handleNext = () => {
+    // Check if current question is required and not answered
+    if (currentQuestion.is_required && !isCurrentQuestionAnswered()) {
+      toast({
+        title: "Response Required",
+        description: "Please answer this required question before proceeding.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (currentQuestionIndex < questions.length - 1) {
       // Record time spent on current question
       const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
       const currentResponses = form.getValues('responses');
       currentResponses[currentQuestionIndex] = {
         ...currentResponses[currentQuestionIndex],
-        timeSpentSeconds: timeSpent,
-        responseOrder: currentQuestionIndex + 1,
+        time_spent_seconds: timeSpent,
+        response_order: currentQuestionIndex + 1,
       };
       form.setValue('responses', currentResponses);
       
@@ -274,6 +284,16 @@ export const CustomerSatisfactionForm = ({
   };
 
   const handleSubmit = async () => {
+    // Check if all required questions are answered
+    if (!areAllRequiredQuestionsAnswered()) {
+      toast({
+        title: "Missing Required Responses",
+        description: "Please answer all required questions before submitting the survey.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Record time spent on final question
@@ -281,16 +301,16 @@ export const CustomerSatisfactionForm = ({
       const currentResponses = form.getValues('responses');
       currentResponses[currentQuestionIndex] = {
         ...currentResponses[currentQuestionIndex],
-        timeSpentSeconds: timeSpent,
-        responseOrder: currentQuestionIndex + 1,
+        time_spent_seconds: timeSpent,
+        response_order: currentQuestionIndex + 1,
       };
       
       // Filter out empty responses and validate
       const validResponses = currentResponses.filter(response => {
-        return response.ratingValue !== undefined || 
-               response.textValue || 
-               response.selectedOptions?.length || 
-               response.booleanValue !== undefined;
+        return response.rating_value !== undefined || 
+               (response.text_value && response.text_value.trim() !== '') || 
+               response.selected_options?.length || 
+               response.boolean_value !== undefined;
       });
 
       await submitResponsesMutation.mutateAsync(validResponses);
@@ -317,21 +337,21 @@ export const CustomerSatisfactionForm = ({
   const renderQuestionInput = () => {
     const currentResponse = getCurrentResponse();
 
-    switch (currentQuestion.questionType) {
+    switch (currentQuestion.question_type) {
       case 'rating_scale':
-        const scale = currentQuestion.ratingScale || { min: 1, max: 5, labels: [] };
+        const scale = currentQuestion.rating_scale || { min: 1, max: 5, labels: [] };
         return (
           <div className="space-y-6">
             <div className="flex justify-center">
               <div className="flex items-center space-x-2">
                 {Array.from({ length: scale.max - scale.min + 1 }, (_, i) => {
                   const value = scale.min + i;
-                  const isSelected = currentResponse.ratingValue === value;
+                  const isSelected = currentResponse.rating_value === value;
                   return (
                     <button
                       key={value}
                       type="button"
-                      onClick={() => updateResponse('ratingValue', value)}
+                      onClick={() => updateResponse('rating_value', value)}
                       className={`
                         flex items-center justify-center w-12 h-12 rounded-full border-2 
                         transition-all duration-200 font-semibold
@@ -366,12 +386,12 @@ export const CustomerSatisfactionForm = ({
               </p>
               <div className="flex justify-center flex-wrap gap-2">
                 {Array.from({ length: 11 }, (_, i) => {
-                  const isSelected = currentResponse.ratingValue === i;
+                  const isSelected = currentResponse.rating_value === i;
                   return (
                     <button
                       key={i}
                       type="button"
-                      onClick={() => updateResponse('ratingValue', i)}
+                      onClick={() => updateResponse('rating_value', i)}
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-lg border-2 
                         transition-all duration-200 font-semibold text-sm
@@ -400,10 +420,10 @@ export const CustomerSatisfactionForm = ({
           <div className="flex justify-center space-x-6">
             <button
               type="button"
-              onClick={() => updateResponse('booleanValue', true)}
+              onClick={() => updateResponse('boolean_value', true)}
               className={`
                 flex items-center space-x-2 px-6 py-3 rounded-lg border-2 transition-all
-                ${currentResponse.booleanValue === true
+                ${currentResponse.boolean_value === true
                   ? 'bg-green-500 border-green-500 text-white'
                   : 'bg-white border-gray-300 text-gray-700 hover:border-green-300'
                 }
@@ -415,10 +435,10 @@ export const CustomerSatisfactionForm = ({
             </button>
             <button
               type="button"
-              onClick={() => updateResponse('booleanValue', false)}
+              onClick={() => updateResponse('boolean_value', false)}
               className={`
                 flex items-center space-x-2 px-6 py-3 rounded-lg border-2 transition-all
-                ${currentResponse.booleanValue === false
+                ${currentResponse.boolean_value === false
                   ? 'bg-red-500 border-red-500 text-white'
                   : 'bg-white border-gray-300 text-gray-700 hover:border-red-300'
                 }
@@ -434,18 +454,18 @@ export const CustomerSatisfactionForm = ({
       case 'multiple_choice':
         return (
           <div className="space-y-3">
-            {currentQuestion.multipleChoiceOptions?.map((option, index) => {
-              const isSelected = currentResponse.selectedOptions?.includes(option) || false;
+            {currentQuestion.multiple_choice_options?.map((option, index) => {
+              const isSelected = currentResponse.selected_options?.includes(option) || false;
               return (
                 <button
                   key={index}
                   type="button"
                   onClick={() => {
-                    const current = currentResponse.selectedOptions || [];
+                    const current = currentResponse.selected_options || [];
                     const updated = isSelected 
                       ? current.filter(o => o !== option)
                       : [...current, option];
-                    updateResponse('selectedOptions', updated);
+                    updateResponse('selected_options', updated);
                   }}
                   className={`
                     w-full text-left p-4 rounded-lg border-2 transition-all
@@ -473,8 +493,8 @@ export const CustomerSatisfactionForm = ({
       case 'text_short':
         return (
           <Input
-            value={currentResponse.textValue || ''}
-            onChange={(e) => updateResponse('textValue', e.target.value)}
+            value={currentResponse.text_value || ''}
+            onChange={(e) => updateResponse('text_value', e.target.value)}
             placeholder="Enter your response..."
             className="w-full"
             data-testid="text-short-input"
@@ -484,8 +504,8 @@ export const CustomerSatisfactionForm = ({
       case 'text_long':
         return (
           <Textarea
-            value={currentResponse.textValue || ''}
-            onChange={(e) => updateResponse('textValue', e.target.value)}
+            value={currentResponse.text_value || ''}
+            onChange={(e) => updateResponse('text_value', e.target.value)}
             placeholder="Enter your detailed response..."
             className="w-full min-h-[120px]"
             data-testid="text-long-input"
@@ -497,12 +517,52 @@ export const CustomerSatisfactionForm = ({
     }
   };
 
+  const isQuestionAnswered = (question: SatisfactionQuestion, response: any) => {
+    if (!response) return false;
+
+    switch (question.question_type) {
+      case 'rating_scale':
+      case 'nps_score':
+        return response.rating_value !== undefined && response.rating_value !== null;
+      
+      case 'yes_no':
+        return response.boolean_value !== undefined && response.boolean_value !== null;
+      
+      case 'multiple_choice':
+        return response.selected_options && response.selected_options.length > 0;
+      
+      case 'text_short':
+      case 'text_long':
+        return response.text_value && response.text_value.trim() !== '';
+      
+      default:
+        return false;
+    }
+  };
+
   const isCurrentQuestionAnswered = () => {
     const response = getCurrentResponse();
-    return response.ratingValue !== undefined || 
-           response.textValue || 
-           response.selectedOptions?.length || 
-           response.booleanValue !== undefined;
+    return isQuestionAnswered(currentQuestion, response);
+  };
+
+  const areAllRequiredQuestionsAnswered = () => {
+    const responses = form.getValues('responses');
+    
+    for (let i = 0; i < questions.length; i++) {
+      const question = questions[i];
+      if (question.is_required) {
+        const response = responses[i];
+        if (!isQuestionAnswered(question, response)) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  };
+
+  const isCurrentQuestionRequired = () => {
+    return currentQuestion.is_required === true;
   };
 
   return (
@@ -535,7 +595,7 @@ export const CustomerSatisfactionForm = ({
               <CardTitle className="text-lg leading-relaxed">
                 {currentQuestion.questionText}
               </CardTitle>
-              {currentQuestion.isRequired && (
+              {currentQuestion.is_required && (
                 <div className="flex items-center text-sm text-red-600">
                   <span className="mr-1">*</span>
                   Required
@@ -582,7 +642,7 @@ export const CustomerSatisfactionForm = ({
             {isLastQuestion ? (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || (currentQuestion.isRequired && !isCurrentQuestionAnswered())}
+                disabled={isSubmitting || !areAllRequiredQuestionsAnswered()}
                 className="bg-green-600 hover:bg-green-700"
                 data-testid="button-submit"
               >
@@ -601,7 +661,7 @@ export const CustomerSatisfactionForm = ({
             ) : (
               <Button
                 onClick={handleNext}
-                disabled={currentQuestion.isRequired && !isCurrentQuestionAnswered()}
+                disabled={false}
                 data-testid="button-next"
               >
                 Next
