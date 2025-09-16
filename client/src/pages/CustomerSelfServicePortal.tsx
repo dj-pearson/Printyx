@@ -25,6 +25,7 @@ import { EquipmentHealthDashboard } from "@/components/customer-portal/Equipment
 import { UsageAnalyticsDashboard } from "@/components/customer-portal/UsageAnalyticsDashboard";
 import { MaintenanceSchedulingComponent } from "@/components/customer-portal/MaintenanceSchedulingComponent";
 import { ServiceRequestsDashboard } from "@/components/customer-portal/ServiceRequestsDashboard";
+import { CustomerSatisfactionForm } from "@/components/customer-portal/CustomerSatisfactionForm";
 import { useAuth } from "@/hooks/useAuth";
 
 // Types
@@ -120,6 +121,8 @@ export default function CustomerSelfServicePortal() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isServiceRequestDialogOpen, setIsServiceRequestDialogOpen] = useState(false);
   const [isSupplyOrderDialogOpen, setIsSupplyOrderDialogOpen] = useState(false);
+  const [isSatisfactionFormOpen, setIsSatisfactionFormOpen] = useState(false);
+  const [selectedSurveyId, setSelectedSurveyId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   
@@ -170,6 +173,11 @@ export default function CustomerSelfServicePortal() {
       if (selectedCategory !== "all") params.append("category", selectedCategory);
       return apiRequest(`/api/customer-portal/knowledge-base?${params.toString()}`);
     },
+  });
+
+  // Fetch satisfaction surveys
+  const { data: satisfactionSurveys = [], isLoading: surveysLoading } = useQuery({
+    queryKey: ["/api/customer-portal/satisfaction/surveys"],
   });
 
   // Create service request mutation
@@ -496,13 +504,14 @@ export default function CustomerSelfServicePortal() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-1 sm:gap-0">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-1 sm:gap-0">
           <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Dashboard</TabsTrigger>
           <TabsTrigger value="service-requests" className="text-xs sm:text-sm px-2 py-2">Requests</TabsTrigger>
           <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">Equipment</TabsTrigger>
           <TabsTrigger value="equipment-health" className="text-xs sm:text-sm px-2 py-2">Health</TabsTrigger>
           <TabsTrigger value="usage-analytics" className="text-xs sm:text-sm px-2 py-2">Analytics</TabsTrigger>
           <TabsTrigger value="maintenance-scheduling" className="text-xs sm:text-sm px-2 py-2">Schedule</TabsTrigger>
+          <TabsTrigger value="satisfaction-surveys" className="text-xs sm:text-sm px-2 py-2">Feedback</TabsTrigger>
           <TabsTrigger value="knowledge-base" className="text-xs sm:text-sm px-2 py-2">Help</TabsTrigger>
           <TabsTrigger value="profile" className="text-xs sm:text-sm px-2 py-2">Profile</TabsTrigger>
         </TabsList>
@@ -770,6 +779,132 @@ export default function CustomerSelfServicePortal() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="satisfaction-surveys" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Available Surveys */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Star className="h-5 w-5 text-yellow-500 mr-2" />
+                  Available Satisfaction Surveys
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {surveysLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-muted-foreground">Loading surveys...</p>
+                  </div>
+                ) : satisfactionSurveys?.length > 0 ? (
+                  <div className="space-y-3">
+                    {satisfactionSurveys.map((survey: any) => (
+                      <div
+                        key={survey.id}
+                        className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm" data-testid={`survey-title-${survey.id}`}>
+                              {survey.template_name || survey.survey_type}
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {survey.description || `Complete your ${survey.survey_type} feedback`}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Badge 
+                                variant={survey.status === 'invited' ? 'default' : 
+                                        survey.status === 'completed' ? 'secondary' : 'outline'}
+                                className="text-xs"
+                              >
+                                {survey.status}
+                              </Badge>
+                              {survey.expires_at && (
+                                <span className="text-xs text-muted-foreground">
+                                  Expires: {format(new Date(survey.expires_at), "MMM d")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedSurveyId(survey.id);
+                              setIsSatisfactionFormOpen(true);
+                            }}
+                            disabled={survey.status === 'completed' || survey.status === 'expired'}
+                            data-testid={`button-survey-${survey.id}`}
+                          >
+                            {survey.status === 'completed' ? 'Completed' : 
+                             survey.status === 'started' ? 'Continue' : 'Start'}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No satisfaction surveys available</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Surveys will appear here after service completion
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Feedback History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Heart className="h-5 w-5 text-red-500 mr-2" />
+                  Your Feedback History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {satisfactionSurveys?.filter((survey: any) => survey.status === 'completed').length > 0 ? (
+                    satisfactionSurveys
+                      .filter((survey: any) => survey.status === 'completed')
+                      .slice(0, 5)
+                      .map((survey: any) => (
+                        <div key={survey.id} className="border-l-4 border-l-green-500 pl-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-sm">{survey.template_name || survey.survey_type}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Completed: {survey.completed_at ? format(new Date(survey.completed_at), "MMM d, yyyy") : 'N/A'}
+                              </p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {survey.overall_score && (
+                                <Badge variant="outline" className="text-xs">
+                                  {survey.overall_score}/5 ⭐
+                                </Badge>
+                              )}
+                              {survey.nps_score !== undefined && (
+                                <Badge variant="outline" className="text-xs">
+                                  NPS: {survey.nps_score}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <CheckCircle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Your completed surveys will appear here
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
@@ -787,6 +922,22 @@ export default function CustomerSelfServicePortal() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Customer Satisfaction Form Dialog */}
+      {selectedSurveyId && (
+        <CustomerSatisfactionForm
+          surveyId={selectedSurveyId}
+          isOpen={isSatisfactionFormOpen}
+          onClose={() => {
+            setIsSatisfactionFormOpen(false);
+            setSelectedSurveyId("");
+          }}
+          onComplete={() => {
+            // Refresh surveys data after completion
+            queryClient.invalidateQueries({ queryKey: ["/api/customer-portal/satisfaction/surveys"] });
+          }}
+        />
+      )}
       </div>
     </MainLayout>
   );
