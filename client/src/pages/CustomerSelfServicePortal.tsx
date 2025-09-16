@@ -505,21 +505,59 @@ export default function CustomerSelfServicePortal() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-1 sm:gap-0">
-          <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Dashboard</TabsTrigger>
-          <TabsTrigger value="service-requests" className="text-xs sm:text-sm px-2 py-2">Requests</TabsTrigger>
-          <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">Equipment</TabsTrigger>
-          <TabsTrigger value="equipment-health" className="text-xs sm:text-sm px-2 py-2">Health</TabsTrigger>
-          <TabsTrigger value="usage-analytics" className="text-xs sm:text-sm px-2 py-2">Analytics</TabsTrigger>
-          <TabsTrigger value="maintenance-scheduling" className="text-xs sm:text-sm px-2 py-2">Schedule</TabsTrigger>
-          <TabsTrigger value="satisfaction-surveys" className="text-xs sm:text-sm px-2 py-2">Feedback</TabsTrigger>
-          <TabsTrigger value="knowledge-base" className="text-xs sm:text-sm px-2 py-2">Help</TabsTrigger>
-          <TabsTrigger value="profile" className="text-xs sm:text-sm px-2 py-2">Profile</TabsTrigger>
-        </TabsList>
+        {/* Mobile-optimized tab navigation */}
+        <div className="w-full mb-6">
+          {/* Mobile: Horizontal scrollable tabs */}
+          <div className="sm:hidden">
+            <div className="overflow-x-auto w-full -mx-4 px-4 snap-x snap-mandatory">
+              <TabsList className="inline-flex min-w-max h-12 p-1 rounded-lg bg-muted gap-1">
+                <TabsTrigger value="dashboard" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="service-requests" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-service-requests">Requests</TabsTrigger>
+                <TabsTrigger value="equipment" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-equipment">Equipment</TabsTrigger>
+                <TabsTrigger value="equipment-health" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-equipment-health">Health</TabsTrigger>
+                <TabsTrigger value="usage-analytics" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-usage-analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="maintenance-scheduling" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-maintenance-scheduling">Schedule</TabsTrigger>
+                <TabsTrigger value="satisfaction-surveys" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-satisfaction-surveys">Feedback</TabsTrigger>
+                <TabsTrigger value="knowledge-base" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-knowledge-base">Help</TabsTrigger>
+                <TabsTrigger value="profile" className="text-sm px-4 py-2 whitespace-nowrap min-w-[80px] snap-center" data-testid="tab-profile">Profile</TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
 
-        <TabsContent value="dashboard" className="space-y-6">
-          {/* Dashboard Overview Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* Tablet: 3-column grid with better spacing */}
+          <div className="hidden sm:block lg:hidden">
+            <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
+              <TabsTrigger value="dashboard" className="text-sm px-3 py-3 h-auto" data-testid="tab-dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="service-requests" className="text-sm px-3 py-3 h-auto" data-testid="tab-service-requests">Requests</TabsTrigger>
+              <TabsTrigger value="equipment" className="text-sm px-3 py-3 h-auto" data-testid="tab-equipment">Equipment</TabsTrigger>
+              <TabsTrigger value="equipment-health" className="text-sm px-3 py-3 h-auto" data-testid="tab-equipment-health">Health</TabsTrigger>
+              <TabsTrigger value="usage-analytics" className="text-sm px-3 py-3 h-auto" data-testid="tab-usage-analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="maintenance-scheduling" className="text-sm px-3 py-3 h-auto" data-testid="tab-maintenance-scheduling">Schedule</TabsTrigger>
+              <TabsTrigger value="satisfaction-surveys" className="text-sm px-3 py-3 h-auto" data-testid="tab-satisfaction-surveys">Feedback</TabsTrigger>
+              <TabsTrigger value="knowledge-base" className="text-sm px-3 py-3 h-auto" data-testid="tab-knowledge-base">Help</TabsTrigger>
+              <TabsTrigger value="profile" className="text-sm px-3 py-3 h-auto" data-testid="tab-profile">Profile</TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* Desktop: Full 9-column layout */}
+          <div className="hidden lg:block">
+            <TabsList className="grid w-full grid-cols-9 gap-0 h-auto p-1">
+              <TabsTrigger value="dashboard" className="text-sm px-3 py-3 h-auto" data-testid="tab-dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="service-requests" className="text-sm px-3 py-3 h-auto" data-testid="tab-service-requests">Requests</TabsTrigger>
+              <TabsTrigger value="equipment" className="text-sm px-3 py-3 h-auto" data-testid="tab-equipment">Equipment</TabsTrigger>
+              <TabsTrigger value="equipment-health" className="text-sm px-3 py-3 h-auto" data-testid="tab-equipment-health">Health</TabsTrigger>
+              <TabsTrigger value="usage-analytics" className="text-sm px-3 py-3 h-auto" data-testid="tab-usage-analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="maintenance-scheduling" className="text-sm px-3 py-3 h-auto" data-testid="tab-maintenance-scheduling">Schedule</TabsTrigger>
+              <TabsTrigger value="satisfaction-surveys" className="text-sm px-3 py-3 h-auto" data-testid="tab-satisfaction-surveys">Feedback</TabsTrigger>
+              <TabsTrigger value="knowledge-base" className="text-sm px-3 py-3 h-auto" data-testid="tab-knowledge-base">Help</TabsTrigger>
+              <TabsTrigger value="profile" className="text-sm px-3 py-3 h-auto" data-testid="tab-profile">Profile</TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
+
+        <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
+          {/* Dashboard Overview Cards - Mobile Optimized */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
