@@ -644,7 +644,7 @@ export function ServiceRequestsDashboard() {
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
                             <Badge className={getStatusColor(request.status)}>
                               {getStatusIcon(request.status)}
                               <span className="ml-1">{request.status.replace('_', ' ')}</span>
@@ -658,7 +658,7 @@ export function ServiceRequestsDashboard() {
                           <h4 className="font-medium text-gray-900 mb-1">{request.subject}</h4>
                           <p className="text-sm text-gray-600 mb-2 line-clamp-2">{request.description}</p>
                           
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-gray-500">
                             <span>Created: {format(new Date(request.createdAt), 'MMM dd, yyyy')}</span>
                             {request.equipmentMake && (
                               <span>Equipment: {request.equipmentMake} {request.equipmentModel}</span>
@@ -696,7 +696,7 @@ export function ServiceRequestsDashboard() {
                                           handleSurveyAction(request.id);
                                         }}
                                         disabled={survey.status === 'completed'}
-                                        className="text-xs px-3 py-1 h-7"
+                                        className="text-xs px-3 py-2 h-8 min-h-[32px] touch-target"
                                         data-testid={`button-survey-${request.id}`}
                                       >
                                         {survey.status === 'completed' ? (
