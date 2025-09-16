@@ -361,7 +361,7 @@ export function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalytics
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-gray-600 dark:text-gray-400">Total Volume</p>
                         <p className="font-medium">{equipment.totalImpressions.toLocaleString()}</p>
