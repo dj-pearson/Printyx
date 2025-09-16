@@ -17,6 +17,7 @@ import {
   maintenanceSchedulingRequestSchema,
   availabilityRequestSchema,
   rescheduleAppointmentSchema,
+  insertCustomerServiceRequestSchema,
   type EquipmentHealthRequest,
   type ScheduleMaintenanceRequest,
   type UsageAnalyticsRequest,
@@ -893,6 +894,142 @@ router.delete('/maintenance-appointments/:appointmentId', requireCustomerPortalA
     res.status(500).json({ 
       success: false, 
       message: 'Failed to cancel appointment',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// =============================================================================
+// SERVICE REQUESTS ENDPOINTS
+// =============================================================================
+
+// Create a new service request
+router.post('/service-requests', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const portalUserId = req.customerPortalUser?.id;
+
+    if (!tenantId || !customerId || !portalUserId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant, customer, or portal user context' 
+      });
+    }
+
+    // Validate request body using shared schema
+    const validationResult = insertCustomerServiceRequestSchema.safeParse({
+      ...req.body,
+      tenantId,
+      customerId,
+      customerPortalUserId: portalUserId
+    });
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request parameters',
+        errors: validationResult.error.errors
+      });
+    }
+
+    const serviceRequest = await customerPortalService.submitServiceRequest(
+      tenantId,
+      customerId,
+      portalUserId,
+      validationResult.data
+    );
+
+    res.json({ 
+      success: true, 
+      data: serviceRequest,
+      message: 'Service request created successfully'
+    });
+  } catch (error) {
+    console.error('Error creating service request:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to create service request',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get customer's service requests
+router.get('/service-requests', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    // Parse query parameters
+    const status = req.query.status as string;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const serviceRequests = await customerPortalService.getCustomerServiceRequests(
+      tenantId,
+      customerId,
+      { status, limit, offset }
+    );
+
+    res.json({ 
+      success: true, 
+      data: serviceRequests,
+      count: serviceRequests.length
+    });
+  } catch (error) {
+    console.error('Error fetching service requests:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch service requests',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get specific service request by ID
+router.get('/service-requests/:requestId', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const { requestId } = req.params;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    const serviceRequest = await customerPortalService.getServiceRequestById(
+      tenantId,
+      customerId,
+      requestId
+    );
+
+    if (!serviceRequest) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Service request not found' 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      data: serviceRequest
+    });
+  } catch (error) {
+    console.error('Error fetching service request:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch service request',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

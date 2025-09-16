@@ -228,6 +228,25 @@ export class CustomerPortalService {
   }
 
   /**
+   * Get specific service request by ID
+   */
+  async getServiceRequestById(
+    tenantId: string,
+    customerId: string,
+    requestId: string
+  ): Promise<CustomerServiceRequest | null> {
+    const [result] = await db.select()
+      .from(customerServiceRequests)
+      .where(and(
+        eq(customerServiceRequests.tenantId, tenantId),
+        eq(customerServiceRequests.customerId, customerId),
+        eq(customerServiceRequests.id, requestId)
+      ));
+
+    return result || null;
+  }
+
+  /**
    * Submit meter reading
    */
   async submitMeterReading(
