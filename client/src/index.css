@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-responsive optimizations */
+@layer utilities {
+  /* Smooth horizontal scrolling for mobile tabs */
+  .overflow-x-auto {
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Hide scrollbar on webkit browsers for cleaner mobile tabs */
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground));
+    border-radius: 2px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--foreground));
+  }
+
+  /* Mobile touch improvements */
+  @media (max-width: 640px) {
+    /* Improve touch targets on mobile */
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Better spacing for mobile cards */
+    .mobile-card-spacing {
+      margin-bottom: 1rem;
+    }
+    
+    /* Responsive text sizing */
+    .mobile-text-responsive {
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+    }
+  }
+}
+
 /* Hide browser extension error overlays (MetaMask, etc.) */
 .runtime-error-plugin,
 [class*="runtime-error-plugin"],
