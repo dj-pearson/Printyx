@@ -296,9 +296,9 @@ export const MaintenanceSchedulingComponent = () => {
       </div>
 
       <Tabs defaultValue="schedule" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="schedule" data-testid="tab-schedule">Schedule Appointment</TabsTrigger>
-          <TabsTrigger value="appointments" data-testid="tab-appointments">My Appointments</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 gap-3">
+          <TabsTrigger value="schedule" data-testid="tab-schedule" className="touch-target">Schedule Appointment</TabsTrigger>
+          <TabsTrigger value="appointments" data-testid="tab-appointments" className="touch-target">My Appointments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="schedule" className="space-y-6">
@@ -442,7 +442,7 @@ export const MaintenanceSchedulingComponent = () => {
                           )}
                         </div>
                         {appointment.status === 'requested' && (
-                          <div className="flex gap-2">
+                          <div className="flex gap-3">
                             <Button
                               variant="outline"
                               size="sm"
@@ -453,6 +453,7 @@ export const MaintenanceSchedulingComponent = () => {
                               }}
                               disabled={rescheduleAppointmentMutation.isPending}
                               data-testid={`reschedule-button-${appointment.id}`}
+                              className="touch-target min-h-[44px] px-4"
                             >
                               <Edit className="h-4 w-4 mr-1" />
                               Reschedule
@@ -466,6 +467,7 @@ export const MaintenanceSchedulingComponent = () => {
                               })}
                               disabled={cancelAppointmentMutation.isPending}
                               data-testid={`cancel-button-${appointment.id}`}
+                              className="touch-target min-h-[44px] px-4"
                             >
                               <X className="h-4 w-4 mr-1" />
                               Cancel
@@ -571,7 +573,7 @@ export const MaintenanceSchedulingComponent = () => {
                       <FormLabel>Maintenance Type</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-maintenance-type">
+                          <SelectTrigger data-testid="select-maintenance-type" className="touch-target min-h-[44px]">
                             <SelectValue placeholder="Select maintenance type" />
                           </SelectTrigger>
                         </FormControl>
@@ -598,7 +600,7 @@ export const MaintenanceSchedulingComponent = () => {
                       <FormLabel>Preferred Contact Method</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-contact-method">
+                          <SelectTrigger data-testid="select-contact-method" className="touch-target min-h-[44px]">
                             <SelectValue placeholder="Select contact method" />
                           </SelectTrigger>
                         </FormControl>
@@ -651,12 +653,13 @@ export const MaintenanceSchedulingComponent = () => {
                 )}
               />
 
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-4">
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={() => setIsBookingDialogOpen(false)}
                   data-testid="button-cancel-booking"
+                  className="touch-target min-h-[44px] px-6"
                 >
                   Cancel
                 </Button>
@@ -664,6 +667,7 @@ export const MaintenanceSchedulingComponent = () => {
                   type="submit" 
                   disabled={bookAppointmentMutation.isPending}
                   data-testid="button-confirm-booking"
+                  className="touch-target min-h-[44px] px-6"
                 >
                   {bookAppointmentMutation.isPending ? "Booking..." : "Book Appointment"}
                 </Button>
@@ -747,7 +751,7 @@ export const MaintenanceSchedulingComponent = () => {
                     )}
                   />
 
-                  <div className="flex justify-end gap-3">
+                  <div className="flex justify-end gap-4">
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -757,6 +761,7 @@ export const MaintenanceSchedulingComponent = () => {
                         rescheduleForm.reset();
                       }}
                       data-testid="button-cancel-reschedule"
+                      className="touch-target min-h-[44px] px-6"
                     >
                       Cancel
                     </Button>
@@ -764,6 +769,7 @@ export const MaintenanceSchedulingComponent = () => {
                       type="submit" 
                       disabled={rescheduleAppointmentMutation.isPending}
                       data-testid="button-confirm-reschedule"
+                      className="touch-target min-h-[44px] px-6"
                     >
                       {rescheduleAppointmentMutation.isPending ? "Rescheduling..." : "Reschedule"}
                     </Button>
