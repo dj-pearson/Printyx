@@ -572,6 +572,33 @@ export const appointmentStatusEnum = pgEnum('appointment_status', [
   'rescheduled'
 ]);
 
+// Satisfaction Rating System Enums
+export const satisfactionSurveyTypeEnum = pgEnum('satisfaction_survey_type', [
+  'service_request_completion',
+  'maintenance_appointment',
+  'supply_delivery',
+  'technical_support',
+  'general_experience',
+  'annual_review'
+]);
+
+export const satisfactionQuestionTypeEnum = pgEnum('satisfaction_question_type', [
+  'rating_scale', // 1-5 or 1-10 scale
+  'yes_no',
+  'multiple_choice',
+  'text_short',
+  'text_long',
+  'nps_score' // Net Promoter Score 0-10
+]);
+
+export const satisfactionResponseStatusEnum = pgEnum('satisfaction_response_status', [
+  'invited',
+  'started',
+  'completed',
+  'expired',
+  'skipped'
+]);
+
 // Customer Maintenance Appointments
 export const customerMaintenanceAppointments = pgTable("customer_maintenance_appointments", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -636,6 +663,185 @@ export const customerMaintenanceAppointments = pgTable("customer_maintenance_app
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Comprehensive Customer Satisfaction Rating System
+
+// Survey Templates - Different questionnaires for different service types
+export const customerSatisfactionSurveyTemplates = pgTable('customer_satisfaction_survey_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  
+  // Template details
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  surveyType: satisfactionSurveyTypeEnum('survey_type').notNull(),
+  
+  // Configuration
+  isActive: boolean('is_active').default(true).notNull(),
+  isDefault: boolean('is_default').default(false).notNull(), // Default template for this survey type
+  
+  // Timing settings
+  sendDelayHours: integer('send_delay_hours').default(24).notNull(), // Hours after service completion
+  reminderDelayHours: integer('reminder_delay_hours').default(72).notNull(),
+  expiryDays: integer('expiry_days').default(14).notNull(),
+  
+  // Metadata
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+  createdBy: uuid('created_by'), // Staff member who created
+}, (table) => ({
+  tenantTypeIdx: index('survey_template_tenant_type_idx').on(table.tenantId, table.surveyType),
+  activeIdx: index('survey_template_active_idx').on(table.isActive),
+}));
+
+// Survey Questions - Individual questions within templates
+export const customerSatisfactionSurveyQuestions = pgTable('customer_satisfaction_survey_questions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  templateId: uuid('template_id').notNull().references(() => customerSatisfactionSurveyTemplates.id, { onDelete: 'cascade' }),
+  
+  // Question details
+  questionText: text('question_text').notNull(),
+  questionType: satisfactionQuestionTypeEnum('question_type').notNull(),
+  isRequired: boolean('is_required').default(false).notNull(),
+  orderIndex: integer('order_index').notNull(),
+  
+  // Question configuration
+  ratingScale: jsonb('rating_scale').default({
+    min: 1,
+    max: 5,
+    labels: ['Very Poor', 'Poor', 'Fair', 'Good', 'Excellent']
+  }), // For rating_scale questions
+  multipleChoiceOptions: jsonb('multiple_choice_options').default([]), // For multiple_choice questions
+  
+  // Conditional logic
+  dependsOnQuestion: uuid('depends_on_question'), // References another question ID
+  showCondition: jsonb('show_condition'), // Condition to show this question
+  
+  // Analytics
+  category: varchar('category', { length: 100 }), // service_quality, timeliness, communication, etc.
+  weight: decimal('weight', { precision: 3, scale: 2 }).default('1.00'), // Weight for overall score calculation
+  
+  // Metadata
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  templateOrderIdx: index('survey_question_template_order_idx').on(table.templateId, table.orderIndex),
+  categoryIdx: index('survey_question_category_idx').on(table.category),
+}));
+
+// Customer Satisfaction Surveys - Individual survey instances sent to customers
+export const customerSatisfactionSurveys = pgTable('customer_satisfaction_surveys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  customerId: uuid('customer_id').notNull(),
+  customerPortalUserId: uuid('customer_portal_user_id').references(() => customerPortalAccess.id),
+  templateId: uuid('template_id').notNull().references(() => customerSatisfactionSurveyTemplates.id),
+  
+  // Survey details
+  surveyType: satisfactionSurveyTypeEnum('survey_type').notNull(),
+  status: satisfactionResponseStatusEnum('status').default('invited').notNull(),
+  
+  // Related service records
+  relatedServiceRequestId: uuid('related_service_request_id').references(() => customerServiceRequests.id),
+  relatedMaintenanceAppointmentId: uuid('related_maintenance_appointment_id').references(() => customerMaintenanceAppointments.id),
+  relatedSupplyOrderId: uuid('related_supply_order_id').references(() => customerSupplyOrders.id),
+  relatedPaymentId: uuid('related_payment_id').references(() => customerPayments.id),
+  
+  // Survey lifecycle
+  invitationSentAt: timestamp('invitation_sent_at'),
+  firstViewedAt: timestamp('first_viewed_at'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  expiresAt: timestamp('expires_at'),
+  
+  // Reminders
+  reminderSentAt: timestamp('reminder_sent_at'),
+  reminderCount: integer('reminder_count').default(0).notNull(),
+  
+  // Survey access
+  accessToken: varchar('access_token', { length: 255 }).notNull().unique(), // Secure token for anonymous access
+  ipAddress: varchar('ip_address', { length: 45 }),
+  userAgent: text('user_agent'),
+  
+  // Calculated scores (computed after completion)
+  overallScore: decimal('overall_score', { precision: 4, scale: 2 }), // Weighted average
+  npsScore: integer('nps_score'), // Net Promoter Score if applicable
+  
+  // Metadata
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantCustomerIdx: index('survey_tenant_customer_idx').on(table.tenantId, table.customerId),
+  statusIdx: index('survey_status_idx').on(table.status),
+  typeIdx: index('survey_type_idx').on(table.surveyType),
+  completedDateIdx: index('survey_completed_idx').on(table.completedAt),
+  accessTokenIdx: index('survey_access_token_idx').on(table.accessToken),
+}));
+
+// Survey Responses - Individual answers to questions
+export const customerSatisfactionSurveyResponses = pgTable('customer_satisfaction_survey_responses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  surveyId: uuid('survey_id').notNull().references(() => customerSatisfactionSurveys.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id').notNull().references(() => customerSatisfactionSurveyQuestions.id),
+  
+  // Response data
+  ratingValue: integer('rating_value'), // For rating_scale and nps_score questions
+  textValue: text('text_value'), // For text questions
+  selectedOptions: jsonb('selected_options').default([]), // For multiple_choice questions
+  booleanValue: boolean('boolean_value'), // For yes_no questions
+  
+  // Response metadata
+  timeSpentSeconds: integer('time_spent_seconds'), // Time spent on this question
+  responseOrder: integer('response_order'), // Order in which questions were answered
+  
+  // Metadata
+  answeredAt: timestamp('answered_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  surveyQuestionIdx: index('survey_response_survey_question_idx').on(table.surveyId, table.questionId),
+  ratingIdx: index('survey_response_rating_idx').on(table.ratingValue),
+}));
+
+// Satisfaction Analytics - Computed metrics and trends
+export const customerSatisfactionAnalytics = pgTable('customer_satisfaction_analytics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  
+  // Analytics period
+  periodType: varchar('period_type', { length: 20 }).notNull(), // daily, weekly, monthly, quarterly
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  
+  // Satisfaction metrics
+  totalSurveysSent: integer('total_surveys_sent').default(0).notNull(),
+  totalSurveysCompleted: integer('total_surveys_completed').default(0).notNull(),
+  responseRate: decimal('response_rate', { precision: 5, scale: 2 }).default('0.00'), // Percentage
+  
+  // Score breakdowns by service type
+  serviceRequestScores: jsonb('service_request_scores').default({}),
+  maintenanceScores: jsonb('maintenance_scores').default({}),
+  supplyOrderScores: jsonb('supply_order_scores').default({}),
+  
+  // Overall metrics
+  averageOverallScore: decimal('average_overall_score', { precision: 4, scale: 2 }),
+  averageNpsScore: decimal('average_nps_score', { precision: 4, scale: 2 }),
+  
+  // Category breakdowns
+  serviceQualityScore: decimal('service_quality_score', { precision: 4, scale: 2 }),
+  timelinessScore: decimal('timeliness_score', { precision: 4, scale: 2 }),
+  communicationScore: decimal('communication_score', { precision: 4, scale: 2 }),
+  valueScore: decimal('value_score', { precision: 4, scale: 2 }),
+  
+  // Trends
+  scoreChange: decimal('score_change', { precision: 4, scale: 2 }), // Change from previous period
+  responseRateChange: decimal('response_rate_change', { precision: 5, scale: 2 }),
+  
+  // Metadata
+  calculatedAt: timestamp('calculated_at').default(sql`now()`).notNull(),
+  lastUpdated: timestamp('last_updated').default(sql`now()`).notNull(),
+}, (table) => ({
+  tenantPeriodIdx: index('analytics_tenant_period_idx').on(table.tenantId, table.periodType, table.periodStart),
+  periodIdx: index('analytics_period_idx').on(table.periodStart, table.periodEnd),
+}));
 
 // Technician Availability Slots (for scheduling logic)
 export const technicianAvailabilitySlots = pgTable("technician_availability_slots", {
@@ -1026,3 +1232,49 @@ export const updateServiceRequestStatusSchema = z.object({
 });
 
 export type UpdateServiceRequestStatusRequest = z.infer<typeof updateServiceRequestStatusSchema>;
+
+// Satisfaction Rating System Zod Schemas
+export const insertCustomerSatisfactionSurveyTemplateSchema = createInsertSchema(customerSatisfactionSurveyTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomerSatisfactionSurveyQuestionSchema = createInsertSchema(customerSatisfactionSurveyQuestions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCustomerSatisfactionSurveySchema = createInsertSchema(customerSatisfactionSurveys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  accessToken: true,
+  overallScore: true,
+  npsScore: true,
+});
+
+export const insertCustomerSatisfactionSurveyResponseSchema = createInsertSchema(customerSatisfactionSurveyResponses).omit({
+  id: true,
+  answeredAt: true,
+});
+
+export const insertCustomerSatisfactionAnalyticsSchema = createInsertSchema(customerSatisfactionAnalytics).omit({
+  id: true,
+  calculatedAt: true,
+  lastUpdated: true,
+});
+
+// Satisfaction Rating System TypeScript Types
+export type CustomerSatisfactionSurveyTemplate = typeof customerSatisfactionSurveyTemplates.$inferSelect;
+export type CustomerSatisfactionSurveyQuestion = typeof customerSatisfactionSurveyQuestions.$inferSelect;
+export type CustomerSatisfactionSurvey = typeof customerSatisfactionSurveys.$inferSelect;
+export type CustomerSatisfactionSurveyResponse = typeof customerSatisfactionSurveyResponses.$inferSelect;
+export type CustomerSatisfactionAnalytics = typeof customerSatisfactionAnalytics.$inferSelect;
+
+export type InsertCustomerSatisfactionSurveyTemplate = z.infer<typeof insertCustomerSatisfactionSurveyTemplateSchema>;
+export type InsertCustomerSatisfactionSurveyQuestion = z.infer<typeof insertCustomerSatisfactionSurveyQuestionSchema>;
+export type InsertCustomerSatisfactionSurvey = z.infer<typeof insertCustomerSatisfactionSurveySchema>;
+export type InsertCustomerSatisfactionSurveyResponse = z.infer<typeof insertCustomerSatisfactionSurveyResponseSchema>;
+export type InsertCustomerSatisfactionAnalytics = z.infer<typeof insertCustomerSatisfactionAnalyticsSchema>;
