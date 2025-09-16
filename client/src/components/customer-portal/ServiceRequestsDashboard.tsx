@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Plus, Search, Filter, Bell, Clock, CheckCircle, AlertCircle,
   FileText, User, Calendar, MessageSquare, ChevronRight, MoreVertical,
-  AlertTriangle, CheckCircle2, XCircle, Loader2, TrendingUp, Star
+  AlertTriangle, CheckCircle2, XCircle, Loader2, TrendingUp, Star,
+  ThumbsUp, Heart
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { CustomerSatisfactionForm } from "./CustomerSatisfactionForm";
 
 // Types - Aligned with actual API data structure (snake_case)
 type ServiceRequest = {
@@ -183,6 +185,8 @@ export function ServiceRequestsDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [isSatisfactionFormOpen, setIsSatisfactionFormOpen] = useState(false);
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string>("");
   
   const queryClient = useQueryClient();
 
@@ -201,6 +205,12 @@ export function ServiceRequestsDashboard() {
     queryKey: ['/api/customer-portal/service-requests', selectedRequestId, 'history'],
     queryFn: () => apiRequest(`/api/customer-portal/service-requests/${selectedRequestId}/history`),
     enabled: !!selectedRequestId,
+    refetchInterval: refreshInterval,
+  });
+
+  // Fetch satisfaction surveys for all service requests
+  const { data: satisfactionSurveys = [] } = useQuery({
+    queryKey: ['/api/customer-portal/satisfaction/surveys'],
     refetchInterval: refreshInterval,
   });
 
@@ -260,6 +270,22 @@ export function ServiceRequestsDashboard() {
 
   const onSubmit = (data: NewServiceRequestForm) => {
     createRequestMutation.mutate(data);
+  };
+
+  // Helper function to find satisfaction survey for a service request
+  const getSurveyForRequest = (serviceRequestId: string) => {
+    return satisfactionSurveys.find((survey: any) => 
+      survey.related_service_request_id === serviceRequestId
+    );
+  };
+
+  // Helper function to handle satisfaction survey action
+  const handleSurveyAction = (serviceRequestId: string) => {
+    const survey = getSurveyForRequest(serviceRequestId);
+    if (survey) {
+      setSelectedSurveyId(survey.id);
+      setIsSatisfactionFormOpen(true);
+    }
   };
 
   if (isLoadingRequests) {
@@ -641,9 +667,85 @@ export function ServiceRequestsDashboard() {
                               <span>Est. completion: {format(new Date(request.estimatedCompletionDate), 'MMM dd')}</span>
                             )}
                           </div>
+
+                          {/* Satisfaction Survey Integration for Completed Requests */}
+                          {request.status === 'completed' && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              {(() => {
+                                const survey = getSurveyForRequest(request.id);
+                                if (survey) {
+                                  return (
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Heart className="h-4 w-4 text-pink-500" />
+                                        <span className="text-sm text-gray-600">Satisfaction Survey</span>
+                                        <Badge 
+                                          variant={survey.status === 'completed' ? 'secondary' : 
+                                                  survey.status === 'started' ? 'default' : 'outline'}
+                                          className="text-xs"
+                                        >
+                                          {survey.status === 'completed' ? 'Completed' :
+                                           survey.status === 'started' ? 'In Progress' : 'Available'}
+                                        </Badge>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSurveyAction(request.id);
+                                        }}
+                                        disabled={survey.status === 'completed'}
+                                        className="text-xs px-3 py-1 h-7"
+                                        data-testid={`button-survey-${request.id}`}
+                                      >
+                                        {survey.status === 'completed' ? (
+                                          <>
+                                            <Star className="h-3 w-3 mr-1" />
+                                            View Results
+                                          </>
+                                        ) : survey.status === 'started' ? (
+                                          <>
+                                            <ThumbsUp className="h-3 w-3 mr-1" />
+                                            Continue
+                                          </>
+                                        ) : (
+                                          <>
+                                            <MessageSquare className="h-3 w-3 mr-1" />
+                                            Rate Service
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="flex items-center gap-2 text-gray-500">
+                                      <MessageSquare className="h-4 w-4" />
+                                      <span className="text-sm">Survey will be available soon</span>
+                                    </div>
+                                  );
+                                }
+                              })()}
+                            </div>
+                          )}
                         </div>
                         
-                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                        <div className="flex flex-col items-center gap-2">
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                          {/* Status indicator for completed requests with surveys */}
+                          {request.status === 'completed' && getSurveyForRequest(request.id) && (
+                            <div className="flex items-center gap-1">
+                              {getSurveyForRequest(request.id)?.status === 'completed' ? (
+                                <CheckCircle className="h-3 w-3 text-green-500" />
+                              ) : getSurveyForRequest(request.id)?.status === 'started' ? (
+                                <Clock className="h-3 w-3 text-blue-500" />
+                              ) : (
+                                <Star className="h-3 w-3 text-yellow-500" />
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -694,6 +796,23 @@ export function ServiceRequestsDashboard() {
           )}
         </div>
       </div>
+
+      {/* Customer Satisfaction Form Dialog */}
+      {selectedSurveyId && (
+        <CustomerSatisfactionForm
+          surveyId={selectedSurveyId}
+          isOpen={isSatisfactionFormOpen}
+          onClose={() => {
+            setIsSatisfactionFormOpen(false);
+            setSelectedSurveyId("");
+          }}
+          onComplete={() => {
+            // Refresh surveys and service requests data after completion
+            queryClient.invalidateQueries({ queryKey: ["/api/customer-portal/satisfaction/surveys"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/customer-portal/service-requests"] });
+          }}
+        />
+      )}
     </div>
   );
 }

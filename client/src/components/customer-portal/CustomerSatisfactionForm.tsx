@@ -136,6 +136,7 @@ export const CustomerSatisfactionForm = ({
   // Get survey data
   const { data: surveyData, isLoading, error } = useQuery({
     queryKey: ['/api/customer-portal/satisfaction/surveys', surveyId],
+    queryFn: () => apiRequest(`/api/customer-portal/satisfaction/surveys/${surveyId}`),
     enabled: isOpen && !!surveyId,
   });
 
@@ -145,7 +146,10 @@ export const CustomerSatisfactionForm = ({
       method: 'POST',
     }),
     onSuccess: () => {
+      // Invalidate the current survey to refetch its updated status
       queryClient.invalidateQueries({ queryKey: ['/api/customer-portal/satisfaction/surveys', surveyId] });
+      // Also invalidate the surveys list for immediate UI feedback
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-portal/satisfaction/surveys'] });
     },
   });
 
