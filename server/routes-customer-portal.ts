@@ -324,20 +324,28 @@ router.get('/equipment-health', requireCustomerPortalAuth, async (req, res) => {
     // Verify customer belongs to tenant (additional security check)
     await customerPortalService.verifyCustomerAccess(tenantId, customerId);
 
-    const equipmentHealth = await customerPortalService.getEquipmentHealthData(
+    const routeStartTime = Date.now();
+    const fields = req.query.fields ? (req.query.fields as string).split(',') : undefined;
+
+    const result = await customerPortalService.getEquipmentHealthData(
       tenantId, 
       customerId, 
       timeRange,
-      { equipmentIds, includeAlerts, includeMetrics }
+      { equipmentIds, includeAlerts, includeMetrics, fields }
     );
+
+    const totalDuration = Date.now() - routeStartTime;
 
     res.json({
       success: true,
-      data: equipmentHealth,
+      data: result.data,
+      total: result.total,
       meta: {
-        totalCount: equipmentHealth.length,
+        totalCount: result.total,
         timeRange,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        totalDuration,
+        queryDuration: result.queryDuration
       }
     });
   } catch (error) {
@@ -973,6 +981,7 @@ router.post('/service-requests', requireCustomerPortalAuth, async (req, res) => 
 // Get customer's service requests
 router.get('/service-requests', requireCustomerPortalAuth, async (req, res) => {
   try {
+    const startTime = Date.now();
     const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
 
@@ -987,17 +996,27 @@ router.get('/service-requests', requireCustomerPortalAuth, async (req, res) => {
     const status = req.query.status as string;
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
+    const fields = req.query.fields ? (req.query.fields as string).split(',') : undefined;
 
-    const serviceRequests = await customerPortalService.getCustomerServiceRequests(
+    const result = await customerPortalService.getCustomerServiceRequests(
       tenantId,
       customerId,
-      { status, limit, offset }
+      { status, limit, offset, fields }
     );
+
+    const totalDuration = Date.now() - startTime;
 
     res.json({ 
       success: true, 
-      data: serviceRequests,
-      count: serviceRequests.length
+      data: result.data,
+      total: result.total,
+      meta: {
+        limit,
+        offset,
+        count: result.data.length,
+        totalDuration,
+        queryDuration: result.queryDuration
+      }
     });
   } catch (error) {
     console.error('Error fetching service requests:', error);
@@ -1501,9 +1520,11 @@ router.post('/satisfaction/surveys/:surveyId/submit', requireCustomerPortalAuth,
 // Get customer satisfaction analytics/history
 router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res) => {
   try {
+    const startTime = Date.now();
     const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const { timeRange = '1y' } = req.query;
+    const fields = req.query.fields ? (req.query.fields as string).split(',') : undefined;
 
     if (!tenantId || !customerId) {
       return res.status(400).json({ 
@@ -1531,18 +1552,30 @@ router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res
         break;
     }
 
+    const queryStartTime = Date.now();
+    
+    // Build selective field query for payload optimization
+    const defaultFields = {
+      id: customerSatisfactionSurveys.id,
+      surveyType: customerSatisfactionSurveys.surveyType,
+      completedAt: customerSatisfactionSurveys.completedAt,
+      overallScore: customerSatisfactionSurveys.overallScore,
+      npsScore: customerSatisfactionSurveys.npsScore,
+      relatedServiceRequestId: customerSatisfactionSurveys.relatedServiceRequestId,
+      relatedMaintenanceAppointmentId: customerSatisfactionSurveys.relatedMaintenanceAppointmentId,
+      templateName: customerSatisfactionSurveyTemplates.name
+    };
+    
+    const selectFields = fields ? 
+      Object.fromEntries(fields
+        .filter(field => defaultFields.hasOwnProperty(field))
+        .map(field => [field, defaultFields[field as keyof typeof defaultFields]])
+      ) : 
+      defaultFields;
+
     // Get completed surveys for this customer
     const completedSurveys = await db
-      .select({
-        id: customerSatisfactionSurveys.id,
-        surveyType: customerSatisfactionSurveys.surveyType,
-        completedAt: customerSatisfactionSurveys.completedAt,
-        overallScore: customerSatisfactionSurveys.overallScore,
-        npsScore: customerSatisfactionSurveys.npsScore,
-        relatedServiceRequestId: customerSatisfactionSurveys.relatedServiceRequestId,
-        relatedMaintenanceAppointmentId: customerSatisfactionSurveys.relatedMaintenanceAppointmentId,
-        templateName: customerSatisfactionSurveyTemplates.name
-      })
+      .select(selectFields)
       .from(customerSatisfactionSurveys)
       .leftJoin(
         customerSatisfactionSurveyTemplates,
@@ -1598,6 +1631,9 @@ router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res
       return acc;
     }, {});
 
+    const queryDuration = Date.now() - queryStartTime;
+    const totalDuration = Date.now() - startTime;
+
     res.json({ 
       success: true, 
       data: {
@@ -1611,6 +1647,13 @@ router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res
         },
         byType: summaryByType,
         recentSurveys: completedSurveys.slice(0, 10) // Latest 10 surveys
+      },
+      meta: {
+        totalSurveys,
+        timeRange,
+        totalDuration,
+        queryDuration,
+        fieldsOptimized: fields ? true : false
       }
     });
   } catch (error) {

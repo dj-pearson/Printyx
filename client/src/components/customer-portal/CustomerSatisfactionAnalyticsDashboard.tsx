@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Star, TrendingUp, TrendingDown, Users, MessageSquare, 
@@ -60,14 +60,14 @@ interface CustomerSatisfactionAnalyticsDashboardProps {
   tenantId?: string;
 }
 
-export function CustomerSatisfactionAnalyticsDashboard({ 
+export const CustomerSatisfactionAnalyticsDashboard = memo(function CustomerSatisfactionAnalyticsDashboard({ 
   customerId, 
   tenantId 
 }: CustomerSatisfactionAnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState<string>('90d');
   const [selectedSurveyType, setSelectedSurveyType] = useState<string>('all');
 
-  // Fetch satisfaction analytics
+  // Fetch satisfaction analytics - Optimized with better caching
   const { 
     data: analyticsData, 
     isLoading, 
@@ -75,13 +75,14 @@ export function CustomerSatisfactionAnalyticsDashboard({
     error,
     refetch
   } = useQuery({
-    queryKey: ['/api/customer-portal/satisfaction/analytics', { timeRange }],
+    queryKey: ['/api/customer-portal/satisfaction/analytics', { timeRange, customerId, tenantId }],
     queryFn: async () => {
       const params = new URLSearchParams({ timeRange });
       return await apiRequest(`/api/customer-portal/satisfaction/analytics?${params}`);
     },
-    staleTime: 60000, // 1 minute
-    refetchInterval: 300000, // 5 minutes
+    staleTime: 3 * 60 * 1000, // 3 minutes - analytics don't change frequently
+    refetchInterval: 5 * 60 * 1000, // Keep 5 minutes, reasonable for analytics
+    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
   });
 
   const analytics: SatisfactionAnalytics | null = analyticsData?.data || analyticsData || null;
@@ -123,7 +124,8 @@ export function CustomerSatisfactionAnalyticsDashboard({
     );
   }
 
-  const getTrendIcon = (trend: string) => {
+  // Memoized helper functions to prevent unnecessary re-creation
+  const getTrendIcon = useCallback((trend: string) => {
     switch (trend) {
       case 'improving':
         return <TrendingUp className="h-4 w-4 text-green-500" />;
@@ -132,15 +134,20 @@ export function CustomerSatisfactionAnalyticsDashboard({
       default:
         return <Target className="h-4 w-4 text-blue-500" />;
     }
-  };
+  }, []);
 
-  const getNPSCategory = (score: number) => {
+  // Memoized getNPSCategory function - was causing performance issues
+  const getNPSCategory = useCallback((score: number) => {
     if (score >= 50) return { label: 'Excellent', color: 'text-green-600 bg-green-50' };
     if (score >= 0) return { label: 'Good', color: 'text-blue-600 bg-blue-50' };
     return { label: 'Needs Improvement', color: 'text-red-600 bg-red-50' };
-  };
+  }, []);
 
-  const npsCategory = getNPSCategory(analytics.summary.npsScore || 0);
+  // Memoized NPS category calculation
+  const npsCategory = useMemo(() => 
+    getNPSCategory(analytics?.summary.npsScore || 0), 
+    [analytics?.summary.npsScore, getNPSCategory]
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -537,7 +544,7 @@ export function CustomerSatisfactionAnalyticsDashboard({
       </Tabs>
     </div>
   );
-}
+});
 
 // Loading skeleton component
 function AnalyticsLoadingSkeleton() {
@@ -573,5 +580,3 @@ function AnalyticsLoadingSkeleton() {
     </div>
   );
 }
-
-export default CustomerSatisfactionAnalyticsDashboard;
