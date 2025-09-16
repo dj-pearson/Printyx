@@ -9,6 +9,13 @@ import {
   customerNotifications,
   customerPortalActivityLog
 } from '../shared/schema';
+import {
+  customerSatisfactionSurveys,
+  customerSatisfactionSurveyTemplates,
+  customerSatisfactionSurveyQuestions,
+  customerSatisfactionSurveyResponses,
+  customerSatisfactionAnalytics
+} from '../shared/customer-portal-schema';
 import { 
   equipmentHealthRequestSchema,
   scheduleMaintenanceRequestSchema,
@@ -19,13 +26,20 @@ import {
   rescheduleAppointmentSchema,
   insertCustomerServiceRequestSchema,
   updateServiceRequestStatusSchema,
+  insertCustomerSatisfactionSurveySchema,
+  insertCustomerSatisfactionSurveyResponseSchema,
   type EquipmentHealthRequest,
   type ScheduleMaintenanceRequest,
   type UsageAnalyticsRequest,
   type EquipmentUsageDetailRequest,
   type MaintenanceSchedulingRequest,
   type AvailabilityRequest,
-  type RescheduleAppointmentRequest
+  type RescheduleAppointmentRequest,
+  type CustomerSatisfactionSurvey,
+  type CustomerSatisfactionSurveyTemplate,
+  type CustomerSatisfactionSurveyQuestion,
+  type CustomerSatisfactionSurveyResponse,
+  type CustomerSatisfactionAnalytics
 } from '../shared/customer-portal-schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { CustomerPortalService } from './services/customer-portal-service';
@@ -1075,6 +1089,529 @@ router.get('/service-requests/:requestId/history', requireCustomerPortalAuth, as
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch service request status history',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// =============================================================================
+// CUSTOMER SATISFACTION RATING ENDPOINTS
+// =============================================================================
+
+// Get available satisfaction surveys for the customer
+router.get('/satisfaction/surveys', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const portalUserId = req.customerPortalUser?.id;
+
+    if (!tenantId || !customerId || !portalUserId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant, customer, or portal user context' 
+      });
+    }
+
+    // Find surveys available for this customer (invited or in progress)
+    const availableSurveys = await db
+      .select({
+        id: customerSatisfactionSurveys.id,
+        surveyType: customerSatisfactionSurveys.surveyType,
+        status: customerSatisfactionSurveys.status,
+        invitationSentAt: customerSatisfactionSurveys.invitationSentAt,
+        firstViewedAt: customerSatisfactionSurveys.firstViewedAt,
+        startedAt: customerSatisfactionSurveys.startedAt,
+        completedAt: customerSatisfactionSurveys.completedAt,
+        expiresAt: customerSatisfactionSurveys.expiresAt,
+        overallScore: customerSatisfactionSurveys.overallScore,
+        npsScore: customerSatisfactionSurveys.npsScore,
+        relatedServiceRequestId: customerSatisfactionSurveys.relatedServiceRequestId,
+        relatedMaintenanceAppointmentId: customerSatisfactionSurveys.relatedMaintenanceAppointmentId,
+        templateName: customerSatisfactionSurveyTemplates.name,
+        templateDescription: customerSatisfactionSurveyTemplates.description
+      })
+      .from(customerSatisfactionSurveys)
+      .leftJoin(
+        customerSatisfactionSurveyTemplates,
+        eq(customerSatisfactionSurveys.templateId, customerSatisfactionSurveyTemplates.id)
+      )
+      .where(
+        and(
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
+          eq(customerSatisfactionSurveys.customerId, customerId)
+        )
+      )
+      .orderBy(desc(customerSatisfactionSurveys.createdAt));
+
+    res.json({ 
+      success: true, 
+      data: availableSurveys,
+      count: availableSurveys.length
+    });
+  } catch (error) {
+    console.error('Error fetching satisfaction surveys:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch satisfaction surveys',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get specific survey details with questions
+router.get('/satisfaction/surveys/:surveyId', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const { surveyId } = req.params;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    // Get survey details
+    const surveyDetails = await db
+      .select()
+      .from(customerSatisfactionSurveys)
+      .where(
+        and(
+          eq(customerSatisfactionSurveys.id, surveyId),
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
+          eq(customerSatisfactionSurveys.customerId, customerId)
+        )
+      )
+      .limit(1);
+
+    if (surveyDetails.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Survey not found' 
+      });
+    }
+
+    const survey = surveyDetails[0];
+
+    // Check if survey is expired
+    if (survey.expiresAt && new Date() > new Date(survey.expiresAt)) {
+      return res.status(410).json({ 
+        success: false, 
+        message: 'Survey has expired' 
+      });
+    }
+
+    // Get survey questions
+    const questions = await db
+      .select()
+      .from(customerSatisfactionSurveyQuestions)
+      .where(eq(customerSatisfactionSurveyQuestions.templateId, survey.templateId))
+      .orderBy(customerSatisfactionSurveyQuestions.orderIndex);
+
+    // Get existing responses if any
+    const existingResponses = await db
+      .select()
+      .from(customerSatisfactionSurveyResponses)
+      .where(eq(customerSatisfactionSurveyResponses.surveyId, surveyId));
+
+    // Update first viewed timestamp if not set
+    if (!survey.firstViewedAt) {
+      await db
+        .update(customerSatisfactionSurveys)
+        .set({ 
+          firstViewedAt: new Date(),
+          status: survey.status === 'invited' ? 'started' : survey.status
+        })
+        .where(eq(customerSatisfactionSurveys.id, surveyId));
+    }
+
+    res.json({ 
+      success: true, 
+      data: {
+        survey,
+        questions,
+        existingResponses
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching survey details:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch survey details',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Start a survey (mark as started)
+router.post('/satisfaction/surveys/:surveyId/start', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const { surveyId } = req.params;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    // Verify survey exists and belongs to customer
+    const survey = await db
+      .select()
+      .from(customerSatisfactionSurveys)
+      .where(
+        and(
+          eq(customerSatisfactionSurveys.id, surveyId),
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
+          eq(customerSatisfactionSurveys.customerId, customerId)
+        )
+      )
+      .limit(1);
+
+    if (survey.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Survey not found' 
+      });
+    }
+
+    const surveyRecord = survey[0];
+
+    // Check if survey is expired
+    if (surveyRecord.expiresAt && new Date() > new Date(surveyRecord.expiresAt)) {
+      return res.status(410).json({ 
+        success: false, 
+        message: 'Survey has expired' 
+      });
+    }
+
+    // Check if survey is already completed
+    if (surveyRecord.status === 'completed') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Survey is already completed' 
+      });
+    }
+
+    // Update survey status to started
+    const updatedSurvey = await db
+      .update(customerSatisfactionSurveys)
+      .set({ 
+        startedAt: surveyRecord.startedAt || new Date(),
+        firstViewedAt: surveyRecord.firstViewedAt || new Date(),
+        status: 'started',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      })
+      .where(eq(customerSatisfactionSurveys.id, surveyId))
+      .returning();
+
+    res.json({ 
+      success: true, 
+      data: updatedSurvey[0],
+      message: 'Survey started successfully'
+    });
+  } catch (error) {
+    console.error('Error starting survey:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to start survey',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Submit survey responses
+router.post('/satisfaction/surveys/:surveyId/submit', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const { surveyId } = req.params;
+    const { responses } = req.body;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    if (!responses || !Array.isArray(responses)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Responses array is required' 
+      });
+    }
+
+    // Verify survey exists and belongs to customer
+    const survey = await db
+      .select()
+      .from(customerSatisfactionSurveys)
+      .where(
+        and(
+          eq(customerSatisfactionSurveys.id, surveyId),
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
+          eq(customerSatisfactionSurveys.customerId, customerId)
+        )
+      )
+      .limit(1);
+
+    if (survey.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Survey not found' 
+      });
+    }
+
+    const surveyRecord = survey[0];
+
+    // Check if survey is expired
+    if (surveyRecord.expiresAt && new Date() > new Date(surveyRecord.expiresAt)) {
+      return res.status(410).json({ 
+        success: false, 
+        message: 'Survey has expired' 
+      });
+    }
+
+    // Check if survey is already completed
+    if (surveyRecord.status === 'completed') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Survey is already completed' 
+      });
+    }
+
+    // Get survey questions for validation
+    const questions = await db
+      .select()
+      .from(customerSatisfactionSurveyQuestions)
+      .where(eq(customerSatisfactionSurveyQuestions.templateId, surveyRecord.templateId));
+
+    const questionMap = new Map(questions.map(q => [q.id, q]));
+
+    // Validate and prepare responses
+    const validatedResponses = [];
+    for (const response of responses) {
+      const question = questionMap.get(response.questionId);
+      if (!question) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid question ID: ${response.questionId}` 
+        });
+      }
+
+      // Validate response based on question type
+      const validationResult = insertCustomerSatisfactionSurveyResponseSchema.safeParse({
+        surveyId,
+        questionId: response.questionId,
+        ratingValue: response.ratingValue,
+        textValue: response.textValue,
+        selectedOptions: response.selectedOptions,
+        booleanValue: response.booleanValue,
+        timeSpentSeconds: response.timeSpentSeconds,
+        responseOrder: response.responseOrder
+      });
+
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid response data',
+          errors: validationResult.error.errors 
+        });
+      }
+
+      validatedResponses.push(validationResult.data);
+    }
+
+    // Delete existing responses and insert new ones
+    await db
+      .delete(customerSatisfactionSurveyResponses)
+      .where(eq(customerSatisfactionSurveyResponses.surveyId, surveyId));
+
+    if (validatedResponses.length > 0) {
+      await db
+        .insert(customerSatisfactionSurveyResponses)
+        .values(validatedResponses);
+    }
+
+    // Calculate overall score and NPS score
+    let overallScore = null;
+    let npsScore = null;
+    let totalWeightedScore = 0;
+    let totalWeight = 0;
+
+    for (const response of validatedResponses) {
+      const question = questionMap.get(response.questionId);
+      if (question && response.ratingValue !== null) {
+        if (question.questionType === 'nps_score' && response.ratingValue !== null) {
+          npsScore = response.ratingValue;
+        } else if (question.questionType === 'rating_scale' && response.ratingValue !== null) {
+          const weight = parseFloat(question.weight || '1.00');
+          totalWeightedScore += response.ratingValue * weight;
+          totalWeight += weight;
+        }
+      }
+    }
+
+    if (totalWeight > 0) {
+      overallScore = Math.round((totalWeightedScore / totalWeight) * 100) / 100;
+    }
+
+    // Update survey as completed
+    const updatedSurvey = await db
+      .update(customerSatisfactionSurveys)
+      .set({ 
+        completedAt: new Date(),
+        status: 'completed',
+        overallScore,
+        npsScore
+      })
+      .where(eq(customerSatisfactionSurveys.id, surveyId))
+      .returning();
+
+    res.json({ 
+      success: true, 
+      data: {
+        survey: updatedSurvey[0],
+        responsesSubmitted: validatedResponses.length,
+        overallScore,
+        npsScore
+      },
+      message: 'Survey responses submitted successfully'
+    });
+  } catch (error) {
+    console.error('Error submitting survey responses:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to submit survey responses',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get customer satisfaction analytics/history
+router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const { timeRange = '1y' } = req.query;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    // Calculate date range
+    const now = new Date();
+    const startDate = new Date();
+    switch (timeRange) {
+      case '30d':
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(now.getDate() - 90);
+        break;
+      case '6m':
+        startDate.setMonth(now.getMonth() - 6);
+        break;
+      case '1y':
+      default:
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+
+    // Get completed surveys for this customer
+    const completedSurveys = await db
+      .select({
+        id: customerSatisfactionSurveys.id,
+        surveyType: customerSatisfactionSurveys.surveyType,
+        completedAt: customerSatisfactionSurveys.completedAt,
+        overallScore: customerSatisfactionSurveys.overallScore,
+        npsScore: customerSatisfactionSurveys.npsScore,
+        relatedServiceRequestId: customerSatisfactionSurveys.relatedServiceRequestId,
+        relatedMaintenanceAppointmentId: customerSatisfactionSurveys.relatedMaintenanceAppointmentId,
+        templateName: customerSatisfactionSurveyTemplates.name
+      })
+      .from(customerSatisfactionSurveys)
+      .leftJoin(
+        customerSatisfactionSurveyTemplates,
+        eq(customerSatisfactionSurveys.templateId, customerSatisfactionSurveyTemplates.id)
+      )
+      .where(
+        and(
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
+          eq(customerSatisfactionSurveys.customerId, customerId),
+          eq(customerSatisfactionSurveys.status, 'completed'),
+          // Add date filter - using string comparison since completedAt is timestamp
+          // TODO: This might need adjustment based on your timestamp format
+        )
+      )
+      .orderBy(desc(customerSatisfactionSurveys.completedAt));
+
+    // Calculate summary statistics
+    const totalSurveys = completedSurveys.length;
+    const scoresWithValues = completedSurveys.filter(s => s.overallScore !== null);
+    const npsScoresWithValues = completedSurveys.filter(s => s.npsScore !== null);
+    
+    const averageScore = scoresWithValues.length > 0 
+      ? scoresWithValues.reduce((sum, s) => sum + s.overallScore, 0) / scoresWithValues.length 
+      : null;
+    
+    const averageNpsScore = npsScoresWithValues.length > 0 
+      ? npsScoresWithValues.reduce((sum, s) => sum + s.npsScore, 0) / npsScoresWithValues.length 
+      : null;
+
+    // Group by survey type
+    const byType = completedSurveys.reduce((acc, survey) => {
+      const type = survey.surveyType;
+      if (!acc[type]) {
+        acc[type] = { count: 0, scores: [], npsScores: [] };
+      }
+      acc[type].count++;
+      if (survey.overallScore !== null) acc[type].scores.push(survey.overallScore);
+      if (survey.npsScore !== null) acc[type].npsScores.push(survey.npsScore);
+      return acc;
+    }, {});
+
+    // Calculate averages by type
+    const summaryByType = Object.entries(byType).reduce((acc, [type, data]) => {
+      acc[type] = {
+        count: data.count,
+        averageScore: data.scores.length > 0 
+          ? data.scores.reduce((sum, score) => sum + score, 0) / data.scores.length 
+          : null,
+        averageNpsScore: data.npsScores.length > 0 
+          ? data.npsScores.reduce((sum, score) => sum + score, 0) / data.npsScores.length 
+          : null
+      };
+      return acc;
+    }, {});
+
+    res.json({ 
+      success: true, 
+      data: {
+        summary: {
+          totalSurveys,
+          averageScore: averageScore ? Math.round(averageScore * 100) / 100 : null,
+          averageNpsScore: averageNpsScore ? Math.round(averageNpsScore * 100) / 100 : null,
+          timeRange,
+          periodStart: startDate.toISOString(),
+          periodEnd: now.toISOString()
+        },
+        byType: summaryByType,
+        recentSurveys: completedSurveys.slice(0, 10) // Latest 10 surveys
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching satisfaction analytics:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch satisfaction analytics',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
