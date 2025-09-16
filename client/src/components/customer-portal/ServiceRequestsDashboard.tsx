@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, memo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Plus, Search, Filter, Bell, Clock, CheckCircle, AlertCircle,
@@ -110,8 +110,8 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-// MetricCard component for dashboard summary
-const MetricCard = ({ 
+// Optimized MetricCard component with React.memo to prevent unnecessary re-renders
+const MetricCard = memo(({ 
   title, 
   value, 
   icon, 
@@ -143,10 +143,10 @@ const MetricCard = ({
       </div>
     </CardContent>
   </Card>
-);
+));
 
-// StatusTimeline component for showing request progress
-const StatusTimeline = ({ statusHistory }: { statusHistory: ServiceRequestStatusHistory[] }) => {
+// Optimized StatusTimeline component with React.memo and memoized status helpers
+const StatusTimeline = memo(({ statusHistory }: { statusHistory: ServiceRequestStatusHistory[] }) => {
   return (
     <div className="space-y-4" data-testid="status-timeline">
       {statusHistory.map((history, index) => (
@@ -178,11 +178,13 @@ const StatusTimeline = ({ statusHistory }: { statusHistory: ServiceRequestStatus
       ))}
     </div>
   );
-};
+});
 
-export function ServiceRequestsDashboard() {
+export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isSatisfactionFormOpen, setIsSatisfactionFormOpen] = useState(false);
@@ -190,28 +192,65 @@ export function ServiceRequestsDashboard() {
   
   const queryClient = useQueryClient();
 
-  // Auto-refresh every 30 seconds for real-time updates
-  const [refreshInterval, setRefreshInterval] = useState(30000);
+  // Optimized refresh intervals - reduced from aggressive 30s polling
+  const [refreshInterval, setRefreshInterval] = useState(3 * 60 * 1000); // 3 minutes for less critical updates
+  const [priorityRefreshInterval, setPriorityRefreshInterval] = useState(2 * 60 * 1000); // 2 minutes for active requests
   
-  // Fetch service requests
-  const { data: serviceRequests = [], isLoading: isLoadingRequests, refetch: refetchRequests } = useQuery({
-    queryKey: ['/api/customer-portal/service-requests'],
-    refetchInterval: refreshInterval,
-    refetchIntervalInBackground: true,
+  // Fetch service requests with pagination - Optimized for large datasets
+  const { data: serviceRequestsResponse, isLoading: isLoadingRequests, refetch: refetchRequests } = useQuery({
+    queryKey: ['/api/customer-portal/service-requests', { page: currentPage, limit: pageSize, status: selectedStatus, search: searchQuery }],
+    queryFn: () => apiRequest(
+      `/api/customer-portal/service-requests?page=${currentPage}&limit=${pageSize}&status=${selectedStatus !== 'all' ? selectedStatus : ''}&search=${encodeURIComponent(searchQuery)}`
+    ),
+    staleTime: 60 * 1000, // Consider data fresh for 1 minute
+    refetchInterval: priorityRefreshInterval, // 2 minutes instead of 30 seconds
+    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
+    keepPreviousData: true, // Keep previous data while loading new page
   });
 
-  // Fetch status history for selected request
+  // Extract paginated data and metadata with defensive fallback for both old and new API formats
+  // New format: { success: true, data: [...], total: 123, meta: {...} }
+  // Old format: { success: true, data: [...], count: 123 } or just [...] array
+  const serviceRequests = useMemo(() => {
+    if (!serviceRequestsResponse) return [];
+    
+    // Handle array response (legacy format)
+    if (Array.isArray(serviceRequestsResponse)) {
+      return serviceRequestsResponse;
+    }
+    
+    // Handle object response with data property
+    return serviceRequestsResponse?.data || [];
+  }, [serviceRequestsResponse]);
+  
+  const totalItems = useMemo(() => {
+    if (!serviceRequestsResponse) return 0;
+    
+    // Handle array response (legacy format)
+    if (Array.isArray(serviceRequestsResponse)) {
+      return serviceRequestsResponse.length;
+    }
+    
+    // Handle new pagination format (total) or old format (count)
+    return serviceRequestsResponse?.total ?? serviceRequestsResponse?.count ?? serviceRequests.length;
+  }, [serviceRequestsResponse, serviceRequests]);
+  
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  // Fetch status history for selected request - Only fetch when needed
   const { data: statusHistory = [], isLoading: isLoadingHistory } = useQuery({
     queryKey: ['/api/customer-portal/service-requests', selectedRequestId, 'history'],
     queryFn: () => apiRequest(`/api/customer-portal/service-requests/${selectedRequestId}/history`),
     enabled: !!selectedRequestId,
-    refetchInterval: refreshInterval,
+    staleTime: 2 * 60 * 1000, // Status history is relatively stable
+    refetchInterval: refreshInterval, // 3 minutes for history
   });
 
-  // Fetch satisfaction surveys for all service requests
+  // Fetch satisfaction surveys - Least critical, can be cached longer
   const { data: satisfactionSurveys = [] } = useQuery({
     queryKey: ['/api/customer-portal/satisfaction/surveys'],
-    refetchInterval: refreshInterval,
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    refetchInterval: 5 * 60 * 1000, // 5 minutes for surveys
   });
 
   // Create new service request mutation
@@ -244,8 +283,8 @@ export function ServiceRequestsDashboard() {
     },
   });
 
-  // Calculate summary metrics
-  const summaryMetrics = {
+  // Memoized summary metrics calculation - prevents recalculation on every render
+  const summaryMetrics = useMemo(() => ({
     total: serviceRequests.length,
     active: serviceRequests.filter((req: ServiceRequest) => 
       ['submitted', 'acknowledged', 'assigned', 'in_progress'].includes(req.status)
@@ -256,37 +295,53 @@ export function ServiceRequestsDashboard() {
     urgent: serviceRequests.filter((req: ServiceRequest) => 
       req.priority === 'urgent' && !['completed', 'cancelled'].includes(req.status)
     ).length,
-  };
+  }), [serviceRequests]);
 
-  // Filter service requests
-  const filteredRequests = serviceRequests.filter((request: ServiceRequest) => {
-    const matchesStatus = selectedStatus === 'all' || request.status === selectedStatus;
-    const matchesSearch = !searchQuery || 
-      request.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (request.request_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  // With server-side filtering, no need for client-side filtering
+  // All filtering is now handled by the API with pagination
+  const filteredRequests = serviceRequests;
 
-  const onSubmit = (data: NewServiceRequestForm) => {
+  // Memoized pagination controls
+  const paginationInfo = useMemo(() => ({
+    currentPage,
+    totalPages,
+    totalItems,
+    hasNextPage: currentPage < totalPages,
+    hasPreviousPage: currentPage > 1,
+    startItem: (currentPage - 1) * pageSize + 1,
+    endItem: Math.min(currentPage * pageSize, totalItems)
+  }), [currentPage, totalPages, totalItems, pageSize]);
+
+  // Memoized page change handlers
+  const handlePageChange = useCallback((newPage: number) => {
+    setCurrentPage(newPage);
+  }, []);
+
+  const handlePageSizeChange = useCallback((newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page when page size changes
+  }, []);
+
+  // Memoized callbacks to prevent unnecessary re-renders
+  const onSubmit = useCallback((data: NewServiceRequestForm) => {
     createRequestMutation.mutate(data);
-  };
+  }, [createRequestMutation]);
 
-  // Helper function to find satisfaction survey for a service request
-  const getSurveyForRequest = (serviceRequestId: string) => {
+  // Memoized helper function to find satisfaction survey for a service request
+  const getSurveyForRequest = useCallback((serviceRequestId: string) => {
     return satisfactionSurveys.find((survey: any) => 
       survey.related_service_request_id === serviceRequestId
     );
-  };
+  }, [satisfactionSurveys]);
 
-  // Helper function to handle satisfaction survey action
-  const handleSurveyAction = (serviceRequestId: string) => {
+  // Memoized helper function to handle satisfaction survey action
+  const handleSurveyAction = useCallback((serviceRequestId: string) => {
     const survey = getSurveyForRequest(serviceRequestId);
     if (survey) {
       setSelectedSurveyId(survey.id);
       setIsSatisfactionFormOpen(true);
     }
-  };
+  }, [getSurveyForRequest]);
 
   if (isLoadingRequests) {
     return (
@@ -820,6 +875,52 @@ export function ServiceRequestsDashboard() {
           }}
         />
       )}
+
+      {/* Pagination Controls - Added for efficient data loading */}
+      {totalPages > 1 && (
+        <Card className="mt-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-gray-600">
+                Showing {paginationInfo.startItem} to {paginationInfo.endItem} of {paginationInfo.totalItems} requests
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(Number(value))}>
+                  <SelectTrigger className="w-20" data-testid="select-page-size">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={!paginationInfo.hasPreviousPage}
+                  data-testid="button-previous-page"
+                >
+                  Previous
+                </Button>
+                <span className="text-sm px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={!paginationInfo.hasNextPage}
+                  data-testid="button-next-page"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-}
+});

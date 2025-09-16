@@ -203,7 +203,7 @@ export class CustomerPortalService {
   }
 
   /**
-   * Get customer service requests
+   * Get customer service requests with pagination
    */
   async getCustomerServiceRequests(
     tenantId: string,
@@ -212,8 +212,11 @@ export class CustomerPortalService {
       status?: string;
       limit?: number;
       offset?: number;
+      fields?: string[];
     } = {}
-  ): Promise<CustomerServiceRequest[]> {
+  ): Promise<{ data: CustomerServiceRequest[]; total: number; queryDuration?: number }> {
+    const startTime = Date.now();
+    
     const conditions = [
       eq(customerServiceRequests.tenantId, tenantId),
       eq(customerServiceRequests.customerId, customerId)
@@ -223,12 +226,40 @@ export class CustomerPortalService {
       conditions.push(eq(customerServiceRequests.status, options.status as any));
     }
 
-    return await db.select()
-      .from(customerServiceRequests)
-      .where(and(...conditions))
-      .orderBy(desc(customerServiceRequests.submittedAt))
-      .limit(options.limit || 50)
-      .offset(options.offset || 0);
+    const whereClause = and(...conditions);
+
+    // Selective field query optimization
+    const selectFields = options.fields ? 
+      Object.fromEntries(options.fields.map(field => [field, customerServiceRequests[field as keyof typeof customerServiceRequests]])) : 
+      undefined;
+
+    // Get total count and data in parallel for performance
+    const [totalResult, data] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` })
+        .from(customerServiceRequests)
+        .where(whereClause),
+      selectFields ? 
+        db.select(selectFields)
+          .from(customerServiceRequests)
+          .where(whereClause)
+          .orderBy(desc(customerServiceRequests.submittedAt))
+          .limit(options.limit || 50)
+          .offset(options.offset || 0) :
+        db.select()
+          .from(customerServiceRequests)
+          .where(whereClause)
+          .orderBy(desc(customerServiceRequests.submittedAt))
+          .limit(options.limit || 50)
+          .offset(options.offset || 0)
+    ]);
+
+    const queryDuration = Date.now() - startTime;
+    
+    return {
+      data: data as CustomerServiceRequest[],
+      total: totalResult[0]?.count || 0,
+      queryDuration
+    };
   }
 
   /**
@@ -919,8 +950,10 @@ export class CustomerPortalService {
       equipmentIds?: string[];
       includeAlerts?: boolean;
       includeMetrics?: boolean;
+      fields?: string[];
     } = {}
-  ): Promise<any[]> {
+  ): Promise<{ data: any[]; total: number; queryDuration?: number }> {
+    const startTime = Date.now();
     // In a real implementation, this would fetch from IoT sensors, equipment APIs, 
     // service history, and usage analytics
     // For now, return comprehensive mock data
@@ -1125,9 +1158,28 @@ export class CustomerPortalService {
       }));
     }
     
+    // Apply selective field queries for payload optimization
+    if (options.fields && options.fields.length > 0) {
+      filteredData = filteredData.map(equipment => {
+        const selectedFields: any = {};
+        options.fields!.forEach(field => {
+          if (equipment.hasOwnProperty(field)) {
+            selectedFields[field] = equipment[field];
+          }
+        });
+        return selectedFields;
+      });
+    }
+    
+    const queryDuration = Date.now() - startTime;
+    
     // Filter data based on time range if needed
     // In a real implementation, you would query actual data based on timeRange
-    return filteredData;
+    return {
+      data: filteredData,
+      total: filteredData.length,
+      queryDuration
+    };
   }
 
   /**

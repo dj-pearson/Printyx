@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,11 +41,11 @@ interface UsageAnalyticsDashboardProps {
   tenantId?: string;
 }
 
-export function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalyticsDashboardProps) {
+export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [periodType, setPeriodType] = useState<string>('daily');
 
-  // Fetch usage analytics
+  // Fetch usage analytics - Optimized for performance
   const { 
     data: analyticsData, 
     isLoading, 
@@ -53,23 +53,92 @@ export function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalytics
     error,
     refetch
   } = useQuery({
-    queryKey: ['/api/customer-portal/usage-analytics', { timeRange, periodType }],
+    queryKey: ['/api/customer-portal/usage-analytics', { timeRange, periodType, customerId, tenantId }],
     queryFn: async () => {
       const params = new URLSearchParams({
         timeRange,
         periodType,
         includeComparison: 'true',
         includeCosts: 'true',
-        includeRecommendations: 'true'
+        includeRecommendations: 'true',
+        // Optimize payload - only fetch necessary fields
+        fields: 'metrics,trends,costBreakdown,equipmentUsage,peakUsage,recommendations'
       });
       
       return await apiRequest(`/api/customer-portal/usage-analytics?${params}`);
     },
-    staleTime: 60000, // 1 minute
-    refetchInterval: 300000, // 5 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes for analytics data
+    refetchInterval: 5 * 60 * 1000, // Keep 5 minutes, reasonable for analytics
+    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
   });
 
+  // Performance monitoring - track query performance
+  const queryStartTime = useMemo(() => Date.now(), [timeRange, periodType]);
+  const queryDuration = useMemo(() => {
+    if (!isLoading && analyticsData) {
+      const duration = Date.now() - queryStartTime;
+      // Log performance metrics (in production, send to analytics service)
+      console.debug(`Usage Analytics Query Duration: ${duration}ms`);
+      return duration;
+    }
+    return 0;
+  }, [isLoading, analyticsData, queryStartTime]);
+
   const analytics: UsageAnalytics | null = analyticsData?.data || analyticsData || null;
+
+  // Memoized expensive chart data calculations to prevent recalculations
+  const memoizedChartData = useMemo(() => {
+    if (!analytics) return null;
+    
+    return {
+      // Memoize usage trends data transformation
+      usageTrendsData: analytics.trends,
+      
+      // Memoize cost breakdown pie chart data
+      costBreakdownData: [
+        { name: 'Black & White', value: analytics.costBreakdown.blackWhiteCost },
+        { name: 'Color', value: analytics.costBreakdown.colorCost },
+        { name: 'Large Format', value: analytics.costBreakdown.largeFormatCost },
+        { name: 'Scanning', value: analytics.costBreakdown.scanCost },
+        { name: 'Maintenance', value: analytics.costBreakdown.maintenanceCost },
+        { name: 'Supplies', value: analytics.costBreakdown.supplyCost }
+      ],
+      
+      // Memoize daily patterns data transformation 
+      dailyPatternsData: analytics.peakUsage.dailyPeaks.map(peak => ({
+        name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][peak.dayOfWeek],
+        value: peak.averageVolume
+      })),
+      
+      // Memoize hourly patterns data transformation
+      hourlyPatternsData: analytics.peakUsage.hourlyPeaks.map(peak => ({
+        hour: `${peak.hour}:00`,
+        volume: peak.averageVolume
+      }))
+    };
+  }, [analytics]);
+
+  // Memoized metric calculations to prevent expensive recalculations
+  const memoizedMetrics = useMemo(() => {
+    if (!analytics) return null;
+    
+    return {
+      totalVolumeFormatted: analytics.metrics.totalVolume.toLocaleString(),
+      averageDailyFormatted: Math.round(analytics.metrics.averageDaily).toLocaleString(),
+      totalCostFormatted: `$${analytics.metrics.totalCost.toFixed(2)}`,
+      efficiencyScoreFormatted: `${Math.round(analytics.metrics.efficiencyScore)}%`,
+      
+      // Calculate trend changes with memoization
+      averageDailyChange: analytics.comparison.previous.averageDaily > 0 ? 
+        ((analytics.comparison.current.averageDaily - analytics.comparison.previous.averageDaily) / analytics.comparison.previous.averageDaily) * 100 : 0,
+      
+      totalCostChange: analytics.comparison.previous.totalCost > 0 ?
+        ((analytics.comparison.current.totalCost - analytics.comparison.previous.totalCost) / analytics.comparison.previous.totalCost) * 100 : 0,
+        
+      efficiencyScoreChange: analytics.comparison.previous.efficiencyScore > 0 ?
+        ((analytics.comparison.current.efficiencyScore - analytics.comparison.previous.efficiencyScore) / analytics.comparison.previous.efficiencyScore) * 100 : 0
+    };
+  }, [analytics]);
 
   if (isLoading) {
     return <AnalyticsLoadingSkeleton />;
@@ -501,7 +570,7 @@ export function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalytics
       </Tabs>
     </div>
   );
-}
+});
 
 // Loading skeleton component
 function AnalyticsLoadingSkeleton() {
@@ -539,5 +608,3 @@ function AnalyticsLoadingSkeleton() {
     </div>
   );
 }
-
-export default UsageAnalyticsDashboard;

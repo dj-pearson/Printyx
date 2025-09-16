@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -74,24 +74,49 @@ interface EquipmentHealthDashboardProps {
   customerId?: string;
 }
 
-export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> = () => {
+export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({ tenantId, customerId }: EquipmentHealthDashboardProps) {
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('30d');
 
   // Fetch equipment health data - server will use authenticated user context
-  const { data: equipmentHealth = [], isLoading, error } = useQuery<EquipmentHealth[]>({
-    queryKey: ['/api/customer-portal/equipment-health', timeRange],
+  // Optimized with longer staleTime to reduce unnecessary refetches
+  const { data: equipmentHealthResponse, isLoading, error } = useQuery({
+    queryKey: ['/api/customer-portal/equipment-health', timeRange, tenantId, customerId],
     queryFn: () => apiRequest(`/api/customer-portal/equipment-health?timeRange=${timeRange}`),
+    staleTime: 2 * 60 * 1000, // 2 minutes - health data doesn't change rapidly
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes instead of aggressive polling
   });
 
-  const getHealthColor = (score: number) => {
+  // Extract equipment health data with defensive fallback for both old and new API formats
+  // New format: { success: true, data: [...], total: 123, meta: {...} }
+  // Old format: { success: true, data: [...] } or just [...] array
+  const equipmentHealth = useMemo(() => {
+    if (!equipmentHealthResponse) return [];
+    
+    // Handle array response (legacy format)
+    if (Array.isArray(equipmentHealthResponse)) {
+      return equipmentHealthResponse;
+    }
+    
+    // Handle object response with data property (new format)
+    return equipmentHealthResponse?.data || [];
+  }, [equipmentHealthResponse]);
+
+  // Extract performance metrics if available
+  const performanceMetrics = useMemo(() => {
+    if (!equipmentHealthResponse || Array.isArray(equipmentHealthResponse)) return null;
+    return equipmentHealthResponse?.meta;
+  }, [equipmentHealthResponse]);
+
+  // Memoized helper functions to prevent recreation on every render
+  const getHealthColor = useCallback((score: number) => {
     if (score >= 90) return 'text-green-600';
     if (score >= 75) return 'text-blue-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
-  };
+  }, []);
 
-  const getHealthBadgeVariant = (status: string) => {
+  const getHealthBadgeVariant = useCallback((status: string) => {
     switch (status) {
       case 'excellent': return 'default';
       case 'good': return 'secondary';
@@ -100,9 +125,9 @@ export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> =
       case 'offline': return 'outline';
       default: return 'default';
     }
-  };
+  }, []);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'excellent': return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'good': return <CheckCircle className="h-4 w-4 text-blue-600" />;
@@ -111,7 +136,7 @@ export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> =
       case 'offline': return <Wifi className="h-4 w-4 text-gray-400" />;
       default: return <Activity className="h-4 w-4" />;
     }
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -142,17 +167,35 @@ export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> =
     );
   }
 
-  const selectedEquipmentData = selectedEquipment 
-    ? equipmentHealth.find(eq => eq.id === selectedEquipment)
-    : equipmentHealth[0];
+  // Memoized selected equipment data to prevent unnecessary recalculations
+  const selectedEquipmentData = useMemo(() => {
+    return selectedEquipment 
+      ? equipmentHealth.find(eq => eq.id === selectedEquipment)
+      : equipmentHealth[0];
+  }, [selectedEquipment, equipmentHealth]);
 
-  const overallFleetHealth = equipmentHealth.length > 0 
-    ? Math.round(equipmentHealth.reduce((sum, eq) => sum + eq.overallHealthScore, 0) / equipmentHealth.length)
-    : 0;
+  // Memoized heavy calculations - these were causing performance issues
+  const overallFleetHealth = useMemo(() => {
+    if (equipmentHealth.length === 0) return 0;
+    return Math.round(equipmentHealth.reduce((sum, eq) => sum + eq.overallHealthScore, 0) / equipmentHealth.length);
+  }, [equipmentHealth]);
 
-  const criticalAlertsCount = equipmentHealth.reduce((sum, eq) => 
-    sum + eq.alerts.filter(alert => alert.type === 'critical' && !alert.resolved).length, 0
-  );
+  const criticalAlertsCount = useMemo(() => {
+    return equipmentHealth.reduce((sum, eq) => 
+      sum + eq.alerts.filter(alert => alert.type === 'critical' && !alert.resolved).length, 0
+    );
+  }, [equipmentHealth]);
+
+  // Memoized online devices count
+  const onlineDevicesCount = useMemo(() => {
+    return equipmentHealth.filter(eq => eq.connectionStatus.isOnline).length;
+  }, [equipmentHealth]);
+
+  // Memoized service due count 
+  const serviceDueCount = useMemo(() => {
+    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    return equipmentHealth.filter(eq => new Date(eq.nextServiceDue) <= thirtyDaysFromNow).length;
+  }, [equipmentHealth]);
 
   return (
     <div className="space-y-4 sm:space-y-6" data-testid="equipment-health-dashboard">
@@ -180,7 +223,7 @@ export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> =
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {equipmentHealth.filter(eq => eq.connectionStatus.isOnline).length}
+              {onlineDevicesCount}
             </div>
             <p className="text-xs text-muted-foreground">
               of {equipmentHealth.length} total devices
@@ -210,7 +253,7 @@ export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> =
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {equipmentHealth.filter(eq => new Date(eq.nextServiceDue) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).length}
+              {serviceDueCount}
             </div>
             <p className="text-xs text-muted-foreground">
               Within 30 days
@@ -518,4 +561,4 @@ export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> =
       )}
     </div>
   );
-};
+});
