@@ -1426,18 +1426,7 @@ router.post('/satisfaction/surveys/:surveyId/submit', requireCustomerPortalAuth,
       validatedResponses.push(validationResult.data);
     }
 
-    // Delete existing responses and insert new ones
-    await db
-      .delete(customerSatisfactionSurveyResponses)
-      .where(eq(customerSatisfactionSurveyResponses.surveyId, surveyId));
-
-    if (validatedResponses.length > 0) {
-      await db
-        .insert(customerSatisfactionSurveyResponses)
-        .values(validatedResponses);
-    }
-
-    // Calculate overall score and NPS score
+    // Calculate overall score and NPS score before transaction
     let overallScore = null;
     let npsScore = null;
     let totalWeightedScore = 0;
@@ -1460,22 +1449,39 @@ router.post('/satisfaction/surveys/:surveyId/submit', requireCustomerPortalAuth,
       overallScore = Math.round((totalWeightedScore / totalWeight) * 100) / 100;
     }
 
-    // Update survey as completed
-    const updatedSurvey = await db
-      .update(customerSatisfactionSurveys)
-      .set({ 
-        completedAt: new Date(),
-        status: 'completed',
-        overallScore,
-        npsScore
-      })
-      .where(eq(customerSatisfactionSurveys.id, surveyId))
-      .returning();
+    // Atomic transaction: delete existing responses, insert new ones, and update survey
+    const updatedSurvey = await db.transaction(async (tx) => {
+      // Delete existing responses
+      await tx
+        .delete(customerSatisfactionSurveyResponses)
+        .where(eq(customerSatisfactionSurveyResponses.surveyId, surveyId));
+
+      // Insert new responses
+      if (validatedResponses.length > 0) {
+        await tx
+          .insert(customerSatisfactionSurveyResponses)
+          .values(validatedResponses);
+      }
+
+      // Update survey as completed
+      const result = await tx
+        .update(customerSatisfactionSurveys)
+        .set({ 
+          completedAt: new Date(),
+          status: 'completed',
+          overallScore,
+          npsScore
+        })
+        .where(eq(customerSatisfactionSurveys.id, surveyId))
+        .returning();
+
+      return result[0];
+    });
 
     res.json({ 
       success: true, 
       data: {
-        survey: updatedSurvey[0],
+        survey: updatedSurvey,
         responsesSubmitted: validatedResponses.length,
         overallScore,
         npsScore
