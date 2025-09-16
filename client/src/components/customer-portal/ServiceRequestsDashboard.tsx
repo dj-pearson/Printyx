@@ -127,7 +127,7 @@ const MetricCard = ({
   testId?: string;
 }) => (
   <Card 
-    className={`cursor-pointer hover:shadow-md transition-shadow ${onClick ? 'hover:bg-gray-50' : ''}`}
+    className={`cursor-pointer hover:shadow-md transition-shadow touch-target min-h-[44px] ${onClick ? 'hover:bg-gray-50' : ''}`}
     onClick={onClick}
     data-testid={testId}
   >
@@ -352,7 +352,7 @@ export function ServiceRequestsDashboard() {
           </div>
           
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-40" data-testid="select-status-filter">
+            <SelectTrigger className="w-40 touch-target min-h-[44px]" data-testid="select-status-filter">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -370,7 +370,7 @@ export function ServiceRequestsDashboard() {
 
         <Dialog open={isNewRequestDialogOpen} onOpenChange={setIsNewRequestDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-new-request">
+            <Button data-testid="button-new-request" className="touch-target">
               <Plus className="h-4 w-4 mr-2" />
               New Request
             </Button>
@@ -390,7 +390,7 @@ export function ServiceRequestsDashboard() {
                         <FormLabel>Request Type</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-request-type">
+                            <SelectTrigger data-testid="select-request-type" className="touch-target min-h-[44px]">
                               <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                           </FormControl>
@@ -414,7 +414,7 @@ export function ServiceRequestsDashboard() {
                         <FormLabel>Priority</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-priority">
+                            <SelectTrigger data-testid="select-priority" className="touch-target min-h-[44px]">
                               <SelectValue placeholder="Select priority" />
                             </SelectTrigger>
                           </FormControl>
@@ -533,7 +533,7 @@ export function ServiceRequestsDashboard() {
                         <FormLabel>Preferred Contact Method</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-contact-method">
+                            <SelectTrigger data-testid="select-contact-method" className="touch-target min-h-[44px]">
                               <SelectValue placeholder="How should we contact you?" />
                             </SelectTrigger>
                           </FormControl>
@@ -567,12 +567,13 @@ export function ServiceRequestsDashboard() {
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4">
+                <div className="flex justify-end gap-3 pt-4">
                   <Button 
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsNewRequestDialogOpen(false)}
                     data-testid="button-cancel-request"
+                    className="touch-target min-h-[44px] px-6"
                   >
                     Cancel
                   </Button>
@@ -580,6 +581,7 @@ export function ServiceRequestsDashboard() {
                     type="submit" 
                     disabled={createRequestMutation.isPending}
                     data-testid="button-submit-request"
+                    className="touch-target min-h-[44px] px-6"
                   >
                     {createRequestMutation.isPending ? (
                       <>
@@ -610,6 +612,7 @@ export function ServiceRequestsDashboard() {
                   size="sm" 
                   onClick={() => refetchRequests()}
                   data-testid="button-refresh-requests"
+                  className="touch-target"
                 >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Refresh
@@ -627,7 +630,11 @@ export function ServiceRequestsDashboard() {
                       `No requests found with status: ${selectedStatus}`
                     }
                   </p>
-                  <Button onClick={() => setIsNewRequestDialogOpen(true)}>
+                  <Button 
+                    onClick={() => setIsNewRequestDialogOpen(true)}
+                    className="touch-target min-h-[44px] px-6"
+                    data-testid="button-create-first-request"
+                  >
                     Create your first request
                   </Button>
                 </div>
@@ -636,7 +643,7 @@ export function ServiceRequestsDashboard() {
                   {filteredRequests.map((request: ServiceRequest) => (
                     <div 
                       key={request.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-gray-50 ${
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-gray-50 touch-target min-h-[44px] ${
                         selectedRequestId === request.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                       }`}
                       onClick={() => setSelectedRequestId(request.id)}
