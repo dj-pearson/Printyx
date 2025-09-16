@@ -15,8 +15,126 @@ import {
   type TicketPartsRequest,
 } from "@shared/enhanced-service-schema";
 import { serviceTickets, customers, businessRecords, autoInvoiceGeneration, insertAutoInvoiceGenerationSchema } from "@shared/schema";
+import { requireServiceAccess } from "./rbac-middleware";
+import { CustomerPortalService } from "./services/customer-portal-service";
+import { updateServiceRequestStatusSchema } from "@shared/customer-portal-schema";
 
 const router = express.Router();
+const customerPortalService = new CustomerPortalService();
+
+// ============= SERVICE REQUEST ADMIN MANAGEMENT =============
+
+// Update service request status (ADMIN/DEALER ONLY) - SECURE VERSION
+router.put('/service-requests/:requestId/status', requireServiceAccess(2), async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { requestId } = req.params;
+    const userId = req.user?.claims?.sub;
+
+    if (!tenantId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant context' 
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Missing user authentication' 
+      });
+    }
+
+    // Validate request body using shared schema
+    const validationResult = updateServiceRequestStatusSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request parameters',
+        errors: validationResult.error.errors
+      });
+    }
+
+    // Validate required fields for admin updates
+    const statusData = validationResult.data;
+    if (!statusData.changedByName) {
+      return res.status(400).json({
+        success: false,
+        message: 'changedByName is required for status updates'
+      });
+    }
+
+    // Determine user type from RBAC context
+    let changedByType: 'dealer_user' | 'system' | 'technician' = 'dealer_user';
+    if (req.user.department === 'service' && req.user.roleLevel <= 2) {
+      changedByType = 'technician';
+    }
+
+    const result = await customerPortalService.updateServiceRequestStatus(
+      tenantId,
+      requestId,
+      statusData,
+      changedByType,
+      userId
+    );
+
+    res.json({ 
+      success: true, 
+      data: result,
+      message: 'Service request status updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating service request status:', error);
+    
+    if (error.message === 'Service request not found') {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Service request not found' 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to update service request status',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get all service requests for admin management (ADMIN/DEALER ONLY)
+router.get('/service-requests', requireServiceAccess(2), async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { status, limit = 50, offset = 0 } = req.query;
+
+    if (!tenantId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant context' 
+      });
+    }
+
+    const requests = await customerPortalService.getAllServiceRequests(tenantId, {
+      status,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string)
+    });
+
+    res.json({ 
+      success: true, 
+      data: requests,
+      count: requests.length
+    });
+  } catch (error) {
+    console.error('Error fetching service requests:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch service requests',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
 
 // Create phone-in ticket
 router.post("/phone-in-tickets", async (req, res) => {

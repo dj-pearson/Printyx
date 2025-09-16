@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import {
   customerPortalAccess,
   customerServiceRequests,
+  customerServiceRequestStatusHistory,
   customerMeterSubmissions,
   customerSupplyOrders,
   customerSupplyOrderItems,
@@ -15,6 +16,7 @@ import {
   technicianAvailabilitySlots,
   type CustomerPortalAccess,
   type CustomerServiceRequest,
+  type CustomerServiceRequestStatusHistory,
   type CustomerMeterSubmission,
   type CustomerSupplyOrder,
   type CustomerPayment,
@@ -22,6 +24,7 @@ import {
   type CustomerMaintenanceAppointment,
   type InsertCustomerPortalAccess,
   type InsertCustomerServiceRequest,
+  type InsertCustomerServiceRequestStatusHistory,
   type InsertCustomerMeterSubmission,
   type InsertCustomerSupplyOrder,
   type InsertCustomerSupplyOrderItem,
@@ -37,6 +40,7 @@ import {
   type EquipmentUsageSummary,
   type UsageTrend,
   type UsageAnalyticsMetrics,
+  type UpdateServiceRequestStatusRequest,
 } from '../../shared/customer-portal-schema';
 
 /**
@@ -228,6 +232,31 @@ export class CustomerPortalService {
   }
 
   /**
+   * Get all service requests for admin management (ADMIN/DEALER ONLY)
+   */
+  async getAllServiceRequests(
+    tenantId: string,
+    options: {
+      status?: string;
+      limit?: number;
+      offset?: number;
+    } = {}
+  ): Promise<CustomerServiceRequest[]> {
+    const conditions = [eq(customerServiceRequests.tenantId, tenantId)];
+
+    if (options.status) {
+      conditions.push(eq(customerServiceRequests.status, options.status as any));
+    }
+
+    return await db.select()
+      .from(customerServiceRequests)
+      .where(and(...conditions))
+      .orderBy(desc(customerServiceRequests.submittedAt))
+      .limit(options.limit || 50)
+      .offset(options.offset || 0);
+  }
+
+  /**
    * Get specific service request by ID
    */
   async getServiceRequestById(
@@ -244,6 +273,167 @@ export class CustomerPortalService {
       ));
 
     return result || null;
+  }
+
+  /**
+   * Update service request status with history tracking - SECURE VERSION with transaction integrity
+   */
+  async updateServiceRequestStatus(
+    tenantId: string,
+    requestId: string,
+    statusUpdate: UpdateServiceRequestStatusRequest,
+    changedByType: 'customer' | 'dealer_user' | 'system' | 'technician' = 'dealer_user',
+    changedById?: string
+  ): Promise<{ 
+    serviceRequest: CustomerServiceRequest; 
+    statusHistory: CustomerServiceRequestStatusHistory; 
+  }> {
+    // Validate required fields
+    if (!statusUpdate.changedByName) {
+      throw new Error('changedByName is required for status updates');
+    }
+
+    // Use database transaction for integrity
+    return await db.transaction(async (tx) => {
+      // First get the current service request with proper tenantId constraint
+      const [currentRequest] = await tx.select()
+        .from(customerServiceRequests)
+        .where(and(
+          eq(customerServiceRequests.tenantId, tenantId),
+          eq(customerServiceRequests.id, requestId)
+        ));
+
+      if (!currentRequest) {
+        throw new Error('Service request not found');
+      }
+
+      const previousStatus = currentRequest.status;
+      const newStatus = statusUpdate.newStatus;
+      const now = new Date();
+
+      // Calculate lifecycle timestamps based on status transitions
+      const lifecycleUpdates: any = {
+        status: newStatus,
+        updatedAt: now,
+      };
+
+      // Add lifecycle timestamps based on status
+      switch (newStatus) {
+        case 'acknowledged':
+          if (!currentRequest.acknowledgedAt) {
+            lifecycleUpdates.acknowledgedAt = now;
+          }
+          break;
+        case 'completed':
+          // Set both completion timestamps
+          lifecycleUpdates.completedAt = now;
+          lifecycleUpdates.actualCompletionDate = statusUpdate.actualCompletionDate ? 
+            new Date(statusUpdate.actualCompletionDate) : now;
+          // Backfill acknowledged timestamp if not set
+          if (!currentRequest.acknowledgedAt) {
+            lifecycleUpdates.acknowledgedAt = now;
+          }
+          break;
+        case 'cancelled':
+          // Keep existing lifecycle timestamps for audit trail
+          break;
+      }
+
+      // Update the service request status with SECURE tenantId constraint
+      const [updatedRequest] = await tx.update(customerServiceRequests)
+        .set(lifecycleUpdates)
+        .where(and(
+          eq(customerServiceRequests.id, requestId),
+          eq(customerServiceRequests.tenantId, tenantId) // CRITICAL: tenant constraint for security
+        ))
+        .returning();
+
+      // Verify the update affected exactly one row
+      if (!updatedRequest) {
+        throw new Error('Service request update failed - request not found or tenant mismatch');
+      }
+
+      // Record status change in history
+      const [statusHistory] = await tx.insert(customerServiceRequestStatusHistory)
+        .values({
+          tenantId,
+          serviceRequestId: requestId,
+          previousStatus,
+          newStatus,
+          changeReason: statusUpdate.changeReason,
+          customerVisibleNotes: statusUpdate.customerVisibleNotes,
+          internalNotes: statusUpdate.internalNotes,
+          changedByType,
+          changedById,
+          changedByName: statusUpdate.changedByName,
+          estimatedCompletionDate: statusUpdate.estimatedCompletionDate ? 
+            new Date(statusUpdate.estimatedCompletionDate) : null,
+          actualCompletionDate: statusUpdate.actualCompletionDate ? 
+            new Date(statusUpdate.actualCompletionDate) : null,
+        })
+        .returning();
+
+      // Create notification for customer if status change is customer-visible
+      // This is done within transaction to ensure consistency
+      if (statusUpdate.customerVisibleNotes || newStatus !== previousStatus) {
+        await tx.insert(customerNotifications)
+          .values({
+            tenantId,
+            customerId: currentRequest.customerId,
+            customerPortalUserId: currentRequest.customerPortalUserId,
+            type: 'service_update',
+            title: `Service Request Status Updated`,
+            message: statusUpdate.customerVisibleNotes || 
+              `Your service request #${currentRequest.requestNumber} status has been updated to ${newStatus.replace('_', ' ')}.`,
+            relatedServiceRequestId: requestId,
+          });
+      }
+
+      // Log the activity within transaction
+      await tx.insert(customerPortalActivityLog)
+        .values({
+          tenantId,
+          customerId: currentRequest.customerId,
+          customerPortalUserId: currentRequest.customerPortalUserId,
+          activityType: 'update_service_request_status',
+          description: `Status updated from ${previousStatus} to ${newStatus}`,
+          relatedEntityType: 'service_request',
+          relatedEntityId: requestId,
+        });
+
+      return { serviceRequest: updatedRequest, statusHistory };
+    });
+  }
+
+  /**
+   * Get service request status history timeline
+   */
+  async getServiceRequestStatusHistory(
+    tenantId: string,
+    customerId: string,
+    requestId: string
+  ): Promise<CustomerServiceRequestStatusHistory[]> {
+    // Verify the request belongs to the customer
+    const [request] = await db.select()
+      .from(customerServiceRequests)
+      .where(and(
+        eq(customerServiceRequests.tenantId, tenantId),
+        eq(customerServiceRequests.customerId, customerId),
+        eq(customerServiceRequests.id, requestId)
+      ));
+
+    if (!request) {
+      throw new Error('Service request not found');
+    }
+
+    // Get status history ordered by creation date
+    return await db.select()
+      .from(customerServiceRequestStatusHistory)
+      .where(and(
+        eq(customerServiceRequestStatusHistory.tenantId, tenantId),
+        eq(customerServiceRequestStatusHistory.serviceRequestId, requestId)
+      ))
+      .orderBy(desc(customerServiceRequestStatusHistory.createdAt));
   }
 
   /**

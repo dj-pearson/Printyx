@@ -18,6 +18,7 @@ import {
   availabilityRequestSchema,
   rescheduleAppointmentSchema,
   insertCustomerServiceRequestSchema,
+  updateServiceRequestStatusSchema,
   type EquipmentHealthRequest,
   type ScheduleMaintenanceRequest,
   type UsageAnalyticsRequest,
@@ -1030,6 +1031,50 @@ router.get('/service-requests/:requestId', requireCustomerPortalAuth, async (req
     res.status(500).json({ 
       success: false, 
       message: 'Failed to fetch service request',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+
+// Get service request status history timeline (customer facing)
+router.get('/service-requests/:requestId/history', requireCustomerPortalAuth, async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId;
+    const { requestId } = req.params;
+
+    if (!tenantId || !customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing tenant or customer context' 
+      });
+    }
+
+    const statusHistory = await customerPortalService.getServiceRequestStatusHistory(
+      tenantId,
+      customerId,
+      requestId
+    );
+
+    res.json({ 
+      success: true, 
+      data: statusHistory,
+      count: statusHistory.length
+    });
+  } catch (error) {
+    console.error('Error fetching service request status history:', error);
+    
+    if (error.message === 'Service request not found') {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Service request not found' 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch service request status history',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
