@@ -24,6 +24,7 @@ import MainLayout from "@/components/layout/main-layout";
 import { EquipmentHealthDashboard } from "@/components/customer-portal/EquipmentHealthDashboard";
 import { UsageAnalyticsDashboard } from "@/components/customer-portal/UsageAnalyticsDashboard";
 import { MaintenanceSchedulingComponent } from "@/components/customer-portal/MaintenanceSchedulingComponent";
+import { ServiceRequestsDashboard } from "@/components/customer-portal/ServiceRequestsDashboard";
 import { useAuth } from "@/hooks/useAuth";
 
 // Types
@@ -622,64 +623,7 @@ export default function CustomerSelfServicePortal() {
         </TabsContent>
 
         <TabsContent value="service-requests" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>My Service Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {serviceRequestsLoading ? (
-                <p className="text-center py-8">Loading service requests...</p>
-              ) : serviceRequests.length === 0 ? (
-                <div className="text-center py-8">
-                  <Wrench className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No service requests yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Click "Request Service" to submit your first request
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {serviceRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-medium">{request.subject}</h3>
-                            <Badge variant={getPriorityColor(request.priority)}>
-                              {request.priority}
-                            </Badge>
-                            <Badge variant={getStatusColor(request.status)}>
-                              {request.status.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {request.description}
-                          </p>
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <p>Type: {request.request_type.replace('_', ' ')}</p>
-                            {request.equipment_make && (
-                              <p>Equipment: {request.equipment_make} {request.equipment_model}</p>
-                            )}
-                            {request.scheduled_date && (
-                              <p>Scheduled: {format(new Date(request.scheduled_date), 'MMM dd, yyyy HH:mm')}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">
-                            #{request.id.slice(0, 8)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(request.created_at), 'MMM dd, yyyy')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ServiceRequestsDashboard />
         </TabsContent>
 
         <TabsContent value="equipment" className="space-y-6">
