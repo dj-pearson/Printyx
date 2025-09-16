@@ -298,9 +298,9 @@ export function ServiceRequestsDashboard() {
   }
 
   return (
-    <div className="space-y-6" data-testid="service-requests-dashboard">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="space-y-4 sm:space-y-6" data-testid="service-requests-dashboard">
+      {/* Summary Cards - Mobile Optimized */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <MetricCard
           title="Total Requests"
           value={summaryMetrics.total}

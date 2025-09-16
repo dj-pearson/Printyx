@@ -155,9 +155,9 @@ export const EquipmentHealthDashboard: React.FC<EquipmentHealthDashboardProps> =
   );
 
   return (
-    <div className="space-y-6" data-testid="equipment-health-dashboard">
-      {/* Fleet Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="space-y-4 sm:space-y-6" data-testid="equipment-health-dashboard">
+      {/* Fleet Overview - Mobile Optimized */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <Card data-testid="card-fleet-health">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fleet Health</CardTitle>

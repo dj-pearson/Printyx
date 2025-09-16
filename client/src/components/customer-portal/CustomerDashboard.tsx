@@ -57,11 +57,11 @@ export const CustomerDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="animate-pulse">
                   <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                   <div className="h-8 bg-gray-200 rounded w-1/2"></div>
@@ -75,19 +75,19 @@ export const CustomerDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600">Welcome to your customer portal</p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {/* Summary Cards - Mobile Optimized */}
+      <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card 
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setLocation('/customer-portal/service-requests')}
         >
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
                 <Wrench className="h-6 w-6 text-blue-600" />
