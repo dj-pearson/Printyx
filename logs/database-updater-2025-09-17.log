@@ -1,0 +1,52 @@
+[2025-09-17T16:11:27.530Z] INFO  Registered updater: business_record_activities | Data: {"config":{"name":"business_record_activities","tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false,"enabled":true}}
+[2025-09-17T16:11:27.534Z] INFO  Registered updater: service_tickets | Data: {"config":{"name":"service_tickets","tenantId":"550e8400-e29b-41d4-a716-446655440000","customerId":"cust-1","dryRun":false,"enabled":true}}
+[2025-09-17T16:11:27.537Z] INFO  Registered updater: business_records | Data: {"config":{"name":"business_records","tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false,"enabled":true}}
+[2025-09-17T16:11:27.540Z] INFO  Initialized 3 updaters | Data: {"dryRun":false,"targetTenantId":"550e8400-e29b-41d4-a716-446655440000","targetCustomerId":"cust-1"}
+[2025-09-17T16:11:27.543Z] INFO  Starting Database Updater Manager...
+[2025-09-17T16:11:27.546Z] INFO  Configuration validation passed
+[2025-09-17T16:11:27.548Z] INFO  Scheduled job: business_record_activities | Data: {"cronExpression":"0 */2 9-17 * * 1-5","intervalMs":300000}
+[2025-09-17T16:11:27.550Z] INFO  Scheduled job: service_tickets | Data: {"cronExpression":"0 0 */6 * * *","intervalMs":300000}
+[2025-09-17T16:11:27.552Z] INFO  Scheduled job: business_records | Data: {"cronExpression":"0 0 10 * * 1-5","intervalMs":300000}
+[2025-09-17T16:11:27.554Z] INFO  All updaters scheduled successfully
+[2025-09-17T16:11:27.555Z] INFO  Starting CRON scheduler...
+[2025-09-17T16:11:27.557Z] INFO  CRON scheduler started with 3 jobs
+[2025-09-17T16:11:27.559Z] INFO  Database Updater Manager started successfully
+[2025-09-17T16:11:27.563Z] INFO  Next scheduled executions: | Data: {"business_record_activities":"2025-09-17T16:16:27.563Z","service_tickets":"2025-09-17T16:16:27.563Z","business_records":"2025-09-17T16:16:27.563Z"}
+[2025-09-17T16:12:43.500Z] INFO  Registered updater: business_record_activities | Data: {"config":{"name":"business_record_activities","tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false,"enabled":true}}
+[2025-09-17T16:12:43.505Z] INFO  Registered updater: service_tickets | Data: {"config":{"name":"service_tickets","tenantId":"550e8400-e29b-41d4-a716-446655440000","customerId":"cust-1","dryRun":false,"enabled":true}}
+[2025-09-17T16:12:43.508Z] INFO  Registered updater: business_records | Data: {"config":{"name":"business_records","tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false,"enabled":true}}
+[2025-09-17T16:12:43.517Z] INFO  Initialized 3 updaters | Data: {"dryRun":false,"targetTenantId":"550e8400-e29b-41d4-a716-446655440000","targetCustomerId":"cust-1"}
+[2025-09-17T16:12:43.520Z] INFO  Starting Database Updater Manager...
+[2025-09-17T16:12:43.522Z] INFO  Configuration validation passed
+[2025-09-17T16:12:43.524Z] INFO  Scheduled job: business_record_activities | Data: {"cronExpression":"0 */2 9-17 * * 1-5","intervalMs":300000}
+[2025-09-17T16:12:43.533Z] INFO  Scheduled job: service_tickets | Data: {"cronExpression":"0 0 */6 * * *","intervalMs":300000}
+[2025-09-17T16:12:43.539Z] INFO  Scheduled job: business_records | Data: {"cronExpression":"0 0 10 * * 1-5","intervalMs":300000}
+[2025-09-17T16:12:43.542Z] INFO  All updaters scheduled successfully
+[2025-09-17T16:12:43.551Z] INFO  Starting CRON scheduler...
+[2025-09-17T16:12:43.555Z] INFO  CRON scheduler started with 3 jobs
+[2025-09-17T16:12:43.556Z] INFO  Database Updater Manager started successfully
+[2025-09-17T16:12:43.558Z] INFO  Next scheduled executions: | Data: {"business_record_activities":"2025-09-17T16:17:43.558Z","service_tickets":"2025-09-17T16:17:43.558Z","business_records":"2025-09-17T16:17:43.558Z"}
+[2025-09-17T16:17:43.557Z] INFO  Starting execution for updater: business_record_activities | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false}
+[2025-09-17T16:17:43.592Z] INFO  Starting execution for updater: service_tickets | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","customerId":"cust-1","dryRun":false}
+[2025-09-17T16:17:43.604Z] INFO  Starting execution for updater: business_records | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false}
+[2025-09-17T16:17:43.642Z] ERROR Failed to fetch business record IDs | Data: {}
+[2025-09-17T16:17:43.661Z] ERROR Execution failed for updater: business_record_activities | Data: {"name":"Error","message":"No business records found for tenant","stack":"Error: No business records found for tenant\n    at BusinessRecordActivityUpdater.validateExecution (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\updaters\\BusinessRecordActivityUpdater.ts:58:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async BusinessRecordActivityUpdater.execute (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\BaseUpdater.ts:80:7)\n    at async Object.handler (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\DatabaseUpdaterManager.ts:253:11)\n    at async CronScheduler.executeJobHandler (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:377:7)\n    at async <anonymous> (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:249:7)\n    at async Timeout._onTimeout (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:362:7)"}
+[2025-09-17T16:17:43.668Z] ERROR Failed to fetch customer equipment IDs | Data: {}
+[2025-09-17T16:17:43.671Z] WARN  No equipment found for customer, will create tickets without equipment reference
+[2025-09-17T16:17:43.686Z] ERROR Failed to insert new leads | Data: {}
+[2025-09-17T16:17:43.690Z] ERROR Execution failed for updater: business_records | Data: {}
+[2025-09-17T16:17:43.720Z] ERROR Failed to get next ticket number | Data: {}
+[2025-09-17T16:17:43.740Z] ERROR Failed to insert service tickets | Data: {}
+[2025-09-17T16:17:43.757Z] ERROR Execution failed for updater: service_tickets | Data: {}
+[2025-09-17T16:22:43.572Z] INFO  Starting execution for updater: business_record_activities | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false}
+[2025-09-17T16:22:43.593Z] ERROR Failed to fetch business record IDs | Data: {}
+[2025-09-17T16:22:43.598Z] ERROR Execution failed for updater: business_record_activities | Data: {"name":"Error","message":"No business records found for tenant","stack":"Error: No business records found for tenant\n    at BusinessRecordActivityUpdater.validateExecution (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\updaters\\BusinessRecordActivityUpdater.ts:58:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async BusinessRecordActivityUpdater.execute (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\BaseUpdater.ts:80:7)\n    at async Object.handler (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\DatabaseUpdaterManager.ts:253:11)\n    at async CronScheduler.executeJobHandler (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:377:7)\n    at async <anonymous> (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:249:7)\n    at async Timeout._onTimeout (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:362:7)"}
+[2025-09-17T16:22:43.602Z] INFO  Starting execution for updater: service_tickets | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","customerId":"cust-1","dryRun":false}
+[2025-09-17T16:22:43.611Z] INFO  Starting execution for updater: business_records | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false}
+[2025-09-17T16:22:43.625Z] ERROR Failed to fetch customer equipment IDs | Data: {}
+[2025-09-17T16:22:43.628Z] WARN  No equipment found for customer, will create tickets without equipment reference
+[2025-09-17T16:22:43.641Z] ERROR Failed to insert new leads | Data: {}
+[2025-09-17T16:22:43.649Z] ERROR Execution failed for updater: business_records | Data: {}
+[2025-09-17T16:22:43.658Z] ERROR Failed to get next ticket number | Data: {}
+[2025-09-17T16:22:43.685Z] ERROR Failed to insert service tickets | Data: {}
+[2025-09-17T16:22:43.689Z] ERROR Execution failed for updater: service_tickets | Data: {}

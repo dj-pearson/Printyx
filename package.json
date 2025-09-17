@@ -174,12 +174,14 @@
     "vite": "^5.4.19"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,css,md,json}": [
+    "*.{ts,tsx,js,jsx,css,json}": [
       "prettier --write"
     ],
-    "*.{ts,tsx}": [
-      "eslint --fix",
+    "client/src/**/*.{ts,tsx}": [
       "tsc -p tsconfig.json --noEmit"
+    ],
+    "**/*.{js,jsx}": [
+      "eslint --fix"
     ]
   },
   "optionalDependencies": {
