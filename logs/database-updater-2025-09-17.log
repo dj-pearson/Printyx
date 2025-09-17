@@ -50,3 +50,15 @@
 [2025-09-17T16:22:43.658Z] ERROR Failed to get next ticket number | Data: {}
 [2025-09-17T16:22:43.685Z] ERROR Failed to insert service tickets | Data: {}
 [2025-09-17T16:22:43.689Z] ERROR Execution failed for updater: service_tickets | Data: {}
+[2025-09-17T16:27:43.577Z] INFO  Starting execution for updater: business_record_activities | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false}
+[2025-09-17T16:27:43.604Z] INFO  Starting execution for updater: service_tickets | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","customerId":"cust-1","dryRun":false}
+[2025-09-17T16:27:43.619Z] ERROR Failed to fetch business record IDs | Data: {}
+[2025-09-17T16:27:43.640Z] ERROR Execution failed for updater: business_record_activities | Data: {"name":"Error","message":"No business records found for tenant","stack":"Error: No business records found for tenant\n    at BusinessRecordActivityUpdater.validateExecution (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\updaters\\BusinessRecordActivityUpdater.ts:58:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async BusinessRecordActivityUpdater.execute (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\BaseUpdater.ts:80:7)\n    at async Object.handler (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\DatabaseUpdaterManager.ts:253:11)\n    at async CronScheduler.executeJobHandler (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:377:7)\n    at async <anonymous> (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:249:7)\n    at async Timeout._onTimeout (C:\\Users\\dpearson\\Documents\\Printyx\\Printyx\\server\\database-updater\\core\\CronScheduler.ts:362:7)"}
+[2025-09-17T16:27:43.673Z] INFO  Starting execution for updater: business_records | Data: {"tenantId":"550e8400-e29b-41d4-a716-446655440000","dryRun":false}
+[2025-09-17T16:27:43.697Z] ERROR Failed to fetch customer equipment IDs | Data: {}
+[2025-09-17T16:27:43.715Z] WARN  No equipment found for customer, will create tickets without equipment reference
+[2025-09-17T16:27:43.743Z] ERROR Failed to insert new leads | Data: {}
+[2025-09-17T16:27:43.766Z] ERROR Execution failed for updater: business_records | Data: {}
+[2025-09-17T16:27:43.795Z] ERROR Failed to get next ticket number | Data: {}
+[2025-09-17T16:27:43.837Z] ERROR Failed to insert service tickets | Data: {}
+[2025-09-17T16:27:43.852Z] ERROR Execution failed for updater: service_tickets | Data: {}
