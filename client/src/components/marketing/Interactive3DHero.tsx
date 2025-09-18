@@ -62,7 +62,6 @@ const Interactive3DHero = () => {
 
   const floatingMetrics = [
     { icon: TrendingUp, label: "95% Billing Accuracy", value: "↑ 15%", color: "blue", delay: 0 },
-    { icon: Shield, label: "Uptime Guarantee", value: "99.9%", color: "orange", delay: 400 },
   ];
 
   return (
