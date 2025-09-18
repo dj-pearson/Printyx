@@ -68,16 +68,13 @@ const Interactive3DHero = () => {
     <section 
       ref={heroRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-white"
-      style={{
-        transform: `translateY(${scrollY * 0.5}px)`,
-      }}
     >
       {/* Animated 3D Background Grid */}
-      <div className="absolute inset-0 opacity-[0.03]">
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
         <div 
           className="absolute inset-0 bg-grid-pattern"
           style={{
-            transform: `perspective(1000px) rotateX(60deg) translateZ(-100px) translate(${mousePosition.x * 50}px, ${mousePosition.y * 30}px)`,
+            transform: `perspective(1000px) rotateX(60deg) translateZ(-100px) translate(${mousePosition.x * 30}px, ${mousePosition.y * 20}px) translateY(${scrollY * 0.1}px)`,
             backgroundImage: `
               linear-gradient(to right, #2563eb 1px, transparent 1px),
               linear-gradient(to bottom, #2563eb 1px, transparent 1px)
@@ -89,12 +86,12 @@ const Interactive3DHero = () => {
       </div>
 
       {/* Floating 3D Office Environment */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         {/* 3D Room Container */}
         <div 
           className="absolute inset-0"
           style={{
-            transform: `perspective(1500px) rotateX(${5 + mousePosition.y * 10}deg) rotateY(${mousePosition.x * 15}deg)`,
+            transform: `perspective(1500px) rotateX(${5 + mousePosition.y * 8}deg) rotateY(${mousePosition.x * 12}deg) translateY(${scrollY * 0.05}px)`,
           }}
         >
           {/* Office Floor */}
@@ -206,16 +203,16 @@ const Interactive3DHero = () => {
 
         {/* Interactive Particle System */}
         <div className="absolute inset-0 pointer-events-none">
-          {[...Array(12)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-1 h-1 bg-blue-400 rounded-full opacity-40"
+              className="absolute w-1 h-1 bg-blue-400 rounded-full opacity-30"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 animation: `particleFloat ${8 + Math.random() * 4}s ease-in-out infinite`,
                 animationDelay: `${Math.random() * 4}s`,
-                transform: `translateX(${mousePosition.x * 100}px) translateY(${mousePosition.y * 50}px)`,
+                transform: `translateX(${mousePosition.x * 60}px) translateY(${mousePosition.y * 30}px) translateY(${scrollY * 0.08}px)`,
               }}
             />
           ))}
