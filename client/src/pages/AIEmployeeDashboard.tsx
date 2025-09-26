@@ -1,5 +1,6 @@
 // client/src/pages/AIEmployeeDashboard.tsx
 import React, { useState, useEffect } from 'react';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Card,
   CardHeader,
@@ -268,27 +269,20 @@ const AIEmployeeDashboard: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Bot className="h-8 w-8 text-blue-500" />
-            AI Employee Framework
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Manage your autonomous AI employees and monitor their performance
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Create AI Employee
-          </Button>
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
-        </div>
+    <MainLayout 
+      title="AI Employees" 
+      description="Intelligent agents and workflow automation with specialized AI employees for various business functions"
+    >
+      {/* Action buttons */}
+      <div className="flex justify-end gap-3 mb-6">
+        <Button>
+          <Sparkles className="h-4 w-4 mr-2" />
+          Create AI Employee
+        </Button>
+        <Button variant="outline">
+          <Settings className="h-4 w-4 mr-2" />
+          Settings
+        </Button>
       </div>
 
       {/* Analytics Overview */}
@@ -773,7 +767,7 @@ const AIEmployeeDashboard: React.FC = () => {
           </Card>
         </div>
       )}
-    </div>
+    </MainLayout>
   );
 };
 

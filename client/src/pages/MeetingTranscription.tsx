@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Video,
   Mic,
@@ -211,16 +212,12 @@ export default function MeetingTranscription() {
   };
 
   return (
-    <div className="p-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Meeting Transcription</h1>
-          <p className="text-gray-600 mt-2">
-            AI-powered meeting recording, transcription, and intelligent note generation
-          </p>
-        </div>
-        <div className="flex gap-3">
+    <MainLayout 
+      title="Meeting Transcription" 
+      description="AI-powered meeting recording, transcription, and intelligent note generation"
+    >
+      {/* Action buttons */}
+      <div className="flex justify-end gap-3 mb-6">
           <Button
             onClick={toggleRecording}
             className={`flex items-center gap-2 ${
@@ -246,7 +243,6 @@ export default function MeetingTranscription() {
             Upload Recording
           </Button>
         </div>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
@@ -598,6 +594,6 @@ export default function MeetingTranscription() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </MainLayout>
   );
 }

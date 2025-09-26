@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import CalendarView from '@/components/calendar/CalendarView';
+import { MainLayout } from '@/components/layout/main-layout';
 import { 
   Calendar,
   Brain, 
@@ -47,34 +48,25 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Brain className="mr-3 h-8 w-8 text-blue-600" />
-            Motion AI Calendar
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Intelligent scheduling powered by AI for maximum productivity
-          </p>
-        </div>
+    <MainLayout 
+      title="Calendar Integration" 
+      description="Smart scheduling and event management with AI-powered calendar optimization and conflict resolution"
+    >
+      {/* Action buttons */}
+      <div className="flex justify-end gap-3 mb-6">
+        <Button 
+          variant="outline" 
+          onClick={handleSync}
+          disabled={syncStatus === 'syncing'}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+          {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Calendars'}
+        </Button>
         
-        <div className="flex items-center space-x-3">
-          <Button 
-            variant="outline" 
-            onClick={handleSync}
-            disabled={syncStatus === 'syncing'}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
-            {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Calendars'}
-          </Button>
-          
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
-        </div>
+        <Button variant="outline">
+          <Settings className="h-4 w-4 mr-2" />
+          Settings
+        </Button>
       </div>
 
       {/* AI Insights & Stats */}
@@ -289,6 +281,6 @@ export default function CalendarPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }

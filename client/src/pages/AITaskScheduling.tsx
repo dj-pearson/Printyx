@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Brain,
   Calendar,
@@ -235,16 +236,12 @@ export default function AITaskScheduling() {
   });
 
   return (
-    <div className="p-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">AI Task Scheduling</h1>
-          <p className="text-gray-600 mt-2">
-            Enhanced AI task scheduling and dependency management with intelligent automation
-          </p>
-        </div>
-        <div className="flex gap-3">
+    <MainLayout 
+      title="AI Task Scheduling" 
+      description="Enhanced AI task scheduling and dependency management with intelligent automation"
+    >
+      {/* Action buttons */}
+      <div className="flex justify-end gap-3 mb-6">
           <Button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700">
             <Brain className="h-4 w-4" />
             AI Optimize Schedule
@@ -254,7 +251,6 @@ export default function AITaskScheduling() {
             Create Task
           </Button>
         </div>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -622,6 +618,6 @@ export default function AITaskScheduling() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </MainLayout>
   );
 }

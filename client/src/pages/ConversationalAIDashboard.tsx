@@ -1,5 +1,6 @@
 // client/src/pages/ConversationalAIDashboard.tsx
 import React, { useState, useEffect, useRef } from 'react';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Card,
   CardHeader,
@@ -475,18 +476,14 @@ const ConversationalAIDashboard: React.FC = () => {
   );
 
   return (
-    <div className="h-screen flex">
-      {/* Sidebar */}
-      <div className="w-80 border-r bg-gray-50 flex flex-col">
-        <div className="p-4 border-b">
-          <h1 className="text-lg font-semibold flex items-center gap-2">
-            <Brain className="h-5 w-5 text-blue-500" />
-            AI Assistant
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">Conversational AI for business tasks</p>
-        </div>
-
-        <Tabs defaultValue="conversations" className="flex-1 flex flex-col">
+    <MainLayout 
+      title="Conversation AI" 
+      description="Advanced conversational AI dashboard for customer interactions and support automation"
+    >
+      <div className="h-[calc(100vh-12rem)] flex">
+        {/* Sidebar */}
+        <div className="w-80 border-r bg-gray-50 flex flex-col">
+          <Tabs defaultValue="conversations" className="flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-2 m-2">
             <TabsTrigger value="conversations">
               <MessageSquare className="h-4 w-4 mr-1" />
@@ -640,6 +637,7 @@ const ConversationalAIDashboard: React.FC = () => {
         </div>
       </div>
     </div>
+    </MainLayout>
   );
 };
 
