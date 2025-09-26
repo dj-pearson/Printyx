@@ -56,7 +56,12 @@ import {
   FileSignature,
   Code,
   Menu,
-  X
+  X,
+  Bot,
+  MessageSquare,
+  Search,
+  Mic,
+  Video
 } from "lucide-react";
 
 interface NavigationItem {
@@ -270,6 +275,23 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     children: [
       { title: 'Advanced Tasks', path: '/task-management', icon: Brain },
       { title: 'Basic Tasks', path: '/basic-task-management', icon: CheckSquare }
+    ]
+  });
+
+  // AI Hub - Always available for AI-powered features
+  sections.push({
+    id: 'ai-hub',
+    title: 'AI Hub',
+    icon: Brain,
+    path: '/ai-hub',
+    matchPatterns: ['/ai*', '/calendar*', '/meeting*', '/search*'],
+    children: [
+      { title: 'AI Employees', path: '/ai-employees', icon: Bot },
+      { title: 'Calendar Integration', path: '/calendar', icon: Calendar },
+      { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
+      { title: 'AI Search & Knowledge', path: '/ai-search', icon: Search },
+      { title: 'AI Task Scheduling', path: '/ai-task-scheduling', icon: Brain },
+      { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare }
     ]
   });
 
