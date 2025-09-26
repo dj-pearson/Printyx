@@ -10586,6 +10586,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const calendarRoutes = await import("./routes/calendar-routes");
   app.use("/api/calendar", calendarRoutes.default);
 
+  // Task Management Routes
+  const taskRoutes = await import("./routes/task-routes");
+  app.use("/api/tasks", taskRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
