@@ -1,7 +1,7 @@
 // server/services/ai-employee-service.ts
 import { db } from '../db';
 import { eq, and, sql, desc, asc } from 'drizzle-orm';
-import { ClaudeAIService } from './claude-ai-service';
+import ClaudeAIService from './claude-ai-service';
 
 // Mock schemas - in real implementation these would come from shared/ai-employee-schema.ts
 const aiEmployees = {
@@ -103,10 +103,10 @@ interface WorkflowExecution {
 }
 
 class AIEmployeeService {
-  private claudeAIService: ClaudeAIService;
+  private claudeAIService: any;
 
   constructor() {
-    this.claudeAIService = new ClaudeAIService();
+    this.claudeAIService = ClaudeAIService;
   }
 
   // --- Employee Management ---
