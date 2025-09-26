@@ -10578,6 +10578,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/rbac", enhancedRBACRoutes);
   app.use("/api/ai/gpt5", gpt5Routes);
 
+  // Motion AI Routes
+  const motionAIRoutes = await import("./routes/ai-routes-simple");
+  app.use("/api/ai", motionAIRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
