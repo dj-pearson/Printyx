@@ -10594,6 +10594,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const performanceRoutes = await import("./routes/performance-routes");
   app.use("/api/performance", performanceRoutes.default);
 
+  // Advanced Scheduling Routes
+  const advancedSchedulingRoutes = await import("./routes/advanced-scheduling-routes");
+  app.use("/api/advanced-scheduling", advancedSchedulingRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
