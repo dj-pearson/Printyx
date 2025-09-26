@@ -10582,6 +10582,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const motionAIRoutes = await import("./routes/ai-routes-simple");
   app.use("/api/ai", motionAIRoutes.default);
 
+  // Calendar Routes
+  const calendarRoutes = await import("./routes/calendar-routes");
+  app.use("/api/calendar", calendarRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
