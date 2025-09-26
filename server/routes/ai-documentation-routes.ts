@@ -814,3 +814,5 @@ router.get('/document-types', requireAuth, async (req, res) => {
 });
 
 export default router;
+
+
