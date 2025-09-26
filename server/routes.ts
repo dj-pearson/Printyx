@@ -10602,6 +10602,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const teamCollaborationRoutes = await import("./routes/team-collaboration-routes");
   app.use("/api", teamCollaborationRoutes.default);
 
+  // Meeting Scheduling Routes
+  const meetingSchedulingRoutes = await import("./routes/meeting-scheduling-routes");
+  app.use("/api", meetingSchedulingRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
