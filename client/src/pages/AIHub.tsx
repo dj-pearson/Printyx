@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'wouter';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Brain,
   Bot,
@@ -147,28 +148,20 @@ export default function AIHub() {
   };
 
   return (
-    <div className="p-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Brain className="h-8 w-8 text-purple-600" />
-            AI Hub
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Central command center for all AI-powered features and intelligent automation
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700">
-            <Settings className="h-4 w-4" />
-            AI Settings
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            View Analytics
-          </Button>
-        </div>
+    <MainLayout 
+      title="AI Hub" 
+      description="Central command center for all AI-powered features and intelligent automation"
+    >
+      {/* AI Hub Action Buttons */}
+      <div className="flex justify-end gap-3 mb-6">
+        <Button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700">
+          <Settings className="h-4 w-4" />
+          AI Settings
+        </Button>
+        <Button variant="outline" className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4" />
+          View Analytics
+        </Button>
       </div>
 
       {/* AI Performance Stats */}
@@ -440,6 +433,6 @@ export default function AIHub() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </MainLayout>
   );
 }

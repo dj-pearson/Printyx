@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MainLayout } from '@/components/layout/main-layout';
 import {
   Search,
   Brain,
@@ -440,15 +441,11 @@ const AISearchKnowledgeDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">AI Search & Knowledge</h1>
-          <p className="text-gray-600 mt-1">
-            Vector database search, AI query processing, and intelligent knowledge discovery
-          </p>
-        </div>
+    <MainLayout 
+      title="AI Search & Knowledge" 
+      description="Vector database search, AI query processing, and intelligent knowledge discovery across all content"
+    >
+      <div className="space-y-6">
         <div className="flex items-center space-x-3">
           <Button variant="outline">
             <Database className="h-4 w-4 mr-2" />
@@ -459,7 +456,6 @@ const AISearchKnowledgeDashboard: React.FC = () => {
             Knowledge Graph
           </Button>
         </div>
-      </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1176,7 +1172,8 @@ const AISearchKnowledgeDashboard: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </MainLayout>
   );
 };
 
