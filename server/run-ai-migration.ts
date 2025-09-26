@@ -5,7 +5,8 @@
 
 import { db } from './db';
 import fs from 'fs';
-import path from 'path';
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 async function runAIMigration() {
   console.log('🚀 Starting Motion AI Migration...');
@@ -54,7 +55,13 @@ async function runAIMigration() {
   }
 }
 
-if (require.main === module) {
+// Get __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Run migration if this file is executed directly
+
+if (import.meta.url.startsWith('file:') && fileURLToPath(import.meta.url) === process.argv[1]) {
   runAIMigration().then(() => {
     console.log('Migration script completed');
     process.exit(0);
