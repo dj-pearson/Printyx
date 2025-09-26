@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Settings,
-  Sync
+  RefreshCw
 } from 'lucide-react';
 
 interface CalendarStats {
@@ -66,7 +66,7 @@ export default function CalendarPage() {
             onClick={handleSync}
             disabled={syncStatus === 'syncing'}
           >
-            <Sync className={`h-4 w-4 mr-2 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
             {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Calendars'}
           </Button>
           
@@ -159,7 +159,7 @@ export default function CalendarPage() {
             <div className="flex items-center">
               {syncStatus === 'syncing' && (
                 <>
-                  <Sync className="h-4 w-4 animate-spin mr-2 text-blue-600" />
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2 text-blue-600" />
                   <span className="text-blue-800">Syncing with external calendars...</span>
                 </>
               )}
