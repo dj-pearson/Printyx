@@ -10614,6 +10614,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const aiDocumentationRoutes = await import("./routes/ai-documentation-routes");
   app.use("/api", aiDocumentationRoutes.default);
 
+  // AI Search & Knowledge Routes
+  const aiSearchKnowledgeRoutes = await import("./routes/ai-search-knowledge-routes");
+  app.use("/api", aiSearchKnowledgeRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
