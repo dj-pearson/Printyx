@@ -10607,8 +10607,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // app.use("/api", meetingSchedulingRoutes.default);
 
   // Meeting Transcription Routes
-  // const meetingTranscriptionRoutes = await import("./routes/meeting-transcription-routes");
-  // app.use("/api", meetingTranscriptionRoutes.default);
+  const meetingTranscriptionRoutes = await import("./routes/meeting-transcription-routes");
+  app.use("/api", meetingTranscriptionRoutes.default);
 
   // AI Documentation Routes
   // const aiDocumentationRoutes = await import("./routes/ai-documentation-routes");
@@ -10619,8 +10619,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", aiSearchKnowledgeRoutes.default);
 
   // AI Employee Routes
-  // const aiEmployeeRoutes = await import("./routes/ai-employee-routes");
-  // app.use("/api", aiEmployeeRoutes.default);
+  const aiEmployeeRoutes = await import("./routes/ai-employee-routes");
+  app.use("/api", aiEmployeeRoutes.default);
 
   // Advanced Workflow Routes
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
