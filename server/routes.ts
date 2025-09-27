@@ -10622,9 +10622,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const aiEmployeeRoutes = await import("./routes/ai-employee-routes");
   app.use("/api", aiEmployeeRoutes.default);
 
-  // Advanced Workflow Routes
-  const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
-  app.use("/api", advancedWorkflowRoutes.default);
+  // Advanced Workflow Routes (file doesn't exist yet)
+  // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
+  // app.use("/api", advancedWorkflowRoutes.default);
 
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
