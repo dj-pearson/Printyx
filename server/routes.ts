@@ -10615,8 +10615,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // app.use("/api", aiDocumentationRoutes.default);
 
   // AI Search & Knowledge Routes
-  // const aiSearchKnowledgeRoutes = await import("./routes/ai-search-knowledge-routes");
-  // app.use("/api", aiSearchKnowledgeRoutes.default);
+  const aiSearchKnowledgeRoutes = await import("./routes/ai-search-knowledge-routes");
+  app.use("/api", aiSearchKnowledgeRoutes.default);
 
   // AI Employee Routes
   // const aiEmployeeRoutes = await import("./routes/ai-employee-routes");
