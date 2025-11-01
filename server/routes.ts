@@ -10578,6 +10578,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/rbac", enhancedRBACRoutes);
   app.use("/api/ai/gpt5", gpt5Routes);
 
+  // Motion AI Routes
+  const motionAIRoutes = await import("./routes/ai-routes-simple");
+  app.use("/api/ai", motionAIRoutes.default);
+
+  // Calendar Routes
+  const calendarRoutes = await import("./routes/calendar-routes");
+  app.use("/api/calendar", calendarRoutes.default);
+
+  // Task Management Routes
+  const taskRoutes = await import("./routes/task-routes");
+  app.use("/api/tasks", taskRoutes.default);
+
+  // Performance Monitoring Routes
+  const performanceRoutes = await import("./routes/performance-routes");
+  app.use("/api/performance", performanceRoutes.default);
+
+  // Advanced Scheduling Routes
+  const advancedSchedulingRoutes = await import("./routes/advanced-scheduling-routes");
+  app.use("/api/advanced-scheduling", advancedSchedulingRoutes.default);
+
+  // Team Collaboration Routes
+  const teamCollaborationRoutes = await import("./routes/team-collaboration-routes");
+  app.use("/api", teamCollaborationRoutes.default);
+
+  // Meeting Scheduling Routes
+  const meetingSchedulingRoutes = await import("./routes/meeting-scheduling-routes");
+  app.use("/api", meetingSchedulingRoutes.default);
+
+  // Meeting Transcription Routes
+  const meetingTranscriptionRoutes = await import("./routes/meeting-transcription-routes");
+  app.use("/api", meetingTranscriptionRoutes.default);
+
+  // AI Documentation Routes
+  const aiDocumentationRoutes = await import("./routes/ai-documentation-routes");
+  app.use("/api", aiDocumentationRoutes.default);
+
+  // AI Search & Knowledge Routes
+  const aiSearchKnowledgeRoutes = await import("./routes/ai-search-knowledge-routes");
+  app.use("/api", aiSearchKnowledgeRoutes.default);
+
+  // AI Employee Routes
+  const aiEmployeeRoutes = await import("./routes/ai-employee-routes");
+  app.use("/api", aiEmployeeRoutes.default);
+
+  // Advanced Workflow Routes (file doesn't exist yet)
+  // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
+  // app.use("/api", advancedWorkflowRoutes.default);
+
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules

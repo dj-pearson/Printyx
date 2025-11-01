@@ -139,6 +139,15 @@ import TechnicianManagement from "@/pages/TechnicianManagement";
 import VehicleManagement from "@/pages/VehicleManagement";
 import AssetManagement from "@/pages/AssetManagement";
 
+// AI Hub Pages
+import AIHub from "@/pages/AIHub";
+import AIEmployeeDashboard from "@/pages/AIEmployeeDashboard";
+import CalendarPage from "@/pages/CalendarPage";
+import MeetingTranscription from "@/pages/MeetingTranscription";
+import AITaskScheduling from "@/pages/AITaskScheduling";
+import AISearchKnowledgeDashboard from "@/pages/AISearchKnowledgeDashboard";
+import ConversationalAIDashboard from "@/pages/ConversationalAIDashboard";
+
 // Platform Admin Pages
 import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
 import SystemSecurity from "@/pages/admin/SystemSecurity";
@@ -517,6 +526,16 @@ function Router() {
             path="/manufacturer-integration/audit"
             component={ManufacturerIntegrationAudit}
           />
+          
+          {/* AI Hub Routes */}
+          <Route path="/ai-hub" component={AIHub} />
+          <Route path="/ai-employees" component={AIEmployeeDashboard} />
+          <Route path="/calendar" component={CalendarPage} />
+          <Route path="/meeting-transcription" component={MeetingTranscription} />
+          <Route path="/ai-task-scheduling" component={AITaskScheduling} />
+          <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
+          <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />
+          
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
