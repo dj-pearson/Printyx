@@ -1288,8 +1288,8 @@ export interface IStorage {
   deleteBillingRule(ruleId: string, tenantId: string): Promise<void>;
   getActiveBillingRules(tenantId: string, customerId?: string, equipmentId?: string): Promise<BillingRule[]>;
   applyBillingRule(ruleId: string, usage: { bwVolume: number; colorVolume: number }): Promise<{ totalCharge: number; breakdown: any }>;
-  getBillingRulesByCustomer(customerId: string): Promise<BillingRule[]>;
-  getBillingRulesByContract(contractId: string): Promise<BillingRule[]>;
+  getBillingRulesByCustomer(customerId: string, tenantId: string): Promise<BillingRule[]>;
+  getBillingRulesByContract(contractId: string, tenantId: string): Promise<BillingRule[]>;
 
   // Meter Anomalies
   getMeterAnomalies(tenantId: string, filters?: { anomalyType?: string; severity?: string; resolved?: boolean; equipmentId?: string; customerId?: string }): Promise<MeterAnomaly[]>;
@@ -1300,7 +1300,7 @@ export interface IStorage {
   resolveAnomaly(anomalyId: string, tenantId: string, resolutionMethod: string, notes: string): Promise<MeterAnomaly | null>;
   getUnresolvedAnomalies(tenantId: string, filters?: { severity?: string; anomalyType?: string }): Promise<MeterAnomaly[]>;
   detectAnomalies(meterReadingId: string): Promise<MeterAnomaly[]>;
-  getAnomaliesByEquipment(equipmentId: string): Promise<MeterAnomaly[]>;
+  getAnomaliesByEquipment(equipmentId: string, tenantId: string): Promise<MeterAnomaly[]>;
 
   // Billing Disputes
   getBillingDisputes(tenantId: string, filters?: { disputeType?: string; disputeStatus?: string; severity?: string; customerId?: string; invoiceId?: string }): Promise<BillingDispute[]>;
@@ -1312,8 +1312,8 @@ export interface IStorage {
   resolveDispute(disputeId: string, tenantId: string, userId: string, resolutionData: { resolutionType: string; resolutionDescription: string; creditAmount?: number }): Promise<BillingDispute | null>;
   escalateDispute(disputeId: string, tenantId: string, userId: string, reason: string): Promise<BillingDispute | null>;
   getOpenDisputes(tenantId: string, filters?: { severity?: string; priorityLevel?: number }): Promise<BillingDispute[]>;
-  getDisputesByCustomer(customerId: string): Promise<BillingDispute[]>;
-  getDisputesByInvoice(invoiceId: string): Promise<BillingDispute[]>;
+  getDisputesByCustomer(customerId: string, tenantId: string): Promise<BillingDispute[]>;
+  getDisputesByInvoice(invoiceId: string, tenantId: string): Promise<BillingDispute[]>;
 
   // Invoice Generation Logs
   getInvoiceGenerationLogs(tenantId: string, filters?: { status?: string; generationType?: string; customerId?: string; batchId?: string }): Promise<InvoiceGenerationLog[]>;
@@ -1343,7 +1343,7 @@ export interface IStorage {
   issueCreditMemo(creditMemoId: string, tenantId: string): Promise<CreditMemo | null>;
   applyCreditToInvoice(creditMemoId: string, tenantId: string, invoiceId: string): Promise<CreditMemo | null>;
   voidCreditMemo(creditMemoId: string, tenantId: string, userId: string, reason: string): Promise<CreditMemo | null>;
-  getCreditMemosByCustomer(customerId: string): Promise<CreditMemo[]>;
+  getCreditMemosByCustomer(customerId: string, tenantId: string): Promise<CreditMemo[]>;
   getPendingCreditMemos(tenantId: string): Promise<CreditMemo[]>;
 }
 
@@ -10209,24 +10209,27 @@ export class DatabaseStorage implements IStorage {
     return { totalCharge, breakdown };
   }
 
-  async getBillingRulesByCustomer(customerId: string): Promise<BillingRule[]> {
+  async getBillingRulesByCustomer(customerId: string, tenantId: string): Promise<BillingRule[]> {
     return await db
       .select()
       .from(billingRules)
       .where(
-        or(
-          eq(billingRules.customerId, customerId),
-          eq(billingRules.applicableToAllCustomers, true)
+        and(
+          eq(billingRules.tenantId, tenantId),
+          or(
+            eq(billingRules.customerId, customerId),
+            eq(billingRules.applicableToAllCustomers, true)
+          )
         )
       )
       .orderBy(desc(billingRules.priority));
   }
 
-  async getBillingRulesByContract(contractId: string): Promise<BillingRule[]> {
+  async getBillingRulesByContract(contractId: string, tenantId: string): Promise<BillingRule[]> {
     return await db
       .select()
       .from(billingRules)
-      .where(eq(billingRules.contractId, contractId))
+      .where(and(eq(billingRules.contractId, contractId), eq(billingRules.tenantId, tenantId)))
       .orderBy(desc(billingRules.priority));
   }
 
@@ -10366,11 +10369,11 @@ export class DatabaseStorage implements IStorage {
     return [];
   }
 
-  async getAnomaliesByEquipment(equipmentId: string): Promise<MeterAnomaly[]> {
+  async getAnomaliesByEquipment(equipmentId: string, tenantId: string): Promise<MeterAnomaly[]> {
     return await db
       .select()
       .from(meterAnomalies)
-      .where(eq(meterAnomalies.equipmentId, equipmentId))
+      .where(and(eq(meterAnomalies.equipmentId, equipmentId), eq(meterAnomalies.tenantId, tenantId)))
       .orderBy(desc(meterAnomalies.detectedAt));
   }
 
@@ -10550,19 +10553,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(billingDisputes.priorityLevel), desc(billingDisputes.filedDate));
   }
 
-  async getDisputesByCustomer(customerId: string): Promise<BillingDispute[]> {
+  async getDisputesByCustomer(customerId: string, tenantId: string): Promise<BillingDispute[]> {
     return await db
       .select()
       .from(billingDisputes)
-      .where(eq(billingDisputes.customerId, customerId))
+      .where(and(eq(billingDisputes.customerId, customerId), eq(billingDisputes.tenantId, tenantId)))
       .orderBy(desc(billingDisputes.filedDate));
   }
 
-  async getDisputesByInvoice(invoiceId: string): Promise<BillingDispute[]> {
+  async getDisputesByInvoice(invoiceId: string, tenantId: string): Promise<BillingDispute[]> {
     return await db
       .select()
       .from(billingDisputes)
-      .where(eq(billingDisputes.invoiceId, invoiceId))
+      .where(and(eq(billingDisputes.invoiceId, invoiceId), eq(billingDisputes.tenantId, tenantId)))
       .orderBy(desc(billingDisputes.filedDate));
   }
 
@@ -10961,11 +10964,11 @@ export class DatabaseStorage implements IStorage {
     return creditMemo || null;
   }
 
-  async getCreditMemosByCustomer(customerId: string): Promise<CreditMemo[]> {
+  async getCreditMemosByCustomer(customerId: string, tenantId: string): Promise<CreditMemo[]> {
     return await db
       .select()
       .from(creditMemos)
-      .where(eq(creditMemos.customerId, customerId))
+      .where(and(eq(creditMemos.customerId, customerId), eq(creditMemos.tenantId, tenantId)))
       .orderBy(desc(creditMemos.issuedDate));
   }
 

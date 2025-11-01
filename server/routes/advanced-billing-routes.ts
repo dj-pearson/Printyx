@@ -160,12 +160,8 @@ router.get('/rules/customer/:customerId', async (req: Request, res: Response) =>
   }
 
   try {
-    const rules = await storage.getBillingRulesByCustomer(req.params.customerId);
-    
-    // Filter by tenant
-    const filteredRules = rules.filter(rule => rule.tenantId === user.tenantId);
-    
-    res.json(filteredRules);
+    const rules = await storage.getBillingRulesByCustomer(req.params.customerId, user.tenantId);
+    res.json(rules);
   } catch (error) {
     console.error('Get billing rules by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch billing rules for customer' });
@@ -180,12 +176,8 @@ router.get('/rules/contract/:contractId', async (req: Request, res: Response) =>
   }
 
   try {
-    const rules = await storage.getBillingRulesByContract(req.params.contractId);
-    
-    // Filter by tenant
-    const filteredRules = rules.filter(rule => rule.tenantId === user.tenantId);
-    
-    res.json(filteredRules);
+    const rules = await storage.getBillingRulesByContract(req.params.contractId, user.tenantId);
+    res.json(rules);
   } catch (error) {
     console.error('Get billing rules by contract error:', error);
     res.status(500).json({ error: 'Failed to fetch billing rules for contract' });
@@ -348,7 +340,7 @@ router.get('/anomalies/equipment/:equipmentId', async (req: Request, res: Respon
   }
 
   try {
-    const anomalies = await storage.getMeterAnomaliesByEquipment(
+    const anomalies = await storage.getAnomaliesByEquipment(
       req.params.equipmentId,
       user.tenantId
     );
@@ -1210,12 +1202,8 @@ router.get('/credit-memos/customer/:customerId', async (req: Request, res: Respo
   }
 
   try {
-    const creditMemos = await storage.getCreditMemosByCustomer(req.params.customerId);
-    
-    // Filter by tenant
-    const filteredMemos = creditMemos.filter(memo => memo.tenantId === user.tenantId);
-    
-    res.json(filteredMemos);
+    const creditMemos = await storage.getCreditMemosByCustomer(req.params.customerId, user.tenantId);
+    res.json(creditMemos);
   } catch (error) {
     console.error('Get credit memos by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch credit memos for customer' });
