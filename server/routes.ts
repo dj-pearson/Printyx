@@ -10630,6 +10630,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const signatureRoutes = await import("./routes/signature-routes");
   app.use("/api", signatureRoutes.default);
 
+  // Field Service Photo & Signature Capture Routes
+  const fieldServiceRoutes = await import("./routes/field-service-routes");
+  app.use("/api", fieldServiceRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
