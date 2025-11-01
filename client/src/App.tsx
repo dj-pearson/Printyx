@@ -151,6 +151,7 @@ import ConversationalAIDashboard from "@/pages/ConversationalAIDashboard";
 // Lease Management Pages
 import Leases from "@/pages/Leases";
 import LeaseDetail from "@/pages/LeaseDetail";
+import LeaseForm from "@/pages/LeaseForm";
 
 // Platform Admin Pages
 import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
@@ -298,6 +299,8 @@ function Router() {
           <Route path="/revenue-reports" component={RevenueReports} />
           <Route path="/contracts" component={Contracts} />
           <Route path="/leases" component={Leases} />
+          <Route path="/leases/new" component={LeaseForm} />
+          <Route path="/leases/:id/edit" component={LeaseForm} />
           <Route path="/leases/:id" component={LeaseDetail} />
           <Route path="/document-builder" component={DocumentBuilder} />
           <Route path="/meter-readings" component={MeterReadings} />
