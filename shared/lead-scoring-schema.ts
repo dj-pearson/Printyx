@@ -1,4 +1,4 @@
-import { pgTable, varchar, integer, decimal, boolean, timestamp, jsonb, text, serial } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, decimal, boolean, timestamp, jsonb, text, serial, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -29,7 +29,13 @@ export const leadScoringRules = pgTable("lead_scoring_rules", {
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  tenantIdx: index('lead_scoring_rules_tenant_idx').on(table.tenantId),
+  tenantCategoryIdx: index('lead_scoring_rules_tenant_category_idx').on(table.tenantId, table.category),
+  tenantActiveIdx: index('lead_scoring_rules_tenant_active_idx').on(table.tenantId, table.isActive),
+  categoryIdx: index('lead_scoring_rules_category_idx').on(table.category),
+  activeIdx: index('lead_scoring_rules_active_idx').on(table.isActive),
+}));
 
 // ==================== Lead Scoring Factors ====================
 // Track individual scoring factor contributions for transparency
@@ -51,7 +57,13 @@ export const leadScoringFactors = pgTable("lead_scoring_factors", {
   
   // Timestamps
   evaluatedAt: timestamp("evaluated_at").defaultNow(),
-});
+}, (table) => ({
+  leadIdx: index('lead_scoring_factors_lead_idx').on(table.leadId),
+  tenantLeadIdx: index('lead_scoring_factors_tenant_lead_idx').on(table.tenantId, table.leadId),
+  tenantIdx: index('lead_scoring_factors_tenant_idx').on(table.tenantId),
+  ruleIdx: index('lead_scoring_factors_rule_idx').on(table.ruleId),
+  evaluatedAtIdx: index('lead_scoring_factors_evaluated_at_idx').on(table.evaluatedAt),
+}));
 
 // ==================== BANT Qualification Criteria ====================
 // Budget, Authority, Need, Timeline framework for lead qualification
@@ -106,7 +118,14 @@ export const bantQualificationCriteria = pgTable("bant_qualification_criteria", 
   lastAssessedAt: timestamp("last_assessed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  leadIdx: index('bant_qualification_lead_idx').on(table.leadId),
+  tenantLeadIdx: index('bant_qualification_tenant_lead_idx').on(table.tenantId, table.leadId),
+  tenantIdx: index('bant_qualification_tenant_idx').on(table.tenantId),
+  tenantStatusIdx: index('bant_qualification_tenant_status_idx').on(table.tenantId, table.qualificationStatus),
+  statusIdx: index('bant_qualification_status_idx').on(table.qualificationStatus),
+  tenantScoreIdx: index('bant_qualification_tenant_score_idx').on(table.tenantId, table.totalBantScore),
+}));
 
 // ==================== Lead Score Calculations ====================
 // Historical record of all score calculations for audit trail
@@ -143,7 +162,16 @@ export const leadScoreCalculations = pgTable("lead_score_calculations", {
   
   // Timestamps
   calculatedAt: timestamp("calculated_at").defaultNow(),
-});
+}, (table) => ({
+  leadIdx: index('lead_score_calculations_lead_idx').on(table.leadId),
+  tenantLeadIdx: index('lead_score_calculations_tenant_lead_idx').on(table.tenantId, table.leadId),
+  tenantIdx: index('lead_score_calculations_tenant_idx').on(table.tenantId),
+  tenantScoreIdx: index('lead_score_calculations_tenant_score_idx').on(table.tenantId, table.totalScore),
+  tenantCalculatedAtIdx: index('lead_score_calculations_tenant_calc_at_idx').on(table.tenantId, table.calculatedAt),
+  gradeIdx: index('lead_score_calculations_grade_idx').on(table.leadGrade),
+  tierIdx: index('lead_score_calculations_tier_idx').on(table.leadTier),
+  calculatedAtIdx: index('lead_score_calculations_calculated_at_idx').on(table.calculatedAt),
+}));
 
 // ==================== Lead Qualification History ====================
 // Track changes in lead qualification status over time
@@ -171,7 +199,13 @@ export const leadQualificationHistory = pgTable("lead_qualification_history", {
   
   // Timestamps
   changedAt: timestamp("changed_at").defaultNow(),
-});
+}, (table) => ({
+  leadIdx: index('lead_qualification_history_lead_idx').on(table.leadId),
+  tenantLeadIdx: index('lead_qualification_history_tenant_lead_idx').on(table.tenantId, table.leadId),
+  tenantIdx: index('lead_qualification_history_tenant_idx').on(table.tenantId),
+  tenantChangedAtIdx: index('lead_qualification_history_tenant_changed_idx').on(table.tenantId, table.changedAt),
+  changedAtIdx: index('lead_qualification_history_changed_at_idx').on(table.changedAt),
+}));
 
 // ==================== Lead Engagement Tracking ====================
 // Track lead engagement activities for behavioral scoring
@@ -195,7 +229,14 @@ export const leadEngagementTracking = pgTable("lead_engagement_tracking", {
   
   // Timestamps
   engagedAt: timestamp("engaged_at").defaultNow(),
-});
+}, (table) => ({
+  leadIdx: index('lead_engagement_tracking_lead_idx').on(table.leadId),
+  tenantLeadIdx: index('lead_engagement_tracking_tenant_lead_idx').on(table.tenantId, table.leadId),
+  tenantIdx: index('lead_engagement_tracking_tenant_idx').on(table.tenantId),
+  tenantEngagedAtIdx: index('lead_engagement_tracking_tenant_engaged_idx').on(table.tenantId, table.engagedAt),
+  engagementTypeIdx: index('lead_engagement_tracking_type_idx').on(table.engagementType),
+  engagedAtIdx: index('lead_engagement_tracking_engaged_at_idx').on(table.engagedAt),
+}));
 
 // ==================== Zod Schemas for Validation ====================
 
