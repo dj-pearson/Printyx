@@ -10626,6 +10626,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const leaseRoutes = await import("./routes/lease-routes");
   app.use("/api", leaseRoutes.default);
 
+  // E-Signature Integration Routes
+  const signatureRoutes = await import("./routes/signature-routes");
+  app.use("/api", signatureRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
