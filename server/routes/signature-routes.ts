@@ -117,8 +117,14 @@ router.patch("/integration-credentials/:id", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    // Validate update data with partial schema
+    const updateData = insertIntegrationCredentialSchema
+      .partial()
+      .omit({ tenantId: true, createdBy: true })
+      .parse(req.body);
+
     const data = {
-      ...req.body,
+      ...updateData,
       updatedBy: req.session.user?.id,
     };
 
@@ -139,6 +145,9 @@ router.patch("/integration-credentials/:id", async (req, res) => {
 
     res.json(safeCredential);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
     console.error("Error updating integration credential:", error);
     res.status(500).json({ error: "Failed to update integration credential" });
   }
