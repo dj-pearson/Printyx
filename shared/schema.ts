@@ -7134,3 +7134,401 @@ export const insertInstallationChecklistSchema = createInsertSchema(installation
   createdAt: true,
   updatedAt: true,
 });
+
+// ============================================================================
+// EMAIL MARKETING SERVICE INTEGRATION SYSTEM
+// ============================================================================
+
+// Email Templates - Reusable email templates
+export const emailTemplates = pgTable("email_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Template Details
+  templateName: varchar("template_name").notNull(),
+  templateDescription: text("template_description"),
+  templateType: varchar("template_type").notNull(), // promotional, transactional, newsletter, drip, announcement
+  
+  // Content
+  subject: varchar("subject").notNull(),
+  preheaderText: varchar("preheader_text"), // Preview text shown in email clients
+  htmlContent: text("html_content").notNull(),
+  textContent: text("text_content"), // Plain text version
+  
+  // Design & Variables
+  designJson: jsonb("design_json"), // Store design/layout configuration
+  variableFields: jsonb("variable_fields"), // List of merge/dynamic fields (e.g., {{firstName}})
+  
+  // Metadata
+  category: varchar("category"), // onboarding, engagement, promotion, retention
+  tags: text("tags").array(),
+  
+  // Version control
+  version: integer("version").default(1),
+  isActive: boolean("is_active").default(true),
+  
+  // Ownership
+  createdBy: varchar("created_by").notNull(),
+  lastModifiedBy: varchar("last_modified_by"),
+  
+  // Audit trail
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("email_templates_tenant_idx").on(table.tenantId),
+  typeIdx: index("email_templates_type_idx").on(table.templateType),
+  activeIdx: index("email_templates_active_idx").on(table.isActive),
+  unique: unique("email_templates_name_unique").on(table.tenantId, table.templateName),
+}));
+
+// Email Campaigns - Email campaign management
+export const emailCampaigns = pgTable("email_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Campaign Details
+  campaignName: varchar("campaign_name").notNull(),
+  campaignDescription: text("campaign_description"),
+  campaignType: varchar("campaign_type").notNull(), // one_time, drip, automated, ab_test
+  
+  // Template & Content
+  templateId: varchar("template_id"), // Reference to email_templates
+  subject: varchar("subject").notNull(), // Can override template subject
+  senderName: varchar("sender_name").notNull(),
+  senderEmail: varchar("sender_email").notNull(),
+  replyToEmail: varchar("reply_to_email"),
+  
+  // Targeting
+  listIds: text("list_ids").array(), // References to email_lists
+  segmentCriteria: jsonb("segment_criteria"), // Dynamic filtering criteria
+  excludeListIds: text("exclude_list_ids").array(), // Lists to exclude
+  
+  // Drip/Sequence Configuration (for drip campaigns)
+  sequenceSteps: jsonb("sequence_steps"), // Array of steps with delays
+  currentStep: integer("current_step").default(1),
+  
+  // Scheduling
+  scheduleType: varchar("schedule_type").notNull(), // immediate, scheduled, recurring
+  scheduledDate: timestamp("scheduled_date"),
+  timezone: varchar("timezone").default("UTC"),
+  recurringPattern: jsonb("recurring_pattern"), // For recurring campaigns
+  
+  // Status
+  status: varchar("status").notNull().default("draft"), // draft, scheduled, sending, sent, paused, cancelled
+  
+  // Performance Metrics
+  totalRecipients: integer("total_recipients").default(0),
+  emailsSent: integer("emails_sent").default(0),
+  emailsDelivered: integer("emails_delivered").default(0),
+  emailsOpened: integer("emails_opened").default(0),
+  emailsClicked: integer("emails_clicked").default(0),
+  emailsBounced: integer("emails_bounced").default(0),
+  emailsUnsubscribed: integer("emails_unsubscribed").default(0),
+  emailsSpamReported: integer("emails_spam_reported").default(0),
+  
+  // Calculated Rates (updated via triggers/background jobs)
+  deliveryRate: decimal("delivery_rate", { precision: 5, scale: 2 }),
+  openRate: decimal("open_rate", { precision: 5, scale: 2 }),
+  clickRate: decimal("click_rate", { precision: 5, scale: 2 }),
+  bounceRate: decimal("bounce_rate", { precision: 5, scale: 2 }),
+  unsubscribeRate: decimal("unsubscribe_rate", { precision: 5, scale: 2 }),
+  
+  // A/B Testing
+  isAbTest: boolean("is_ab_test").default(false),
+  abTestVariants: jsonb("ab_test_variants"), // Configuration for A/B test variants
+  winningVariant: varchar("winning_variant"),
+  
+  // Integration
+  sendgridCampaignId: varchar("sendgrid_campaign_id"), // External campaign ID
+  
+  // Ownership
+  ownerId: varchar("owner_id").notNull(),
+  createdBy: varchar("created_by").notNull(),
+  
+  // Timestamps
+  sentAt: timestamp("sent_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("email_campaigns_tenant_idx").on(table.tenantId),
+  statusIdx: index("email_campaigns_status_idx").on(table.status),
+  typeIdx: index("email_campaigns_type_idx").on(table.campaignType),
+  scheduledIdx: index("email_campaigns_scheduled_idx").on(table.scheduledDate),
+  ownerIdx: index("email_campaigns_owner_idx").on(table.ownerId),
+  unique: unique("email_campaigns_name_unique").on(table.tenantId, table.campaignName),
+}));
+
+// Email Sends - Individual email send records
+export const emailSends = pgTable("email_sends", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Campaign & Template
+  campaignId: varchar("campaign_id").notNull(), // Reference to email_campaigns
+  templateId: varchar("template_id"), // Reference to email_templates
+  
+  // Recipient
+  recipientEmail: varchar("recipient_email").notNull(),
+  recipientName: varchar("recipient_name"),
+  contactId: varchar("contact_id"), // Reference to business_records or enriched_contacts
+  
+  // Content (resolved with variables)
+  subject: varchar("subject").notNull(),
+  htmlContent: text("html_content"),
+  textContent: text("text_content"),
+  
+  // Personalization
+  mergeData: jsonb("merge_data"), // Data used for variable substitution
+  
+  // Send Status
+  status: varchar("status").notNull().default("pending"), // pending, queued, sent, delivered, bounced, failed
+  
+  // External Provider
+  sendgridMessageId: varchar("sendgrid_message_id"), // Provider's message ID
+  providerStatus: varchar("provider_status"),
+  providerResponse: jsonb("provider_response"),
+  
+  // Error tracking
+  errorMessage: text("error_message"),
+  errorCode: varchar("error_code"),
+  bounceType: varchar("bounce_type"), // hard, soft, block, spam
+  bounceReason: text("bounce_reason"),
+  
+  // Timestamps
+  queuedAt: timestamp("queued_at"),
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  bouncedAt: timestamp("bounced_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("email_sends_tenant_idx").on(table.tenantId),
+  campaignIdx: index("email_sends_campaign_idx").on(table.campaignId),
+  recipientIdx: index("email_sends_recipient_idx").on(table.recipientEmail),
+  statusIdx: index("email_sends_status_idx").on(table.status),
+  messageIdIdx: index("email_sends_message_id_idx").on(table.sendgridMessageId),
+  sentAtIdx: index("email_sends_sent_at_idx").on(table.sentAt),
+}));
+
+// Email Events - Track email engagement events
+export const emailEvents = pgTable("email_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Email Send Reference
+  emailSendId: varchar("email_send_id").notNull(), // Reference to email_sends
+  campaignId: varchar("campaign_id").notNull(), // Reference to email_campaigns
+  
+  // Event Details
+  eventType: varchar("event_type").notNull(), // open, click, bounce, spam_report, unsubscribe, delivered
+  eventTimestamp: timestamp("event_timestamp").notNull(),
+  
+  // Click tracking
+  clickedUrl: text("clicked_url"), // For click events
+  linkLabel: varchar("link_label"), // Label/name of clicked link
+  
+  // User Agent & Device
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address"),
+  deviceType: varchar("device_type"), // mobile, tablet, desktop
+  emailClient: varchar("email_client"), // gmail, outlook, apple_mail, etc.
+  operatingSystem: varchar("operating_system"),
+  
+  // Location
+  country: varchar("country"),
+  city: varchar("city"),
+  
+  // Provider Data
+  sendgridEventId: varchar("sendgrid_event_id"),
+  providerData: jsonb("provider_data"), // Full event data from provider
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("email_events_tenant_idx").on(table.tenantId),
+  sendIdx: index("email_events_send_idx").on(table.emailSendId),
+  campaignIdx: index("email_events_campaign_idx").on(table.campaignId),
+  typeIdx: index("email_events_type_idx").on(table.eventType),
+  timestampIdx: index("email_events_timestamp_idx").on(table.eventTimestamp),
+}));
+
+// Email Lists - Subscriber lists and segments
+export const emailLists = pgTable("email_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // List Details
+  listName: varchar("list_name").notNull(),
+  listDescription: text("list_description"),
+  listType: varchar("list_type").notNull(), // static, dynamic, segment
+  
+  // Dynamic List Configuration (for segments)
+  segmentCriteria: jsonb("segment_criteria"), // Filtering rules
+  
+  // Metadata
+  tags: text("tags").array(),
+  category: varchar("category"), // prospects, customers, partners, newsletter
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  
+  // Statistics
+  totalMembers: integer("total_members").default(0),
+  activeMembers: integer("active_members").default(0),
+  unsubscribedMembers: integer("unsubscribed_members").default(0),
+  
+  // Ownership
+  ownerId: varchar("owner_id").notNull(),
+  createdBy: varchar("created_by").notNull(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("email_lists_tenant_idx").on(table.tenantId),
+  typeIdx: index("email_lists_type_idx").on(table.listType),
+  activeIdx: index("email_lists_active_idx").on(table.isActive),
+  unique: unique("email_lists_name_unique").on(table.tenantId, table.listName),
+}));
+
+// Email List Members - Individual members of email lists
+export const emailListMembers = pgTable("email_list_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // List & Member
+  listId: varchar("list_id").notNull(), // Reference to email_lists
+  email: varchar("email").notNull(),
+  contactId: varchar("contact_id"), // Reference to business_records or enriched_contacts
+  
+  // Member Details
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  company: varchar("company"),
+  
+  // Metadata
+  customFields: jsonb("custom_fields"), // Additional custom data
+  tags: text("tags").array(),
+  
+  // Status
+  status: varchar("status").notNull().default("active"), // active, unsubscribed, bounced, spam_reported
+  subscriptionSource: varchar("subscription_source"), // manual, import, form, api
+  
+  // Engagement Score
+  engagementScore: integer("engagement_score").default(0), // 0-100 based on email activity
+  lastEmailOpened: timestamp("last_email_opened"),
+  lastEmailClicked: timestamp("last_email_clicked"),
+  
+  // Timestamps
+  subscribedAt: timestamp("subscribed_at").defaultNow(),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("email_list_members_tenant_idx").on(table.tenantId),
+  listIdx: index("email_list_members_list_idx").on(table.listId),
+  emailIdx: index("email_list_members_email_idx").on(table.email),
+  statusIdx: index("email_list_members_status_idx").on(table.status),
+  unique: unique("email_list_members_unique").on(table.listId, table.email),
+}));
+
+// Email Unsubscribes - Global unsubscribe tracking
+export const emailUnsubscribes = pgTable("email_unsubscribes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  
+  // Unsubscribe Details
+  email: varchar("email").notNull(),
+  contactId: varchar("contact_id"), // Reference to business_records or enriched_contacts
+  
+  // Scope
+  unsubscribeType: varchar("unsubscribe_type").notNull(), // global, campaign, list
+  campaignId: varchar("campaign_id"), // If unsubscribing from specific campaign
+  listId: varchar("list_id"), // If unsubscribing from specific list
+  
+  // Reason
+  reason: varchar("reason"), // not_interested, too_frequent, irrelevant, other
+  feedbackText: text("feedback_text"),
+  
+  // Source
+  unsubscribeMethod: varchar("unsubscribe_method"), // link, reply, manual, spam_report
+  emailSendId: varchar("email_send_id"), // The email that triggered unsubscribe
+  
+  // User Agent (for tracking unsubscribe link clicks)
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address"),
+  
+  // Timestamps
+  unsubscribedAt: timestamp("unsubscribed_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("email_unsubscribes_tenant_idx").on(table.tenantId),
+  emailIdx: index("email_unsubscribes_email_idx").on(table.email),
+  typeIdx: index("email_unsubscribes_type_idx").on(table.unsubscribeType),
+  campaignIdx: index("email_unsubscribes_campaign_idx").on(table.campaignId),
+  unique: unique("email_unsubscribes_unique").on(table.tenantId, table.email, table.unsubscribeType),
+}));
+
+// Type exports
+export type EmailTemplate = typeof emailTemplates.$inferSelect;
+export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+
+export type EmailCampaign = typeof emailCampaigns.$inferSelect;
+export type InsertEmailCampaign = z.infer<typeof insertEmailCampaignSchema>;
+
+export type EmailSend = typeof emailSends.$inferSelect;
+export type InsertEmailSend = z.infer<typeof insertEmailSendSchema>;
+
+export type EmailEvent = typeof emailEvents.$inferSelect;
+export type InsertEmailEvent = z.infer<typeof insertEmailEventSchema>;
+
+export type EmailList = typeof emailLists.$inferSelect;
+export type InsertEmailList = z.infer<typeof insertEmailListSchema>;
+
+export type EmailListMember = typeof emailListMembers.$inferSelect;
+export type InsertEmailListMember = z.infer<typeof insertEmailListMemberSchema>;
+
+export type EmailUnsubscribe = typeof emailUnsubscribes.$inferSelect;
+export type InsertEmailUnsubscribe = z.infer<typeof insertEmailUnsubscribeSchema>;
+
+// Zod schemas for validation
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailCampaignSchema = createInsertSchema(emailCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailSendSchema = createInsertSchema(emailSends).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailEventSchema = createInsertSchema(emailEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEmailListSchema = createInsertSchema(emailLists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailListMemberSchema = createInsertSchema(emailListMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailUnsubscribeSchema = createInsertSchema(emailUnsubscribes).omit({
+  id: true,
+  createdAt: true,
+});
