@@ -10634,6 +10634,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const fieldServiceRoutes = await import("./routes/field-service-routes");
   app.use("/api", fieldServiceRoutes.default);
 
+  // Email Marketing Service Integration Routes
+  const emailMarketingRoutes = await import("./routes/email-marketing-routes");
+  app.use("/api", emailMarketingRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
