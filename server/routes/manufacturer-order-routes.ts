@@ -20,6 +20,25 @@ function isAdminOrManager(user: any): boolean {
   return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
 }
 
+// Helper function to redact sensitive credential fields from connections
+function redactConnectionCredentials(connection: any): any {
+  const redacted = { ...connection };
+  
+  // Redact sensitive fields with masked values
+  if (redacted.apiKey) redacted.apiKey = '••••••••';
+  if (redacted.apiSecret) redacted.apiSecret = '••••••••';
+  if (redacted.clientId) redacted.clientId = '••••••••';
+  if (redacted.clientSecret) redacted.clientSecret = '••••••••';
+  if (redacted.accessToken) redacted.accessToken = '••••••••';
+  if (redacted.refreshToken) redacted.refreshToken = '••••••••';
+  if (redacted.webhookSecret) redacted.webhookSecret = '••••••••';
+  if (redacted.ediPassword) redacted.ediPassword = '••••••••';
+  if (redacted.portalUsername) redacted.portalUsername = '••••••••';
+  if (redacted.portalPassword) redacted.portalPassword = '••••••••';
+  
+  return redacted;
+}
+
 // ==================== Manufacturer Connections ====================
 
 // GET /api/manufacturer-orders/connections - Get all manufacturer connections
@@ -40,7 +59,12 @@ router.get('/connections', async (req: Request, res: Response) => {
       }
     );
     
-    res.json(connections);
+    // Redact sensitive credentials for non-admin users
+    const responseData = isAdminOrManager(user) 
+      ? connections 
+      : connections.map(redactConnectionCredentials);
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Get manufacturer connections error:', error);
     res.status(500).json({ error: 'Failed to fetch manufacturer connections' });
@@ -61,7 +85,12 @@ router.get('/connections/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Connection not found' });
     }
     
-    res.json(connection);
+    // Redact sensitive credentials for non-admin users
+    const responseData = isAdminOrManager(user) 
+      ? connection 
+      : redactConnectionCredentials(connection);
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Get manufacturer connection error:', error);
     res.status(500).json({ error: 'Failed to fetch manufacturer connection' });
