@@ -9,13 +9,31 @@ import {
 
 const router = express.Router();
 
+// Helper function to check if user has admin/manager role
+function isAdminOrManager(user: any): boolean {
+  if (!user?.role) return false;
+  const role = user.role || '';
+  const roleLower = role.toLowerCase();
+  return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
+}
+
+// Helper function to check if user can manage scoring rules
+function canManageScoringRules(user: any): boolean {
+  return isAdminOrManager(user);
+}
+
 // ==================== Lead Scoring Rules Management ====================
 
-// POST /api/lead-scoring/rules - Create a new scoring rule
+// POST /api/lead-scoring/rules - Create a new scoring rule (Admin/Manager only)
 router.post('/rules', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // Check for admin/manager role
+  if (!canManageScoringRules(user)) {
+    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
   }
 
   try {
@@ -89,11 +107,16 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/lead-scoring/rules/:id - Update a scoring rule
+// PUT /api/lead-scoring/rules/:id - Update a scoring rule (Admin/Manager only)
 router.put('/rules/:id', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // Check for admin/manager role
+  if (!canManageScoringRules(user)) {
+    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
   }
 
   try {
@@ -115,11 +138,16 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/lead-scoring/rules/:id - Delete a scoring rule
+// DELETE /api/lead-scoring/rules/:id - Delete a scoring rule (Admin/Manager only)
 router.delete('/rules/:id', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // Check for admin/manager role
+  if (!canManageScoringRules(user)) {
+    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
   }
 
   try {
@@ -669,11 +697,16 @@ router.get('/engagement/:leadId', async (req: Request, res: Response) => {
 
 // ==================== Analytics & Reporting ====================
 
-// GET /api/lead-scoring/analytics - Get lead scoring analytics
+// GET /api/lead-scoring/analytics - Get lead scoring analytics (Admin/Manager only)
 router.get('/analytics', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // Check for admin/manager role for analytics
+  if (!isAdminOrManager(user)) {
+    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
   }
 
   try {
@@ -685,11 +718,16 @@ router.get('/analytics', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/lead-scoring/bant-analytics - Get BANT analytics
+// GET /api/lead-scoring/bant-analytics - Get BANT analytics (Admin/Manager only)
 router.get('/bant-analytics', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // Check for admin/manager role for analytics
+  if (!isAdminOrManager(user)) {
+    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
   }
 
   try {
