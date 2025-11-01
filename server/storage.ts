@@ -300,6 +300,27 @@ import {
   type WorkflowEventRegistry,
   type InsertWorkflowEventRegistry,
 } from "@shared/schema";
+import {
+  // Lead Scoring schemas
+  leadScoringRules,
+  leadScoringFactors,
+  bantQualificationCriteria,
+  leadScoreCalculations,
+  leadQualificationHistory,
+  leadEngagementTracking,
+  type LeadScoringRule,
+  type InsertLeadScoringRule,
+  type LeadScoringFactor,
+  type InsertLeadScoringFactor,
+  type BantQualificationCriteria,
+  type InsertBantQualification,
+  type LeadScoreCalculation,
+  type InsertLeadScoreCalculation,
+  type LeadQualificationHistory,
+  type InsertLeadQualificationHistory,
+  type LeadEngagementTracking,
+  type InsertLeadEngagementTracking,
+} from "@shared/lead-scoring-schema";
 import { db } from "./db";
 import {
   eq,
@@ -7580,6 +7601,380 @@ export class DatabaseStorage implements IStorage {
       successfulExecutions,
       failedExecutions,
       averageExecutionTime: Math.round(averageExecutionTime),
+    };
+  }
+
+  // ==================== Lead Scoring Methods ====================
+
+  // Lead Scoring Rules Management
+  async createLeadScoringRule(data: InsertLeadScoringRule): Promise<LeadScoringRule> {
+    const [rule] = await db.insert(leadScoringRules).values(data).returning();
+    return rule;
+  }
+
+  async getLeadScoringRule(id: string): Promise<LeadScoringRule | undefined> {
+    const [rule] = await db.select().from(leadScoringRules).where(eq(leadScoringRules.id, id));
+    return rule;
+  }
+
+  async getLeadScoringRules(tenantId: string, category?: string): Promise<LeadScoringRule[]> {
+    const conditions = [eq(leadScoringRules.tenantId, tenantId)];
+    if (category) {
+      conditions.push(eq(leadScoringRules.category, category));
+    }
+    return await db
+      .select()
+      .from(leadScoringRules)
+      .where(and(...conditions))
+      .orderBy(desc(leadScoringRules.priority), asc(leadScoringRules.ruleName));
+  }
+
+  async getActiveLeadScoringRules(tenantId: string): Promise<LeadScoringRule[]> {
+    return await db
+      .select()
+      .from(leadScoringRules)
+      .where(and(
+        eq(leadScoringRules.tenantId, tenantId),
+        eq(leadScoringRules.isActive, true)
+      ))
+      .orderBy(desc(leadScoringRules.priority));
+  }
+
+  async updateLeadScoringRule(id: string, data: Partial<InsertLeadScoringRule>): Promise<LeadScoringRule> {
+    const [rule] = await db
+      .update(leadScoringRules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(leadScoringRules.id, id))
+      .returning();
+    return rule;
+  }
+
+  async deleteLeadScoringRule(id: string): Promise<void> {
+    await db.delete(leadScoringRules).where(eq(leadScoringRules.id, id));
+  }
+
+  // Lead Scoring Factors Tracking
+  async createLeadScoringFactor(data: InsertLeadScoringFactor): Promise<LeadScoringFactor> {
+    const [factor] = await db.insert(leadScoringFactors).values(data).returning();
+    return factor;
+  }
+
+  async getLeadScoringFactors(leadId: string): Promise<LeadScoringFactor[]> {
+    return await db
+      .select()
+      .from(leadScoringFactors)
+      .where(eq(leadScoringFactors.leadId, leadId))
+      .orderBy(desc(leadScoringFactors.evaluatedAt));
+  }
+
+  async deleteLeadScoringFactors(leadId: string): Promise<void> {
+    await db.delete(leadScoringFactors).where(eq(leadScoringFactors.leadId, leadId));
+  }
+
+  // BANT Qualification Management
+  async createBantQualification(data: InsertBantQualification): Promise<BantQualificationCriteria> {
+    const [qualification] = await db.insert(bantQualificationCriteria).values(data).returning();
+    return qualification;
+  }
+
+  async getBantQualification(leadId: string): Promise<BantQualificationCriteria | undefined> {
+    const [qualification] = await db
+      .select()
+      .from(bantQualificationCriteria)
+      .where(eq(bantQualificationCriteria.leadId, leadId));
+    return qualification;
+  }
+
+  async updateBantQualification(leadId: string, data: Partial<InsertBantQualification>): Promise<BantQualificationCriteria> {
+    const [qualification] = await db
+      .update(bantQualificationCriteria)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(bantQualificationCriteria.leadId, leadId))
+      .returning();
+    return qualification;
+  }
+
+  async getQualifiedLeads(tenantId: string, minBantScore: number = 50): Promise<BantQualificationCriteria[]> {
+    return await db
+      .select()
+      .from(bantQualificationCriteria)
+      .where(and(
+        eq(bantQualificationCriteria.tenantId, tenantId),
+        gte(bantQualificationCriteria.totalBantScore, minBantScore)
+      ))
+      .orderBy(desc(bantQualificationCriteria.totalBantScore));
+  }
+
+  // Lead Score Calculations
+  async createLeadScoreCalculation(data: InsertLeadScoreCalculation): Promise<LeadScoreCalculation> {
+    const [calculation] = await db.insert(leadScoreCalculations).values(data).returning();
+    return calculation;
+  }
+
+  async getLatestLeadScore(leadId: string): Promise<LeadScoreCalculation | undefined> {
+    const [calculation] = await db
+      .select()
+      .from(leadScoreCalculations)
+      .where(eq(leadScoreCalculations.leadId, leadId))
+      .orderBy(desc(leadScoreCalculations.calculatedAt))
+      .limit(1);
+    return calculation;
+  }
+
+  async getLeadScoreHistory(leadId: string, limit: number = 50): Promise<LeadScoreCalculation[]> {
+    return await db
+      .select()
+      .from(leadScoreCalculations)
+      .where(eq(leadScoreCalculations.leadId, leadId))
+      .orderBy(desc(leadScoreCalculations.calculatedAt))
+      .limit(limit);
+  }
+
+  async getTopScoredLeads(tenantId: string, limit: number = 100): Promise<LeadScoreCalculation[]> {
+    const subquery = db
+      .select({
+        leadId: leadScoreCalculations.leadId,
+        maxCalculatedAt: sql<Date>`MAX(${leadScoreCalculations.calculatedAt})`.as('max_calculated_at'),
+      })
+      .from(leadScoreCalculations)
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
+      .groupBy(leadScoreCalculations.leadId)
+      .as('latest_scores');
+
+    return await db
+      .select()
+      .from(leadScoreCalculations)
+      .innerJoin(
+        subquery,
+        and(
+          eq(leadScoreCalculations.leadId, subquery.leadId),
+          eq(leadScoreCalculations.calculatedAt, subquery.maxCalculatedAt)
+        )
+      )
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
+      .orderBy(desc(leadScoreCalculations.totalScore))
+      .limit(limit)
+      .then(results => results.map(r => r.lead_score_calculations));
+  }
+
+  async getLeadsByGrade(tenantId: string, grade: string): Promise<LeadScoreCalculation[]> {
+    const subquery = db
+      .select({
+        leadId: leadScoreCalculations.leadId,
+        maxCalculatedAt: sql<Date>`MAX(${leadScoreCalculations.calculatedAt})`.as('max_calculated_at'),
+      })
+      .from(leadScoreCalculations)
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
+      .groupBy(leadScoreCalculations.leadId)
+      .as('latest_scores');
+
+    return await db
+      .select()
+      .from(leadScoreCalculations)
+      .innerJoin(
+        subquery,
+        and(
+          eq(leadScoreCalculations.leadId, subquery.leadId),
+          eq(leadScoreCalculations.calculatedAt, subquery.maxCalculatedAt)
+        )
+      )
+      .where(and(
+        eq(leadScoreCalculations.tenantId, tenantId),
+        eq(leadScoreCalculations.leadGrade, grade)
+      ))
+      .orderBy(desc(leadScoreCalculations.totalScore))
+      .then(results => results.map(r => r.lead_score_calculations));
+  }
+
+  // Lead Qualification History
+  async createLeadQualificationHistory(data: InsertLeadQualificationHistory): Promise<LeadQualificationHistory> {
+    const [history] = await db.insert(leadQualificationHistory).values(data).returning();
+    return history;
+  }
+
+  async getLeadQualificationHistory(leadId: string): Promise<LeadQualificationHistory[]> {
+    return await db
+      .select()
+      .from(leadQualificationHistory)
+      .where(eq(leadQualificationHistory.leadId, leadId))
+      .orderBy(desc(leadQualificationHistory.changedAt));
+  }
+
+  async getQualificationChanges(tenantId: string, limit: number = 100): Promise<LeadQualificationHistory[]> {
+    return await db
+      .select()
+      .from(leadQualificationHistory)
+      .where(eq(leadQualificationHistory.tenantId, tenantId))
+      .orderBy(desc(leadQualificationHistory.changedAt))
+      .limit(limit);
+  }
+
+  // Lead Engagement Tracking
+  async createLeadEngagement(data: InsertLeadEngagementTracking): Promise<LeadEngagementTracking> {
+    const [engagement] = await db.insert(leadEngagementTracking).values(data).returning();
+    return engagement;
+  }
+
+  async getLeadEngagements(leadId: string, limit: number = 100): Promise<LeadEngagementTracking[]> {
+    return await db
+      .select()
+      .from(leadEngagementTracking)
+      .where(eq(leadEngagementTracking.leadId, leadId))
+      .orderBy(desc(leadEngagementTracking.engagedAt))
+      .limit(limit);
+  }
+
+  async getLeadEngagementsByType(leadId: string, engagementType: string): Promise<LeadEngagementTracking[]> {
+    return await db
+      .select()
+      .from(leadEngagementTracking)
+      .where(and(
+        eq(leadEngagementTracking.leadId, leadId),
+        eq(leadEngagementTracking.engagementType, engagementType)
+      ))
+      .orderBy(desc(leadEngagementTracking.engagedAt));
+  }
+
+  async getEngagementScore(leadId: string, daysSince: number = 30): Promise<number> {
+    const since = new Date();
+    since.setDate(since.getDate() - daysSince);
+
+    const engagements = await db
+      .select()
+      .from(leadEngagementTracking)
+      .where(and(
+        eq(leadEngagementTracking.leadId, leadId),
+        gte(leadEngagementTracking.engagedAt, since)
+      ));
+
+    return engagements.reduce((total, engagement) => {
+      return total + (engagement.engagementValue || 1);
+    }, 0);
+  }
+
+  // Lead Scoring Analytics
+  async getLeadScoringAnalytics(tenantId: string): Promise<{
+    totalLeadsScored: number;
+    averageScore: number;
+    gradeDistribution: Record<string, number>;
+    tierDistribution: Record<string, number>;
+    topPerformingRules: Array<{ ruleId: string; ruleName: string; totalPoints: number; timesTriggered: number }>;
+  }> {
+    // Get latest scores for all leads
+    const subquery = db
+      .select({
+        leadId: leadScoreCalculations.leadId,
+        maxCalculatedAt: sql<Date>`MAX(${leadScoreCalculations.calculatedAt})`.as('max_calculated_at'),
+      })
+      .from(leadScoreCalculations)
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
+      .groupBy(leadScoreCalculations.leadId)
+      .as('latest_scores');
+
+    const latestScores = await db
+      .select()
+      .from(leadScoreCalculations)
+      .innerJoin(
+        subquery,
+        and(
+          eq(leadScoreCalculations.leadId, subquery.leadId),
+          eq(leadScoreCalculations.calculatedAt, subquery.maxCalculatedAt)
+        )
+      )
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
+      .then(results => results.map(r => r.lead_score_calculations));
+
+    const totalLeadsScored = latestScores.length;
+    const averageScore = totalLeadsScored > 0
+      ? Math.round(latestScores.reduce((sum, s) => sum + s.totalScore, 0) / totalLeadsScored)
+      : 0;
+
+    // Grade distribution
+    const gradeDistribution: Record<string, number> = {};
+    latestScores.forEach(score => {
+      const grade = score.leadGrade || 'Ungraded';
+      gradeDistribution[grade] = (gradeDistribution[grade] || 0) + 1;
+    });
+
+    // Tier distribution
+    const tierDistribution: Record<string, number> = {};
+    latestScores.forEach(score => {
+      const tier = score.leadTier || 'Unknown';
+      tierDistribution[tier] = (tierDistribution[tier] || 0) + 1;
+    });
+
+    // Top performing rules
+    const factorStats = await db
+      .select({
+        ruleId: leadScoringFactors.ruleId,
+        factorName: leadScoringFactors.factorName,
+        totalPoints: sql<number>`SUM(${leadScoringFactors.pointsAwarded})`.as('total_points'),
+        timesTriggered: sql<number>`COUNT(*)`.as('times_triggered'),
+      })
+      .from(leadScoringFactors)
+      .where(eq(leadScoringFactors.tenantId, tenantId))
+      .groupBy(leadScoringFactors.ruleId, leadScoringFactors.factorName)
+      .orderBy(sql`SUM(${leadScoringFactors.pointsAwarded}) DESC`)
+      .limit(10);
+
+    const topPerformingRules = factorStats.map(stat => ({
+      ruleId: stat.ruleId,
+      ruleName: stat.factorName,
+      totalPoints: Number(stat.totalPoints),
+      timesTriggered: Number(stat.timesTriggered),
+    }));
+
+    return {
+      totalLeadsScored,
+      averageScore,
+      gradeDistribution,
+      tierDistribution,
+      topPerformingRules,
+    };
+  }
+
+  async getBantAnalytics(tenantId: string): Promise<{
+    totalAssessed: number;
+    qualifiedCount: number;
+    averageBantScore: number;
+    componentAverages: {
+      budgetScore: number;
+      authorityScore: number;
+      needScore: number;
+      timelineScore: number;
+    };
+    qualificationStatusDistribution: Record<string, number>;
+  }> {
+    const allBant = await db
+      .select()
+      .from(bantQualificationCriteria)
+      .where(eq(bantQualificationCriteria.tenantId, tenantId));
+
+    const totalAssessed = allBant.length;
+    const qualifiedCount = allBant.filter(b => b.totalBantScore >= 50).length;
+    const averageBantScore = totalAssessed > 0
+      ? Math.round(allBant.reduce((sum, b) => sum + b.totalBantScore, 0) / totalAssessed)
+      : 0;
+
+    const componentAverages = {
+      budgetScore: totalAssessed > 0 ? Math.round(allBant.reduce((sum, b) => sum + b.budgetScore, 0) / totalAssessed) : 0,
+      authorityScore: totalAssessed > 0 ? Math.round(allBant.reduce((sum, b) => sum + b.authorityScore, 0) / totalAssessed) : 0,
+      needScore: totalAssessed > 0 ? Math.round(allBant.reduce((sum, b) => sum + b.needScore, 0) / totalAssessed) : 0,
+      timelineScore: totalAssessed > 0 ? Math.round(allBant.reduce((sum, b) => sum + b.timelineScore, 0) / totalAssessed) : 0,
+    };
+
+    const qualificationStatusDistribution: Record<string, number> = {};
+    allBant.forEach(bant => {
+      const status = bant.qualificationStatus || 'unqualified';
+      qualificationStatusDistribution[status] = (qualificationStatusDistribution[status] || 0) + 1;
+    });
+
+    return {
+      totalAssessed,
+      qualifiedCount,
+      averageBantScore,
+      componentAverages,
+      qualificationStatusDistribution,
     };
   }
 }
