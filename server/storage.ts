@@ -191,6 +191,19 @@ import {
   type InsertEnabledProduct,
   type MasterProductAccessoryRelationship,
   type InsertMasterProductAccessoryRelationship,
+  // Lease Management schemas
+  leases,
+  leasePayments,
+  leaseRenewals,
+  leaseDispositions,
+  type Lease,
+  type InsertLease,
+  type LeasePayment,
+  type InsertLeasePayment,
+  type LeaseRenewal,
+  type InsertLeaseRenewal,
+  type LeaseDisposition,
+  type InsertLeaseDisposition,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -772,6 +785,41 @@ export interface IStorage {
     task: Partial<OnboardingTask>
   ): Promise<OnboardingTask | undefined>;
   deleteOnboardingTask(id: string, tenantId: string): Promise<void>;
+
+  // Lease Management operations
+  getLeases(tenantId: string): Promise<Lease[]>;
+  getLease(id: string, tenantId: string): Promise<Lease | undefined>;
+  getLeasesByCustomer(customerId: string, tenantId: string): Promise<Lease[]>;
+  getLeasesByStatus(status: string, tenantId: string): Promise<Lease[]>;
+  createLease(lease: InsertLease): Promise<Lease>;
+  updateLease(id: string, tenantId: string, lease: Partial<Lease>): Promise<Lease | undefined>;
+  deleteLease(id: string, tenantId: string): Promise<void>;
+
+  // Lease Payments operations
+  getLeasePayments(leaseId: string, tenantId: string): Promise<LeasePayment[]>;
+  getLeasePayment(id: string, tenantId: string): Promise<LeasePayment | undefined>;
+  getUpcomingPayments(tenantId: string, daysAhead: number): Promise<LeasePayment[]>;
+  getPastDuePayments(tenantId: string): Promise<LeasePayment[]>;
+  createLeasePayment(payment: InsertLeasePayment): Promise<LeasePayment>;
+  updateLeasePayment(id: string, tenantId: string, payment: Partial<LeasePayment>): Promise<LeasePayment | undefined>;
+  deleteLeasePayment(id: string, tenantId: string): Promise<void>;
+
+  // Lease Renewals operations
+  getLeaseRenewals(tenantId: string): Promise<LeaseRenewal[]>;
+  getLeaseRenewal(id: string, tenantId: string): Promise<LeaseRenewal | undefined>;
+  getLeaseRenewalByLease(leaseId: string, tenantId: string): Promise<LeaseRenewal | undefined>;
+  getLeasesNeedingRenewalAction(tenantId: string, daysAhead: number): Promise<LeaseRenewal[]>;
+  createLeaseRenewal(renewal: InsertLeaseRenewal): Promise<LeaseRenewal>;
+  updateLeaseRenewal(id: string, tenantId: string, renewal: Partial<LeaseRenewal>): Promise<LeaseRenewal | undefined>;
+  deleteLeaseRenewal(id: string, tenantId: string): Promise<void>;
+
+  // Lease Dispositions operations
+  getLeaseDispositions(tenantId: string): Promise<LeaseDisposition[]>;
+  getLeaseDisposition(id: string, tenantId: string): Promise<LeaseDisposition | undefined>;
+  getLeaseDispositionByLease(leaseId: string, tenantId: string): Promise<LeaseDisposition | undefined>;
+  createLeaseDisposition(disposition: InsertLeaseDisposition): Promise<LeaseDisposition>;
+  updateLeaseDisposition(id: string, tenantId: string, disposition: Partial<LeaseDisposition>): Promise<LeaseDisposition | undefined>;
+  deleteLeaseDisposition(id: string, tenantId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5112,6 +5160,280 @@ export class DatabaseStorage implements IStorage {
       .delete(onboardingTasks)
       .where(
         and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId))
+      );
+  }
+
+  // ============= LEASE MANAGEMENT OPERATIONS =============
+
+  // Lease operations
+  async getLeases(tenantId: string): Promise<Lease[]> {
+    return await db
+      .select()
+      .from(leases)
+      .where(eq(leases.tenantId, tenantId))
+      .orderBy(desc(leases.createdAt));
+  }
+
+  async getLease(id: string, tenantId: string): Promise<Lease | undefined> {
+    const [lease] = await db
+      .select()
+      .from(leases)
+      .where(and(eq(leases.id, id), eq(leases.tenantId, tenantId)));
+    return lease;
+  }
+
+  async getLeasesByCustomer(customerId: string, tenantId: string): Promise<Lease[]> {
+    return await db
+      .select()
+      .from(leases)
+      .where(and(eq(leases.customerId, customerId), eq(leases.tenantId, tenantId)))
+      .orderBy(desc(leases.startDate));
+  }
+
+  async getLeasesByStatus(status: string, tenantId: string): Promise<Lease[]> {
+    return await db
+      .select()
+      .from(leases)
+      .where(and(eq(leases.status, status), eq(leases.tenantId, tenantId)))
+      .orderBy(desc(leases.createdAt));
+  }
+
+  async createLease(lease: InsertLease): Promise<Lease> {
+    const [newLease] = await db.insert(leases).values(lease).returning();
+    return newLease;
+  }
+
+  async updateLease(
+    id: string,
+    tenantId: string,
+    lease: Partial<Lease>
+  ): Promise<Lease | undefined> {
+    const [updatedLease] = await db
+      .update(leases)
+      .set({ ...lease, updatedAt: new Date() })
+      .where(and(eq(leases.id, id), eq(leases.tenantId, tenantId)))
+      .returning();
+    return updatedLease;
+  }
+
+  async deleteLease(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(leases)
+      .where(and(eq(leases.id, id), eq(leases.tenantId, tenantId)));
+  }
+
+  // Lease Payments operations
+  async getLeasePayments(leaseId: string, tenantId: string): Promise<LeasePayment[]> {
+    return await db
+      .select()
+      .from(leasePayments)
+      .where(and(eq(leasePayments.leaseId, leaseId), eq(leasePayments.tenantId, tenantId)))
+      .orderBy(leasePayments.scheduledDate);
+  }
+
+  async getLeasePayment(id: string, tenantId: string): Promise<LeasePayment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(leasePayments)
+      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenantId, tenantId)));
+    return payment;
+  }
+
+  async getUpcomingPayments(tenantId: string, daysAhead: number): Promise<LeasePayment[]> {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+    
+    return await db
+      .select()
+      .from(leasePayments)
+      .where(
+        and(
+          eq(leasePayments.tenantId, tenantId),
+          eq(leasePayments.status, "scheduled"),
+          lte(leasePayments.scheduledDate, futureDate)
+        )
+      )
+      .orderBy(leasePayments.scheduledDate);
+  }
+
+  async getPastDuePayments(tenantId: string): Promise<LeasePayment[]> {
+    const today = new Date();
+    
+    return await db
+      .select()
+      .from(leasePayments)
+      .where(
+        and(
+          eq(leasePayments.tenantId, tenantId),
+          eq(leasePayments.status, "scheduled"),
+          lt(leasePayments.scheduledDate, today)
+        )
+      )
+      .orderBy(leasePayments.scheduledDate);
+  }
+
+  async createLeasePayment(payment: InsertLeasePayment): Promise<LeasePayment> {
+    const [newPayment] = await db.insert(leasePayments).values(payment).returning();
+    return newPayment;
+  }
+
+  async updateLeasePayment(
+    id: string,
+    tenantId: string,
+    payment: Partial<LeasePayment>
+  ): Promise<LeasePayment | undefined> {
+    const [updatedPayment] = await db
+      .update(leasePayments)
+      .set({ ...payment, updatedAt: new Date() })
+      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenantId, tenantId)))
+      .returning();
+    return updatedPayment;
+  }
+
+  async deleteLeasePayment(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(leasePayments)
+      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenantId, tenantId)));
+  }
+
+  // Lease Renewals operations
+  async getLeaseRenewals(tenantId: string): Promise<LeaseRenewal[]> {
+    return await db
+      .select()
+      .from(leaseRenewals)
+      .where(eq(leaseRenewals.tenantId, tenantId))
+      .orderBy(desc(leaseRenewals.createdAt));
+  }
+
+  async getLeaseRenewal(id: string, tenantId: string): Promise<LeaseRenewal | undefined> {
+    const [renewal] = await db
+      .select()
+      .from(leaseRenewals)
+      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenantId, tenantId)));
+    return renewal;
+  }
+
+  async getLeaseRenewalByLease(
+    leaseId: string,
+    tenantId: string
+  ): Promise<LeaseRenewal | undefined> {
+    const [renewal] = await db
+      .select()
+      .from(leaseRenewals)
+      .where(and(eq(leaseRenewals.leaseId, leaseId), eq(leaseRenewals.tenantId, tenantId)));
+    return renewal;
+  }
+
+  async getLeasesNeedingRenewalAction(
+    tenantId: string,
+    daysAhead: number
+  ): Promise<LeaseRenewal[]> {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+    
+    return await db
+      .select()
+      .from(leaseRenewals)
+      .where(
+        and(
+          eq(leaseRenewals.tenantId, tenantId),
+          eq(leaseRenewals.renewalOffered, true),
+          lte(leaseRenewals.renewalDeadline, futureDate)
+        )
+      )
+      .orderBy(leaseRenewals.renewalDeadline);
+  }
+
+  async createLeaseRenewal(renewal: InsertLeaseRenewal): Promise<LeaseRenewal> {
+    const [newRenewal] = await db.insert(leaseRenewals).values(renewal).returning();
+    return newRenewal;
+  }
+
+  async updateLeaseRenewal(
+    id: string,
+    tenantId: string,
+    renewal: Partial<LeaseRenewal>
+  ): Promise<LeaseRenewal | undefined> {
+    const [updatedRenewal] = await db
+      .update(leaseRenewals)
+      .set({ ...renewal, updatedAt: new Date() })
+      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenantId, tenantId)))
+      .returning();
+    return updatedRenewal;
+  }
+
+  async deleteLeaseRenewal(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(leaseRenewals)
+      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenantId, tenantId)));
+  }
+
+  // Lease Dispositions operations
+  async getLeaseDispositions(tenantId: string): Promise<LeaseDisposition[]> {
+    return await db
+      .select()
+      .from(leaseDispositions)
+      .where(eq(leaseDispositions.tenantId, tenantId))
+      .orderBy(desc(leaseDispositions.actionDate));
+  }
+
+  async getLeaseDisposition(
+    id: string,
+    tenantId: string
+  ): Promise<LeaseDisposition | undefined> {
+    const [disposition] = await db
+      .select()
+      .from(leaseDispositions)
+      .where(and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenantId, tenantId)));
+    return disposition;
+  }
+
+  async getLeaseDispositionByLease(
+    leaseId: string,
+    tenantId: string
+  ): Promise<LeaseDisposition | undefined> {
+    const [disposition] = await db
+      .select()
+      .from(leaseDispositions)
+      .where(
+        and(
+          eq(leaseDispositions.leaseId, leaseId),
+          eq(leaseDispositions.tenantId, tenantId)
+        )
+      );
+    return disposition;
+  }
+
+  async createLeaseDisposition(
+    disposition: InsertLeaseDisposition
+  ): Promise<LeaseDisposition> {
+    const [newDisposition] = await db
+      .insert(leaseDispositions)
+      .values(disposition)
+      .returning();
+    return newDisposition;
+  }
+
+  async updateLeaseDisposition(
+    id: string,
+    tenantId: string,
+    disposition: Partial<LeaseDisposition>
+  ): Promise<LeaseDisposition | undefined> {
+    const [updatedDisposition] = await db
+      .update(leaseDispositions)
+      .set({ ...disposition, updatedAt: new Date() })
+      .where(
+        and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenantId, tenantId))
+      )
+      .returning();
+    return updatedDisposition;
+  }
+
+  async deleteLeaseDisposition(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(leaseDispositions)
+      .where(
+        and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenantId, tenantId))
       );
   }
 }
