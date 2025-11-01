@@ -50,7 +50,12 @@ import {
   Cog,
   Zap,
   Smartphone,
-  Rocket
+  Rocket,
+  Bot,
+  MessageSquare,
+  Search,
+  Mic,
+  Video
 } from "lucide-react";
 import useCollapsibleNavigation, { NavigationSection } from "@/hooks/useCollapsibleNavigation";
 
@@ -205,6 +210,23 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     children: [
       { title: 'Advanced Task Management', path: '/task-management', icon: Brain },
       { title: 'Basic Task Management', path: '/basic-task-management', icon: CheckSquare }
+    ]
+  });
+
+  // AI Hub - Always available for AI-powered features
+  sections.push({
+    id: 'ai-hub',
+    title: 'AI Hub',
+    icon: Brain,
+    path: '/ai-hub',
+    matchPatterns: ['/ai*', '/calendar*', '/meeting*', '/search*'],
+    children: [
+      { title: 'AI Employees', path: '/ai-employees', icon: Bot },
+      { title: 'Calendar Integration', path: '/calendar', icon: Calendar },
+      { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
+      { title: 'AI Search & Knowledge', path: '/ai-search', icon: Search },
+      { title: 'AI Task Scheduling', path: '/ai-task-scheduling', icon: Brain },
+      { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare }
     ]
   });
 

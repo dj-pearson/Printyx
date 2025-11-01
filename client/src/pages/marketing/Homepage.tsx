@@ -22,6 +22,7 @@ import {
   Printer,
   Menu,
 } from "lucide-react";
+import Interactive3DHero from "@/components/marketing/Interactive3DHero";
 
 const Homepage = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -72,185 +73,87 @@ const Homepage = () => {
       color: "bg-orange-500",
       benefits: [
         "Automated renewals",
-        "Contract analytics",
-        "E-signature integration",
+        "Contract alerts",
+        "Billing integration",
+      ],
+    },
+    {
+      icon: Wrench,
+      title: "Inventory Management",
+      description:
+        "Real-time parts tracking, automated reordering, and warehouse management. Reduce inventory costs by 25%.",
+      color: "bg-red-500",
+      benefits: [
+        "Real-time tracking",
+        "Automated reordering",
+        "Supplier integration",
       ],
     },
     {
       icon: Shield,
-      title: "Inventory Control",
+      title: "Multi-Tenant Security",
       description:
-        "Real-time parts tracking with automatic reorder points and supplier management. Reduce inventory costs by 25%.",
-      color: "bg-red-500",
-      benefits: ["Low stock alerts", "Automated ordering", "Cost tracking"],
+        "Enterprise-grade security with role-based access control and data isolation. Keep your customer data safe.",
+      color: "bg-indigo-500",
+      benefits: [
+        "Role-based access",
+        "Data encryption",
+        "Audit trails",
+      ],
+    },
+  ];
+
+  const benefits = [
+    {
+      icon: BarChart3,
+      title: "Reduce operational costs by 40%",
+      description: "Automate manual processes and eliminate redundant systems",
     },
     {
       icon: TrendingUp,
-      title: "Business Analytics",
-      description:
-        "Comprehensive reporting and analytics to make data-driven decisions. Access 50+ pre-built reports.",
-      color: "bg-indigo-500",
-      benefits: [
-        "Custom dashboards",
-        "Financial reports",
-        "Performance metrics",
-      ],
+      title: "Increase revenue by 25%",
+      description: "Better customer retention and upselling opportunities",
+    },
+    {
+      icon: Shield,
+      title: "Improve service quality by 60%",
+      description: "Faster response times and better technician management",
     },
   ];
 
-  const pricingPlans = [
+  const testimonials = [
     {
-      name: "Essential",
-      price: "$99",
-      period: "per user/month",
-      description: "Perfect for small independent dealers",
-      features: [
-        "Up to 300 customer records",
-        "Complete CRM, service dispatch, inventory management",
-        "Meter billing and contract management",
-        "Mobile technician app with offline sync",
-        "QuickBooks integration",
-        "Standard reporting dashboards",
-        "Email support",
-        "All core manufacturer integrations included",
-      ],
-      popular: false,
-      cta: "Start Free Trial",
+      name: "Sarah Johnson",
+      role: "Owner, TechCopy Solutions",
+      content:
+        "Printyx has completely transformed how we manage our business. What used to take hours now takes minutes.",
+      rating: 5,
     },
     {
-      name: "Professional",
-      price: "$139",
-      period: "per user/month",
-      description: "Ideal for growing multi-location dealers",
-      features: [
-        "Up to 1,500 customer records",
-        "Everything in Essential, plus:",
-        "Advanced team management and territories",
-        "AI-powered insights and recommendations",
-        "Custom reporting and analytics",
-        "Advanced workflow automation",
-        "Phone + priority email support",
-        "API access for custom integrations",
-        "Multi-location management",
-      ],
-      popular: true,
-      cta: "Start Free Trial",
+      name: "Mike Chen",
+      role: "Operations Manager, Copy Pro",
+      content:
+        "The unified dashboard gives us real-time visibility into every aspect of our operation. Game-changing.",
+      rating: 5,
     },
     {
-      name: "Enterprise",
-      price: "$179",
-      period: "per user/month",
-      description: "Built for large dealer networks",
-      features: [
-        "Unlimited customer records",
-        "Everything in Professional, plus:",
-        "White-label customer portals",
-        "Advanced enterprise reporting",
-        "Custom field configurations",
-        "Dedicated account manager",
-        "Priority support with guaranteed response times",
-        "On-site training and implementation",
-        "Custom integration development included",
-      ],
-      popular: false,
-      cta: "Contact Sales",
+      name: "Lisa Rodriguez",
+      role: "Service Director, Office Solutions Inc",
+      content:
+        "Our technicians love the mobile app, and our customers love the faster service. Win-win.",
+      rating: 5,
     },
   ];
-
-  const tools = [
-    {
-      icon: Printer,
-      title: "Equipment Database",
-      description:
-        "Comprehensive database of copier models, specifications, and service procedures",
-    },
-    {
-      icon: Wrench,
-      title: "Service Tools",
-      description:
-        "Digital service manuals, troubleshooting guides, and diagnostic tools",
-    },
-    {
-      icon: BarChart3,
-      title: "Business Intelligence",
-      description:
-        "Advanced analytics, forecasting, and performance optimization tools",
-    },
-    {
-      icon: Users,
-      title: "Team Collaboration",
-      description:
-        "Communication tools, task management, and knowledge sharing platforms",
-    },
-  ];
-
-  const resources = [
-    {
-      category: "Documentation",
-      items: [
-        {
-          title: "Getting Started Guide",
-          description: "Complete setup and onboarding documentation",
-        },
-        {
-          title: "API Reference",
-          description: "Comprehensive API documentation for developers",
-        },
-        {
-          title: "User Manual",
-          description: "Detailed user guides for all platform features",
-        },
-      ],
-    },
-    {
-      category: "Training",
-      items: [
-        {
-          title: "Video Tutorials",
-          description: "Step-by-step video guides for common tasks",
-        },
-        {
-          title: "Webinar Series",
-          description: "Monthly training sessions and product updates",
-        },
-        {
-          title: "Certification Program",
-          description: "Professional certification for platform expertise",
-        },
-      ],
-    },
-    {
-      category: "Support",
-      items: [
-        {
-          title: "Help Center",
-          description: "Searchable knowledge base with instant answers",
-        },
-        {
-          title: "Community Forum",
-          description: "Connect with other dealers and share best practices",
-        },
-        {
-          title: "Technical Support",
-          description: "24/7 technical support for all plan levels",
-        },
-      ],
-    },
-  ];
-
-  // Transparent messaging: no vanity stats/testimonials while in Early Access
 
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-200 z-50">
+      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm z-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
-                <Printer className="text-white h-6 w-6" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+            <div className="flex items-center">
+              <Printer className="h-8 w-8 text-blue-600" />
+              <span className="ml-2 text-xl font-bold text-gray-900">
                 Printyx
               </span>
             </div>
@@ -259,27 +162,21 @@ const Homepage = () => {
             <div className="hidden md:flex items-center space-x-8">
               <a
                 href="#features"
-                className="text-gray-600 hover:text-blue-600 transition-colors"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
               >
                 Features
               </a>
               <a
-                href="#pricing"
-                className="text-gray-600 hover:text-blue-600 transition-colors"
+                href="#benefits"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
               >
-                Pricing
+                Benefits
               </a>
               <a
-                href="#tools"
-                className="text-gray-600 hover:text-blue-600 transition-colors"
+                href="#testimonials"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
               >
-                Tools
-              </a>
-              <a
-                href="#resources"
-                className="text-gray-600 hover:text-blue-600 transition-colors"
-              >
-                Resources
+                Testimonials
               </a>
               <Button
                 variant="outline"
@@ -296,61 +193,40 @@ const Homepage = () => {
               </Button>
             </div>
 
-            {/* Mobile Menu Button */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="sm" className="p-2">
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between pb-6 border-b">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                        <Printer className="text-white h-5 w-5" />
-                      </div>
-                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-                        Printyx
-                      </span>
-                    </div>
-                  </div>
-
-                  <nav className="flex-1 py-6">
-                    <div className="space-y-6">
-                      <a
-                        href="#features"
-                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Features
-                      </a>
-                      <a
-                        href="#pricing"
-                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Pricing
-                      </a>
-                      <a
-                        href="#tools"
-                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Tools
-                      </a>
-                      <a
-                        href="#resources"
-                        className="block text-lg text-gray-900 hover:text-blue-600 transition-colors"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Resources
-                      </a>
-                    </div>
-                  </nav>
-
-                  <div className="border-t pt-6 space-y-4">
+            {/* Mobile Navigation */}
+            <div className="md:hidden">
+              <Sheet
+                open={isMobileMenuOpen}
+                onOpenChange={setIsMobileMenuOpen}
+              >
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <div className="flex flex-col space-y-4 mt-4">
+                    <a
+                      href="#features"
+                      className="text-gray-700 hover:text-blue-600 transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Features
+                    </a>
+                    <a
+                      href="#benefits"
+                      className="text-gray-700 hover:text-blue-600 transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Benefits
+                    </a>
+                    <a
+                      href="#testimonials"
+                      className="text-gray-700 hover:text-blue-600 transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Testimonials
+                    </a>
                     <Button
                       variant="outline"
                       className="w-full border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
@@ -368,173 +244,15 @@ const Homepage = () => {
                       Coming October 1st
                     </Button>
                   </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section with 3D Effect */}
-      <section className="relative pt-24 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"></div>
-
-        {/* 3D Background Elements */}
-        <div className="absolute inset-0 opacity-10">
-          <div
-            className={`absolute top-20 left-10 w-32 h-32 bg-blue-500 rounded-full blur-xl transform transition-all duration-1000 ${
-              isVisible
-                ? "translate-y-0 opacity-20"
-                : "translate-y-10 opacity-0"
-            }`}
-          ></div>
-          <div
-            className={`absolute top-40 right-20 w-24 h-24 bg-purple-500 rounded-full blur-xl transform transition-all duration-1000 delay-300 ${
-              isVisible
-                ? "translate-y-0 opacity-20"
-                : "translate-y-10 opacity-0"
-            }`}
-          ></div>
-          <div
-            className={`absolute bottom-20 left-1/4 w-28 h-28 bg-indigo-500 rounded-full blur-xl transform transition-all duration-1000 delay-500 ${
-              isVisible
-                ? "translate-y-0 opacity-20"
-                : "translate-y-10 opacity-0"
-            }`}
-          ></div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div
-              className={`transform transition-all duration-1000 ${
-                isVisible
-                  ? "translate-x-0 opacity-100"
-                  : "-translate-x-10 opacity-0"
-              }`}
-            >
-              <Badge className="mb-4 bg-blue-100 text-blue-900 border-blue-300">
-                Coming October 1st, 2025
-              </Badge>
-
-              <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-                Unify Your
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {" "}
-                  Copier Business
-                </span>
-              </h1>
-
-              <p className="text-xl text-gray-700 mb-8 leading-relaxed">
-                We’re building a simpler, unified tool for copier dealers. No
-                A clean workflow for CRM, service, inventory, and billing that lets you focus
-                on running your business instead of managing software.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-6 opacity-75 cursor-not-allowed"
-                  disabled
-                >
-                  Coming October 1st
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="text-lg px-8 py-6 border-gray-300 hover:bg-gray-50 opacity-75 cursor-not-allowed"
-                  disabled
-                >
-                  Get Notified
-                </Button>
-              </div>
-
-              <div className="flex items-center space-x-6 text-sm text-gray-600">
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                  Fast onboarding
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                  Opinionated defaults
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                  Built with dealer feedback
-                </div>
-              </div>
-            </div>
-
-            {/* 3D Animated Dashboard Preview */}
-            <div
-              className={`transform transition-all duration-1000 delay-300 ${
-                isVisible
-                  ? "translate-x-0 opacity-100"
-                  : "translate-x-10 opacity-0"
-              }`}
-            >
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-2xl blur-2xl opacity-20 animate-pulse"></div>
-                <div className="relative bg-white rounded-2xl shadow-2xl p-6 transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Dashboard Overview
-                      </h3>
-                      <Badge className="bg-green-100 text-green-800">
-                        Live
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              Monthly Revenue
-                            </p>
-                            <p className="text-2xl font-bold text-blue-600">
-                              $127K
-                            </p>
-                          </div>
-                          <TrendingUp className="h-8 w-8 text-blue-500" />
-                        </div>
-                      </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-600">
-                              Active Contracts
-                            </p>
-                            <p className="text-2xl font-bold text-green-600">
-                              1,247
-                            </p>
-                          </div>
-                          <FileText className="h-8 w-8 text-green-500" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-600 mb-2">
-                        Service Efficiency
-                      </p>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full w-4/5"></div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        85% completion rate
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      {/* Revolutionary 3D Hero Section */}
+      <Interactive3DHero />
 
       {/* Features Section */}
       <section id="features" className="py-24 bg-gray-50">
@@ -574,12 +292,9 @@ const Homepage = () => {
                     {feature.description}
                   </CardDescription>
                   <ul className="space-y-2">
-                    {feature.benefits.map((benefit, i) => (
-                      <li
-                        key={i}
-                        className="flex items-center text-sm text-gray-600"
-                      >
-                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                    {feature.benefits.map((benefit, idx) => (
+                      <li key={idx} className="flex items-center text-sm">
+                        <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
                         {benefit}
                       </li>
                     ))}
@@ -591,205 +306,24 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-white">
+      {/* Benefits Section */}
+      <section id="benefits" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Simple, Transparent Pricing
+              Why Copier Dealers Choose Printyx
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Choose the plan that fits your business size and needs. All plans
-              include a 30-day free trial.
+              Join hundreds of dealers who have transformed their operations
+              with our unified platform
             </p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, index) => (
-              <Card
-                key={index}
-                className={`relative transform transition-all duration-700 delay-${
-                  index * 100
-                } hover:scale-105 hover:shadow-lg ${
-                  plan.popular ? "ring-2 ring-blue-500 shadow-xl" : ""
-                } ${
-                  isVisible
-                    ? "translate-y-0 opacity-100"
-                    : "translate-y-10 opacity-0"
-                }`}
-              >
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white">
-                    Most Popular
-                  </Badge>
-                )}
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl font-bold">
-                    {plan.name}
-                  </CardTitle>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">
-                      {plan.price}
-                    </span>
-                    <span className="text-gray-600">/{plan.period}</span>
-                  </div>
-                  <CardDescription className="mt-2">
-                    {plan.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full mt-6 ${
-                      plan.popular
-                        ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-gray-600 hover:bg-gray-700"
-                    }`}
-                    onClick={() => (window.location.href = "/login")}
-                  >
-                    {plan.cta}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Volume Discounts Section */}
-          <div className="mt-16 mb-12">
-            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
-                  Volume Discounts
-                </CardTitle>
-                <CardDescription className="text-lg text-gray-700">
-                  Save more with larger teams - discounts applied automatically
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">
-                      5%
-                    </div>
-                    <div className="text-sm text-gray-600">10-24 users</div>
-                  </div>
-                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">
-                      10%
-                    </div>
-                    <div className="text-sm text-gray-600">25-49 users</div>
-                  </div>
-                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">
-                      15%
-                    </div>
-                    <div className="text-sm text-gray-600">50+ users</div>
-                  </div>
-                  <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">
-                      20%
-                    </div>
-                    <div className="text-sm text-gray-600">100+ users</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      + enterprise negotiation
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-gray-600 mb-4">All plans include:</p>
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600">
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                30-day free trial
-              </div>
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                No setup fees
-              </div>
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                Cancel anytime
-              </div>
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                Data migration included
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tools Section */}
-      <section id="tools" className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Powerful Tools for Every Task
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Access industry-specific tools and resources designed to
-              streamline your operations
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12">
-            {tools.map((tool, index) => (
+            {benefits.map((benefit, index) => (
               <div
                 key={index}
-                className={`flex items-start space-x-4 transform transition-all duration-700 delay-${
-                  index * 100
-                } ${
-                  isVisible
-                    ? "translate-x-0 opacity-100"
-                    : "-translate-x-10 opacity-0"
-                }`}
-              >
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <tool.icon className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {tool.title}
-                  </h3>
-                  <p className="text-gray-600">{tool.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Resources Section */}
-      <section id="resources" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Resources & Support
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Get the help and resources you need to succeed with comprehensive
-              documentation and support
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            {resources.map((category, index) => (
-              <div
-                key={index}
-                className={`transform transition-all duration-700 delay-${
+                className={`text-center transform transition-all duration-700 delay-${
                   index * 200
                 } ${
                   isVisible
@@ -797,203 +331,114 @@ const Homepage = () => {
                     : "translate-y-10 opacity-0"
                 }`}
               >
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">
-                  {category.category}
-                </h3>
-                <div className="space-y-4">
-                  {category.items.map((item, i) => (
-                    <div key={i} className="border-l-4 border-blue-500 pl-4">
-                      <h4 className="font-semibold text-gray-900 mb-1">
-                        {item.title}
-                      </h4>
-                      <p className="text-gray-600 text-sm">
-                        {item.description}
-                      </p>
-                    </div>
-                  ))}
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl mb-6">
+                  <benefit.icon className="h-8 w-8 text-white" />
                 </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                  {benefit.title}
+                </h3>
+                <p className="text-lg text-gray-600">{benefit.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Remove testimonials for transparency during Early Access */}
+      {/* Testimonials Section */}
+      <section id="testimonials" className="py-24 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              What Our Customers Say
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Real feedback from copier dealers who have transformed their
+              business with Printyx
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <Card
+                key={index}
+                className={`transform transition-all duration-700 delay-${
+                  index * 150
+                } hover:shadow-lg ${
+                  isVisible
+                    ? "translate-y-0 opacity-100"
+                    : "translate-y-10 opacity-0"
+                }`}
+              >
+                <CardContent className="p-6">
+                  <div className="flex mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <span key={i} className="text-yellow-400">
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-gray-700 mb-4 italic">
+                    "{testimonial.content}"
+                  </p>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {testimonial.name}
+                    </p>
+                    <p className="text-sm text-gray-600">{testimonial.role}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-gradient-to-r from-blue-600 to-blue-700">
+      <section className="py-24 bg-gradient-to-r from-blue-600 to-purple-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-4">
-            Get Ready to Transform Your Copier Business
+            Ready to Transform Your Business?
           </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            We’re in Early Access. If you want something simpler and faster than
-            a unified platform designed specifically for copier dealers.
+          <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
+            Join the copier dealers who are already using Printyx to streamline
+            their operations and grow their business.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="bg-white text-blue-600 hover:bg-gray-50 opacity-75 cursor-not-allowed text-lg px-8 py-6"
+              className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-6 opacity-75 cursor-not-allowed"
               disabled
             >
-              Coming October 1st
+              Coming October 1st, 2025
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-6"
+              className="text-lg px-8 py-6 border-white text-white hover:bg-white hover:text-blue-600 opacity-75 cursor-not-allowed"
               disabled
             >
-              Get Notified
+              Get Early Access
             </Button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
+      <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                  <Printer className="text-white h-5 w-5" />
-                </div>
-                <span className="text-xl font-bold">Printyx</span>
-              </div>
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 md:mb-0">
+              <Printer className="h-8 w-8 text-blue-400" />
+              <span className="ml-2 text-xl font-bold">Printyx</span>
+            </div>
+            <div className="text-center md:text-right">
               <p className="text-gray-400">
-                The unified platform for copier dealer management, trusted by
-                thousands of businesses worldwide.
+                © 2025 Printyx. All rights reserved.
               </p>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Product</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <a
-                    href="#features"
-                    className="hover:text-white transition-colors"
-                  >
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#pricing"
-                    className="hover:text-white transition-colors"
-                  >
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#tools"
-                    className="hover:text-white transition-colors"
-                  >
-                    Tools
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/login"
-                    className="hover:text-white transition-colors"
-                  >
-                    Demo
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Resources</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <a
-                    href="#resources"
-                    className="hover:text-white transition-colors"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#resources"
-                    className="hover:text-white transition-colors"
-                  >
-                    Training
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#resources"
-                    className="hover:text-white transition-colors"
-                  >
-                    Support
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#resources"
-                    className="hover:text-white transition-colors"
-                  >
-                    Community
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Company</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Careers
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Support
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center">
-            <p className="text-gray-400">
-              © 2025 Printyx. All rights reserved.
-            </p>
-            <div className="flex space-x-6 mt-4 sm:mt-0">
-              <a
-                href="/privacy"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                Privacy Policy
-              </a>
-              <a
-                href="/terms"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                Terms & Conditions
-              </a>
-              <a
-                href="/eula"
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                EULA
-              </a>
+              <p className="text-sm text-gray-500 mt-1">
+                The unified platform for copier dealers.
+              </p>
             </div>
           </div>
         </div>
