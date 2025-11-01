@@ -387,6 +387,24 @@ import {
   type CreditMemo,
   type InsertCreditMemo,
 } from "@shared/advanced-billing-schema";
+import {
+  // Customer Success schemas
+  customerHealthScores,
+  churnPredictions,
+  successInterventions,
+  customerJourneys,
+  renewalOpportunities,
+  type CustomerHealthScore,
+  type ChurnPrediction,
+  type SuccessIntervention,
+  type CustomerJourney,
+  type RenewalOpportunity,
+  type InsertCustomerHealthScore,
+  type InsertChurnPrediction,
+  type InsertSuccessIntervention,
+  type InsertCustomerJourney,
+  type InsertRenewalOpportunity,
+} from "@shared/customer-success-schema";
 import { db } from "./db";
 import {
   eq,
@@ -1345,6 +1363,60 @@ export interface IStorage {
   voidCreditMemo(creditMemoId: string, tenantId: string, userId: string, reason: string): Promise<CreditMemo | null>;
   getCreditMemosByCustomer(customerId: string, tenantId: string): Promise<CreditMemo[]>;
   getPendingCreditMemos(tenantId: string): Promise<CreditMemo[]>;
+
+  // Customer Health Scores
+  getHealthScores(tenantId: string, filters?: { healthStatus?: string; trend?: string; minScore?: number; maxScore?: number }): Promise<CustomerHealthScore[]>;
+  getHealthScore(scoreId: string): Promise<CustomerHealthScore | null>;
+  getHealthScoreByCustomer(customerId: string, tenantId: string): Promise<CustomerHealthScore | null>;
+  createHealthScore(data: InsertCustomerHealthScore): Promise<CustomerHealthScore>;
+  updateHealthScore(scoreId: string, tenantId: string, data: Partial<CustomerHealthScore>): Promise<CustomerHealthScore | null>;
+  getScoresDueForCalculation(tenantId: string): Promise<CustomerHealthScore[]>;
+  getCustomersAtRisk(tenantId: string): Promise<CustomerHealthScore[]>;
+  getHealthScoreHistory(customerId: string, tenantId: string, limit?: number): Promise<CustomerHealthScore[]>;
+
+  // Churn Predictions
+  getChurnPredictions(tenantId: string, filters?: { churnRisk?: string; interventionRequired?: boolean }): Promise<ChurnPrediction[]>;
+  getChurnPrediction(predictionId: string): Promise<ChurnPrediction | null>;
+  getChurnPredictionByCustomer(customerId: string, tenantId: string): Promise<ChurnPrediction | null>;
+  createChurnPrediction(data: InsertChurnPrediction): Promise<ChurnPrediction>;
+  updateChurnPrediction(predictionId: string, tenantId: string, data: Partial<ChurnPrediction>): Promise<ChurnPrediction | null>;
+  getHighRiskChurns(tenantId: string): Promise<ChurnPrediction[]>;
+  getExpiredPredictions(tenantId: string): Promise<ChurnPrediction[]>;
+  getPredictionsRequiringIntervention(tenantId: string): Promise<ChurnPrediction[]>;
+
+  // Success Interventions
+  getInterventions(tenantId: string, filters?: { status?: string; interventionType?: string; priority?: string; assignedTo?: string }): Promise<SuccessIntervention[]>;
+  getIntervention(interventionId: string): Promise<SuccessIntervention | null>;
+  getInterventionsByCustomer(customerId: string, tenantId: string): Promise<SuccessIntervention[]>;
+  createIntervention(data: InsertSuccessIntervention): Promise<SuccessIntervention>;
+  updateIntervention(interventionId: string, tenantId: string, data: Partial<SuccessIntervention>): Promise<SuccessIntervention | null>;
+  assignIntervention(interventionId: string, tenantId: string, userId: string): Promise<SuccessIntervention | null>;
+  completeIntervention(interventionId: string, tenantId: string, outcome: string, notes?: string): Promise<SuccessIntervention | null>;
+  getOverdueInterventions(tenantId: string): Promise<SuccessIntervention[]>;
+  getMyInterventions(userId: string, tenantId: string): Promise<SuccessIntervention[]>;
+  cancelIntervention(interventionId: string, tenantId: string, reason: string): Promise<SuccessIntervention | null>;
+
+  // Customer Journeys
+  getJourneys(tenantId: string, filters?: { currentStage?: string; lifecyclePhase?: string; journeyHealth?: string }): Promise<CustomerJourney[]>;
+  getJourney(journeyId: string): Promise<CustomerJourney | null>;
+  getJourneyByCustomer(customerId: string, tenantId: string): Promise<CustomerJourney | null>;
+  createJourney(data: InsertCustomerJourney): Promise<CustomerJourney>;
+  updateJourney(journeyId: string, tenantId: string, data: Partial<CustomerJourney>): Promise<CustomerJourney | null>;
+  advanceJourneyStage(journeyId: string, tenantId: string, newStage: string): Promise<CustomerJourney | null>;
+  getJourneysNeedingAttention(tenantId: string): Promise<CustomerJourney[]>;
+  recordJourneyTouchpoint(journeyId: string, tenantId: string, touchpointType: string): Promise<CustomerJourney | null>;
+
+  // Renewal Opportunities
+  getRenewalOpportunities(tenantId: string, filters?: { renewalStatus?: string; renewalRisk?: string; daysUntilMax?: number }): Promise<RenewalOpportunity[]>;
+  getRenewalOpportunity(opportunityId: string): Promise<RenewalOpportunity | null>;
+  getRenewalsByCustomer(customerId: string, tenantId: string): Promise<RenewalOpportunity[]>;
+  getRenewalByContract(contractId: string, tenantId: string): Promise<RenewalOpportunity | null>;
+  createRenewalOpportunity(data: InsertRenewalOpportunity): Promise<RenewalOpportunity>;
+  updateRenewalOpportunity(opportunityId: string, tenantId: string, data: Partial<RenewalOpportunity>): Promise<RenewalOpportunity | null>;
+  assignRenewalCsm(opportunityId: string, tenantId: string, csmId: string): Promise<RenewalOpportunity | null>;
+  closeRenewal(opportunityId: string, tenantId: string, won: boolean, notes: string): Promise<RenewalOpportunity | null>;
+  getUpcomingRenewals(tenantId: string, days: number): Promise<RenewalOpportunity[]>;
+  getHighValueRenewals(tenantId: string, minMrr: number): Promise<RenewalOpportunity[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -10980,6 +11052,737 @@ export class DatabaseStorage implements IStorage {
         and(eq(creditMemos.tenantId, tenantId), eq(creditMemos.creditStatus, "pending"))
       )
       .orderBy(desc(creditMemos.issuedDate));
+  }
+
+  // Customer Health Scores
+  async getHealthScores(
+    tenantId: string,
+    filters?: {
+      healthStatus?: string;
+      trend?: string;
+      minScore?: number;
+      maxScore?: number;
+    }
+  ): Promise<CustomerHealthScore[]> {
+    const conditions = [eq(customerHealthScores.tenantId, tenantId)];
+
+    if (filters?.healthStatus) {
+      conditions.push(eq(customerHealthScores.healthStatus, filters.healthStatus));
+    }
+    if (filters?.trend) {
+      conditions.push(eq(customerHealthScores.trend, filters.trend));
+    }
+    if (filters?.minScore !== undefined) {
+      conditions.push(gte(customerHealthScores.overallScore, filters.minScore));
+    }
+    if (filters?.maxScore !== undefined) {
+      conditions.push(lte(customerHealthScores.overallScore, filters.maxScore));
+    }
+
+    return await db
+      .select()
+      .from(customerHealthScores)
+      .where(and(...conditions))
+      .orderBy(desc(customerHealthScores.calculatedAt));
+  }
+
+  async getHealthScore(scoreId: string): Promise<CustomerHealthScore | null> {
+    const [score] = await db
+      .select()
+      .from(customerHealthScores)
+      .where(eq(customerHealthScores.id, scoreId))
+      .limit(1);
+    return score || null;
+  }
+
+  async getHealthScoreByCustomer(
+    customerId: string,
+    tenantId: string
+  ): Promise<CustomerHealthScore | null> {
+    const [score] = await db
+      .select()
+      .from(customerHealthScores)
+      .where(
+        and(
+          eq(customerHealthScores.customerId, customerId),
+          eq(customerHealthScores.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(customerHealthScores.calculatedAt))
+      .limit(1);
+    return score || null;
+  }
+
+  async createHealthScore(data: InsertCustomerHealthScore): Promise<CustomerHealthScore> {
+    const [score] = await db.insert(customerHealthScores).values(data).returning();
+    return score;
+  }
+
+  async updateHealthScore(
+    scoreId: string,
+    tenantId: string,
+    data: Partial<CustomerHealthScore>
+  ): Promise<CustomerHealthScore | null> {
+    const [score] = await db
+      .update(customerHealthScores)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(customerHealthScores.id, scoreId),
+          eq(customerHealthScores.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return score || null;
+  }
+
+  async getScoresDueForCalculation(tenantId: string): Promise<CustomerHealthScore[]> {
+    return await db
+      .select()
+      .from(customerHealthScores)
+      .where(
+        and(
+          eq(customerHealthScores.tenantId, tenantId),
+          lte(customerHealthScores.nextCalculationDue, new Date())
+        )
+      )
+      .orderBy(asc(customerHealthScores.nextCalculationDue));
+  }
+
+  async getCustomersAtRisk(tenantId: string): Promise<CustomerHealthScore[]> {
+    return await db
+      .select()
+      .from(customerHealthScores)
+      .where(
+        and(
+          eq(customerHealthScores.tenantId, tenantId),
+          inArray(customerHealthScores.healthStatus, ['critical', 'at_risk'])
+        )
+      )
+      .orderBy(asc(customerHealthScores.overallScore));
+  }
+
+  async getHealthScoreHistory(
+    customerId: string,
+    tenantId: string,
+    limit?: number
+  ): Promise<CustomerHealthScore[]> {
+    let query = db
+      .select()
+      .from(customerHealthScores)
+      .where(
+        and(
+          eq(customerHealthScores.customerId, customerId),
+          eq(customerHealthScores.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(customerHealthScores.calculatedAt));
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    return await query;
+  }
+
+  // Churn Predictions
+  async getChurnPredictions(
+    tenantId: string,
+    filters?: {
+      churnRisk?: string;
+      interventionRequired?: boolean;
+    }
+  ): Promise<ChurnPrediction[]> {
+    const conditions = [eq(churnPredictions.tenantId, tenantId)];
+
+    if (filters?.churnRisk) {
+      conditions.push(eq(churnPredictions.churnRisk, filters.churnRisk));
+    }
+    if (filters?.interventionRequired !== undefined) {
+      conditions.push(eq(churnPredictions.interventionRequired, filters.interventionRequired));
+    }
+
+    return await db
+      .select()
+      .from(churnPredictions)
+      .where(and(...conditions))
+      .orderBy(desc(churnPredictions.churnProbability));
+  }
+
+  async getChurnPrediction(predictionId: string): Promise<ChurnPrediction | null> {
+    const [prediction] = await db
+      .select()
+      .from(churnPredictions)
+      .where(eq(churnPredictions.id, predictionId))
+      .limit(1);
+    return prediction || null;
+  }
+
+  async getChurnPredictionByCustomer(
+    customerId: string,
+    tenantId: string
+  ): Promise<ChurnPrediction | null> {
+    const [prediction] = await db
+      .select()
+      .from(churnPredictions)
+      .where(
+        and(
+          eq(churnPredictions.customerId, customerId),
+          eq(churnPredictions.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(churnPredictions.predictedAt))
+      .limit(1);
+    return prediction || null;
+  }
+
+  async createChurnPrediction(data: InsertChurnPrediction): Promise<ChurnPrediction> {
+    const [prediction] = await db.insert(churnPredictions).values(data).returning();
+    return prediction;
+  }
+
+  async updateChurnPrediction(
+    predictionId: string,
+    tenantId: string,
+    data: Partial<ChurnPrediction>
+  ): Promise<ChurnPrediction | null> {
+    const [prediction] = await db
+      .update(churnPredictions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(churnPredictions.id, predictionId),
+          eq(churnPredictions.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return prediction || null;
+  }
+
+  async getHighRiskChurns(tenantId: string): Promise<ChurnPrediction[]> {
+    return await db
+      .select()
+      .from(churnPredictions)
+      .where(
+        and(
+          eq(churnPredictions.tenantId, tenantId),
+          inArray(churnPredictions.churnRisk, ['high', 'critical'])
+        )
+      )
+      .orderBy(desc(churnPredictions.churnProbability));
+  }
+
+  async getExpiredPredictions(tenantId: string): Promise<ChurnPrediction[]> {
+    return await db
+      .select()
+      .from(churnPredictions)
+      .where(
+        and(
+          eq(churnPredictions.tenantId, tenantId),
+          lte(churnPredictions.expiresAt, new Date())
+        )
+      )
+      .orderBy(asc(churnPredictions.expiresAt));
+  }
+
+  async getPredictionsRequiringIntervention(tenantId: string): Promise<ChurnPrediction[]> {
+    return await db
+      .select()
+      .from(churnPredictions)
+      .where(
+        and(
+          eq(churnPredictions.tenantId, tenantId),
+          eq(churnPredictions.interventionRequired, true),
+          eq(churnPredictions.interventionTriggered, false)
+        )
+      )
+      .orderBy(desc(churnPredictions.churnProbability));
+  }
+
+  // Success Interventions
+  async getInterventions(
+    tenantId: string,
+    filters?: {
+      status?: string;
+      interventionType?: string;
+      priority?: string;
+      assignedTo?: string;
+    }
+  ): Promise<SuccessIntervention[]> {
+    const conditions = [eq(successInterventions.tenantId, tenantId)];
+
+    if (filters?.status) {
+      conditions.push(eq(successInterventions.status, filters.status));
+    }
+    if (filters?.interventionType) {
+      conditions.push(eq(successInterventions.interventionType, filters.interventionType));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(successInterventions.priority, filters.priority));
+    }
+    if (filters?.assignedTo) {
+      conditions.push(eq(successInterventions.assignedTo, filters.assignedTo));
+    }
+
+    return await db
+      .select()
+      .from(successInterventions)
+      .where(and(...conditions))
+      .orderBy(desc(successInterventions.createdAt));
+  }
+
+  async getIntervention(interventionId: string): Promise<SuccessIntervention | null> {
+    const [intervention] = await db
+      .select()
+      .from(successInterventions)
+      .where(eq(successInterventions.id, interventionId))
+      .limit(1);
+    return intervention || null;
+  }
+
+  async getInterventionsByCustomer(
+    customerId: string,
+    tenantId: string
+  ): Promise<SuccessIntervention[]> {
+    return await db
+      .select()
+      .from(successInterventions)
+      .where(
+        and(
+          eq(successInterventions.customerId, customerId),
+          eq(successInterventions.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(successInterventions.createdAt));
+  }
+
+  async createIntervention(data: InsertSuccessIntervention): Promise<SuccessIntervention> {
+    const [intervention] = await db.insert(successInterventions).values(data).returning();
+    return intervention;
+  }
+
+  async updateIntervention(
+    interventionId: string,
+    tenantId: string,
+    data: Partial<SuccessIntervention>
+  ): Promise<SuccessIntervention | null> {
+    const [intervention] = await db
+      .update(successInterventions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(successInterventions.id, interventionId),
+          eq(successInterventions.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return intervention || null;
+  }
+
+  async assignIntervention(
+    interventionId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<SuccessIntervention | null> {
+    const [intervention] = await db
+      .update(successInterventions)
+      .set({
+        assignedTo: userId,
+        assignedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(successInterventions.id, interventionId),
+          eq(successInterventions.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return intervention || null;
+  }
+
+  async completeIntervention(
+    interventionId: string,
+    tenantId: string,
+    outcome: string,
+    notes?: string
+  ): Promise<SuccessIntervention | null> {
+    const [intervention] = await db
+      .update(successInterventions)
+      .set({
+        status: 'completed',
+        outcome,
+        notes: notes || undefined,
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(successInterventions.id, interventionId),
+          eq(successInterventions.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return intervention || null;
+  }
+
+  async getOverdueInterventions(tenantId: string): Promise<SuccessIntervention[]> {
+    return await db
+      .select()
+      .from(successInterventions)
+      .where(
+        and(
+          eq(successInterventions.tenantId, tenantId),
+          lt(successInterventions.dueDate, new Date()),
+          sql`${successInterventions.status} NOT IN ('completed', 'cancelled')`
+        )
+      )
+      .orderBy(asc(successInterventions.dueDate));
+  }
+
+  async getMyInterventions(userId: string, tenantId: string): Promise<SuccessIntervention[]> {
+    return await db
+      .select()
+      .from(successInterventions)
+      .where(
+        and(
+          eq(successInterventions.assignedTo, userId),
+          eq(successInterventions.tenantId, tenantId)
+        )
+      )
+      .orderBy(asc(successInterventions.dueDate));
+  }
+
+  async cancelIntervention(
+    interventionId: string,
+    tenantId: string,
+    reason: string
+  ): Promise<SuccessIntervention | null> {
+    const [intervention] = await db
+      .update(successInterventions)
+      .set({
+        status: 'cancelled',
+        notes: reason,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(successInterventions.id, interventionId),
+          eq(successInterventions.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return intervention || null;
+  }
+
+  // Customer Journeys
+  async getJourneys(
+    tenantId: string,
+    filters?: {
+      currentStage?: string;
+      lifecyclePhase?: string;
+      journeyHealth?: string;
+    }
+  ): Promise<CustomerJourney[]> {
+    const conditions = [eq(customerJourneys.tenantId, tenantId)];
+
+    if (filters?.currentStage) {
+      conditions.push(eq(customerJourneys.currentStage, filters.currentStage));
+    }
+    if (filters?.lifecyclePhase) {
+      conditions.push(eq(customerJourneys.lifecyclePhase, filters.lifecyclePhase));
+    }
+    if (filters?.journeyHealth) {
+      conditions.push(eq(customerJourneys.journeyHealth, filters.journeyHealth));
+    }
+
+    return await db
+      .select()
+      .from(customerJourneys)
+      .where(and(...conditions))
+      .orderBy(desc(customerJourneys.updatedAt));
+  }
+
+  async getJourney(journeyId: string): Promise<CustomerJourney | null> {
+    const [journey] = await db
+      .select()
+      .from(customerJourneys)
+      .where(eq(customerJourneys.id, journeyId))
+      .limit(1);
+    return journey || null;
+  }
+
+  async getJourneyByCustomer(
+    customerId: string,
+    tenantId: string
+  ): Promise<CustomerJourney | null> {
+    const [journey] = await db
+      .select()
+      .from(customerJourneys)
+      .where(
+        and(
+          eq(customerJourneys.customerId, customerId),
+          eq(customerJourneys.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    return journey || null;
+  }
+
+  async createJourney(data: InsertCustomerJourney): Promise<CustomerJourney> {
+    const [journey] = await db.insert(customerJourneys).values(data).returning();
+    return journey;
+  }
+
+  async updateJourney(
+    journeyId: string,
+    tenantId: string,
+    data: Partial<CustomerJourney>
+  ): Promise<CustomerJourney | null> {
+    const [journey] = await db
+      .update(customerJourneys)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(customerJourneys.id, journeyId),
+          eq(customerJourneys.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return journey || null;
+  }
+
+  async advanceJourneyStage(
+    journeyId: string,
+    tenantId: string,
+    newStage: string
+  ): Promise<CustomerJourney | null> {
+    const journey = await this.getJourney(journeyId);
+    if (!journey) return null;
+
+    const [updatedJourney] = await db
+      .update(customerJourneys)
+      .set({
+        previousStage: journey.currentStage,
+        currentStage: newStage,
+        stageEnteredAt: new Date(),
+        daysSinceStageChange: 0,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(customerJourneys.id, journeyId),
+          eq(customerJourneys.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedJourney || null;
+  }
+
+  async getJourneysNeedingAttention(tenantId: string): Promise<CustomerJourney[]> {
+    return await db
+      .select()
+      .from(customerJourneys)
+      .where(
+        and(
+          eq(customerJourneys.tenantId, tenantId),
+          inArray(customerJourneys.journeyHealth, ['needs_attention', 'off_track'])
+        )
+      )
+      .orderBy(desc(customerJourneys.updatedAt));
+  }
+
+  async recordJourneyTouchpoint(
+    journeyId: string,
+    tenantId: string,
+    touchpointType: string
+  ): Promise<CustomerJourney | null> {
+    const journey = await this.getJourney(journeyId);
+    if (!journey) return null;
+
+    const [updatedJourney] = await db
+      .update(customerJourneys)
+      .set({
+        totalTouchpoints: (journey.totalTouchpoints || 0) + 1,
+        lastTouchpointDate: new Date(),
+        lastTouchpointType: touchpointType,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(customerJourneys.id, journeyId),
+          eq(customerJourneys.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedJourney || null;
+  }
+
+  // Renewal Opportunities
+  async getRenewalOpportunities(
+    tenantId: string,
+    filters?: {
+      renewalStatus?: string;
+      renewalRisk?: string;
+      daysUntilMax?: number;
+    }
+  ): Promise<RenewalOpportunity[]> {
+    const conditions = [eq(renewalOpportunities.tenantId, tenantId)];
+
+    if (filters?.renewalStatus) {
+      conditions.push(eq(renewalOpportunities.renewalStatus, filters.renewalStatus));
+    }
+    if (filters?.renewalRisk) {
+      conditions.push(eq(renewalOpportunities.renewalRisk, filters.renewalRisk));
+    }
+    if (filters?.daysUntilMax !== undefined) {
+      conditions.push(lte(renewalOpportunities.daysUntilRenewal, filters.daysUntilMax));
+    }
+
+    return await db
+      .select()
+      .from(renewalOpportunities)
+      .where(and(...conditions))
+      .orderBy(asc(renewalOpportunities.daysUntilRenewal));
+  }
+
+  async getRenewalOpportunity(opportunityId: string): Promise<RenewalOpportunity | null> {
+    const [opportunity] = await db
+      .select()
+      .from(renewalOpportunities)
+      .where(eq(renewalOpportunities.id, opportunityId))
+      .limit(1);
+    return opportunity || null;
+  }
+
+  async getRenewalsByCustomer(
+    customerId: string,
+    tenantId: string
+  ): Promise<RenewalOpportunity[]> {
+    return await db
+      .select()
+      .from(renewalOpportunities)
+      .where(
+        and(
+          eq(renewalOpportunities.customerId, customerId),
+          eq(renewalOpportunities.tenantId, tenantId)
+        )
+      )
+      .orderBy(asc(renewalOpportunities.daysUntilRenewal));
+  }
+
+  async getRenewalByContract(
+    contractId: string,
+    tenantId: string
+  ): Promise<RenewalOpportunity | null> {
+    const [opportunity] = await db
+      .select()
+      .from(renewalOpportunities)
+      .where(
+        and(
+          eq(renewalOpportunities.contractId, contractId),
+          eq(renewalOpportunities.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    return opportunity || null;
+  }
+
+  async createRenewalOpportunity(data: InsertRenewalOpportunity): Promise<RenewalOpportunity> {
+    const [opportunity] = await db.insert(renewalOpportunities).values(data).returning();
+    return opportunity;
+  }
+
+  async updateRenewalOpportunity(
+    opportunityId: string,
+    tenantId: string,
+    data: Partial<RenewalOpportunity>
+  ): Promise<RenewalOpportunity | null> {
+    const [opportunity] = await db
+      .update(renewalOpportunities)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(renewalOpportunities.id, opportunityId),
+          eq(renewalOpportunities.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return opportunity || null;
+  }
+
+  async assignRenewalCsm(
+    opportunityId: string,
+    tenantId: string,
+    csmId: string
+  ): Promise<RenewalOpportunity | null> {
+    const [opportunity] = await db
+      .update(renewalOpportunities)
+      .set({
+        assignedCsm: csmId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(renewalOpportunities.id, opportunityId),
+          eq(renewalOpportunities.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return opportunity || null;
+  }
+
+  async closeRenewal(
+    opportunityId: string,
+    tenantId: string,
+    won: boolean,
+    notes: string
+  ): Promise<RenewalOpportunity | null> {
+    const [opportunity] = await db
+      .update(renewalOpportunities)
+      .set({
+        renewalStatus: won ? 'won' : 'lost',
+        outcomeNotes: notes,
+        actualRenewalDate: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(renewalOpportunities.id, opportunityId),
+          eq(renewalOpportunities.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return opportunity || null;
+  }
+
+  async getUpcomingRenewals(tenantId: string, days: number): Promise<RenewalOpportunity[]> {
+    return await db
+      .select()
+      .from(renewalOpportunities)
+      .where(
+        and(
+          eq(renewalOpportunities.tenantId, tenantId),
+          lte(renewalOpportunities.daysUntilRenewal, days)
+        )
+      )
+      .orderBy(asc(renewalOpportunities.daysUntilRenewal));
+  }
+
+  async getHighValueRenewals(
+    tenantId: string,
+    minMrr: number
+  ): Promise<RenewalOpportunity[]> {
+    return await db
+      .select()
+      .from(renewalOpportunities)
+      .where(
+        and(
+          eq(renewalOpportunities.tenantId, tenantId),
+          gte(renewalOpportunities.currentMrr, minMrr.toString())
+        )
+      )
+      .orderBy(desc(renewalOpportunities.currentMrr));
   }
 }
 
