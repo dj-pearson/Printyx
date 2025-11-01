@@ -10638,6 +10638,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const emailMarketingRoutes = await import("./routes/email-marketing-routes");
   app.use("/api", emailMarketingRoutes.default);
 
+  // Multi-Factor Authentication (MFA) Enforcement Routes
+  const mfaRoutes = await import("./routes/mfa-routes");
+  app.use("/api/mfa", mfaRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
