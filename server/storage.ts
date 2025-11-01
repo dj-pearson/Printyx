@@ -230,6 +230,28 @@ import {
   type InsertServiceSignature,
   type InstallationChecklist,
   type InsertInstallationChecklist,
+  // Email Marketing Service Integration schemas
+  emailTemplates,
+  emailCampaigns,
+  emailSends,
+  emailEvents,
+  emailLists,
+  emailListMembers,
+  emailUnsubscribes,
+  type EmailTemplate,
+  type InsertEmailTemplate,
+  type EmailCampaign,
+  type InsertEmailCampaign,
+  type EmailSend,
+  type InsertEmailSend,
+  type EmailEvent,
+  type InsertEmailEvent,
+  type EmailList,
+  type InsertEmailList,
+  type EmailListMember,
+  type InsertEmailListMember,
+  type EmailUnsubscribe,
+  type InsertEmailUnsubscribe,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -908,6 +930,62 @@ export interface IStorage {
   updateInstallationChecklist(id: string, tenantId: string, data: Partial<InstallationChecklist>): Promise<InstallationChecklist | null>;
   deleteInstallationChecklist(id: string, tenantId: string): Promise<void>;
   bulkCreateInstallationChecklists(checklists: InsertInstallationChecklist[]): Promise<InstallationChecklist[]>;
+
+  // Email Marketing Service Integration
+  // Email Templates
+  getEmailTemplates(tenantId: string, filters?: { templateType?: string; isActive?: boolean; category?: string }): Promise<EmailTemplate[]>;
+  getEmailTemplateById(id: string, tenantId: string): Promise<EmailTemplate | null>;
+  getEmailTemplateByName(templateName: string, tenantId: string): Promise<EmailTemplate | null>;
+  createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate>;
+  updateEmailTemplate(id: string, tenantId: string, data: Partial<EmailTemplate>): Promise<EmailTemplate | null>;
+  deleteEmailTemplate(id: string, tenantId: string): Promise<void>;
+
+  // Email Campaigns
+  getEmailCampaigns(tenantId: string, filters?: { status?: string; campaignType?: string; ownerId?: string }): Promise<EmailCampaign[]>;
+  getEmailCampaignById(id: string, tenantId: string): Promise<EmailCampaign | null>;
+  getEmailCampaignByName(campaignName: string, tenantId: string): Promise<EmailCampaign | null>;
+  createEmailCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign>;
+  updateEmailCampaign(id: string, tenantId: string, data: Partial<EmailCampaign>): Promise<EmailCampaign | null>;
+  deleteEmailCampaign(id: string, tenantId: string): Promise<void>;
+  updateCampaignMetrics(campaignId: string, tenantId: string): Promise<EmailCampaign | null>;
+
+  // Email Sends
+  getEmailSends(campaignId: string, tenantId: string): Promise<EmailSend[]>;
+  getEmailSendById(id: string, tenantId: string): Promise<EmailSend | null>;
+  getEmailSendsByRecipient(recipientEmail: string, tenantId: string): Promise<EmailSend[]>;
+  createEmailSend(send: InsertEmailSend): Promise<EmailSend>;
+  updateEmailSend(id: string, tenantId: string, data: Partial<EmailSend>): Promise<EmailSend | null>;
+  deleteEmailSend(id: string, tenantId: string): Promise<void>;
+  bulkCreateEmailSends(sends: InsertEmailSend[]): Promise<EmailSend[]>;
+
+  // Email Events
+  getEmailEvents(emailSendId: string, tenantId: string): Promise<EmailEvent[]>;
+  getEmailEventsByCampaign(campaignId: string, tenantId: string, filters?: { eventType?: string }): Promise<EmailEvent[]>;
+  createEmailEvent(event: InsertEmailEvent): Promise<EmailEvent>;
+
+  // Email Lists
+  getEmailLists(tenantId: string, filters?: { listType?: string; isActive?: boolean; category?: string }): Promise<EmailList[]>;
+  getEmailListById(id: string, tenantId: string): Promise<EmailList | null>;
+  getEmailListByName(listName: string, tenantId: string): Promise<EmailList | null>;
+  createEmailList(list: InsertEmailList): Promise<EmailList>;
+  updateEmailList(id: string, tenantId: string, data: Partial<EmailList>): Promise<EmailList | null>;
+  deleteEmailList(id: string, tenantId: string): Promise<void>;
+  updateListMemberCounts(listId: string, tenantId: string): Promise<EmailList | null>;
+
+  // Email List Members
+  getEmailListMembers(listId: string, tenantId: string, filters?: { status?: string }): Promise<EmailListMember[]>;
+  getEmailListMemberById(id: string, tenantId: string): Promise<EmailListMember | null>;
+  getEmailListMemberByEmail(listId: string, email: string, tenantId: string): Promise<EmailListMember | null>;
+  createEmailListMember(member: InsertEmailListMember): Promise<EmailListMember>;
+  updateEmailListMember(id: string, tenantId: string, data: Partial<EmailListMember>): Promise<EmailListMember | null>;
+  deleteEmailListMember(id: string, tenantId: string): Promise<void>;
+  bulkCreateEmailListMembers(members: InsertEmailListMember[]): Promise<EmailListMember[]>;
+
+  // Email Unsubscribes
+  getEmailUnsubscribes(tenantId: string, filters?: { unsubscribeType?: string; email?: string }): Promise<EmailUnsubscribe[]>;
+  getEmailUnsubscribeByEmail(email: string, tenantId: string, unsubscribeType?: string): Promise<EmailUnsubscribe | null>;
+  createEmailUnsubscribe(unsubscribe: InsertEmailUnsubscribe): Promise<EmailUnsubscribe>;
+  checkUnsubscribeStatus(email: string, tenantId: string): Promise<{ isUnsubscribed: boolean; type?: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -6209,6 +6287,548 @@ export class DatabaseStorage implements IStorage {
       .values(checklists)
       .returning();
     return newChecklists;
+  }
+
+  async getEmailTemplates(
+    tenantId: string,
+    filters?: { templateType?: string; isActive?: boolean; category?: string }
+  ): Promise<EmailTemplate[]> {
+    let query = db
+      .select()
+      .from(emailTemplates)
+      .where(eq(emailTemplates.tenantId, tenantId));
+
+    const conditions = [eq(emailTemplates.tenantId, tenantId)];
+    
+    if (filters?.templateType) {
+      conditions.push(eq(emailTemplates.templateType, filters.templateType));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(emailTemplates.isActive, filters.isActive));
+    }
+    if (filters?.category) {
+      conditions.push(eq(emailTemplates.category, filters.category));
+    }
+
+    return await db
+      .select()
+      .from(emailTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(emailTemplates.createdAt));
+  }
+
+  async getEmailTemplateById(id: string, tenantId: string): Promise<EmailTemplate | null> {
+    const [template] = await db
+      .select()
+      .from(emailTemplates)
+      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenantId, tenantId)));
+    return template || null;
+  }
+
+  async getEmailTemplateByName(
+    templateName: string,
+    tenantId: string
+  ): Promise<EmailTemplate | null> {
+    const [template] = await db
+      .select()
+      .from(emailTemplates)
+      .where(
+        and(
+          eq(emailTemplates.templateName, templateName),
+          eq(emailTemplates.tenantId, tenantId)
+        )
+      );
+    return template || null;
+  }
+
+  async createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate> {
+    const [newTemplate] = await db
+      .insert(emailTemplates)
+      .values(template)
+      .returning();
+    return newTemplate;
+  }
+
+  async updateEmailTemplate(
+    id: string,
+    tenantId: string,
+    data: Partial<EmailTemplate>
+  ): Promise<EmailTemplate | null> {
+    const [updatedTemplate] = await db
+      .update(emailTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenantId, tenantId)))
+      .returning();
+    return updatedTemplate || null;
+  }
+
+  async deleteEmailTemplate(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(emailTemplates)
+      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenantId, tenantId)));
+  }
+
+  async getEmailCampaigns(
+    tenantId: string,
+    filters?: { status?: string; campaignType?: string; ownerId?: string }
+  ): Promise<EmailCampaign[]> {
+    const conditions = [eq(emailCampaigns.tenantId, tenantId)];
+    
+    if (filters?.status) {
+      conditions.push(eq(emailCampaigns.status, filters.status));
+    }
+    if (filters?.campaignType) {
+      conditions.push(eq(emailCampaigns.campaignType, filters.campaignType));
+    }
+    if (filters?.ownerId) {
+      conditions.push(eq(emailCampaigns.ownerId, filters.ownerId));
+    }
+
+    return await db
+      .select()
+      .from(emailCampaigns)
+      .where(and(...conditions))
+      .orderBy(desc(emailCampaigns.createdAt));
+  }
+
+  async getEmailCampaignById(id: string, tenantId: string): Promise<EmailCampaign | null> {
+    const [campaign] = await db
+      .select()
+      .from(emailCampaigns)
+      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, tenantId)));
+    return campaign || null;
+  }
+
+  async getEmailCampaignByName(
+    campaignName: string,
+    tenantId: string
+  ): Promise<EmailCampaign | null> {
+    const [campaign] = await db
+      .select()
+      .from(emailCampaigns)
+      .where(
+        and(
+          eq(emailCampaigns.campaignName, campaignName),
+          eq(emailCampaigns.tenantId, tenantId)
+        )
+      );
+    return campaign || null;
+  }
+
+  async createEmailCampaign(campaign: InsertEmailCampaign): Promise<EmailCampaign> {
+    const [newCampaign] = await db
+      .insert(emailCampaigns)
+      .values(campaign)
+      .returning();
+    return newCampaign;
+  }
+
+  async updateEmailCampaign(
+    id: string,
+    tenantId: string,
+    data: Partial<EmailCampaign>
+  ): Promise<EmailCampaign | null> {
+    const [updatedCampaign] = await db
+      .update(emailCampaigns)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, tenantId)))
+      .returning();
+    return updatedCampaign || null;
+  }
+
+  async deleteEmailCampaign(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(emailCampaigns)
+      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, tenantId)));
+  }
+
+  async updateCampaignMetrics(
+    campaignId: string,
+    tenantId: string
+  ): Promise<EmailCampaign | null> {
+    const campaign = await this.getEmailCampaignById(campaignId, tenantId);
+    if (!campaign) return null;
+
+    const sends = await db
+      .select()
+      .from(emailSends)
+      .where(and(eq(emailSends.campaignId, campaignId), eq(emailSends.tenantId, tenantId)));
+
+    const events = await db
+      .select()
+      .from(emailEvents)
+      .where(and(eq(emailEvents.campaignId, campaignId), eq(emailEvents.tenantId, tenantId)));
+
+    const emailsSent = sends.length;
+    const emailsDelivered = sends.filter(s => s.status === 'delivered').length;
+    const emailsBounced = sends.filter(s => s.status === 'bounced').length;
+    
+    const opensSet = new Set(events.filter(e => e.eventType === 'open').map(e => e.emailSendId));
+    const clicksSet = new Set(events.filter(e => e.eventType === 'click').map(e => e.emailSendId));
+    const unsubscribesSet = new Set(events.filter(e => e.eventType === 'unsubscribe').map(e => e.emailSendId));
+    const spamSet = new Set(events.filter(e => e.eventType === 'spam_report').map(e => e.emailSendId));
+
+    const emailsOpened = opensSet.size;
+    const emailsClicked = clicksSet.size;
+    const emailsUnsubscribed = unsubscribesSet.size;
+    const emailsSpamReported = spamSet.size;
+
+    const deliveryRate = emailsSent > 0 ? ((emailsDelivered / emailsSent) * 100).toFixed(2) : '0.00';
+    const openRate = emailsDelivered > 0 ? ((emailsOpened / emailsDelivered) * 100).toFixed(2) : '0.00';
+    const clickRate = emailsDelivered > 0 ? ((emailsClicked / emailsDelivered) * 100).toFixed(2) : '0.00';
+    const bounceRate = emailsSent > 0 ? ((emailsBounced / emailsSent) * 100).toFixed(2) : '0.00';
+    const unsubscribeRate = emailsDelivered > 0 ? ((emailsUnsubscribed / emailsDelivered) * 100).toFixed(2) : '0.00';
+
+    return await this.updateEmailCampaign(campaignId, tenantId, {
+      emailsSent,
+      emailsDelivered,
+      emailsOpened,
+      emailsClicked,
+      emailsBounced,
+      emailsUnsubscribed,
+      emailsSpamReported,
+      deliveryRate,
+      openRate,
+      clickRate,
+      bounceRate,
+      unsubscribeRate,
+    });
+  }
+
+  async getEmailSends(campaignId: string, tenantId: string): Promise<EmailSend[]> {
+    return await db
+      .select()
+      .from(emailSends)
+      .where(and(eq(emailSends.campaignId, campaignId), eq(emailSends.tenantId, tenantId)))
+      .orderBy(desc(emailSends.createdAt));
+  }
+
+  async getEmailSendById(id: string, tenantId: string): Promise<EmailSend | null> {
+    const [send] = await db
+      .select()
+      .from(emailSends)
+      .where(and(eq(emailSends.id, id), eq(emailSends.tenantId, tenantId)));
+    return send || null;
+  }
+
+  async getEmailSendsByRecipient(recipientEmail: string, tenantId: string): Promise<EmailSend[]> {
+    return await db
+      .select()
+      .from(emailSends)
+      .where(
+        and(
+          eq(emailSends.recipientEmail, recipientEmail),
+          eq(emailSends.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(emailSends.createdAt));
+  }
+
+  async createEmailSend(send: InsertEmailSend): Promise<EmailSend> {
+    const [newSend] = await db
+      .insert(emailSends)
+      .values(send)
+      .returning();
+    return newSend;
+  }
+
+  async updateEmailSend(
+    id: string,
+    tenantId: string,
+    data: Partial<EmailSend>
+  ): Promise<EmailSend | null> {
+    const [updatedSend] = await db
+      .update(emailSends)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(emailSends.id, id), eq(emailSends.tenantId, tenantId)))
+      .returning();
+    return updatedSend || null;
+  }
+
+  async deleteEmailSend(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(emailSends)
+      .where(and(eq(emailSends.id, id), eq(emailSends.tenantId, tenantId)));
+  }
+
+  async bulkCreateEmailSends(sends: InsertEmailSend[]): Promise<EmailSend[]> {
+    const newSends = await db
+      .insert(emailSends)
+      .values(sends)
+      .returning();
+    return newSends;
+  }
+
+  async getEmailEvents(emailSendId: string, tenantId: string): Promise<EmailEvent[]> {
+    return await db
+      .select()
+      .from(emailEvents)
+      .where(and(eq(emailEvents.emailSendId, emailSendId), eq(emailEvents.tenantId, tenantId)))
+      .orderBy(asc(emailEvents.eventTimestamp));
+  }
+
+  async getEmailEventsByCampaign(
+    campaignId: string,
+    tenantId: string,
+    filters?: { eventType?: string }
+  ): Promise<EmailEvent[]> {
+    const conditions = [
+      eq(emailEvents.campaignId, campaignId),
+      eq(emailEvents.tenantId, tenantId),
+    ];
+    
+    if (filters?.eventType) {
+      conditions.push(eq(emailEvents.eventType, filters.eventType));
+    }
+
+    return await db
+      .select()
+      .from(emailEvents)
+      .where(and(...conditions))
+      .orderBy(desc(emailEvents.eventTimestamp));
+  }
+
+  async createEmailEvent(event: InsertEmailEvent): Promise<EmailEvent> {
+    const [newEvent] = await db
+      .insert(emailEvents)
+      .values(event)
+      .returning();
+    return newEvent;
+  }
+
+  async getEmailLists(
+    tenantId: string,
+    filters?: { listType?: string; isActive?: boolean; category?: string }
+  ): Promise<EmailList[]> {
+    const conditions = [eq(emailLists.tenantId, tenantId)];
+    
+    if (filters?.listType) {
+      conditions.push(eq(emailLists.listType, filters.listType));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(emailLists.isActive, filters.isActive));
+    }
+    if (filters?.category) {
+      conditions.push(eq(emailLists.category, filters.category));
+    }
+
+    return await db
+      .select()
+      .from(emailLists)
+      .where(and(...conditions))
+      .orderBy(desc(emailLists.createdAt));
+  }
+
+  async getEmailListById(id: string, tenantId: string): Promise<EmailList | null> {
+    const [list] = await db
+      .select()
+      .from(emailLists)
+      .where(and(eq(emailLists.id, id), eq(emailLists.tenantId, tenantId)));
+    return list || null;
+  }
+
+  async getEmailListByName(listName: string, tenantId: string): Promise<EmailList | null> {
+    const [list] = await db
+      .select()
+      .from(emailLists)
+      .where(
+        and(
+          eq(emailLists.listName, listName),
+          eq(emailLists.tenantId, tenantId)
+        )
+      );
+    return list || null;
+  }
+
+  async createEmailList(list: InsertEmailList): Promise<EmailList> {
+    const [newList] = await db
+      .insert(emailLists)
+      .values(list)
+      .returning();
+    return newList;
+  }
+
+  async updateEmailList(
+    id: string,
+    tenantId: string,
+    data: Partial<EmailList>
+  ): Promise<EmailList | null> {
+    const [updatedList] = await db
+      .update(emailLists)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(emailLists.id, id), eq(emailLists.tenantId, tenantId)))
+      .returning();
+    return updatedList || null;
+  }
+
+  async deleteEmailList(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(emailLists)
+      .where(and(eq(emailLists.id, id), eq(emailLists.tenantId, tenantId)));
+  }
+
+  async updateListMemberCounts(listId: string, tenantId: string): Promise<EmailList | null> {
+    const members = await db
+      .select()
+      .from(emailListMembers)
+      .where(and(eq(emailListMembers.listId, listId), eq(emailListMembers.tenantId, tenantId)));
+
+    const totalMembers = members.length;
+    const activeMembers = members.filter(m => m.status === 'active').length;
+    const unsubscribedMembers = members.filter(m => m.status === 'unsubscribed').length;
+
+    return await this.updateEmailList(listId, tenantId, {
+      totalMembers,
+      activeMembers,
+      unsubscribedMembers,
+    });
+  }
+
+  async getEmailListMembers(
+    listId: string,
+    tenantId: string,
+    filters?: { status?: string }
+  ): Promise<EmailListMember[]> {
+    const conditions = [
+      eq(emailListMembers.listId, listId),
+      eq(emailListMembers.tenantId, tenantId),
+    ];
+    
+    if (filters?.status) {
+      conditions.push(eq(emailListMembers.status, filters.status));
+    }
+
+    return await db
+      .select()
+      .from(emailListMembers)
+      .where(and(...conditions))
+      .orderBy(desc(emailListMembers.createdAt));
+  }
+
+  async getEmailListMemberById(id: string, tenantId: string): Promise<EmailListMember | null> {
+    const [member] = await db
+      .select()
+      .from(emailListMembers)
+      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenantId, tenantId)));
+    return member || null;
+  }
+
+  async getEmailListMemberByEmail(
+    listId: string,
+    email: string,
+    tenantId: string
+  ): Promise<EmailListMember | null> {
+    const [member] = await db
+      .select()
+      .from(emailListMembers)
+      .where(
+        and(
+          eq(emailListMembers.listId, listId),
+          eq(emailListMembers.email, email),
+          eq(emailListMembers.tenantId, tenantId)
+        )
+      );
+    return member || null;
+  }
+
+  async createEmailListMember(member: InsertEmailListMember): Promise<EmailListMember> {
+    const [newMember] = await db
+      .insert(emailListMembers)
+      .values(member)
+      .returning();
+    return newMember;
+  }
+
+  async updateEmailListMember(
+    id: string,
+    tenantId: string,
+    data: Partial<EmailListMember>
+  ): Promise<EmailListMember | null> {
+    const [updatedMember] = await db
+      .update(emailListMembers)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenantId, tenantId)))
+      .returning();
+    return updatedMember || null;
+  }
+
+  async deleteEmailListMember(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(emailListMembers)
+      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenantId, tenantId)));
+  }
+
+  async bulkCreateEmailListMembers(
+    members: InsertEmailListMember[]
+  ): Promise<EmailListMember[]> {
+    const newMembers = await db
+      .insert(emailListMembers)
+      .values(members)
+      .returning();
+    return newMembers;
+  }
+
+  async getEmailUnsubscribes(
+    tenantId: string,
+    filters?: { unsubscribeType?: string; email?: string }
+  ): Promise<EmailUnsubscribe[]> {
+    const conditions = [eq(emailUnsubscribes.tenantId, tenantId)];
+    
+    if (filters?.unsubscribeType) {
+      conditions.push(eq(emailUnsubscribes.unsubscribeType, filters.unsubscribeType));
+    }
+    if (filters?.email) {
+      conditions.push(eq(emailUnsubscribes.email, filters.email));
+    }
+
+    return await db
+      .select()
+      .from(emailUnsubscribes)
+      .where(and(...conditions))
+      .orderBy(desc(emailUnsubscribes.unsubscribedAt));
+  }
+
+  async getEmailUnsubscribeByEmail(
+    email: string,
+    tenantId: string,
+    unsubscribeType?: string
+  ): Promise<EmailUnsubscribe | null> {
+    const conditions = [
+      eq(emailUnsubscribes.email, email),
+      eq(emailUnsubscribes.tenantId, tenantId),
+    ];
+    
+    if (unsubscribeType) {
+      conditions.push(eq(emailUnsubscribes.unsubscribeType, unsubscribeType));
+    }
+
+    const [unsubscribe] = await db
+      .select()
+      .from(emailUnsubscribes)
+      .where(and(...conditions));
+    
+    return unsubscribe || null;
+  }
+
+  async createEmailUnsubscribe(unsubscribe: InsertEmailUnsubscribe): Promise<EmailUnsubscribe> {
+    const [newUnsubscribe] = await db
+      .insert(emailUnsubscribes)
+      .values(unsubscribe)
+      .returning();
+    return newUnsubscribe;
+  }
+
+  async checkUnsubscribeStatus(
+    email: string,
+    tenantId: string
+  ): Promise<{ isUnsubscribed: boolean; type?: string }> {
+    const globalUnsubscribe = await this.getEmailUnsubscribeByEmail(email, tenantId, 'global');
+    
+    if (globalUnsubscribe) {
+      return { isUnsubscribed: true, type: 'global' };
+    }
+    
+    return { isUnsubscribed: false };
   }
 }
 
