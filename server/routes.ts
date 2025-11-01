@@ -10654,6 +10654,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const manufacturerOrderRoutes = await import("./routes/manufacturer-order-routes");
   app.use("/api/manufacturer-orders", manufacturerOrderRoutes.default);
 
+  // GPS Tracking Routes
+  const gpsTrackingRoutes = await import("./routes/gps-tracking-routes");
+  app.use("/api/gps", gpsTrackingRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
