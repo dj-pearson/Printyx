@@ -366,6 +366,27 @@ import {
   type GeofenceEvent,
   type InsertGeofenceEvent,
 } from "@shared/gps-tracking-schema";
+import {
+  // Advanced Billing schemas
+  billingRules,
+  meterAnomalies,
+  billingDisputes,
+  invoiceGenerationLogs,
+  billingSchedules,
+  creditMemos,
+  type BillingRule,
+  type InsertBillingRule,
+  type MeterAnomaly,
+  type InsertMeterAnomaly,
+  type BillingDispute,
+  type InsertBillingDispute,
+  type InvoiceGenerationLog,
+  type InsertInvoiceGenerationLog,
+  type BillingSchedule,
+  type InsertBillingSchedule,
+  type CreditMemo,
+  type InsertCreditMemo,
+} from "@shared/advanced-billing-schema";
 import { db } from "./db";
 import {
   eq,
@@ -1257,6 +1278,73 @@ export interface IStorage {
   getGeofenceEventsForTechnician(technicianId: string, tenantId: string, filters?: { startDate?: Date; endDate?: Date; eventType?: string }): Promise<GeofenceEvent[]>;
   getGeofenceEventsForTicket(ticketId: string, tenantId: string): Promise<GeofenceEvent[]>;
   getGeofenceEvent(eventId: string, tenantId: string): Promise<GeofenceEvent | null>;
+
+  // ==================== Advanced Billing ====================
+  // Billing Rules
+  getBillingRules(tenantId: string, filters?: { ruleType?: string; ruleStatus?: string; customerId?: string; equipmentId?: string; contractId?: string }): Promise<BillingRule[]>;
+  getBillingRule(ruleId: string): Promise<BillingRule | null>;
+  createBillingRule(data: InsertBillingRule): Promise<BillingRule>;
+  updateBillingRule(ruleId: string, tenantId: string, data: Partial<BillingRule>): Promise<BillingRule | null>;
+  deleteBillingRule(ruleId: string, tenantId: string): Promise<void>;
+  getActiveBillingRules(tenantId: string, customerId?: string, equipmentId?: string): Promise<BillingRule[]>;
+  applyBillingRule(ruleId: string, usage: { bwVolume: number; colorVolume: number }): Promise<{ totalCharge: number; breakdown: any }>;
+  getBillingRulesByCustomer(customerId: string): Promise<BillingRule[]>;
+  getBillingRulesByContract(contractId: string): Promise<BillingRule[]>;
+
+  // Meter Anomalies
+  getMeterAnomalies(tenantId: string, filters?: { anomalyType?: string; severity?: string; resolved?: boolean; equipmentId?: string; customerId?: string }): Promise<MeterAnomaly[]>;
+  getMeterAnomaly(anomalyId: string): Promise<MeterAnomaly | null>;
+  createMeterAnomaly(data: InsertMeterAnomaly): Promise<MeterAnomaly>;
+  updateMeterAnomaly(anomalyId: string, tenantId: string, data: Partial<MeterAnomaly>): Promise<MeterAnomaly | null>;
+  reviewAnomaly(anomalyId: string, tenantId: string, userId: string, notes: string): Promise<MeterAnomaly | null>;
+  resolveAnomaly(anomalyId: string, tenantId: string, resolutionMethod: string, notes: string): Promise<MeterAnomaly | null>;
+  getUnresolvedAnomalies(tenantId: string, filters?: { severity?: string; anomalyType?: string }): Promise<MeterAnomaly[]>;
+  detectAnomalies(meterReadingId: string): Promise<MeterAnomaly[]>;
+  getAnomaliesByEquipment(equipmentId: string): Promise<MeterAnomaly[]>;
+
+  // Billing Disputes
+  getBillingDisputes(tenantId: string, filters?: { disputeType?: string; disputeStatus?: string; severity?: string; customerId?: string; invoiceId?: string }): Promise<BillingDispute[]>;
+  getBillingDispute(disputeId: string): Promise<BillingDispute | null>;
+  createBillingDispute(data: InsertBillingDispute): Promise<BillingDispute>;
+  updateBillingDispute(disputeId: string, tenantId: string, data: Partial<BillingDispute>): Promise<BillingDispute | null>;
+  assignDispute(disputeId: string, tenantId: string, userId: string): Promise<BillingDispute | null>;
+  acknowledgeDispute(disputeId: string, tenantId: string, userId: string): Promise<BillingDispute | null>;
+  resolveDispute(disputeId: string, tenantId: string, userId: string, resolutionData: { resolutionType: string; resolutionDescription: string; creditAmount?: number }): Promise<BillingDispute | null>;
+  escalateDispute(disputeId: string, tenantId: string, userId: string, reason: string): Promise<BillingDispute | null>;
+  getOpenDisputes(tenantId: string, filters?: { severity?: string; priorityLevel?: number }): Promise<BillingDispute[]>;
+  getDisputesByCustomer(customerId: string): Promise<BillingDispute[]>;
+  getDisputesByInvoice(invoiceId: string): Promise<BillingDispute[]>;
+
+  // Invoice Generation Logs
+  getInvoiceGenerationLogs(tenantId: string, filters?: { status?: string; generationType?: string; customerId?: string; batchId?: string }): Promise<InvoiceGenerationLog[]>;
+  getInvoiceGenerationLog(logId: string): Promise<InvoiceGenerationLog | null>;
+  createInvoiceGenerationLog(data: InsertInvoiceGenerationLog): Promise<InvoiceGenerationLog>;
+  updateInvoiceGenerationLog(logId: string, tenantId: string, data: Partial<InvoiceGenerationLog>): Promise<InvoiceGenerationLog | null>;
+  getLogsByBatch(batchId: string): Promise<InvoiceGenerationLog[]>;
+  getFailedGenerations(tenantId: string, filters?: { errorType?: string }): Promise<InvoiceGenerationLog[]>;
+  getGenerationStats(tenantId: string, startDate: Date, endDate: Date): Promise<{ totalGenerated: number; successCount: number; failureCount: number; averageProcessingTime: number }>;
+
+  // Billing Schedules
+  getBillingSchedules(tenantId: string, filters?: { scheduleType?: string; frequency?: string; isActive?: boolean; customerId?: string }): Promise<BillingSchedule[]>;
+  getBillingSchedule(scheduleId: string): Promise<BillingSchedule | null>;
+  createBillingSchedule(data: InsertBillingSchedule): Promise<BillingSchedule>;
+  updateBillingSchedule(scheduleId: string, tenantId: string, data: Partial<BillingSchedule>): Promise<BillingSchedule | null>;
+  deleteBillingSchedule(scheduleId: string, tenantId: string): Promise<void>;
+  getActiveSchedules(tenantId: string): Promise<BillingSchedule[]>;
+  getDueSchedules(tenantId: string, date: Date): Promise<BillingSchedule[]>;
+  updateScheduleNextRun(scheduleId: string, tenantId: string, nextRunDate: Date): Promise<BillingSchedule | null>;
+
+  // Credit Memos
+  getCreditMemos(tenantId: string, filters?: { creditStatus?: string; customerId?: string; invoiceId?: string; disputeId?: string }): Promise<CreditMemo[]>;
+  getCreditMemo(creditMemoId: string): Promise<CreditMemo | null>;
+  createCreditMemo(data: InsertCreditMemo): Promise<CreditMemo>;
+  updateCreditMemo(creditMemoId: string, tenantId: string, data: Partial<CreditMemo>): Promise<CreditMemo | null>;
+  approveCreditMemo(creditMemoId: string, tenantId: string, userId: string): Promise<CreditMemo | null>;
+  issueCreditMemo(creditMemoId: string, tenantId: string): Promise<CreditMemo | null>;
+  applyCreditToInvoice(creditMemoId: string, tenantId: string, invoiceId: string): Promise<CreditMemo | null>;
+  voidCreditMemo(creditMemoId: string, tenantId: string, userId: string, reason: string): Promise<CreditMemo | null>;
+  getCreditMemosByCustomer(customerId: string): Promise<CreditMemo[]>;
+  getPendingCreditMemos(tenantId: string): Promise<CreditMemo[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -9966,6 +10054,929 @@ export class DatabaseStorage implements IStorage {
       if (intersect) inside = !inside;
     }
     return inside;
+  }
+
+  // ==================== Advanced Billing ====================
+  // Billing Rules
+  async getBillingRules(
+    tenantId: string,
+    filters?: {
+      ruleType?: string;
+      ruleStatus?: string;
+      customerId?: string;
+      equipmentId?: string;
+      contractId?: string;
+    }
+  ): Promise<BillingRule[]> {
+    const conditions = [eq(billingRules.tenantId, tenantId)];
+
+    if (filters?.ruleType) {
+      conditions.push(eq(billingRules.ruleType, filters.ruleType));
+    }
+    if (filters?.ruleStatus) {
+      conditions.push(eq(billingRules.ruleStatus, filters.ruleStatus));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(billingRules.customerId, filters.customerId));
+    }
+    if (filters?.equipmentId) {
+      conditions.push(eq(billingRules.equipmentId, filters.equipmentId));
+    }
+    if (filters?.contractId) {
+      conditions.push(eq(billingRules.contractId, filters.contractId));
+    }
+
+    return await db
+      .select()
+      .from(billingRules)
+      .where(and(...conditions))
+      .orderBy(desc(billingRules.priority), desc(billingRules.createdAt));
+  }
+
+  async getBillingRule(ruleId: string): Promise<BillingRule | null> {
+    const [rule] = await db
+      .select()
+      .from(billingRules)
+      .where(eq(billingRules.id, ruleId))
+      .limit(1);
+    return rule || null;
+  }
+
+  async createBillingRule(data: InsertBillingRule): Promise<BillingRule> {
+    const [rule] = await db.insert(billingRules).values(data).returning();
+    return rule;
+  }
+
+  async updateBillingRule(
+    ruleId: string,
+    tenantId: string,
+    data: Partial<BillingRule>
+  ): Promise<BillingRule | null> {
+    const [rule] = await db
+      .update(billingRules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .returning();
+    return rule || null;
+  }
+
+  async deleteBillingRule(ruleId: string, tenantId: string): Promise<void> {
+    await db
+      .delete(billingRules)
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)));
+  }
+
+  async getActiveBillingRules(
+    tenantId: string,
+    customerId?: string,
+    equipmentId?: string
+  ): Promise<BillingRule[]> {
+    const conditions = [
+      eq(billingRules.tenantId, tenantId),
+      eq(billingRules.ruleStatus, "active"),
+      lte(billingRules.effectiveStartDate, new Date()),
+    ];
+
+    if (customerId) {
+      conditions.push(
+        or(
+          eq(billingRules.customerId, customerId),
+          eq(billingRules.applicableToAllCustomers, true)
+        )!
+      );
+    }
+
+    if (equipmentId) {
+      conditions.push(
+        or(
+          eq(billingRules.equipmentId, equipmentId),
+          eq(billingRules.applicableToAllEquipment, true)
+        )!
+      );
+    }
+
+    return await db
+      .select()
+      .from(billingRules)
+      .where(and(...conditions))
+      .orderBy(desc(billingRules.priority));
+  }
+
+  async applyBillingRule(
+    ruleId: string,
+    usage: { bwVolume: number; colorVolume: number }
+  ): Promise<{ totalCharge: number; breakdown: any }> {
+    const rule = await this.getBillingRule(ruleId);
+    if (!rule) {
+      throw new Error("Billing rule not found");
+    }
+
+    let totalCharge = 0;
+    const breakdown: any = {
+      baseCharge: 0,
+      bwCharge: 0,
+      colorCharge: 0,
+      volumeDiscount: 0,
+      overageCharge: 0,
+    };
+
+    if (rule.baseCharge) {
+      breakdown.baseCharge = parseFloat(rule.baseCharge);
+      totalCharge += breakdown.baseCharge;
+    }
+
+    const bwOverage = Math.max(0, usage.bwVolume - (rule.baseVolumeBw || 0));
+    const colorOverage = Math.max(0, usage.colorVolume - (rule.baseVolumeColor || 0));
+
+    if (rule.bwRate) {
+      breakdown.bwCharge = bwOverage * parseFloat(rule.bwRate);
+      totalCharge += breakdown.bwCharge;
+    }
+
+    if (rule.colorRate) {
+      breakdown.colorCharge = colorOverage * parseFloat(rule.colorRate);
+      totalCharge += breakdown.colorCharge;
+    }
+
+    if (rule.minimumCharge && totalCharge < parseFloat(rule.minimumCharge)) {
+      totalCharge = parseFloat(rule.minimumCharge);
+    }
+
+    if (rule.maximumCharge && totalCharge > parseFloat(rule.maximumCharge)) {
+      totalCharge = parseFloat(rule.maximumCharge);
+    }
+
+    return { totalCharge, breakdown };
+  }
+
+  async getBillingRulesByCustomer(customerId: string): Promise<BillingRule[]> {
+    return await db
+      .select()
+      .from(billingRules)
+      .where(
+        or(
+          eq(billingRules.customerId, customerId),
+          eq(billingRules.applicableToAllCustomers, true)
+        )
+      )
+      .orderBy(desc(billingRules.priority));
+  }
+
+  async getBillingRulesByContract(contractId: string): Promise<BillingRule[]> {
+    return await db
+      .select()
+      .from(billingRules)
+      .where(eq(billingRules.contractId, contractId))
+      .orderBy(desc(billingRules.priority));
+  }
+
+  // Meter Anomalies
+  async getMeterAnomalies(
+    tenantId: string,
+    filters?: {
+      anomalyType?: string;
+      severity?: string;
+      resolved?: boolean;
+      equipmentId?: string;
+      customerId?: string;
+    }
+  ): Promise<MeterAnomaly[]> {
+    const conditions = [eq(meterAnomalies.tenantId, tenantId)];
+
+    if (filters?.anomalyType) {
+      conditions.push(eq(meterAnomalies.anomalyType, filters.anomalyType));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(meterAnomalies.severity, filters.severity));
+    }
+    if (filters?.resolved !== undefined) {
+      conditions.push(eq(meterAnomalies.resolved, filters.resolved));
+    }
+    if (filters?.equipmentId) {
+      conditions.push(eq(meterAnomalies.equipmentId, filters.equipmentId));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(meterAnomalies.customerId, filters.customerId));
+    }
+
+    return await db
+      .select()
+      .from(meterAnomalies)
+      .where(and(...conditions))
+      .orderBy(desc(meterAnomalies.detectedAt));
+  }
+
+  async getMeterAnomaly(anomalyId: string): Promise<MeterAnomaly | null> {
+    const [anomaly] = await db
+      .select()
+      .from(meterAnomalies)
+      .where(eq(meterAnomalies.id, anomalyId))
+      .limit(1);
+    return anomaly || null;
+  }
+
+  async createMeterAnomaly(data: InsertMeterAnomaly): Promise<MeterAnomaly> {
+    const [anomaly] = await db.insert(meterAnomalies).values(data).returning();
+    return anomaly;
+  }
+
+  async updateMeterAnomaly(
+    anomalyId: string,
+    tenantId: string,
+    data: Partial<MeterAnomaly>
+  ): Promise<MeterAnomaly | null> {
+    const [anomaly] = await db
+      .update(meterAnomalies)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId))
+      )
+      .returning();
+    return anomaly || null;
+  }
+
+  async reviewAnomaly(
+    anomalyId: string,
+    tenantId: string,
+    userId: string,
+    notes: string
+  ): Promise<MeterAnomaly | null> {
+    const [anomaly] = await db
+      .update(meterAnomalies)
+      .set({
+        reviewed: true,
+        reviewedAt: new Date(),
+        reviewedBy: userId,
+        reviewNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId))
+      )
+      .returning();
+    return anomaly || null;
+  }
+
+  async resolveAnomaly(
+    anomalyId: string,
+    tenantId: string,
+    resolutionMethod: string,
+    notes: string
+  ): Promise<MeterAnomaly | null> {
+    const [anomaly] = await db
+      .update(meterAnomalies)
+      .set({
+        resolved: true,
+        resolvedAt: new Date(),
+        resolutionMethod,
+        resolutionNotes: notes,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId))
+      )
+      .returning();
+    return anomaly || null;
+  }
+
+  async getUnresolvedAnomalies(
+    tenantId: string,
+    filters?: { severity?: string; anomalyType?: string }
+  ): Promise<MeterAnomaly[]> {
+    const conditions = [
+      eq(meterAnomalies.tenantId, tenantId),
+      eq(meterAnomalies.resolved, false),
+    ];
+
+    if (filters?.severity) {
+      conditions.push(eq(meterAnomalies.severity, filters.severity));
+    }
+    if (filters?.anomalyType) {
+      conditions.push(eq(meterAnomalies.anomalyType, filters.anomalyType));
+    }
+
+    return await db
+      .select()
+      .from(meterAnomalies)
+      .where(and(...conditions))
+      .orderBy(desc(meterAnomalies.detectedAt));
+  }
+
+  async detectAnomalies(meterReadingId: string): Promise<MeterAnomaly[]> {
+    return [];
+  }
+
+  async getAnomaliesByEquipment(equipmentId: string): Promise<MeterAnomaly[]> {
+    return await db
+      .select()
+      .from(meterAnomalies)
+      .where(eq(meterAnomalies.equipmentId, equipmentId))
+      .orderBy(desc(meterAnomalies.detectedAt));
+  }
+
+  // Billing Disputes
+  async getBillingDisputes(
+    tenantId: string,
+    filters?: {
+      disputeType?: string;
+      disputeStatus?: string;
+      severity?: string;
+      customerId?: string;
+      invoiceId?: string;
+    }
+  ): Promise<BillingDispute[]> {
+    const conditions = [eq(billingDisputes.tenantId, tenantId)];
+
+    if (filters?.disputeType) {
+      conditions.push(eq(billingDisputes.disputeType, filters.disputeType));
+    }
+    if (filters?.disputeStatus) {
+      conditions.push(eq(billingDisputes.disputeStatus, filters.disputeStatus));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(billingDisputes.severity, filters.severity));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(billingDisputes.customerId, filters.customerId));
+    }
+    if (filters?.invoiceId) {
+      conditions.push(eq(billingDisputes.invoiceId, filters.invoiceId));
+    }
+
+    return await db
+      .select()
+      .from(billingDisputes)
+      .where(and(...conditions))
+      .orderBy(desc(billingDisputes.filedDate));
+  }
+
+  async getBillingDispute(disputeId: string): Promise<BillingDispute | null> {
+    const [dispute] = await db
+      .select()
+      .from(billingDisputes)
+      .where(eq(billingDisputes.id, disputeId))
+      .limit(1);
+    return dispute || null;
+  }
+
+  async createBillingDispute(data: InsertBillingDispute): Promise<BillingDispute> {
+    const [dispute] = await db.insert(billingDisputes).values(data).returning();
+    return dispute;
+  }
+
+  async updateBillingDispute(
+    disputeId: string,
+    tenantId: string,
+    data: Partial<BillingDispute>
+  ): Promise<BillingDispute | null> {
+    const [dispute] = await db
+      .update(billingDisputes)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId))
+      )
+      .returning();
+    return dispute || null;
+  }
+
+  async assignDispute(
+    disputeId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<BillingDispute | null> {
+    const [dispute] = await db
+      .update(billingDisputes)
+      .set({
+        assignedTo: userId,
+        assignedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId))
+      )
+      .returning();
+    return dispute || null;
+  }
+
+  async acknowledgeDispute(
+    disputeId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<BillingDispute | null> {
+    const [dispute] = await db
+      .update(billingDisputes)
+      .set({
+        disputeStatus: "under_review",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId))
+      )
+      .returning();
+    return dispute || null;
+  }
+
+  async resolveDispute(
+    disputeId: string,
+    tenantId: string,
+    userId: string,
+    resolutionData: {
+      resolutionType: string;
+      resolutionDescription: string;
+      creditAmount?: number;
+    }
+  ): Promise<BillingDispute | null> {
+    const [dispute] = await db
+      .update(billingDisputes)
+      .set({
+        disputeStatus: "resolved",
+        resolutionType: resolutionData.resolutionType,
+        resolutionDescription: resolutionData.resolutionDescription,
+        approvedCreditAmount: resolutionData.creditAmount?.toString(),
+        resolutionDate: new Date(),
+        resolvedBy: userId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId))
+      )
+      .returning();
+    return dispute || null;
+  }
+
+  async escalateDispute(
+    disputeId: string,
+    tenantId: string,
+    userId: string,
+    reason: string
+  ): Promise<BillingDispute | null> {
+    const [dispute] = await db
+      .update(billingDisputes)
+      .set({
+        escalated: true,
+        escalatedTo: userId,
+        escalatedAt: new Date(),
+        escalationReason: reason,
+        disputeStatus: "escalated",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId))
+      )
+      .returning();
+    return dispute || null;
+  }
+
+  async getOpenDisputes(
+    tenantId: string,
+    filters?: { severity?: string; priorityLevel?: number }
+  ): Promise<BillingDispute[]> {
+    const conditions = [
+      eq(billingDisputes.tenantId, tenantId),
+      eq(billingDisputes.disputeStatus, "open"),
+    ];
+
+    if (filters?.severity) {
+      conditions.push(eq(billingDisputes.severity, filters.severity));
+    }
+    if (filters?.priorityLevel) {
+      conditions.push(eq(billingDisputes.priorityLevel, filters.priorityLevel));
+    }
+
+    return await db
+      .select()
+      .from(billingDisputes)
+      .where(and(...conditions))
+      .orderBy(asc(billingDisputes.priorityLevel), desc(billingDisputes.filedDate));
+  }
+
+  async getDisputesByCustomer(customerId: string): Promise<BillingDispute[]> {
+    return await db
+      .select()
+      .from(billingDisputes)
+      .where(eq(billingDisputes.customerId, customerId))
+      .orderBy(desc(billingDisputes.filedDate));
+  }
+
+  async getDisputesByInvoice(invoiceId: string): Promise<BillingDispute[]> {
+    return await db
+      .select()
+      .from(billingDisputes)
+      .where(eq(billingDisputes.invoiceId, invoiceId))
+      .orderBy(desc(billingDisputes.filedDate));
+  }
+
+  // Invoice Generation Logs
+  async getInvoiceGenerationLogs(
+    tenantId: string,
+    filters?: {
+      status?: string;
+      generationType?: string;
+      customerId?: string;
+      batchId?: string;
+    }
+  ): Promise<InvoiceGenerationLog[]> {
+    const conditions = [eq(invoiceGenerationLogs.tenantId, tenantId)];
+
+    if (filters?.status) {
+      conditions.push(eq(invoiceGenerationLogs.status, filters.status));
+    }
+    if (filters?.generationType) {
+      conditions.push(eq(invoiceGenerationLogs.generationType, filters.generationType));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(invoiceGenerationLogs.customerId, filters.customerId));
+    }
+    if (filters?.batchId) {
+      conditions.push(eq(invoiceGenerationLogs.batchId, filters.batchId));
+    }
+
+    return await db
+      .select()
+      .from(invoiceGenerationLogs)
+      .where(and(...conditions))
+      .orderBy(desc(invoiceGenerationLogs.createdAt));
+  }
+
+  async getInvoiceGenerationLog(logId: string): Promise<InvoiceGenerationLog | null> {
+    const [log] = await db
+      .select()
+      .from(invoiceGenerationLogs)
+      .where(eq(invoiceGenerationLogs.id, logId))
+      .limit(1);
+    return log || null;
+  }
+
+  async createInvoiceGenerationLog(
+    data: InsertInvoiceGenerationLog
+  ): Promise<InvoiceGenerationLog> {
+    const [log] = await db.insert(invoiceGenerationLogs).values(data).returning();
+    return log;
+  }
+
+  async updateInvoiceGenerationLog(
+    logId: string,
+    tenantId: string,
+    data: Partial<InvoiceGenerationLog>
+  ): Promise<InvoiceGenerationLog | null> {
+    const [log] = await db
+      .update(invoiceGenerationLogs)
+      .set(data)
+      .where(
+        and(
+          eq(invoiceGenerationLogs.id, logId),
+          eq(invoiceGenerationLogs.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return log || null;
+  }
+
+  async getLogsByBatch(batchId: string): Promise<InvoiceGenerationLog[]> {
+    return await db
+      .select()
+      .from(invoiceGenerationLogs)
+      .where(eq(invoiceGenerationLogs.batchId, batchId))
+      .orderBy(desc(invoiceGenerationLogs.createdAt));
+  }
+
+  async getFailedGenerations(
+    tenantId: string,
+    filters?: { errorType?: string }
+  ): Promise<InvoiceGenerationLog[]> {
+    const conditions = [
+      eq(invoiceGenerationLogs.tenantId, tenantId),
+      eq(invoiceGenerationLogs.status, "failed"),
+    ];
+
+    if (filters?.errorType) {
+      conditions.push(eq(invoiceGenerationLogs.errorType, filters.errorType));
+    }
+
+    return await db
+      .select()
+      .from(invoiceGenerationLogs)
+      .where(and(...conditions))
+      .orderBy(desc(invoiceGenerationLogs.createdAt));
+  }
+
+  async getGenerationStats(
+    tenantId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<{
+    totalGenerated: number;
+    successCount: number;
+    failureCount: number;
+    averageProcessingTime: number;
+  }> {
+    const logs = await db
+      .select()
+      .from(invoiceGenerationLogs)
+      .where(
+        and(
+          eq(invoiceGenerationLogs.tenantId, tenantId),
+          gte(invoiceGenerationLogs.createdAt, startDate),
+          lte(invoiceGenerationLogs.createdAt, endDate)
+        )
+      );
+
+    const totalGenerated = logs.length;
+    const successCount = logs.filter((l) => l.status === "success").length;
+    const failureCount = logs.filter((l) => l.status === "failed").length;
+    const processingTimes = logs
+      .filter((l) => l.processingTimeMs !== null)
+      .map((l) => l.processingTimeMs || 0);
+    const averageProcessingTime =
+      processingTimes.length > 0
+        ? processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length
+        : 0;
+
+    return { totalGenerated, successCount, failureCount, averageProcessingTime };
+  }
+
+  // Billing Schedules
+  async getBillingSchedules(
+    tenantId: string,
+    filters?: {
+      scheduleType?: string;
+      frequency?: string;
+      isActive?: boolean;
+      customerId?: string;
+    }
+  ): Promise<BillingSchedule[]> {
+    const conditions = [eq(billingSchedules.tenantId, tenantId)];
+
+    if (filters?.scheduleType) {
+      conditions.push(eq(billingSchedules.scheduleType, filters.scheduleType));
+    }
+    if (filters?.frequency) {
+      conditions.push(eq(billingSchedules.frequency, filters.frequency));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(billingSchedules.isActive, filters.isActive));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(billingSchedules.customerId, filters.customerId));
+    }
+
+    return await db
+      .select()
+      .from(billingSchedules)
+      .where(and(...conditions))
+      .orderBy(asc(billingSchedules.nextRunDate));
+  }
+
+  async getBillingSchedule(scheduleId: string): Promise<BillingSchedule | null> {
+    const [schedule] = await db
+      .select()
+      .from(billingSchedules)
+      .where(eq(billingSchedules.id, scheduleId))
+      .limit(1);
+    return schedule || null;
+  }
+
+  async createBillingSchedule(data: InsertBillingSchedule): Promise<BillingSchedule> {
+    const [schedule] = await db.insert(billingSchedules).values(data).returning();
+    return schedule;
+  }
+
+  async updateBillingSchedule(
+    scheduleId: string,
+    tenantId: string,
+    data: Partial<BillingSchedule>
+  ): Promise<BillingSchedule | null> {
+    const [schedule] = await db
+      .update(billingSchedules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(billingSchedules.id, scheduleId),
+          eq(billingSchedules.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return schedule || null;
+  }
+
+  async deleteBillingSchedule(scheduleId: string, tenantId: string): Promise<void> {
+    await db
+      .delete(billingSchedules)
+      .where(
+        and(
+          eq(billingSchedules.id, scheduleId),
+          eq(billingSchedules.tenantId, tenantId)
+        )
+      );
+  }
+
+  async getActiveSchedules(tenantId: string): Promise<BillingSchedule[]> {
+    return await db
+      .select()
+      .from(billingSchedules)
+      .where(
+        and(eq(billingSchedules.tenantId, tenantId), eq(billingSchedules.isActive, true))
+      )
+      .orderBy(asc(billingSchedules.nextRunDate));
+  }
+
+  async getDueSchedules(tenantId: string, date: Date): Promise<BillingSchedule[]> {
+    return await db
+      .select()
+      .from(billingSchedules)
+      .where(
+        and(
+          eq(billingSchedules.tenantId, tenantId),
+          eq(billingSchedules.isActive, true),
+          lte(billingSchedules.nextRunDate, date)
+        )
+      )
+      .orderBy(asc(billingSchedules.nextRunDate));
+  }
+
+  async updateScheduleNextRun(
+    scheduleId: string,
+    tenantId: string,
+    nextRunDate: Date
+  ): Promise<BillingSchedule | null> {
+    const [schedule] = await db
+      .update(billingSchedules)
+      .set({
+        lastRunDate: new Date(),
+        nextRunDate,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(billingSchedules.id, scheduleId),
+          eq(billingSchedules.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return schedule || null;
+  }
+
+  // Credit Memos
+  async getCreditMemos(
+    tenantId: string,
+    filters?: {
+      creditStatus?: string;
+      customerId?: string;
+      invoiceId?: string;
+      disputeId?: string;
+    }
+  ): Promise<CreditMemo[]> {
+    const conditions = [eq(creditMemos.tenantId, tenantId)];
+
+    if (filters?.creditStatus) {
+      conditions.push(eq(creditMemos.creditStatus, filters.creditStatus));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(creditMemos.customerId, filters.customerId));
+    }
+    if (filters?.invoiceId) {
+      conditions.push(eq(creditMemos.invoiceId, filters.invoiceId));
+    }
+    if (filters?.disputeId) {
+      conditions.push(eq(creditMemos.disputeId, filters.disputeId));
+    }
+
+    return await db
+      .select()
+      .from(creditMemos)
+      .where(and(...conditions))
+      .orderBy(desc(creditMemos.issuedDate));
+  }
+
+  async getCreditMemo(creditMemoId: string): Promise<CreditMemo | null> {
+    const [creditMemo] = await db
+      .select()
+      .from(creditMemos)
+      .where(eq(creditMemos.id, creditMemoId))
+      .limit(1);
+    return creditMemo || null;
+  }
+
+  async createCreditMemo(data: InsertCreditMemo): Promise<CreditMemo> {
+    const [creditMemo] = await db.insert(creditMemos).values(data).returning();
+    return creditMemo;
+  }
+
+  async updateCreditMemo(
+    creditMemoId: string,
+    tenantId: string,
+    data: Partial<CreditMemo>
+  ): Promise<CreditMemo | null> {
+    const [creditMemo] = await db
+      .update(creditMemos)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId))
+      )
+      .returning();
+    return creditMemo || null;
+  }
+
+  async approveCreditMemo(
+    creditMemoId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<CreditMemo | null> {
+    const [creditMemo] = await db
+      .update(creditMemos)
+      .set({
+        creditStatus: "approved",
+        approvedBy: userId,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId))
+      )
+      .returning();
+    return creditMemo || null;
+  }
+
+  async issueCreditMemo(
+    creditMemoId: string,
+    tenantId: string
+  ): Promise<CreditMemo | null> {
+    const [creditMemo] = await db
+      .update(creditMemos)
+      .set({
+        creditStatus: "issued",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(creditMemos.id, creditMemoId),
+          eq(creditMemos.tenantId, tenantId),
+          eq(creditMemos.creditStatus, "approved")
+        )
+      )
+      .returning();
+    return creditMemo || null;
+  }
+
+  async applyCreditToInvoice(
+    creditMemoId: string,
+    tenantId: string,
+    invoiceId: string
+  ): Promise<CreditMemo | null> {
+    const [creditMemo] = await db
+      .update(creditMemos)
+      .set({
+        appliedToInvoice: true,
+        appliedToInvoiceId: invoiceId,
+        appliedAt: new Date(),
+        creditStatus: "applied",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId))
+      )
+      .returning();
+    return creditMemo || null;
+  }
+
+  async voidCreditMemo(
+    creditMemoId: string,
+    tenantId: string,
+    userId: string,
+    reason: string
+  ): Promise<CreditMemo | null> {
+    const [creditMemo] = await db
+      .update(creditMemos)
+      .set({
+        creditStatus: "voided",
+        voidedBy: userId,
+        voidedAt: new Date(),
+        voidReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId))
+      )
+      .returning();
+    return creditMemo || null;
+  }
+
+  async getCreditMemosByCustomer(customerId: string): Promise<CreditMemo[]> {
+    return await db
+      .select()
+      .from(creditMemos)
+      .where(eq(creditMemos.customerId, customerId))
+      .orderBy(desc(creditMemos.issuedDate));
+  }
+
+  async getPendingCreditMemos(tenantId: string): Promise<CreditMemo[]> {
+    return await db
+      .select()
+      .from(creditMemos)
+      .where(
+        and(eq(creditMemos.tenantId, tenantId), eq(creditMemos.creditStatus, "pending"))
+      )
+      .orderBy(desc(creditMemos.issuedDate));
   }
 }
 
