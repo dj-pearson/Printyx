@@ -117,13 +117,20 @@ router.post("/enroll/init", async (req: Request, res: Response) => {
     // Generate a new TOTP secret
     const secret = generateTOTPSecret();
     
+    // Store the secret in the session for verification
+    if (!req.session) {
+      return res.status(500).json({ error: "Session not available" });
+    }
+    req.session.pendingMfaSecret = secret;
+    req.session.pendingMfaTimestamp = Date.now();
+    
     // Create otpauth URL for QR code
     const issuer = "Printyx";
     const accountName = user.email || user.id;
     const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
 
     res.json({
-      secret,
+      secret, // Still send for user convenience (QR code display)
       otpauthUrl,
       qrCodeData: otpauthUrl, // Frontend can use this to generate QR code
       backupCodes: [], // Will be generated after verification
@@ -136,7 +143,6 @@ router.post("/enroll/init", async (req: Request, res: Response) => {
 
 // POST /api/mfa/enroll/verify - Verify TOTP code and complete enrollment
 const verifyMfaSchema = z.object({
-  secret: z.string(),
   token: z.string().length(6),
 });
 
@@ -146,11 +152,52 @@ router.post("/enroll/verify", async (req: Request, res: Response) => {
     return res.status(401).json({ error: "Not authenticated" });
   }
 
-  try {
-    const { secret, token } = verifyMfaSchema.parse(req.body);
+  if (!req.session) {
+    return res.status(500).json({ error: "Session not available" });
+  }
 
-    // Verify the TOTP token
-    const isValid = verifyTOTP(secret, token);
+  try {
+    const { token } = verifyMfaSchema.parse(req.body);
+
+    // Retrieve the server-stored secret from session
+    const storedSecret = req.session.pendingMfaSecret;
+    const storedTimestamp = req.session.pendingMfaTimestamp;
+
+    if (!storedSecret) {
+      // Log attempt without pending secret for audit trail
+      await storage.createMfaAuditLog({
+        userId: user.id,
+        tenantId: user.tenantId || null,
+        eventType: 'enrollment',
+        success: false,
+        failureReason: 'no_pending_secret',
+        ...getRequestMetadata(req),
+      });
+
+      return res.status(400).json({ error: "No pending MFA enrollment. Please start enrollment again." });
+    }
+
+    // Check if the secret has expired (10 minutes)
+    const TEN_MINUTES = 10 * 60 * 1000;
+    if (storedTimestamp && Date.now() - storedTimestamp > TEN_MINUTES) {
+      // Clear expired secret
+      delete req.session.pendingMfaSecret;
+      delete req.session.pendingMfaTimestamp;
+      
+      await storage.createMfaAuditLog({
+        userId: user.id,
+        tenantId: user.tenantId || null,
+        eventType: 'enrollment',
+        success: false,
+        failureReason: 'secret_expired',
+        ...getRequestMetadata(req),
+      });
+
+      return res.status(400).json({ error: "Enrollment session expired. Please start enrollment again." });
+    }
+
+    // Verify the TOTP token against the server-stored secret
+    const isValid = verifyTOTP(storedSecret, token);
 
     if (!isValid) {
       // Log failed enrollment attempt
@@ -166,8 +213,12 @@ router.post("/enroll/verify", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid verification code" });
     }
 
-    // Enable MFA for the user
-    await storage.enableMfaForUser(user.id, secret);
+    // Enable MFA for the user with the server-stored secret
+    await storage.enableMfaForUser(user.id, storedSecret);
+
+    // Clear the pending secret from session
+    delete req.session.pendingMfaSecret;
+    delete req.session.pendingMfaTimestamp;
 
     // Generate backup codes
     const { codes } = await storage.generateBackupCodes(user.id, user.tenantId || null, 10);

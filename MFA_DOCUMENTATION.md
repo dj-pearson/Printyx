@@ -142,7 +142,7 @@ Authorization: Bearer <session_token>
 
 #### POST /api/mfa/enroll/verify
 
-Complete MFA enrollment by verifying the TOTP code.
+Complete MFA enrollment by verifying the TOTP code. The secret is validated against the server-stored value from the enrollment initialization.
 
 **Request:**
 ```http
@@ -150,10 +150,11 @@ POST /api/mfa/enroll/verify
 Content-Type: application/json
 
 {
-  "secret": "OVJOFDZPCVML7LHU6HB4KF4YVQSDY6SD",
   "token": "123456"
 }
 ```
+
+**Security Note:** The server validates the token against the secret stored in the session during `/enroll/init`. The secret is never accepted from the client during verification, preventing attackers from enrolling with their own secrets.
 
 **Response:**
 ```json
@@ -433,6 +434,18 @@ getUsersWithoutMfa(tenantId: string): Promise<User[]>
 3. **Quantity**: 10 codes generated per user
 4. **Regeneration**: Requires TOTP verification to prevent unauthorized access
 
+### Enrollment Security
+
+The MFA enrollment process includes critical security measures:
+
+1. **Server-Side Secret Storage**: During `/enroll/init`, the generated TOTP secret is stored in the server session
+2. **Secret Validation**: During `/enroll/verify`, the token is validated against the server-stored secret (never client-provided)
+3. **Enrollment Expiration**: Pending enrollment secrets expire after 10 minutes
+4. **Audit Logging**: All enrollment attempts (success and failure) are logged
+5. **Session Cleanup**: Successfully enrolled or expired secrets are removed from the session
+
+This prevents attackers from enrolling with their own TOTP secrets, even if they have access to an authenticated session.
+
 ### Best Practices
 
 1. **Rate Limiting**: Implement rate limiting on verification endpoints
@@ -466,11 +479,11 @@ async function initiateMfaEnrollment() {
 #### Step 2: Verify and Complete Enrollment
 
 ```typescript
-async function completeMfaEnrollment(secret: string, token: string) {
+async function completeMfaEnrollment(token: string) {
   const response = await fetch('/api/mfa/enroll/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret, token }),
+    body: JSON.stringify({ token }), // Only send token, server validates against stored secret
     credentials: 'include',
   });
   
