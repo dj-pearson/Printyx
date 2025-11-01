@@ -252,6 +252,13 @@ import {
   type InsertEmailListMember,
   type EmailUnsubscribe,
   type InsertEmailUnsubscribe,
+  // MFA Enforcement schemas
+  mfaBackupCodes,
+  mfaAuditLogs,
+  type MfaBackupCode,
+  type InsertMfaBackupCode,
+  type MfaAuditLog,
+  type InsertMfaAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -986,6 +993,34 @@ export interface IStorage {
   getEmailUnsubscribeByEmail(email: string, tenantId: string, unsubscribeType?: string): Promise<EmailUnsubscribe | null>;
   createEmailUnsubscribe(unsubscribe: InsertEmailUnsubscribe): Promise<EmailUnsubscribe>;
   checkUnsubscribeStatus(email: string, tenantId: string): Promise<{ isUnsubscribed: boolean; type?: string }>;
+
+  // Multi-Factor Authentication (MFA) Enforcement
+  // MFA Enrollment & Configuration
+  enableMfaForUser(userId: string, secret: string): Promise<User | null>;
+  disableMfaForUser(userId: string): Promise<User | null>;
+  getUserMfaStatus(userId: string): Promise<{ enabled: boolean; hasBackupCodes: boolean } | null>;
+  
+  // MFA Backup Codes
+  generateBackupCodes(userId: string, tenantId: string | null, count: number): Promise<{ codes: string[]; hashes: MfaBackupCode[] }>;
+  validateBackupCode(userId: string, code: string): Promise<boolean>;
+  getUnusedBackupCodes(userId: string): Promise<MfaBackupCode[]>;
+  deleteAllBackupCodes(userId: string): Promise<void>;
+  
+  // MFA Audit Logs
+  createMfaAuditLog(log: InsertMfaAuditLog): Promise<MfaAuditLog>;
+  getMfaAuditLogs(userId: string, filters?: { eventType?: string; success?: boolean }): Promise<MfaAuditLog[]>;
+  getMfaAuditLogsByTenant(tenantId: string, filters?: { eventType?: string; success?: boolean }): Promise<MfaAuditLog[]>;
+  
+  // MFA Status Reporting & Compliance
+  getMfaComplianceReport(tenantId: string): Promise<{
+    totalUsers: number;
+    mfaEnabledUsers: number;
+    mfaDisabledUsers: number;
+    compliancePercentage: number;
+    recentEnrollments: number;
+    recentFailures: number;
+  }>;
+  getUsersWithoutMfa(tenantId: string): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -6829,6 +6864,285 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { isUnsubscribed: false };
+  }
+
+  // ==================== Multi-Factor Authentication (MFA) Enforcement ====================
+  
+  // MFA Enrollment & Configuration
+  async enableMfaForUser(userId: string, secret: string): Promise<User | null> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        twoFactorEnabled: true,
+        twoFactorSecret: secret,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser || null;
+  }
+
+  async disableMfaForUser(userId: string): Promise<User | null> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    // Delete all backup codes when disabling MFA
+    await this.deleteAllBackupCodes(userId);
+    
+    return updatedUser || null;
+  }
+
+  async getUserMfaStatus(userId: string): Promise<{ enabled: boolean; hasBackupCodes: boolean } | null> {
+    const [user] = await db
+      .select({
+        twoFactorEnabled: users.twoFactorEnabled,
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    if (!user) {
+      return null;
+    }
+
+    const backupCodes = await db
+      .select()
+      .from(mfaBackupCodes)
+      .where(and(
+        eq(mfaBackupCodes.userId, userId),
+        eq(mfaBackupCodes.isUsed, false)
+      ))
+      .limit(1);
+
+    return {
+      enabled: user.twoFactorEnabled || false,
+      hasBackupCodes: backupCodes.length > 0,
+    };
+  }
+
+  // MFA Backup Codes
+  async generateBackupCodes(
+    userId: string,
+    tenantId: string | null,
+    count: number = 10
+  ): Promise<{ codes: string[]; hashes: MfaBackupCode[] }> {
+    // Generate random backup codes
+    const codes: string[] = [];
+    const insertData: InsertMfaBackupCode[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      // Generate a random 8-character alphanumeric code
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      codes.push(code);
+      
+      // Hash the code
+      const codeHash = await bcrypt.hash(code, 10);
+      
+      insertData.push({
+        userId,
+        tenantId,
+        codeHash,
+        isUsed: false,
+      });
+    }
+
+    // Delete old backup codes
+    await this.deleteAllBackupCodes(userId);
+
+    // Insert new backup codes
+    const hashes = await db
+      .insert(mfaBackupCodes)
+      .values(insertData)
+      .returning();
+
+    return { codes, hashes };
+  }
+
+  async validateBackupCode(userId: string, code: string): Promise<boolean> {
+    const backupCodesList = await db
+      .select()
+      .from(mfaBackupCodes)
+      .where(and(
+        eq(mfaBackupCodes.userId, userId),
+        eq(mfaBackupCodes.isUsed, false)
+      ));
+
+    for (const backupCode of backupCodesList) {
+      const isValid = await bcrypt.compare(code, backupCode.codeHash);
+      
+      if (isValid) {
+        // Mark code as used
+        await db
+          .update(mfaBackupCodes)
+          .set({
+            isUsed: true,
+            usedAt: new Date(),
+          })
+          .where(eq(mfaBackupCodes.id, backupCode.id));
+        
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  async getUnusedBackupCodes(userId: string): Promise<MfaBackupCode[]> {
+    return await db
+      .select()
+      .from(mfaBackupCodes)
+      .where(and(
+        eq(mfaBackupCodes.userId, userId),
+        eq(mfaBackupCodes.isUsed, false)
+      ))
+      .orderBy(asc(mfaBackupCodes.createdAt));
+  }
+
+  async deleteAllBackupCodes(userId: string): Promise<void> {
+    await db
+      .delete(mfaBackupCodes)
+      .where(eq(mfaBackupCodes.userId, userId));
+  }
+
+  // MFA Audit Logs
+  async createMfaAuditLog(log: InsertMfaAuditLog): Promise<MfaAuditLog> {
+    const [newLog] = await db
+      .insert(mfaAuditLogs)
+      .values(log)
+      .returning();
+    
+    return newLog;
+  }
+
+  async getMfaAuditLogs(
+    userId: string,
+    filters?: { eventType?: string; success?: boolean }
+  ): Promise<MfaAuditLog[]> {
+    const conditions = [eq(mfaAuditLogs.userId, userId)];
+
+    if (filters?.eventType) {
+      conditions.push(eq(mfaAuditLogs.eventType, filters.eventType));
+    }
+
+    if (filters?.success !== undefined) {
+      conditions.push(eq(mfaAuditLogs.success, filters.success));
+    }
+
+    return await db
+      .select()
+      .from(mfaAuditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(mfaAuditLogs.createdAt));
+  }
+
+  async getMfaAuditLogsByTenant(
+    tenantId: string,
+    filters?: { eventType?: string; success?: boolean }
+  ): Promise<MfaAuditLog[]> {
+    const conditions = [eq(mfaAuditLogs.tenantId, tenantId)];
+
+    if (filters?.eventType) {
+      conditions.push(eq(mfaAuditLogs.eventType, filters.eventType));
+    }
+
+    if (filters?.success !== undefined) {
+      conditions.push(eq(mfaAuditLogs.success, filters.success));
+    }
+
+    return await db
+      .select()
+      .from(mfaAuditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(mfaAuditLogs.createdAt));
+  }
+
+  // MFA Status Reporting & Compliance
+  async getMfaComplianceReport(tenantId: string): Promise<{
+    totalUsers: number;
+    mfaEnabledUsers: number;
+    mfaDisabledUsers: number;
+    compliancePercentage: number;
+    recentEnrollments: number;
+    recentFailures: number;
+  }> {
+    // Get total users in tenant
+    const totalUsersResult = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.tenantId, tenantId));
+    
+    const totalUsers = totalUsersResult[0]?.count || 0;
+
+    // Get MFA-enabled users
+    const mfaEnabledResult = await db
+      .select({ count: count() })
+      .from(users)
+      .where(and(
+        eq(users.tenantId, tenantId),
+        eq(users.twoFactorEnabled, true)
+      ));
+    
+    const mfaEnabledUsers = mfaEnabledResult[0]?.count || 0;
+    const mfaDisabledUsers = totalUsers - mfaEnabledUsers;
+    const compliancePercentage = totalUsers > 0 ? Math.round((mfaEnabledUsers / totalUsers) * 100) : 0;
+
+    // Get recent enrollments (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentEnrollmentsResult = await db
+      .select({ count: count() })
+      .from(mfaAuditLogs)
+      .where(and(
+        eq(mfaAuditLogs.tenantId, tenantId),
+        eq(mfaAuditLogs.eventType, 'enrollment'),
+        eq(mfaAuditLogs.success, true),
+        gte(mfaAuditLogs.createdAt, thirtyDaysAgo)
+      ));
+    
+    const recentEnrollments = recentEnrollmentsResult[0]?.count || 0;
+
+    // Get recent failures (last 30 days)
+    const recentFailuresResult = await db
+      .select({ count: count() })
+      .from(mfaAuditLogs)
+      .where(and(
+        eq(mfaAuditLogs.tenantId, tenantId),
+        eq(mfaAuditLogs.eventType, 'verification_failure'),
+        gte(mfaAuditLogs.createdAt, thirtyDaysAgo)
+      ));
+    
+    const recentFailures = recentFailuresResult[0]?.count || 0;
+
+    return {
+      totalUsers,
+      mfaEnabledUsers,
+      mfaDisabledUsers,
+      compliancePercentage,
+      recentEnrollments,
+      recentFailures,
+    };
+  }
+
+  async getUsersWithoutMfa(tenantId: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.tenantId, tenantId),
+        or(
+          eq(users.twoFactorEnabled, false),
+          isNull(users.twoFactorEnabled)
+        )
+      ))
+      .orderBy(asc(users.email));
   }
 }
 
