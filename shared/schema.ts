@@ -2102,6 +2102,300 @@ export const documents = pgTable("documents", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ============= LEASE MANAGEMENT SYSTEM =============
+
+// Lease Status Enum
+export const leaseStatusEnum = pgEnum("lease_status", [
+  "pending",           // Awaiting approval/signature
+  "active",            // Currently active
+  "pending_renewal",   // Approaching end date, renewal decision needed
+  "renewed",           // Successfully renewed
+  "expired",           // Lease ended
+  "terminated",        // Terminated early
+  "defaulted"          // Payment default
+]);
+
+// Lease Type Enum
+export const leaseTypeEnum = pgEnum("lease_type", [
+  "fmv",              // Fair Market Value
+  "dollar_buyout",    // $1 Buyout
+  "ten_percent",      // 10% Buyout
+  "trac",             // Terminal Rental Adjustment Clause
+  "operating",        // Operating Lease
+  "capital"           // Capital Lease
+]);
+
+// Lease Payment Status Enum (specific to lease payments)
+export const leasePaymentStatusEnum = pgEnum("lease_payment_status", [
+  "scheduled",        // Future payment scheduled
+  "processing",       // Payment in progress
+  "completed",        // Payment successful
+  "failed",           // Payment failed
+  "refunded",         // Payment refunded
+  "disputed"          // Payment disputed
+]);
+
+// Disposition Action Enum
+export const dispositionActionEnum = pgEnum("disposition_action", [
+  "return",           // Equipment returned
+  "purchase",         // Customer purchased equipment
+  "renew",            // Lease renewed
+  "upgrade",          // Upgraded to new equipment
+  "extend"            // Extended current lease
+]);
+
+// Main Leases Table
+export const leases = pgTable("leases", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+
+  // Lease Identification
+  leaseNumber: varchar("lease_number").notNull().unique(),
+  leaseName: varchar("lease_name").notNull(), // User-friendly name
+  
+  // Customer & Contract Relationships
+  customerId: varchar("customer_id").notNull(),
+  businessRecordId: varchar("business_record_id"), // Link to business records
+  proposalId: varchar("proposal_id"), // Originating proposal
+  contractId: varchar("contract_id"), // Associated service contract
+
+  // Lease Type & Terms
+  leaseType: leaseTypeEnum("lease_type").notNull().default("fmv"),
+  status: leaseStatusEnum("status").notNull().default("pending"),
+
+  // Financial Terms
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(), // Total lease value
+  monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }).notNull(),
+  term: integer("term").notNull(), // Number of months
+  interestRate: decimal("interest_rate", { precision: 5, scale: 3 }), // Annual interest rate (e.g., 5.25%)
+  residualValue: decimal("residual_value", { precision: 12, scale: 2 }), // End-of-lease value
+  buyoutAmount: decimal("buyout_amount", { precision: 12, scale: 2 }), // Early buyout amount
+  
+  // Dates
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  firstPaymentDate: timestamp("first_payment_date").notNull(),
+  lastPaymentDate: timestamp("last_payment_date").notNull(),
+
+  // Equipment (stored as JSON array of equipment IDs)
+  equipmentIds: jsonb("equipment_ids").default([]), // Array of equipment IDs included in lease
+
+  // Payment Configuration
+  paymentMethod: varchar("payment_method"), // ACH, Credit Card, Check
+  paymentDayOfMonth: integer("payment_day_of_month").default(1), // Day of month for payments
+  autoPayEnabled: boolean("auto_pay_enabled").default(false),
+
+  // Insurance & Additional Terms
+  insuranceRequired: boolean("insurance_required").default(false),
+  maintenanceIncluded: boolean("maintenance_included").default(false),
+  taxable: boolean("taxable").default(true),
+  salesTaxRate: decimal("sales_tax_rate", { precision: 5, scale: 3 }),
+
+  // Renewal Options
+  renewalOption: boolean("renewal_option").default(true),
+  renewalNoticeMonths: integer("renewal_notice_months").default(6), // Months before end to send notice
+  renewalReminderSent: boolean("renewal_reminder_sent").default(false),
+  renewalReminderDate: timestamp("renewal_reminder_date"),
+
+  // Early Termination
+  earlyTerminationAllowed: boolean("early_termination_allowed").default(false),
+  earlyTerminationPenalty: decimal("early_termination_penalty", { precision: 10, scale: 2 }),
+
+  // Document References
+  documentUrl: varchar("document_url"), // Signed lease agreement
+  eSignatureId: varchar("e_signature_id"), // E-signature tracking ID
+
+  // Lessor Information (Leasing Company)
+  lessorName: varchar("lessor_name"),
+  lessorContactName: varchar("lessor_contact_name"),
+  lessorContactEmail: varchar("lessor_contact_email"),
+  lessorContactPhone: varchar("lessor_contact_phone"),
+  lessorAccountNumber: varchar("lessor_account_number"),
+
+  // Notes & Comments
+  notes: text("notes"),
+  specialTerms: text("special_terms"),
+
+  // Analytics & Health
+  paymentsCompleted: integer("payments_completed").default(0),
+  paymentsRemaining: integer("payments_remaining"),
+  totalPaid: decimal("total_paid", { precision: 12, scale: 2 }).default(0),
+  balanceRemaining: decimal("balance_remaining", { precision: 12, scale: 2 }),
+  daysUntilExpiry: integer("days_until_expiry"),
+  paymentHealth: varchar("payment_health").default("good"), // good, warning, critical
+  missedPayments: integer("missed_payments").default(0),
+
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  updatedBy: varchar("updated_by"),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("leases_tenant_idx").on(table.tenantId),
+  customerIdx: index("leases_customer_idx").on(table.customerId),
+  statusIdx: index("leases_status_idx").on(table.status),
+  endDateIdx: index("leases_end_date_idx").on(table.endDate),
+}));
+
+// Lease Payments Table (Scheduled & Actual)
+export const leasePayments = pgTable("lease_payments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  leaseId: varchar("lease_id").notNull(),
+
+  // Payment Identification
+  paymentNumber: integer("payment_number").notNull(), // 1 of 60, 2 of 60, etc.
+  
+  // Scheduled Payment
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  scheduledAmount: decimal("scheduled_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Actual Payment
+  paidDate: timestamp("paid_date"),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  status: leasePaymentStatusEnum("status").notNull().default("scheduled"),
+  
+  // Payment Method
+  paymentMethod: varchar("payment_method"), // ACH, Credit Card, Check
+  confirmationNumber: varchar("confirmation_number"),
+  transactionId: varchar("transaction_id"),
+  
+  // Integration References
+  invoiceId: varchar("invoice_id"), // Link to generated invoice
+  paymentIntegrationId: varchar("payment_integration_id"), // Stripe, QuickBooks, etc.
+  
+  // Breakdown
+  principal: decimal("principal", { precision: 10, scale: 2 }),
+  interest: decimal("interest", { precision: 10, scale: 2 }),
+  tax: decimal("tax", { precision: 10, scale: 2 }),
+  fees: decimal("fees", { precision: 10, scale: 2 }),
+  
+  // Failure Tracking
+  failureReason: text("failure_reason"),
+  retryCount: integer("retry_count").default(0),
+  lastRetryDate: timestamp("last_retry_date"),
+  
+  // Notes
+  notes: text("notes"),
+  
+  // Tracking
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  leaseIdx: index("lease_payments_lease_idx").on(table.leaseId),
+  scheduledDateIdx: index("lease_payments_scheduled_date_idx").on(table.scheduledDate),
+  statusIdx: index("lease_payments_status_idx").on(table.status),
+}));
+
+// Lease Renewals Table
+export const leaseRenewals = pgTable("lease_renewals", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  leaseId: varchar("lease_id").notNull(),
+  
+  // Renewal Options
+  renewalOffered: boolean("renewal_offered").default(false),
+  renewalOfferDate: timestamp("renewal_offer_date"),
+  renewalDeadline: timestamp("renewal_deadline"),
+  
+  // Renewal Terms
+  renewalTerm: integer("renewal_term"), // Months for renewal
+  renewalMonthlyPayment: decimal("renewal_monthly_payment", { precision: 10, scale: 2 }),
+  renewalTotalAmount: decimal("renewal_total_amount", { precision: 12, scale: 2 }),
+  renewalType: leaseTypeEnum("renewal_type"),
+  
+  // Customer Decision
+  customerDecision: varchar("customer_decision"), // renew, purchase, return, extend, upgrade
+  decisionDate: timestamp("decision_date"),
+  decisionBy: varchar("decision_by"),
+  
+  // Communication Tracking
+  remindersSent: integer("reminders_sent").default(0),
+  lastReminderDate: timestamp("last_reminder_date"),
+  nextReminderDate: timestamp("next_reminder_date"),
+  
+  // Notes
+  notes: text("notes"),
+  internalNotes: text("internal_notes"),
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  leaseIdx: index("lease_renewals_lease_idx").on(table.leaseId),
+  renewalDeadlineIdx: index("lease_renewals_deadline_idx").on(table.renewalDeadline),
+}));
+
+// Lease Dispositions Table (End-of-Lease Processing)
+export const leaseDispositions = pgTable("lease_dispositions", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull(),
+  leaseId: varchar("lease_id").notNull(),
+  
+  // Disposition Action
+  action: dispositionActionEnum("action").notNull(),
+  actionDate: timestamp("action_date").notNull(),
+  
+  // Return Processing
+  returnScheduledDate: timestamp("return_scheduled_date"),
+  returnCompletedDate: timestamp("return_completed_date"),
+  returnCondition: varchar("return_condition"), // excellent, good, fair, poor
+  returnNotes: text("return_notes"),
+  
+  // Purchase Processing
+  purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }),
+  purchaseDate: timestamp("purchase_date"),
+  purchaseInvoiceId: varchar("purchase_invoice_id"),
+  
+  // Upgrade Processing
+  upgradeProposalId: varchar("upgrade_proposal_id"),
+  upgradeLeaseId: varchar("upgrade_lease_id"),
+  tradeInValue: decimal("trade_in_value", { precision: 12, scale: 2 }),
+  
+  // Settlement & Fees
+  settlementAmount: decimal("settlement_amount", { precision: 12, scale: 2 }),
+  damageFees: decimal("damage_fees", { precision: 10, scale: 2 }),
+  excessUsageFees: decimal("excess_usage_fees", { precision: 10, scale: 2 }),
+  otherFees: decimal("other_fees", { precision: 10, scale: 2 }),
+  feeNotes: text("fee_notes"),
+  
+  // Equipment Condition Assessment
+  equipmentConditionReport: jsonb("equipment_condition_report"), // Detailed condition data
+  photoUrls: jsonb("photo_urls"), // Array of condition photos
+  
+  // Final Disposition
+  finalStatus: varchar("final_status"), // completed, pending, cancelled
+  completionDate: timestamp("completion_date"),
+  
+  // Assignments
+  assignedTo: varchar("assigned_to"),
+  completedBy: varchar("completed_by"),
+  
+  // Notes
+  notes: text("notes"),
+  internalNotes: text("internal_notes"),
+  
+  // Tracking
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  leaseIdx: index("lease_dispositions_lease_idx").on(table.leaseId),
+  actionIdx: index("lease_dispositions_action_idx").on(table.action),
+  statusIdx: index("lease_dispositions_status_idx").on(table.finalStatus),
+}));
+
 // Product Management System - Models (Top-level products like copiers)
 // NOTE: Enhanced deduplication allows same product codes with different product names
 // (handles manufacturer scenarios where base units and speed licenses share same item number)
@@ -6330,6 +6624,50 @@ export const insertSeoSettingsSchema = createInsertSchema(seoSettings).omit({
 });
 
 export const insertSeoPageSchema = createInsertSchema(seoPages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// ============= LEASE MANAGEMENT TYPES & SCHEMAS =============
+
+// Lease Types
+export type Lease = typeof leases.$inferSelect;
+export type InsertLease = typeof leases.$inferInsert;
+export type LeasePayment = typeof leasePayments.$inferSelect;
+export type InsertLeasePayment = typeof leasePayments.$inferInsert;
+export type LeaseRenewal = typeof leaseRenewals.$inferSelect;
+export type InsertLeaseRenewal = typeof leaseRenewals.$inferInsert;
+export type LeaseDisposition = typeof leaseDispositions.$inferSelect;
+export type InsertLeaseDisposition = typeof leaseDispositions.$inferInsert;
+
+// Lease Insert Schemas
+export const insertLeaseSchema = createInsertSchema(leases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  paymentsCompleted: true,
+  paymentsRemaining: true,
+  totalPaid: true,
+  balanceRemaining: true,
+  daysUntilExpiry: true,
+  paymentHealth: true,
+  missedPayments: true,
+});
+
+export const insertLeasePaymentSchema = createInsertSchema(leasePayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeaseRenewalSchema = createInsertSchema(leaseRenewals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeaseDispositionSchema = createInsertSchema(leaseDispositions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
