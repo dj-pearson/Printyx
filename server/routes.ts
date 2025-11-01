@@ -10642,6 +10642,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const mfaRoutes = await import("./routes/mfa-routes");
   app.use("/api/mfa", mfaRoutes.default);
 
+  // Workflow Automation Routes
+  const workflowAutomationRoutes = await import("./routes/workflow-automation-routes");
+  app.use("/api", workflowAutomationRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
