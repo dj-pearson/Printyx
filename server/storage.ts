@@ -220,6 +220,16 @@ import {
   type InsertSignatureDocument,
   type SignatureAuditLog,
   type InsertSignatureAuditLog,
+  // Field Service Photo & Signature Capture schemas
+  installations,
+  serviceSignatures,
+  installationChecklists,
+  type Installation,
+  type InsertInstallation,
+  type ServiceSignature,
+  type InsertServiceSignature,
+  type InstallationChecklist,
+  type InsertInstallationChecklist,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -873,6 +883,31 @@ export interface IStorage {
   getSignatureAuditLogs(requestId: string, tenantId: string): Promise<SignatureAuditLog[]>;
   getSignatureAuditLogsBySigner(signerId: string, tenantId: string): Promise<SignatureAuditLog[]>;
   createSignatureAuditLog(log: InsertSignatureAuditLog): Promise<SignatureAuditLog>;
+
+  // Field Service Photo & Signature Capture
+  // Installations
+  getInstallations(tenantId: string, filters?: { status?: string; customerId?: string; technicianId?: string }): Promise<Installation[]>;
+  getInstallationById(id: string, tenantId: string): Promise<Installation | null>;
+  getInstallationByNumber(installationNumber: string, tenantId: string): Promise<Installation | null>;
+  createInstallation(installation: InsertInstallation): Promise<Installation>;
+  updateInstallation(id: string, tenantId: string, data: Partial<Installation>): Promise<Installation | null>;
+  deleteInstallation(id: string, tenantId: string): Promise<void>;
+  generateInstallationNumber(tenantId: string): Promise<string>;
+  
+  // Service Signatures
+  getServiceSignatures(tenantId: string, filters?: { serviceTicketId?: string; installationId?: string }): Promise<ServiceSignature[]>;
+  getServiceSignatureById(id: string, tenantId: string): Promise<ServiceSignature | null>;
+  createServiceSignature(signature: InsertServiceSignature): Promise<ServiceSignature>;
+  updateServiceSignature(id: string, tenantId: string, data: Partial<ServiceSignature>): Promise<ServiceSignature | null>;
+  deleteServiceSignature(id: string, tenantId: string): Promise<void>;
+  
+  // Installation Checklists
+  getInstallationChecklists(installationId: string, tenantId: string): Promise<InstallationChecklist[]>;
+  getInstallationChecklistById(id: string, tenantId: string): Promise<InstallationChecklist | null>;
+  createInstallationChecklist(checklist: InsertInstallationChecklist): Promise<InstallationChecklist>;
+  updateInstallationChecklist(id: string, tenantId: string, data: Partial<InstallationChecklist>): Promise<InstallationChecklist | null>;
+  deleteInstallationChecklist(id: string, tenantId: string): Promise<void>;
+  bulkCreateInstallationChecklists(checklists: InsertInstallationChecklist[]): Promise<InstallationChecklist[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5894,6 +5929,286 @@ export class DatabaseStorage implements IStorage {
       .values(log)
       .returning();
     return newLog;
+  }
+
+  // Field Service Photo & Signature Capture implementations
+  
+  // Installations operations
+  async getInstallations(
+    tenantId: string,
+    filters?: { status?: string; customerId?: string; technicianId?: string }
+  ): Promise<Installation[]> {
+    const conditions = [eq(installations.tenantId, tenantId)];
+
+    if (filters?.status) {
+      conditions.push(eq(installations.status, filters.status));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(installations.customerId, filters.customerId));
+    }
+    if (filters?.technicianId) {
+      conditions.push(eq(installations.technicianId, filters.technicianId));
+    }
+
+    return await db
+      .select()
+      .from(installations)
+      .where(and(...conditions))
+      .orderBy(desc(installations.scheduledDate));
+  }
+
+  async getInstallationById(
+    id: string,
+    tenantId: string
+  ): Promise<Installation | null> {
+    const [installation] = await db
+      .select()
+      .from(installations)
+      .where(
+        and(
+          eq(installations.id, id),
+          eq(installations.tenantId, tenantId)
+        )
+      );
+    return installation || null;
+  }
+
+  async getInstallationByNumber(
+    installationNumber: string,
+    tenantId: string
+  ): Promise<Installation | null> {
+    const [installation] = await db
+      .select()
+      .from(installations)
+      .where(
+        and(
+          eq(installations.installationNumber, installationNumber),
+          eq(installations.tenantId, tenantId)
+        )
+      );
+    return installation || null;
+  }
+
+  async createInstallation(
+    installation: InsertInstallation
+  ): Promise<Installation> {
+    const [newInstallation] = await db
+      .insert(installations)
+      .values(installation)
+      .returning();
+    return newInstallation;
+  }
+
+  async updateInstallation(
+    id: string,
+    tenantId: string,
+    data: Partial<Installation>
+  ): Promise<Installation | null> {
+    const [updatedInstallation] = await db
+      .update(installations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(installations.id, id),
+          eq(installations.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedInstallation || null;
+  }
+
+  async deleteInstallation(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(installations)
+      .where(
+        and(
+          eq(installations.id, id),
+          eq(installations.tenantId, tenantId)
+        )
+      );
+  }
+
+  async generateInstallationNumber(tenantId: string): Promise<string> {
+    const prefix = "INST";
+    const year = new Date().getFullYear().toString().slice(-2);
+
+    // Get the next sequence number for this tenant and year
+    const existingInstallations = await db
+      .select()
+      .from(installations)
+      .where(
+        and(
+          eq(installations.tenantId, tenantId),
+          isNotNull(installations.installationNumber)
+        )
+      );
+
+    const currentYearInstallations = existingInstallations.filter((i) =>
+      i.installationNumber?.startsWith(`${prefix}${year}`)
+    );
+
+    const nextNumber = currentYearInstallations.length + 1;
+    const paddedNumber = nextNumber.toString().padStart(4, "0");
+
+    return `${prefix}${year}-${paddedNumber}`;
+  }
+
+  // Service Signatures operations
+  async getServiceSignatures(
+    tenantId: string,
+    filters?: { serviceTicketId?: string; installationId?: string }
+  ): Promise<ServiceSignature[]> {
+    const conditions = [eq(serviceSignatures.tenantId, tenantId)];
+
+    if (filters?.serviceTicketId) {
+      conditions.push(eq(serviceSignatures.serviceTicketId, filters.serviceTicketId));
+    }
+    if (filters?.installationId) {
+      conditions.push(eq(serviceSignatures.installationId, filters.installationId));
+    }
+
+    return await db
+      .select()
+      .from(serviceSignatures)
+      .where(and(...conditions))
+      .orderBy(desc(serviceSignatures.signedAt));
+  }
+
+  async getServiceSignatureById(
+    id: string,
+    tenantId: string
+  ): Promise<ServiceSignature | null> {
+    const [signature] = await db
+      .select()
+      .from(serviceSignatures)
+      .where(
+        and(
+          eq(serviceSignatures.id, id),
+          eq(serviceSignatures.tenantId, tenantId)
+        )
+      );
+    return signature || null;
+  }
+
+  async createServiceSignature(
+    signature: InsertServiceSignature
+  ): Promise<ServiceSignature> {
+    const [newSignature] = await db
+      .insert(serviceSignatures)
+      .values(signature)
+      .returning();
+    return newSignature;
+  }
+
+  async updateServiceSignature(
+    id: string,
+    tenantId: string,
+    data: Partial<ServiceSignature>
+  ): Promise<ServiceSignature | null> {
+    const [updatedSignature] = await db
+      .update(serviceSignatures)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(serviceSignatures.id, id),
+          eq(serviceSignatures.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedSignature || null;
+  }
+
+  async deleteServiceSignature(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(serviceSignatures)
+      .where(
+        and(
+          eq(serviceSignatures.id, id),
+          eq(serviceSignatures.tenantId, tenantId)
+        )
+      );
+  }
+
+  // Installation Checklists operations
+  async getInstallationChecklists(
+    installationId: string,
+    tenantId: string
+  ): Promise<InstallationChecklist[]> {
+    return await db
+      .select()
+      .from(installationChecklists)
+      .where(
+        and(
+          eq(installationChecklists.installationId, installationId),
+          eq(installationChecklists.tenantId, tenantId)
+        )
+      )
+      .orderBy(asc(installationChecklists.stepOrder));
+  }
+
+  async getInstallationChecklistById(
+    id: string,
+    tenantId: string
+  ): Promise<InstallationChecklist | null> {
+    const [checklist] = await db
+      .select()
+      .from(installationChecklists)
+      .where(
+        and(
+          eq(installationChecklists.id, id),
+          eq(installationChecklists.tenantId, tenantId)
+        )
+      );
+    return checklist || null;
+  }
+
+  async createInstallationChecklist(
+    checklist: InsertInstallationChecklist
+  ): Promise<InstallationChecklist> {
+    const [newChecklist] = await db
+      .insert(installationChecklists)
+      .values(checklist)
+      .returning();
+    return newChecklist;
+  }
+
+  async updateInstallationChecklist(
+    id: string,
+    tenantId: string,
+    data: Partial<InstallationChecklist>
+  ): Promise<InstallationChecklist | null> {
+    const [updatedChecklist] = await db
+      .update(installationChecklists)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(installationChecklists.id, id),
+          eq(installationChecklists.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedChecklist || null;
+  }
+
+  async deleteInstallationChecklist(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(installationChecklists)
+      .where(
+        and(
+          eq(installationChecklists.id, id),
+          eq(installationChecklists.tenantId, tenantId)
+        )
+      );
+  }
+
+  async bulkCreateInstallationChecklists(
+    checklists: InsertInstallationChecklist[]
+  ): Promise<InstallationChecklist[]> {
+    const newChecklists = await db
+      .insert(installationChecklists)
+      .values(checklists)
+      .returning();
+    return newChecklists;
   }
 }
 
