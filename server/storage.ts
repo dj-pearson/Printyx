@@ -342,6 +342,30 @@ import {
   type ManufacturerOrderException,
   type InsertManufacturerOrderException,
 } from "@shared/manufacturer-order-schema";
+import {
+  // GPS Tracking schemas
+  technicianLocations,
+  locationHistory as gpsLocationHistory,
+  routeAssignments,
+  routeDeviations,
+  etaCalculations,
+  geofences,
+  geofenceEvents,
+  type TechnicianLocation,
+  type InsertTechnicianLocation,
+  type LocationHistory as GpsLocationHistory,
+  type InsertLocationHistory as InsertGpsLocationHistory,
+  type RouteAssignment,
+  type InsertRouteAssignment,
+  type RouteDeviation,
+  type InsertRouteDeviation,
+  type EtaCalculation,
+  type InsertEtaCalculation,
+  type Geofence,
+  type InsertGeofence,
+  type GeofenceEvent,
+  type InsertGeofenceEvent,
+} from "@shared/gps-tracking-schema";
 import { db } from "./db";
 import {
   eq,
@@ -1172,6 +1196,67 @@ export interface IStorage {
     exceptionRate: number;
     topManufacturers: Array<{ manufacturerName: string; orderCount: number; totalValue: number }>;
   }>;
+
+  // ==================== GPS Tracking ====================
+  // Technician Locations (Current Position)
+  getTechnicianLocation(technicianId: string, tenantId: string): Promise<TechnicianLocation | null>;
+  updateTechnicianLocation(technicianId: string, tenantId: string, data: Partial<InsertTechnicianLocation>): Promise<TechnicianLocation>;
+  getTechniciansByStatus(tenantId: string, status: string): Promise<TechnicianLocation[]>;
+  getTechniciansNearLocation(tenantId: string, lat: number, lng: number, radiusMeters: number): Promise<TechnicianLocation[]>;
+  getTechnicianLocationHistory(technicianId: string, tenantId: string, startDate: Date, endDate: Date): Promise<GpsLocationHistory[]>;
+  createTechnicianLocation(data: InsertTechnicianLocation): Promise<TechnicianLocation>;
+  deleteTechnicianLocation(technicianId: string, tenantId: string): Promise<void>;
+  getAllTechnicianLocations(tenantId: string): Promise<TechnicianLocation[]>;
+
+  // Location History (Historical Tracking)
+  createLocationHistory(data: InsertGpsLocationHistory): Promise<GpsLocationHistory>;
+  getLocationHistory(technicianId: string, tenantId: string, filters?: { startDate?: Date; endDate?: Date; activityType?: string; ticketId?: string }): Promise<GpsLocationHistory[]>;
+  getActivityTimeline(technicianId: string, tenantId: string, ticketId: string): Promise<GpsLocationHistory[]>;
+  calculateDistanceTraveled(technicianId: string, tenantId: string, startDate: Date, endDate: Date): Promise<number>;
+  bulkCreateLocationHistory(data: InsertGpsLocationHistory[]): Promise<GpsLocationHistory[]>;
+
+  // Route Assignments
+  getRouteAssignments(tenantId: string, filters?: { technicianId?: string; routeDate?: Date; routeStatus?: string }): Promise<RouteAssignment[]>;
+  getRouteAssignment(routeId: string, tenantId: string): Promise<RouteAssignment | null>;
+  createRouteAssignment(data: InsertRouteAssignment): Promise<RouteAssignment>;
+  updateRouteAssignment(routeId: string, tenantId: string, data: Partial<RouteAssignment>): Promise<RouteAssignment | null>;
+  deleteRouteAssignment(routeId: string, tenantId: string): Promise<void>;
+  startRoute(routeId: string, tenantId: string): Promise<RouteAssignment | null>;
+  completeRoute(routeId: string, tenantId: string): Promise<RouteAssignment | null>;
+  updateRouteProgress(routeId: string, tenantId: string, stopData: { stopId: string; status: string; completedAt: Date }): Promise<RouteAssignment | null>;
+
+  // Route Deviations
+  getRouteDeviations(tenantId: string, filters?: { routeId?: string; technicianId?: string; deviationType?: string; severity?: string; resolved?: boolean }): Promise<RouteDeviation[]>;
+  getRouteDeviation(deviationId: string, tenantId: string): Promise<RouteDeviation | null>;
+  createRouteDeviation(data: InsertRouteDeviation): Promise<RouteDeviation>;
+  acknowledgeDeviation(deviationId: string, tenantId: string, userId: string): Promise<RouteDeviation | null>;
+  resolveDeviation(deviationId: string, tenantId: string, userId: string, notes: string): Promise<RouteDeviation | null>;
+  getUnresolvedDeviations(tenantId: string, filters?: { severity?: string; deviationType?: string }): Promise<RouteDeviation[]>;
+  updateRouteDeviation(deviationId: string, tenantId: string, data: Partial<RouteDeviation>): Promise<RouteDeviation | null>;
+
+  // ETA Calculations
+  getEtaCalculations(tenantId: string, filters?: { ticketId?: string; technicianId?: string; routeId?: string }): Promise<EtaCalculation[]>;
+  getEtaCalculation(etaId: string, tenantId: string): Promise<EtaCalculation | null>;
+  createEtaCalculation(data: InsertEtaCalculation): Promise<EtaCalculation>;
+  updateEtaCalculation(etaId: string, tenantId: string, data: Partial<EtaCalculation>): Promise<EtaCalculation | null>;
+  getLatestEtaForTicket(ticketId: string, technicianId: string, tenantId: string): Promise<EtaCalculation | null>;
+  updateActualArrival(etaId: string, tenantId: string, actualTime: Date): Promise<EtaCalculation | null>;
+  getEtaAccuracyMetrics(tenantId: string, technicianId?: string, startDate?: Date, endDate?: Date): Promise<{ totalEtas: number; averageAccuracyMinutes: number; onTimePercentage: number }>;
+
+  // Geofences
+  getGeofences(tenantId: string, filters?: { geofenceType?: string; isActive?: boolean; customerId?: string }): Promise<Geofence[]>;
+  getGeofence(geofenceId: string, tenantId: string): Promise<Geofence | null>;
+  createGeofence(data: InsertGeofence): Promise<Geofence>;
+  updateGeofence(geofenceId: string, tenantId: string, data: Partial<Geofence>): Promise<Geofence | null>;
+  deleteGeofence(geofenceId: string, tenantId: string): Promise<void>;
+  checkGeofenceProximity(lat: number, lng: number, tenantId: string): Promise<Geofence[]>;
+
+  // Geofence Events
+  getGeofenceEvents(tenantId: string, filters?: { geofenceId?: string; technicianId?: string; eventType?: string; ticketId?: string }): Promise<GeofenceEvent[]>;
+  createGeofenceEvent(data: InsertGeofenceEvent): Promise<GeofenceEvent>;
+  getGeofenceEventsForTechnician(technicianId: string, tenantId: string, filters?: { startDate?: Date; endDate?: Date; eventType?: string }): Promise<GeofenceEvent[]>;
+  getGeofenceEventsForTicket(ticketId: string, tenantId: string): Promise<GeofenceEvent[]>;
+  getGeofenceEvent(eventId: string, tenantId: string): Promise<GeofenceEvent | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -8932,6 +9017,955 @@ export class DatabaseStorage implements IStorage {
       exceptionRate,
       topManufacturers,
     };
+  }
+
+  // ==================== GPS Tracking Implementation ====================
+  
+  // Technician Locations (Current Position) - 8 methods
+  async getTechnicianLocation(technicianId: string, tenantId: string): Promise<TechnicianLocation | null> {
+    const [location] = await db
+      .select()
+      .from(technicianLocations)
+      .where(
+        and(
+          eq(technicianLocations.tenantId, tenantId),
+          eq(technicianLocations.technicianId, technicianId)
+        )
+      )
+      .limit(1);
+    return location || null;
+  }
+
+  async updateTechnicianLocation(
+    technicianId: string,
+    tenantId: string,
+    data: Partial<InsertTechnicianLocation>
+  ): Promise<TechnicianLocation> {
+    // Check if location exists
+    const existing = await this.getTechnicianLocation(technicianId, tenantId);
+    
+    if (existing) {
+      // Update existing location
+      const [updated] = await db
+        .update(technicianLocations)
+        .set({ ...data, updatedAt: new Date() })
+        .where(
+          and(
+            eq(technicianLocations.tenantId, tenantId),
+            eq(technicianLocations.technicianId, technicianId)
+          )
+        )
+        .returning();
+      return updated;
+    } else {
+      // Create new location
+      const [created] = await db
+        .insert(technicianLocations)
+        .values({ ...data, tenantId, technicianId } as any)
+        .returning();
+      return created;
+    }
+  }
+
+  async getTechniciansByStatus(tenantId: string, status: string): Promise<TechnicianLocation[]> {
+    return await db
+      .select()
+      .from(technicianLocations)
+      .where(
+        and(
+          eq(technicianLocations.tenantId, tenantId),
+          eq(technicianLocations.status, status)
+        )
+      )
+      .orderBy(desc(technicianLocations.timestamp));
+  }
+
+  async getTechniciansNearLocation(
+    tenantId: string,
+    lat: number,
+    lng: number,
+    radiusMeters: number
+  ): Promise<TechnicianLocation[]> {
+    // Using Haversine formula to calculate distance
+    // For production use, consider using PostGIS extension
+    const allLocations = await db
+      .select()
+      .from(technicianLocations)
+      .where(eq(technicianLocations.tenantId, tenantId));
+
+    // Filter locations within radius using Haversine formula
+    const nearbyLocations = allLocations.filter((loc) => {
+      const locLat = Number(loc.latitude);
+      const locLng = Number(loc.longitude);
+      const distance = this.calculateHaversineDistance(lat, lng, locLat, locLng);
+      return distance <= radiusMeters;
+    });
+
+    return nearbyLocations;
+  }
+
+  async getTechnicianLocationHistory(
+    technicianId: string,
+    tenantId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<GpsLocationHistory[]> {
+    return await db
+      .select()
+      .from(gpsLocationHistory)
+      .where(
+        and(
+          eq(gpsLocationHistory.tenantId, tenantId),
+          eq(gpsLocationHistory.technicianId, technicianId),
+          gte(gpsLocationHistory.timestamp, startDate),
+          lte(gpsLocationHistory.timestamp, endDate)
+        )
+      )
+      .orderBy(desc(gpsLocationHistory.timestamp));
+  }
+
+  async createTechnicianLocation(data: InsertTechnicianLocation): Promise<TechnicianLocation> {
+    const [created] = await db
+      .insert(technicianLocations)
+      .values(data as any)
+      .returning();
+    return created;
+  }
+
+  async deleteTechnicianLocation(technicianId: string, tenantId: string): Promise<void> {
+    await db
+      .delete(technicianLocations)
+      .where(
+        and(
+          eq(technicianLocations.tenantId, tenantId),
+          eq(technicianLocations.technicianId, technicianId)
+        )
+      );
+  }
+
+  async getAllTechnicianLocations(tenantId: string): Promise<TechnicianLocation[]> {
+    return await db
+      .select()
+      .from(technicianLocations)
+      .where(eq(technicianLocations.tenantId, tenantId))
+      .orderBy(desc(technicianLocations.timestamp));
+  }
+
+  // Location History (Historical Tracking) - 5 methods
+  async createLocationHistory(data: InsertGpsLocationHistory): Promise<GpsLocationHistory> {
+    const [created] = await db
+      .insert(gpsLocationHistory)
+      .values(data as any)
+      .returning();
+    return created;
+  }
+
+  async getLocationHistory(
+    technicianId: string,
+    tenantId: string,
+    filters?: { startDate?: Date; endDate?: Date; activityType?: string; ticketId?: string }
+  ): Promise<GpsLocationHistory[]> {
+    const conditions = [
+      eq(gpsLocationHistory.tenantId, tenantId),
+      eq(gpsLocationHistory.technicianId, technicianId),
+    ];
+
+    if (filters?.startDate) {
+      conditions.push(gte(gpsLocationHistory.timestamp, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(gpsLocationHistory.timestamp, filters.endDate));
+    }
+    if (filters?.activityType) {
+      conditions.push(eq(gpsLocationHistory.activityType, filters.activityType));
+    }
+    if (filters?.ticketId) {
+      conditions.push(eq(gpsLocationHistory.ticketId, filters.ticketId));
+    }
+
+    return await db
+      .select()
+      .from(gpsLocationHistory)
+      .where(and(...conditions))
+      .orderBy(desc(gpsLocationHistory.timestamp));
+  }
+
+  async getActivityTimeline(
+    technicianId: string,
+    tenantId: string,
+    ticketId: string
+  ): Promise<GpsLocationHistory[]> {
+    return await db
+      .select()
+      .from(gpsLocationHistory)
+      .where(
+        and(
+          eq(gpsLocationHistory.tenantId, tenantId),
+          eq(gpsLocationHistory.technicianId, technicianId),
+          eq(gpsLocationHistory.ticketId, ticketId)
+        )
+      )
+      .orderBy(asc(gpsLocationHistory.timestamp));
+  }
+
+  async calculateDistanceTraveled(
+    technicianId: string,
+    tenantId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<number> {
+    const history = await this.getTechnicianLocationHistory(
+      technicianId,
+      tenantId,
+      startDate,
+      endDate
+    );
+
+    // Sum up distanceFromPrevious for all records
+    let totalDistance = 0;
+    history.forEach((record) => {
+      if (record.distanceFromPrevious) {
+        totalDistance += Number(record.distanceFromPrevious);
+      }
+    });
+
+    return totalDistance;
+  }
+
+  async bulkCreateLocationHistory(data: InsertGpsLocationHistory[]): Promise<GpsLocationHistory[]> {
+    if (data.length === 0) return [];
+    return await db
+      .insert(gpsLocationHistory)
+      .values(data as any)
+      .returning();
+  }
+
+  // Route Assignments - 8 methods
+  async getRouteAssignments(
+    tenantId: string,
+    filters?: { technicianId?: string; routeDate?: Date; routeStatus?: string }
+  ): Promise<RouteAssignment[]> {
+    const conditions = [eq(routeAssignments.tenantId, tenantId)];
+
+    if (filters?.technicianId) {
+      conditions.push(eq(routeAssignments.technicianId, filters.technicianId));
+    }
+    if (filters?.routeDate) {
+      conditions.push(eq(routeAssignments.routeDate, filters.routeDate));
+    }
+    if (filters?.routeStatus) {
+      conditions.push(eq(routeAssignments.routeStatus, filters.routeStatus));
+    }
+
+    return await db
+      .select()
+      .from(routeAssignments)
+      .where(and(...conditions))
+      .orderBy(desc(routeAssignments.routeDate));
+  }
+
+  async getRouteAssignment(routeId: string, tenantId: string): Promise<RouteAssignment | null> {
+    const [route] = await db
+      .select()
+      .from(routeAssignments)
+      .where(
+        and(
+          eq(routeAssignments.id, routeId),
+          eq(routeAssignments.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    return route || null;
+  }
+
+  async createRouteAssignment(data: InsertRouteAssignment): Promise<RouteAssignment> {
+    const [created] = await db
+      .insert(routeAssignments)
+      .values(data as any)
+      .returning();
+    return created;
+  }
+
+  async updateRouteAssignment(
+    routeId: string,
+    tenantId: string,
+    data: Partial<RouteAssignment>
+  ): Promise<RouteAssignment | null> {
+    const [updated] = await db
+      .update(routeAssignments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(routeAssignments.id, routeId),
+          eq(routeAssignments.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async deleteRouteAssignment(routeId: string, tenantId: string): Promise<void> {
+    await db
+      .delete(routeAssignments)
+      .where(
+        and(
+          eq(routeAssignments.id, routeId),
+          eq(routeAssignments.tenantId, tenantId)
+        )
+      );
+  }
+
+  async startRoute(routeId: string, tenantId: string): Promise<RouteAssignment | null> {
+    const [updated] = await db
+      .update(routeAssignments)
+      .set({
+        routeStatus: "in_progress",
+        routeStartTime: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(routeAssignments.id, routeId),
+          eq(routeAssignments.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async completeRoute(routeId: string, tenantId: string): Promise<RouteAssignment | null> {
+    const route = await this.getRouteAssignment(routeId, tenantId);
+    if (!route) return null;
+
+    const startTime = route.routeStartTime ? new Date(route.routeStartTime) : new Date();
+    const endTime = new Date();
+    const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+
+    const [updated] = await db
+      .update(routeAssignments)
+      .set({
+        routeStatus: "completed",
+        routeEndTime: endTime,
+        actualDuration: durationMinutes,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(routeAssignments.id, routeId),
+          eq(routeAssignments.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async updateRouteProgress(
+    routeId: string,
+    tenantId: string,
+    stopData: { stopId: string; status: string; completedAt: Date }
+  ): Promise<RouteAssignment | null> {
+    const route = await this.getRouteAssignment(routeId, tenantId);
+    if (!route) return null;
+
+    // Update waypoints array with the new stop status
+    const waypoints = route.waypoints as any[];
+    const updatedWaypoints = waypoints.map((waypoint) => {
+      if (waypoint.id === stopData.stopId || waypoint.ticketId === stopData.stopId) {
+        return {
+          ...waypoint,
+          status: stopData.status,
+          completedAt: stopData.completedAt,
+        };
+      }
+      return waypoint;
+    });
+
+    // Count completed stops
+    const completedStops = updatedWaypoints.filter(
+      (w) => w.status === "completed"
+    ).length;
+
+    const [updated] = await db
+      .update(routeAssignments)
+      .set({
+        waypoints: updatedWaypoints as any,
+        completedStops,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(routeAssignments.id, routeId),
+          eq(routeAssignments.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  // Route Deviations - 7 methods
+  async getRouteDeviations(
+    tenantId: string,
+    filters?: {
+      routeId?: string;
+      technicianId?: string;
+      deviationType?: string;
+      severity?: string;
+      resolved?: boolean;
+    }
+  ): Promise<RouteDeviation[]> {
+    const conditions = [eq(routeDeviations.tenantId, tenantId)];
+
+    if (filters?.routeId) {
+      conditions.push(eq(routeDeviations.routeId, filters.routeId));
+    }
+    if (filters?.technicianId) {
+      conditions.push(eq(routeDeviations.technicianId, filters.technicianId));
+    }
+    if (filters?.deviationType) {
+      conditions.push(eq(routeDeviations.deviationType, filters.deviationType));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(routeDeviations.severity, filters.severity));
+    }
+    if (filters?.resolved !== undefined) {
+      conditions.push(eq(routeDeviations.resolved, filters.resolved));
+    }
+
+    return await db
+      .select()
+      .from(routeDeviations)
+      .where(and(...conditions))
+      .orderBy(desc(routeDeviations.detectedAt));
+  }
+
+  async getRouteDeviation(deviationId: string, tenantId: string): Promise<RouteDeviation | null> {
+    const [deviation] = await db
+      .select()
+      .from(routeDeviations)
+      .where(
+        and(
+          eq(routeDeviations.id, deviationId),
+          eq(routeDeviations.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    return deviation || null;
+  }
+
+  async createRouteDeviation(data: InsertRouteDeviation): Promise<RouteDeviation> {
+    const [created] = await db
+      .insert(routeDeviations)
+      .values(data as any)
+      .returning();
+    return created;
+  }
+
+  async acknowledgeDeviation(
+    deviationId: string,
+    tenantId: string,
+    userId: string
+  ): Promise<RouteDeviation | null> {
+    const [updated] = await db
+      .update(routeDeviations)
+      .set({
+        acknowledged: true,
+        acknowledgedAt: new Date(),
+        acknowledgedBy: userId,
+      })
+      .where(
+        and(
+          eq(routeDeviations.id, deviationId),
+          eq(routeDeviations.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async resolveDeviation(
+    deviationId: string,
+    tenantId: string,
+    userId: string,
+    notes: string
+  ): Promise<RouteDeviation | null> {
+    const [updated] = await db
+      .update(routeDeviations)
+      .set({
+        resolved: true,
+        resolvedAt: new Date(),
+        resolutionNotes: notes,
+        acknowledgedBy: userId, // Also mark as acknowledged when resolved
+        acknowledged: true,
+        acknowledgedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(routeDeviations.id, deviationId),
+          eq(routeDeviations.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async getUnresolvedDeviations(
+    tenantId: string,
+    filters?: { severity?: string; deviationType?: string }
+  ): Promise<RouteDeviation[]> {
+    const conditions = [
+      eq(routeDeviations.tenantId, tenantId),
+      eq(routeDeviations.resolved, false),
+    ];
+
+    if (filters?.severity) {
+      conditions.push(eq(routeDeviations.severity, filters.severity));
+    }
+    if (filters?.deviationType) {
+      conditions.push(eq(routeDeviations.deviationType, filters.deviationType));
+    }
+
+    return await db
+      .select()
+      .from(routeDeviations)
+      .where(and(...conditions))
+      .orderBy(desc(routeDeviations.detectedAt));
+  }
+
+  async updateRouteDeviation(
+    deviationId: string,
+    tenantId: string,
+    data: Partial<RouteDeviation>
+  ): Promise<RouteDeviation | null> {
+    const [updated] = await db
+      .update(routeDeviations)
+      .set(data)
+      .where(
+        and(
+          eq(routeDeviations.id, deviationId),
+          eq(routeDeviations.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  // ETA Calculations - 7 methods
+  async getEtaCalculations(
+    tenantId: string,
+    filters?: { ticketId?: string; technicianId?: string; routeId?: string }
+  ): Promise<EtaCalculation[]> {
+    const conditions = [eq(etaCalculations.tenantId, tenantId)];
+
+    if (filters?.ticketId) {
+      conditions.push(eq(etaCalculations.ticketId, filters.ticketId));
+    }
+    if (filters?.technicianId) {
+      conditions.push(eq(etaCalculations.technicianId, filters.technicianId));
+    }
+    if (filters?.routeId) {
+      conditions.push(eq(etaCalculations.routeId, filters.routeId));
+    }
+
+    return await db
+      .select()
+      .from(etaCalculations)
+      .where(and(...conditions))
+      .orderBy(desc(etaCalculations.calculatedAt));
+  }
+
+  async getEtaCalculation(etaId: string, tenantId: string): Promise<EtaCalculation | null> {
+    const [eta] = await db
+      .select()
+      .from(etaCalculations)
+      .where(
+        and(
+          eq(etaCalculations.id, etaId),
+          eq(etaCalculations.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    return eta || null;
+  }
+
+  async createEtaCalculation(data: InsertEtaCalculation): Promise<EtaCalculation> {
+    const [created] = await db
+      .insert(etaCalculations)
+      .values(data as any)
+      .returning();
+    return created;
+  }
+
+  async updateEtaCalculation(
+    etaId: string,
+    tenantId: string,
+    data: Partial<EtaCalculation>
+  ): Promise<EtaCalculation | null> {
+    const [updated] = await db
+      .update(etaCalculations)
+      .set(data)
+      .where(
+        and(
+          eq(etaCalculations.id, etaId),
+          eq(etaCalculations.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async getLatestEtaForTicket(
+    ticketId: string,
+    technicianId: string,
+    tenantId: string
+  ): Promise<EtaCalculation | null> {
+    const [eta] = await db
+      .select()
+      .from(etaCalculations)
+      .where(
+        and(
+          eq(etaCalculations.tenantId, tenantId),
+          eq(etaCalculations.ticketId, ticketId),
+          eq(etaCalculations.technicianId, technicianId)
+        )
+      )
+      .orderBy(desc(etaCalculations.calculatedAt))
+      .limit(1);
+    return eta || null;
+  }
+
+  async updateActualArrival(
+    etaId: string,
+    tenantId: string,
+    actualTime: Date
+  ): Promise<EtaCalculation | null> {
+    const eta = await this.getEtaCalculation(etaId, tenantId);
+    if (!eta) return null;
+
+    // Calculate accuracy
+    const estimatedTime = new Date(eta.estimatedArrivalTime);
+    const accuracyMinutes = Math.floor(
+      (actualTime.getTime() - estimatedTime.getTime()) / 60000
+    );
+
+    const [updated] = await db
+      .update(etaCalculations)
+      .set({
+        actualArrivalTime: actualTime,
+        accuracyMinutes,
+      })
+      .where(
+        and(
+          eq(etaCalculations.id, etaId),
+          eq(etaCalculations.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async getEtaAccuracyMetrics(
+    tenantId: string,
+    technicianId?: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<{
+    totalEtas: number;
+    averageAccuracyMinutes: number;
+    onTimePercentage: number;
+  }> {
+    const conditions = [
+      eq(etaCalculations.tenantId, tenantId),
+      isNotNull(etaCalculations.actualArrivalTime),
+    ];
+
+    if (technicianId) {
+      conditions.push(eq(etaCalculations.technicianId, technicianId));
+    }
+    if (startDate) {
+      conditions.push(gte(etaCalculations.calculatedAt, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(etaCalculations.calculatedAt, endDate));
+    }
+
+    const etas = await db
+      .select()
+      .from(etaCalculations)
+      .where(and(...conditions));
+
+    const totalEtas = etas.length;
+    
+    if (totalEtas === 0) {
+      return {
+        totalEtas: 0,
+        averageAccuracyMinutes: 0,
+        onTimePercentage: 0,
+      };
+    }
+
+    const totalAccuracyMinutes = etas.reduce(
+      (sum, eta) => sum + Math.abs(eta.accuracyMinutes || 0),
+      0
+    );
+    const averageAccuracyMinutes = totalAccuracyMinutes / totalEtas;
+
+    // Consider "on time" if within 15 minutes of estimated arrival
+    const onTimeEtas = etas.filter(
+      (eta) => Math.abs(eta.accuracyMinutes || 0) <= 15
+    );
+    const onTimePercentage = (onTimeEtas.length / totalEtas) * 100;
+
+    return {
+      totalEtas,
+      averageAccuracyMinutes,
+      onTimePercentage,
+    };
+  }
+
+  // Geofences - 6 methods
+  async getGeofences(
+    tenantId: string,
+    filters?: { geofenceType?: string; isActive?: boolean; customerId?: string }
+  ): Promise<Geofence[]> {
+    const conditions = [eq(geofences.tenantId, tenantId)];
+
+    if (filters?.geofenceType) {
+      conditions.push(eq(geofences.geofenceType, filters.geofenceType));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(geofences.isActive, filters.isActive));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(geofences.customerId, filters.customerId));
+    }
+
+    return await db
+      .select()
+      .from(geofences)
+      .where(and(...conditions))
+      .orderBy(desc(geofences.createdAt));
+  }
+
+  async getGeofence(geofenceId: string, tenantId: string): Promise<Geofence | null> {
+    const [geofence] = await db
+      .select()
+      .from(geofences)
+      .where(
+        and(
+          eq(geofences.id, geofenceId),
+          eq(geofences.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    return geofence || null;
+  }
+
+  async createGeofence(data: InsertGeofence): Promise<Geofence> {
+    const [created] = await db
+      .insert(geofences)
+      .values(data as any)
+      .returning();
+    return created;
+  }
+
+  async updateGeofence(
+    geofenceId: string,
+    tenantId: string,
+    data: Partial<Geofence>
+  ): Promise<Geofence | null> {
+    const [updated] = await db
+      .update(geofences)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(geofences.id, geofenceId),
+          eq(geofences.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updated || null;
+  }
+
+  async deleteGeofence(geofenceId: string, tenantId: string): Promise<void> {
+    await db
+      .delete(geofences)
+      .where(
+        and(
+          eq(geofences.id, geofenceId),
+          eq(geofences.tenantId, tenantId)
+        )
+      );
+  }
+
+  async checkGeofenceProximity(
+    lat: number,
+    lng: number,
+    tenantId: string
+  ): Promise<Geofence[]> {
+    const activeGeofences = await db
+      .select()
+      .from(geofences)
+      .where(
+        and(
+          eq(geofences.tenantId, tenantId),
+          eq(geofences.isActive, true)
+        )
+      );
+
+    // Check which geofences contain the point
+    const matchingGeofences = activeGeofences.filter((geofence) => {
+      const centerLat = Number(geofence.centerLatitude);
+      const centerLng = Number(geofence.centerLongitude);
+      
+      if (geofence.radiusMeters) {
+        // Circular geofence
+        const distance = this.calculateHaversineDistance(lat, lng, centerLat, centerLng);
+        return distance <= Number(geofence.radiusMeters);
+      } else if (geofence.polygonCoordinates) {
+        // Polygon geofence - use point-in-polygon algorithm
+        return this.isPointInPolygon(lat, lng, geofence.polygonCoordinates as any);
+      }
+      return false;
+    });
+
+    return matchingGeofences;
+  }
+
+  // Geofence Events - 5 methods
+  async getGeofenceEvents(
+    tenantId: string,
+    filters?: {
+      geofenceId?: string;
+      technicianId?: string;
+      eventType?: string;
+      ticketId?: string;
+    }
+  ): Promise<GeofenceEvent[]> {
+    const conditions = [eq(geofenceEvents.tenantId, tenantId)];
+
+    if (filters?.geofenceId) {
+      conditions.push(eq(geofenceEvents.geofenceId, filters.geofenceId));
+    }
+    if (filters?.technicianId) {
+      conditions.push(eq(geofenceEvents.technicianId, filters.technicianId));
+    }
+    if (filters?.eventType) {
+      conditions.push(eq(geofenceEvents.eventType, filters.eventType));
+    }
+    if (filters?.ticketId) {
+      conditions.push(eq(geofenceEvents.ticketId, filters.ticketId));
+    }
+
+    return await db
+      .select()
+      .from(geofenceEvents)
+      .where(and(...conditions))
+      .orderBy(desc(geofenceEvents.createdAt));
+  }
+
+  async createGeofenceEvent(data: InsertGeofenceEvent): Promise<GeofenceEvent> {
+    const [created] = await db
+      .insert(geofenceEvents)
+      .values(data as any)
+      .returning();
+    return created;
+  }
+
+  async getGeofenceEventsForTechnician(
+    technicianId: string,
+    tenantId: string,
+    filters?: { startDate?: Date; endDate?: Date; eventType?: string }
+  ): Promise<GeofenceEvent[]> {
+    const conditions = [
+      eq(geofenceEvents.tenantId, tenantId),
+      eq(geofenceEvents.technicianId, technicianId),
+    ];
+
+    if (filters?.startDate) {
+      conditions.push(gte(geofenceEvents.createdAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(geofenceEvents.createdAt, filters.endDate));
+    }
+    if (filters?.eventType) {
+      conditions.push(eq(geofenceEvents.eventType, filters.eventType));
+    }
+
+    return await db
+      .select()
+      .from(geofenceEvents)
+      .where(and(...conditions))
+      .orderBy(desc(geofenceEvents.createdAt));
+  }
+
+  async getGeofenceEventsForTicket(
+    ticketId: string,
+    tenantId: string
+  ): Promise<GeofenceEvent[]> {
+    return await db
+      .select()
+      .from(geofenceEvents)
+      .where(
+        and(
+          eq(geofenceEvents.tenantId, tenantId),
+          eq(geofenceEvents.ticketId, ticketId)
+        )
+      )
+      .orderBy(asc(geofenceEvents.createdAt));
+  }
+
+  async getGeofenceEvent(eventId: string, tenantId: string): Promise<GeofenceEvent | null> {
+    const [event] = await db
+      .select()
+      .from(geofenceEvents)
+      .where(
+        and(
+          eq(geofenceEvents.id, eventId),
+          eq(geofenceEvents.tenantId, tenantId)
+        )
+      )
+      .limit(1);
+    return event || null;
+  }
+
+  // Helper methods for GPS calculations
+  private calculateHaversineDistance(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number
+  ): number {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  private isPointInPolygon(lat: number, lng: number, polygon: Array<{ lat: number; lng: number }>): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lng;
+      const yi = polygon[i].lat;
+      const xj = polygon[j].lng;
+      const yj = polygon[j].lat;
+
+      const intersect =
+        yi > lat !== yj > lat &&
+        lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
   }
 }
 
