@@ -6937,3 +6937,200 @@ export const insertSignatureAuditLogSchema = createInsertSchema(signatureAuditLo
   id: true,
   createdAt: true,
 });
+
+// ============================================================================
+// FIELD SERVICE PHOTO & SIGNATURE CAPTURE SYSTEM
+// ============================================================================
+
+// Installations table - Equipment installation tracking
+export const installations = pgTable("installations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Installation details
+  installationNumber: varchar("installation_number").notNull(),
+  installationType: varchar("installation_type").notNull(), // new_installation, replacement, relocation, upgrade
+  
+  // Related records
+  customerId: varchar("customer_id").notNull().references(() => businessRecords.id, { onDelete: "restrict" }),
+  equipmentId: varchar("equipment_id").references(() => equipment.id, { onDelete: "restrict" }),
+  serviceTicketId: varchar("service_ticket_id").references(() => serviceTickets.id, { onDelete: "set null" }),
+  quoteId: varchar("quote_id"),
+  
+  // Scheduling
+  scheduledDate: timestamp("scheduled_date"),
+  completedDate: timestamp("completed_date"),
+  estimatedDuration: integer("estimated_duration"), // minutes
+  
+  // Assignment
+  assignedTechnicianId: varchar("assigned_technician_id").references(() => technicians.id, { onDelete: "set null" }),
+  assistingTechnicianIds: text("assisting_technician_ids").array(),
+  
+  // Location
+  installationAddress: text("installation_address").notNull(),
+  gpsLatitude: decimal("gps_latitude", { precision: 10, scale: 8 }),
+  gpsLongitude: decimal("gps_longitude", { precision: 11, scale: 8 }),
+  
+  // Status tracking
+  status: varchar("status").notNull().default("scheduled"), // scheduled, in_progress, completed, cancelled
+  
+  // Equipment details
+  serialNumber: varchar("serial_number"),
+  modelNumber: varchar("model_number"),
+  
+  // Installation specifics
+  networkConfigured: boolean("network_configured").default(false),
+  driversInstalled: boolean("drivers_installed").default(false),
+  userTrainingCompleted: boolean("user_training_completed").default(false),
+  
+  // Notes
+  installationNotes: text("installation_notes"),
+  technicianNotes: text("technician_notes"),
+  
+  // Customer info
+  customerName: varchar("customer_name"),
+  customerEmail: varchar("customer_email"),
+  customerPhone: varchar("customer_phone"),
+  
+  // Metadata
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("installations_tenant_idx").on(table.tenantId),
+  numberIdx: index("installations_number_idx").on(table.tenantId, table.installationNumber),
+  numberUnique: unique("installations_number_unique").on(table.tenantId, table.installationNumber),
+  customerIdx: index("installations_customer_idx").on(table.customerId),
+  statusIdx: index("installations_status_idx").on(table.status),
+  scheduledDateIdx: index("installations_scheduled_date_idx").on(table.scheduledDate),
+}));
+
+// Service Signatures table - Customer signatures for service completion
+export const serviceSignatures = pgTable("service_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Related records
+  serviceTicketId: varchar("service_ticket_id").references(() => serviceTickets.id, { onDelete: "cascade" }),
+  installationId: varchar("installation_id").references(() => installations.id, { onDelete: "cascade" }),
+  
+  // Signature details
+  signatureType: varchar("signature_type").notNull(), // completion, authorization, acknowledgment, delivery
+  
+  // Signer information
+  signerName: varchar("signer_name").notNull(),
+  signerTitle: varchar("signer_title"), // Manager, Owner, etc.
+  signerEmail: varchar("signer_email"),
+  signerPhone: varchar("signer_phone"),
+  
+  // Signature data
+  signatureDataUrl: text("signature_data_url").notNull(), // Base64 or object storage URL
+  signatureMethod: varchar("signature_method").notNull(), // drawn, typed, uploaded
+  
+  // GPS and location
+  gpsLatitude: decimal("gps_latitude", { precision: 10, scale: 8 }),
+  gpsLongitude: decimal("gps_longitude", { precision: 11, scale: 8 }),
+  locationAddress: text("location_address"),
+  
+  // Technical tracking
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  deviceInfo: jsonb("device_info"),
+  
+  // Timestamp
+  signedAt: timestamp("signed_at").notNull(),
+  capturedBy: varchar("captured_by").notNull(), // Technician user ID
+  
+  // Agreement/consent text
+  agreementText: text("agreement_text"), // What the customer agreed to
+  consentGiven: boolean("consent_given").default(true),
+  
+  // Verification
+  verified: boolean("verified").default(false),
+  verifiedBy: varchar("verified_by"),
+  verifiedAt: timestamp("verified_at"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("service_signatures_tenant_idx").on(table.tenantId),
+  ticketIdx: index("service_signatures_ticket_idx").on(table.serviceTicketId),
+  installationIdx: index("service_signatures_installation_idx").on(table.installationId),
+  signatureTypeIdx: index("service_signatures_type_idx").on(table.signatureType),
+  signedAtIdx: index("service_signatures_signed_at_idx").on(table.signedAt),
+}));
+
+// Installation Checklists table - Step-by-step verification for installations
+export const installationChecklists = pgTable("installation_checklists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Related records
+  installationId: varchar("installation_id").notNull().references(() => installations.id, { onDelete: "cascade" }),
+  
+  // Checklist item
+  itemOrder: integer("item_order").notNull(),
+  category: varchar("category").notNull(), // setup, testing, configuration, training, cleanup
+  itemName: varchar("item_name").notNull(),
+  itemDescription: text("item_description"),
+  
+  // Status
+  isCompleted: boolean("is_completed").default(false),
+  isRequired: boolean("is_required").default(true),
+  
+  // Completion details
+  completedAt: timestamp("completed_at"),
+  completedBy: varchar("completed_by"), // Technician user ID
+  
+  // Notes and evidence
+  notes: text("notes"),
+  photoIds: text("photo_ids").array(), // References to service_photos
+  
+  // Verification
+  requiresPhoto: boolean("requires_photo").default(false),
+  requiresSignature: boolean("requires_signature").default(false),
+  
+  // Values for testing/configuration items
+  expectedValue: text("expected_value"),
+  actualValue: text("actual_value"),
+  passed: boolean("passed"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantIdx: index("installation_checklists_tenant_idx").on(table.tenantId),
+  installationIdx: index("installation_checklists_installation_idx").on(table.installationId),
+  orderIdx: index("installation_checklists_order_idx").on(table.installationId, table.itemOrder),
+  categoryIdx: index("installation_checklists_category_idx").on(table.category),
+}));
+
+// Type exports
+export type Installation = typeof installations.$inferSelect;
+export type InsertInstallation = z.infer<typeof insertInstallationSchema>;
+
+export type ServiceSignature = typeof serviceSignatures.$inferSelect;
+export type InsertServiceSignature = z.infer<typeof insertServiceSignatureSchema>;
+
+export type InstallationChecklist = typeof installationChecklists.$inferSelect;
+export type InsertInstallationChecklist = z.infer<typeof insertInstallationChecklistSchema>;
+
+// Zod schemas for validation
+export const insertInstallationSchema = createInsertSchema(installations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertServiceSignatureSchema = createInsertSchema(serviceSignatures).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInstallationChecklistSchema = createInsertSchema(installationChecklists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
