@@ -1,6 +1,12 @@
 {
   "permissions": {
-    "allow": ["Bash(dir:*)", "Bash(node:*)"],
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(node:*)",
+      "Bash(xargs grep:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
+    ],
     "deny": [],
     "ask": []
   }
