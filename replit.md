@@ -28,7 +28,7 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Neon serverless hosting.
 - **ORM**: Drizzle ORM.
 - **Schema Design**: Multi-tenant architecture with tenant isolation and comprehensive role-based access control (RBAC).
-- **Key Entities**: Users, Roles, Tenants, Business Records, Equipment, Contracts, Service Tickets, Inventory, Technicians, Meter Readings, Invoices, Tasks, Projects, Lease Management, E-Signature Integration, Field Service Photo & Signature Capture.
+- **Key Entities**: Users, Roles, Tenants, Business Records, Equipment, Contracts, Service Tickets, Inventory, Technicians, Meter Readings, Invoices, Tasks, Projects, Lease Management, E-Signature Integration, Field Service Photo & Signature Capture, GPS Tracking (Technician Locations, Location History, Route Assignments, Route Deviations, ETA Calculations, Geofences, Geofence Events).
 
 ### Multi-Tenancy & Role-Based Access Control
 - **Tenant Isolation**: Row-level security using `tenantId`.
@@ -59,6 +59,7 @@ Preferred communication style: Simple, everyday language.
 - **Workflow Automation System**: Comprehensive platform for creating, managing, and executing automated business workflows with version control, event-based/scheduled triggers, conditional branching, and action types.
 - **Lead Scoring & Qualification Engine**: System for automatically scoring and qualifying sales leads based on configurable rules, BANT framework, and engagement tracking.
 - **Manufacturer Order Submission System**: Platform for submitting equipment and supply orders directly to manufacturers through automated workflows, supporting 10 major manufacturers.
+- **Real-Time Service GPS Tracking**: Comprehensive location monitoring and route management for field service technicians with 7 database tables (technician locations, location history, route assignments, route deviations, ETA calculations, geofences, geofence events), 34 composite indexes, 46 storage methods, 35 API endpoints. Features include real-time location tracking, route optimization, automated deviation detection, traffic-adjusted ETA calculations, and geofencing with entry/exit/dwell triggers.
 - **AI-Powered Enhancements**: Across Service Hub, Advanced Billing Engine, Service Dispatch, Product Catalog, Deals Management, Purchase Orders, Quote Builder, Task Management, Quotes Management, Quote & Proposal Generation, and Equipment Lifecycle Management for optimization, recommendations, and predictive analytics.
 - **Cross-Module Data Flow Integration**: Automated workflow pipelines and real-time service dispatch automation.
 - **Product Accessories System**: Many-to-many relationship architecture for accessory compatibility.
