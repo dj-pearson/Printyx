@@ -11,6 +11,7 @@ import {
   boolean,
   pgEnum,
   uuid,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -6671,4 +6672,268 @@ export const insertLeaseDispositionSchema = createInsertSchema(leaseDispositions
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+// ============================================================================
+// E-SIGNATURE INTEGRATION SYSTEM
+// ============================================================================
+
+export const integrationCredentials = pgTable("integration_credentials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Integration identification
+  provider: varchar("provider").notNull(), // 'docusign', 'adobe_sign', 'hellosign', 'email', 'sms', 'payment_gateway', etc.
+  integrationName: varchar("integration_name").notNull(), // Display name
+  status: varchar("status").notNull().default("active"), // active, inactive, error
+  
+  // Credentials (encrypted at application level)
+  apiKey: text("api_key"),
+  apiSecret: text("api_secret"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiry: timestamp("token_expiry"),
+  accountId: varchar("account_id"),
+  webhookSecret: varchar("webhook_secret"),
+  
+  // Configuration
+  sandboxMode: boolean("sandbox_mode").default(false),
+  config: jsonb("config"), // Provider-specific configuration
+  
+  // Health monitoring
+  lastHealthCheck: timestamp("last_health_check"),
+  healthStatus: varchar("health_status").default("unknown"), // healthy, unhealthy, unknown
+  errorMessage: text("error_message"),
+  
+  // Metadata
+  createdBy: varchar("created_by"),
+  updatedBy: varchar("updated_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantProviderIdx: index("integration_credentials_tenant_provider_idx").on(table.tenantId, table.provider),
+  statusIdx: index("integration_credentials_status_idx").on(table.status),
+}));
+
+export const signatureRequests = pgTable("signature_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Request identification
+  requestNumber: varchar("request_number").notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  
+  // Related records
+  customerId: varchar("customer_id").references(() => businessRecords.id),
+  proposalId: varchar("proposal_id"),
+  contractId: varchar("contract_id"),
+  leaseId: varchar("lease_id").references(() => leases.id),
+  
+  // Provider integration
+  provider: varchar("provider").notNull(), // 'docusign', 'adobe_sign', 'hellosign'
+  integrationId: varchar("integration_id").references(() => integrationCredentials.id),
+  externalId: varchar("external_id"), // Provider's envelope/request ID
+  
+  // Status and workflow
+  status: varchar("status").notNull().default("draft"), // draft, sent, in_progress, completed, declined, expired, voided
+  sentAt: timestamp("sent_at"),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  
+  // Settings
+  emailSubject: varchar("email_subject"),
+  emailMessage: text("email_message"),
+  reminderEnabled: boolean("reminder_enabled").default(true),
+  reminderDays: integer("reminder_days").default(3),
+  sequentialSigning: boolean("sequential_signing").default(false),
+  
+  // Tracking
+  totalSigners: integer("total_signers").default(0),
+  signersCompleted: integer("signers_completed").default(0),
+  totalDocuments: integer("total_documents").default(0),
+  
+  // Audit
+  voidedReason: text("voided_reason"),
+  declinedReason: text("declined_reason"),
+  
+  // Metadata
+  createdBy: varchar("created_by"),
+  updatedBy: varchar("updated_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  tenantRequestNumberUnique: unique("signature_requests_tenant_request_number_unique").on(table.tenantId, table.requestNumber),
+  tenantStatusIdx: index("signature_requests_tenant_status_idx").on(table.tenantId, table.status),
+  customerIdx: index("signature_requests_customer_idx").on(table.customerId),
+  externalIdIdx: index("signature_requests_external_id_idx").on(table.externalId),
+  expiresAtIdx: index("signature_requests_expires_at_idx").on(table.expiresAt),
+}));
+
+export const signatureSigners = pgTable("signature_signers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Request relationship
+  requestId: varchar("request_id").notNull().references(() => signatureRequests.id, { onDelete: "cascade" }),
+  
+  // Signer details
+  signerOrder: integer("signer_order").notNull().default(1), // For sequential signing
+  signerType: varchar("signer_type").notNull().default("signer"), // signer, approver, cc, witness
+  
+  // Contact information
+  name: varchar("name").notNull(),
+  email: varchar("email").notNull(),
+  phone: varchar("phone"),
+  
+  // Related records
+  contactId: varchar("contact_id"),
+  userId: varchar("user_id").references(() => users.id),
+  
+  // Provider tracking
+  externalSignerId: varchar("external_signer_id"), // Provider's signer ID
+  
+  // Status
+  status: varchar("status").notNull().default("pending"), // pending, sent, viewed, signed, declined
+  sentAt: timestamp("sent_at"),
+  viewedAt: timestamp("viewed_at"),
+  signedAt: timestamp("signed_at"),
+  declinedAt: timestamp("declined_at"),
+  
+  // Signature details
+  signatureMethod: varchar("signature_method"), // click, drawn, typed, upload
+  ipAddress: varchar("ip_address"),
+  declineReason: text("decline_reason"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  requestOrderIdx: index("signature_signers_request_order_idx").on(table.requestId, table.signerOrder),
+  statusIdx: index("signature_signers_status_idx").on(table.status),
+  emailIdx: index("signature_signers_email_idx").on(table.email),
+}));
+
+export const signatureDocuments = pgTable("signature_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Request relationship
+  requestId: varchar("request_id").notNull().references(() => signatureRequests.id, { onDelete: "cascade" }),
+  
+  // Document details
+  documentOrder: integer("document_order").notNull().default(1),
+  documentName: varchar("document_name").notNull(),
+  documentType: varchar("document_type"), // pdf, docx, etc.
+  
+  // Storage
+  originalFileUrl: text("original_file_url"),
+  signedFileUrl: text("signed_file_url"),
+  certificateUrl: text("certificate_url"), // Certificate of completion
+  fileSize: integer("file_size"),
+  
+  // Provider tracking
+  externalDocumentId: varchar("external_document_id"), // Provider's document ID
+  
+  // Status
+  status: varchar("status").notNull().default("pending"), // pending, signed, completed
+  
+  // Field tracking
+  totalFields: integer("total_fields").default(0), // Total signature/initial fields
+  completedFields: integer("completed_fields").default(0),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  requestOrderIdx: index("signature_documents_request_order_idx").on(table.requestId, table.documentOrder),
+}));
+
+export const signatureAuditLogs = pgTable("signature_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  
+  // Related records
+  requestId: varchar("request_id").references(() => signatureRequests.id, { onDelete: "cascade" }),
+  signerId: varchar("signer_id").references(() => signatureSigners.id, { onDelete: "cascade" }),
+  documentId: varchar("document_id").references(() => signatureDocuments.id, { onDelete: "cascade" }),
+  
+  // Event details
+  eventType: varchar("event_type").notNull(), // request_created, sent, viewed, signed, completed, declined, voided, reminder_sent
+  eventDescription: text("event_description"),
+  
+  // Actor
+  actorType: varchar("actor_type"), // user, signer, system, webhook
+  actorId: varchar("actor_id"),
+  actorName: varchar("actor_name"),
+  actorEmail: varchar("actor_email"),
+  
+  // Technical details
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Provider tracking
+  externalEventId: varchar("external_event_id"),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  requestIdx: index("signature_audit_logs_request_idx").on(table.requestId),
+  signerIdx: index("signature_audit_logs_signer_idx").on(table.signerId),
+  eventTypeIdx: index("signature_audit_logs_event_type_idx").on(table.eventType),
+  createdAtIdx: index("signature_audit_logs_created_at_idx").on(table.createdAt),
+}));
+
+// Type exports
+export type IntegrationCredential = typeof integrationCredentials.$inferSelect;
+export type InsertIntegrationCredential = z.infer<typeof insertIntegrationCredentialSchema>;
+
+export type SignatureRequest = typeof signatureRequests.$inferSelect;
+export type InsertSignatureRequest = z.infer<typeof insertSignatureRequestSchema>;
+
+export type SignatureSigner = typeof signatureSigners.$inferSelect;
+export type InsertSignatureSigner = z.infer<typeof insertSignatureSignerSchema>;
+
+export type SignatureDocument = typeof signatureDocuments.$inferSelect;
+export type InsertSignatureDocument = z.infer<typeof insertSignatureDocumentSchema>;
+
+export type SignatureAuditLog = typeof signatureAuditLogs.$inferSelect;
+export type InsertSignatureAuditLog = z.infer<typeof insertSignatureAuditLogSchema>;
+
+// Zod schemas for validation
+export const insertIntegrationCredentialSchema = createInsertSchema(integrationCredentials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastHealthCheck: true,
+  healthStatus: true,
+});
+
+export const insertSignatureRequestSchema = createInsertSchema(signatureRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  totalSigners: true,
+  signersCompleted: true,
+  totalDocuments: true,
+});
+
+export const insertSignatureSignerSchema = createInsertSchema(signatureSigners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSignatureDocumentSchema = createInsertSchema(signatureDocuments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  totalFields: true,
+  completedFields: true,
+});
+
+export const insertSignatureAuditLogSchema = createInsertSchema(signatureAuditLogs).omit({
+  id: true,
+  createdAt: true,
 });
