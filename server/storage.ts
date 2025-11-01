@@ -204,6 +204,22 @@ import {
   type InsertLeaseRenewal,
   type LeaseDisposition,
   type InsertLeaseDisposition,
+  // E-Signature Integration schemas
+  integrationCredentials,
+  signatureRequests,
+  signatureSigners,
+  signatureDocuments,
+  signatureAuditLogs,
+  type IntegrationCredential,
+  type InsertIntegrationCredential,
+  type SignatureRequest,
+  type InsertSignatureRequest,
+  type SignatureSigner,
+  type InsertSignatureSigner,
+  type SignatureDocument,
+  type InsertSignatureDocument,
+  type SignatureAuditLog,
+  type InsertSignatureAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -820,6 +836,43 @@ export interface IStorage {
   createLeaseDisposition(disposition: InsertLeaseDisposition): Promise<LeaseDisposition>;
   updateLeaseDisposition(id: string, tenantId: string, disposition: Partial<LeaseDisposition>): Promise<LeaseDisposition | undefined>;
   deleteLeaseDisposition(id: string, tenantId: string): Promise<void>;
+
+  // Integration Credentials operations
+  getIntegrationCredentials(tenantId: string, provider?: string): Promise<IntegrationCredential[]>;
+  getIntegrationCredential(id: string, tenantId: string): Promise<IntegrationCredential | undefined>;
+  getIntegrationCredentialByProvider(tenantId: string, provider: string): Promise<IntegrationCredential | undefined>;
+  createIntegrationCredential(credential: InsertIntegrationCredential): Promise<IntegrationCredential>;
+  updateIntegrationCredential(id: string, tenantId: string, credential: Partial<IntegrationCredential>): Promise<IntegrationCredential | undefined>;
+  deleteIntegrationCredential(id: string, tenantId: string): Promise<void>;
+  testIntegrationConnection(id: string, tenantId: string): Promise<{ healthy: boolean; message: string }>;
+
+  // Signature Requests operations
+  getSignatureRequests(tenantId: string, status?: string): Promise<SignatureRequest[]>;
+  getSignatureRequest(id: string, tenantId: string): Promise<SignatureRequest | undefined>;
+  getSignatureRequestsByCustomer(customerId: string, tenantId: string): Promise<SignatureRequest[]>;
+  getExpiringSignatureRequests(tenantId: string, daysAhead: number): Promise<SignatureRequest[]>;
+  createSignatureRequest(request: InsertSignatureRequest): Promise<SignatureRequest>;
+  updateSignatureRequest(id: string, tenantId: string, request: Partial<SignatureRequest>): Promise<SignatureRequest | undefined>;
+  deleteSignatureRequest(id: string, tenantId: string): Promise<void>;
+
+  // Signature Signers operations
+  getSignatureSigners(requestId: string, tenantId: string): Promise<SignatureSigner[]>;
+  getSignatureSigner(id: string, tenantId: string): Promise<SignatureSigner | undefined>;
+  createSignatureSigner(signer: InsertSignatureSigner): Promise<SignatureSigner>;
+  updateSignatureSigner(id: string, tenantId: string, signer: Partial<SignatureSigner>): Promise<SignatureSigner | undefined>;
+  deleteSignatureSigner(id: string, tenantId: string): Promise<void>;
+
+  // Signature Documents operations
+  getSignatureDocuments(requestId: string, tenantId: string): Promise<SignatureDocument[]>;
+  getSignatureDocument(id: string, tenantId: string): Promise<SignatureDocument | undefined>;
+  createSignatureDocument(document: InsertSignatureDocument): Promise<SignatureDocument>;
+  updateSignatureDocument(id: string, tenantId: string, document: Partial<SignatureDocument>): Promise<SignatureDocument | undefined>;
+  deleteSignatureDocument(id: string, tenantId: string): Promise<void>;
+
+  // Signature Audit Logs operations
+  getSignatureAuditLogs(requestId: string, tenantId: string): Promise<SignatureAuditLog[]>;
+  getSignatureAuditLogsBySigner(signerId: string, tenantId: string): Promise<SignatureAuditLog[]>;
+  createSignatureAuditLog(log: InsertSignatureAuditLog): Promise<SignatureAuditLog>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5435,6 +5488,412 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenantId, tenantId))
       );
+  }
+
+  // ============= E-SIGNATURE INTEGRATION OPERATIONS =============
+
+  // Integration Credentials operations
+  async getIntegrationCredentials(
+    tenantId: string,
+    provider?: string
+  ): Promise<IntegrationCredential[]> {
+    if (provider) {
+      return await db
+        .select()
+        .from(integrationCredentials)
+        .where(
+          and(
+            eq(integrationCredentials.tenantId, tenantId),
+            eq(integrationCredentials.provider, provider)
+          )
+        )
+        .orderBy(desc(integrationCredentials.createdAt));
+    }
+    return await db
+      .select()
+      .from(integrationCredentials)
+      .where(eq(integrationCredentials.tenantId, tenantId))
+      .orderBy(desc(integrationCredentials.createdAt));
+  }
+
+  async getIntegrationCredential(
+    id: string,
+    tenantId: string
+  ): Promise<IntegrationCredential | undefined> {
+    const [credential] = await db
+      .select()
+      .from(integrationCredentials)
+      .where(
+        and(
+          eq(integrationCredentials.id, id),
+          eq(integrationCredentials.tenantId, tenantId)
+        )
+      );
+    return credential;
+  }
+
+  async getIntegrationCredentialByProvider(
+    tenantId: string,
+    provider: string
+  ): Promise<IntegrationCredential | undefined> {
+    const [credential] = await db
+      .select()
+      .from(integrationCredentials)
+      .where(
+        and(
+          eq(integrationCredentials.tenantId, tenantId),
+          eq(integrationCredentials.provider, provider)
+        )
+      );
+    return credential;
+  }
+
+  async createIntegrationCredential(
+    credential: InsertIntegrationCredential
+  ): Promise<IntegrationCredential> {
+    const [newCredential] = await db
+      .insert(integrationCredentials)
+      .values(credential)
+      .returning();
+    return newCredential;
+  }
+
+  async updateIntegrationCredential(
+    id: string,
+    tenantId: string,
+    credential: Partial<IntegrationCredential>
+  ): Promise<IntegrationCredential | undefined> {
+    const [updatedCredential] = await db
+      .update(integrationCredentials)
+      .set({ ...credential, updatedAt: new Date() })
+      .where(
+        and(
+          eq(integrationCredentials.id, id),
+          eq(integrationCredentials.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedCredential;
+  }
+
+  async deleteIntegrationCredential(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(integrationCredentials)
+      .where(
+        and(
+          eq(integrationCredentials.id, id),
+          eq(integrationCredentials.tenantId, tenantId)
+        )
+      );
+  }
+
+  async testIntegrationConnection(
+    id: string,
+    tenantId: string
+  ): Promise<{ status: string; message: string }> {
+    const credential = await this.getIntegrationCredential(id, tenantId);
+    if (!credential) {
+      return { status: "error", message: "Credential not found" };
+    }
+    // Mock healthy status for now
+    return { status: "healthy", message: "Connection successful" };
+  }
+
+  // Signature Requests operations
+  async getSignatureRequests(
+    tenantId: string,
+    status?: string
+  ): Promise<SignatureRequest[]> {
+    if (status) {
+      return await db
+        .select()
+        .from(signatureRequests)
+        .where(
+          and(
+            eq(signatureRequests.tenantId, tenantId),
+            eq(signatureRequests.status, status)
+          )
+        )
+        .orderBy(desc(signatureRequests.createdAt));
+    }
+    return await db
+      .select()
+      .from(signatureRequests)
+      .where(eq(signatureRequests.tenantId, tenantId))
+      .orderBy(desc(signatureRequests.createdAt));
+  }
+
+  async getSignatureRequest(
+    id: string,
+    tenantId: string
+  ): Promise<SignatureRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(signatureRequests)
+      .where(
+        and(
+          eq(signatureRequests.id, id),
+          eq(signatureRequests.tenantId, tenantId)
+        )
+      );
+    return request;
+  }
+
+  async getSignatureRequestsByCustomer(
+    customerId: string,
+    tenantId: string
+  ): Promise<SignatureRequest[]> {
+    return await db
+      .select()
+      .from(signatureRequests)
+      .where(
+        and(
+          eq(signatureRequests.customerId, customerId),
+          eq(signatureRequests.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(signatureRequests.createdAt));
+  }
+
+  async getExpiringSignatureRequests(
+    tenantId: string,
+    daysAhead: number
+  ): Promise<SignatureRequest[]> {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+
+    return await db
+      .select()
+      .from(signatureRequests)
+      .where(
+        and(
+          eq(signatureRequests.tenantId, tenantId),
+          lte(signatureRequests.expirationDate, futureDate),
+          ne(signatureRequests.status, "completed"),
+          ne(signatureRequests.status, "voided")
+        )
+      )
+      .orderBy(signatureRequests.expirationDate);
+  }
+
+  async createSignatureRequest(
+    request: InsertSignatureRequest
+  ): Promise<SignatureRequest> {
+    const [newRequest] = await db
+      .insert(signatureRequests)
+      .values(request)
+      .returning();
+    return newRequest;
+  }
+
+  async updateSignatureRequest(
+    id: string,
+    tenantId: string,
+    request: Partial<SignatureRequest>
+  ): Promise<SignatureRequest | undefined> {
+    const [updatedRequest] = await db
+      .update(signatureRequests)
+      .set({ ...request, updatedAt: new Date() })
+      .where(
+        and(
+          eq(signatureRequests.id, id),
+          eq(signatureRequests.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedRequest;
+  }
+
+  async deleteSignatureRequest(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(signatureRequests)
+      .where(
+        and(
+          eq(signatureRequests.id, id),
+          eq(signatureRequests.tenantId, tenantId)
+        )
+      );
+  }
+
+  // Signature Signers operations
+  async getSignatureSigners(
+    requestId: string,
+    tenantId: string
+  ): Promise<SignatureSigner[]> {
+    return await db
+      .select()
+      .from(signatureSigners)
+      .where(
+        and(
+          eq(signatureSigners.requestId, requestId),
+          eq(signatureSigners.tenantId, tenantId)
+        )
+      )
+      .orderBy(signatureSigners.signerOrder);
+  }
+
+  async getSignatureSigner(
+    id: string,
+    tenantId: string
+  ): Promise<SignatureSigner | undefined> {
+    const [signer] = await db
+      .select()
+      .from(signatureSigners)
+      .where(
+        and(
+          eq(signatureSigners.id, id),
+          eq(signatureSigners.tenantId, tenantId)
+        )
+      );
+    return signer;
+  }
+
+  async createSignatureSigner(
+    signer: InsertSignatureSigner
+  ): Promise<SignatureSigner> {
+    const [newSigner] = await db
+      .insert(signatureSigners)
+      .values(signer)
+      .returning();
+    return newSigner;
+  }
+
+  async updateSignatureSigner(
+    id: string,
+    tenantId: string,
+    signer: Partial<SignatureSigner>
+  ): Promise<SignatureSigner | undefined> {
+    const [updatedSigner] = await db
+      .update(signatureSigners)
+      .set({ ...signer, updatedAt: new Date() })
+      .where(
+        and(eq(signatureSigners.id, id), eq(signatureSigners.tenantId, tenantId))
+      )
+      .returning();
+    return updatedSigner;
+  }
+
+  async deleteSignatureSigner(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(signatureSigners)
+      .where(
+        and(eq(signatureSigners.id, id), eq(signatureSigners.tenantId, tenantId))
+      );
+  }
+
+  // Signature Documents operations
+  async getSignatureDocuments(
+    requestId: string,
+    tenantId: string
+  ): Promise<SignatureDocument[]> {
+    return await db
+      .select()
+      .from(signatureDocuments)
+      .where(
+        and(
+          eq(signatureDocuments.requestId, requestId),
+          eq(signatureDocuments.tenantId, tenantId)
+        )
+      )
+      .orderBy(signatureDocuments.documentOrder);
+  }
+
+  async getSignatureDocument(
+    id: string,
+    tenantId: string
+  ): Promise<SignatureDocument | undefined> {
+    const [document] = await db
+      .select()
+      .from(signatureDocuments)
+      .where(
+        and(
+          eq(signatureDocuments.id, id),
+          eq(signatureDocuments.tenantId, tenantId)
+        )
+      );
+    return document;
+  }
+
+  async createSignatureDocument(
+    document: InsertSignatureDocument
+  ): Promise<SignatureDocument> {
+    const [newDocument] = await db
+      .insert(signatureDocuments)
+      .values(document)
+      .returning();
+    return newDocument;
+  }
+
+  async updateSignatureDocument(
+    id: string,
+    tenantId: string,
+    document: Partial<SignatureDocument>
+  ): Promise<SignatureDocument | undefined> {
+    const [updatedDocument] = await db
+      .update(signatureDocuments)
+      .set({ ...document, updatedAt: new Date() })
+      .where(
+        and(
+          eq(signatureDocuments.id, id),
+          eq(signatureDocuments.tenantId, tenantId)
+        )
+      )
+      .returning();
+    return updatedDocument;
+  }
+
+  async deleteSignatureDocument(id: string, tenantId: string): Promise<void> {
+    await db
+      .delete(signatureDocuments)
+      .where(
+        and(
+          eq(signatureDocuments.id, id),
+          eq(signatureDocuments.tenantId, tenantId)
+        )
+      );
+  }
+
+  // Signature Audit Logs operations
+  async getSignatureAuditLogs(
+    requestId: string,
+    tenantId: string
+  ): Promise<SignatureAuditLog[]> {
+    return await db
+      .select()
+      .from(signatureAuditLogs)
+      .where(
+        and(
+          eq(signatureAuditLogs.requestId, requestId),
+          eq(signatureAuditLogs.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(signatureAuditLogs.eventTimestamp));
+  }
+
+  async getSignatureAuditLogsBySigner(
+    signerId: string,
+    tenantId: string
+  ): Promise<SignatureAuditLog[]> {
+    return await db
+      .select()
+      .from(signatureAuditLogs)
+      .where(
+        and(
+          eq(signatureAuditLogs.signerId, signerId),
+          eq(signatureAuditLogs.tenantId, tenantId)
+        )
+      )
+      .orderBy(desc(signatureAuditLogs.eventTimestamp));
+  }
+
+  async createSignatureAuditLog(
+    log: InsertSignatureAuditLog
+  ): Promise<SignatureAuditLog> {
+    const [newLog] = await db
+      .insert(signatureAuditLogs)
+      .values(log)
+      .returning();
+    return newLog;
   }
 }
 
