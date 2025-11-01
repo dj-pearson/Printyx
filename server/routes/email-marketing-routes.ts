@@ -13,23 +13,13 @@ import { z } from "zod";
 
 const router = Router();
 
-function getTenantId(req: any): string {
-  if (!req.session?.user?.tenantId) {
-    throw new Error("Unauthorized - Tenant ID not found");
-  }
-  return req.session.user.tenantId;
-}
-
-function getUserId(req: any): string {
-  if (!req.session?.user?.id) {
-    throw new Error("Unauthorized - User ID not found");
-  }
-  return req.session.user.id;
-}
-
 router.get("/email-templates", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    
+    const tenantId = req.session.user.tenantId;
     const { templateType, isActive, category } = req.query;
 
     const filters: any = {};
@@ -47,7 +37,10 @@ router.get("/email-templates", async (req: Request, res: Response) => {
 
 router.get("/email-templates/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const template = await storage.getEmailTemplateById(id, tenantId);
@@ -64,8 +57,11 @@ router.get("/email-templates/:id", async (req: Request, res: Response) => {
 
 router.post("/email-templates", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
+    if (!req.session?.user?.tenantId || !req.session?.user?.id) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
+    const userId = req.session.user.id;
 
     const validatedData = insertEmailTemplateSchema.parse({
       ...req.body,
@@ -86,8 +82,11 @@ router.post("/email-templates", async (req: Request, res: Response) => {
 
 router.patch("/email-templates/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
+    if (!req.session?.user?.tenantId || !req.session?.user?.id) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
+    const userId = req.session.user.id;
     const { id } = req.params;
 
     const template = await storage.updateEmailTemplate(id, tenantId, {
@@ -108,7 +107,10 @@ router.patch("/email-templates/:id", async (req: Request, res: Response) => {
 
 router.delete("/email-templates/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     await storage.deleteEmailTemplate(id, tenantId);
@@ -121,7 +123,10 @@ router.delete("/email-templates/:id", async (req: Request, res: Response) => {
 
 router.get("/email-campaigns", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { status, campaignType, ownerId } = req.query;
 
     const filters: any = {};
@@ -139,7 +144,10 @@ router.get("/email-campaigns", async (req: Request, res: Response) => {
 
 router.get("/email-campaigns/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const campaign = await storage.getEmailCampaignById(id, tenantId);
@@ -156,8 +164,11 @@ router.get("/email-campaigns/:id", async (req: Request, res: Response) => {
 
 router.post("/email-campaigns", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
+    if (!req.session?.user?.tenantId || !req.session?.user?.id) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
+    const userId = req.session.user.id;
 
     const validatedData = insertEmailCampaignSchema.parse({
       ...req.body,
@@ -179,7 +190,10 @@ router.post("/email-campaigns", async (req: Request, res: Response) => {
 
 router.patch("/email-campaigns/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const campaign = await storage.updateEmailCampaign(id, tenantId, req.body);
@@ -197,7 +211,10 @@ router.patch("/email-campaigns/:id", async (req: Request, res: Response) => {
 
 router.delete("/email-campaigns/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     await storage.deleteEmailCampaign(id, tenantId);
@@ -210,7 +227,10 @@ router.delete("/email-campaigns/:id", async (req: Request, res: Response) => {
 
 router.post("/email-campaigns/:id/refresh-metrics", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const campaign = await storage.updateCampaignMetrics(id, tenantId);
@@ -228,7 +248,10 @@ router.post("/email-campaigns/:id/refresh-metrics", async (req: Request, res: Re
 
 router.get("/email-campaigns/:campaignId/sends", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { campaignId } = req.params;
 
     const sends = await storage.getEmailSends(campaignId, tenantId);
@@ -241,7 +264,10 @@ router.get("/email-campaigns/:campaignId/sends", async (req: Request, res: Respo
 
 router.get("/email-sends/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const send = await storage.getEmailSendById(id, tenantId);
@@ -258,7 +284,10 @@ router.get("/email-sends/:id", async (req: Request, res: Response) => {
 
 router.post("/email-sends", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
 
     const validatedData = insertEmailSendSchema.parse({
       ...req.body,
@@ -278,7 +307,10 @@ router.post("/email-sends", async (req: Request, res: Response) => {
 
 router.post("/email-sends/bulk", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { sends } = req.body;
 
     if (!Array.isArray(sends)) {
@@ -300,7 +332,10 @@ router.post("/email-sends/bulk", async (req: Request, res: Response) => {
 
 router.patch("/email-sends/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const send = await storage.updateEmailSend(id, tenantId, req.body);
@@ -318,7 +353,10 @@ router.patch("/email-sends/:id", async (req: Request, res: Response) => {
 
 router.get("/email-sends/:sendId/events", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { sendId } = req.params;
 
     const events = await storage.getEmailEvents(sendId, tenantId);
@@ -331,7 +369,10 @@ router.get("/email-sends/:sendId/events", async (req: Request, res: Response) =>
 
 router.get("/email-campaigns/:campaignId/events", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { campaignId } = req.params;
     const { eventType } = req.query;
 
@@ -348,7 +389,10 @@ router.get("/email-campaigns/:campaignId/events", async (req: Request, res: Resp
 
 router.post("/email-events", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
 
     const validatedData = insertEmailEventSchema.parse({
       ...req.body,
@@ -368,7 +412,10 @@ router.post("/email-events", async (req: Request, res: Response) => {
 
 router.get("/email-lists", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { listType, isActive, category } = req.query;
 
     const filters: any = {};
@@ -386,7 +433,10 @@ router.get("/email-lists", async (req: Request, res: Response) => {
 
 router.get("/email-lists/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const list = await storage.getEmailListById(id, tenantId);
@@ -403,8 +453,11 @@ router.get("/email-lists/:id", async (req: Request, res: Response) => {
 
 router.post("/email-lists", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
+    if (!req.session?.user?.tenantId || !req.session?.user?.id) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
+    const userId = req.session.user.id;
 
     const validatedData = insertEmailListSchema.parse({
       ...req.body,
@@ -426,7 +479,10 @@ router.post("/email-lists", async (req: Request, res: Response) => {
 
 router.patch("/email-lists/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const list = await storage.updateEmailList(id, tenantId, req.body);
@@ -444,7 +500,10 @@ router.patch("/email-lists/:id", async (req: Request, res: Response) => {
 
 router.delete("/email-lists/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     await storage.deleteEmailList(id, tenantId);
@@ -457,7 +516,10 @@ router.delete("/email-lists/:id", async (req: Request, res: Response) => {
 
 router.post("/email-lists/:id/refresh-counts", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const list = await storage.updateListMemberCounts(id, tenantId);
@@ -475,7 +537,10 @@ router.post("/email-lists/:id/refresh-counts", async (req: Request, res: Respons
 
 router.get("/email-lists/:listId/members", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { listId } = req.params;
     const { status } = req.query;
 
@@ -492,7 +557,10 @@ router.get("/email-lists/:listId/members", async (req: Request, res: Response) =
 
 router.get("/email-list-members/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const member = await storage.getEmailListMemberById(id, tenantId);
@@ -509,7 +577,10 @@ router.get("/email-list-members/:id", async (req: Request, res: Response) => {
 
 router.post("/email-list-members", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
 
     const validatedData = insertEmailListMemberSchema.parse({
       ...req.body,
@@ -529,7 +600,10 @@ router.post("/email-list-members", async (req: Request, res: Response) => {
 
 router.post("/email-list-members/bulk", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { members } = req.body;
 
     if (!Array.isArray(members)) {
@@ -551,7 +625,10 @@ router.post("/email-list-members/bulk", async (req: Request, res: Response) => {
 
 router.patch("/email-list-members/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     const member = await storage.updateEmailListMember(id, tenantId, req.body);
@@ -569,7 +646,10 @@ router.patch("/email-list-members/:id", async (req: Request, res: Response) => {
 
 router.delete("/email-list-members/:id", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { id } = req.params;
 
     await storage.deleteEmailListMember(id, tenantId);
@@ -582,7 +662,10 @@ router.delete("/email-list-members/:id", async (req: Request, res: Response) => 
 
 router.get("/email-unsubscribes", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { unsubscribeType, email } = req.query;
 
     const filters: any = {};
@@ -599,7 +682,10 @@ router.get("/email-unsubscribes", async (req: Request, res: Response) => {
 
 router.post("/email-unsubscribes", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
 
     const validatedData = insertEmailUnsubscribeSchema.parse({
       ...req.body,
@@ -619,7 +705,10 @@ router.post("/email-unsubscribes", async (req: Request, res: Response) => {
 
 router.get("/email-unsubscribes/check/:email", async (req: Request, res: Response) => {
   try {
-    const tenantId = getTenantId(req);
+    if (!req.session?.user?.tenantId) {
+      return res.status(401).json({ error: "Unauthorized - Authentication required" });
+    }
+    const tenantId = req.session.user.tenantId;
     const { email } = req.params;
 
     const status = await storage.checkUnsubscribeStatus(email, tenantId);
