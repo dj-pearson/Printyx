@@ -658,6 +658,50 @@ export const userSettings = pgTable("user_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// MFA Backup Codes - One-time use backup codes for account recovery
+export const mfaBackupCodes = pgTable("mfa_backup_codes", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // references users.id
+  tenantId: varchar("tenant_id"), // for multi-tenant isolation
+  codeHash: varchar("code_hash").notNull(), // bcrypt hashed backup code
+  isUsed: boolean("is_used").default(false),
+  usedAt: timestamp("used_at"),
+  usedIpAddress: varchar("used_ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // backup codes can expire
+}, (table) => {
+  return {
+    idxMfaBackupCodesUser: index("idx_mfa_backup_codes_user").on(table.userId),
+    idxMfaBackupCodesUserUnused: index("idx_mfa_backup_codes_user_unused").on(table.userId, table.isUsed),
+  };
+});
+
+// MFA Audit Logs - Track all MFA-related events for security and compliance
+export const mfaAuditLogs = pgTable("mfa_audit_logs", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // references users.id
+  tenantId: varchar("tenant_id"), // for multi-tenant isolation
+  eventType: varchar("event_type").notNull(), // enrollment, verification_success, verification_failure, backup_code_used, admin_reset, disabled
+  eventDetails: jsonb("event_details"), // additional context about the event
+  ipAddress: varchar("ip_address"),
+  userAgent: varchar("user_agent"),
+  deviceInfo: jsonb("device_info"), // browser, OS, device type
+  success: boolean("success").notNull().default(true),
+  failureReason: varchar("failure_reason"), // invalid_code, code_expired, rate_limit, etc.
+  performedBy: varchar("performed_by"), // references users.id (for admin actions)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    idxMfaAuditLogsUser: index("idx_mfa_audit_logs_user").on(table.userId),
+    idxMfaAuditLogsEventType: index("idx_mfa_audit_logs_event_type").on(table.eventType, table.createdAt),
+    idxMfaAuditLogsUserEvent: index("idx_mfa_audit_logs_user_event").on(table.userId, table.eventType, table.createdAt),
+  };
+});
+
 // Customer Number Configuration - Configurable prefixes for customer number generation
 export const customerNumberConfig = pgTable("customer_number_config", {
   id: varchar("id")
@@ -3945,6 +3989,22 @@ export const insertManagerInsightsSchema = createInsertSchema(managerInsights);
 export const insertCustomerNumberConfigSchema = createInsertSchema(customerNumberConfig);
 
 export const insertCustomerNumberHistorySchema = createInsertSchema(customerNumberHistory);
+
+// MFA Schemas
+export const insertMfaBackupCodeSchema = createInsertSchema(mfaBackupCodes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMfaAuditLogSchema = createInsertSchema(mfaAuditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type MfaBackupCode = typeof mfaBackupCodes.$inferSelect;
+export type InsertMfaBackupCode = typeof mfaBackupCodes.$inferInsert;
+export type MfaAuditLog = typeof mfaAuditLogs.$inferSelect;
+export type InsertMfaAuditLog = typeof mfaAuditLogs.$inferInsert;
 
 // Legacy types for backward compatibility - moved to main exports
 
