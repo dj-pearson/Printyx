@@ -148,6 +148,10 @@ import AITaskScheduling from "@/pages/AITaskScheduling";
 import AISearchKnowledgeDashboard from "@/pages/AISearchKnowledgeDashboard";
 import ConversationalAIDashboard from "@/pages/ConversationalAIDashboard";
 
+// Lease Management Pages
+import Leases from "@/pages/Leases";
+import LeaseDetail from "@/pages/LeaseDetail";
+
 // Platform Admin Pages
 import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
 import SystemSecurity from "@/pages/admin/SystemSecurity";
@@ -293,6 +297,8 @@ function Router() {
           <Route path="/service-reports" component={ServiceReports} />
           <Route path="/revenue-reports" component={RevenueReports} />
           <Route path="/contracts" component={Contracts} />
+          <Route path="/leases" component={Leases} />
+          <Route path="/leases/:id" component={LeaseDetail} />
           <Route path="/document-builder" component={DocumentBuilder} />
           <Route path="/meter-readings" component={MeterReadings} />
           <Route path="/invoices" component={Invoices} />
