@@ -3,6 +3,21 @@
 ## Overview
 Printyx is a unified SaaS platform for small-to-medium copier dealers, integrating CRM, billing, service dispatch, and inventory into a single solution. It aims to eliminate data silos, reduce manual processes, and provide comprehensive management capabilities. Key features include AI-powered analytics (customer churn, CLV, predictive maintenance), an Advanced Integration Hub, Advanced Workflow Automation, customer success management, remote monitoring with IoT, advanced document management, and a mobile service application. The platform supports essential dealer operations like meter billing, service dispatch, CRM, and unified business records, with existing integrations for E-Automate, Salesforce, QuickBooks Online, ZoomInfo, and Apollo.io. It boasts 100% completion of critical modules, including a robust Lease Management System and comprehensive AI enhancements.
 
+## Recent Changes
+
+### November 1, 2025 - Priority #10 Complete: Advanced Billing & Meter Processing Engine
+- **Status**: ✅ 100% Complete (Architect Approved)
+- **Scope**: 6 database tables, 30 composite indexes, 55 storage methods, 48 API endpoints
+- **Features**: Usage-based billing rules, automated meter anomaly detection, billing dispute management, invoice generation automation, recurring billing schedules, credit memo system with approval workflows
+- **Security**: All storage methods enforce server-side tenant isolation; zero post-fetch filtering vulnerabilities
+- **Documentation**: ADVANCED_BILLING_SYSTEM.md
+
+### October 2025 - Priority #9 Complete: Real-Time Service GPS Tracking
+- **Status**: ✅ 100% Complete
+- **Scope**: 7 database tables, 34 composite indexes, 46 storage methods, 35 API endpoints
+- **Features**: Real-time location tracking, route optimization, automated deviation detection, traffic-adjusted ETA calculations, geofencing with entry/exit/dwell triggers
+- **Documentation**: GPS_TRACKING_SYSTEM.md
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
@@ -48,7 +63,7 @@ Preferred communication style: Simple, everyday language.
 - **Remote Monitoring & IoT**: Real-time equipment monitoring, predictive maintenance, and automated alerts.
 - **Document Management**: Advanced document lifecycle, OCR, automated workflows, and compliance tracking.
 - **Mobile Service App**: For field technicians with GPS, job management, parts tracking, and offline capabilities.
-- **Meter Billing System**: Automated invoice generation and tiered billing.
+- **Advanced Billing & Meter Processing Engine**: Comprehensive billing automation with 6 database tables (billing_rules, meter_anomalies, billing_disputes, invoice_generation_logs, billing_schedules, credit_memos), 30 composite indexes, 55 storage methods, 48 API endpoints. Features include usage-based billing rules (tiered rates, volume discounts, overage pricing), automated meter anomaly detection (spikes, negative readings, stagnant meters), billing dispute management with resolution workflows, automated invoice generation with batch processing, recurring billing schedules, and credit memo system with approval workflows.
 - **Service Dispatch**: Smart technician assignment and work order optimization, enhanced with AI for predictive maintenance and technician matching.
 - **CRM System**: Lead pipeline, quote generation, customer interaction, and equipment tracking.
 - **Lease Management System**: Comprehensive system for managing leases, payments, renewals, and dispositions.

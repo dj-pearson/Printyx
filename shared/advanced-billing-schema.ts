@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, decimal, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, decimal, integer, boolean, jsonb, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -56,7 +56,13 @@ export const billingRules = pgTable("billing_rules", {
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("billing_rules_tenant_id_idx").on(table.tenantId),
+  tenantStatusIdx: index("billing_rules_tenant_status_idx").on(table.tenantId, table.ruleStatus),
+  tenantContractIdx: index("billing_rules_tenant_contract_idx").on(table.tenantId, table.contractId),
+  tenantCustomerIdx: index("billing_rules_tenant_customer_idx").on(table.tenantId, table.customerId),
+  tenantEffectiveIdx: index("billing_rules_tenant_effective_idx").on(table.tenantId, table.effectiveStartDate),
+}));
 
 export const meterAnomalies = pgTable("meter_anomalies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -112,7 +118,14 @@ export const meterAnomalies = pgTable("meter_anomalies", {
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("meter_anomalies_tenant_id_idx").on(table.tenantId),
+  tenantMeterIdx: index("meter_anomalies_tenant_meter_idx").on(table.tenantId, table.meterReadingId),
+  tenantEquipmentIdx: index("meter_anomalies_tenant_equipment_idx").on(table.tenantId, table.equipmentId),
+  tenantTypeIdx: index("meter_anomalies_tenant_type_idx").on(table.tenantId, table.anomalyType),
+  tenantSeverityIdx: index("meter_anomalies_tenant_severity_idx").on(table.tenantId, table.severity),
+  tenantResolvedIdx: index("meter_anomalies_tenant_resolved_idx").on(table.tenantId, table.resolved),
+}));
 
 export const billingDisputes = pgTable("billing_disputes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -184,7 +197,13 @@ export const billingDisputes = pgTable("billing_disputes", {
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("billing_disputes_tenant_id_idx").on(table.tenantId),
+  tenantStatusIdx: index("billing_disputes_tenant_status_idx").on(table.tenantId, table.disputeStatus),
+  tenantInvoiceIdx: index("billing_disputes_tenant_invoice_idx").on(table.tenantId, table.invoiceId),
+  tenantCustomerIdx: index("billing_disputes_tenant_customer_idx").on(table.tenantId, table.customerId),
+  tenantDisputeNumIdx: index("billing_disputes_tenant_dispute_num_idx").on(table.tenantId, table.disputeNumber),
+}));
 
 export const invoiceGenerationLogs = pgTable("invoice_generation_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -235,7 +254,13 @@ export const invoiceGenerationLogs = pgTable("invoice_generation_logs", {
   metadata: jsonb("metadata"),
   
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("invoice_gen_logs_tenant_id_idx").on(table.tenantId),
+  tenantBatchIdx: index("invoice_gen_logs_tenant_batch_idx").on(table.tenantId, table.batchId),
+  tenantStatusIdx: index("invoice_gen_logs_tenant_status_idx").on(table.tenantId, table.status),
+  tenantInvoiceIdx: index("invoice_gen_logs_tenant_invoice_idx").on(table.tenantId, table.invoiceId),
+  tenantCustomerIdx: index("invoice_gen_logs_tenant_customer_idx").on(table.tenantId, table.customerId),
+}));
 
 export const billingSchedules = pgTable("billing_schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -270,7 +295,12 @@ export const billingSchedules = pgTable("billing_schedules", {
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("billing_schedules_tenant_id_idx").on(table.tenantId),
+  tenantActiveIdx: index("billing_schedules_tenant_active_idx").on(table.tenantId, table.isActive),
+  tenantContractIdx: index("billing_schedules_tenant_contract_idx").on(table.tenantId, table.contractId),
+  tenantNextRunIdx: index("billing_schedules_tenant_next_run_idx").on(table.tenantId, table.nextRunDate),
+}));
 
 export const creditMemos = pgTable("credit_memos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -307,7 +337,13 @@ export const creditMemos = pgTable("credit_memos", {
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  tenantIdIdx: index("credit_memos_tenant_id_idx").on(table.tenantId),
+  tenantStatusIdx: index("credit_memos_tenant_status_idx").on(table.tenantId, table.creditStatus),
+  tenantCustomerIdx: index("credit_memos_tenant_customer_idx").on(table.tenantId, table.customerId),
+  tenantInvoiceIdx: index("credit_memos_tenant_invoice_idx").on(table.tenantId, table.invoiceId),
+  tenantMemoNumIdx: index("credit_memos_tenant_memo_num_idx").on(table.tenantId, table.creditMemoNumber),
+}));
 
 export const insertBillingRuleSchema = createInsertSchema(billingRules).omit({
   id: true,
