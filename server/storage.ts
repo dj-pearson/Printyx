@@ -259,6 +259,46 @@ import {
   type InsertMfaBackupCode,
   type MfaAuditLog,
   type InsertMfaAuditLog,
+  // Workflow Automation schemas
+  workflows,
+  workflowVersions,
+  workflowTriggers,
+  triggerSchedules,
+  workflowConditions,
+  workflowStepsAutomation,
+  workflowStepTransitions,
+  workflowExecutions,
+  workflowExecutionSteps,
+  workflowExecutionEvents,
+  workflowTemplates,
+  templateVariables,
+  workflowEventRegistry,
+  type Workflow,
+  type InsertWorkflow,
+  type WorkflowVersion,
+  type InsertWorkflowVersion,
+  type WorkflowTrigger,
+  type InsertWorkflowTrigger,
+  type TriggerSchedule,
+  type InsertTriggerSchedule,
+  type WorkflowCondition,
+  type InsertWorkflowCondition,
+  type WorkflowStepAutomation,
+  type InsertWorkflowStepAutomation,
+  type WorkflowStepTransition,
+  type InsertWorkflowStepTransition,
+  type WorkflowExecution,
+  type InsertWorkflowExecution,
+  type WorkflowExecutionStep,
+  type InsertWorkflowExecutionStep,
+  type WorkflowExecutionEvent,
+  type InsertWorkflowExecutionEvent,
+  type WorkflowTemplate,
+  type InsertWorkflowTemplate,
+  type TemplateVariable,
+  type InsertTemplateVariable,
+  type WorkflowEventRegistry,
+  type InsertWorkflowEventRegistry,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -7143,6 +7183,404 @@ export class DatabaseStorage implements IStorage {
         )
       ))
       .orderBy(asc(users.email));
+  }
+
+  // ==================== Workflow Automation Methods ====================
+
+  // Workflow CRUD Operations
+  async createWorkflow(data: InsertWorkflow): Promise<Workflow> {
+    const [workflow] = await db.insert(workflows).values(data).returning();
+    return workflow;
+  }
+
+  async getWorkflow(id: string): Promise<Workflow | undefined> {
+    const [workflow] = await db.select().from(workflows).where(eq(workflows.id, id));
+    return workflow;
+  }
+
+  async getWorkflows(tenantId: string, status?: string): Promise<Workflow[]> {
+    const conditions = [eq(workflows.tenantId, tenantId)];
+    if (status) {
+      conditions.push(eq(workflows.status, status as any));
+    }
+    return await db
+      .select()
+      .from(workflows)
+      .where(and(...conditions))
+      .orderBy(desc(workflows.createdAt));
+  }
+
+  async updateWorkflow(id: string, data: Partial<InsertWorkflow>): Promise<Workflow> {
+    const [workflow] = await db
+      .update(workflows)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workflows.id, id))
+      .returning();
+    return workflow;
+  }
+
+  async deleteWorkflow(id: string): Promise<void> {
+    await db.delete(workflows).where(eq(workflows.id, id));
+  }
+
+  // Workflow Version Management
+  async createWorkflowVersion(data: InsertWorkflowVersion): Promise<WorkflowVersion> {
+    const [version] = await db.insert(workflowVersions).values(data).returning();
+    return version;
+  }
+
+  async getWorkflowVersions(workflowId: string): Promise<WorkflowVersion[]> {
+    return await db
+      .select()
+      .from(workflowVersions)
+      .where(eq(workflowVersions.workflowId, workflowId))
+      .orderBy(desc(workflowVersions.version));
+  }
+
+  async getWorkflowVersion(id: string): Promise<WorkflowVersion | undefined> {
+    const [version] = await db.select().from(workflowVersions).where(eq(workflowVersions.id, id));
+    return version;
+  }
+
+  async getLatestWorkflowVersion(workflowId: string): Promise<WorkflowVersion | undefined> {
+    const [version] = await db
+      .select()
+      .from(workflowVersions)
+      .where(eq(workflowVersions.workflowId, workflowId))
+      .orderBy(desc(workflowVersions.version))
+      .limit(1);
+    return version;
+  }
+
+  // Workflow Trigger Management
+  async createWorkflowTrigger(data: InsertWorkflowTrigger): Promise<WorkflowTrigger> {
+    const [trigger] = await db.insert(workflowTriggers).values(data).returning();
+    return trigger;
+  }
+
+  async getWorkflowTriggers(workflowId: string): Promise<WorkflowTrigger[]> {
+    return await db
+      .select()
+      .from(workflowTriggers)
+      .where(eq(workflowTriggers.workflowId, workflowId));
+  }
+
+  async getWorkflowTrigger(id: string): Promise<WorkflowTrigger | undefined> {
+    const [trigger] = await db.select().from(workflowTriggers).where(eq(workflowTriggers.id, id));
+    return trigger;
+  }
+
+  async updateWorkflowTrigger(id: string, data: Partial<InsertWorkflowTrigger>): Promise<WorkflowTrigger> {
+    const [trigger] = await db
+      .update(workflowTriggers)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workflowTriggers.id, id))
+      .returning();
+    return trigger;
+  }
+
+  async deleteWorkflowTrigger(id: string): Promise<void> {
+    await db.delete(workflowTriggers).where(eq(workflowTriggers.id, id));
+  }
+
+  async getTriggersByEventName(eventName: string): Promise<WorkflowTrigger[]> {
+    return await db
+      .select()
+      .from(workflowTriggers)
+      .where(and(
+        eq(workflowTriggers.eventName, eventName),
+        eq(workflowTriggers.enabled, true)
+      ));
+  }
+
+  // Trigger Schedule Management
+  async createTriggerSchedule(data: InsertTriggerSchedule): Promise<TriggerSchedule> {
+    const [schedule] = await db.insert(triggerSchedules).values(data).returning();
+    return schedule;
+  }
+
+  async getTriggerSchedule(triggerId: string): Promise<TriggerSchedule | undefined> {
+    const [schedule] = await db
+      .select()
+      .from(triggerSchedules)
+      .where(eq(triggerSchedules.triggerId, triggerId));
+    return schedule;
+  }
+
+  async updateTriggerSchedule(id: string, data: Partial<InsertTriggerSchedule>): Promise<TriggerSchedule> {
+    const [schedule] = await db
+      .update(triggerSchedules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(triggerSchedules.id, id))
+      .returning();
+    return schedule;
+  }
+
+  async getDueScheduledTriggers(): Promise<(TriggerSchedule & { trigger: WorkflowTrigger })[]> {
+    const now = new Date();
+    const schedules = await db
+      .select()
+      .from(triggerSchedules)
+      .leftJoin(workflowTriggers, eq(triggerSchedules.triggerId, workflowTriggers.id))
+      .where(and(
+        eq(triggerSchedules.enabled, true),
+        lte(triggerSchedules.nextRunAt, now)
+      ));
+    
+    return schedules
+      .filter(s => s.workflow_triggers !== null)
+      .map(s => ({
+        ...s.trigger_schedules,
+        trigger: s.workflow_triggers as WorkflowTrigger
+      }));
+  }
+
+  // Workflow Steps Management
+  async createWorkflowStep(data: InsertWorkflowStepAutomation): Promise<WorkflowStepAutomation> {
+    const [step] = await db.insert(workflowStepsAutomation).values(data).returning();
+    return step;
+  }
+
+  async getWorkflowSteps(workflowId: string): Promise<WorkflowStepAutomation[]> {
+    return await db
+      .select()
+      .from(workflowStepsAutomation)
+      .where(eq(workflowStepsAutomation.workflowId, workflowId))
+      .orderBy(asc(workflowStepsAutomation.orderIndex));
+  }
+
+  async updateWorkflowStep(id: string, data: Partial<InsertWorkflowStepAutomation>): Promise<WorkflowStepAutomation> {
+    const [step] = await db
+      .update(workflowStepsAutomation)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workflowStepsAutomation.id, id))
+      .returning();
+    return step;
+  }
+
+  async deleteWorkflowStep(id: string): Promise<void> {
+    await db.delete(workflowStepsAutomation).where(eq(workflowStepsAutomation.id, id));
+  }
+
+  // Workflow Execution Management
+  async createWorkflowExecution(data: InsertWorkflowExecution): Promise<WorkflowExecution> {
+    const [execution] = await db.insert(workflowExecutions).values(data).returning();
+    return execution;
+  }
+
+  async getWorkflowExecution(id: string): Promise<WorkflowExecution | undefined> {
+    const [execution] = await db
+      .select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.id, id));
+    return execution;
+  }
+
+  async getWorkflowExecutions(workflowId: string, limit: number = 50): Promise<WorkflowExecution[]> {
+    return await db
+      .select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.workflowId, workflowId))
+      .orderBy(desc(workflowExecutions.createdAt))
+      .limit(limit);
+  }
+
+  async getWorkflowExecutionsByTenant(tenantId: string, limit: number = 100): Promise<WorkflowExecution[]> {
+    return await db
+      .select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.tenantId, tenantId))
+      .orderBy(desc(workflowExecutions.createdAt))
+      .limit(limit);
+  }
+
+  async updateWorkflowExecution(id: string, data: Partial<InsertWorkflowExecution>): Promise<WorkflowExecution> {
+    const [execution] = await db
+      .update(workflowExecutions)
+      .set(data)
+      .where(eq(workflowExecutions.id, id))
+      .returning();
+    return execution;
+  }
+
+  async getQueuedExecutions(limit: number = 100): Promise<WorkflowExecution[]> {
+    return await db
+      .select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.status, 'queued'))
+      .orderBy(asc(workflowExecutions.createdAt))
+      .limit(limit);
+  }
+
+  // Workflow Execution Steps Management
+  async createExecutionStep(data: InsertWorkflowExecutionStep): Promise<WorkflowExecutionStep> {
+    const [step] = await db.insert(workflowExecutionSteps).values(data).returning();
+    return step;
+  }
+
+  async getExecutionSteps(executionId: string): Promise<WorkflowExecutionStep[]> {
+    return await db
+      .select()
+      .from(workflowExecutionSteps)
+      .where(eq(workflowExecutionSteps.executionId, executionId));
+  }
+
+  async updateExecutionStep(id: string, data: Partial<InsertWorkflowExecutionStep>): Promise<WorkflowExecutionStep> {
+    const [step] = await db
+      .update(workflowExecutionSteps)
+      .set(data)
+      .where(eq(workflowExecutionSteps.id, id))
+      .returning();
+    return step;
+  }
+
+  // Workflow Execution Events (Audit Trail)
+  async createExecutionEvent(data: InsertWorkflowExecutionEvent): Promise<WorkflowExecutionEvent> {
+    const [event] = await db.insert(workflowExecutionEvents).values(data).returning();
+    return event;
+  }
+
+  async getExecutionEvents(executionId: string): Promise<WorkflowExecutionEvent[]> {
+    return await db
+      .select()
+      .from(workflowExecutionEvents)
+      .where(eq(workflowExecutionEvents.executionId, executionId))
+      .orderBy(asc(workflowExecutionEvents.createdAt));
+  }
+
+  // Workflow Conditions Management
+  async createWorkflowCondition(data: InsertWorkflowCondition): Promise<WorkflowCondition> {
+    const [condition] = await db.insert(workflowConditions).values(data).returning();
+    return condition;
+  }
+
+  async getWorkflowConditions(triggerId?: string, stepId?: string): Promise<WorkflowCondition[]> {
+    const conditions = [];
+    if (triggerId) {
+      conditions.push(eq(workflowConditions.triggerId, triggerId));
+    }
+    if (stepId) {
+      conditions.push(eq(workflowConditions.stepId, stepId));
+    }
+    
+    return await db
+      .select()
+      .from(workflowConditions)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(workflowConditions.orderIndex));
+  }
+
+  async deleteWorkflowCondition(id: string): Promise<void> {
+    await db.delete(workflowConditions).where(eq(workflowConditions.id, id));
+  }
+
+  // Workflow Templates Management
+  async createWorkflowTemplate(data: InsertWorkflowTemplate): Promise<WorkflowTemplate> {
+    const [template] = await db.insert(workflowTemplates).values(data).returning();
+    return template;
+  }
+
+  async getWorkflowTemplate(id: string): Promise<WorkflowTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(workflowTemplates)
+      .where(eq(workflowTemplates.id, id));
+    return template;
+  }
+
+  async getWorkflowTemplates(category?: string): Promise<WorkflowTemplate[]> {
+    const conditions = category ? [eq(workflowTemplates.category, category)] : [];
+    return await db
+      .select()
+      .from(workflowTemplates)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(workflowTemplates.featured), desc(workflowTemplates.usageCount));
+  }
+
+  async updateWorkflowTemplate(id: string, data: Partial<InsertWorkflowTemplate>): Promise<WorkflowTemplate> {
+    const [template] = await db
+      .update(workflowTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workflowTemplates.id, id))
+      .returning();
+    return template;
+  }
+
+  async incrementTemplateUsage(id: string): Promise<void> {
+    await db
+      .update(workflowTemplates)
+      .set({ usageCount: sql`${workflowTemplates.usageCount} + 1` })
+      .where(eq(workflowTemplates.id, id));
+  }
+
+  // Template Variables Management
+  async createTemplateVariable(data: InsertTemplateVariable): Promise<TemplateVariable> {
+    const [variable] = await db.insert(templateVariables).values(data).returning();
+    return variable;
+  }
+
+  async getTemplateVariables(templateId: string): Promise<TemplateVariable[]> {
+    return await db
+      .select()
+      .from(templateVariables)
+      .where(eq(templateVariables.templateId, templateId));
+  }
+
+  // Workflow Event Registry Management
+  async createEventRegistryEntry(data: InsertWorkflowEventRegistry): Promise<WorkflowEventRegistry> {
+    const [entry] = await db.insert(workflowEventRegistry).values(data).returning();
+    return entry;
+  }
+
+  async getEventRegistryEntries(category?: string): Promise<WorkflowEventRegistry[]> {
+    const conditions = category ? [eq(workflowEventRegistry.category, category)] : [];
+    conditions.push(eq(workflowEventRegistry.isActive, true));
+    
+    return await db
+      .select()
+      .from(workflowEventRegistry)
+      .where(and(...conditions))
+      .orderBy(asc(workflowEventRegistry.category), asc(workflowEventRegistry.displayName));
+  }
+
+  async getEventRegistryEntry(eventName: string): Promise<WorkflowEventRegistry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(workflowEventRegistry)
+      .where(eq(workflowEventRegistry.eventName, eventName));
+    return entry;
+  }
+
+  // Workflow Analytics
+  async getWorkflowExecutionStats(workflowId: string): Promise<{
+    totalExecutions: number;
+    successfulExecutions: number;
+    failedExecutions: number;
+    averageExecutionTime: number;
+  }> {
+    const executions = await db
+      .select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.workflowId, workflowId));
+
+    const totalExecutions = executions.length;
+    const successfulExecutions = executions.filter(e => e.status === 'completed').length;
+    const failedExecutions = executions.filter(e => e.status === 'failed').length;
+
+    const completedExecutions = executions.filter(e => e.startedAt && e.completedAt);
+    const averageExecutionTime = completedExecutions.length > 0
+      ? completedExecutions.reduce((sum, e) => {
+          const duration = e.completedAt!.getTime() - e.startedAt!.getTime();
+          return sum + duration;
+        }, 0) / completedExecutions.length
+      : 0;
+
+    return {
+      totalExecutions,
+      successfulExecutions,
+      failedExecutions,
+      averageExecutionTime: Math.round(averageExecutionTime),
+    };
   }
 }
 
