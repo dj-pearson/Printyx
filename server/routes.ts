@@ -16335,6 +16335,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }, 2000); // Wait 2 seconds for DB to be ready
       })
       .catch((err) => console.error("Failed to load catalog seeding:", err));
+    
+    // Seed customer success data on startup
+    import("./seed-customer-success")
+      .then(({ seedCustomerSuccessData }) => {
+        setTimeout(() => {
+          // Get the default tenant ID (first tenant in DB)
+          import("./db").then(({ db }) => {
+            import("@shared/schema").then(({ tenants }) => {
+              db.select().from(tenants).limit(1).then((results) => {
+                if (results.length > 0) {
+                  seedCustomerSuccessData(results[0].id).then(() => {
+                    console.log("Customer success data seeded successfully");
+                  }).catch((error) => {
+                    console.error("Failed to seed customer success data:", error);
+                  });
+                }
+              });
+            });
+          });
+        }, 3000); // Wait 3 seconds for DB and master catalog to be ready
+      })
+      .catch((err) => console.error("Failed to load customer success seeding:", err));
   }
 
   const httpServer = createServer(app);
