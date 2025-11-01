@@ -28,7 +28,7 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Neon serverless hosting.
 - **ORM**: Drizzle ORM for type-safe operations and migrations.
 - **Schema Design**: Multi-tenant architecture with tenant isolation and comprehensive role-based access control (RBAC).
-- **Key Entities**: Users, Roles, Tenants, Business Records, Equipment, Contracts, Service Tickets, Inventory, Technicians, Meter Readings, Invoices, Tasks, Projects, Lease Management (leases, payments, renewals, dispositions).
+- **Key Entities**: Users, Roles, Tenants, Business Records, Equipment, Contracts, Service Tickets, Inventory, Technicians, Meter Readings, Invoices, Tasks, Projects, Lease Management (leases, payments, renewals, dispositions), E-Signature Integration (integration credentials, signature requests, signature signers, signature documents, signature audit logs).
 
 ### Multi-Tenancy & Role-Based Access Control
 - **Tenant Isolation**: Row-level security using `tenantId`.
@@ -52,6 +52,7 @@ Preferred communication style: Simple, everyday language.
 - **Service Dispatch**: Smart technician assignment and work order optimization, enhanced with AI for predictive maintenance and technician matching.
 - **CRM System**: Lead pipeline, quote generation, customer interaction, and equipment tracking.
 - **Lease Management System**: Comprehensive system for managing leases, payments, renewals, and dispositions with automated scheduling, payment health tracking, and integration points.
+- **E-Signature Integration System**: Provider-agnostic platform integration for electronic signatures supporting DocuSign, Adobe Sign, and HelloSign. Complete backend infrastructure (5 database tables, 27 storage methods, 30+ API endpoints) enabling dealers to configure their own e-signature provider credentials. Supports full document lifecycle: create/send signature requests, track multiple signers, manage sequential/parallel workflows, automated reminders, webhook handling, and comprehensive audit trails for compliance (ESIGN Act, UETA). Integration credentials management with health monitoring, OAuth token refresh, and sandbox/production modes.
 - **AI-Powered Enhancements**: Across Service Hub, Advanced Billing Engine, Service Dispatch, Product Catalog, Deals Management, Purchase Orders, Quote Builder, Task Management, Quotes Management, Quote & Proposal Generation, and Equipment Lifecycle Management for optimization, recommendations, and predictive analytics.
 - **Cross-Module Data Flow Integration**: Automated workflow pipelines and real-time service dispatch automation.
 - **Product Accessories System**: Many-to-many relationship architecture for accessory compatibility, manufacturer-based filtering, and enhanced data structure.
