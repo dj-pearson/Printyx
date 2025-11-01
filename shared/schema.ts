@@ -7658,3 +7658,42 @@ export type {
   InsertTemplateVariable,
   InsertWorkflowEventRegistry,
 } from "./workflow-automation-schema";
+
+// Re-export manufacturer order submission schemas
+export {
+  manufacturerConnections,
+  manufacturerOrders,
+  manufacturerOrderLineItems,
+  manufacturerOrderConfirmations,
+  manufacturerOrderShipments,
+  manufacturerOrderExceptions,
+  manufacturerTypeEnum,
+  connectionStatusEnum,
+  orderStatusEnum,
+  orderMethodEnum,
+  shipmentStatusEnum,
+  exceptionSeverityEnum,
+  exceptionTypeEnum,
+  insertManufacturerConnectionSchema,
+  insertManufacturerOrderSchema,
+  insertManufacturerOrderLineItemSchema,
+  insertManufacturerOrderConfirmationSchema,
+  insertManufacturerOrderShipmentSchema,
+  insertManufacturerOrderExceptionSchema,
+} from "./manufacturer-order-schema";
+
+export type {
+  ManufacturerConnection,
+  InsertManufacturerConnection,
+  ManufacturerOrder,
+  InsertManufacturerOrder,
+  ManufacturerOrderLineItem,
+  InsertManufacturerOrderLineItem,
+  ManufacturerOrderConfirmation,
+  InsertManufacturerOrderConfirmation,
+  ManufacturerOrderShipment,
+  InsertManufacturerOrderShipment,
+  ManufacturerOrderException,
+  InsertManufacturerOrderException,
+} from "./manufacturer-order-schema";
+
