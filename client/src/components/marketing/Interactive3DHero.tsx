@@ -67,7 +67,8 @@ const Interactive3DHero = () => {
   return (
     <section 
       ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-white"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-white pt-20 md:pt-0"
+      data-testid="section-hero"
     >
       {/* Animated 3D Background Grid */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
@@ -169,12 +170,12 @@ const Interactive3DHero = () => {
           ))}
         </div>
 
-        {/* Floating Metrics Cards */}
+        {/* Floating Metrics Cards - Hidden on mobile to prevent overlap */}
         {floatingMetrics.map((metric, index) => (
           <div
             key={index}
             className={`
-              absolute transition-all duration-1000 delay-${metric.delay}
+              absolute transition-all duration-1000 delay-${metric.delay} hidden md:block
               ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}
             `}
             style={{
@@ -232,14 +233,14 @@ const Interactive3DHero = () => {
               Coming October 1st, 2025
             </Badge>
 
-            <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
               Unify Your
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {" "}Copier Business
               </span>
             </h1>
 
-            <p className="text-xl text-gray-700 mb-8 leading-relaxed">
+            <p className="text-lg sm:text-xl text-gray-700 mb-8 leading-relaxed">
               Experience the future of copier dealer management with our intelligent 3D monitoring system. 
               Watch your equipment performance in real-time and optimize operations with AI-powered insights.
             </p>
@@ -364,7 +365,7 @@ const Interactive3DHero = () => {
       </div>
 
       {/* Custom Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes gridFloat {
           0%, 100% { transform: perspective(1000px) rotateX(60deg) translateZ(-100px) translateY(0px); }
           50% { transform: perspective(1000px) rotateX(60deg) translateZ(-100px) translateY(-20px); }
