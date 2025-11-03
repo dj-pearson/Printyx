@@ -61,7 +61,8 @@ import {
   MessageSquare,
   Search,
   Mic,
-  Video
+  Video,
+  Share2
 } from "lucide-react";
 
 interface NavigationItem {
@@ -112,16 +113,26 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Platform Admin',
       icon: Crown,
       path: `${adminPrefix}/platform`,
-      matchPatterns: [`${adminPrefix}/platform*`, `${adminPrefix}/root-admin*`, `${adminPrefix}/system*`, `${adminPrefix}/tenant*`],
+      matchPatterns: [`${adminPrefix}/platform*`, `${adminPrefix}/root-admin*`, `${adminPrefix}/system*`, `${adminPrefix}/tenant*`, '/root-admin*', '/social-media*', '/security-management*', '/system-monitoring*', '/platform-configuration*', '/gpt5*'],
       children: [
+        { title: 'Root Admin Dashboard', path: '/root-admin-dashboard', icon: Crown },
         { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
         { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
+        { title: 'Security Management', path: '/security-management', icon: Shield },
+        { title: 'System Monitoring', path: '/system-monitoring', icon: Monitor },
         { title: 'Database Management', path: '/database-management', icon: Database },
         { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
         { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
         { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
+        { title: 'Tenant Setup', path: '/tenant-setup', icon: Settings },
+        { title: 'Platform Configuration', path: '/platform-configuration', icon: Settings },
         { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
-        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
+        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 },
+        { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
+        { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
+        { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
+        { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
+        { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone }
       ]
     });
 
@@ -144,9 +155,12 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Opportunities', path: '/opportunities', icon: Target },
         { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
         { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
+        { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: TrendingUp },
         { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
         { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
+        { title: 'Proposal Builder', path: '/proposal-builder', icon: FileText },
         { title: 'Contracts', path: '/contracts', icon: FileSignature },
+        { title: 'Document Builder', path: '/document-builder', icon: FileText },
         { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
         { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
         { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
@@ -162,22 +176,25 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Service Hub',
       icon: Wrench,
       path: '/service-hub',
-      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*', '/vehicle*', '/asset*'],
+      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*', '/vehicle*', '/asset*', '/onboarding*', '/incident*', '/manufacturer*'],
       children: [
         { title: 'Service Hub', path: '/service-hub', icon: Wrench },
+        { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
+        { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
+        { title: 'Technician Management', path: '/technician-management', icon: Users },
         { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
         { title: 'Asset Management', path: '/asset-management', icon: Package },
         { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
         { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
         { title: 'Preventive Maintenance', path: '/preventive-maintenance-scheduling', icon: Calendar },
         { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
-        { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
-        { title: 'Technician Management', path: '/technician-management', icon: Users },
         { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
         { title: 'Mobile Field Operations', path: '/mobile-field-operations', icon: Activity },
         { title: 'Mobile Service App', path: '/mobile-service-app', icon: Smartphone },
         { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
-        { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp }
+        { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp },
+        { title: 'Incident Response', path: '/incident-response-system', icon: AlertTriangle },
+        { title: 'Manufacturer Integration', path: '/manufacturer-integration', icon: Plug }
       ]
     });
   }
@@ -239,6 +256,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Invoices', path: '/invoices', icon: FileText },
         { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
         { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard },
+        { title: 'Vendors', path: '/vendors', icon: Building2 },
         { title: 'Journal Entries', path: '/journal-entries', icon: BookOpen },
         { title: 'Financial Forecasting', path: '/financial-forecasting', icon: TrendingUp }
       ]
@@ -296,6 +314,45 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     ]
   });
 
+  // Integrations Hub - show if user has system permissions or is admin
+  if (permissions.system || isPlatformRole || isCompanyAdmin || level >= 3) {
+    sections.push({
+      id: 'integrations-hub',
+      title: 'Integrations',
+      icon: Plug,
+      path: '/integration-hub',
+      matchPatterns: ['/integration*', '/quickbooks*', '/erp*', '/esignature*', '/system-integrations*'],
+      children: [
+        { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
+        { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
+        { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
+        { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
+        { title: 'System Integrations', path: '/system-integrations', icon: Plug }
+      ]
+    });
+  }
+
+  // System Administration - show if user has system permissions or is admin
+  if (permissions.system || isPlatformRole || isCompanyAdmin || level >= 4) {
+    sections.push({
+      id: 'system-admin',
+      title: 'System Administration',
+      icon: Settings,
+      path: '/workflow-automation',
+      matchPatterns: ['/workflow*', '/business-process*', '/business-records*', '/document-management*', '/security-compliance*', '/deployment*', '/customer-number*'],
+      children: [
+        { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
+        { title: 'Business Process Optimization', path: '/business-process-optimization', icon: TrendingUp },
+        { title: 'Business Records', path: '/business-records', icon: BookOpen },
+        { title: 'Document Management', path: '/document-management', icon: FileText },
+        { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
+        { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
+        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
+        { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash }
+      ]
+    });
+  }
+
   // Always visible core sections
   sections.push(
     {
@@ -304,13 +361,6 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       icon: Building2,
       path: '/customers',
       matchPatterns: ['/customers*']
-    },
-    {
-      id: 'integrations',
-      title: 'Integrations',
-      icon: Plug,
-      path: '/integrations',
-      matchPatterns: ['/integrations*']
     },
     {
       id: 'settings',
