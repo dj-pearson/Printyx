@@ -5,6 +5,21 @@ Printyx is a unified SaaS platform for small-to-medium copier dealers, integrati
 
 ## Recent Changes
 
+### November 3, 2025 - Sidebar Navigation Consolidation Complete
+- **Status**: ✅ 100% Complete (Architect Approved: Pass)
+- **Scope**: Consolidated all navigation into single canonical RoleAwareCollapsibleSidebar.tsx
+- **Changes**:
+  - Deleted obsolete role-based-sidebar.tsx to prevent confusion
+  - Added 30+ missing pages across all sections
+  - Fixed critical path mismatches (Advanced Billing: `/advanced-billing-engine` → `/advanced-billing`)
+  - Added missing routes: Leases, Apollo.io Leads standalone page, CRM Goals Dashboard, Document Builder
+  - Enhanced all sections: Sales Hub, Service Hub, Billing Hub, AI Hub, Platform Admin, Integration Hub, System Administration
+  - Updated matchPatterns for proper auto-expansion behavior
+  - Verified 100% route coverage: All App.tsx routes now accessible via sidebar
+- **Security**: RBAC permissions properly enforced across all sections
+- **Navigation Structure**: 10 main sections (Dashboard, Sales Hub, Service Hub, Inventory, Billing Hub, AI Hub, Analytics, Integration Hub, Platform Admin, System Administration)
+- **Documentation**: All navigation routes aligned with App.tsx, comprehensive RBAC gating
+
 ### November 3, 2025 - Apollo.io Lead Enrichment Integration Complete
 - **Status**: ✅ 100% Complete (Architect Approved: Pass)
 - **Scope**: 4 database tables, 23 composite indexes, Apollo API client, unified Lead Enrichment page
@@ -17,7 +32,7 @@ Printyx is a unified SaaS platform for small-to-medium copier dealers, integrati
   - Embedded Apollo.io interface within Integrations tab, extensible for future providers (ZoomInfo, etc.)
 - **Security**: Multi-tenant isolation verified, SQL injection protection via Drizzle
 - **Architecture**: Smart caching strategy (search cache + centralized contact cache + tenant overlay)
-- **UI**: Added "Lead Enrichment" to Sales & CRM sidebar section, replaced direct Apollo.io link
+- **UI**: Added "Lead Enrichment" to Sales & CRM sidebar section, standalone Apollo page also available
 
 ### November 1, 2025 - Priority #11 Complete: Customer Success Automation
 - **Status**: ✅ 100% Complete (Architect Approved)
