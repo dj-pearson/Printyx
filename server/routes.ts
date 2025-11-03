@@ -10666,6 +10666,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const customerSuccessRoutes = await import("./routes/customer-success-routes");
   app.use("/api/customer-success", customerSuccessRoutes.default);
 
+  // Apollo.io Lead Enrichment Routes
+  const apolloRoutes = await import("./routes/apollo-routes");
+  app.use("/api/apollo", apolloRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
