@@ -4,22 +4,9 @@ import { createApolloClient, ApolloSearchFilters, ApolloContact } from "../apoll
 import { db } from "../db";
 import { businessRecords } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { isAuthenticated } from "../replitAuth";
 
 const router = express.Router();
-
-// Middleware to check authentication
-function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  // Check for authenticated user in either session or req.user (test mode)
-  const user = req.session?.user || (req as any).user;
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  // Ensure user is attached for downstream use
-  if (!req.session?.user && (req as any).user) {
-    req.session.user = (req as any).user;
-  }
-  next();
-}
 
 // Helper to transform Apollo contact to our schema
 function transformApolloContact(apolloContact: ApolloContact) {
@@ -51,15 +38,15 @@ function transformApolloContact(apolloContact: ApolloContact) {
 }
 
 // POST /api/apollo/search - Search for leads with filters
-router.post("/search", requireAuth, async (req, res) => {
+router.post("/search", isAuthenticated, async (req, res) => {
   try {
-    const tenantId = req.session?.user?.tenantId;
+    const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
       return res.status(403).json({ error: "No tenant ID found" });
     }
 
     const filters: ApolloSearchFilters = req.body;
-    const userId = req.session.user.id;
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
 
     // Generate search hash for caching
     const searchHash = apolloStorage.generateSearchHash(filters);
@@ -182,10 +169,10 @@ router.post("/search", requireAuth, async (req, res) => {
 });
 
 // POST /api/apollo/leads/:contactId/add-to-crm - Add single lead to CRM
-router.post("/leads/:contactId/add-to-crm", requireAuth, async (req, res) => {
+router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) => {
   try {
-    const tenantId = req.session?.user?.tenantId;
-    const userId = req.session?.user?.id;
+    const tenantId = (req.user as any)?.tenantId;
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
       return res.status(403).json({ error: "No tenant ID found" });
     }
@@ -283,10 +270,10 @@ router.post("/leads/:contactId/add-to-crm", requireAuth, async (req, res) => {
 });
 
 // POST /api/apollo/leads/bulk-add - Bulk add leads to CRM
-router.post("/leads/bulk-add", requireAuth, async (req, res) => {
+router.post("/leads/bulk-add", isAuthenticated, async (req, res) => {
   try {
-    const tenantId = req.session?.user?.tenantId;
-    const userId = req.session?.user?.id;
+    const tenantId = (req.user as any)?.tenantId;
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
       return res.status(403).json({ error: "No tenant ID found" });
     }
@@ -396,9 +383,9 @@ router.post("/leads/bulk-add", requireAuth, async (req, res) => {
 });
 
 // GET /api/apollo/stats - Get API usage stats
-router.get("/stats", requireAuth, async (req, res) => {
+router.get("/stats", isAuthenticated, async (req, res) => {
   try {
-    const tenantId = req.session?.user?.tenantId;
+    const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
       return res.status(403).json({ error: "No tenant ID found" });
     }
