@@ -135,10 +135,11 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Sales Hub',
       icon: Target,
       path: '/crm',
-      matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*'],
+      matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*', '/data-enrichment*'],
       children: [
         { title: 'CRM Dashboard', path: '/crm', icon: Target },
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
+        { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
         { title: 'Contacts', path: '/contacts', icon: Users },
         { title: 'Opportunities', path: '/opportunities', icon: Target },
         { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
