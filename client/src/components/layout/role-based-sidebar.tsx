@@ -120,7 +120,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         },
         { name: "CRM", href: "/crm", icon: Target },
         { name: "Leads Management", href: "/leads-management", icon: UserPlus },
-        { name: "Apollo.io Leads", href: "/apollo-leads", icon: Search },
+        { name: "Lead Enrichment", href: "/data-enrichment", icon: Search },
         { name: "Contacts", href: "/contacts", icon: Users },
         { name: "Deals Management", href: "/deals-management", icon: Target },
         {
