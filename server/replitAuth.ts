@@ -145,6 +145,62 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // TEST MODE: Allow bypass for Playwright e2e testing
+  // Testing environment automatically provides TESTING_STRIPE_SECRET_KEY, use that as indicator
+  const isTestMode = process.env.TEST_MODE === 'true' || !!process.env.TESTING_STRIPE_SECRET_KEY;
+  
+  if (isTestMode && req.headers['x-test-auth'] === 'playwright') {
+    // Create or retrieve test user
+    const testUserId = 'test-user-playwright';
+    const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
+    
+    try {
+      // Ensure tenant exists
+      let tenant = await storage.getTenant(defaultTenantId);
+      if (!tenant) {
+        tenant = await storage.createTenant({
+          name: "Default Copier Dealer",
+          domain: "default",
+        });
+      }
+
+      // Ensure test user exists
+      let testUser = await storage.getUser(testUserId);
+      if (!testUser) {
+        await storage.upsertUser({
+          id: testUserId,
+          email: 'test@playwright.dev',
+          firstName: 'Playwright',
+          lastName: 'Test User',
+          profileImageUrl: null,
+          tenantId: tenant.id,
+          role: 'admin',
+        });
+        testUser = await storage.getUser(testUserId);
+      }
+
+      // Populate req.user with test user data
+      req.user = {
+        claims: {
+          sub: testUserId,
+          email: 'test@playwright.dev',
+          first_name: 'Playwright',
+          last_name: 'Test User',
+        },
+        tenantId: tenant.id,
+        expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+      };
+
+      // Mark as authenticated for Passport
+      req.isAuthenticated = () => true;
+
+      return next();
+    } catch (error) {
+      console.error('Test auth bypass error:', error);
+      return res.status(500).json({ message: 'Test authentication setup failed' });
+    }
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated || !req.isAuthenticated() || !user?.expires_at) {

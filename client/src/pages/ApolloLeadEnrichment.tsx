@@ -106,11 +106,23 @@ export default function ApolloLeadEnrichment() {
 
   const [locationInput, setLocationInput] = useState("");
   const [titleInput, setTitleInput] = useState("");
+  const [searchResults, setSearchResults] = useState<any>(null);
 
-  // Search leads query
-  const { data: searchResults, isLoading: isSearching, refetch: searchLeads } = useQuery({
-    queryKey: ["/api/apollo/search", filters],
-    enabled: false, // Manual trigger only
+  // Search leads mutation (POST request)
+  const searchMutation = useMutation({
+    mutationFn: async (searchFilters: SearchFilters) => {
+      return await apiRequest("POST", "/api/apollo/search", searchFilters);
+    },
+    onSuccess: (data) => {
+      setSearchResults(data);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Search Error",
+        description: error.message || "Failed to search leads",
+        variant: "destructive",
+      });
+    },
   });
 
   // Add single lead mutation
@@ -162,7 +174,7 @@ export default function ApolloLeadEnrichment() {
   });
 
   const handleSearch = () => {
-    searchLeads();
+    searchMutation.mutate(filters);
   };
 
   const handleSeniorityToggle = (value: string) => {
@@ -398,12 +410,12 @@ export default function ApolloLeadEnrichment() {
 
           <Button
             onClick={handleSearch}
-            disabled={isSearching}
+            disabled={searchMutation.isPending}
             size="lg"
             className="w-full"
             data-testid="button-search"
           >
-            {isSearching ? (
+            {searchMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Searching...
