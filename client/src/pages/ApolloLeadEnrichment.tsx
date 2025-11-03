@@ -115,7 +115,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
   // Search leads mutation (POST request)
   const searchMutation = useMutation({
     mutationFn: async (searchFilters: SearchFilters) => {
-      return await apiRequest("POST", "/api/apollo/search", searchFilters);
+      return await apiRequest("/api/apollo/search", "POST", searchFilters);
     },
     onSuccess: (data) => {
       setSearchResults(data);
@@ -132,7 +132,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
   // Add single lead mutation
   const addSingleMutation = useMutation({
     mutationFn: async (contactId: string) => {
-      return await apiRequest("POST", `/api/apollo/leads/${contactId}/add-to-crm`);
+      return await apiRequest(`/api/apollo/leads/${contactId}/add-to-crm`, "POST");
     },
     onSuccess: () => {
       toast({
@@ -153,7 +153,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
   // Bulk add mutation
   const bulkAddMutation = useMutation({
     mutationFn: async (contactIds: string[]) => {
-      return await apiRequest("POST", "/api/apollo/leads/bulk-add", { contactIds });
+      return await apiRequest("/api/apollo/leads/bulk-add", "POST", { contactIds });
     },
     onSuccess: (data: any) => {
       toast({

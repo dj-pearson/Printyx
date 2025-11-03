@@ -83,29 +83,57 @@ export default function DataEnrichment() {
 
   // Fetch enriched contacts
   const { data: contactsData, isLoading: contactsLoading } = useQuery({
-    queryKey: [
-      "/api/enrichment/contacts",
-      {
-        query: searchQuery,
-        prospectingStatus: filterStatus ? [filterStatus] : undefined,
-        enrichmentSource: filterSource ? [filterSource] : undefined,
-        page: 1,
-        limit: 25,
-      },
-    ],
+    queryKey: ["/api/enrichment/contacts", searchQuery, filterStatus, filterSource],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append("query", searchQuery);
+      if (filterStatus) params.append("prospectingStatus", filterStatus);
+      if (filterSource) params.append("enrichmentSource", filterSource);
+      params.append("page", "1");
+      params.append("limit", "25");
+      
+      const url = `/api/enrichment/contacts?${params.toString()}`;
+      const response = await fetch(url, {
+        headers: {
+          "x-tenant-id": localStorage.getItem("demo-tenant-id") || "550e8400-e29b-41d4-a716-446655440000",
+          "X-Demo-Auth": localStorage.getItem("demo-authenticated") === "true" ? "true" : "",
+        },
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    },
     enabled: activeTab === "contacts",
   });
 
   // Fetch enriched companies
   const { data: companiesData, isLoading: companiesLoading } = useQuery({
-    queryKey: [
-      "/api/enrichment/companies",
-      {
-        query: searchQuery,
-        page: 1,
-        limit: 25,
-      },
-    ],
+    queryKey: ["/api/enrichment/companies", searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append("query", searchQuery);
+      params.append("page", "1");
+      params.append("limit", "25");
+      
+      const url = `/api/enrichment/companies?${params.toString()}`;
+      const response = await fetch(url, {
+        headers: {
+          "x-tenant-id": localStorage.getItem("demo-tenant-id") || "550e8400-e29b-41d4-a716-446655440000",
+          "X-Demo-Auth": localStorage.getItem("demo-authenticated") === "true" ? "true" : "",
+        },
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    },
     enabled: activeTab === "companies",
   });
 
