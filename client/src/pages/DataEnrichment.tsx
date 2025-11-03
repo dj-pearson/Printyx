@@ -30,8 +30,10 @@ import {
   TrendingUp,
   Users,
   Building,
+  Plug,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ApolloLeadEnrichment from "./ApolloLeadEnrichment";
 
 interface EnrichedContact {
   id: string;
@@ -321,12 +323,32 @@ export default function DataEnrichment() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="integrations">
+              <Plug className="w-4 h-4 mr-2" />
+              Integrations
+            </TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="companies">Companies</TabsTrigger>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Lead Enrichment Integrations</CardTitle>
+                <CardDescription>
+                  Connect with external data providers to find and enrich leads
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Embed Apollo.io search interface */}
+                <ApolloLeadEnrichment embedded={true} />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Contacts Tab */}
           <TabsContent value="contacts" className="space-y-4">

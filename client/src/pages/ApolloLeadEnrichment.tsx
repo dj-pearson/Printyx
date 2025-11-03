@@ -88,7 +88,11 @@ const EMPLOYEE_RANGES = [
   { value: "1001,10000", label: "1,001+" },
 ];
 
-export default function ApolloLeadEnrichment() {
+interface ApolloLeadEnrichmentProps {
+  embedded?: boolean;
+}
+
+export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnrichmentProps = {}) {
   const { toast } = useToast();
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   
@@ -246,35 +250,37 @@ export default function ApolloLeadEnrichment() {
   const pagination = searchResults?.pagination;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Apollo.io Lead Enrichment</h1>
-          <p className="text-gray-600">
-            Search for qualified leads and add them to your CRM
-          </p>
+    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
+      {/* Header - only show in standalone mode */}
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Apollo.io Lead Enrichment</h1>
+            <p className="text-gray-600">
+              Search for qualified leads and add them to your CRM
+            </p>
+          </div>
+          {stats && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">API Usage (30 Days)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Calls:</span>
+                    <span className="font-semibold">{stats.totalCalls}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Credits Used:</span>
+                    <span className="font-semibold">{stats.totalCreditsUsed}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
-        {stats && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">API Usage (30 Days)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Calls:</span>
-                  <span className="font-semibold">{stats.totalCalls}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Credits Used:</span>
-                  <span className="font-semibold">{stats.totalCreditsUsed}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      )}
 
       {/* Search Filters */}
       <Card>
