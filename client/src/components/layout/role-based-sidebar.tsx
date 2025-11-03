@@ -70,6 +70,7 @@ import {
   Database,
   Hash,
   Wand2,
+  Search,
 } from "lucide-react";
 
 // Navigation structure based on role permissions
@@ -119,6 +120,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         },
         { name: "CRM", href: "/crm", icon: Target },
         { name: "Leads Management", href: "/leads-management", icon: UserPlus },
+        { name: "Apollo.io Leads", href: "/apollo-leads", icon: Search },
         { name: "Contacts", href: "/contacts", icon: Users },
         { name: "Deals Management", href: "/deals-management", icon: Target },
         {

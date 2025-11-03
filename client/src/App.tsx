@@ -128,6 +128,7 @@ import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
 import ERPIntegration from "@/pages/ERPIntegration";
 import CustomerAccessManagement from "@/pages/CustomerAccessManagement";
 const ServiceHub = React.lazy(() => import("@/pages/ServiceHub"));
+const ApolloLeadEnrichment = React.lazy(() => import("@/pages/ApolloLeadEnrichment"));
 import OnboardingDashboard from "@/pages/OnboardingDashboard";
 import OnboardingDetails from "@/pages/OnboardingDetails";
 import EnhancedOnboardingForm from "@/pages/EnhancedOnboardingForm";
@@ -442,6 +443,7 @@ function Router() {
             component={ServiceDispatchOptimization}
           />
           <Route path="/service-hub" component={ServiceHub} />
+          <Route path="/apollo-leads" component={ApolloLeadEnrichment} />
           <Route
             path="/preventive-maintenance-automation"
             component={PreventiveMaintenanceAutomation}
