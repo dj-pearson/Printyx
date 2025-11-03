@@ -79,6 +79,48 @@ router.post("/logout", (req, res) => {
 // Get current user
 router.get("/user", async (req, res) => {
   try {
+    // TEST MODE: Support Playwright testing with test header
+    const isTestMode = process.env.TEST_MODE === 'true' || !!process.env.TESTING_STRIPE_SECRET_KEY;
+    if (isTestMode && req.headers['x-test-auth'] === 'playwright') {
+      const testUserId = 'test-user-playwright';
+      const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
+      
+      // Ensure test user exists
+      let testUser = await storage.getUser(testUserId);
+      if (!testUser) {
+        // Create test user if doesn't exist
+        let tenant = await storage.getTenant(defaultTenantId);
+        if (!tenant) {
+          tenant = await storage.createTenant({
+            name: "Default Copier Dealer",
+            domain: "default",
+          });
+        }
+        
+        await storage.upsertUser({
+          id: testUserId,
+          email: 'test@playwright.dev',
+          firstName: 'Playwright',
+          lastName: 'Test User',
+          profileImageUrl: null,
+          tenantId: tenant.id,
+          role: 'admin',
+        });
+        testUser = await storage.getUser(testUserId);
+      }
+      
+      const userWithRole = await storage.getUserWithRole(testUserId);
+      return res.json({
+        id: testUser.id,
+        email: testUser.email,
+        firstName: testUser.firstName,
+        lastName: testUser.lastName,
+        role: userWithRole?.role || 'admin',
+        team: userWithRole?.team,
+        tenantId: testUser.tenantId,
+      });
+    }
+    
     if (!req.session.userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }

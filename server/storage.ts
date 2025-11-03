@@ -5024,6 +5024,15 @@ export class DatabaseStorage implements IStorage {
   // Removed duplicate getContactsByCompany method (already exists above)
 
   // Tenant management methods
+  async getTenant(id: string): Promise<any> {
+    const [tenant] = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.id, id))
+      .limit(1);
+    return tenant;
+  }
+
   async getTenantBySlug(slug: string): Promise<any> {
     const [tenant] = await db
       .select()
