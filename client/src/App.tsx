@@ -104,6 +104,7 @@ import SystemMonitoring from "@/pages/SystemMonitoring";
 import AccessControl from "@/pages/AccessControl";
 import RootAdminDashboard from "@/pages/RootAdminDashboard";
 import RootAdminSEO from "@/pages/RootAdminSEO";
+import SEODashboard from "@/pages/SEODashboard";
 import PlatformConfiguration from "@/pages/PlatformConfiguration";
 import DatabaseManagement from "@/pages/DatabaseManagement";
 import SalesPipelineForecasting from "@/pages/SalesPipelineForecasting";
@@ -505,7 +506,8 @@ function Router() {
           <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
           <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
           <Route path="/root-admin/seo" component={RootAdminSEO} />
-          
+          <Route path="/seo" component={SEODashboard} />
+
           {/* Platform Admin Routes */}
           <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
           <Route path="/admin/system-security" component={SystemSecurity} />
