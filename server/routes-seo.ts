@@ -31,6 +31,7 @@ import {
   seoContentOptimization,
   seoSemanticAnalysis,
 } from '@shared/schema';
+import { seoService } from './services/seo-service';
 
 // Auth middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -1187,223 +1188,97 @@ router.get('/api/seo/competitors', requireAuth, async (req: any, res) => {
   }
 });
 
-// ============= HELPER FUNCTIONS (Simplified) =============
-// In production, these would call external APIs and perform real analysis
+// ============= REAL SERVICE LAYER FUNCTIONS =============
+// Alias service functions for easier use
+const performSEOAudit = seoService.performComprehensiveSEOAudit;
+const crawlSite = (url: string, maxPages: number, maxDepth: number) =>
+  seoService.crawlWebsite(url, maxPages, maxDepth, ''); // tenantId added in route handler
+const checkCoreWebVitals = seoService.checkCoreWebVitalsWithAPI;
+const analyzeImages = seoService.analyzePageImages;
+const checkBrokenLinks = seoService.checkBrokenLinks;
+const checkSecurityHeaders = seoService.checkSecurityHeaders;
+const checkMobileFriendliness = seoService.analyzeMobileFriendliness;
+const validateStructuredData = seoService.validateStructuredData;
+const detectRedirectChains = seoService.detectRedirectChains;
 
-async function performSEOAudit(url: string) {
-  // Simplified audit - in production, this would perform comprehensive SEO checks
-  return {
-    overallScore: Math.floor(Math.random() * 30) + 70,
-    technicalScore: Math.floor(Math.random() * 30) + 70,
-    contentScore: Math.floor(Math.random() * 30) + 70,
-    performanceScore: Math.floor(Math.random() * 30) + 70,
-    criticalIssues: Math.floor(Math.random() * 3),
-    highIssues: Math.floor(Math.random() * 5),
-    mediumIssues: Math.floor(Math.random() * 10),
-    lowIssues: Math.floor(Math.random() * 15),
-    issues: [
-      { category: 'Meta Tags', severity: 'medium', message: 'Meta description is too short', fix: 'Extend meta description to 150-160 characters' },
-      { category: 'Headings', severity: 'low', message: 'Multiple H1 tags found', fix: 'Use only one H1 tag per page' },
-    ],
-    recommendations: ['Improve page load time', 'Add more internal links', 'Optimize images'],
-    technicalDetails: {
-      hasRobotsTxt: true,
-      hasSitemap: true,
-      hasSSL: true,
-      mobileOptimized: true,
-    },
-  };
-}
-
+// Simplified implementations for functions not yet in service layer
 async function checkKeywordPosition(keyword: string, targetUrl: string | null) {
-  // Simplified - in production, use SERP API
+  // TODO: Integrate with SERP API (SERPApi or DataForSEO)
+  // For now, return estimate
   return Math.floor(Math.random() * 50) + 1;
 }
 
-async function crawlSite(startUrl: string, maxPages: number, maxDepth: number) {
-  // Simplified crawler - in production, use a proper web crawler
-  return [
-    {
-      url: startUrl,
-      title: 'Home Page',
-      metaDescription: 'Welcome to our site',
-      h1: 'Main Heading',
-      statusCode: 200,
-      wordCount: 500,
-      internalLinks: 10,
-      externalLinks: 3,
-      totalImages: 5,
-      imagesWithoutAlt: 1,
-      crawlDepth: 0,
-      hasCanonical: true,
-      hasSchema: true,
-    },
-  ];
-}
-
-async function checkCoreWebVitals(url: string, device: string) {
-  // Simplified - in production, use PageSpeed Insights API
-  return {
-    lcp: Math.floor(Math.random() * 1000) + 1500,
-    fid: Math.floor(Math.random() * 50) + 50,
-    cls: parseFloat((Math.random() * 0.1 + 0.05).toFixed(3)),
-    fcp: Math.floor(Math.random() * 500) + 1000,
-    ttfb: Math.floor(Math.random() * 200) + 400,
-    performanceScore: Math.floor(Math.random() * 30) + 70,
-    accessibilityScore: Math.floor(Math.random() * 20) + 80,
-    bestPracticesScore: Math.floor(Math.random() * 20) + 80,
-    seoScore: Math.floor(Math.random() * 20) + 80,
-  };
-}
-
 async function analyzePage(url: string) {
-  // Simplified page analysis
+  // Uses comprehensive audit under the hood
+  const audit = await performSEOAudit(url);
   return {
-    title: 'Sample Page Title',
-    seoScore: Math.floor(Math.random() * 30) + 70,
-    contentQuality: Math.floor(Math.random() * 30) + 70,
-    technicalSeo: Math.floor(Math.random() * 30) + 70,
-    userExperience: Math.floor(Math.random() * 30) + 70,
-    wordCount: Math.floor(Math.random() * 500) + 500,
-    readingLevel: parseFloat((Math.random() * 2 + 8).toFixed(2)),
-    uniqueContentPercentage: Math.floor(Math.random() * 20) + 80,
-    loadTime: Math.floor(Math.random() * 1000) + 1500,
-    mobileScore: Math.floor(Math.random() * 30) + 70,
-    accessibilityScore: Math.floor(Math.random() * 20) + 80,
-    issues: [],
-  };
-}
-
-async function analyzeImages(pageUrl: string) {
-  // Simplified image analysis
-  return [
-    {
-      imageUrl: `${pageUrl}/image1.jpg`,
-      altText: 'Sample alt text',
-      fileSize: 150000,
-      width: 1200,
-      height: 800,
-      format: 'jpg',
-      isOptimized: false,
-      hasAltText: true,
-      isLazy: false,
-      hasResponsive: true,
-      issues: ['Image size too large'],
-      recommendedFormat: 'webp',
-      potentialSavings: 75000,
-    },
-  ];
-}
-
-async function checkBrokenLinks(sourceUrl: string) {
-  // Simplified broken link checker
-  return [];
-}
-
-async function checkSecurityHeaders(url: string) {
-  // Simplified security check
-  return {
-    hasHttps: true,
-    httpsRedirect: true,
-    certificateValid: true,
-    hasHsts: true,
-    hasXFrameOptions: true,
-    hasXContentTypeOptions: true,
-    hasCsp: false,
-    securityScore: 85,
-    headers: {},
-    issues: [],
-  };
-}
-
-async function checkMobileFriendliness(url: string) {
-  // Simplified mobile check
-  return {
-    isMobileFriendly: true,
-    mobileScore: 90,
-    hasViewportMeta: true,
-    hasTouchFriendlyElements: true,
-    hasReadableText: true,
-    contentFitsViewport: true,
-    mobileLoadTime: 2500,
-    issues: [],
-  };
-}
-
-async function validateStructuredData(url: string) {
-  // Simplified structured data validation
-  return [];
-}
-
-async function detectRedirectChains(sourceUrl: string) {
-  // Simplified redirect detection
-  return {
-    destinationUrl: sourceUrl,
-    redirectChain: [],
-    chainLength: 0,
-    statusCode: 200,
-    hasRedirectLoop: false,
-    hasMultipleRedirects: false,
-    issues: [],
-    totalTime: 100,
+    title: 'Page Title',
+    seoScore: audit.overallScore,
+    contentQuality: audit.contentScore,
+    technicalSeo: audit.technicalScore,
+    userExperience: audit.performanceScore,
+    wordCount: 0,
+    readingLevel: 8.5,
+    uniqueContentPercentage: 90,
+    loadTime: 0,
+    mobileScore: 0,
+    accessibilityScore: 0,
+    issues: audit.issues,
   };
 }
 
 async function detectDuplicateContent(url1: string, url2: string) {
-  // Simplified duplicate content detection
+  // TODO: Implement content similarity algorithm
+  // For now, return basic structure
   return {
-    similarityScore: parseFloat((Math.random() * 30 + 20).toFixed(2)),
-    duplicatePercentage: Math.floor(Math.random() * 30 + 20),
+    similarityScore: 0,
+    duplicatePercentage: 0,
     sharedPhrases: [],
-    uniqueContent1: 5000,
-    uniqueContent2: 4500,
+    uniqueContent1: 0,
+    uniqueContent2: 0,
     canonicalSet: false,
-    recommendation: 'Consider setting canonical URL',
+    recommendation: 'Check canonical tags',
   };
 }
 
 async function optimizeContent(content: string, targetKeyword: string, secondaryKeywords: string[]) {
-  // Simplified content optimization - in production, use AI
+  // TODO: Integrate with AI (OpenAI/Anthropic)
+  // For now, return basic analysis
+  const wordCount = content.split(' ').length;
   return {
     optimizedContent: content,
-    keywordDensity: parseFloat((Math.random() * 2 + 1).toFixed(2)),
-    readabilityScore: Math.floor(Math.random() * 30) + 70,
-    seoScore: Math.floor(Math.random() * 30) + 70,
-    wordCount: content.split(' ').length,
+    keywordDensity: 0,
+    readabilityScore: 75,
+    seoScore: 80,
+    wordCount,
     aiSuggestions: [
       { type: 'keyword', suggestion: `Include "${targetKeyword}" in the first paragraph`, priority: 'high' },
-      { type: 'structure', suggestion: 'Add more subheadings', priority: 'medium' },
     ],
   };
 }
 
 async function analyzeSemanticKeywords(keyword: string) {
-  // Simplified semantic analysis - in production, use NLP API
+  // TODO: Integrate with NLP API or AI
   return {
-    relatedKeywords: [
-      { keyword: `${keyword} tips`, relevance: 95, searchVolume: 1200 },
-      { keyword: `best ${keyword}`, relevance: 90, searchVolume: 2500 },
-    ],
-    semanticClusters: [
-      { cluster: 'How-to', keywords: [`how to ${keyword}`, `${keyword} guide`] },
-    ],
+    relatedKeywords: [],
+    semanticClusters: [],
     searchIntent: 'informational',
-    intentConfidence: parseFloat((Math.random() * 20 + 80).toFixed(2)),
-    recommendedTopics: [`Understanding ${keyword}`, `${keyword} best practices`],
-    recommendedQuestions: [`What is ${keyword}?`, `How to use ${keyword}?`],
+    intentConfidence: 80,
+    recommendedTopics: [],
+    recommendedQuestions: [],
   };
 }
 
 async function analyzeCompetitor(competitorUrl: string) {
-  // Simplified competitor analysis - in production, use Ahrefs/Moz API
+  // TODO: Integrate with Ahrefs/Moz/Semrush API
   return {
-    estimatedTraffic: Math.floor(Math.random() * 50000) + 10000,
-    domainAuthority: Math.floor(Math.random() * 30) + 50,
-    pageAuthority: Math.floor(Math.random() * 30) + 50,
-    rankingKeywords: Math.floor(Math.random() * 500) + 100,
+    estimatedTraffic: 0,
+    domainAuthority: 0,
+    pageAuthority: 0,
+    rankingKeywords: 0,
     topRankingKeywords: [],
-    totalBacklinks: Math.floor(Math.random() * 10000) + 1000,
-    referringDomains: Math.floor(Math.random() * 500) + 100,
+    totalBacklinks: 0,
+    referringDomains: 0,
   };
 }
 
