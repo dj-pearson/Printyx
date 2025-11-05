@@ -109,6 +109,7 @@ import salesForecastingRoutes from "./routes-sales-forecasting";
 import reportsRoutes from "./routes-reports";
 import reportingArchitectureRoutes from "./routes-reporting-architecture";
 import warehouseFpyRoutes from "./routes-warehouse-fpy";
+import seoRoutes from "./routes-seo";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -16277,7 +16278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Breach Detection routes
   app.use('/api', breachDetectionRoutes);
-  
+
+  // Register SEO Management routes
+  app.use(seoRoutes);
+
   // Register DoD Validation routes
   const validateRoutes = await import("./routes-validate");
   app.use('/api', validateRoutes.default);

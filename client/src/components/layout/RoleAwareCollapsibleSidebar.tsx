@@ -340,8 +340,9 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'System Administration',
       icon: Settings,
       path: '/workflow-automation',
-      matchPatterns: ['/workflow*', '/business-process*', '/business-records*', '/document-management*', '/security-compliance*', '/deployment*', '/customer-number*'],
+      matchPatterns: ['/workflow*', '/business-process*', '/business-records*', '/document-management*', '/security-compliance*', '/deployment*', '/customer-number*', '/seo*'],
       children: [
+        { title: 'SEO Management', path: '/seo', icon: Search },
         { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
         { title: 'Business Process Optimization', path: '/business-process-optimization', icon: TrendingUp },
         { title: 'Business Records', path: '/business-records', icon: BookOpen },
