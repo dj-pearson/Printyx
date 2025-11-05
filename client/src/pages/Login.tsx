@@ -52,10 +52,15 @@ export default function Login() {
         title: "Login successful",
         description: `Welcome back, ${data.user.firstName || data.user.email}!`,
       });
-      // Invalidate auth query and redirect immediately
+      // Invalidate auth query to fetch fresh user data
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      // Use location.replace to avoid 404 flash
-      window.location.replace("/");
+
+      // Restore last visited route or go to dashboard
+      const lastRoute = localStorage.getItem("printyx_last_route");
+      const redirectTo = lastRoute && lastRoute !== "/login" ? lastRoute : "/";
+
+      // Use location.replace for smooth transition without back button issue
+      window.location.replace(redirectTo);
     },
     onError: (error: any) => {
       toast({
