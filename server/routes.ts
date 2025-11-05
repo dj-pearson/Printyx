@@ -41,10 +41,11 @@ import {
   insertDealStageSchema,
   insertDealActivitySchema,
   insertMasterProductModelSchema,
-  insertSeoSettingsSchema,
-  insertSeoPageSchema,
-  seoSettings,
-  seoPages,
+  // TEMPORARILY DISABLED: SEO schemas causing dependency issues
+  // insertSeoSettingsSchema,
+  // insertSeoPageSchema,
+  // seoSettings,
+  // seoPages,
   companyContacts,
   equipment,
 } from "@shared/schema";
@@ -109,7 +110,8 @@ import salesForecastingRoutes from "./routes-sales-forecasting";
 import reportsRoutes from "./routes-reports";
 import reportingArchitectureRoutes from "./routes-reporting-architecture";
 import warehouseFpyRoutes from "./routes-warehouse-fpy";
-import seoRoutes from "./routes-seo";
+// TEMPORARILY DISABLED: SEO routes causing cheerio dependency conflict
+// import seoRoutes from "./routes-seo";
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -16279,8 +16281,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Breach Detection routes
   app.use('/api', breachDetectionRoutes);
 
+  // TEMPORARILY DISABLED: SEO routes causing cheerio dependency conflict
   // Register SEO Management routes
-  app.use(seoRoutes);
+  // app.use(seoRoutes);
 
   // Register DoD Validation routes
   const validateRoutes = await import("./routes-validate");
