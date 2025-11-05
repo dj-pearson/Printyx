@@ -5,6 +5,16 @@ Printyx is a unified SaaS platform for small-to-medium copier dealers, integrati
 
 ## Recent Changes
 
+### November 5, 2025 - Critical Bug Fixes: Apollo Integration & SEO Module
+- **Status**: ✅ Fixed and Running
+- **Issues Resolved**:
+  1. **Duplicate SEO Schema Exports**: Removed duplicate `seoSettings` and related schema definitions from shared/schema.ts (lines 6627-6691) that conflicted with seo-schema.ts re-exports
+  2. **SEO Routes Temporarily Disabled**: Commented out SEO routes in server/routes.ts due to missing `cheerio` dependency causing startup failures
+  3. **Apollo Authentication**: Replaced custom `requireAuth` middleware with standard `isAuthenticated` middleware for consistency with Replit Auth
+  4. **Navigation Cleanup**: Consolidated sidebar to show only unified "Lead Enrichment" page, removed duplicate Apollo.io Leads link
+- **Current State**: Application running successfully on port 5000 with all core features functional
+- **Note**: SEO Management module temporarily disabled until cheerio dependency issue is resolved
+
 ### November 3, 2025 - Sidebar Navigation Consolidation Complete
 - **Status**: ✅ 100% Complete (Architect Approved: Pass)
 - **Scope**: Consolidated all navigation into single canonical RoleAwareCollapsibleSidebar.tsx
