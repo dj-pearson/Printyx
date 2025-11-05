@@ -162,10 +162,38 @@ import DatabaseUpdaterPage from "@/pages/admin/DatabaseUpdaterPage";
 import TenantManagement from "@/pages/admin/TenantManagement";
 import UserManagement from "@/pages/admin/UserManagement";
 
+const LAST_ROUTE_KEY = "printyx_last_route";
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [pathname] = useLocation();
+  const [pathname, setLocation] = useLocation();
   useSeo(pathname);
+
+  // Save current route to localStorage when authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && pathname !== "/" && !pathname.startsWith("/login")) {
+      try {
+        localStorage.setItem(LAST_ROUTE_KEY, pathname);
+      } catch (error) {
+        console.error("Error saving route:", error);
+      }
+    }
+  }, [pathname, isAuthenticated]);
+
+  // Restore last route on authentication
+  React.useEffect(() => {
+    if (isAuthenticated && pathname === "/") {
+      try {
+        const lastRoute = localStorage.getItem(LAST_ROUTE_KEY);
+        if (lastRoute && lastRoute !== "/" && lastRoute !== "/login") {
+          setLocation(lastRoute);
+        }
+      } catch (error) {
+        console.error("Error restoring route:", error);
+      }
+    }
+  }, [isAuthenticated, pathname, setLocation]);
+
   React.useEffect(() => {
     if (isAuthenticated) {
       // Temporarily disable prefetching to avoid 401 errors
@@ -178,10 +206,10 @@ function Router() {
   return (
     <Switch>
       {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+          <div className="text-center animate-fade-in">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading Printyx...</p>
+            <p className="mt-4 text-gray-600 font-medium">Loading Printyx...</p>
           </div>
         </div>
       ) : !isAuthenticated ? (

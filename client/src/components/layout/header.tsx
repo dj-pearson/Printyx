@@ -117,6 +117,10 @@ export default function Header({ title, description }: HeaderProps) {
               <DropdownMenuItem
                 onClick={async () => {
                   try {
+                    // Clear localStorage cache before logout
+                    localStorage.removeItem("printyx_auth_user");
+                    localStorage.removeItem("printyx_last_route");
+
                     const response = await fetch("/api/auth/logout", {
                       method: "POST",
                       credentials: "include",
@@ -126,6 +130,9 @@ export default function Header({ title, description }: HeaderProps) {
                     }
                   } catch (error) {
                     console.error("Logout error:", error);
+                    // Clear cache even on error
+                    localStorage.removeItem("printyx_auth_user");
+                    localStorage.removeItem("printyx_last_route");
                     window.location.href = "/";
                   }
                 }}
