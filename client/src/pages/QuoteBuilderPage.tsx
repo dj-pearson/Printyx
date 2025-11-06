@@ -48,7 +48,7 @@ export default function QuoteBuilderPage() {
 
   return (
     <MainLayout title={isProposalMode ? 'Create Proposal' : (isEditing ? 'Edit Quote' : 'Quote Builder')} description={isProposalMode ? `Creating proposal from quote ${sourceQuoteId} with template ${templateId}` : (isEditing ? 'Modify your existing quote with line-by-line product selection' : 'Create a comprehensive quote with line-by-line product selection')}>
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6 touch-manipulation">
         {/* Contextual Help */}
         <ContextualHelp page="quote-builder" />
 
@@ -56,14 +56,15 @@ export default function QuoteBuilderPage() {
         <PageAlerts categories={["business", "performance"]} className="mt-2" />
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setLocation('/quotes')}
+              className="min-h-[44px] active:scale-[0.98] transition-transform"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Quotes
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Back to Quotes</span>
             </Button>
           </div>
         </div>

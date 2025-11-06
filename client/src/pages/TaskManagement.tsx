@@ -449,102 +449,133 @@ export default function TaskManagement() {
         <ContextualHelp page="task-management" />
         <KpiSummaryBar className="mb-4" />
         <PageAlerts categories={["business","performance"]} severities={["high","critical"]} className="-mt-2" />
-        {/* Header with Actions */}
+        {/* Header with Actions - Mobile optimized */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold">Tasks</h1>
-            <Badge variant="secondary" className="text-xs">
-              {filteredTasks.length} tasks
+          <div className="flex items-center space-x-3">
+            <h1 className="text-xl sm:text-2xl font-bold">Tasks</h1>
+            <Badge variant="secondary" className="text-xs sm:text-sm">
+              {filteredTasks.length}
             </Badge>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsCreateProjectOpen(true)}
+              className="flex-1 sm:flex-none touch-manipulation active:scale-95 transition-transform min-h-[44px]"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Project
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Project</span>
             </Button>
-            <Button size="sm" onClick={() => setIsCreateTaskOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Task
+            <Button
+              size="sm"
+              onClick={() => setIsCreateTaskOpen(true)}
+              className="flex-1 sm:flex-none touch-manipulation active:scale-95 transition-transform min-h-[44px]"
+            >
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="sm:inline">Task</span>
             </Button>
           </div>
         </div>
 
-        {/* View Controls */}
+        {/* View Controls - Mobile optimized */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col gap-4">
+              {/* Search - Full width on mobile */}
+              <div className="w-full">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search tasks..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-11 touch-manipulation"
                   />
                 </div>
               </div>
 
-              {/* View Type Toggle */}
-              <div className="flex rounded-lg border p-1">
-                <Button
-                  variant={view.type === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setView((prev) => ({ ...prev, type: "list" }))}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={view.type === "board" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() =>
-                    setView((prev) => ({ ...prev, type: "board" }))
-                  }
-                >
-                  <Kanban className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={view.type === "gantt" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() =>
-                    setView((prev) => ({ ...prev, type: "gantt" }))
-                  }
-                >
-                  <BarChart3 className="h-4 w-4" />
-                </Button>
-              </div>
+              {/* View Type Toggle and Filters Row */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                {/* View Type Toggle - Touch friendly */}
+                <div className="flex rounded-lg border p-1">
+                  <Button
+                    variant={view.type === "list" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setView((prev) => ({ ...prev, type: "list" }))}
+                    className="touch-manipulation min-h-[44px] min-w-[44px]"
+                    title="List View"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={view.type === "board" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() =>
+                      setView((prev) => ({ ...prev, type: "board" }))
+                    }
+                    className="touch-manipulation min-h-[44px] min-w-[44px]"
+                    title="Board View"
+                  >
+                    <Kanban className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={view.type === "gantt" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() =>
+                      setView((prev) => ({ ...prev, type: "gantt" }))
+                    }
+                    className="touch-manipulation min-h-[44px] min-w-[44px]"
+                    title="Gantt View"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                </div>
 
-              {/* Filters */}
-              <div className="flex gap-2">
+                {/* Filters - Responsive width */}
                 <Select
                   value={view.groupBy}
                   onValueChange={(value) =>
                     setView((prev) => ({ ...prev, groupBy: value as any }))
                   }
                 >
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-[140px] sm:w-[160px] h-11 touch-manipulation">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="status">Status</SelectItem>
-                    <SelectItem value="assignee">Assignee</SelectItem>
-                    <SelectItem value="priority">Priority</SelectItem>
-                    <SelectItem value="project">Project</SelectItem>
-                    <SelectItem value="dueDate">Due Date</SelectItem>
+                    <SelectItem value="status" className="min-h-[44px]">
+                      Status
+                    </SelectItem>
+                    <SelectItem value="assignee" className="min-h-[44px]">
+                      Assignee
+                    </SelectItem>
+                    <SelectItem value="priority" className="min-h-[44px]">
+                      Priority
+                    </SelectItem>
+                    <SelectItem value="project" className="min-h-[44px]">
+                      Project
+                    </SelectItem>
+                    <SelectItem value="dueDate" className="min-h-[44px]">
+                      Due Date
+                    </SelectItem>
                   </SelectContent>
                 </Select>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-11 touch-manipulation active:scale-95 transition-transform"
+                    >
                       <Filter className="h-4 w-4 mr-2" />
-                      Filter
+                      <span className="hidden sm:inline">Filter</span>
+                      {view.filters.status.length > 0 && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {view.filters.status.length}
+                        </Badge>
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56">
@@ -553,7 +584,7 @@ export default function TaskManagement() {
                     {Object.entries(statusConfig).map(([status, config]) => (
                       <DropdownMenuItem
                         key={status}
-                        className="flex items-center space-x-2"
+                        className="flex items-center space-x-2 min-h-[44px] touch-manipulation"
                         onClick={() => {
                           const newFilters = view.filters.status.includes(
                             status
@@ -570,6 +601,7 @@ export default function TaskManagement() {
                           type="checkbox"
                           checked={view.filters.status.includes(status)}
                           readOnly
+                          className="h-4 w-4"
                         />
                         <span>{config.label}</span>
                       </DropdownMenuItem>
