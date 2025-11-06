@@ -126,13 +126,13 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
   return (
     <div className={`border rounded-lg overflow-hidden ${className}`}>
       {/* Toolbar */}
-      <div className="bg-gray-50 border-b p-2 flex flex-wrap items-center gap-1">
+      <div className="bg-gray-50 border-b p-2 sm:p-3 flex flex-wrap items-center gap-1 sm:gap-2">
         {/* Undo/Redo */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => execCommand('undo')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Undo className="h-4 w-4" />
         </Button>
@@ -140,16 +140,16 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => execCommand('redo')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Redo className="h-4 w-4" />
         </Button>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className="mx-1 h-6 hidden sm:block" />
 
         {/* Text Format */}
         <Select onValueChange={formatBlock}>
-          <SelectTrigger className="w-32 h-8">
+          <SelectTrigger className="w-24 sm:w-32 h-10 touch-manipulation text-xs sm:text-sm">
             <SelectValue placeholder="Format" />
           </SelectTrigger>
           <SelectContent>
@@ -164,7 +164,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
 
         {/* Font Size */}
         <Select onValueChange={setFontSize}>
-          <SelectTrigger className="w-16 h-8">
+          <SelectTrigger className="w-14 sm:w-16 h-10 touch-manipulation text-xs sm:text-sm">
             <SelectValue placeholder="12" />
           </SelectTrigger>
           <SelectContent>
@@ -178,14 +178,14 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           </SelectContent>
         </Select>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className="mx-1 h-6 hidden sm:block" />
 
         {/* Text Styling */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => execCommand('bold')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Bold className="h-4 w-4" />
         </Button>
@@ -193,7 +193,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => execCommand('italic')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Italic className="h-4 w-4" />
         </Button>
@@ -201,21 +201,25 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => execCommand('underline')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Underline className="h-4 w-4" />
         </Button>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className="mx-1 h-6 hidden sm:block" />
 
         {/* Text Color */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
+            >
               <Type className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48">
+          <PopoverContent className="w-full sm:w-48">
             <div className="space-y-2">
               <Label>Text Color</Label>
               <div className="flex gap-1 flex-wrap">
@@ -226,7 +230,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
                 ].map(color => (
                   <button
                     key={color}
-                    className="w-6 h-6 rounded border-2 border-gray-300"
+                    className="w-8 h-8 sm:w-6 sm:h-6 rounded border-2 border-gray-300 touch-manipulation active:scale-[0.95]"
                     style={{ backgroundColor: color }}
                     onClick={() => setTextColor(color)}
                   />
@@ -239,11 +243,15 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
         {/* Background Color */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
+            >
               <Palette className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-48">
+          <PopoverContent className="w-full sm:w-48">
             <div className="space-y-2">
               <Label>Background Color</Label>
               <div className="flex gap-1 flex-wrap">
@@ -254,7 +262,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
                 ].map(color => (
                   <button
                     key={color}
-                    className="w-6 h-6 rounded border-2 border-gray-300"
+                    className="w-8 h-8 sm:w-6 sm:h-6 rounded border-2 border-gray-300 touch-manipulation active:scale-[0.95]"
                     style={{ backgroundColor: color }}
                     onClick={() => setBackgroundColor(color)}
                   />
@@ -264,14 +272,14 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           </PopoverContent>
         </Popover>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className="mx-1 h-6 hidden sm:block" />
 
         {/* Alignment */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => execCommand('justifyLeft')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <AlignLeft className="h-4 w-4" />
         </Button>
@@ -279,7 +287,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => execCommand('justifyCenter')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <AlignCenter className="h-4 w-4" />
         </Button>
@@ -287,19 +295,19 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => execCommand('justifyRight')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <AlignRight className="h-4 w-4" />
         </Button>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className="mx-1 h-6 hidden sm:block" />
 
         {/* Lists */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => execCommand('insertUnorderedList')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <List className="h-4 w-4" />
         </Button>
@@ -307,36 +315,55 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => execCommand('insertOrderedList')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className="mx-1 h-6 hidden sm:block" />
 
         {/* Link */}
         <Popover open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
+            >
               <Link className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80">
+          <PopoverContent className="w-full max-w-[90vw] sm:w-80">
             <div className="space-y-2">
               <Label>Insert Link</Label>
               <Input
                 placeholder="Link text"
                 value={linkText}
                 onChange={(e) => setLinkText(e.target.value)}
+                className="touch-manipulation min-h-[44px]"
               />
               <Input
                 placeholder="https://example.com"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
+                className="touch-manipulation min-h-[44px]"
               />
               <div className="flex gap-2">
-                <Button size="sm" onClick={insertLink}>Insert</Button>
-                <Button size="sm" variant="outline" onClick={() => setIsLinkDialogOpen(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={insertLink}
+                  className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1"
+                >
+                  Insert
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsLinkDialogOpen(false)}
+                  className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1"
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           </PopoverContent>
@@ -347,19 +374,19 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={insertImage}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Image className="h-4 w-4" />
         </Button>
 
-        <Separator orientation="vertical" className="mx-1 h-6" />
+        <Separator orientation="vertical" className="mx-1 h-6 hidden sm:block" />
 
         {/* Special */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => execCommand('insertHorizontalRule')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Minus className="h-4 w-4" />
         </Button>
@@ -367,7 +394,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => formatBlock('blockquote')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Quote className="h-4 w-4" />
         </Button>
@@ -375,7 +402,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           variant="ghost"
           size="sm"
           onClick={() => execCommand('formatBlock', 'pre')}
-          className="h-8 w-8 p-0"
+          className="h-10 w-10 p-0 touch-manipulation active:scale-[0.98]"
         >
           <Code className="h-4 w-4" />
         </Button>

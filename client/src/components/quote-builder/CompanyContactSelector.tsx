@@ -131,26 +131,26 @@ export default function CompanyContactSelector({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
           <Building2 className="h-5 w-5" />
           Company & Contact Information
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-sm">
           Select the company and primary contact for this quote
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="p-4 sm:p-6 space-y-4">
         {/* Company Selection */}
         <div className="space-y-2">
-          <Label>Company *</Label>
+          <Label className="text-sm font-medium">Company *</Label>
           <div className="flex gap-2">
             <div className="flex-1">
               <Select
                 value={selectedCompany?.id || ''}
                 onValueChange={handleCompanyChange}
               >
-                <SelectTrigger>
+                <SelectTrigger className="min-h-[44px]">
                   <SelectValue placeholder="Select a company...">
                     {selectedCompany && (
                       <div className="flex items-center gap-2">
@@ -204,11 +204,15 @@ export default function CompanyContactSelector({
             </div>
             <Dialog open={showNewCompanyDialog} onOpenChange={setShowNewCompanyDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="min-h-[44px] min-w-[44px] active:scale-[0.98] transition-transform"
+                >
                   <Plus className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="w-[95vw] sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Add New Company</DialogTitle>
                   <DialogDescription>
@@ -216,7 +220,7 @@ export default function CompanyContactSelector({
                   </DialogDescription>
                 </DialogHeader>
                 <div className="text-center p-4">
-                  <p className="text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     New company creation functionality would be implemented here
                   </p>
                 </div>
@@ -227,27 +231,27 @@ export default function CompanyContactSelector({
 
         {/* Selected Company Details */}
         {selectedCompany && (
-          <div className="bg-muted/50 rounded-lg p-4">
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
+            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Company Details
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
               <div className="flex items-center gap-2">
-                <Mail className="h-3 w-3 text-muted-foreground" />
-                {selectedCompany.email || 'No email'}
+                <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="truncate">{selectedCompany.email || 'No email'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="h-3 w-3 text-muted-foreground" />
-                {selectedCompany.phone || 'No phone'}
+                <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="truncate">{selectedCompany.phone || 'No phone'}</span>
               </div>
               {selectedCompany.address && (
-                <div className="flex items-start gap-2 md:col-span-2">
-                  <MapPin className="h-3 w-3 text-muted-foreground mt-0.5" />
-                  <div>
-                    {selectedCompany.address}
+                <div className="flex items-start gap-2 sm:col-span-2">
+                  <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="break-words">{selectedCompany.address}</div>
                     {selectedCompany.city && selectedCompany.state && (
-                      <div>{selectedCompany.city}, {selectedCompany.state} {selectedCompany.zipCode}</div>
+                      <div className="break-words">{selectedCompany.city}, {selectedCompany.state} {selectedCompany.zipCode}</div>
                     )}
                   </div>
                 </div>
@@ -259,19 +263,19 @@ export default function CompanyContactSelector({
         {/* Contact Selection */}
         {selectedCompany && (
           <div className="space-y-2">
-            <Label>Primary Contact</Label>
+            <Label className="text-sm font-medium">Primary Contact</Label>
             <Select
               value={selectedContact?.id || 'no-contact'}
               onValueChange={handleContactChange}
             >
-              <SelectTrigger>
+              <SelectTrigger className="min-h-[44px]">
                 <SelectValue placeholder="Select a contact...">
                   {selectedContact && (
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      {getContactDisplayName(selectedContact)}
+                      <User className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{getContactDisplayName(selectedContact)}</span>
                       {selectedContact.title && (
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground text-sm hidden sm:inline truncate">
                           - {selectedContact.title}
                         </span>
                       )}
@@ -328,30 +332,30 @@ export default function CompanyContactSelector({
 
         {/* Selected Contact Details */}
         {selectedContact && (
-          <div className="bg-muted/50 rounded-lg p-4">
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
+            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
               <User className="h-4 w-4" />
               Contact Details
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
               <div className="flex items-center gap-2">
-                <Mail className="h-3 w-3 text-muted-foreground" />
-                {selectedContact.email || 'No email'}
+                <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="truncate">{selectedContact.email || 'No email'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="h-3 w-3 text-muted-foreground" />
-                {selectedContact.phone || 'No phone'}
+                <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="truncate">{selectedContact.phone || 'No phone'}</span>
               </div>
               {selectedContact.title && (
                 <div className="flex items-center gap-2">
-                  <User className="h-3 w-3 text-muted-foreground" />
-                  {selectedContact.title}
+                  <User className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="truncate">{selectedContact.title}</span>
                 </div>
               )}
               {selectedContact.department && (
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-3 w-3 text-muted-foreground" />
-                  {selectedContact.department}
+                  <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="truncate">{selectedContact.department}</span>
                 </div>
               )}
             </div>
@@ -361,14 +365,14 @@ export default function CompanyContactSelector({
         {/* Billing Address Section */}
         {selectedCompany && selectedCompany.address && (
           <div className="space-y-2">
-            <Label>Billing Address</Label>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <Label className="text-sm font-medium">Billing Address</Label>
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div className="text-sm">
-                  <div>{selectedCompany.address}</div>
+                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="text-xs sm:text-sm min-w-0">
+                  <div className="break-words">{selectedCompany.address}</div>
                   {selectedCompany.city && selectedCompany.state && (
-                    <div>
+                    <div className="break-words">
                       {selectedCompany.city}, {selectedCompany.state} {selectedCompany.zipCode}
                     </div>
                   )}

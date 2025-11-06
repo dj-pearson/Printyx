@@ -508,30 +508,34 @@ export default function QuoteBuilder({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 touch-manipulation">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Calculator className="h-5 w-5" />
             {initialQuoteId ? 'Edit Quote' : 'New Quote Builder'}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Build a comprehensive quote with line-by-line product selection
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
               {/* Quote Header */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Quote Title</FormLabel>
+                      <FormLabel className="text-sm font-medium">Quote Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="Equipment Quote - Company Name" {...field} />
+                        <Input
+                          placeholder="Equipment Quote - Company Name"
+                          className="min-h-[44px]"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -542,10 +546,10 @@ export default function QuoteBuilder({
                   name="pricingType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Pricing Type</FormLabel>
+                      <FormLabel className="text-sm font-medium">Pricing Type</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="min-h-[44px]">
                             <SelectValue placeholder="Select pricing type" />
                           </SelectTrigger>
                         </FormControl>
@@ -569,15 +573,19 @@ export default function QuoteBuilder({
               />
 
               {/* Valid Until Date */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="validUntil"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valid Until</FormLabel>
+                      <FormLabel className="text-sm font-medium">Valid Until</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          type="date"
+                          className="min-h-[44px]"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -612,21 +620,23 @@ export default function QuoteBuilder({
 
       {/* Notes Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg">Notes</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-4 sm:p-6 space-y-4">
           <Form {...form}>
             <FormField
               control={form.control}
               name="customerNotes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Customer Notes</FormLabel>
+                  <FormLabel className="text-sm font-medium">Customer Notes</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Notes visible to customer..."
-                      {...field} 
+                      className="min-h-[44px] resize-y"
+                      rows={3}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -638,11 +648,13 @@ export default function QuoteBuilder({
               name="internalNotes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Internal Notes</FormLabel>
+                  <FormLabel className="text-sm font-medium">Internal Notes</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Internal notes (not visible to customer)..."
-                      {...field} 
+                      className="min-h-[44px] resize-y"
+                      rows={3}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -654,19 +666,24 @@ export default function QuoteBuilder({
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-2 sticky bottom-0 bg-background p-4 sm:p-0 border-t sm:border-0 -mx-4 sm:mx-0">
+        <div className="flex gap-2 order-2 sm:order-1">
           {onCancel && (
-            <Button variant="outline" onClick={onCancel}>
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              className="flex-1 sm:flex-none min-h-[44px] active:scale-[0.98] transition-transform"
+            >
               Cancel
             </Button>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
           <Button
             variant="outline"
             onClick={form.handleSubmit(onSubmit)}
             disabled={saveQuoteMutation.isPending}
+            className="min-h-[44px] active:scale-[0.98] transition-transform"
           >
             <Save className="h-4 w-4 mr-2" />
             {saveQuoteMutation.isPending ? 'Saving...' : 'Save Draft'}
@@ -674,6 +691,7 @@ export default function QuoteBuilder({
           <Button
             onClick={handleSubmitQuote}
             disabled={saveQuoteMutation.isPending || submitQuoteMutation.isPending}
+            className="min-h-[44px] active:scale-[0.98] transition-transform"
           >
             <Send className="h-4 w-4 mr-2" />
             {submitQuoteMutation.isPending ? 'Submitting...' : 'Submit Quote'}
@@ -682,10 +700,11 @@ export default function QuoteBuilder({
             <Button
               onClick={handleCreateProposal}
               disabled={saveQuoteMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 min-h-[44px] active:scale-[0.98] transition-transform"
             >
               <FileText className="h-4 w-4 mr-2" />
-              Create Proposal
+              <span className="hidden sm:inline">Create Proposal</span>
+              <span className="sm:hidden">Proposal</span>
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           )}
