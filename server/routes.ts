@@ -571,6 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       "/api/auth/login", // Login must be exempt since user can't get CSRF token before authentication
       "/api/auth/register", // Registration must be exempt for same reason
       "/api/business-records", // Temporarily exempt while debugging CSRF
+      "/api/apollo/credentials", // Apollo credential management endpoints
       "/api/quickbooks/webhook",
       "/api/salesforce/webhook",
       "/api/integrations/webhook",
