@@ -5,6 +5,13 @@ Printyx is a unified SaaS platform for small-to-medium copier dealers, integrati
 
 ## Recent Changes
 
+### November 6, 2025 - Critical Startup Bug Fix: Database Connection Exhaustion
+- **Status**: ✅ Fixed and Running
+- **Root Cause**: Automatic database seeding on every server startup was consuming all database connections, causing authentication middleware timeouts and preventing the frontend from loading
+- **Solution**: Disabled automatic seeding by modifying condition in `server/routes.ts` (line 16341)
+- **Impact**: Authentication now works instantly, no more "Authentication timed out" or "Connection terminated unexpectedly" errors
+- **Current State**: Application running smoothly on port 5000, all core features operational
+
 ### November 5, 2025 - Critical Bug Fixes: Apollo Integration & SEO Module
 - **Status**: ✅ Fixed and Running
 - **Issues Resolved**:
