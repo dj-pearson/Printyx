@@ -213,27 +213,27 @@ export default function ProductTypeSelector({
   };
 
   return (
-    <div className="flex flex-col h-full max-h-full overflow-hidden">
-      <div className="flex-shrink-0 p-6 border-b">
+    <div className="flex flex-col h-full max-h-full overflow-hidden touch-manipulation">
+      <div className="flex-shrink-0 p-4 sm:p-6 border-b">
         <div className="flex items-center gap-2 mb-2">
           <Package className="h-5 w-5" />
-          <h3 className="text-lg font-semibold">Product Selection</h3>
+          <h3 className="text-base sm:text-lg font-semibold">Product Selection</h3>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Select the type of product and choose from available options
         </p>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {/* Product Type Selection */}
         <div className="space-y-2">
-          <Label>Product Type</Label>
+          <Label className="text-sm font-medium">Product Type</Label>
           <Select value={selectedType} onValueChange={(value: ProductType) => setSelectedType(value)}>
-            <SelectTrigger>
+            <SelectTrigger className="min-h-[44px]">
               <SelectValue>
                 {selectedTypeOption && (
                   <div className="flex items-center gap-2">
                     <selectedTypeOption.icon className="h-4 w-4" />
-                    {selectedTypeOption.label}
+                    <span className="truncate">{selectedTypeOption.label}</span>
                   </div>
                 )}
               </SelectValue>
@@ -260,19 +260,19 @@ export default function ProductTypeSelector({
 
         {/* Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="relative sm:col-span-2 lg:col-span-1">
+            <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
+              className="pl-8 min-h-[44px]"
             />
           </div>
-          
+
           {categories.length > 0 && (
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="min-h-[44px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -288,7 +288,7 @@ export default function ProductTypeSelector({
 
           {manufacturers.length > 0 && (
             <Select value={manufacturerFilter} onValueChange={setManufacturerFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="min-h-[44px]">
                 <SelectValue placeholder="Manufacturer" />
               </SelectTrigger>
               <SelectContent>
@@ -305,9 +305,11 @@ export default function ProductTypeSelector({
 
         {/* Pricing Type Indicator */}
         <div className="bg-muted/50 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-4 w-4" />
-            <span className="font-medium">Current Pricing:</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="font-medium">Current Pricing:</span>
+            </div>
             <Badge variant={pricingType === 'new' ? 'default' : 'secondary'}>
               {pricingType === 'new' ? 'New Customer' : 'Upgrade'} Pricing
             </Badge>
@@ -331,37 +333,37 @@ export default function ProductTypeSelector({
               {/* Mobile Card View */}
               <div className="sm:hidden space-y-3 p-3">
                 {filteredProducts.map((product) => (
-                  <div key={product.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm">{product.productName}</h4>
+                  <div key={product.id} className="border rounded-lg p-3 space-y-3 active:scale-[0.99] transition-transform">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm line-clamp-2">{product.productName}</h4>
                         {product.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {product.description}
                           </p>
                         )}
                       </div>
-                      <Badge variant="outline" className="ml-2 text-xs shrink-0">
+                      <Badge variant="outline" className="text-xs shrink-0">
                         {product.productCode}
                       </Badge>
                     </div>
-                    
-                    {selectedType === 'product_models' && (
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span>{product.category || 'N/A'}</span>
-                        <span>{product.manufacturer || 'N/A'}</span>
+
+                    {selectedType === 'product_models' && (product.category || product.manufacturer) && (
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {product.category && <span className="truncate">{product.category}</span>}
+                        {product.manufacturer && <span className="truncate">{product.manufacturer}</span>}
                       </div>
                     )}
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm">
-                        <div className="text-muted-foreground">MSRP: {formatPrice(product.msrp)}</div>
-                        <div className="font-medium">Your Price: {formatPrice(getPrice(product))}</div>
+
+                    <div className="flex justify-between items-center gap-2 pt-2 border-t">
+                      <div className="text-xs flex-1 min-w-0">
+                        <div className="text-muted-foreground truncate">MSRP: {formatPrice(product.msrp)}</div>
+                        <div className="font-medium truncate">Your Price: {formatPrice(getPrice(product))}</div>
                       </div>
                       <Button
                         size="sm"
                         onClick={() => handleProductSelect(product)}
-                        className="shrink-0"
+                        className="shrink-0 min-h-[44px] active:scale-[0.98] transition-transform"
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Add
@@ -421,6 +423,7 @@ export default function ProductTypeSelector({
                           <Button
                             size="sm"
                             onClick={() => handleProductSelect(product)}
+                            className="min-h-[44px] active:scale-[0.98] transition-transform"
                           >
                             <Plus className="h-4 w-4 mr-1" />
                             Add
@@ -437,9 +440,9 @@ export default function ProductTypeSelector({
 
         {/* Help Text */}
         {selectedType === 'product_accessories' && parentProductId && (
-          <div className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <Wrench className="h-4 w-4" />
+          <div className="text-xs sm:text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <Wrench className="h-4 w-4 shrink-0 mt-0.5" />
               <span>
                 Showing accessories compatible with the selected product model.
               </span>

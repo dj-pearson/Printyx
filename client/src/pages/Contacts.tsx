@@ -537,12 +537,12 @@ export default function Contacts() {
               {totalContacts} records
             </p>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto">
-            <Button variant="outline" size="sm" className="flex-shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" className="touch-manipulation active:scale-[0.98]">
               <Download className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Export</span>
             </Button>
-            <Button variant="outline" size="sm" className="flex-shrink-0">
+            <Button variant="outline" size="sm" className="touch-manipulation active:scale-[0.98]">
               <Upload className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Import</span>
             </Button>
@@ -555,23 +555,23 @@ export default function Contacts() {
               <DialogTrigger asChild>
                 <Button
                   size="sm"
-                  className="bg-orange-500 hover:bg-orange-600 flex-shrink-0"
+                  className="bg-orange-500 hover:bg-orange-600 touch-manipulation active:scale-[0.98]"
                 >
                   <Plus className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">Create contact</span>
                   <span className="sm:hidden">Add</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
                   <DialogTitle>Create new contact</DialogTitle>
                 </DialogHeader>
                 <Form {...contactForm}>
                   <form
                     onSubmit={contactForm.handleSubmit(onSubmitContact)}
-                    className="space-y-4"
+                    className="space-y-4 sm:space-y-6"
                   >
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <FormField
                         control={contactForm.control}
                         name="salutation"
@@ -629,7 +629,7 @@ export default function Contacts() {
                         )}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={contactForm.control}
                         name="email"
@@ -665,7 +665,7 @@ export default function Contacts() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={contactForm.control}
                         name="mobile"
@@ -697,7 +697,7 @@ export default function Contacts() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={contactForm.control}
                         name="department"
@@ -757,7 +757,7 @@ export default function Contacts() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={contactForm.control}
                         name="companyName"
@@ -820,7 +820,7 @@ export default function Contacts() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={contactForm.control}
                         name="leadStatus"
@@ -901,7 +901,7 @@ export default function Contacts() {
                       <FormLabel className="text-base font-medium">
                         Communication Preferences
                       </FormLabel>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField
                           control={contactForm.control}
                           name="emailOptOut"
@@ -939,7 +939,7 @@ export default function Contacts() {
                       </div>
                     </div>
 
-                    <div className="flex justify-end space-x-2 pt-4">
+                    <div className="flex justify-end gap-3 pt-4 flex-col sm:flex-row">
                       <Button
                         type="button"
                         variant="outline"
@@ -949,12 +949,13 @@ export default function Contacts() {
                             createContact: false,
                           }))
                         }
+                        className="min-h-[44px] touch-manipulation active:scale-[0.98] order-2 sm:order-1"
                       >
                         Cancel
                       </Button>
                       <Button
                         type="submit"
-                        className="bg-orange-500 hover:bg-orange-600"
+                        className="bg-orange-500 hover:bg-orange-600 min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
                         disabled={createContactMutation.isPending}
                       >
                         {createContactMutation.isPending
@@ -988,17 +989,18 @@ export default function Contacts() {
                     Would you like to create this company as a new lead? The
                     contact will be added to this new company.
                   </p>
-                  <div className="flex justify-end space-x-2 pt-4">
+                  <div className="flex justify-end gap-3 pt-4 flex-col sm:flex-row">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleCancelNewCompany}
+                      className="min-h-[44px] touch-manipulation active:scale-[0.98] order-2 sm:order-1"
                     >
                       No, let me select a different company
                     </Button>
                     <Button
                       onClick={handleCreateNewCompany}
-                      className="bg-orange-500 hover:bg-orange-600"
+                      className="bg-orange-500 hover:bg-orange-600 min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
                       disabled={
                         createCompanyMutation.isPending ||
                         createContactMutation.isPending
@@ -1018,14 +1020,14 @@ export default function Contacts() {
 
         {/* Filters and Views */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant={filters.view === "all" ? "default" : "outline"}
                     size="sm"
-                    className="flex-shrink-0"
+                    className="touch-manipulation active:scale-[0.98]"
                     onClick={() =>
                       setFilters((prev) => ({ ...prev, view: "all" }))
                     }
@@ -1035,7 +1037,7 @@ export default function Contacts() {
                   <Button
                     variant={filters.view === "my" ? "default" : "outline"}
                     size="sm"
-                    className="flex-shrink-0"
+                    className="touch-manipulation active:scale-[0.98]"
                     onClick={() =>
                       setFilters((prev) => ({ ...prev, view: "my" }))
                     }
@@ -1047,7 +1049,7 @@ export default function Contacts() {
                       filters.view === "unassigned" ? "default" : "outline"
                     }
                     size="sm"
-                    className="flex-shrink-0"
+                    className="touch-manipulation active:scale-[0.98]"
                     onClick={() =>
                       setFilters((prev) => ({ ...prev, view: "unassigned" }))
                     }
@@ -1081,14 +1083,14 @@ export default function Contacts() {
                 </div>
               </div>
 
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex gap-2 flex-wrap">
                 <Select
                   value={filters.contactOwner}
                   onValueChange={(value) =>
                     setFilters((prev) => ({ ...prev, contactOwner: value }))
                   }
                 >
-                  <SelectTrigger className="w-40 flex-shrink-0">
+                  <SelectTrigger className="w-40 min-h-[44px] touch-manipulation">
                     <SelectValue placeholder="Contact owner" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1107,7 +1109,7 @@ export default function Contacts() {
                     setFilters((prev) => ({ ...prev, leadStatus: value }))
                   }
                 >
-                  <SelectTrigger className="w-40 flex-shrink-0">
+                  <SelectTrigger className="w-40 min-h-[44px] touch-manipulation">
                     <SelectValue placeholder="Lead status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1123,7 +1125,7 @@ export default function Contacts() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-shrink-0"
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 >
                   <Filter className="w-4 h-4 sm:mr-2" />
@@ -1134,14 +1136,14 @@ export default function Contacts() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="flex-shrink-0"
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                   onClick={clearFilters}
                 >
                   <span className="hidden sm:inline">Clear filters</span>
                   <span className="sm:hidden">Clear</span>
                 </Button>
 
-                <Button variant="outline" size="sm" className="flex-shrink-0">
+                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <Settings className="w-4 h-4" />
                 </Button>
               </div>
@@ -1150,7 +1152,7 @@ export default function Contacts() {
             {/* Advanced Filters */}
             {showAdvancedFilters && (
               <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label>Create date</Label>
                     <Select
@@ -1251,23 +1253,23 @@ export default function Contacts() {
                   {selectedContacts.length !== 1 ? "s" : ""} selected
                 </span>
               </div>
-              <div className="flex gap-2 overflow-x-auto">
-                <Button variant="outline" size="sm" className="flex-shrink-0">
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <Mail className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">Send email</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex-shrink-0">
+                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <Edit className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">Edit properties</span>
                 </Button>
-                <Button variant="outline" size="sm" className="flex-shrink-0">
+                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <User className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">Assign owner</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-red-600 hover:text-red-700 flex-shrink-0"
+                  className="text-red-600 hover:text-red-700 min-h-[44px] touch-manipulation active:scale-[0.98]"
                   onClick={handleBulkDelete}
                 >
                   <Trash2 className="w-4 h-4 sm:mr-2" />
@@ -1496,21 +1498,22 @@ export default function Contacts() {
                 </div>
 
                 {/* Mobile Card Layout */}
-                <div className="lg:hidden space-y-4 p-4">
+                <div className="lg:hidden space-y-3 p-4">
                   {contacts.map((contact: Contact) => (
                     <div
                       key={contact.id}
-                      className="border rounded-lg p-4 bg-white"
+                      className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-3">
+                      <div className="flex items-start justify-between mb-4 gap-3">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
                           <Checkbox
                             checked={selectedContacts.includes(contact.id)}
                             onCheckedChange={() =>
                               handleSelectContact(contact.id)
                             }
+                            className="min-w-[24px] min-h-[24px] touch-manipulation"
                           />
-                          <Avatar className="h-10 w-10">
+                          <Avatar className="h-12 w-12 flex-shrink-0">
                             <AvatarFallback className="bg-blue-100 text-blue-600">
                               {contact.firstName?.charAt(0) || "C"}
                               {contact.lastName?.charAt(0) || "C"}
@@ -1518,40 +1521,42 @@ export default function Contacts() {
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <button
-                              className="font-semibold text-blue-600 hover:text-blue-800 text-left block"
+                              className="font-semibold text-blue-600 hover:text-blue-800 text-left block truncate w-full min-h-[44px] flex items-center touch-manipulation active:scale-[0.98]"
                               onClick={() => handleViewContact(contact)}
                             >
                               {contact.firstName || ""} {contact.lastName}
                             </button>
-                            <p className="text-sm text-gray-500 truncate">
+                            <p className="text-sm text-gray-500 truncate -mt-2">
                               {contact.title || "No title"}
                             </p>
                           </div>
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="w-4 h-4" />
+                            <Button variant="ghost" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation active:scale-[0.98]">
+                              <MoreHorizontal className="w-5 h-5" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
                               onClick={() => handleViewContact(contact)}
+                              className="min-h-[44px] touch-manipulation"
                             >
                               <Eye className="w-4 h-4 mr-2" />
                               View
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleLogActivity(contact)}
+                              className="min-h-[44px] touch-manipulation"
                             >
                               <Activity className="w-4 h-4 mr-2" />
                               Log activity
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-[44px] touch-manipulation">
                               <Mail className="w-4 h-4 mr-2" />
                               Email
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem className="min-h-[44px] touch-manipulation">
                               <Phone className="w-4 h-4 mr-2" />
                               Call
                             </DropdownMenuItem>
@@ -1559,35 +1564,35 @@ export default function Contacts() {
                         </DropdownMenu>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between min-h-[32px]">
                           <span className="text-sm font-medium text-gray-600">
-                            Status:
+                            Status
                           </span>
                           <Badge
                             className={`${getStatusColor(
                               contact.leadStatus
-                            )} border-0 text-xs`}
+                            )} border-0`}
                           >
                             {contact.leadStatus || "New"}
                           </Badge>
                         </div>
 
                         {contact.email && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-600">
-                              Email:
+                          <div className="flex items-center justify-between min-h-[32px] gap-2">
+                            <span className="text-sm font-medium text-gray-600 flex-shrink-0">
+                              Email
                             </span>
-                            <span className="text-sm text-gray-900 truncate ml-2">
+                            <span className="text-sm text-gray-900 truncate">
                               {contact.email}
                             </span>
                           </div>
                         )}
 
                         {contact.phone && (
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between min-h-[32px]">
                             <span className="text-sm font-medium text-gray-600">
-                              Phone:
+                              Phone
                             </span>
                             <span className="text-sm text-gray-900">
                               {contact.phone}
@@ -1596,9 +1601,9 @@ export default function Contacts() {
                         )}
 
                         {contact.department && (
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between min-h-[32px]">
                             <span className="text-sm font-medium text-gray-600">
-                              Department:
+                              Department
                             </span>
                             <span className="text-sm text-gray-900">
                               {contact.department}
@@ -1606,11 +1611,11 @@ export default function Contacts() {
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-600">
-                            Company:
+                        <div className="flex items-center justify-between min-h-[32px] gap-2">
+                          <span className="text-sm font-medium text-gray-600 flex-shrink-0">
+                            Company
                           </span>
-                          <span className="text-sm text-gray-900 truncate ml-2">
+                          <span className="text-sm text-gray-900 truncate">
                             {getCompanyName(contact.companyId) || "No company"}
                           </span>
                         </div>
@@ -1681,28 +1686,28 @@ export default function Contacts() {
             setDialogs((prev) => ({ ...prev, logActivity: open }))
           }
         >
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle>
                 Log activity for {selectedContact?.firstName}{" "}
                 {selectedContact?.lastName}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex space-x-2">
-                <Button size="sm" variant="outline">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <FileText className="w-4 h-4 mr-2" />
                   Note
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <Mail className="w-4 h-4 mr-2" />
                   Email
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <Phone className="w-4 h-4 mr-2" />
                   Call
                 </Button>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
                   <Calendar className="w-4 h-4 mr-2" />
                   Meeting
                 </Button>
@@ -1716,7 +1721,7 @@ export default function Contacts() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Activity date</Label>
                   <Input
@@ -1741,16 +1746,17 @@ export default function Contacts() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-4">
+              <div className="flex justify-end gap-3 pt-4 flex-col sm:flex-row">
                 <Button
                   variant="outline"
                   onClick={() =>
                     setDialogs((prev) => ({ ...prev, logActivity: false }))
                   }
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98] order-2 sm:order-1"
                 >
                   Cancel
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-blue-600 hover:bg-blue-700 min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2">
                   Log activity
                 </Button>
               </div>
@@ -1765,12 +1771,12 @@ export default function Contacts() {
             setDialogs((prev) => ({ ...prev, contactDetails: open }))
           }
         >
-          <DialogContent className="sm:max-w-[800px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle>Contact Details</DialogTitle>
             </DialogHeader>
             {selectedContact && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <div className="flex items-center space-x-4">
                   <Avatar className="h-16 w-16">
                     <AvatarFallback className="bg-blue-100 text-blue-600 text-xl">
@@ -1793,7 +1799,7 @@ export default function Contacts() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
                       <Label className="text-sm font-medium text-gray-500">
@@ -1849,16 +1855,17 @@ export default function Contacts() {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
+                <div className="flex justify-end gap-3 pt-4 flex-col sm:flex-row">
                   <Button
                     variant="outline"
                     onClick={() =>
                       setDialogs((prev) => ({ ...prev, contactDetails: false }))
                     }
+                    className="min-h-[44px] touch-manipulation active:scale-[0.98] order-2 sm:order-1"
                   >
                     Close
                   </Button>
-                  <Button>Edit Contact</Button>
+                  <Button className="min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2">Edit Contact</Button>
                 </div>
               </div>
             )}

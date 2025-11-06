@@ -409,7 +409,7 @@ export default function WarehouseOperations() {
           <TabsContent value="overview" className="space-y-6">
             {/* Statistics Dashboard */}
             {stats && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <Card>
                   <CardContent className="p-4 md:p-6">
                     <div className="flex items-center space-x-2">
@@ -478,14 +478,14 @@ export default function WarehouseOperations() {
 
             {/* Recent Operations */}
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Recent Operations</CardTitle>
                 <CardDescription>
                   Latest warehouse activities and their status
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
                   {filteredOperations.slice(0, 5).map((operation: WarehouseOperation) => {
                     const StatusIcon =
                       statusIcons[
@@ -494,7 +494,7 @@ export default function WarehouseOperations() {
                     return (
                       <div
                         key={operation.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
+                        className="flex items-center justify-between p-3 sm:p-4 border rounded-lg min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform cursor-pointer"
                       >
                         <div className="flex items-center space-x-3">
                           <StatusIcon className="h-5 w-5 text-muted-foreground" />
@@ -538,7 +538,7 @@ export default function WarehouseOperations() {
               </div>
               <Button
                 onClick={() => setShowCreateDialog(true)}
-                className="w-full md:w-auto"
+                className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Operation
@@ -547,7 +547,7 @@ export default function WarehouseOperations() {
 
             {/* Filters */}
             <Card>
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center">
                   <div className="flex-1">
                     <div className="relative">
@@ -584,7 +584,7 @@ export default function WarehouseOperations() {
 
             {/* Operations List - Mobile-Responsive */}
             <Card>
-              <CardContent className="p-4 md:p-6">
+              <CardContent className="p-4 sm:p-6">
                 {isLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -696,7 +696,7 @@ export default function WarehouseOperations() {
                     </div>
 
                     {/* Mobile Card View */}
-                    <div className="md:hidden space-y-4">
+                    <div className="md:hidden space-y-3 sm:space-y-4">
                       {filteredOperations.map((operation: WarehouseOperation) => {
                         const StatusIcon =
                           statusIcons[
@@ -760,7 +760,7 @@ export default function WarehouseOperations() {
                                 </div>
                               </div>
 
-                              <div className="flex flex-col space-y-2">
+                              <div className="flex flex-col gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -768,7 +768,7 @@ export default function WarehouseOperations() {
                                     setSelectedOperation(operation);
                                     setShowDetailsDialog(true);
                                   }}
-                                  className="w-full"
+                                  className="w-full min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                                 >
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
@@ -785,7 +785,7 @@ export default function WarehouseOperations() {
                                         operationType: operation.operationType,
                                       })
                                     }
-                                    className="w-full"
+                                    className="w-full min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                                   >
                                     <Activity className="h-4 w-4 mr-2" />
                                     Start Operation
@@ -803,7 +803,7 @@ export default function WarehouseOperations() {
                                         operationType: operation.operationType,
                                       })
                                     }
-                                    className="w-full"
+                                    className="w-full min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                                   >
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Complete Operation
@@ -833,7 +833,7 @@ export default function WarehouseOperations() {
               </div>
               <Button
                 onClick={() => setShowSerialDialog(true)}
-                className="w-full md:w-auto"
+                className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
               >
                 <QrCode className="h-4 w-4 mr-2" />
                 Add Serial Number
@@ -842,14 +842,14 @@ export default function WarehouseOperations() {
 
             {/* Serial Number tracking would go here */}
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Equipment Serial Numbers</CardTitle>
                 <CardDescription>
                   Track and manage equipment serial numbers through their
                   lifecycle
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="text-center py-8 text-muted-foreground">
                   Serial number management interface will be implemented here
                 </div>
@@ -869,7 +869,7 @@ export default function WarehouseOperations() {
               </div>
               <Button
                 onClick={() => setShowBuildDialog(true)}
-                className="w-full md:w-auto"
+                className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
               >
                 <Wrench className="h-4 w-4 mr-2" />
                 New Build Process
@@ -878,13 +878,13 @@ export default function WarehouseOperations() {
 
             {/* Build process management would go here */}
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Active Build Processes</CardTitle>
                 <CardDescription>
                   Monitor equipment builds and accessory installations
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="text-center py-8 text-muted-foreground">
                   Build process management interface will be implemented here
                 </div>
@@ -902,10 +902,10 @@ export default function WarehouseOperations() {
                   Schedule and track equipment deliveries to customers
                 </p>
               </div>
-              <div className="flex gap-2 w-full md:w-auto">
+              <div className="flex flex-wrap gap-2 w-full md:w-auto">
                 <Button
                   onClick={() => setShowDeliveryDialog(true)}
-                  className="w-full md:w-auto"
+                  className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                 >
                   <Truck className="h-4 w-4 mr-2" />
                   Schedule Delivery
@@ -918,6 +918,7 @@ export default function WarehouseOperations() {
                         const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
                         setLocation(`/enhanced-onboarding-form?orderId=${orderIdFromUrl}`);
                       }}
+                      className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                     >
                       <Calendar className="h-4 w-4 mr-2" />
                       Schedule Installation
@@ -928,6 +929,7 @@ export default function WarehouseOperations() {
                         const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
                         setLocation(`/onboarding-dashboard?orderId=${orderIdFromUrl}`);
                       }}
+                      className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Installation Checklist
@@ -945,13 +947,13 @@ export default function WarehouseOperations() {
 
             {/* Delivery scheduling would go here */}
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Scheduled Deliveries</CardTitle>
                 <CardDescription>
                   Manage delivery schedules and installation appointments
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="text-center py-8 text-muted-foreground">
                   Delivery scheduling interface will be implemented here
                 </div>
@@ -970,12 +972,12 @@ export default function WarehouseOperations() {
             </div>
 
             {/* Analytics dashboard would go here */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle>Operations Efficiency</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6">
                   <div className="text-center py-8 text-muted-foreground">
                     Analytics charts will be implemented here
                   </div>
@@ -983,10 +985,10 @@ export default function WarehouseOperations() {
               </Card>
 
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle>Inventory Turnover</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6">
                   <div className="text-center py-8 text-muted-foreground">
                     Inventory metrics will be implemented here
                   </div>
@@ -998,7 +1000,7 @@ export default function WarehouseOperations() {
 
         {/* Create Operation Dialog */}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle>Create Warehouse Operation</DialogTitle>
               <DialogDescription>
@@ -1114,19 +1116,19 @@ export default function WarehouseOperations() {
                   )}
                 />
 
-                <div className="flex flex-col space-y-2 md:flex-row md:justify-end md:space-y-0 md:space-x-2">
+                <div className="flex flex-col gap-2 md:flex-row md:justify-end">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setShowCreateDialog(false)}
-                    className="w-full md:w-auto"
+                    className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     disabled={createOperationMutation.isPending}
-                    className="w-full md:w-auto"
+                    className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                   >
                     {createOperationMutation.isPending
                       ? "Creating..."
@@ -1140,7 +1142,7 @@ export default function WarehouseOperations() {
 
         {/* Details Dialog */}
         <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle>Operation Details</DialogTitle>
             </DialogHeader>
