@@ -1,6 +1,6 @@
 import express from "express";
 import { apolloStorage } from "../apollo-storage";
-import { createApolloClient, ApolloSearchFilters, ApolloContact } from "../apollo-client";
+import { createApolloClientForTenant, ApolloSearchFilters, ApolloContact } from "../apollo-client";
 import { db } from "../db";
 import { businessRecords } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -89,7 +89,8 @@ router.post("/search", isAuthenticated, async (req, res) => {
     console.log(`Cache miss for search ${searchHash} - calling Apollo API`);
     const startTime = Date.now();
     
-    const apolloClient = createApolloClient();
+    // Get tenant-specific Apollo client
+    const apolloClient = await createApolloClientForTenant(tenantId);
     const apolloResponse = await apolloClient.searchPeople(filters);
     
     const responseTime = Date.now() - startTime;
