@@ -467,15 +467,15 @@ export default function QuoteTransformer({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sections">Sections</TabsTrigger>
-          <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="sections" className="text-xs sm:text-sm">Sections</TabsTrigger>
+          <TabsTrigger value="content" className="text-xs sm:text-sm">Content</TabsTrigger>
+          <TabsTrigger value="preview" className="text-xs sm:text-sm">Preview</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {/* Source Quote Info */}
             <Card>
               <CardHeader>
@@ -685,16 +685,22 @@ export default function QuoteTransformer({
       </Tabs>
 
       {/* Action Buttons */}
-      <div className="flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
+        <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
           {sections.filter(s => s.isIncluded).length} sections selected
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button
+            variant="outline"
+            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+          >
             <Settings className="h-4 w-4 mr-2" />
             Save Template
           </Button>
-          <Button onClick={handleTransform}>
+          <Button
+            onClick={handleTransform}
+            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+          >
             <CheckCircle className="h-4 w-4 mr-2" />
             Create Proposal
           </Button>

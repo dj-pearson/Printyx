@@ -36,6 +36,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
 import { useLocation } from "wouter";
@@ -282,14 +283,14 @@ export default function LeadsManagement() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
+
   // Responsive view mode: cards on mobile, table on desktop
-  const [viewMode, setViewMode] = useState<"table" | "cards">(() => {
-    if (typeof window !== "undefined") {
-      return window.innerWidth < 768 ? "cards" : "table";
-    }
-    return "cards";
-  });
+  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
@@ -297,26 +298,12 @@ export default function LeadsManagement() {
   );
   const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
 
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
-
-  // Handle responsive view mode changes
+  // Auto-switch to cards on mobile
   useEffect(() => {
-    const handleResize = () => {
-      const isMobile = window.innerWidth < 768;
-      // Only auto-switch to cards on mobile if user hasn't manually selected a view
-      if (isMobile && viewMode === "table") {
-        setViewMode("cards");
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    // Set initial view based on screen size
-    handleResize();
-    
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    if (isMobile) {
+      setViewMode("cards");
+    }
+  }, [isMobile]);
 
   // Fetch leads data from business records
   const {
@@ -618,26 +605,27 @@ export default function LeadsManagement() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Leads
             </h1>
-            <p className="text-gray-600">Manage and track your sales leads</p>
+            <p className="text-sm sm:text-base text-gray-600">Manage and track your sales leads</p>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               onClick={() => handleBulkAction("export")}
-              className="w-full sm:w-auto"
+              className="min-h-[44px] touch-manipulation active:scale-[0.98]"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Export
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
             <LeadsImport onImportComplete={() => queryClient.invalidateQueries({ queryKey: ["/api/business-records"] })} />
             <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Lead
+                <Button className="min-h-[44px] touch-manipulation active:scale-[0.98]">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Create Lead</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
                   <DialogTitle>Create New Lead</DialogTitle>
                   <DialogDescription>
@@ -744,14 +732,14 @@ export default function LeadsManagement() {
                   placeholder="Search leads by name, email, company, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 min-h-[44px]"
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="grid grid-cols-2 sm:flex gap-3 flex-1">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap gap-2">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-[140px] min-h-[44px] touch-manipulation">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -770,7 +758,7 @@ export default function LeadsManagement() {
                     value={priorityFilter}
                     onValueChange={setPriorityFilter}
                   >
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-[140px] min-h-[44px] touch-manipulation">
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -782,7 +770,7 @@ export default function LeadsManagement() {
                   </Select>
 
                   <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                    <SelectTrigger className="w-full sm:w-40 col-span-2 sm:col-span-1">
+                    <SelectTrigger className="w-[140px] min-h-[44px] touch-manipulation">
                       <SelectValue placeholder="Source" />
                     </SelectTrigger>
                     <SelectContent>
@@ -794,30 +782,30 @@ export default function LeadsManagement() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
 
-                <div className="flex gap-2">
-                  <div className="flex border rounded justify-center sm:justify-start">
-                    <Button
-                      variant={viewMode === "table" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("table")}
-                      className="rounded-r-none hidden sm:flex"
-                    >
-                      Table
-                    </Button>
-                    <Button
-                      variant={viewMode === "cards" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("cards")}
-                      className="sm:rounded-l-none rounded-md"
-                    >
-                      Cards
-                    </Button>
-                  </div>
+                  {!isMobile && (
+                    <div className="flex border rounded">
+                      <Button
+                        variant={viewMode === "table" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setViewMode("table")}
+                        className="rounded-r-none min-h-[40px] touch-manipulation active:scale-[0.98]"
+                      >
+                        Table
+                      </Button>
+                      <Button
+                        variant={viewMode === "cards" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setViewMode("cards")}
+                        className="rounded-l-none min-h-[40px] touch-manipulation active:scale-[0.98]"
+                      >
+                        Cards
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Column Customizer */}
-                  {viewMode === "table" && (
+                  {viewMode === "table" && !isMobile && (
                     <Popover
                       open={isColumnCustomizerOpen}
                       onOpenChange={setIsColumnCustomizerOpen}
@@ -826,7 +814,7 @@ export default function LeadsManagement() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="hidden sm:flex"
+                          className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                         >
                           <Settings className="h-4 w-4 mr-2" />
                           Edit columns
@@ -842,6 +830,7 @@ export default function LeadsManagement() {
                               onClick={() =>
                                 setVisibleColumns(DEFAULT_VISIBLE_COLUMNS)
                               }
+                              className="touch-manipulation active:scale-[0.98]"
                             >
                               Reset
                             </Button>
@@ -886,33 +875,39 @@ export default function LeadsManagement() {
 
             {/* Bulk Actions */}
             {selectedLeads.length > 0 && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
-                <span className="text-sm text-blue-800">
-                  {selectedLeads.length} lead
-                  {selectedLeads.length === 1 ? "" : "s"} selected
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleBulkAction("update_status")}
-                  >
-                    Update Status
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleBulkAction("assign")}
-                  >
-                    Assign
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleBulkAction("delete")}
-                  >
-                    Delete
-                  </Button>
+              <div className="mt-4 p-3 sm:p-4 bg-blue-50 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-blue-800">
+                    {selectedLeads.length} lead
+                    {selectedLeads.length === 1 ? "" : "s"} selected
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBulkAction("update_status")}
+                      className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                    >
+                      <span className="hidden sm:inline">Update Status</span>
+                      <span className="sm:hidden">Status</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBulkAction("assign")}
+                      className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                    >
+                      Assign
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBulkAction("delete")}
+                      className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -925,7 +920,7 @@ export default function LeadsManagement() {
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
           </div>
         ) : viewMode === "table" ? (
-          <Card className="hidden sm:block">
+          <Card className="hidden lg:block">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -1025,25 +1020,25 @@ export default function LeadsManagement() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {filteredLeads.map((lead: Lead) => (
-              <Card key={lead.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle 
-                          className="text-lg cursor-pointer text-blue-600 hover:text-blue-800"
+              <Card key={lead.id} className="hover:shadow-lg transition-shadow touch-manipulation active:scale-[0.98]">
+                <CardHeader className="p-4 sm:p-6 pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-2 mb-2 flex-wrap">
+                        <CardTitle
+                          className="text-base sm:text-lg cursor-pointer text-blue-600 hover:text-blue-800 min-h-[44px] flex items-center touch-manipulation active:scale-[0.98] flex-1"
                           onClick={() => handleLeadClick(lead)}
                         >
                           {lead.companyName || "Unknown Company"}
                         </CardTitle>
                         <Badge
-                          className={
+                          className={`flex-shrink-0 ${
                             statusColors[
                               lead.status as keyof typeof statusColors
                             ] || "bg-gray-100 text-gray-800"
-                          }
+                          }`}
                         >
                           {lead.status}
                         </Badge>
@@ -1057,36 +1052,36 @@ export default function LeadsManagement() {
                         </CardDescription>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="text-lg font-semibold text-right">
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <div className="text-base sm:text-lg font-semibold text-right whitespace-nowrap">
                         {formatCurrency(lead.estimatedValue)}
                       </div>
                       <Checkbox
                         checked={selectedLeads.includes(lead.id)}
                         onCheckedChange={() => toggleLeadSelection(lead.id)}
-                        className="mt-1"
+                        className="mt-1 min-w-[24px] min-h-[24px] touch-manipulation"
                       />
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6 pt-0">
                   <div className="space-y-3">
                     {/* Contact Information Grid */}
                     <div className="grid grid-cols-1 gap-2 text-sm">
                       {lead.email && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-h-[32px]">
                           <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           <span className="truncate">{lead.email}</span>
                         </div>
                       )}
                       {lead.phone && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-h-[32px]">
                           <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           <span>{lead.phone}</span>
                         </div>
                       )}
                       {lead.address && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-h-[32px]">
                           <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           <span className="truncate text-xs">
                             {lead.city && lead.state ? `${lead.city}, ${lead.state}` : lead.address}
@@ -1104,7 +1099,7 @@ export default function LeadsManagement() {
                         </div>
                       )}
                       {lead.priority && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 justify-end">
                           <Target className="h-3 w-3 text-gray-400" />
                           <Badge
                             variant="outline"
@@ -1122,61 +1117,61 @@ export default function LeadsManagement() {
 
                     {/* Notes Preview */}
                     {lead.notes && (
-                      <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                        {lead.notes.length > 80 ? `${lead.notes.substring(0, 80)}...` : lead.notes}
+                      <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded line-clamp-2">
+                        {lead.notes}
                       </p>
                     )}
 
                     {/* Action Buttons */}
                     <div className="flex flex-col gap-2 pt-2 border-t">
-                      <div className="flex flex-wrap gap-1">
-                        <Button 
-                          size="sm" 
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          size="sm"
                           onClick={() => setLocation(`/quotes/new?leadId=${lead.id}`)}
-                          className="flex-1 min-w-0"
+                          className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                           data-testid={`button-quote-${lead.id}`}
                         >
-                          <DollarSign className="h-3 w-3 sm:mr-1" />
-                          <span className="hidden sm:inline">Quote</span>
+                          <DollarSign className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline text-xs">Quote</span>
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
-                          className="flex-1 min-w-0"
+                          className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                           data-testid={`button-call-${lead.id}`}
                         >
-                          <Phone className="h-3 w-3 sm:mr-1" />
-                          <span className="hidden sm:inline">Call</span>
+                          <Phone className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline text-xs">Call</span>
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
-                          className="flex-1 min-w-0"
+                          className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                           data-testid={`button-email-${lead.id}`}
                         >
-                          <Mail className="h-3 w-3 sm:mr-1" />
-                          <span className="hidden sm:inline">Email</span>
+                          <Mail className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline text-xs">Email</span>
                         </Button>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setEditingLead(lead)}
-                          className="flex-1"
+                          className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                           data-testid={`button-edit-${lead.id}`}
                         >
-                          <Edit className="h-3 w-3 mr-1" />
+                          <Edit className="h-4 w-4 mr-1" />
                           <span className="text-xs">Edit</span>
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleLeadClick(lead)}
-                          className="flex-1"
+                          className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                           data-testid={`button-details-${lead.id}`}
                         >
-                          <Eye className="h-3 w-3 mr-1" />
+                          <Eye className="h-4 w-4 mr-1" />
                           <span className="text-xs">Details</span>
                         </Button>
                       </div>
@@ -1194,7 +1189,7 @@ export default function LeadsManagement() {
             open={!!editingLead}
             onOpenChange={() => setEditingLead(null)}
           >
-            <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
               <DialogHeader>
                 <DialogTitle>Edit Lead</DialogTitle>
                 <DialogDescription>Update lead information</DialogDescription>
@@ -1330,11 +1325,11 @@ function LeadForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 max-h-[70vh] overflow-y-auto"
+      className="space-y-4 sm:space-y-6"
     >
       {/* Company Information - Primary Section */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 border-b pb-2">
+        <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
           <Building2 className="h-5 w-5 text-blue-600" />
           Company Information
         </div>
@@ -1601,8 +1596,12 @@ function LeadForm({
         />
       </div>
 
-      <div className="flex justify-end space-x-2 pt-4 border-t">
-        <Button type="submit" disabled={isLoading} className="px-6">
+      <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
+        >
           {isLoading
             ? "Saving..."
             : initialData
