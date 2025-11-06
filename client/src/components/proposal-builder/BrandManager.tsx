@@ -277,13 +277,18 @@ export default function BrandManager({
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-col lg:flex-row h-screen bg-gray-50">
       {/* Left Panel - Controls */}
-      <div className="w-96 bg-white border-r flex flex-col">
+      <div className="w-full lg:w-96 bg-white border-b lg:border-r lg:border-b-0 flex flex-col max-h-[50vh] lg:max-h-none overflow-y-auto lg:overflow-visible">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold">Brand Manager</h2>
-            <Button variant="outline" size="sm" onClick={onClose}>
+            <h2 className="text-base sm:text-lg font-semibold">Brand Manager</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
+            >
               ×
             </Button>
           </div>
@@ -291,36 +296,42 @@ export default function BrandManager({
             value={profile.name}
             onChange={(e) => updateProfile({ name: e.target.value })}
             placeholder="Brand profile name"
-            className="mb-2"
+            className="mb-2 touch-manipulation min-h-[44px]"
           />
           <Textarea
             value={profile.description}
             onChange={(e) => updateProfile({ description: e.target.value })}
             placeholder="Description..."
             rows={2}
+            className="touch-manipulation"
           />
         </div>
 
         <ScrollArea className="flex-1">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mx-4 mt-4">
-              <TabsTrigger value="colors">Colors</TabsTrigger>
-              <TabsTrigger value="typography">Type</TabsTrigger>
-              <TabsTrigger value="layout">Layout</TabsTrigger>
-              <TabsTrigger value="style">Style</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mx-3 sm:mx-4 mt-4 gap-1">
+              <TabsTrigger value="colors" className="text-xs sm:text-sm">Colors</TabsTrigger>
+              <TabsTrigger value="typography" className="text-xs sm:text-sm">Type</TabsTrigger>
+              <TabsTrigger value="layout" className="text-xs sm:text-sm">Layout</TabsTrigger>
+              <TabsTrigger value="style" className="text-xs sm:text-sm">Style</TabsTrigger>
             </TabsList>
 
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <TabsContent value="colors" className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label>Color Palette</Label>
-                  <Button size="sm" variant="outline" onClick={generateColorPalette}>
-                    <Paintbrush className="h-4 w-4 mr-2" />
-                    Generate
+                <div className="flex justify-between items-center gap-2">
+                  <Label className="text-xs sm:text-sm">Color Palette</Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={generateColorPalette}
+                    className="touch-manipulation active:scale-[0.98] min-h-[40px]"
+                  >
+                    <Paintbrush className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="text-xs sm:text-sm">Generate</span>
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {Object.entries(profile.colors).map(([key, value]) => (
                     <div key={key}>
                       <Label className="text-xs capitalize">{key}</Label>
@@ -329,13 +340,13 @@ export default function BrandManager({
                           type="color"
                           value={value}
                           onChange={(e) => updateColors(key as any, e.target.value)}
-                          className="w-12 h-8 p-0 border"
+                          className="w-12 sm:w-14 h-10 sm:h-12 p-0 border touch-manipulation"
                         />
                         <Input
                           type="text"
                           value={value}
                           onChange={(e) => updateColors(key as any, e.target.value)}
-                          className="flex-1 h-8 text-xs"
+                          className="flex-1 h-10 sm:h-12 text-xs sm:text-sm touch-manipulation"
                         />
                       </div>
                     </div>
@@ -677,13 +688,22 @@ export default function BrandManager({
           </Tabs>
         </ScrollArea>
 
-        <div className="p-4 border-t">
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setProfile({ ...defaultBrandProfile, id: profile.id, createdAt: profile.createdAt, updatedAt: new Date().toISOString() })}>
+        <div className="p-3 sm:p-4 border-t">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setProfile({ ...defaultBrandProfile, id: profile.id, createdAt: profile.createdAt, updatedAt: new Date().toISOString() })}
+              className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1"
+            >
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset
             </Button>
-            <Button size="sm" onClick={() => onSave(profile)}>
+            <Button
+              size="sm"
+              onClick={() => onSave(profile)}
+              className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1"
+            >
               <Save className="h-4 w-4 mr-2" />
               Save Brand
             </Button>
@@ -692,17 +712,17 @@ export default function BrandManager({
       </div>
 
       {/* Right Panel - Preview */}
-      <div className="flex-1 flex flex-col">
-        <div className="bg-white border-b p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Brand Preview</h3>
-            <div className="flex gap-2">
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="bg-white border-b p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <h3 className="text-base sm:text-lg font-semibold">Brand Preview</h3>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <div className="flex border rounded">
                 <Button
                   variant={previewMode === 'desktop' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setPreviewMode('desktop')}
-                  className="rounded-r-none"
+                  className="rounded-r-none touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
                 >
                   <Monitor className="h-4 w-4" />
                 </Button>
@@ -710,7 +730,7 @@ export default function BrandManager({
                   variant={previewMode === 'tablet' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setPreviewMode('tablet')}
-                  className="rounded-none"
+                  className="rounded-none touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
                 >
                   <Tablet className="h-4 w-4" />
                 </Button>
@@ -718,25 +738,30 @@ export default function BrandManager({
                   variant={previewMode === 'mobile' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setPreviewMode('mobile')}
-                  className="rounded-l-none"
+                  className="rounded-l-none touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
                 >
                   <Smartphone className="h-4 w-4" />
                 </Button>
               </div>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-initial touch-manipulation active:scale-[0.98] min-h-[44px]"
+              >
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                <span className="hidden sm:inline">Export</span>
               </Button>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-gray-100 p-8">
-          <div 
+        <div className="flex-1 overflow-auto bg-gray-100 p-2 sm:p-4 lg:p-8">
+          <div
             className="bg-white shadow-lg mx-auto transition-all duration-300"
             style={{
-              width: previewMode === 'desktop' ? '794px' : previewMode === 'tablet' ? '600px' : '375px',
-              minHeight: '600px',
+              width: '100%',
+              maxWidth: previewMode === 'desktop' ? '794px' : previewMode === 'tablet' ? '600px' : '375px',
+              minHeight: '400px',
               ...previewStyles
             }}
           >

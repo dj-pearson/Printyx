@@ -328,10 +328,10 @@ function MobileDealCard({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="bg-white border-2 border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation"
+      className="bg-white border-2 border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 touch-manipulation active:scale-[0.98]"
     >
       {/* Mobile Deal Header with Drag Handle */}
-      <div className="flex items-center justify-between p-4 pb-3">
+      <div className="flex items-center justify-between p-4 sm:p-5 pb-3">
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-900 text-base line-clamp-2 mb-1">
             {deal.title}
@@ -392,7 +392,7 @@ function MobileDealCard({
 
       {/* Deal Amount */}
       {deal.amount && (
-        <div className="px-4 pb-3">
+        <div className="px-4 sm:px-5 pb-3">
           <div className="text-xl font-bold text-green-600">
             ${parseFloat(deal.amount.toString()).toLocaleString()}
           </div>
@@ -400,7 +400,7 @@ function MobileDealCard({
       )}
 
       {/* Deal Info Grid */}
-      <div className="px-4 pb-3 space-y-3">
+      <div className="px-4 sm:px-5 pb-3 space-y-3">
         <div className="grid grid-cols-2 gap-4 text-sm">
           {deal.ownerName && (
             <div className="flex items-center gap-2 text-gray-600">
@@ -420,7 +420,7 @@ function MobileDealCard({
       </div>
 
       {/* Bottom Section */}
-      <div className="flex items-center justify-between p-4 pt-0">
+      <div className="flex items-center justify-between p-4 sm:p-5 pt-0">
         <div className="flex items-center gap-3">
           <Badge
             variant="secondary"
@@ -1098,51 +1098,89 @@ export default function DealsManagement() {
           <KpiSummaryBar className="mt-2 mb-4" />
           <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
         </div>
-        <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-end">
-          <div className="text-sm text-gray-600 lg:mr-auto">
-            {filteredDeals.length} deals
+        {/* Mobile-First Search and Filters Bar */}
+        <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+          {/* Search Bar - Full Width on Mobile */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Search deals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 h-11 touch-manipulation"
+            />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0 touch-manipulation"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* View Mode Toggle */}
-            <div className="flex items-center border rounded-lg p-1">
-              <Button
-                variant={viewMode === "kanban" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("kanban")}
-                className="h-8 flex-1 sm:flex-none"
-              >
-                <LayoutGrid className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Board</span>
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("table")}
-                className="h-8 flex-1 sm:flex-none"
-              >
-                <List className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Table</span>
-              </Button>
+
+          {/* Top Action Bar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-gray-600 order-2 sm:order-1">
+              {filteredDeals.length} deals
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 order-1 sm:order-2">
+              {/* View Mode Toggle */}
+              <div className="flex items-center border rounded-lg p-1 bg-white">
+                <Button
+                  variant={viewMode === "kanban" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("kanban")}
+                  className="h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform"
+                  style={{ minWidth: '44px', minHeight: '44px' }}
+                >
+                  <LayoutGrid className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Board</span>
+                </Button>
+                <Button
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("table")}
+                  className="h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform"
+                  style={{ minWidth: '44px', minHeight: '44px' }}
+                >
+                  <List className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Table</span>
+                </Button>
+              </div>
+
               {/* Filters Toggle */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
-                  "gap-2 flex-1 sm:flex-none",
-                  showFilters && "bg-gray-100"
+                  "gap-2 h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform",
+                  showFilters && "bg-blue-50 border-blue-300"
                 )}
+                style={{ minWidth: '44px', minHeight: '44px' }}
               >
                 <SlidersHorizontal className="h-4 w-4" />
-                <span className="sm:inline">Filters</span>
+                <span>Filters</span>
+                {(filters.owner || filters.source !== "all" || filters.priority !== "all" || filters.amountMin || filters.amountMax) && (
+                  <Badge variant="default" className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full">
+                    !
+                  </Badge>
+                )}
               </Button>
-              {/* Column chooser for Table view */}
+
+              {/* Column chooser for Table view - Desktop Only */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 hidden lg:flex h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform"
+                  >
                     <List className="h-4 w-4" /> Columns
                   </Button>
                 </DropdownMenuTrigger>
@@ -1223,41 +1261,44 @@ export default function DealsManagement() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Create Opportunity Button */}
+              {/* Create Opportunity Button - Desktop Only */}
               <Dialog
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="gap-2 flex-1 sm:flex-none">
+                  <Button
+                    className="gap-2 hidden md:flex h-10 px-4 sm:h-8 touch-manipulation active:scale-95 transition-transform"
+                  >
                     <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">+ Opportunity</span>
-                    <span className="sm:hidden">New</span>
+                    <span>+ Opportunity</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:max-w-lg lg:max-w-2xl w-[95vw] md:w-auto">
-                  <DialogHeader>
-                    <DialogTitle className="text-lg sm:text-xl">
-                      Create New Opportunity
-                    </DialogTitle>
-                  </DialogHeader>
+                <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-0">
+                  <div className="sticky top-0 bg-white border-b z-10 p-4 sm:p-6">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg sm:text-xl">
+                        Create New Opportunity
+                      </DialogTitle>
+                    </DialogHeader>
+                  </div>
 
                   <Form {...form}>
                     <form
                       onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-4"
+                      className="space-y-4 p-4 sm:p-6"
                     >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
                         <FormField
                           control={form.control}
                           name="title"
                           render={({ field }) => (
                             <FormItem className="sm:col-span-2">
-                              <FormLabel>Opportunity Title *</FormLabel>
+                              <FormLabel className="text-base">Opportunity Title *</FormLabel>
                               <FormControl>
                                 <Input
                                   placeholder="Enter opportunity title"
-                                  className="mobile-form-input"
+                                  className="h-11 touch-manipulation text-base"
                                   {...field}
                                 />
                               </FormControl>
@@ -1271,11 +1312,12 @@ export default function DealsManagement() {
                           name="amount"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Opportunity Amount</FormLabel>
+                              <FormLabel className="text-base">Opportunity Amount</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
                                   placeholder="0.00"
+                                  className="h-11 touch-manipulation text-base"
                                   {...field}
                                 />
                               </FormControl>
@@ -1289,20 +1331,21 @@ export default function DealsManagement() {
                           name="priority"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Priority</FormLabel>
+                              <FormLabel className="text-base">Priority</FormLabel>
                               <Select
                                 onValueChange={field.onChange}
                                 defaultValue={field.value}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="h-11 touch-manipulation">
                                     <SelectValue placeholder="Select priority" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="low">Low</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="high">High</SelectItem>
+                                  <SelectItem value="low" className="py-3 text-base">Low</SelectItem>
+                                  <SelectItem value="medium" className="py-3 text-base">Medium</SelectItem>
+                                  <SelectItem value="high" className="py-3 text-base">High</SelectItem>
+                                  <SelectItem value="urgent" className="py-3 text-base">Urgent</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -1316,7 +1359,7 @@ export default function DealsManagement() {
                           name="companyName"
                           render={({ field }) => (
                             <FormItem className="sm:col-span-2">
-                              <FormLabel>Company *</FormLabel>
+                              <FormLabel className="text-base">Company *</FormLabel>
                               <Popover
                                 open={isCompanySelectOpen}
                                 onOpenChange={setIsCompanySelectOpen}
@@ -1327,7 +1370,7 @@ export default function DealsManagement() {
                                       variant="outline"
                                       role="combobox"
                                       className={cn(
-                                        "w-full justify-between h-12 touch-manipulation",
+                                        "w-full justify-between h-11 touch-manipulation text-base",
                                         !field.value && "text-muted-foreground"
                                       )}
                                     >
@@ -1807,19 +1850,19 @@ export default function DealsManagement() {
                         />
                       </div>
 
-                      <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-2 pt-4">
+                      <div className="sticky bottom-0 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 mt-6 p-4 sm:p-6 bg-gray-50 border-t flex flex-col sm:flex-row sm:justify-end gap-3">
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => setIsCreateDialogOpen(false)}
-                          className="order-2 sm:order-1"
+                          className="order-2 sm:order-1 h-11 text-base touch-manipulation active:scale-95 transition-transform"
                         >
                           Cancel
                         </Button>
                         <Button
                           type="submit"
                           disabled={createDealMutation.isPending}
-                          className="order-1 sm:order-2"
+                          className="order-1 sm:order-2 h-11 text-base touch-manipulation active:scale-95 transition-transform"
                         >
                           {createDealMutation.isPending
                             ? "Creating..."
@@ -1832,6 +1875,257 @@ export default function DealsManagement() {
               </Dialog>
             </div>
           </div>
+
+          {/* Mobile-Optimized Filters Panel */}
+          {showFilters && (
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-gray-900">Filters</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilters({
+                        owner: "",
+                        source: "all",
+                        dealType: "all",
+                        priority: "all",
+                        amountMin: "",
+                        amountMax: "",
+                        closeDateFrom: "",
+                        closeDateTo: "",
+                      });
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 h-auto p-0 touch-manipulation"
+                  >
+                    Clear all
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {/* Owner Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Owner</label>
+                    <Input
+                      placeholder="Filter by owner..."
+                      value={filters.owner}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, owner: e.target.value }))
+                      }
+                      className="h-11 touch-manipulation"
+                    />
+                  </div>
+
+                  {/* Source Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Source</label>
+                    <Select
+                      value={filters.source}
+                      onValueChange={(value) =>
+                        setFilters((prev) => ({ ...prev, source: value }))
+                      }
+                    >
+                      <SelectTrigger className="h-11 touch-manipulation">
+                        <SelectValue placeholder="All sources" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All sources</SelectItem>
+                        <SelectItem value="website">Website</SelectItem>
+                        <SelectItem value="referral">Referral</SelectItem>
+                        <SelectItem value="cold_call">Cold Call</SelectItem>
+                        <SelectItem value="email">Email Campaign</SelectItem>
+                        <SelectItem value="trade_show">Trade Show</SelectItem>
+                        <SelectItem value="social_media">Social Media</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Priority Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Priority</label>
+                    <Select
+                      value={filters.priority}
+                      onValueChange={(value) =>
+                        setFilters((prev) => ({ ...prev, priority: value }))
+                      }
+                    >
+                      <SelectTrigger className="h-11 touch-manipulation">
+                        <SelectValue placeholder="All priorities" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All priorities</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Deal Type Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Deal Type</label>
+                    <Select
+                      value={filters.dealType}
+                      onValueChange={(value) =>
+                        setFilters((prev) => ({ ...prev, dealType: value }))
+                      }
+                    >
+                      <SelectTrigger className="h-11 touch-manipulation">
+                        <SelectValue placeholder="All types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All types</SelectItem>
+                        <SelectItem value="new_business">New Business</SelectItem>
+                        <SelectItem value="renewal">Renewal</SelectItem>
+                        <SelectItem value="upsell">Upsell</SelectItem>
+                        <SelectItem value="cross_sell">Cross-sell</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Amount Range */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Min Amount</label>
+                    <Input
+                      type="number"
+                      placeholder="$0"
+                      value={filters.amountMin}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, amountMin: e.target.value }))
+                      }
+                      className="h-11 touch-manipulation"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Max Amount</label>
+                    <Input
+                      type="number"
+                      placeholder="$999,999"
+                      value={filters.amountMax}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, amountMax: e.target.value }))
+                      }
+                      className="h-11 touch-manipulation"
+                    />
+                  </div>
+
+                  {/* Close Date Range */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Close From</label>
+                    <Input
+                      type="date"
+                      value={filters.closeDateFrom}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, closeDateFrom: e.target.value }))
+                      }
+                      className="h-11 touch-manipulation"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Close To</label>
+                    <Input
+                      type="date"
+                      value={filters.closeDateTo}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, closeDateTo: e.target.value }))
+                      }
+                      className="h-11 touch-manipulation"
+                    />
+                  </div>
+                </div>
+
+                {/* Active Filters Summary */}
+                {(filters.owner || filters.source !== "all" || filters.priority !== "all" || filters.dealType !== "all" || filters.amountMin || filters.amountMax || filters.closeDateFrom || filters.closeDateTo) && (
+                  <div className="mt-4 pt-4 border-t border-blue-200">
+                    <div className="flex flex-wrap gap-2">
+                      {filters.owner && (
+                        <Badge variant="secondary" className="gap-2 pr-1">
+                          Owner: {filters.owner}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilters((prev) => ({ ...prev, owner: "" }))}
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      )}
+                      {filters.source !== "all" && (
+                        <Badge variant="secondary" className="gap-2 pr-1">
+                          Source: {filters.source}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilters((prev) => ({ ...prev, source: "all" }))}
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      )}
+                      {filters.priority !== "all" && (
+                        <Badge variant="secondary" className="gap-2 pr-1">
+                          Priority: {filters.priority}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilters((prev) => ({ ...prev, priority: "all" }))}
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      )}
+                      {filters.dealType !== "all" && (
+                        <Badge variant="secondary" className="gap-2 pr-1">
+                          Type: {filters.dealType}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilters((prev) => ({ ...prev, dealType: "all" }))}
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      )}
+                      {(filters.amountMin || filters.amountMax) && (
+                        <Badge variant="secondary" className="gap-2 pr-1">
+                          Amount: ${filters.amountMin || "0"} - ${filters.amountMax || "∞"}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilters((prev) => ({ ...prev, amountMin: "", amountMax: "" }))}
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      )}
+                      {(filters.closeDateFrom || filters.closeDateTo) && (
+                        <Badge variant="secondary" className="gap-2 pr-1">
+                          Close Date: {filters.closeDateFrom || "any"} to {filters.closeDateTo || "any"}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFilters((prev) => ({ ...prev, closeDateFrom: "", closeDateTo: "" }))}
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Main Content */}
@@ -1846,16 +2140,16 @@ export default function DealsManagement() {
             >
               {/* Mobile Vertical Layout */}
               <div className="block md:hidden h-full overflow-y-auto">
-                <div className="space-y-4 p-4">
+                <div className="space-y-4 p-4 sm:p-6">
                   {stages.map((stage) => (
                     <div
                       key={stage.id}
                       ref={(el) => (stageRefs.current[stage.id] = el)}
                       className="w-full"
                     >
-                      <div className="bg-white border rounded-lg shadow-sm mobile-kanban-column">
+                      <div className="bg-white border-2 rounded-lg shadow-sm">
                         {/* Mobile Stage Header */}
-                        <div className="p-4 border-b bg-gray-50 rounded-t-lg">
+                        <div className="p-4 sm:p-5 border-b bg-gray-50 rounded-t-lg">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div
@@ -1874,7 +2168,8 @@ export default function DealsManagement() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-10 w-10 p-0 touch-manipulation active:scale-95 transition-transform"
+                              style={{ minWidth: '44px', minHeight: '44px' }}
                               onClick={() =>
                                 setCollapsedStages((prev) => ({
                                   ...prev,
@@ -1896,21 +2191,22 @@ export default function DealsManagement() {
                             strategy={verticalListSortingStrategy}
                           >
                             <DroppableStageArea stageId={stage.id}>
-                              <div className="p-4 space-y-3">
+                              <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
                                 {(dealsByStage[stage.id] || []).length === 0 ? (
-                                  <div className="text-center py-8 text-gray-500">
-                                    No deals in this stage
+                                  <div className="text-center py-12 text-gray-500">
+                                    <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                      <DollarSign className="h-6 w-6 text-gray-400" />
+                                    </div>
+                                    <p className="text-sm">No deals in this stage</p>
                                   </div>
                                 ) : (
                                   (dealsByStage[stage.id] || []).map((deal) => (
-                                    <div className="mobile-kanban-card">
-                                      <MobileDealCard
-                                        key={deal.id}
-                                        deal={deal}
-                                        stageColor={stage.color}
-                                        onDelete={(id) => deleteDealMutation.mutate(id)}
-                                      />
-                                    </div>
+                                    <MobileDealCard
+                                      key={deal.id}
+                                      deal={deal}
+                                      stageColor={stage.color}
+                                      onDelete={(id) => deleteDealMutation.mutate(id)}
+                                    />
                                   ))
                                 )}
                               </div>
@@ -1956,7 +2252,7 @@ export default function DealsManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 px-1"
+                                className="h-6 px-1 hover:bg-gray-200 active:scale-95 transition-transform"
                                 onClick={() =>
                                   setCollapsedStages((prev) => ({
                                     ...prev,
@@ -2306,47 +2602,79 @@ export default function DealsManagement() {
                   )}
                 </div>
 
-                {/* Mobile Card View */}
+                {/* Mobile-Optimized Card View */}
                 <div className="lg:hidden h-full overflow-y-auto">
                   <div className="p-4 space-y-4">
                     {filteredDeals.length > 0 ? (
                       filteredDeals.map((deal) => (
-                        <div
+                        <Card
                           key={deal.id}
-                          className="border rounded-lg p-4 bg-white"
+                          className="border-2 border-gray-200 hover:border-blue-300 transition-colors touch-manipulation active:scale-[0.98]"
                         >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 text-base mb-1 truncate">
-                                {deal.title}
-                              </h3>
-                              <p className="text-sm text-gray-600 truncate">
-                                {deal.companyName || "No company"}
-                              </p>
+                          <CardContent className="p-4 space-y-4">
+                            {/* Header Section */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 text-base mb-2 line-clamp-2">
+                                  {deal.title}
+                                </h3>
+                                {deal.companyName && (
+                                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                                    <Building2 className="h-4 w-4 flex-shrink-0" />
+                                    <span className="truncate">{deal.companyName}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-11 w-11 p-0 touch-manipulation"
+                                    style={{ minWidth: '44px', minHeight: '44px' }}
+                                  >
+                                    <MoreHorizontal className="h-5 w-5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem className="py-3">
+                                    <span className="text-base">Edit Deal</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="py-3">
+                                    <span className="text-base">View Details</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600 py-3"
+                                    onClick={() => {
+                                      if (
+                                        confirm(
+                                          `Delete deal "${deal.title}"? This cannot be undone.`
+                                        )
+                                      ) {
+                                        deleteDealMutation.mutate(deal.id);
+                                      }
+                                    }}
+                                  >
+                                    <span className="text-base">Delete</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit Deal</DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-600">
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
 
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-600">
-                                Stage:
-                              </span>
+                            {/* Amount Display */}
+                            {deal.amount && (
+                              <div className="py-3 px-4 bg-green-50 rounded-lg border border-green-200">
+                                <div className="text-sm text-gray-600 mb-1">Deal Value</div>
+                                <div className="text-2xl font-bold text-green-600">
+                                  ${parseFloat(deal.amount.toString()).toLocaleString()}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Stage Selector */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">Stage</label>
                               <Select
                                 value={deal.stageId}
                                 onValueChange={(stageId) => {
@@ -2356,20 +2684,18 @@ export default function DealsManagement() {
                                   });
                                 }}
                               >
-                                <SelectTrigger className="w-32 h-7 text-xs">
+                                <SelectTrigger className="w-full h-11 touch-manipulation">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {stages.map((stage) => (
-                                    <SelectItem key={stage.id} value={stage.id}>
+                                    <SelectItem key={stage.id} value={stage.id} className="py-3">
                                       <div className="flex items-center gap-2">
                                         <div
-                                          className="w-2 h-2 rounded-full"
-                                          style={{
-                                            backgroundColor: stage.color,
-                                          }}
+                                          className="w-3 h-3 rounded-full"
+                                          style={{ backgroundColor: stage.color }}
                                         />
-                                        {stage.name}
+                                        <span className="text-base">{stage.name}</span>
                                       </div>
                                     </SelectItem>
                                   ))}
@@ -2377,88 +2703,87 @@ export default function DealsManagement() {
                               </Select>
                             </div>
 
-                            {deal.amount && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-600">
-                                  Amount:
-                                </span>
-                                <span className="text-sm font-semibold text-green-600">
-                                  $
-                                  {parseFloat(
-                                    deal.amount.toString()
-                                  ).toLocaleString()}
-                                </span>
+                            {/* Key Metrics Grid */}
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                              <div className="space-y-1">
+                                <div className="text-xs text-gray-500 uppercase tracking-wide">Probability</div>
+                                <Badge
+                                  variant={
+                                    deal.probability >= 80
+                                      ? "default"
+                                      : deal.probability >= 60
+                                      ? "secondary"
+                                      : deal.probability >= 40
+                                      ? "outline"
+                                      : "destructive"
+                                  }
+                                  className="text-sm px-3 py-1"
+                                >
+                                  {deal.probability}%
+                                </Badge>
                               </div>
-                            )}
 
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-600">
-                                Probability:
-                              </span>
-                              <Badge
-                                variant={
-                                  deal.probability >= 80
-                                    ? "default"
-                                    : deal.probability >= 60
-                                    ? "secondary"
-                                    : deal.probability >= 40
-                                    ? "outline"
-                                    : "destructive"
-                                }
-                                className="text-xs"
-                              >
-                                {deal.probability}%
-                              </Badge>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-600">
-                                Priority:
-                              </span>
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  "text-xs",
-                                  deal.priority === "high" &&
-                                    "bg-red-100 text-red-800",
-                                  deal.priority === "medium" &&
-                                    "bg-yellow-100 text-yellow-800",
-                                  deal.priority === "low" &&
-                                    "bg-green-100 text-green-800"
-                                )}
-                              >
-                                {deal.priority}
-                              </Badge>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-600">
-                                Owner:
-                              </span>
-                              <span className="text-sm text-gray-900 truncate ml-2">
-                                {deal.ownerName || "Unassigned"}
-                              </span>
-                            </div>
-
-                            {deal.expectedCloseDate && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-600">
-                                  Close Date:
-                                </span>
-                                <span className="text-sm text-gray-900">
-                                  {format(
-                                    new Date(deal.expectedCloseDate),
-                                    "MMM d, yyyy"
+                              <div className="space-y-1">
+                                <div className="text-xs text-gray-500 uppercase tracking-wide">Priority</div>
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    "text-sm px-3 py-1",
+                                    deal.priority === "high" && "bg-red-100 text-red-800",
+                                    deal.priority === "medium" && "bg-yellow-100 text-yellow-800",
+                                    deal.priority === "low" && "bg-green-100 text-green-800",
+                                    deal.priority === "urgent" && "bg-red-200 text-red-900"
                                   )}
-                                </span>
+                                >
+                                  {deal.priority}
+                                </Badge>
                               </div>
-                            )}
-                          </div>
-                        </div>
+                            </div>
+
+                            {/* Additional Info */}
+                            <div className="pt-3 border-t border-gray-200 space-y-3">
+                              {deal.ownerName && (
+                                <div className="flex items-center gap-3 text-sm">
+                                  <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <span className="text-gray-600">Owner:</span>
+                                  <span className="font-medium text-gray-900 truncate">
+                                    {deal.ownerName}
+                                  </span>
+                                </div>
+                              )}
+
+                              {deal.expectedCloseDate && (
+                                <div className="flex items-center gap-3 text-sm">
+                                  <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <span className="text-gray-600">Close Date:</span>
+                                  <span className="font-medium text-gray-900">
+                                    {format(new Date(deal.expectedCloseDate), "MMM d, yyyy")}
+                                  </span>
+                                </div>
+                              )}
+
+                              {deal.source && (
+                                <div className="flex items-center gap-3 text-sm">
+                                  <TrendingUp className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <span className="text-gray-600">Source:</span>
+                                  <span className="font-medium text-gray-900 capitalize truncate">
+                                    {deal.source.replace(/_/g, ' ')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))
                     ) : (
-                      <div className="text-center py-12">
-                        <p className="text-gray-500">No deals found.</p>
+                      <div className="text-center py-16">
+                        <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                          <DollarSign className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 text-base">No deals found.</p>
+                        <p className="text-gray-400 text-sm mt-2">
+                          Try adjusting your filters or create a new deal.
+                        </p>
                       </div>
                     )}
                   </div>

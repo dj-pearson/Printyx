@@ -383,12 +383,13 @@ export default function CustomerDetailHubspot() {
     <MainLayout>
       <div className="max-w-7xl mx-auto">
         {/* Responsive Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6 bg-white p-4 md:p-6 rounded-lg shadow-sm border">
+        <div className="flex flex-col gap-3 sm:gap-4 md:flex-row md:items-center md:justify-between mb-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation(backButtonPath)}
+              className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               {backButtonText}
@@ -504,6 +505,7 @@ export default function CustomerDetailHubspot() {
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, call: true }))}
+              className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
             >
               <PhoneCall className="h-4 w-4 mr-2" />
               Call
@@ -512,6 +514,7 @@ export default function CustomerDetailHubspot() {
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, email: true }))}
+              className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
             >
               <Mail className="h-4 w-4 mr-2" />
               Email
@@ -520,6 +523,7 @@ export default function CustomerDetailHubspot() {
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, meeting: true }))}
+              className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
             >
               <Calendar className="h-4 w-4 mr-2" />
               Schedule Service
@@ -528,6 +532,7 @@ export default function CustomerDetailHubspot() {
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, note: true }))}
+              className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
             >
               <FileText className="h-4 w-4 mr-2" />
               Note
@@ -536,6 +541,7 @@ export default function CustomerDetailHubspot() {
               variant="outline"
               size="sm"
               onClick={() => setDialogs((prev) => ({ ...prev, task: true }))}
+              className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
             >
               <CheckSquare className="h-4 w-4 mr-2" />
               Task
@@ -544,6 +550,7 @@ export default function CustomerDetailHubspot() {
               variant="outline"
               size="sm"
               onClick={() => setIsEditing(!isEditing)}
+              className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
             >
               <Edit className="h-4 w-4 mr-2" />
               {isEditing ? "Cancel" : "Edit"}
@@ -553,6 +560,7 @@ export default function CustomerDetailHubspot() {
                 size="sm"
                 onClick={handleSave}
                 disabled={updateMutation.isPending}
+                className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
@@ -561,9 +569,9 @@ export default function CustomerDetailHubspot() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {/* Left Column - Main Information */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-3 sm:space-y-4 lg:space-y-6">
             {/* Customer Management Tabs */}
             <Tabs defaultValue="overview" className="w-full">
               <div className="border-b border-gray-200">
@@ -671,7 +679,7 @@ export default function CustomerDetailHubspot() {
                 {/* Company Information */}
                 <Card>
                   <CardHeader
-                    className="cursor-pointer"
+                    className="cursor-pointer p-4 sm:p-6"
                     onClick={() => toggleSection("company")}
                   >
                     <div className="flex items-center justify-between">
@@ -688,7 +696,7 @@ export default function CustomerDetailHubspot() {
                   </CardHeader>
 
                   {expandedSections.company && (
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-4 sm:p-6 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="companyName">Company Name *</Label>
@@ -978,7 +986,7 @@ export default function CustomerDetailHubspot() {
                 {/* Contact Information - Same as Lead */}
                 <Card>
                   <CardHeader
-                    className="cursor-pointer"
+                    className="cursor-pointer p-4 sm:p-6"
                     onClick={() => toggleSection("contact")}
                   >
                     <div className="flex items-center justify-between">
@@ -995,7 +1003,7 @@ export default function CustomerDetailHubspot() {
                   </CardHeader>
 
                   {expandedSections.contact && (
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-4 sm:p-6 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="primaryContactName">
@@ -1264,7 +1272,7 @@ export default function CustomerDetailHubspot() {
                 {/* Service Information - Customer-specific */}
                 <Card>
                   <CardHeader
-                    className="cursor-pointer"
+                    className="cursor-pointer p-4 sm:p-6"
                     onClick={() => toggleSection("service")}
                   >
                     <div className="flex items-center justify-between">
@@ -1281,7 +1289,7 @@ export default function CustomerDetailHubspot() {
                   </CardHeader>
 
                   {expandedSections.service && (
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-4 sm:p-6 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="preferredTechnician">
@@ -1446,7 +1454,7 @@ export default function CustomerDetailHubspot() {
                 {/* Billing Information - Customer-specific */}
                 <Card>
                   <CardHeader
-                    className="cursor-pointer"
+                    className="cursor-pointer p-4 sm:p-6"
                     onClick={() => toggleSection("billing")}
                   >
                     <div className="flex items-center justify-between">
@@ -1463,7 +1471,7 @@ export default function CustomerDetailHubspot() {
                   </CardHeader>
 
                   {expandedSections.billing && (
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-4 sm:p-6 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="currentBalance">
@@ -1665,7 +1673,7 @@ export default function CustomerDetailHubspot() {
                 {/* Address Information - Same as Lead but including shipping */}
                 <Card>
                   <CardHeader
-                    className="cursor-pointer"
+                    className="cursor-pointer p-4 sm:p-6"
                     onClick={() => toggleSection("address")}
                   >
                     <div className="flex items-center justify-between">
@@ -1682,7 +1690,7 @@ export default function CustomerDetailHubspot() {
                   </CardHeader>
 
                   {expandedSections.address && (
-                    <CardContent className="space-y-6">
+                    <CardContent className="p-4 sm:p-6 space-y-6">
                       {/* Primary Address */}
                       <div>
                         <h4 className="text-sm font-medium text-gray-900 mb-3">
@@ -2332,10 +2340,10 @@ export default function CustomerDetailHubspot() {
           <div className="space-y-6">
             {/* Quick Info Card */}
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle className="text-lg">Customer Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-4 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Customer #</span>
                   <span className="text-sm font-medium text-gray-900">
@@ -2429,13 +2437,13 @@ export default function CustomerDetailHubspot() {
 
             {/* Service Summary Card */}
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle className="flex items-center text-lg">
                   <Wrench className="h-5 w-5 mr-2" />
                   Service Summary
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-4 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Last Service</span>
                   <span className="text-sm text-gray-900">
@@ -2486,7 +2494,7 @@ export default function CustomerDetailHubspot() {
             {/* External System Integration */}
             <Card>
               <CardHeader
-                className="cursor-pointer"
+                className="cursor-pointer p-4 sm:p-6"
                 onClick={() => toggleSection("external")}
               >
                 <div className="flex items-center justify-between">
@@ -2503,7 +2511,7 @@ export default function CustomerDetailHubspot() {
               </CardHeader>
 
               {expandedSections.external && (
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 sm:p-6 space-y-4">
                   <div>
                     <Label htmlFor="externalCustomerId">
                       External Customer ID
@@ -2592,7 +2600,7 @@ export default function CustomerDetailHubspot() {
             {/* Custom Fields Management */}
             <Card>
               <CardHeader
-                className="cursor-pointer"
+                className="cursor-pointer p-4 sm:p-6"
                 onClick={() => toggleSection('customFields')}
               >
                 <div className="flex items-center justify-between">
@@ -2622,7 +2630,7 @@ export default function CustomerDetailHubspot() {
               </CardHeader>
 
               {expandedSections.customFields && (
-                <CardContent className="space-y-4">
+                <CardContent className="p-4 sm:p-6 space-y-4">
                   {Object.keys(customFields).length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {Object.entries(customFields).map(([key, field]: [string, any]) => (
@@ -2687,7 +2695,7 @@ export default function CustomerDetailHubspot() {
             {/* AI Customer Insights */}
             <Card>
               <CardHeader
-                className="cursor-pointer"
+                className="cursor-pointer p-4 sm:p-6"
                 onClick={() => toggleSection('aiInsights')}
               >
                 <div className="flex items-center justify-between">
@@ -2704,7 +2712,7 @@ export default function CustomerDetailHubspot() {
               </CardHeader>
 
               {expandedSections.aiInsights && (
-                <CardContent className="space-y-6">
+                <CardContent className="p-4 sm:p-6 space-y-6">
                   {/* Customer Health Score */}
                   <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border">
                     <div className="flex items-center justify-between mb-3">
@@ -2879,7 +2887,7 @@ export default function CustomerDetailHubspot() {
 
       {/* Custom Field Dialog */}
       <Dialog open={isCustomFieldDialogOpen} onOpenChange={setIsCustomFieldDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Add Custom Field</DialogTitle>
           </DialogHeader>
