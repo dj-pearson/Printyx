@@ -151,7 +151,25 @@ export class ApolloClient {
   }
 }
 
-// Create singleton instance with API key from environment
+// Helper to create Apollo client with tenant-specific API key
+export const createApolloClientForTenant = async (tenantId: string): Promise<ApolloClient> => {
+  const { storage } = await import("./storage");
+  
+  // Retrieve tenant's Apollo.io credentials from database
+  const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
+  
+  if (!credential || !credential.credentials || !credential.credentials.api_key) {
+    throw new Error("Apollo.io API key not configured for this company. Please add your Apollo.io API key in Integration Hub → Apollo.io");
+  }
+  
+  if (credential.status !== "active") {
+    throw new Error(`Apollo.io integration is ${credential.status}. Please activate it in Integration Hub.`);
+  }
+  
+  return new ApolloClient(credential.credentials.api_key as string);
+};
+
+// Legacy: Create singleton instance with API key from environment (fallback for platform-level testing)
 export const createApolloClient = () => {
   const apiKey = process.env.APOLLOIO_API_KEY;
   if (!apiKey) {
