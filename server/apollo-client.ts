@@ -158,7 +158,7 @@ export const createApolloClientForTenant = async (tenantId: string): Promise<Apo
   // Retrieve tenant's Apollo.io credentials from database
   const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
   
-  if (!credential || !credential.credentials || !credential.credentials.api_key) {
+  if (!credential || !credential.apiKey) {
     throw new Error("Apollo.io API key not configured for this company. Please add your Apollo.io API key in Integration Hub → Apollo.io");
   }
   
@@ -166,7 +166,7 @@ export const createApolloClientForTenant = async (tenantId: string): Promise<Apo
     throw new Error(`Apollo.io integration is ${credential.status}. Please activate it in Integration Hub.`);
   }
   
-  return new ApolloClient(credential.credentials.api_key as string);
+  return new ApolloClient(credential.apiKey as string);
 };
 
 // Legacy: Create singleton instance with API key from environment (fallback for platform-level testing)
