@@ -201,8 +201,27 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     }
   }
 
+  // Support both OIDC and session-based authentication
+  const sessionUserId = (req.session as any)?.userId;
+  const sessionTenantId = (req.session as any)?.tenantId;
   const user = req.user as any;
 
+  // Check for session-authenticated user (email/password login)
+  if (sessionUserId && sessionTenantId) {
+    // Hydrate req.user with session data for downstream routes
+    if (!user) {
+      req.user = {
+        claims: { sub: sessionUserId },
+        tenantId: sessionTenantId,
+        id: sessionUserId,
+      };
+    } else if (!user.tenantId) {
+      user.tenantId = sessionTenantId;
+    }
+    return next();
+  }
+
+  // Check for OIDC-authenticated user
   if (!req.isAuthenticated || !req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
