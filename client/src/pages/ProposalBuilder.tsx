@@ -366,42 +366,43 @@ export default function ProposalBuilder() {
           />
         )}
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-4 w-full sm:w-auto">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setLocation('/quotes')}
+              className="w-fit touch-manipulation active:scale-[0.98]"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Quotes
             </Button>
             <div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-1">
                 <span>Quotes</span>
                 <ArrowLeft className="h-3 w-3 rotate-180" />
                 <span className="text-primary font-medium">Proposal Builder</span>
                 {selectedQuote && (
                   <>
                     <ArrowLeft className="h-3 w-3 rotate-180" />
-                    <span>Quote #{(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}</span>
+                    <span className="truncate max-w-[200px]">Quote #{(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}</span>
                   </>
                 )}
               </div>
-              <h1 className="text-2xl font-bold">Proposal Builder</h1>
-              <p className="text-muted-foreground">Create professional proposals with customizable templates</p>
+              <h1 className="text-xl sm:text-2xl font-bold">Proposal Builder</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Create professional proposals with customizable templates</p>
             </div>
           </div>
-          
+
           {(selectedQuote || selectedTemplate) && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               {selectedQuote && (
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs truncate max-w-[200px]">
                   Quote: {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber || selectedQuote}
                 </Badge>
               )}
               {selectedTemplate && (
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs truncate max-w-[200px]">
                   Template: {selectedTemplate.name}
                 </Badge>
               )}
@@ -412,6 +413,7 @@ export default function ProposalBuilder() {
                   onValidClick={() => {
                     setActiveStep('transform');
                   }}
+                  className="touch-manipulation active:scale-[0.98] min-h-[44px]"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Proposal
@@ -422,48 +424,63 @@ export default function ProposalBuilder() {
         </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-center space-x-8">
-          {[
-            { key: 'quote', label: 'Select Quote', icon: FileText },
-            { key: 'template', label: 'Select Template', icon: FileSignature },
-            { key: 'transform', label: 'Transform Quote', icon: Wand2 },
-            { key: 'visual', label: 'Visual Builder', icon: Brush },
-            { key: 'preview', label: 'Preview & Export', icon: Eye },
-          ].map((step, index) => {
-            const Icon = step.icon;
-            const isActive = step.key === activeStep;
-            const isCompleted = ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(activeStep) > 
-                              ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(step.key);
-            
-            return (
-              <div key={step.key} className="flex items-center">
-                <div className={`flex items-center gap-2 ${isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    isActive ? 'bg-primary text-white' : 
-                    isCompleted ? 'bg-green-600 text-white' : 
-                    'bg-muted'
-                  }`}>
-                    <Icon className="h-4 w-4" />
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex items-center justify-start sm:justify-center space-x-4 sm:space-x-8 min-w-max sm:min-w-0 pb-2">
+            {[
+              { key: 'quote', label: 'Select Quote', icon: FileText },
+              { key: 'template', label: 'Select Template', icon: FileSignature },
+              { key: 'transform', label: 'Transform Quote', icon: Wand2 },
+              { key: 'visual', label: 'Visual Builder', icon: Brush },
+              { key: 'preview', label: 'Preview & Export', icon: Eye },
+            ].map((step, index) => {
+              const Icon = step.icon;
+              const isActive = step.key === activeStep;
+              const isCompleted = ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(activeStep) >
+                                ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(step.key);
+
+              return (
+                <div key={step.key} className="flex items-center">
+                  <div className={`flex items-center gap-2 ${isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'}`}>
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isActive ? 'bg-primary text-white' :
+                      isCompleted ? 'bg-green-600 text-white' :
+                      'bg-muted'
+                    }`}>
+                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </div>
+                    <span className="font-medium text-xs sm:text-sm whitespace-nowrap">{step.label}</span>
                   </div>
-                  <span className="font-medium">{step.label}</span>
+                  {index < 4 && <div className="w-4 sm:w-8 h-px bg-border ml-2 sm:ml-4 flex-shrink-0" />}
                 </div>
-                {index < 4 && <div className="w-8 h-px bg-border ml-4" />}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="flex justify-center gap-2">
-          <Button variant="outline" onClick={handleOpenBrandManager}>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleOpenBrandManager}
+            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+          >
             <Palette className="h-4 w-4 mr-2" />
-            Brand Manager
+            <span className="hidden sm:inline">Brand Manager</span>
+            <span className="sm:hidden">Brand</span>
           </Button>
-          <Button variant="outline" onClick={handleOpenVisualBuilder}>
+          <Button
+            variant="outline"
+            onClick={handleOpenVisualBuilder}
+            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+          >
             <Layers className="h-4 w-4 mr-2" />
-            Visual Builder
+            <span className="hidden sm:inline">Visual Builder</span>
+            <span className="sm:hidden">Builder</span>
           </Button>
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+          >
             <Copy className="h-4 w-4 mr-2" />
             Templates
           </Button>
@@ -494,20 +511,20 @@ export default function ProposalBuilder() {
             </div>
 
             {/* Search and Filter Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col gap-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Search quotes, customers, or quote numbers..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 touch-manipulation min-h-[44px]"
                 />
               </div>
-              
-              <div className="flex items-center gap-2">
+
+              <div className="flex flex-wrap items-center gap-2">
                 <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-full sm:w-[140px] min-h-[44px] touch-manipulation">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -517,21 +534,22 @@ export default function ProposalBuilder() {
                     <SelectItem value="date">Sort by Date</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
                 >
                   {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
                 </Button>
-                
-                <div className="flex border rounded">
+
+                <div className="flex border rounded ml-auto">
                   <Button
                     variant={viewMode === 'grid' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('grid')}
-                    className="rounded-r-none"
+                    className="rounded-r-none touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
                   >
                     <Grid className="h-4 w-4" />
                   </Button>
@@ -539,7 +557,7 @@ export default function ProposalBuilder() {
                     variant={viewMode === 'table' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('table')}
-                    className="rounded-l-none"
+                    className="rounded-l-none touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
                   >
                     <TableIcon className="h-4 w-4" />
                   </Button>
@@ -554,41 +572,41 @@ export default function ProposalBuilder() {
               </div>
             ) : filteredAndSortedQuotes.length > 0 ? (
               viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {filteredAndSortedQuotes.map((quote: any) => {
                     const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId);
                     return (
-                    <Card 
-                      key={quote.id} 
-                      className={`cursor-pointer transition-all hover:shadow-lg ${
+                    <Card
+                      key={quote.id}
+                      className={`cursor-pointer transition-all hover:shadow-lg touch-manipulation active:scale-[0.98] ${
                         selectedQuote === quote.id ? 'ring-2 ring-primary' : ''
                       }`}
                       onClick={() => handleQuoteSelect(quote.id)}
                     >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{quote.proposalNumber}</CardTitle>
-                          <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'}>
+                      <CardHeader className="pb-3 p-4 sm:p-6">
+                        <div className="flex items-center justify-between gap-2">
+                          <CardTitle className="text-base sm:text-lg truncate">{quote.proposalNumber}</CardTitle>
+                          <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'} className="text-xs flex-shrink-0">
                             {quote.status}
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="p-4 sm:p-6 pt-0">
                         <div className="space-y-3">
                           <div>
-                            <h3 className="text-lg font-semibold text-primary">{quote.title}</h3>
-                            <p className="text-sm text-muted-foreground">
+                            <h3 className="text-base sm:text-lg font-semibold text-primary break-words">{quote.title}</h3>
+                            <p className="text-sm text-muted-foreground break-words">
                               Customer: {customer?.name || 'Unknown Customer'}
                             </p>
                           </div>
-                          
+
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-muted-foreground">Total Amount:</span>
-                            <span className="font-semibold text-lg">${quote.totalAmount}</span>
+                            <span className="font-semibold text-base sm:text-lg">${quote.totalAmount}</span>
                           </div>
-                          
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
+
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4 flex-shrink-0" />
                             <span>Created {new Date(quote.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
@@ -598,55 +616,58 @@ export default function ProposalBuilder() {
                   })}
                 </div>
               ) : (
-                <Card>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Quote Number</TableHead>
-                        <TableHead>Quote Name</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredAndSortedQuotes.map((quote: any) => {
-                        const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId);
-                        return (
-                          <TableRow 
-                            key={quote.id}
-                            className={`cursor-pointer ${selectedQuote === quote.id ? 'bg-primary/10' : ''}`}
-                            onClick={() => handleQuoteSelect(quote.id)}
-                          >
-                            <TableCell className="font-medium">{quote.proposalNumber}</TableCell>
-                            <TableCell className="font-semibold text-primary">{quote.title}</TableCell>
-                            <TableCell>{customer?.name || 'Unknown Customer'}</TableCell>
-                            <TableCell className="font-semibold">${quote.totalAmount}</TableCell>
-                            <TableCell>
-                              <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'}>
-                                {quote.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{new Date(quote.createdAt).toLocaleDateString()}</TableCell>
-                            <TableCell>
-                              <Button 
-                                size="sm" 
-                                variant={selectedQuote === quote.id ? 'default' : 'outline'}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleQuoteSelect(quote.id);
-                                }}
-                              >
-                                {selectedQuote === quote.id ? 'Selected' : 'Select'}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[800px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap">Quote Number</TableHead>
+                          <TableHead className="whitespace-nowrap">Quote Name</TableHead>
+                          <TableHead className="whitespace-nowrap">Customer</TableHead>
+                          <TableHead className="whitespace-nowrap">Total Amount</TableHead>
+                          <TableHead className="whitespace-nowrap">Status</TableHead>
+                          <TableHead className="whitespace-nowrap">Created</TableHead>
+                          <TableHead className="whitespace-nowrap">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAndSortedQuotes.map((quote: any) => {
+                          const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId);
+                          return (
+                            <TableRow
+                              key={quote.id}
+                              className={`cursor-pointer touch-manipulation ${selectedQuote === quote.id ? 'bg-primary/10' : ''}`}
+                              onClick={() => handleQuoteSelect(quote.id)}
+                            >
+                              <TableCell className="font-medium whitespace-nowrap">{quote.proposalNumber}</TableCell>
+                              <TableCell className="font-semibold text-primary">{quote.title}</TableCell>
+                              <TableCell className="whitespace-nowrap">{customer?.name || 'Unknown Customer'}</TableCell>
+                              <TableCell className="font-semibold whitespace-nowrap">${quote.totalAmount}</TableCell>
+                              <TableCell>
+                                <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'} className="text-xs">
+                                  {quote.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">{new Date(quote.createdAt).toLocaleDateString()}</TableCell>
+                              <TableCell>
+                                <Button
+                                  size="sm"
+                                  variant={selectedQuote === quote.id ? 'default' : 'outline'}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuoteSelect(quote.id);
+                                  }}
+                                  className="touch-manipulation active:scale-[0.98] min-h-[40px] whitespace-nowrap"
+                                >
+                                  {selectedQuote === quote.id ? 'Selected' : 'Select'}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </Card>
               )
             ) : (
@@ -707,41 +728,41 @@ export default function ProposalBuilder() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {proposalTemplates.map((template) => (
-                <Card 
-                  key={template.id} 
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                <Card
+                  key={template.id}
+                  className={`cursor-pointer transition-all hover:shadow-lg touch-manipulation active:scale-[0.98] ${
                     selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
                   }`}
                   onClick={() => handleTemplateSelect(template)}
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
+                  <CardHeader className="pb-3 p-4 sm:p-6">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base sm:text-lg break-words">{template.name}</CardTitle>
                       {template.isDefault && (
-                        <Badge variant="secondary">Default</Badge>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">Default</Badge>
                       )}
                     </div>
-                    <Badge variant="outline" className="w-fit">
+                    <Badge variant="outline" className="w-fit text-xs">
                       {template.category.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
+                  <CardContent className="p-4 sm:p-6 pt-0">
+                    <p className="text-sm text-muted-foreground mb-4 break-words">
                       {template.description}
                     </p>
-                    
+
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Layout className="h-4 w-4" />
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
+                        <Layout className="h-4 w-4 flex-shrink-0" />
                         <span>{template.sections.length} sections included</span>
                       </div>
-                      
-                      <div className="flex items-center gap-2 text-sm">
-                        <Palette className="h-4 w-4" />
-                        <div 
-                          className="w-4 h-4 rounded border"
+
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
+                        <Palette className="h-4 w-4 flex-shrink-0" />
+                        <div
+                          className="w-4 h-4 rounded border flex-shrink-0"
                           style={{ backgroundColor: template.styling.primaryColor }}
                         />
                         <span>Branded styling</span>
@@ -752,21 +773,28 @@ export default function ProposalBuilder() {
               ))}
             </div>
 
-            <div className="flex justify-between items-center">
-              <Button 
-                variant="outline" 
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+              <Button
+                variant="outline"
                 onClick={() => setActiveStep('quote')}
+                className="touch-manipulation active:scale-[0.98] min-h-[44px]"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Quote Selection
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" className="gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-2 touch-manipulation active:scale-[0.98] min-h-[44px]"
+                >
                   <Plus className="h-4 w-4" />
                   Create Custom Template
                 </Button>
                 {selectedTemplate && (
-                  <Button onClick={() => setActiveStep('transform')}>
+                  <Button
+                    onClick={() => setActiveStep('transform')}
+                    className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+                  >
                     Continue to Transform
                     <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
                   </Button>
@@ -786,29 +814,29 @@ export default function ProposalBuilder() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               {/* Source Quote Preview */}
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="text-base">Source Quote</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6 pt-0">
                   <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quote:</span>
-                      <span className="font-medium">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-sm">Quote:</span>
+                      <span className="font-medium text-sm truncate">
                         {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Title:</span>
-                      <span className="font-medium">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-sm">Title:</span>
+                      <span className="font-medium text-sm truncate">
                         {(quotes || []).find((q: any) => q.id === selectedQuote)?.title}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Amount:</span>
-                      <span className="font-medium text-lg">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-sm">Amount:</span>
+                      <span className="font-medium text-base sm:text-lg">
                         ${(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
                       </span>
                     </div>
@@ -818,22 +846,22 @@ export default function ProposalBuilder() {
 
               {/* Target Template Preview */}
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="text-base">Target Template</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6 pt-0">
                   <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Template:</span>
-                      <span className="font-medium">{selectedTemplate.name}</span>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-sm">Template:</span>
+                      <span className="font-medium text-sm truncate">{selectedTemplate.name}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Category:</span>
-                      <span className="font-medium">{selectedTemplate.category}</span>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-sm">Category:</span>
+                      <span className="font-medium text-sm truncate">{selectedTemplate.category}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sections:</span>
-                      <span className="font-medium">{selectedTemplate.sections.length}</span>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-sm">Sections:</span>
+                      <span className="font-medium text-sm">{selectedTemplate.sections.length}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -846,41 +874,45 @@ export default function ProposalBuilder() {
                 <CardTitle>AI-Powered Transformation Features</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-blue-50">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="flex items-start sm:items-center gap-3 p-3 sm:p-4 border rounded-lg bg-blue-50">
+                    <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                     <div>
-                      <h4 className="font-medium">Auto-populate pricing</h4>
-                      <p className="text-sm text-muted-foreground">Import all line items and totals</p>
+                      <h4 className="font-medium text-sm sm:text-base">Auto-populate pricing</h4>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Import all line items and totals</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-green-50">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="flex items-start sm:items-center gap-3 p-3 sm:p-4 border rounded-lg bg-green-50">
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                     <div>
-                      <h4 className="font-medium">Generate content</h4>
-                      <p className="text-sm text-muted-foreground">AI-written sections and descriptions</p>
+                      <h4 className="font-medium text-sm sm:text-base">Generate content</h4>
+                      <p className="text-xs sm:text-sm text-muted-foreground">AI-written sections and descriptions</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-purple-50">
-                    <CheckCircle className="h-5 w-5 text-purple-600" />
+                  <div className="flex items-start sm:items-center gap-3 p-3 sm:p-4 border rounded-lg bg-purple-50">
+                    <CheckCircle className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                     <div>
-                      <h4 className="font-medium">Brand consistency</h4>
-                      <p className="text-sm text-muted-foreground">Apply your brand styling automatically</p>
+                      <h4 className="font-medium text-sm sm:text-base">Brand consistency</h4>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Apply your brand styling automatically</p>
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="flex justify-between">
-              <Button 
-                variant="outline" 
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+              <Button
+                variant="outline"
                 onClick={() => setActiveStep('template')}
+                className="touch-manipulation active:scale-[0.98] min-h-[44px]"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Template
               </Button>
-              <Button onClick={handleTransformQuote}>
+              <Button
+                onClick={handleTransformQuote}
+                className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+              >
                 <Wand2 className="h-4 w-4 mr-2" />
                 Transform Quote
               </Button>
@@ -903,26 +935,30 @@ export default function ProposalBuilder() {
                 <CardTitle>Drag & Drop Visual Editor</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="p-4 border rounded-lg text-center">
                     <Layers className="h-8 w-8 mx-auto mb-2 text-primary" />
-                    <h4 className="font-medium">Drag & Drop Sections</h4>
-                    <p className="text-sm text-muted-foreground">Reorder sections with intuitive drag-and-drop</p>
+                    <h4 className="font-medium text-sm sm:text-base">Drag & Drop Sections</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Reorder sections with intuitive drag-and-drop</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
                     <Type className="h-8 w-8 mx-auto mb-2 text-primary" />
-                    <h4 className="font-medium">Rich Text Editor</h4>
-                    <p className="text-sm text-muted-foreground">Professional formatting with real-time preview</p>
+                    <h4 className="font-medium text-sm sm:text-base">Rich Text Editor</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Professional formatting with real-time preview</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
                     <Palette className="h-8 w-8 mx-auto mb-2 text-primary" />
-                    <h4 className="font-medium">Brand Customization</h4>
-                    <p className="text-sm text-muted-foreground">Apply colors, fonts, and styling to match your brand</p>
+                    <h4 className="font-medium text-sm sm:text-base">Brand Customization</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Apply colors, fonts, and styling to match your brand</p>
                   </div>
                 </div>
 
                 <div className="flex justify-center">
-                  <Button onClick={handleOpenVisualBuilder} size="lg">
+                  <Button
+                    onClick={handleOpenVisualBuilder}
+                    size="lg"
+                    className="touch-manipulation active:scale-[0.98] min-h-[44px] w-full sm:w-auto"
+                  >
                     <Brush className="h-5 w-5 mr-2" />
                     Open Visual Builder
                   </Button>
@@ -930,15 +966,19 @@ export default function ProposalBuilder() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between">
-              <Button 
-                variant="outline" 
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+              <Button
+                variant="outline"
                 onClick={() => setActiveStep('transform')}
+                className="touch-manipulation active:scale-[0.98] min-h-[44px]"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Transform
               </Button>
-              <Button onClick={() => setActiveStep('preview')}>
+              <Button
+                onClick={() => setActiveStep('preview')}
+                className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+              >
                 Continue to Preview
                 <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
               </Button>
@@ -957,38 +997,45 @@ export default function ProposalBuilder() {
             </div>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Proposal Preview</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <CardTitle className="text-base sm:text-lg">Proposal Preview</CardTitle>
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-initial"
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       Preview PDF
                     </Button>
-                    <Button size="sm">
+                    <Button
+                      size="sm"
+                      className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-initial"
+                    >
                       <Send className="h-4 w-4 mr-2" />
                       Send Proposal
                     </Button>
                   </div>
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
                   {/* Quote Information */}
                   {selectedQuote && (
                     <div className="bg-muted/50 p-4 rounded-lg">
-                      <h3 className="font-semibold mb-2">Source Quote Information</h3>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
+                      <h3 className="font-semibold mb-2 text-sm sm:text-base">Source Quote Information</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                        <div className="break-words">
                           <span className="text-muted-foreground">Quote:</span> {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
                         </div>
-                        <div>
+                        <div className="break-words">
                           <span className="text-muted-foreground">Quote Name:</span> {(quotes || []).find((q: any) => q.id === selectedQuote)?.title}
                         </div>
-                        <div>
+                        <div className="break-words">
                           <span className="text-muted-foreground">Customer:</span> {businessRecords?.find((br: any) => br.id === (quotes || []).find((q: any) => q.id === selectedQuote)?.businessRecordId)?.name}
                         </div>
-                        <div>
+                        <div className="break-words">
                           <span className="text-muted-foreground">Amount:</span> ${(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
                         </div>
                       </div>
@@ -1021,16 +1068,20 @@ export default function ProposalBuilder() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between">
-              <Button 
-                variant="outline" 
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+              <Button
+                variant="outline"
                 onClick={() => setActiveStep('visual')}
+                className="touch-manipulation active:scale-[0.98] min-h-[44px]"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Visual Builder
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  className="touch-manipulation active:scale-[0.98] min-h-[44px]"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export PDF
                 </Button>
@@ -1044,6 +1095,7 @@ export default function ProposalBuilder() {
                     params.set('from', 'proposal-builder');
                     setLocation('/contracts?' + params.toString());
                   }}
+                  className="touch-manipulation active:scale-[0.98] min-h-[44px]"
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Send for Contract
@@ -1056,7 +1108,7 @@ export default function ProposalBuilder() {
 
       {/* Brand Manager Dialog */}
       <Dialog open={showBrandManager} onOpenChange={setShowBrandManager}>
-        <DialogContent className="max-w-full max-h-full w-screen h-screen p-0">
+        <DialogContent className="max-w-full max-h-full w-full h-full sm:w-screen sm:h-screen p-0 m-0">
           <BrandManager
             onSave={handleSaveBrand}
             onClose={() => setShowBrandManager(false)}
@@ -1066,7 +1118,7 @@ export default function ProposalBuilder() {
 
       {/* Visual Builder Dialog */}
       <Dialog open={showVisualBuilder} onOpenChange={setShowVisualBuilder}>
-        <DialogContent className="max-w-full max-h-full w-screen h-screen p-0">
+        <DialogContent className="max-w-full max-h-full w-full h-full sm:w-screen sm:h-screen p-0 m-0">
           <ProposalVisualBuilder
             quoteData={selectedQuote ? (quotes || []).find((q: any) => q.id === selectedQuote) : undefined}
             onSave={handleSaveProposal}
@@ -1077,9 +1129,9 @@ export default function ProposalBuilder() {
 
       {/* Quote Transformer Dialog */}
       <Dialog open={showQuoteTransformer} onOpenChange={setShowQuoteTransformer}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Transform Quote to Proposal</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Transform Quote to Proposal</DialogTitle>
           </DialogHeader>
           {selectedQuote && (
             <QuoteTransformer

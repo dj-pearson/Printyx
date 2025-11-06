@@ -145,14 +145,14 @@ export function CreateTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">
             {parentTask
               ? `Create Subtask for "${parentTask.title}"`
               : "Create New Task"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             {parentTask
               ? "Add a subtask to break down the work into smaller, manageable pieces."
               : "Create a new task and configure all the details needed for successful completion."}
@@ -161,17 +161,27 @@ export function CreateTaskDialog({
 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
-              <TabsTrigger value="workflow">Workflow</TabsTrigger>
-              <TabsTrigger value="custom">Custom Fields</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+              <TabsTrigger value="details" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="scheduling" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+                Schedule
+              </TabsTrigger>
+              <TabsTrigger value="workflow" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+                Workflow
+              </TabsTrigger>
+              <TabsTrigger value="custom" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+                Custom
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="space-y-4 mt-4">
               {/* Task Title */}
               <div className="space-y-2">
-                <Label htmlFor="title">Task Title *</Label>
+                <Label htmlFor="title" className="text-sm sm:text-base">
+                  Task Title *
+                </Label>
                 <Input
                   id="title"
                   value={formData.title}
@@ -180,12 +190,15 @@ export function CreateTaskDialog({
                   }
                   placeholder="What needs to be done?"
                   required
+                  className="h-11 touch-manipulation text-base"
                 />
               </div>
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description" className="text-sm sm:text-base">
+                  Description
+                </Label>
                 <Textarea
                   id="description"
                   value={formData.description}
@@ -197,26 +210,29 @@ export function CreateTaskDialog({
                   }
                   placeholder="Add more details about this task..."
                   rows={3}
+                  className="touch-manipulation text-base resize-none"
                 />
               </div>
 
               {/* Project & Assignee */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Project</Label>
+                  <Label className="text-sm sm:text-base">Project</Label>
                   <Select
                     value={formData.projectId}
                     onValueChange={(value) =>
                       setFormData((prev) => ({ ...prev, projectId: value }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 touch-manipulation">
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No Project</SelectItem>
+                      <SelectItem value="none" className="min-h-[44px]">
+                        No Project
+                      </SelectItem>
                       {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
+                        <SelectItem key={project.id} value={project.id} className="min-h-[44px]">
                           {project.name}
                         </SelectItem>
                       ))}
@@ -225,20 +241,22 @@ export function CreateTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Assignee</Label>
+                  <Label className="text-sm sm:text-base">Assignee</Label>
                   <Select
                     value={formData.assignedTo}
                     onValueChange={(value) =>
                       setFormData((prev) => ({ ...prev, assignedTo: value }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 touch-manipulation">
                       <SelectValue placeholder="Assign to..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      <SelectItem value="unassigned" className="min-h-[44px]">
+                        Unassigned
+                      </SelectItem>
                       {teamMembers.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
+                        <SelectItem key={member.id} value={member.id} className="min-h-[44px]">
                           <div className="flex items-center space-x-2">
                             <Avatar className="h-5 w-5">
                               <AvatarImage src={member.avatar} />
@@ -258,27 +276,35 @@ export function CreateTaskDialog({
               {/* Status & Priority */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label className="text-sm sm:text-base">Status</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value) =>
                       setFormData((prev) => ({ ...prev, status: value as any }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todo">To Do</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="review">Review</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="todo" className="min-h-[44px]">
+                        To Do
+                      </SelectItem>
+                      <SelectItem value="in_progress" className="min-h-[44px]">
+                        In Progress
+                      </SelectItem>
+                      <SelectItem value="review" className="min-h-[44px]">
+                        Review
+                      </SelectItem>
+                      <SelectItem value="completed" className="min-h-[44px]">
+                        Completed
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Priority</Label>
+                  <Label className="text-sm sm:text-base">Priority</Label>
                   <Select
                     value={formData.priority}
                     onValueChange={(value) =>
@@ -288,29 +314,29 @@ export function CreateTaskDialog({
                       }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 touch-manipulation">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">
+                      <SelectItem value="low" className="min-h-[44px]">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-green-500" />
                           <span>Low</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="medium">
+                      <SelectItem value="medium" className="min-h-[44px]">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-yellow-500" />
                           <span>Medium</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="high">
+                      <SelectItem value="high" className="min-h-[44px]">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-orange-500" />
                           <span>High</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="urgent">
+                      <SelectItem value="urgent" className="min-h-[44px]">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 rounded-full bg-red-500" />
                           <span>Urgent</span>
@@ -323,20 +349,20 @@ export function CreateTaskDialog({
 
               {/* Tags */}
               <div className="space-y-2">
-                <Label>Tags</Label>
+                <Label className="text-sm sm:text-base">Tags</Label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {formData.tags?.map((tag) => (
                     <Badge
                       key={tag}
                       variant="secondary"
-                      className="cursor-pointer hover:bg-red-100"
+                      className="cursor-pointer hover:bg-red-100 touch-manipulation min-h-[32px] px-3"
                       onClick={() => removeTag(tag)}
                     >
                       {tag} <X className="ml-1 h-3 w-3" />
                     </Badge>
                   ))}
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <Input
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
@@ -347,12 +373,14 @@ export function CreateTaskDialog({
                         addTag();
                       }
                     }}
+                    className="h-11 touch-manipulation text-base"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={addTag}
+                    className="h-11 min-w-[44px] touch-manipulation active:scale-95 transition-transform"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -364,12 +392,12 @@ export function CreateTaskDialog({
               {/* Dates */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
+                  <Label className="text-sm sm:text-base">Start Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-full justify-start text-left"
+                        className="w-full justify-start text-left h-11 touch-manipulation"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {formData.startDate
@@ -400,12 +428,12 @@ export function CreateTaskDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Due Date</Label>
+                  <Label className="text-sm sm:text-base">Due Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-full justify-start text-left"
+                        className="w-full justify-start text-left h-11 touch-manipulation"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {formData.dueDate
@@ -438,7 +466,9 @@ export function CreateTaskDialog({
 
               {/* Time Estimate */}
               <div className="space-y-2">
-                <Label htmlFor="estimatedHours">Estimated Hours</Label>
+                <Label htmlFor="estimatedHours" className="text-sm sm:text-base">
+                  Estimated Hours
+                </Label>
                 <Input
                   id="estimatedHours"
                   type="number"
@@ -452,6 +482,7 @@ export function CreateTaskDialog({
                     }))
                   }
                   placeholder="How many hours will this take?"
+                  className="h-11 touch-manipulation text-base"
                 />
               </div>
             </TabsContent>
@@ -497,15 +528,20 @@ export function CreateTaskDialog({
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter className="mt-6 flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !formData.title}>
+            <Button
+              type="submit"
+              disabled={isLoading || !formData.title}
+              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
+            >
               {isLoading
                 ? "Creating..."
                 : parentTask
@@ -562,10 +598,10 @@ export function CreateProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Create New Project</DialogTitle>
+          <DialogDescription className="text-sm">
             Set up a new project to organize and track multiple related tasks.
           </DialogDescription>
         </DialogHeader>
@@ -573,7 +609,9 @@ export function CreateProjectDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Project Name */}
           <div className="space-y-2">
-            <Label htmlFor="projectName">Project Name *</Label>
+            <Label htmlFor="projectName" className="text-sm sm:text-base">
+              Project Name *
+            </Label>
             <Input
               id="projectName"
               value={formData.name}
@@ -582,12 +620,15 @@ export function CreateProjectDialog({
               }
               placeholder="Enter project name"
               required
+              className="h-11 touch-manipulation text-base"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="projectDescription">Description</Label>
+            <Label htmlFor="projectDescription" className="text-sm sm:text-base">
+              Description
+            </Label>
             <Textarea
               id="projectDescription"
               value={formData.description}
@@ -599,24 +640,25 @@ export function CreateProjectDialog({
               }
               placeholder="Describe the project goals and scope..."
               rows={3}
+              className="touch-manipulation text-base resize-none"
             />
           </div>
 
           {/* Project Manager */}
           <div className="space-y-2">
-            <Label>Project Manager</Label>
+            <Label className="text-sm sm:text-base">Project Manager</Label>
             <Select
               value={formData.projectManager}
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, projectManager: value }))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-11 touch-manipulation">
                 <SelectValue placeholder="Select project manager" />
               </SelectTrigger>
               <SelectContent>
                 {teamMembers.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
+                  <SelectItem key={member.id} value={member.id} className="min-h-[44px]">
                     <div className="flex items-center space-x-2">
                       <Avatar className="h-5 w-5">
                         <AvatarImage src={member.avatar} />
@@ -635,7 +677,7 @@ export function CreateProjectDialog({
           {/* Dates and Budget */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Start Date</Label>
+              <Label className="text-sm sm:text-base">Start Date</Label>
               <Input
                 type="date"
                 value={formData.startDate}
@@ -645,20 +687,22 @@ export function CreateProjectDialog({
                     startDate: e.target.value,
                   }))
                 }
+                className="h-11 touch-manipulation text-base"
               />
             </div>
             <div className="space-y-2">
-              <Label>End Date</Label>
+              <Label className="text-sm sm:text-base">End Date</Label>
               <Input
                 type="date"
                 value={formData.endDate}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, endDate: e.target.value }))
                 }
+                className="h-11 touch-manipulation text-base"
               />
             </div>
             <div className="space-y-2">
-              <Label>Estimated Budget</Label>
+              <Label className="text-sm sm:text-base">Estimated Budget</Label>
               <Input
                 type="number"
                 value={formData.estimatedBudget}
@@ -669,19 +713,25 @@ export function CreateProjectDialog({
                   }))
                 }
                 placeholder="$0"
+                className="h-11 touch-manipulation text-base"
               />
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !formData.name}>
+            <Button
+              type="submit"
+              disabled={isLoading || !formData.name}
+              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
+            >
               {isLoading ? "Creating..." : "Create Project"}
             </Button>
           </DialogFooter>

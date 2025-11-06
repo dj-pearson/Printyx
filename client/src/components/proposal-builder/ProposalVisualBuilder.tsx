@@ -127,8 +127,8 @@ function SortableSection({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative border-2 transition-all duration-200 ${
-        isSelected ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-gray-300'
+      className={`group relative border-2 transition-all duration-200 touch-manipulation ${
+        isSelected ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-gray-300 active:border-gray-400'
       } ${section.isLocked ? 'opacity-75' : ''}`}
       onClick={onClick}
     >
@@ -136,23 +136,35 @@ function SortableSection({
       <div
         {...attributes}
         {...listeners}
-        className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        className="absolute top-2 left-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-manipulation"
       >
-        <div className="bg-gray-800 text-white p-1 rounded">
-          <GripVertical className="h-4 w-4" />
+        <div className="bg-gray-800 text-white p-2 rounded min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <GripVertical className="h-5 w-5" />
         </div>
       </div>
 
       {/* Section Controls */}
-      <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-        <Button size="sm" variant="secondary" className="h-6 w-6 p-0">
-          <Settings className="h-3 w-3" />
+      <div className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
+        >
+          <Settings className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="secondary" className="h-6 w-6 p-0">
-          <Copy className="h-3 w-3" />
+        <Button
+          size="sm"
+          variant="secondary"
+          className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
+        >
+          <Copy className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="destructive" className="h-6 w-6 p-0">
-          <Trash2 className="h-3 w-3" />
+        <Button
+          size="sm"
+          variant="destructive"
+          className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
+        >
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
@@ -216,38 +228,38 @@ function StylePanel({
 }) {
   if (!selectedSection) {
     return (
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
+      <Card className="h-full border-0 sm:border">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Palette className="h-4 w-4 sm:h-5 sm:w-5" />
             Global Styling
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
+        <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label>Primary Color</Label>
+              <Label className="text-xs sm:text-sm">Primary Color</Label>
               <Input
                 type="color"
                 value={globalStyling.primaryColor}
                 onChange={(e) => onGlobalStylingUpdate({ ...globalStyling, primaryColor: e.target.value })}
-                className="h-10"
+                className="h-12 touch-manipulation"
               />
             </div>
             <div>
-              <Label>Secondary Color</Label>
+              <Label className="text-xs sm:text-sm">Secondary Color</Label>
               <Input
                 type="color"
                 value={globalStyling.secondaryColor}
                 onChange={(e) => onGlobalStylingUpdate({ ...globalStyling, secondaryColor: e.target.value })}
-                className="h-10"
+                className="h-12 touch-manipulation"
               />
             </div>
           </div>
           <div>
-            <Label>Font Family</Label>
+            <Label className="text-xs sm:text-sm">Font Family</Label>
             <Select value={globalStyling.fontFamily} onValueChange={(value) => onGlobalStylingUpdate({ ...globalStyling, fontFamily: value })}>
-              <SelectTrigger>
+              <SelectTrigger className="touch-manipulation min-h-[44px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -261,7 +273,7 @@ function StylePanel({
             </Select>
           </div>
           <div>
-            <Label>Page Margins</Label>
+            <Label className="text-xs sm:text-sm">Page Margins</Label>
             <div className="grid grid-cols-2 gap-2">
               <Input
                 placeholder="Top"
@@ -271,6 +283,7 @@ function StylePanel({
                   ...globalStyling,
                   pageMargins: { ...globalStyling.pageMargins, top: parseInt(e.target.value) || 0 }
                 })}
+                className="touch-manipulation min-h-[44px]"
               />
               <Input
                 placeholder="Right"
@@ -280,6 +293,7 @@ function StylePanel({
                   ...globalStyling,
                   pageMargins: { ...globalStyling.pageMargins, right: parseInt(e.target.value) || 0 }
                 })}
+                className="touch-manipulation min-h-[44px]"
               />
               <Input
                 placeholder="Bottom"
@@ -289,6 +303,7 @@ function StylePanel({
                   ...globalStyling,
                   pageMargins: { ...globalStyling.pageMargins, bottom: parseInt(e.target.value) || 0 }
                 })}
+                className="touch-manipulation min-h-[44px]"
               />
               <Input
                 placeholder="Left"
@@ -298,6 +313,7 @@ function StylePanel({
                   ...globalStyling,
                   pageMargins: { ...globalStyling.pageMargins, left: parseInt(e.target.value) || 0 }
                 })}
+                className="touch-manipulation min-h-[44px]"
               />
             </div>
           </div>
@@ -563,20 +579,35 @@ export default function ProposalVisualBuilder({
     }
   };
 
+  const [showLeftSidebar, setShowLeftSidebar] = useState(true);
+  const [showRightSidebar, setShowRightSidebar] = useState(true);
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-col lg:flex-row h-screen bg-gray-50">
       {/* Left Sidebar - Components & Templates */}
-      <div className="w-80 bg-white border-r flex flex-col">
+      <div className={`${showLeftSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 bg-white border-b lg:border-r lg:border-b-0 flex flex-col max-h-[40vh] lg:max-h-none overflow-y-auto lg:overflow-visible`}>
         <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">Proposal Builder</h2>
-          <p className="text-sm text-muted-foreground">Drag & drop to customize</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base sm:text-lg font-semibold">Proposal Builder</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Drag & drop to customize</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowLeftSidebar(false)}
+              className="lg:hidden touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
+            >
+              ×
+            </Button>
+          </div>
         </div>
-        
+
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium mb-2">Add Sections</h3>
-              <div className="grid grid-cols-2 gap-2">
+              <h3 className="text-xs sm:text-sm font-medium mb-2">Add Sections</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2">
                 {[
                   { type: 'cover_page', label: 'Cover', icon: Layout },
                   { type: 'executive_summary', label: 'Executive', icon: Eye },
@@ -589,7 +620,7 @@ export default function ProposalVisualBuilder({
                     key={type}
                     variant="outline"
                     size="sm"
-                    className="h-16 flex flex-col gap-1"
+                    className="h-16 flex flex-col gap-1 touch-manipulation active:scale-[0.98]"
                     onClick={() => handleAddSection(type)}
                   >
                     <Icon className="h-4 w-4" />
@@ -602,36 +633,36 @@ export default function ProposalVisualBuilder({
             <Separator />
             
             <div>
-              <h3 className="text-sm font-medium mb-2">Sections</h3>
+              <h3 className="text-xs sm:text-sm font-medium mb-2">Sections</h3>
               <div className="space-y-2">
                 {template.sections.map((section) => (
                   <div
                     key={section.id}
-                    className={`p-2 rounded border cursor-pointer transition-colors ${
-                      selectedSectionId === section.id ? 'bg-primary/10 border-primary' : 'hover:bg-gray-50'
+                    className={`p-2 sm:p-3 rounded border cursor-pointer transition-colors touch-manipulation ${
+                      selectedSectionId === section.id ? 'bg-primary/10 border-primary' : 'hover:bg-gray-50 active:bg-gray-100'
                     }`}
                     onClick={() => setSelectedSectionId(section.id)}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{section.title}</span>
-                      <div className="flex gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs sm:text-sm font-medium truncate">{section.title}</span>
+                      <div className="flex gap-1 flex-shrink-0">
                         <Switch
                           checked={section.isVisible}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             handleSectionUpdate({ ...section, isVisible: checked })
                           }
-                          size="sm"
+                          className="touch-manipulation"
                         />
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 w-6 p-0"
+                          className="h-8 w-8 p-0 touch-manipulation active:scale-[0.98]"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteSection(section.id);
                           }}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -644,41 +675,79 @@ export default function ProposalVisualBuilder({
       </div>
 
       {/* Center - Canvas */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Toolbar */}
-        <div className="bg-white border-b p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Input
-              value={template.name}
-              onChange={(e) => setTemplate({ ...template, name: e.target.value })}
-              className="font-semibold"
-            />
-            <Badge variant="secondary">{template.sections.length} sections</Badge>
+        <div className="bg-white border-b p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2">
+          {/* Mobile Toggle Buttons */}
+          <div className="flex gap-2 lg:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLeftSidebar(!showLeftSidebar)}
+              className="flex-1 touch-manipulation active:scale-[0.98] min-h-[44px]"
+            >
+              <Layout className="h-4 w-4 mr-2" />
+              Sections
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRightSidebar(!showRightSidebar)}
+              className="flex-1 touch-manipulation active:scale-[0.98] min-h-[44px]"
+            >
+              <Palette className="h-4 w-4 mr-2" />
+              Styling
+            </Button>
           </div>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setPreviewMode(!previewMode)}>
-              <Eye className="h-4 w-4 mr-2" />
-              {previewMode ? 'Edit' : 'Preview'}
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export PDF
-            </Button>
-            <Button size="sm" onClick={() => onSave?.(template)}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Template
-            </Button>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2 sm:flex-1">
+            <div className="flex items-center gap-2 flex-1">
+              <Input
+                value={template.name}
+                onChange={(e) => setTemplate({ ...template, name: e.target.value })}
+                className="font-semibold text-sm sm:text-base touch-manipulation min-h-[44px]"
+              />
+              <Badge variant="secondary" className="text-xs whitespace-nowrap">{template.sections.length} sections</Badge>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPreviewMode(!previewMode)}
+                className="flex-1 sm:flex-initial touch-manipulation active:scale-[0.98] min-h-[44px]"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                {previewMode ? 'Edit' : 'Preview'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-initial touch-manipulation active:scale-[0.98] min-h-[44px]"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => onSave?.(template)}
+                className="w-full sm:w-auto touch-manipulation active:scale-[0.98] min-h-[44px]"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Template
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 overflow-auto bg-gray-100 p-8">
-          <div 
-            className="bg-white shadow-lg mx-auto min-h-[800px]"
-            style={{ 
-              width: '794px', // A4 width at 96dpi
-              padding: `${template.globalStyling.pageMargins.top}px ${template.globalStyling.pageMargins.right}px ${template.globalStyling.pageMargins.bottom}px ${template.globalStyling.pageMargins.left}px`,
+        <div className="flex-1 overflow-auto bg-gray-100 p-2 sm:p-4 lg:p-8">
+          <div
+            className="bg-white shadow-lg mx-auto min-h-[600px] sm:min-h-[800px]"
+            style={{
+              width: '100%',
+              maxWidth: '794px', // A4 width at 96dpi
+              padding: `${Math.max(12, template.globalStyling.pageMargins.top * 0.75)}px ${Math.max(12, template.globalStyling.pageMargins.right * 0.75)}px ${Math.max(12, template.globalStyling.pageMargins.bottom * 0.75)}px ${Math.max(12, template.globalStyling.pageMargins.left * 0.75)}px`,
               fontFamily: template.globalStyling.fontFamily
             }}
           >
@@ -739,7 +808,18 @@ export default function ProposalVisualBuilder({
       </div>
 
       {/* Right Sidebar - Properties */}
-      <div className="w-80 bg-white border-l">
+      <div className={`${showRightSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 bg-white border-t lg:border-l lg:border-t-0 max-h-[40vh] lg:max-h-none overflow-y-auto`}>
+        <div className="lg:hidden p-4 border-b flex items-center justify-between">
+          <h3 className="font-semibold">Styling</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowRightSidebar(false)}
+            className="touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
+          >
+            ×
+          </Button>
+        </div>
         <StylePanel
           selectedSection={selectedSection}
           onSectionUpdate={handleSectionUpdate}
