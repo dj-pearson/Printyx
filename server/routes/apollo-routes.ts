@@ -432,10 +432,10 @@ router.get("/credentials", isAuthenticated, async (req, res) => {
       status: credential.status,
       createdAt: credential.createdAt,
       updatedAt: credential.updatedAt,
-      apiKeyMasked: credential.credentials?.api_key 
-        ? `${String(credential.credentials.api_key).substring(0, 10)}...${String(credential.credentials.api_key).slice(-4)}`
+      apiKeyMasked: credential.apiKey 
+        ? `${String(credential.apiKey).substring(0, 10)}...${String(credential.apiKey).slice(-4)}`
         : null,
-      metadata: credential.metadata,
+      config: credential.config,
     });
   } catch (error: any) {
     console.error("Get credentials error:", error);
@@ -473,12 +473,12 @@ router.post("/credentials", isAuthenticated, async (req, res) => {
         existing.id,
         tenantId,
         {
-          credentials: { api_key: apiKey.trim() },
+          apiKey: apiKey.trim(),
           status: "active",
           updatedBy: userId,
           updatedAt: new Date(),
-          metadata: {
-            ...existing.metadata,
+          config: {
+            ...existing.config,
             lastUpdated: new Date().toISOString(),
             updatedBy: userId,
           },
@@ -496,12 +496,11 @@ router.post("/credentials", isAuthenticated, async (req, res) => {
         tenantId,
         provider: "apollo",
         integrationName: "Apollo.io Lead Enrichment",
-        providerType: "data_enrichment",
-        credentials: { api_key: apiKey.trim() },
+        apiKey: apiKey.trim(),
         status: "active",
         createdBy: userId,
         updatedBy: userId,
-        metadata: {
+        config: {
           createdAt: new Date().toISOString(),
           createdBy: userId,
         },
@@ -543,14 +542,14 @@ router.post("/credentials/verify", isAuthenticated, async (req, res) => {
       const { storage } = await import("../storage");
       const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
       
-      if (!credential || !credential.credentials?.api_key) {
+      if (!credential || !credential.apiKey) {
         return res.status(400).json({ 
           valid: false,
           error: "No API key configured. Please save an API key first." 
         });
       }
       
-      testApiKey = credential.credentials.api_key as string;
+      testApiKey = credential.apiKey as string;
     }
 
     // Test the API key with a minimal search
