@@ -495,6 +495,7 @@ router.post("/credentials", isAuthenticated, async (req, res) => {
       const created = await storage.createIntegrationCredential({
         tenantId,
         provider: "apollo",
+        integrationName: "Apollo.io Lead Enrichment",
         providerType: "data_enrichment",
         credentials: { api_key: apiKey.trim() },
         status: "active",
