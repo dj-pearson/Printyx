@@ -16333,8 +16333,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   console.log('⚠️ Database Updater system is temporarily disabled to stop continuous execution');
 
+  // DISABLED: Automatic seeding causes database connection exhaustion and authentication timeouts
   // Seed master catalog on startup (development only)
-  if (process.env.NODE_ENV === "development") {
+  if (false && process.env.NODE_ENV === "development") {
     import("./catalog-seed")
       .then(({ seedMasterCatalog }) => {
         setTimeout(() => {
