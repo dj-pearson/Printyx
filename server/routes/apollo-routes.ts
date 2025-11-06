@@ -492,7 +492,7 @@ router.post("/credentials", isAuthenticated, async (req, res) => {
       });
     } else {
       // Create new credential
-      const created = await storage.createIntegrationCredential({
+      const credentialData = {
         tenantId,
         provider: "apollo",
         integrationName: "Apollo.io Lead Enrichment",
@@ -504,7 +504,14 @@ router.post("/credentials", isAuthenticated, async (req, res) => {
           createdAt: new Date().toISOString(),
           createdBy: userId,
         },
-      });
+      };
+      
+      console.log("Creating credential with data:", JSON.stringify({
+        ...credentialData,
+        apiKey: credentialData.apiKey ? `${credentialData.apiKey.substring(0, 10)}...` : null,
+      }));
+      
+      const created = await storage.createIntegrationCredential(credentialData);
 
       return res.json({
         success: true,
@@ -541,6 +548,14 @@ router.post("/credentials/verify", isAuthenticated, async (req, res) => {
     } else {
       const { storage } = await import("../storage");
       const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
+      
+      console.log("Verify - Retrieved credential:", JSON.stringify({
+        found: !!credential,
+        hasApiKey: !!credential?.apiKey,
+        credentialId: credential?.id,
+        provider: credential?.provider,
+        tenantId: credential?.tenantId,
+      }));
       
       if (!credential || !credential.apiKey) {
         return res.status(400).json({ 
