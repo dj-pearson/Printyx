@@ -406,4 +406,212 @@ router.get("/stats", isAuthenticated, async (req, res) => {
   }
 });
 
+// ============================================================================
+// APOLLO.IO CREDENTIAL MANAGEMENT - Admin endpoints for tenant API key configuration
+// ============================================================================
+
+// GET /api/apollo/credentials - Get tenant's Apollo.io credentials (masked)
+router.get("/credentials", isAuthenticated, async (req, res) => {
+  try {
+    const tenantId = (req.user as any)?.tenantId;
+    if (!tenantId) {
+      return res.status(403).json({ error: "No tenant ID found" });
+    }
+
+    const { storage } = await import("../storage");
+    const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
+
+    if (!credential) {
+      return res.json({ configured: false });
+    }
+
+    // Return masked credentials (never expose actual API key)
+    return res.json({
+      configured: true,
+      id: credential.id,
+      status: credential.status,
+      createdAt: credential.createdAt,
+      updatedAt: credential.updatedAt,
+      apiKeyMasked: credential.credentials?.api_key 
+        ? `${String(credential.credentials.api_key).substring(0, 10)}...${String(credential.credentials.api_key).slice(-4)}`
+        : null,
+      metadata: credential.metadata,
+    });
+  } catch (error: any) {
+    console.error("Get credentials error:", error);
+    return res.status(500).json({ 
+      error: "Failed to get credentials", 
+      message: error.message 
+    });
+  }
+});
+
+// POST /api/apollo/credentials - Save Apollo.io API key for tenant
+router.post("/credentials", isAuthenticated, async (req, res) => {
+  try {
+    const tenantId = (req.user as any)?.tenantId;
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
+    
+    if (!tenantId || !userId) {
+      return res.status(403).json({ error: "No tenant ID or user ID found" });
+    }
+
+    const { apiKey } = req.body;
+
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+      return res.status(400).json({ error: "API key is required" });
+    }
+
+    const { storage } = await import("../storage");
+    
+    // Check if credential already exists
+    const existing = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
+
+    if (existing) {
+      // Update existing credential
+      const updated = await storage.updateIntegrationCredential(
+        existing.id,
+        tenantId,
+        {
+          credentials: { api_key: apiKey.trim() },
+          status: "active",
+          updatedBy: userId,
+          updatedAt: new Date(),
+          metadata: {
+            ...existing.metadata,
+            lastUpdated: new Date().toISOString(),
+            updatedBy: userId,
+          },
+        }
+      );
+
+      return res.json({
+        success: true,
+        message: "Apollo.io API key updated successfully",
+        credentialId: updated?.id,
+      });
+    } else {
+      // Create new credential
+      const created = await storage.createIntegrationCredential({
+        tenantId,
+        provider: "apollo",
+        providerType: "data_enrichment",
+        credentials: { api_key: apiKey.trim() },
+        status: "active",
+        createdBy: userId,
+        updatedBy: userId,
+        metadata: {
+          createdAt: new Date().toISOString(),
+          createdBy: userId,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "Apollo.io API key saved successfully",
+        credentialId: created.id,
+      });
+    }
+  } catch (error: any) {
+    console.error("Save credentials error:", error);
+    return res.status(500).json({ 
+      error: "Failed to save credentials", 
+      message: error.message 
+    });
+  }
+});
+
+// POST /api/apollo/credentials/verify - Test Apollo.io API key
+router.post("/credentials/verify", isAuthenticated, async (req, res) => {
+  try {
+    const tenantId = (req.user as any)?.tenantId;
+    
+    if (!tenantId) {
+      return res.status(403).json({ error: "No tenant ID found" });
+    }
+
+    const { apiKey } = req.body;
+    
+    // If apiKey provided, test it directly (before saving)
+    // Otherwise, test the saved credential
+    let testApiKey: string;
+    
+    if (apiKey) {
+      testApiKey = apiKey.trim();
+    } else {
+      const { storage } = await import("../storage");
+      const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
+      
+      if (!credential || !credential.credentials?.api_key) {
+        return res.status(400).json({ 
+          valid: false,
+          error: "No API key configured. Please save an API key first." 
+        });
+      }
+      
+      testApiKey = credential.credentials.api_key as string;
+    }
+
+    // Test the API key with a minimal search
+    const { ApolloClient } = await import("../apollo-client");
+    const testClient = new ApolloClient(testApiKey);
+    
+    const startTime = Date.now();
+    await testClient.searchPeople({
+      page: 1,
+      perPage: 1,
+      personTitles: ["CEO"], // Minimal test query
+    });
+    const responseTime = Date.now() - startTime;
+
+    return res.json({
+      valid: true,
+      message: "API key is valid and working",
+      responseTimeMs: responseTime,
+    });
+  } catch (error: any) {
+    console.error("Verify credentials error:", error);
+    
+    // Parse error message for better user feedback
+    if (error.message?.includes("401") || error.message?.includes("403")) {
+      return res.json({
+        valid: false,
+        error: "Invalid API key. Please check your Apollo.io API key and try again.",
+      });
+    }
+    
+    return res.json({
+      valid: false,
+      error: `Failed to verify API key: ${error.message}`,
+    });
+  }
+});
+
+// DELETE /api/apollo/credentials/:id - Remove Apollo.io credentials
+router.delete("/credentials/:id", isAuthenticated, async (req, res) => {
+  try {
+    const tenantId = (req.user as any)?.tenantId;
+    
+    if (!tenantId) {
+      return res.status(403).json({ error: "No tenant ID found" });
+    }
+
+    const { id } = req.params;
+    const { storage } = await import("../storage");
+
+    await storage.deleteIntegrationCredential(id, tenantId);
+
+    return res.json({
+      success: true,
+      message: "Apollo.io credentials removed successfully",
+    });
+  } catch (error: any) {
+    console.error("Delete credentials error:", error);
+    return res.status(500).json({ 
+      error: "Failed to delete credentials", 
+      message: error.message 
+    });
+  }
+});
+
 export default router;
