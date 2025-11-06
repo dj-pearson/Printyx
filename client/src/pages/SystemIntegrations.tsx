@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ApolloCredentialManager } from "@/components/integrations/ApolloCredentialManager";
 
 interface Integration {
   id: string;
@@ -374,12 +375,16 @@ export default function SystemIntegrations() {
           </TabsContent>
 
           <TabsContent value="api-keys" className="space-y-6">
+            {/* Apollo.io Lead Enrichment API Configuration */}
+            <ApolloCredentialManager />
+            
+            {/* Platform API Keys - Internal use */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>API Keys & Authentication</CardTitle>
-                    <CardDescription>Manage API keys and authentication tokens</CardDescription>
+                    <CardTitle>Platform API Keys</CardTitle>
+                    <CardDescription>Internal API keys for platform integrations</CardDescription>
                   </div>
                   <Button>
                     <Key className="h-4 w-4 mr-2" />
