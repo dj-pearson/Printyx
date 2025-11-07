@@ -619,8 +619,9 @@ async function seedKnowledgeBase(): Promise<void> {
   }
 }
 
-// Run if executed directly
-if (require.main === module) {
+// Run if executed directly (ES modules check)
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
   seedKnowledgeBase()
     .then(() => {
       console.log('\n✨ All done!');
