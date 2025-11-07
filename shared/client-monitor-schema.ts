@@ -1,0 +1,231 @@
+import { sql, relations } from 'drizzle-orm';
+import {
+  index,
+  jsonb,
+  pgTable,
+  timestamp,
+  varchar,
+  text,
+  boolean,
+  pgEnum,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import { createInsertSchema } from 'drizzle-zod';
+import { z } from 'zod';
+import { deviceRegistrations, deviceMetrics } from './manufacturer-integration-schema';
+
+// Enums for monitoring clients
+export const clientStatusEnum = pgEnum('client_status', [
+  'active',
+  'inactive',
+  'error',
+  'pending_setup',
+]);
+
+export const clientTypeEnum = pgEnum('client_type', [
+  'on_premise', // Deployed at customer location
+  'cloud', // Cloud-based collector
+  'hybrid', // Mix of both
+]);
+
+// Monitoring Client Registration
+export const monitoringClients = pgTable(
+  'monitoring_clients',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    clientId: varchar('client_id', { length: 100 }).notNull().unique(), // Unique identifier for client
+    clientName: varchar('client_name', { length: 255 }).notNull(),
+    clientType: clientTypeEnum('client_type').default('on_premise').notNull(),
+    status: clientStatusEnum('status').default('pending_setup').notNull(),
+
+    // Authentication
+    apiKey: varchar('api_key', { length: 255 }).notNull().unique(), // Hashed API key
+    apiKeyLastRotated: timestamp('api_key_last_rotated'),
+
+    // Client information
+    version: varchar('version', { length: 50 }),
+    hostname: varchar('hostname', { length: 255 }),
+    ipAddress: varchar('ip_address', { length: 45 }),
+    networkRanges: text('network_ranges').array(), // IP ranges to monitor
+
+    // Configuration
+    configuration: jsonb('configuration').default({
+      pollingInterval: 300, // seconds
+      discoveryEnabled: true,
+      retryAttempts: 3,
+      timeout: 10000, // milliseconds
+      tonerThreshold: 15, // percent
+      paperThreshold: 20, // percent
+    }),
+
+    // Activity tracking
+    lastHeartbeat: timestamp('last_heartbeat'),
+    lastSuccessfulCollection: timestamp('last_successful_collection'),
+    totalDevicesMonitored: jsonb('total_devices_monitored').default(0),
+    totalMetricsCollected: jsonb('total_metrics_collected').default(0),
+
+    // Metadata
+    description: text('description'),
+    location: varchar('location', { length: 255 }),
+    contactEmail: varchar('contact_email', { length: 255 }),
+
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at')
+      .default(sql`now()`)
+      .notNull(),
+    updatedAt: timestamp('updated_at')
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => ({
+    tenantClientIdx: index('tenant_client_idx').on(table.tenantId, table.clientId),
+    statusIdx: index('client_status_idx').on(table.status),
+    lastHeartbeatIdx: index('client_heartbeat_idx').on(table.lastHeartbeat),
+    apiKeyIdx: index('client_api_key_idx').on(table.apiKey),
+  }),
+);
+
+// Client Activity Logs
+export const clientActivityLogs = pgTable(
+  'client_activity_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    clientId: uuid('client_id')
+      .notNull()
+      .references(() => monitoringClients.id, { onDelete: 'cascade' }),
+
+    activity: varchar('activity', { length: 100 }).notNull(), // 'heartbeat', 'metrics_submitted', 'error', 'config_update'
+    status: varchar('status', { length: 50 }).notNull(), // 'success', 'error', 'warning'
+    message: text('message'),
+    details: jsonb('details').default({}),
+
+    // Metrics for this submission
+    devicesInSubmission: jsonb('devices_in_submission').default(0),
+    metricsCount: jsonb('metrics_count').default(0),
+
+    errorCode: varchar('error_code', { length: 50 }),
+    timestamp: timestamp('timestamp')
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => ({
+    tenantTimeIdx: index('client_tenant_time_idx').on(table.tenantId, table.timestamp),
+    clientTimeIdx: index('client_activity_time_idx').on(table.clientId, table.timestamp),
+    activityIdx: index('client_activity_idx').on(table.activity),
+    statusIdx: index('client_activity_status_idx').on(table.status),
+  }),
+);
+
+// Client Discovered Devices (before registration)
+export const clientDiscoveredDevices = pgTable(
+  'client_discovered_devices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    clientId: uuid('client_id')
+      .notNull()
+      .references(() => monitoringClients.id, { onDelete: 'cascade' }),
+
+    // Device identification
+    ipAddress: varchar('ip_address', { length: 45 }).notNull(),
+    macAddress: varchar('mac_address', { length: 17 }),
+    serialNumber: varchar('serial_number', { length: 255 }),
+    manufacturer: varchar('manufacturer', { length: 100 }),
+    model: varchar('model', { length: 255 }),
+
+    // Discovery information
+    protocol: varchar('protocol', { length: 50 }), // 'snmp', 'http', 'https'
+    capabilities: jsonb('capabilities').default([]),
+
+    // Registration status
+    isRegistered: boolean('is_registered').default(false),
+    registeredDeviceId: uuid('registered_device_id').references(() => deviceRegistrations.id),
+
+    firstDiscovered: timestamp('first_discovered')
+      .default(sql`now()`)
+      .notNull(),
+    lastSeen: timestamp('last_seen')
+      .default(sql`now()`)
+      .notNull(),
+    updatedAt: timestamp('updated_at')
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => ({
+    tenantClientIdx: index('discovered_tenant_client_idx').on(table.tenantId, table.clientId),
+    ipAddressIdx: index('discovered_ip_idx').on(table.ipAddress),
+    registeredIdx: index('discovered_registered_idx').on(table.isRegistered),
+    lastSeenIdx: index('discovered_last_seen_idx').on(table.lastSeen),
+  }),
+);
+
+// Relations
+export const monitoringClientsRelations = relations(monitoringClients, ({ many }) => ({
+  activityLogs: many(clientActivityLogs),
+  discoveredDevices: many(clientDiscoveredDevices),
+}));
+
+export const clientActivityLogsRelations = relations(clientActivityLogs, ({ one }) => ({
+  client: one(monitoringClients, {
+    fields: [clientActivityLogs.clientId],
+    references: [monitoringClients.id],
+  }),
+}));
+
+export const clientDiscoveredDevicesRelations = relations(clientDiscoveredDevices, ({ one }) => ({
+  client: one(monitoringClients, {
+    fields: [clientDiscoveredDevices.clientId],
+    references: [monitoringClients.id],
+  }),
+  registeredDevice: one(deviceRegistrations, {
+    fields: [clientDiscoveredDevices.registeredDeviceId],
+    references: [deviceRegistrations.id],
+  }),
+}));
+
+// Insert schemas
+export const insertMonitoringClientSchema = createInsertSchema(monitoringClients);
+export const insertClientActivityLogSchema = createInsertSchema(clientActivityLogs);
+export const insertClientDiscoveredDeviceSchema = createInsertSchema(clientDiscoveredDevices);
+
+// Types
+export type MonitoringClient = typeof monitoringClients.$inferSelect;
+export type InsertMonitoringClient = z.infer<typeof insertMonitoringClientSchema>;
+export type ClientActivityLog = typeof clientActivityLogs.$inferSelect;
+export type InsertClientActivityLog = z.infer<typeof insertClientActivityLogSchema>;
+export type ClientDiscoveredDevice = typeof clientDiscoveredDevices.$inferSelect;
+export type InsertClientDiscoveredDevice = z.infer<typeof insertClientDiscoveredDeviceSchema>;
+
+// Request validation schemas
+export const clientMetricSubmissionSchema = z.object({
+  clientId: z.string().min(1),
+  clientVersion: z.string().optional(),
+  timestamp: z.string().datetime(),
+  devices: z.array(
+    z.object({
+      serialNumber: z.string().min(1),
+      ipAddress: z.string().ip().optional(),
+      macAddress: z.string().optional(),
+      manufacturer: z.string().optional(),
+      model: z.string().optional(),
+      tonerLevels: z.record(z.number().min(0).max(100)).optional(),
+      paperLevels: z.record(z.number().min(0).max(100)).optional(),
+      meters: z
+        .object({
+          totalImpressions: z.number().optional(),
+          bwImpressions: z.number().optional(),
+          colorImpressions: z.number().optional(),
+          largeImpressions: z.number().optional(),
+        })
+        .optional(),
+      deviceStatus: z.enum(['online', 'offline', 'error', 'maintenance', 'unknown']).optional(),
+      errorCodes: z.array(z.string()).optional(),
+      collectionTimestamp: z.string().datetime(),
+      rawData: z.any().optional(),
+    }),
+  ),
+});
+
+export type ClientMetricSubmission = z.infer<typeof clientMetricSubmissionSchema>;
