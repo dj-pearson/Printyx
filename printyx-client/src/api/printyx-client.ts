@@ -1,4 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import * as https from 'https';
+import * as tls from 'tls';
+import * as fs from 'fs';
 import { DeviceMetrics } from '../collectors/collector-interface';
 import { getLogger } from '../utils/logger';
 
@@ -7,6 +10,17 @@ export interface PrintyxClientConfig {
   apiKey: string;
   tenantId: string;
   timeout?: number;
+  // Security options
+  security?: {
+    rejectUnauthorized?: boolean; // Reject self-signed certificates (default: true)
+    minTLSVersion?: string; // Minimum TLS version (default: TLSv1.2)
+    certificatePinning?: {
+      enabled: boolean;
+      fingerprints?: string[]; // SHA-256 fingerprints of allowed certificates
+      publicKeys?: string[]; // Public keys in PEM format
+    };
+    customCA?: string; // Path to custom CA certificate file
+  };
 }
 
 export interface SubmissionResponse {
@@ -39,6 +53,16 @@ export class PrintyxAPIClient {
   constructor(config: PrintyxClientConfig) {
     this.config = config;
 
+    // Enforce HTTPS
+    if (!config.endpoint.startsWith('https://')) {
+      throw new Error(
+        'Security Error: Only HTTPS endpoints are allowed. HTTP is not secure for production use.',
+      );
+    }
+
+    // Create secure HTTPS agent
+    const httpsAgent = this.createSecureAgent(config);
+
     this.client = axios.create({
       baseURL: config.endpoint.replace(/\/api\/client-metrics\/submit$/, ''),
       timeout: config.timeout || 30000,
@@ -46,7 +70,9 @@ export class PrintyxAPIClient {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
         'X-Tenant-ID': config.tenantId,
+        'User-Agent': 'Printyx-Client/1.0',
       },
+      httpsAgent,
     });
 
     // Add response interceptor for error handling
@@ -57,6 +83,95 @@ export class PrintyxAPIClient {
         return Promise.reject(error);
       },
     );
+
+    this.logger.info('Secure API client initialized', {
+      endpoint: config.endpoint,
+      tlsVersion: config.security?.minTLSVersion || 'TLSv1.2',
+      certificatePinning: config.security?.certificatePinning?.enabled || false,
+    });
+  }
+
+  /**
+   * Create secure HTTPS agent with TLS enforcement and certificate validation
+   */
+  private createSecureAgent(config: PrintyxClientConfig): https.Agent {
+    const securityConfig = config.security || {};
+
+    // Default security settings
+    const rejectUnauthorized = securityConfig.rejectUnauthorized !== false; // Default: true
+    const minVersion = (securityConfig.minTLSVersion || 'TLSv1.2') as tls.SecureVersion;
+
+    // Load custom CA if provided
+    let ca: Buffer[] | undefined;
+    if (securityConfig.customCA) {
+      try {
+        ca = [fs.readFileSync(securityConfig.customCA)];
+        this.logger.info('Loaded custom CA certificate');
+      } catch (error) {
+        this.logger.error('Failed to load custom CA certificate', { error });
+        throw new Error(`Failed to load custom CA certificate: ${error}`);
+      }
+    }
+
+    const agentOptions: https.AgentOptions = {
+      rejectUnauthorized,
+      minVersion,
+      maxVersion: 'TLSv1.3' as tls.SecureVersion,
+      ca,
+      // Disable insecure TLS renegotiation
+      secureOptions:
+        require('constants').SSL_OP_NO_TLSv1 |
+        require('constants').SSL_OP_NO_TLSv1_1 |
+        require('constants').SSL_OP_NO_SSLv2 |
+        require('constants').SSL_OP_NO_SSLv3,
+    };
+
+    // Add certificate pinning if enabled
+    if (securityConfig.certificatePinning?.enabled) {
+      this.logger.info('Certificate pinning enabled');
+
+      agentOptions.checkServerIdentity = (hostname: string, cert: any) => {
+        // First, do standard hostname verification
+        const err = tls.checkServerIdentity(hostname, cert);
+        if (err) {
+          return err;
+        }
+
+        // Then check certificate pinning
+        const pinning = securityConfig.certificatePinning!;
+
+        // Check fingerprint pinning
+        if (pinning.fingerprints && pinning.fingerprints.length > 0) {
+          const fingerprint = cert.fingerprint256.replace(/:/g, '').toLowerCase();
+          const allowed = pinning.fingerprints.some(
+            (fp) => fp.replace(/:/g, '').toLowerCase() === fingerprint,
+          );
+
+          if (!allowed) {
+            this.logger.error('Certificate fingerprint does not match pinned fingerprints', {
+              actual: cert.fingerprint256,
+              expected: pinning.fingerprints,
+            });
+            return new Error('Certificate fingerprint does not match pinned fingerprints');
+          }
+        }
+
+        // Check public key pinning
+        if (pinning.publicKeys && pinning.publicKeys.length > 0) {
+          const publicKey = cert.pubkey.toString('base64');
+          const allowed = pinning.publicKeys.some((pk) => pk === publicKey);
+
+          if (!allowed) {
+            this.logger.error('Certificate public key does not match pinned keys');
+            return new Error('Certificate public key does not match pinned keys');
+          }
+        }
+
+        return undefined; // Valid certificate
+      };
+    }
+
+    return new https.Agent(agentOptions);
   }
 
   /**
