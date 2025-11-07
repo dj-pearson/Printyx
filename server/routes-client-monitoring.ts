@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import { db } from './db';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, like, or } from 'drizzle-orm';
 import crypto from 'crypto';
 import {
   monitoringClients,
@@ -12,6 +12,8 @@ import {
   customerSupplyOrders,
   customerSupplyOrderItems,
   customerNotifications,
+  supplies,
+  equipment,
   insertMonitoringClientSchema,
   insertClientActivityLogSchema,
   insertClientDiscoveredDeviceSchema,
@@ -63,6 +65,128 @@ async function authenticateClient(req: any, res: any, next: any) {
   } catch (error) {
     console.error('Error authenticating client:', error);
     res.status(500).json({ message: 'Authentication error' });
+  }
+}
+
+/**
+ * Helper function to lookup toner products from the supplies catalog
+ * @param tenantId - Tenant ID
+ * @param manufacturer - Equipment manufacturer (e.g., "HP", "Canon")
+ * @param model - Equipment model (e.g., "LaserJet P4015")
+ * @param color - Toner color (e.g., "black", "cyan", "magenta", "yellow")
+ * @returns Toner product information or null if not found
+ */
+async function lookupTonerProduct(
+  tenantId: string,
+  manufacturer: string | null,
+  model: string | null,
+  color: string,
+): Promise<{
+  productId: string;
+  productSku: string;
+  productName: string;
+  productDescription: string;
+  unitPrice: string;
+  inStock: boolean;
+} | null> {
+  try {
+    // Normalize color name
+    const normalizedColor = color.toLowerCase();
+
+    // Build search patterns for productCode and productName
+    // Examples: "TONER-BLACK-HP-LASERJET", "TONER-CYAN-CANON-IR"
+    const searchPatterns = [];
+
+    if (manufacturer && model) {
+      // Most specific: manufacturer + model + color
+      const cleanModel = model.replace(/\s+/g, '-').toUpperCase();
+      const cleanManufacturer = manufacturer.replace(/\s+/g, '-').toUpperCase();
+      searchPatterns.push(
+        `%TONER%${normalizedColor.toUpperCase()}%${cleanManufacturer}%${cleanModel}%`,
+        `%${cleanManufacturer}%${cleanModel}%${normalizedColor.toUpperCase()}%TONER%`,
+        `%${normalizedColor.toUpperCase()}%${cleanManufacturer}%${cleanModel}%`,
+      );
+    } else if (manufacturer) {
+      // Manufacturer + color
+      const cleanManufacturer = manufacturer.replace(/\s+/g, '-').toUpperCase();
+      searchPatterns.push(
+        `%TONER%${normalizedColor.toUpperCase()}%${cleanManufacturer}%`,
+        `%${cleanManufacturer}%${normalizedColor.toUpperCase()}%`,
+      );
+    } else {
+      // Just color (least specific)
+      searchPatterns.push(
+        `%TONER%${normalizedColor.toUpperCase()}%`,
+        `%${normalizedColor.toUpperCase()}%TONER%`,
+      );
+    }
+
+    // Search for matching toner products
+    const conditions = searchPatterns.map((pattern) =>
+      or(
+        like(supplies.productCode, pattern),
+        like(supplies.productName, pattern),
+      )
+    );
+
+    const results = await db
+      .select()
+      .from(supplies)
+      .where(
+        and(
+          eq(supplies.tenantId, tenantId),
+          eq(supplies.isActive, true),
+          or(...conditions),
+        ),
+      )
+      .limit(1);
+
+    if (results.length === 0) {
+      console.log('[TONER LOOKUP] No product found for:', {
+        manufacturer,
+        model,
+        color: normalizedColor,
+        patterns: searchPatterns,
+      });
+      return null;
+    }
+
+    const product = results[0];
+
+    // Determine price - use the first available pricing tier
+    let unitPrice = '99.99'; // Default fallback price
+    if (product.newRepPrice) {
+      unitPrice = product.newRepPrice;
+    } else if (product.upgradeRepPrice) {
+      unitPrice = product.upgradeRepPrice;
+    } else if (product.lexmarkRepPrice) {
+      unitPrice = product.lexmarkRepPrice;
+    } else if (product.graphicRepPrice) {
+      unitPrice = product.graphicRepPrice;
+    }
+
+    // Check inventory status
+    const inStock = product.inStock === 'true' || product.inStock === '1' || product.inventory !== '0';
+
+    console.log('[TONER LOOKUP] Found product:', {
+      productId: product.id,
+      productCode: product.productCode,
+      productName: product.productName,
+      unitPrice,
+      inStock,
+    });
+
+    return {
+      productId: product.id,
+      productSku: product.productCode,
+      productName: product.productName,
+      productDescription: product.summary || `${product.productName} - Compatible with ${manufacturer} ${model}`,
+      unitPrice,
+      inStock,
+    };
+  } catch (error) {
+    console.error('[TONER LOOKUP] Error looking up toner product:', error);
+    return null;
   }
 }
 
@@ -973,10 +1097,22 @@ export function registerClientMonitoringRoutes(app: Express) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
-      // Get device info
+      // Get device info with manufacturer integration
       const device = await db
-        .select()
+        .select({
+          id: deviceRegistrations.id,
+          deviceName: deviceRegistrations.deviceName,
+          serialNumber: deviceRegistrations.serialNumber,
+          model: deviceRegistrations.model,
+          location: deviceRegistrations.location,
+          integrationId: deviceRegistrations.integrationId,
+          manufacturer: manufacturerIntegrations.manufacturer,
+        })
         .from(deviceRegistrations)
+        .leftJoin(
+          manufacturerIntegrations,
+          eq(deviceRegistrations.integrationId, manufacturerIntegrations.id),
+        )
         .where(and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, id)))
         .limit(1);
 
@@ -1015,6 +1151,27 @@ export function registerClientMonitoringRoutes(app: Express) {
       // For now, we'll create a basic order structure
 
       try {
+        // Lookup products first to calculate order total
+        const productLookups = await Promise.all(
+          colors.map(async (color: string) => {
+            return await lookupTonerProduct(
+              tenantId,
+              device[0].manufacturer,
+              device[0].model,
+              color,
+            );
+          }),
+        );
+
+        // Calculate order totals
+        const subtotal = productLookups.reduce((sum, product) => {
+          const price = parseFloat(product?.unitPrice || '99.99');
+          return sum + price;
+        }, 0);
+        const tax = 0; // TODO: Calculate based on location/tax rules
+        const shipping = subtotal > 100 ? 0 : 10; // Free shipping over $100
+        const total = subtotal + tax + shipping;
+
         // Create the main supply order
         const supplyOrder = await db
           .insert(customerSupplyOrders)
@@ -1029,11 +1186,11 @@ export function registerClientMonitoringRoutes(app: Express) {
             },
             deliveryInstructions: notes || 'Toner replenishment for low toner alert',
             requestedDeliveryDate: urgent ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null, // Next day if urgent
-            subtotal: '0.00', // Calculate based on toner prices
-            tax: '0.00',
-            shipping: '0.00',
-            total: '0.00',
-            isContractCovered: false, // Check service contract in real implementation
+            subtotal: subtotal.toFixed(2),
+            tax: tax.toFixed(2),
+            shipping: shipping.toFixed(2),
+            total: total.toFixed(2),
+            isContractCovered: false, // TODO: Check service contract coverage
             customerNotes: `Auto-generated toner order for ${device[0].deviceName}`,
             internalNotes: `Device: ${device[0].serialNumber}, Current levels: ${JSON.stringify(latestMetric[0]?.tonerLevels || {})}`,
             submittedAt: urgent ? new Date() : null,
@@ -1046,33 +1203,56 @@ export function registerClientMonitoringRoutes(app: Express) {
           status: supplyOrder[0].status,
         });
 
-        // Create order items for each toner color
+        // Create order items for each toner color using previously looked up products
         const orderItems = await Promise.all(
-          colors.map(async (color: string) => {
+          colors.map(async (color: string, index: number) => {
             const currentLevel = latestMetric[0]?.tonerLevels
               ? (latestMetric[0].tonerLevels as any)[color]
               : 0;
 
-            return db
+            // Use product from earlier lookup
+            const tonerProduct = productLookups[index];
+
+            // Use product catalog data if found, otherwise use placeholders
+            const productId = tonerProduct?.productId || tenantId;
+            const productSku = tonerProduct?.productSku || `TONER-${color.toUpperCase()}-${device[0].model?.replace(/\s+/g, '-')}`;
+            const productName = tonerProduct?.productName || `${color.charAt(0).toUpperCase() + color.slice(1)} Toner Cartridge`;
+            const productDescription = tonerProduct?.productDescription || `Compatible with ${device[0].model}`;
+            const unitPrice = tonerProduct?.unitPrice || '99.99';
+            const inStock = tonerProduct?.inStock ?? true;
+
+            const result = await db
               .insert(customerSupplyOrderItems)
               .values({
                 orderId: supplyOrder[0].id,
-                productId: tenantId, // In real implementation, lookup actual toner product ID
-                productSku: `TONER-${color.toUpperCase()}-${device[0].model?.replace(/\s+/g, '-')}`,
-                productName: `${color.charAt(0).toUpperCase() + color.slice(1)} Toner Cartridge`,
-                productDescription: `Compatible with ${device[0].model}`,
+                productId,
+                productSku,
+                productName,
+                productDescription,
                 compatibleEquipmentId: id,
                 quantity: 1,
-                unitPrice: '99.99', // In real implementation, get actual price from product catalog
-                totalPrice: '99.99',
-                inStock: true, // In real implementation, check warehouse inventory
+                unitPrice,
+                totalPrice: unitPrice,
+                inStock,
                 customerNotes: `Current level: ${currentLevel}%`,
               })
               .returning();
+
+            console.log('[SUPPLY ORDER ITEM] Created item:', {
+              color,
+              productId,
+              productSku,
+              productName,
+              unitPrice,
+              inStock,
+              fromCatalog: !!tonerProduct,
+            });
+
+            return result;
           }),
         );
 
-        console.log('[SUPPLY ORDER ITEMS] Created items:', orderItems.length);
+        console.log('[SUPPLY ORDER ITEMS] Created items:', orderItems.length, 'Subtotal:', subtotal.toFixed(2));
 
         // Create notification for customer
         try {
