@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import { db } from './db';
-import { eq, and, desc, like, or } from 'drizzle-orm';
+import { eq, and, desc, like, or, lte, gte } from 'drizzle-orm';
 import crypto from 'crypto';
 import {
   monitoringClients,
@@ -15,6 +15,7 @@ import {
   supplies,
   equipment,
   inventoryItems,
+  serviceContracts,
   insertMonitoringClientSchema,
   insertClientActivityLogSchema,
   insertClientDiscoveredDeviceSchema,
@@ -236,6 +237,112 @@ async function lookupTonerProduct(
     };
   } catch (error) {
     console.error('[TONER LOOKUP] Error looking up toner product:', error);
+    return null;
+  }
+}
+
+/**
+ * Helper function to check if toner is covered under a service contract
+ * @param tenantId - Tenant ID
+ * @param equipmentId - Equipment/device ID (from deviceRegistrations)
+ * @param customerId - Customer ID (optional)
+ * @returns Service contract coverage information
+ */
+async function checkServiceContractCoverage(
+  tenantId: string,
+  equipmentId: string,
+  customerId?: string,
+): Promise<{
+  isCovered: boolean;
+  contractId: string | null;
+  contractNumber: string | null;
+  contractType: string | null;
+  includesToner: boolean;
+  includesParts: boolean;
+  includesLabor: boolean;
+} | null> {
+  try {
+    const now = new Date();
+
+    // Build query conditions
+    const conditions = [
+      eq(serviceContracts.tenantId, tenantId),
+      eq(serviceContracts.contractStatus, 'active'),
+      lte(serviceContracts.startDate, now), // Contract has started
+    ];
+
+    // Add equipment or customer filter
+    if (equipmentId) {
+      conditions.push(eq(serviceContracts.equipmentId, equipmentId));
+    } else if (customerId) {
+      conditions.push(eq(serviceContracts.customerId, customerId));
+    }
+
+    // Query for active service contracts
+    const contracts = await db
+      .select()
+      .from(serviceContracts)
+      .where(and(...conditions))
+      .limit(1);
+
+    if (contracts.length === 0) {
+      console.log('[SERVICE CONTRACT] No active contract found for equipment:', equipmentId);
+      return {
+        isCovered: false,
+        contractId: null,
+        contractNumber: null,
+        contractType: null,
+        includesToner: false,
+        includesParts: false,
+        includesLabor: false,
+      };
+    }
+
+    const contract = contracts[0];
+
+    // Check if contract has expired
+    if (contract.endDate && new Date(contract.endDate) < now) {
+      console.log('[SERVICE CONTRACT] Contract expired:', {
+        contractNumber: contract.contractNumber,
+        endDate: contract.endDate,
+      });
+      return {
+        isCovered: false,
+        contractId: contract.id,
+        contractNumber: contract.contractNumber,
+        contractType: contract.contractType,
+        includesToner: false,
+        includesParts: false,
+        includesLabor: false,
+      };
+    }
+
+    // Contract is active and valid
+    const isCovered = contract.includesToner ?? false;
+
+    console.log('[SERVICE CONTRACT] Found active contract:', {
+      contractId: contract.id,
+      contractNumber: contract.contractNumber,
+      contractType: contract.contractType,
+      includesToner: contract.includesToner,
+      includesParts: contract.includesParts,
+      includesLabor: contract.includesLabor,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      isCovered,
+    });
+
+    return {
+      isCovered,
+      contractId: contract.id,
+      contractNumber: contract.contractNumber,
+      contractType: contract.contractType,
+      includesToner: contract.includesToner ?? false,
+      includesParts: contract.includesParts ?? false,
+      includesLabor: contract.includesLabor ?? false,
+    };
+  } catch (error) {
+    console.error('[SERVICE CONTRACT] Error checking coverage:', error);
     return null;
   }
 }
@@ -1213,13 +1320,23 @@ export function registerClientMonitoringRoutes(app: Express) {
           }),
         );
 
-        // Calculate order totals
-        const subtotal = productLookups.reduce((sum, product) => {
+        // Check service contract coverage for toner
+        const contractCoverage = await checkServiceContractCoverage(tenantId, id);
+        const isContractCovered = contractCoverage?.isCovered ?? false;
+
+        // Calculate order totals (adjust for contract coverage)
+        let subtotal = productLookups.reduce((sum, product) => {
           const price = parseFloat(product?.unitPrice || '99.99');
           return sum + price;
         }, 0);
+
+        // If covered by contract, customer pays $0
+        if (isContractCovered) {
+          subtotal = 0;
+        }
+
         const tax = 0; // TODO: Calculate based on location/tax rules
-        const shipping = subtotal > 100 ? 0 : 10; // Free shipping over $100
+        const shipping = isContractCovered || subtotal > 100 ? 0 : 10; // Free shipping if covered or over $100
         const total = subtotal + tax + shipping;
 
         // Create the main supply order
@@ -1240,9 +1357,9 @@ export function registerClientMonitoringRoutes(app: Express) {
             tax: tax.toFixed(2),
             shipping: shipping.toFixed(2),
             total: total.toFixed(2),
-            isContractCovered: false, // TODO: Check service contract coverage
-            customerNotes: `Auto-generated toner order for ${device[0].deviceName}`,
-            internalNotes: `Device: ${device[0].serialNumber}, Current levels: ${JSON.stringify(latestMetric[0]?.tonerLevels || {})}`,
+            isContractCovered,
+            customerNotes: `Auto-generated toner order for ${device[0].deviceName}${isContractCovered ? ' - Covered by service contract' : ''}${contractCoverage?.contractNumber ? ` (${contractCoverage.contractNumber})` : ''}`,
+            internalNotes: `Device: ${device[0].serialNumber}, Current levels: ${JSON.stringify(latestMetric[0]?.tonerLevels || {})}${contractCoverage ? `, Contract: ${contractCoverage.contractNumber || 'N/A'}, Type: ${contractCoverage.contractType || 'N/A'}` : ''}`,
             submittedAt: urgent ? new Date() : null,
           })
           .returning();
