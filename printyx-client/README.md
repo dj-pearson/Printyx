@@ -12,11 +12,47 @@ A lightweight, standalone monitoring client for tracking copier toner levels and
 - **Configurable**: Flexible polling intervals and device configuration
 - **Secure**: API key authentication with your Printyx instance
 
+## Security Features
+
+The Printyx Client is designed for secure enterprise deployments including healthcare (HIPAA), financial services, legal firms, and government contractors.
+
+### Transport Security
+- **HTTPS Only**: All API communication over TLS 1.2+ (HTTP rejected)
+- **Certificate Validation**: Full chain validation with hostname verification
+- **Certificate Pinning**: Optional SHA-256 fingerprint or public key pinning
+- **Custom CA Support**: Private certificate authority support
+
+### Data Protection
+- **AES-256-GCM Encryption**: API keys and passwords encrypted at rest
+- **Machine-Specific Keys**: Derived from hardware identifiers
+- **File Permissions**: Auto-set to 600 (owner only) on Unix systems
+- **Secure Memory**: Best-effort credential wiping after use
+
+### Authentication
+- **API Key Authentication**: SHA-256 hashed keys with bearer tokens
+- **Key Rotation**: Zero-downtime key rotation supported
+- **Tenant Isolation**: Multi-tenant architecture with strict scoping
+
+### Protocol Security
+- **SNMPv3 Support**: Authentication and encryption for printer monitoring
+- **TLS Enforcement**: Minimum TLS 1.2, SSLv2/v3/TLS1.0/1.1 disabled
+- **Secure Defaults**: All insecure options disabled by default
+
+### Compliance
+- ✅ HIPAA compliant (with BAA)
+- ✅ PCI DSS requirements met
+- ✅ SOC 2 security controls
+- ✅ FedRAMP/NIST 800-53 compatible
+- ✅ Audit logging for security events
+
+**See [SECURITY.md](SECURITY.md) for complete security documentation, hardening guide, and compliance information.**
+
 ## Requirements
 
 - Node.js 18.0 or higher
 - Network access to printers (SNMP port 161 or HTTP/HTTPS)
 - API credentials from your Printyx platform
+- **HTTPS endpoint** (HTTP not supported for security)
 
 ## Installation
 

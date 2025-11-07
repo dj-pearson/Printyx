@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { SecureStorage } from '../utils/crypto';
 
 export interface DeviceConfig {
   serialNumber?: string;
@@ -8,6 +9,11 @@ export interface DeviceConfig {
   snmpCommunity?: string;
   snmpVersion?: '1' | '2c' | '3';
   snmpPort?: number;
+  snmpAuthProtocol?: 'MD5' | 'SHA'; // SNMPv3
+  snmpPrivProtocol?: 'DES' | 'AES'; // SNMPv3
+  snmpUsername?: string; // SNMPv3
+  snmpAuthKey?: string; // SNMPv3
+  snmpPrivKey?: string; // SNMPv3
   httpPort?: number;
   username?: string;
   password?: string;
@@ -24,6 +30,16 @@ export interface ClientConfig {
     apiKey: string;
     tenantId: string;
     timeout?: number;
+    security?: {
+      rejectUnauthorized?: boolean; // Reject self-signed certs (default: true)
+      minTLSVersion?: string; // Minimum TLS version (default: TLSv1.2)
+      certificatePinning?: {
+        enabled: boolean;
+        fingerprints?: string[]; // SHA-256 fingerprints
+        publicKeys?: string[]; // Public keys in PEM format
+      };
+      customCA?: string; // Path to custom CA certificate file
+    };
   };
   collection: {
     pollingInterval: number; // seconds
@@ -40,6 +56,11 @@ export interface ClientConfig {
   logging?: {
     level: 'error' | 'warn' | 'info' | 'debug';
     file?: string;
+    securityEvents?: boolean; // Log security events separately
+  };
+  // Security
+  encryption?: {
+    enabled: boolean; // Encrypt sensitive fields in config
   };
 }
 
@@ -61,7 +82,14 @@ export class ConfigManager {
       }
 
       const configData = fs.readFileSync(this.configPath, 'utf-8');
-      this.config = JSON.parse(configData);
+      let config = JSON.parse(configData);
+
+      // Decrypt sensitive fields if encryption is enabled
+      if (config.encryption?.enabled) {
+        config = SecureStorage.decryptConfig(config);
+      }
+
+      this.config = config;
 
       // Validate configuration
       this.validateConfig(this.config!);
@@ -79,8 +107,21 @@ export class ConfigManager {
    */
   saveConfig(config: ClientConfig): void {
     try {
-      fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2), 'utf-8');
-      this.config = config;
+      let configToSave = config;
+
+      // Encrypt sensitive fields if encryption is enabled
+      if (config.encryption?.enabled) {
+        configToSave = SecureStorage.encryptConfig(config);
+      }
+
+      fs.writeFileSync(this.configPath, JSON.stringify(configToSave, null, 2), 'utf-8');
+
+      // Set file permissions to 600 (owner read/write only)
+      if (process.platform !== 'win32') {
+        fs.chmodSync(this.configPath, 0o600);
+      }
+
+      this.config = config; // Store decrypted version in memory
     } catch (error) {
       throw new Error(
         `Failed to save configuration: ${error instanceof Error ? error.message : error}`,
