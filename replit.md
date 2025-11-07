@@ -64,6 +64,7 @@ Preferred communication style: Simple, everyday language.
 - **Cross-Module Data Flow Integration**: Automated workflow pipelines and real-time service dispatch automation.
 - **Product Accessories System**: Many-to-many relationship architecture for accessory compatibility.
 - **Product Models Import Deduplication**: Smart deduplication logic based on product code and name.
+- **AI-Powered Knowledge Base System**: Comprehensive knowledge management platform with article creation, version control, semantic search capabilities, category organization, feedback collection, and analytics tracking. Features 8-table architecture (categories, articles, versions, views, feedback, AI generation queue, embeddings, search queries) with multi-tenant support and RBAC integration.
 
 ## External Dependencies
 

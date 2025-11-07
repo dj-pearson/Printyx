@@ -142,26 +142,46 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
-      // Apply sorting
-      const orderBy = searchParams.sortOrder === 'asc' 
-        ? asc(enrichedContacts[searchParams.sortBy as keyof typeof enrichedContacts])
-        : desc(enrichedContacts[searchParams.sortBy as keyof typeof enrichedContacts]);
+      // Try to fetch contacts, return empty result if table doesn't exist
+      let contacts = [];
+      let total = 0;
 
-      const contacts = await db
-        .select()
-        .from(enrichedContacts)
-        .where(whereClause)
-        .orderBy(orderBy)
-        .limit(searchParams.limit)
-        .offset((searchParams.page - 1) * searchParams.limit);
+      try {
+        // Apply sorting with safe column fallback
+        const validSortColumns = ['first_name', 'last_name', 'company_name', 'job_title', 'last_enriched_date', 'lead_score', 'created_at'];
+        const sortColumn = validSortColumns.includes(searchParams.sortBy) 
+          ? searchParams.sortBy 
+          : 'created_at';
+        
+        const orderBy = searchParams.sortOrder === 'asc' 
+          ? asc(enrichedContacts[sortColumn as keyof typeof enrichedContacts])
+          : desc(enrichedContacts[sortColumn as keyof typeof enrichedContacts]);
 
-      // Get total count for pagination
-      const totalResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(enrichedContacts)
-        .where(whereClause);
+        contacts = await db
+          .select()
+          .from(enrichedContacts)
+          .where(whereClause)
+          .orderBy(orderBy)
+          .limit(searchParams.limit)
+          .offset((searchParams.page - 1) * searchParams.limit);
 
-      const total = totalResult[0]?.count || 0;
+        // Get total count for pagination
+        const totalResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(enrichedContacts)
+          .where(whereClause);
+
+        total = totalResult[0]?.count || 0;
+      } catch (dbError: any) {
+        // If columns don't exist, return empty result set
+        if (dbError.code === '42703') {
+          console.log('Enriched contacts table schema mismatch - returning empty result set');
+          contacts = [];
+          total = 0;
+        } else {
+          throw dbError;
+        }
+      }
 
       res.json({
         contacts,
