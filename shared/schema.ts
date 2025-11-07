@@ -7794,6 +7794,7 @@ export {
   onboardingProgress,
   subscriptionEvents,
   subscriptionNotifications,
+  tenantSubscriptionsRelations,
 } from './schema-subscriptions';
 
 export type {

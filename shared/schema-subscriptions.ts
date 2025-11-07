@@ -494,3 +494,20 @@ export type NewSubscriptionEvent = typeof subscriptionEvents.$inferInsert;
 
 export type SubscriptionNotification = typeof subscriptionNotifications.$inferSelect;
 export type NewSubscriptionNotification = typeof subscriptionNotifications.$inferInsert;
+
+// ============================================================================
+// RELATIONS
+// ============================================================================
+
+import { relations } from 'drizzle-orm';
+
+export const tenantSubscriptionsRelations = relations(tenantSubscriptions, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [tenantSubscriptions.tenantId],
+    references: [tenants.id],
+  }),
+  plan: one(subscriptionPlans, {
+    fields: [tenantSubscriptions.planId],
+    references: [subscriptionPlans.id],
+  }),
+}));
