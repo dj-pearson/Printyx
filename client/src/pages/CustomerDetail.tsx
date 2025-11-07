@@ -43,7 +43,7 @@ import { CustomerFinancials } from "@/components/customer/CustomerFinancials";
 import { CustomerProposals } from "@/components/customer/CustomerProposals";
 import { CustomerContracts } from "@/components/customer/CustomerContracts";
 import { CustomerQuotes } from "@/components/customer/CustomerQuotes";
-import { CustomerMeterReadings } from "@/components/customer/CustomerMeterReadings";
+import CustomerMeterReadings from "@/components/customer/CustomerMeterReadings";
 import { CrossModuleIntegration } from "@/components/CrossModuleIntegration";
 import { format } from "date-fns";
 import {
