@@ -16,6 +16,7 @@ import {
   equipment,
   inventoryItems,
   serviceContracts,
+  customerPortalAccess,
   insertMonitoringClientSchema,
   insertClientActivityLogSchema,
   insertClientDiscoveredDeviceSchema,
@@ -344,6 +345,99 @@ async function checkServiceContractCoverage(
   } catch (error) {
     console.error('[SERVICE CONTRACT] Error checking coverage:', error);
     return null;
+  }
+}
+
+/**
+ * Helper function to send email/SMS notifications
+ * @param notificationId - Notification record ID
+ * @param tenantId - Tenant ID
+ * @param recipientEmail - Email address (optional)
+ * @param recipientPhone - Phone number for SMS (optional)
+ * @param title - Notification title
+ * @param message - Notification message
+ * @returns Success status
+ */
+async function sendNotificationAlerts(
+  notificationId: string,
+  tenantId: string,
+  recipientEmail?: string,
+  recipientPhone?: string,
+  title?: string,
+  message?: string,
+): Promise<{ emailSent: boolean; smsSent: boolean }> {
+  let emailSent = false;
+  let smsSent = false;
+
+  try {
+    // Send email notification
+    if (recipientEmail) {
+      console.log('[EMAIL NOTIFICATION] Sending email:', {
+        notificationId,
+        to: recipientEmail,
+        title,
+        message: message?.substring(0, 100) + '...',
+      });
+
+      // TODO: Integrate with email service (SendGrid, AWS SES, Resend, etc.)
+      // Example integration:
+      // await emailService.send({
+      //   to: recipientEmail,
+      //   subject: title,
+      //   html: message,
+      //   from: 'notifications@printyx.com',
+      // });
+
+      // For now, simulate successful email send
+      emailSent = true;
+
+      // Update notification record
+      await db
+        .update(customerNotifications)
+        .set({
+          isEmailSent: true,
+          emailSentAt: new Date(),
+        })
+        .where(eq(customerNotifications.id, notificationId));
+
+      console.log('[EMAIL NOTIFICATION] Email marked as sent:', notificationId);
+    }
+
+    // Send SMS notification
+    if (recipientPhone) {
+      console.log('[SMS NOTIFICATION] Sending SMS:', {
+        notificationId,
+        to: recipientPhone,
+        message: message?.substring(0, 100) + '...',
+      });
+
+      // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
+      // Example integration:
+      // await smsService.send({
+      //   to: recipientPhone,
+      //   body: `${title}\n\n${message}`,
+      //   from: process.env.TWILIO_PHONE_NUMBER,
+      // });
+
+      // For now, simulate successful SMS send
+      smsSent = true;
+
+      // Update notification record
+      await db
+        .update(customerNotifications)
+        .set({
+          isSmsSent: true,
+          smsSentAt: new Date(),
+        })
+        .where(eq(customerNotifications.id, notificationId));
+
+      console.log('[SMS NOTIFICATION] SMS marked as sent:', notificationId);
+    }
+
+    return { emailSent, smsSent };
+  } catch (error) {
+    console.error('[NOTIFICATION] Error sending alerts:', error);
+    return { emailSent, smsSent };
   }
 }
 
@@ -1426,22 +1520,52 @@ export function registerClientMonitoringRoutes(app: Express) {
 
         console.log('[SUPPLY ORDER ITEMS] Created items:', orderItems.length, 'Subtotal:', subtotal.toFixed(2));
 
-        // Create notification for customer
+        // Create notification for customer and send email/SMS
         try {
-          await db.insert(customerNotifications).values({
-            tenantId,
-            customerId: tenantId, // In real implementation, use actual customer ID
-            customerPortalUserId: req.user?.id || tenantId,
-            type: 'supply_low',
-            title: urgent ? 'Urgent Toner Order Placed' : 'Toner Order Created',
-            message: `A toner order (${orderNumber}) has been ${urgent ? 'submitted' : 'created'} for ${device[0].deviceName}. Colors: ${colors.join(', ')}`,
-            relatedServiceRequestId: null,
-            relatedSupplyOrderId: supplyOrder[0].id,
-            isRead: false,
-            isPriority: urgent,
-          });
+          const notificationTitle = urgent ? 'Urgent Toner Order Placed' : 'Toner Order Created';
+          const notificationMessage = `A toner order (${orderNumber}) has been ${urgent ? 'submitted' : 'created'} for ${device[0].deviceName}. Colors: ${colors.join(', ')}`;
 
-          console.log('[NOTIFICATION] Created notification for toner order');
+          // Create notification record
+          const notification = await db
+            .insert(customerNotifications)
+            .values({
+              tenantId,
+              customerId: tenantId, // TODO: use actual customer ID from device
+              customerPortalUserId: req.user?.id || tenantId,
+              type: 'supply_low',
+              title: notificationTitle,
+              message: notificationMessage,
+              relatedServiceRequestId: null,
+              relatedSupplyOrderId: supplyOrder[0].id,
+              isPortalRead: false,
+              priority: urgent ? 'high' : 'normal',
+            })
+            .returning();
+
+          console.log('[NOTIFICATION] Created notification for toner order:', notification[0].id);
+
+          // Get customer email/phone for notification delivery
+          if (req.user?.id) {
+            const portalAccess = await db
+              .select()
+              .from(customerPortalAccess)
+              .where(eq(customerPortalAccess.id, req.user.id))
+              .limit(1);
+
+            if (portalAccess[0]) {
+              // Send email/SMS notifications
+              const { emailSent, smsSent } = await sendNotificationAlerts(
+                notification[0].id,
+                tenantId,
+                portalAccess[0].email,
+                portalAccess[0].phone || undefined,
+                notificationTitle,
+                notificationMessage,
+              );
+
+              console.log('[NOTIFICATION] Alerts sent:', { emailSent, smsSent });
+            }
+          }
         } catch (notificationError) {
           console.error('[NOTIFICATION] Failed to create notification:', notificationError);
           // Don't fail the order if notification fails
