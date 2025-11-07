@@ -1,0 +1,48 @@
+{
+  "name": "printyx-client",
+  "version": "1.0.0",
+  "description": "Lightweight monitoring client for Printyx toner level tracking",
+  "main": "dist/index.js",
+  "bin": {
+    "printyx-client": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "printyx",
+    "monitoring",
+    "printer",
+    "toner",
+    "snmp"
+  ],
+  "author": "Printyx",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "net-snmp": "^3.11.2",
+    "ip-range-check": "^0.2.0",
+    "winston": "^3.11.0",
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/node-cron": "^3.0.11",
+    "@types/net-snmp": "^3.5.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
