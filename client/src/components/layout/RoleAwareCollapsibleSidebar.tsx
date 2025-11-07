@@ -316,6 +316,15 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     ]
   });
 
+  // Knowledge Base - Always available for all users
+  sections.push({
+    id: 'knowledge-base',
+    title: 'Knowledge Base',
+    icon: BookOpen,
+    path: '/knowledge-base',
+    matchPatterns: ['/knowledge-base*']
+  });
+
   // Integrations Hub - show if user has system permissions or is admin
   if (permissions.system || isPlatformRole || isCompanyAdmin || level >= 3) {
     sections.push({
