@@ -7726,5 +7726,46 @@ export type {
   InsertSeoSemanticAnalysis,
 } from './seo-schema';
 
+// Re-export Knowledge Base schemas
+export {
+  knowledgeCategories,
+  knowledgeArticles,
+  articleVersions,
+  articleViews,
+  articleFeedback,
+  aiContentGenerationQueue,
+  articleEmbeddings,
+  knowledgeSearchQueries,
+  articleStatusEnum,
+  articleCategoryEnum,
+  difficultyLevelEnum,
+  contentTypeEnum,
+  aiGenerationStatusEnum,
+  insertKnowledgeCategorySchema,
+  insertKnowledgeArticleSchema,
+  insertArticleVersionSchema,
+  insertArticleFeedbackSchema,
+  insertAiContentGenerationQueueSchema,
+} from './knowledge-base-schema';
+
+export type {
+  KnowledgeCategory,
+  InsertKnowledgeCategory,
+  KnowledgeArticle,
+  InsertKnowledgeArticle,
+  ArticleVersion,
+  InsertArticleVersion,
+  ArticleView,
+  InsertArticleView,
+  ArticleFeedback,
+  InsertArticleFeedback,
+  AiContentGenerationQueue,
+  InsertAiContentGenerationQueue,
+  ArticleEmbedding,
+  InsertArticleEmbedding,
+  KnowledgeSearchQuery,
+  InsertKnowledgeSearchQuery,
+} from './knowledge-base-schema';
+
 export * from './apollo-schema';
 export * from './client-monitor-schema';
