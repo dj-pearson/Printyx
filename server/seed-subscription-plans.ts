@@ -1,4 +1,5 @@
 import { db } from './db';
+import { sql } from 'drizzle-orm';
 import {
   subscriptionPlans,
   subscriptionFeatures,
@@ -632,7 +633,8 @@ export async function seedSubscriptionPlans() {
 }
 
 // Run seeding if this file is executed directly
-if (require.main === module) {
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
   seedSubscriptionPlans()
     .then(() => {
       console.log('🎉 Seeding complete!');
