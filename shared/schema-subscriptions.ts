@@ -240,7 +240,7 @@ export const billingHistory = pgTable('billing_history', {
   invoiceDateIdx: index('billing_history_invoice_date_idx').on(table.invoiceDate),
 }));
 
-export const paymentMethods = pgTable('payment_methods', {
+export const subscriptionPaymentMethods = pgTable('subscription_payment_methods', {
   id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -271,7 +271,7 @@ export const paymentMethods = pgTable('payment_methods', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 }, (table) => ({
-  tenantIdIdx: index('payment_methods_tenant_id_idx').on(table.tenantId),
+  tenantIdIdx: index('subscription_payment_methods_tenant_id_idx').on(table.tenantId),
 }));
 
 // ============================================================================
@@ -477,8 +477,8 @@ export type NewDailyUsageSnapshot = typeof dailyUsageSnapshots.$inferInsert;
 export type BillingHistory = typeof billingHistory.$inferSelect;
 export type NewBillingHistory = typeof billingHistory.$inferInsert;
 
-export type PaymentMethod = typeof paymentMethods.$inferSelect;
-export type NewPaymentMethod = typeof paymentMethods.$inferInsert;
+export type SubscriptionPaymentMethod = typeof subscriptionPaymentMethods.$inferSelect;
+export type NewSubscriptionPaymentMethod = typeof subscriptionPaymentMethods.$inferInsert;
 
 export type Discount = typeof discounts.$inferSelect;
 export type NewDiscount = typeof discounts.$inferInsert;
