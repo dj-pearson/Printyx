@@ -14,6 +14,7 @@ import {
   customerNotifications,
   supplies,
   equipment,
+  inventoryItems,
   insertMonitoringClientSchema,
   insertClientActivityLogSchema,
   insertClientDiscoveredDeviceSchema,
@@ -88,6 +89,8 @@ async function lookupTonerProduct(
   productDescription: string;
   unitPrice: string;
   inStock: boolean;
+  quantityAvailable: number;
+  estimatedShipDate: Date | null;
 } | null> {
   try {
     // Normalize color name
@@ -165,8 +168,51 @@ async function lookupTonerProduct(
       unitPrice = product.graphicRepPrice;
     }
 
-    // Check inventory status
-    const inStock = product.inStock === 'true' || product.inStock === '1' || product.inventory !== '0';
+    // Check warehouse inventory for actual stock availability
+    const inventory = await db
+      .select()
+      .from(inventoryItems)
+      .where(
+        and(
+          eq(inventoryItems.tenantId, tenantId),
+          or(
+            eq(inventoryItems.partNumber, product.productCode),
+            eq(inventoryItems.manufacturerPartNumber, product.productCode),
+          ),
+          eq(inventoryItems.isActive, true),
+        ),
+      )
+      .limit(1);
+
+    // Determine stock availability
+    let inStock = false;
+    let quantityAvailable = 0;
+    let estimatedShipDate: Date | null = null;
+
+    if (inventory.length > 0) {
+      // Check actual inventory levels
+      quantityAvailable = inventory[0].quantityAvailable || 0;
+      inStock = quantityAvailable > 0;
+
+      if (!inStock && (inventory[0].quantityOnOrder || 0) > 0) {
+        // Not in stock but on order - estimate 7-10 days
+        estimatedShipDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      }
+
+      console.log('[WAREHOUSE INVENTORY] Stock check:', {
+        partNumber: inventory[0].partNumber,
+        quantityOnHand: inventory[0].quantityOnHand,
+        quantityCommitted: inventory[0].quantityCommitted,
+        quantityAvailable,
+        quantityOnOrder: inventory[0].quantityOnOrder,
+        warehouseLocation: inventory[0].warehouseLocation,
+        binLocation: inventory[0].binLocation,
+      });
+    } else {
+      // Fallback to product table flag if no inventory record
+      inStock = product.inStock === 'true' || product.inStock === '1' || product.inventory !== '0';
+      console.log('[WAREHOUSE INVENTORY] No inventory record found, using product flag:', inStock);
+    }
 
     console.log('[TONER LOOKUP] Found product:', {
       productId: product.id,
@@ -174,6 +220,8 @@ async function lookupTonerProduct(
       productName: product.productName,
       unitPrice,
       inStock,
+      quantityAvailable,
+      estimatedShipDate,
     });
 
     return {
@@ -183,6 +231,8 @@ async function lookupTonerProduct(
       productDescription: product.summary || `${product.productName} - Compatible with ${manufacturer} ${model}`,
       unitPrice,
       inStock,
+      quantityAvailable,
+      estimatedShipDate,
     };
   } catch (error) {
     console.error('[TONER LOOKUP] Error looking up toner product:', error);
@@ -1220,6 +1270,8 @@ export function registerClientMonitoringRoutes(app: Express) {
             const productDescription = tonerProduct?.productDescription || `Compatible with ${device[0].model}`;
             const unitPrice = tonerProduct?.unitPrice || '99.99';
             const inStock = tonerProduct?.inStock ?? true;
+            const estimatedShipDate = tonerProduct?.estimatedShipDate || null;
+            const quantityAvailable = tonerProduct?.quantityAvailable || 0;
 
             const result = await db
               .insert(customerSupplyOrderItems)
@@ -1234,7 +1286,8 @@ export function registerClientMonitoringRoutes(app: Express) {
                 unitPrice,
                 totalPrice: unitPrice,
                 inStock,
-                customerNotes: `Current level: ${currentLevel}%`,
+                estimatedShipDate,
+                customerNotes: `Current level: ${currentLevel}%${!inStock && estimatedShipDate ? ` - Estimated ship: ${estimatedShipDate.toLocaleDateString()}` : ''}${inStock ? ` - ${quantityAvailable} available` : ''}`,
               })
               .returning();
 
@@ -1245,6 +1298,8 @@ export function registerClientMonitoringRoutes(app: Express) {
               productName,
               unitPrice,
               inStock,
+              quantityAvailable,
+              estimatedShipDate,
               fromCatalog: !!tonerProduct,
             });
 
