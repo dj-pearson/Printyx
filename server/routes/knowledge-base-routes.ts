@@ -16,7 +16,15 @@ const router = Router();
  */
 router.get('/categories', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const tenantId = (req as any).user?.tenantId;
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Tenant ID is required',
+      });
+    }
+
     const { includeInactive, parentCategoryId } = req.query;
 
     const categories = await KnowledgeBaseService.getCategories(tenantId, {
@@ -24,10 +32,10 @@ router.get('/categories', async (req: Request, res: Response) => {
       parentCategoryId: parentCategoryId === 'null' ? null : (parentCategoryId as string | undefined),
     });
 
-    res.json({
-      success: true,
-      data: categories,
-    });
+    // Get article counts for each category
+    const categoriesWithCounts = await KnowledgeBaseService.getCategoriesWithArticleCounts(tenantId, categories);
+
+    res.json(categoriesWithCounts);
   } catch (error: any) {
     console.error('Failed to get categories:', error);
     res.status(500).json({
@@ -73,7 +81,15 @@ router.post('/categories', async (req: Request, res: Response) => {
  */
 router.get('/articles', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const tenantId = (req as any).user?.tenantId;
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Tenant ID is required',
+      });
+    }
+
     const {
       query,
       categoryId,
@@ -91,7 +107,7 @@ router.get('/articles', async (req: Request, res: Response) => {
       query as string || '',
       {
         categoryId: categoryId as string,
-        status: status as string,
+        status: status as string || 'published',
         tags: tags ? (tags as string).split(',') : undefined,
         contentType: contentType as string,
         difficultyLevel: difficultyLevel as string,

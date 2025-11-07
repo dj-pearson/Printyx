@@ -7983,14 +7983,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: inventoryItems.id,
             name: inventoryItems.name,
             category: inventoryItems.category,
-            currentStock: inventoryItems.currentStock,
+            currentStock: inventoryItems.quantityOnHand,
             minThreshold: inventoryItems.reorderPoint,
-            reorderQuantity: inventoryItems.reorderPoint, // Using reorderPoint as proxy for reorderQuantity
-            primaryVendor: inventoryItems.supplier,
+            reorderQuantity: inventoryItems.reorderQuantity,
+            primaryVendor: inventoryItems.primaryVendor,
           })
           .from(inventoryItems)
-          .where(and(eq(inventoryItems.tenantId, tenantId), sql`current_stock <= reorder_point`))
-          .orderBy(asc(inventoryItems.currentStock))
+          .where(and(eq(inventoryItems.tenantId, tenantId), sql`quantity_on_hand <= reorder_point`))
+          .orderBy(asc(inventoryItems.quantityOnHand))
           .limit(20);
 
         alerts.push(

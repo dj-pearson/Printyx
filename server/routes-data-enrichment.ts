@@ -43,8 +43,8 @@ const enrichContactSearchSchema = z.object({
   }).optional(),
   prospectingStatus: z.array(z.string()).optional(),
   enrichmentSource: z.array(z.string()).optional(),
-  page: z.number().default(1),
-  limit: z.number().default(25),
+  page: z.coerce.number().default(1),
+  limit: z.coerce.number().default(25),
   sortBy: z.string().default('last_enriched_date'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
@@ -64,8 +64,8 @@ const enrichCompanySearchSchema = z.object({
   technologies: z.array(z.string()).optional(),
   locations: z.array(z.string()).optional(),
   targetTier: z.array(z.string()).optional(),
-  page: z.number().default(1),
-  limit: z.number().default(25),
+  page: z.coerce.number().default(1),
+  limit: z.coerce.number().default(25),
   sortBy: z.string().default('last_enriched_date'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
