@@ -123,6 +123,37 @@ class KnowledgeBaseService {
   }
 
   /**
+   * Get categories with article counts
+   */
+  async getCategoriesWithArticleCounts(
+    tenantId: string,
+    categories: KnowledgeCategory[]
+  ): Promise<any[]> {
+    const categoriesWithCounts = await Promise.all(
+      categories.map(async (category) => {
+        // Count published articles in this category
+        const articleCount = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(knowledgeArticles)
+          .where(
+            and(
+              eq(knowledgeArticles.categoryId, category.id),
+              eq(knowledgeArticles.tenantId, tenantId),
+              eq(knowledgeArticles.status, 'published')
+            )
+          );
+
+        return {
+          ...category,
+          articleCount: articleCount[0]?.count || 0,
+        };
+      })
+    );
+
+    return categoriesWithCounts;
+  }
+
+  /**
    * Create a new knowledge base article
    */
   async createArticle(
