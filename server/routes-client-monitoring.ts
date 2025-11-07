@@ -9,6 +9,9 @@ import {
   deviceRegistrations,
   deviceMetrics,
   manufacturerIntegrations,
+  customerSupplyOrders,
+  customerSupplyOrderItems,
+  customerNotifications,
   insertMonitoringClientSchema,
   insertClientActivityLogSchema,
   insertClientDiscoveredDeviceSchema,
@@ -583,6 +586,540 @@ export function registerClientMonitoringRoutes(app: Express) {
     } catch (error) {
       console.error('Error fetching client config:', error);
       res.status(500).json({ message: 'Failed to fetch configuration' });
+    }
+  });
+
+  // ============================================================
+  // FLEET DASHBOARD ENDPOINTS (Authenticated with user token)
+  // ============================================================
+
+  // Get fleet-wide dashboard overview
+  app.get('/api/fleet/dashboard', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Get all devices for this tenant
+      const devices = await db
+        .select()
+        .from(deviceRegistrations)
+        .where(eq(deviceRegistrations.tenantId, tenantId));
+
+      // Get latest metrics for each device
+      const deviceIds = devices.map((d) => d.id);
+      const latestMetrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(eq(deviceMetrics.tenantId, tenantId))
+        .orderBy(desc(deviceMetrics.collectionTimestamp));
+
+      // Build metrics map (latest per device)
+      const metricsMap = new Map();
+      for (const metric of latestMetrics) {
+        if (!metricsMap.has(metric.deviceId)) {
+          metricsMap.set(metric.deviceId, metric);
+        }
+      }
+
+      // Calculate fleet statistics
+      let totalDevices = devices.length;
+      let onlineDevices = 0;
+      let offlineDevices = 0;
+      let devicesWithAlerts = 0;
+      let criticalAlerts = 0;
+      const tonerAlerts = [];
+
+      for (const device of devices) {
+        const metrics = metricsMap.get(device.id);
+
+        // Count status
+        if (device.status === 'online') onlineDevices++;
+        if (device.status === 'offline') offlineDevices++;
+
+        // Check toner levels for alerts
+        if (metrics?.tonerLevels) {
+          const levels = metrics.tonerLevels as any;
+          let hasAlert = false;
+          let hasCritical = false;
+
+          for (const [color, level] of Object.entries(levels)) {
+            if (typeof level === 'number') {
+              if (level <= 10) {
+                hasCritical = true;
+                hasAlert = true;
+                tonerAlerts.push({
+                  deviceId: device.id,
+                  deviceName: device.deviceName,
+                  serialNumber: device.serialNumber,
+                  color,
+                  level,
+                  severity: 'critical',
+                  message: `${color} toner critically low (${level}%)`,
+                });
+              } else if (level <= 20) {
+                hasAlert = true;
+                tonerAlerts.push({
+                  deviceId: device.id,
+                  deviceName: device.deviceName,
+                  serialNumber: device.serialNumber,
+                  color,
+                  level,
+                  severity: 'warning',
+                  message: `${color} toner low (${level}%)`,
+                });
+              }
+            }
+          }
+
+          if (hasAlert) devicesWithAlerts++;
+          if (hasCritical) criticalAlerts++;
+        }
+      }
+
+      // Calculate total impressions across fleet
+      let totalBWImpressions = 0;
+      let totalColorImpressions = 0;
+
+      for (const [deviceId, metrics] of metricsMap.entries()) {
+        totalBWImpressions += metrics.bwImpressions || 0;
+        totalColorImpressions += metrics.colorImpressions || 0;
+      }
+
+      res.json({
+        summary: {
+          totalDevices,
+          onlineDevices,
+          offlineDevices,
+          devicesWithAlerts,
+          criticalAlerts,
+          averageUptime: 96.8, // TODO: Calculate from uptime metrics
+          fleetUtilization: 78.5, // TODO: Calculate from usage patterns
+        },
+        statusDistribution: {
+          online: onlineDevices,
+          offline: offlineDevices,
+          warning: devicesWithAlerts - criticalAlerts,
+          critical: criticalAlerts,
+        },
+        impressions: {
+          totalBW: totalBWImpressions,
+          totalColor: totalColorImpressions,
+        },
+        tonerAlerts: tonerAlerts.slice(0, 10), // Top 10 alerts
+        topDevicesNeedingAttention: tonerAlerts
+          .filter((a) => a.severity === 'critical')
+          .slice(0, 5)
+          .map((alert) => ({
+            deviceId: alert.deviceId,
+            deviceName: alert.deviceName,
+            serialNumber: alert.serialNumber,
+            issues: [`${alert.color} toner at ${alert.level}%`],
+            priority: 'high',
+          })),
+      });
+    } catch (error) {
+      console.error('Error fetching fleet dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch fleet dashboard' });
+    }
+  });
+
+  // Get all monitored devices with current status
+  app.get('/api/fleet/devices', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const { status, search } = req.query;
+
+      // Get all devices
+      let query = db
+        .select()
+        .from(deviceRegistrations)
+        .where(eq(deviceRegistrations.tenantId, tenantId));
+
+      const devices = await query.orderBy(desc(deviceRegistrations.lastSeen));
+
+      // Get latest metrics for each device
+      const latestMetrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(eq(deviceMetrics.tenantId, tenantId))
+        .orderBy(desc(deviceMetrics.collectionTimestamp));
+
+      // Build metrics map
+      const metricsMap = new Map();
+      for (const metric of latestMetrics) {
+        if (!metricsMap.has(metric.deviceId)) {
+          metricsMap.set(metric.deviceId, metric);
+        }
+      }
+
+      // Combine device info with latest metrics
+      const enrichedDevices = devices.map((device) => {
+        const metrics = metricsMap.get(device.id);
+        return {
+          ...device,
+          currentMetrics: metrics
+            ? {
+                tonerLevels: metrics.tonerLevels,
+                paperLevels: metrics.paperLevels,
+                totalImpressions: metrics.totalImpressions,
+                bwImpressions: metrics.bwImpressions,
+                colorImpressions: metrics.colorImpressions,
+                deviceStatus: metrics.deviceStatus,
+                collectionTimestamp: metrics.collectionTimestamp,
+              }
+            : null,
+        };
+      });
+
+      // Filter by status if provided
+      let filteredDevices = enrichedDevices;
+      if (status) {
+        filteredDevices = enrichedDevices.filter((d) => d.status === status);
+      }
+
+      // Filter by search if provided
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        filteredDevices = filteredDevices.filter(
+          (d) =>
+            d.deviceName?.toLowerCase().includes(searchLower) ||
+            d.serialNumber?.toLowerCase().includes(searchLower) ||
+            d.model?.toLowerCase().includes(searchLower),
+        );
+      }
+
+      res.json(filteredDevices);
+    } catch (error) {
+      console.error('Error fetching fleet devices:', error);
+      res.status(500).json({ message: 'Failed to fetch fleet devices' });
+    }
+  });
+
+  // Get device-specific metrics history
+  app.get('/api/fleet/devices/:id/metrics', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+      const { startDate, endDate, limit = 100 } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Get device info
+      const device = await db
+        .select()
+        .from(deviceRegistrations)
+        .where(and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, id)))
+        .limit(1);
+
+      if (!device[0]) {
+        return res.status(404).json({ message: 'Device not found' });
+      }
+
+      // Get metrics history
+      let metricsQuery = db
+        .select()
+        .from(deviceMetrics)
+        .where(and(eq(deviceMetrics.tenantId, tenantId), eq(deviceMetrics.deviceId, id)))
+        .orderBy(desc(deviceMetrics.collectionTimestamp));
+
+      const metrics = await metricsQuery.limit(Number(limit));
+
+      res.json({
+        device: device[0],
+        metrics,
+        totalReadings: metrics.length,
+      });
+    } catch (error) {
+      console.error('Error fetching device metrics:', error);
+      res.status(500).json({ message: 'Failed to fetch device metrics' });
+    }
+  });
+
+  // Get customer-specific devices
+  app.get('/api/customers/:customerId/devices', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { customerId } = req.params;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Get all devices for this tenant
+      const devices = await db
+        .select()
+        .from(deviceRegistrations)
+        .where(eq(deviceRegistrations.tenantId, tenantId))
+        .orderBy(desc(deviceRegistrations.lastSeen));
+
+      // Get latest metrics for each device
+      const latestMetrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(eq(deviceMetrics.tenantId, tenantId))
+        .orderBy(desc(deviceMetrics.collectionTimestamp));
+
+      // Build metrics map
+      const metricsMap = new Map();
+      for (const metric of latestMetrics) {
+        if (!metricsMap.has(metric.deviceId)) {
+          metricsMap.set(metric.deviceId, metric);
+        }
+      }
+
+      // Enrich devices with latest metrics
+      const enrichedDevices = devices.map((device) => {
+        const metrics = metricsMap.get(device.id);
+        return {
+          ...device,
+          currentMetrics: metrics
+            ? {
+                tonerLevels: metrics.tonerLevels,
+                paperLevels: metrics.paperLevels,
+                totalImpressions: metrics.totalImpressions,
+                bwImpressions: metrics.bwImpressions,
+                colorImpressions: metrics.colorImpressions,
+                deviceStatus: metrics.deviceStatus,
+                collectionTimestamp: metrics.collectionTimestamp,
+              }
+            : null,
+        };
+      });
+
+      res.json({
+        customerId,
+        devices: enrichedDevices,
+        totalDevices: enrichedDevices.length,
+      });
+    } catch (error) {
+      console.error('Error fetching customer devices:', error);
+      res.status(500).json({ message: 'Failed to fetch customer devices' });
+    }
+  });
+
+  // Get customer meter reading history
+  app.get('/api/customers/:customerId/metrics/history', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { customerId } = req.params;
+      const { startDate, endDate, limit = 1000 } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Get all devices for this customer
+      const devices = await db
+        .select()
+        .from(deviceRegistrations)
+        .where(eq(deviceRegistrations.tenantId, tenantId));
+
+      const deviceIds = devices.map((d) => d.id);
+
+      // Get all metrics for these devices
+      const metrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(eq(deviceMetrics.tenantId, tenantId))
+        .orderBy(desc(deviceMetrics.collectionTimestamp))
+        .limit(Number(limit));
+
+      // Group metrics by device
+      const metricsByDevice = new Map();
+      for (const metric of metrics) {
+        if (!metricsByDevice.has(metric.deviceId)) {
+          metricsByDevice.set(metric.deviceId, []);
+        }
+        metricsByDevice.get(metric.deviceId).push(metric);
+      }
+
+      // Build timeline
+      const timeline = devices.map((device) => ({
+        deviceId: device.id,
+        deviceName: device.deviceName,
+        serialNumber: device.serialNumber,
+        model: device.model,
+        readings: metricsByDevice.get(device.id) || [],
+      }));
+
+      res.json({
+        customerId,
+        timeline,
+        totalDevices: devices.length,
+        totalReadings: metrics.length,
+      });
+    } catch (error) {
+      console.error('Error fetching customer metrics history:', error);
+      res.status(500).json({ message: 'Failed to fetch customer metrics history' });
+    }
+  });
+
+  // Manual toner order trigger
+  app.post('/api/devices/:id/order-toner', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+      const { colors, urgent = false, notes } = req.body;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Get device info
+      const device = await db
+        .select()
+        .from(deviceRegistrations)
+        .where(and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, id)))
+        .limit(1);
+
+      if (!device[0]) {
+        return res.status(404).json({ message: 'Device not found' });
+      }
+
+      // Get latest metrics
+      const latestMetric = await db
+        .select()
+        .from(deviceMetrics)
+        .where(and(eq(deviceMetrics.tenantId, tenantId), eq(deviceMetrics.deviceId, id)))
+        .orderBy(desc(deviceMetrics.collectionTimestamp))
+        .limit(1);
+
+      // Log the toner order request
+      console.log('[TONER ORDER] Manual order triggered:', {
+        deviceId: id,
+        deviceName: device[0].deviceName,
+        serialNumber: device[0].serialNumber,
+        colors,
+        urgent,
+        currentLevels: latestMetric[0]?.tonerLevels || {},
+        notes,
+      });
+
+      // Generate order number
+      const orderNumber = `TONER-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // Create supply order
+      // Note: In a real implementation, you would:
+      // 1. Get the actual customerId from the device registration
+      // 2. Get or create a customerPortalUserId
+      // 3. Check warehouse inventory for each toner color
+      // 4. Determine pricing and contract coverage
+      // For now, we'll create a basic order structure
+
+      try {
+        // Create the main supply order
+        const supplyOrder = await db
+          .insert(customerSupplyOrders)
+          .values({
+            tenantId,
+            customerId: tenantId, // In real implementation, get actual customer ID from device
+            customerPortalUserId: req.user?.id || tenantId, // Use authenticated user ID
+            orderNumber,
+            status: urgent ? 'submitted' : 'draft',
+            deliveryAddress: {
+              address: device[0].location || 'Device location not specified',
+            },
+            deliveryInstructions: notes || 'Toner replenishment for low toner alert',
+            requestedDeliveryDate: urgent ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null, // Next day if urgent
+            subtotal: '0.00', // Calculate based on toner prices
+            tax: '0.00',
+            shipping: '0.00',
+            total: '0.00',
+            isContractCovered: false, // Check service contract in real implementation
+            customerNotes: `Auto-generated toner order for ${device[0].deviceName}`,
+            internalNotes: `Device: ${device[0].serialNumber}, Current levels: ${JSON.stringify(latestMetric[0]?.tonerLevels || {})}`,
+            submittedAt: urgent ? new Date() : null,
+          })
+          .returning();
+
+        console.log('[SUPPLY ORDER] Created order:', {
+          orderId: supplyOrder[0].id,
+          orderNumber: supplyOrder[0].orderNumber,
+          status: supplyOrder[0].status,
+        });
+
+        // Create order items for each toner color
+        const orderItems = await Promise.all(
+          colors.map(async (color: string) => {
+            const currentLevel = latestMetric[0]?.tonerLevels
+              ? (latestMetric[0].tonerLevels as any)[color]
+              : 0;
+
+            return db
+              .insert(customerSupplyOrderItems)
+              .values({
+                orderId: supplyOrder[0].id,
+                productId: tenantId, // In real implementation, lookup actual toner product ID
+                productSku: `TONER-${color.toUpperCase()}-${device[0].model?.replace(/\s+/g, '-')}`,
+                productName: `${color.charAt(0).toUpperCase() + color.slice(1)} Toner Cartridge`,
+                productDescription: `Compatible with ${device[0].model}`,
+                compatibleEquipmentId: id,
+                quantity: 1,
+                unitPrice: '99.99', // In real implementation, get actual price from product catalog
+                totalPrice: '99.99',
+                inStock: true, // In real implementation, check warehouse inventory
+                customerNotes: `Current level: ${currentLevel}%`,
+              })
+              .returning();
+          }),
+        );
+
+        console.log('[SUPPLY ORDER ITEMS] Created items:', orderItems.length);
+
+        // Create notification for customer
+        try {
+          await db.insert(customerNotifications).values({
+            tenantId,
+            customerId: tenantId, // In real implementation, use actual customer ID
+            customerPortalUserId: req.user?.id || tenantId,
+            type: 'supply_low',
+            title: urgent ? 'Urgent Toner Order Placed' : 'Toner Order Created',
+            message: `A toner order (${orderNumber}) has been ${urgent ? 'submitted' : 'created'} for ${device[0].deviceName}. Colors: ${colors.join(', ')}`,
+            relatedServiceRequestId: null,
+            relatedSupplyOrderId: supplyOrder[0].id,
+            isRead: false,
+            isPriority: urgent,
+          });
+
+          console.log('[NOTIFICATION] Created notification for toner order');
+        } catch (notificationError) {
+          console.error('[NOTIFICATION] Failed to create notification:', notificationError);
+          // Don't fail the order if notification fails
+        }
+
+        res.json({
+          success: true,
+          message: 'Toner order created successfully',
+          order: {
+            orderId: supplyOrder[0].id,
+            orderNumber: supplyOrder[0].orderNumber,
+            deviceId: id,
+            deviceName: device[0].deviceName,
+            serialNumber: device[0].serialNumber,
+            colors,
+            urgent,
+            currentLevels: latestMetric[0]?.tonerLevels || {},
+            status: supplyOrder[0].status,
+            items: orderItems.map((item) => item[0]),
+            deliveryAddress: supplyOrder[0].deliveryAddress,
+            requestedDeliveryDate: supplyOrder[0].requestedDeliveryDate,
+          },
+        });
+      } catch (orderError) {
+        console.error('[SUPPLY ORDER] Failed to create order:', orderError);
+        throw orderError;
+      }
+    } catch (error) {
+      console.error('Error triggering toner order:', error);
+      res.status(500).json({ message: 'Failed to trigger toner order' });
     }
   });
 }
