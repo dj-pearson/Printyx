@@ -2,6 +2,8 @@ import type { Express } from 'express';
 import { db } from './db';
 import { eq, and, desc, like, or, lte, gte } from 'drizzle-orm';
 import crypto from 'crypto';
+import { emailService } from './services/email-service';
+import { smsService } from './services/sms-service';
 import {
   monitoringClients,
   clientActivityLogs,
@@ -379,28 +381,29 @@ async function sendNotificationAlerts(
         message: message?.substring(0, 100) + '...',
       });
 
-      // TODO: Integrate with email service (SendGrid, AWS SES, Resend, etc.)
-      // Example integration:
-      // await emailService.send({
-      //   to: recipientEmail,
-      //   subject: title,
-      //   html: message,
-      //   from: 'notifications@printyx.com',
-      // });
+      // Send email via configured provider (defaults to simulation mode)
+      const emailResult = await emailService.send({
+        to: recipientEmail,
+        subject: title || 'Printyx Notification',
+        html: message || '',
+        text: message?.replace(/<[^>]*>/g, ''), // Strip HTML tags for text version
+      });
 
-      // For now, simulate successful email send
-      emailSent = true;
-
-      // Update notification record
-      await db
-        .update(customerNotifications)
-        .set({
-          isEmailSent: true,
-          emailSentAt: new Date(),
-        })
-        .where(eq(customerNotifications.id, notificationId));
-
-      console.log('[EMAIL NOTIFICATION] Email marked as sent:', notificationId);
+      // Only mark as sent if the provider reports success
+      if (emailResult.success) {
+        emailSent = true;
+        await db
+          .update(customerNotifications)
+          .set({
+            isEmailSent: true,
+            emailSentAt: new Date(),
+          })
+          .where(eq(customerNotifications.id, notificationId));
+        
+        console.log('[EMAIL NOTIFICATION] Email sent successfully:', notificationId, emailResult.messageId);
+      } else {
+        console.error('[EMAIL NOTIFICATION] Email failed to send:', notificationId, emailResult.error);
+      }
     }
 
     // Send SMS notification
@@ -411,27 +414,28 @@ async function sendNotificationAlerts(
         message: message?.substring(0, 100) + '...',
       });
 
-      // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
-      // Example integration:
-      // await smsService.send({
-      //   to: recipientPhone,
-      //   body: `${title}\n\n${message}`,
-      //   from: process.env.TWILIO_PHONE_NUMBER,
-      // });
+      // Send SMS via configured provider (defaults to simulation mode)
+      const smsBody = `${title || 'Printyx Notification'}\n\n${message?.replace(/<[^>]*>/g, '') || ''}`;
+      const smsResult = await smsService.send({
+        to: recipientPhone,
+        body: smsBody.substring(0, 160), // Limit to standard SMS length
+      });
 
-      // For now, simulate successful SMS send
-      smsSent = true;
-
-      // Update notification record
-      await db
-        .update(customerNotifications)
-        .set({
-          isSmsSent: true,
-          smsSentAt: new Date(),
-        })
-        .where(eq(customerNotifications.id, notificationId));
-
-      console.log('[SMS NOTIFICATION] SMS marked as sent:', notificationId);
+      // Only mark as sent if the provider reports success
+      if (smsResult.success) {
+        smsSent = true;
+        await db
+          .update(customerNotifications)
+          .set({
+            isSmsSent: true,
+            smsSentAt: new Date(),
+          })
+          .where(eq(customerNotifications.id, notificationId));
+        
+        console.log('[SMS NOTIFICATION] SMS sent successfully:', notificationId, smsResult.messageId);
+      } else {
+        console.error('[SMS NOTIFICATION] SMS failed to send:', notificationId, smsResult.error);
+      }
     }
 
     return { emailSent, smsSent };
@@ -1521,6 +1525,8 @@ export function registerClientMonitoringRoutes(app: Express) {
         console.log('[SUPPLY ORDER ITEMS] Created items:', orderItems.length, 'Subtotal:', subtotal.toFixed(2));
 
         // Create notification for customer and send email/SMS
+        let emailSent = false;
+        let smsSent = false;
         try {
           const notificationTitle = urgent ? 'Urgent Toner Order Placed' : 'Toner Order Created';
           const notificationMessage = `A toner order (${orderNumber}) has been ${urgent ? 'submitted' : 'created'} for ${device[0].deviceName}. Colors: ${colors.join(', ')}`;
@@ -1554,7 +1560,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
             if (portalAccess[0]) {
               // Send email/SMS notifications
-              const { emailSent, smsSent } = await sendNotificationAlerts(
+              const result = await sendNotificationAlerts(
                 notification[0].id,
                 tenantId,
                 portalAccess[0].email,
@@ -1562,6 +1568,9 @@ export function registerClientMonitoringRoutes(app: Express) {
                 notificationTitle,
                 notificationMessage,
               );
+              
+              emailSent = result.emailSent;
+              smsSent = result.smsSent;
 
               console.log('[NOTIFICATION] Alerts sent:', { emailSent, smsSent });
             }
@@ -1587,6 +1596,10 @@ export function registerClientMonitoringRoutes(app: Express) {
             items: orderItems.map((item) => item[0]),
             deliveryAddress: supplyOrder[0].deliveryAddress,
             requestedDeliveryDate: supplyOrder[0].requestedDeliveryDate,
+          },
+          notifications: {
+            emailSent,
+            smsSent,
           },
         });
       } catch (orderError) {
