@@ -533,6 +533,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/', apiLimiter);
   // Resolve tenant context for all requests
   app.use(resolveTenant as any);
+
+  // Track API calls for subscription usage monitoring
+  const { trackApiCall } = await import('./middleware/subscription');
+  app.use('/api', trackApiCall);
   // Apply registration lock middleware to block new user registrations
   app.use(blockRegistrations);
 
@@ -9741,6 +9745,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const rootAdminRoutes = await import('./routes-root-admin');
   app.use('/api/root-admin', rootAdminRoutes.default);
 
+  // Subscription Routes
+  const subscriptionRoutes = await import('./routes-subscriptions');
+  const adminSubscriptionRoutes = await import('./routes-admin-subscriptions');
+  app.use('/api/subscriptions', subscriptionRoutes.default);
+  app.use('/api/admin/subscriptions', adminSubscriptionRoutes.default);
+
   // Customer Number Management Routes
   const customerNumberRoutes = await import('./routes-customer-numbers');
   app.use('/api/customer-numbers', customerNumberRoutes.customerNumberRoutes);
@@ -15269,6 +15279,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log(
     '⚠️ Custom WebSocket service is temporarily disabled to resolve Vite WebSocket conflict',
   );
+
+  // Start subscription scheduled jobs
+  import('./services/subscription-jobs')
+    .then(({ SubscriptionJobs }) => {
+      SubscriptionJobs.startAll();
+      console.log('✅ Subscription scheduled jobs started');
+    })
+    .catch((err) => console.error('Failed to start subscription jobs:', err));
 
   return httpServer;
 }

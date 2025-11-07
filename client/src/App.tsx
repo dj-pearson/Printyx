@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { useSeo } from "@/lib/useSeo";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
@@ -63,6 +64,8 @@ import CustomerDetail from "@/pages/CustomerDetail";
 import BusinessRecords from "@/pages/BusinessRecords";
 import TenantSetup from "@/pages/TenantSetup";
 import Settings from "@/pages/Settings";
+import Pricing from "@/pages/Pricing";
+import SubscriptionSettings from "@/pages/SubscriptionSettings";
 import DataEnrichment from "@/pages/DataEnrichment";
 import QuickBooksIntegration from "@/pages/QuickBooksIntegration";
 import ManufacturerIntegration from "@/pages/ManufacturerIntegration";
@@ -237,6 +240,7 @@ function Router() {
         </Switch>
       ) : (
         <>
+          <SubscriptionBanner />
           <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
@@ -453,6 +457,8 @@ function Router() {
           />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/settings/subscription" component={SubscriptionSettings} />
           <Route path="/company-ids-test" component={CompanyIdsTest} />
           <Route
             path="/customer-number-settings"

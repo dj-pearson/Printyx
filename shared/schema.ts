@@ -580,6 +580,16 @@ export const tenants = pgTable('tenants', {
   pathPrefix: varchar('path_prefix').unique(), // For printyx.net/xyz-company
   isActive: boolean('is_active').default(true),
   plan: varchar('plan', { length: 20 }).default('basic'), // basic, professional, enterprise
+
+  // Subscription fields (cached from tenantSubscriptions for quick access)
+  subscription: varchar('subscription', { length: 20 }).default('trialing'), // trialing, active, past_due, canceled
+  billingStatus: varchar('billing_status', { length: 20 }).default('pending'), // pending, current, past_due, unpaid
+  lastActivity: timestamp('last_activity'),
+
+  // Usage tracking (cached from usageMetrics for quick access)
+  storageUsed: integer('storage_used').default(0), // in MB
+  apiCalls: integer('api_calls').default(0), // monthly count
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -7769,3 +7779,46 @@ export type {
 
 export * from './apollo-schema';
 export * from './client-monitor-schema';
+
+// Re-export Subscription schemas
+export {
+  subscriptionPlans,
+  subscriptionFeatures,
+  tenantSubscriptions,
+  usageMetrics,
+  dailyUsageSnapshots,
+  billingHistory,
+  subscriptionPaymentMethods,
+  discounts,
+  discountRedemptions,
+  onboardingProgress,
+  subscriptionEvents,
+  subscriptionNotifications,
+} from './schema-subscriptions';
+
+export type {
+  SubscriptionPlan,
+  NewSubscriptionPlan,
+  SubscriptionFeature,
+  NewSubscriptionFeature,
+  TenantSubscription,
+  NewTenantSubscription,
+  UsageMetric,
+  NewUsageMetric,
+  DailyUsageSnapshot,
+  NewDailyUsageSnapshot,
+  BillingHistory,
+  NewBillingHistory,
+  SubscriptionPaymentMethod,
+  NewSubscriptionPaymentMethod,
+  Discount,
+  NewDiscount,
+  DiscountRedemption,
+  NewDiscountRedemption,
+  OnboardingProgress,
+  NewOnboardingProgress,
+  SubscriptionEvent,
+  NewSubscriptionEvent,
+  SubscriptionNotification,
+  NewSubscriptionNotification,
+} from './schema-subscriptions';
