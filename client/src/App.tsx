@@ -156,6 +156,10 @@ import Leases from "@/pages/Leases";
 import LeaseDetail from "@/pages/LeaseDetail";
 import LeaseForm from "@/pages/LeaseForm";
 
+// Knowledge Base Pages
+import KnowledgeBase from "@/pages/KnowledgeBase";
+import KnowledgeArticle from "@/pages/KnowledgeArticle";
+
 // Platform Admin Pages
 import RootAdminSecurity from "@/pages/admin/RootAdminSecurity";
 import SystemSecurity from "@/pages/admin/SystemSecurity";
@@ -578,6 +582,11 @@ function Router() {
           <Route path="/ai-task-scheduling" component={AITaskScheduling} />
           <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
           <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />
+          
+          {/* Knowledge Base Routes */}
+          <Route path="/knowledge-base" component={KnowledgeBase} />
+          <Route path="/knowledge-base/article/:slug" component={KnowledgeArticle} />
+          <Route path="/knowledge-base/category/:slug" component={KnowledgeBase} />
           
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
