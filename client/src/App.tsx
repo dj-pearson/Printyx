@@ -97,6 +97,7 @@ import CommissionManagement from "@/pages/CommissionManagement";
 import ServiceAnalytics from "@/pages/ServiceAnalytics";
 import MobileFieldOperations from "@/pages/MobileFieldOperations";
 import RemoteMonitoring from "@/pages/RemoteMonitoring";
+import FleetMonitoringDashboard from "@/pages/FleetMonitoringDashboard";
 import DemoScheduling from "@/pages/DemoScheduling";
 import SocialMediaGenerator from "@/pages/SocialMediaGenerator";
 import SecurityManagement from "@/pages/SecurityManagement";
@@ -307,6 +308,7 @@ function Router() {
             component={CommissionManagement}
           />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
+          <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
           <Route path="/mobile-service" component={MobileServiceApp} />
           <Route path="/service-analytics" component={ServiceAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />

@@ -1,544 +1,442 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
+import { Calendar, Printer, TrendingUp, TrendingDown, Eye, Download } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
-  BarChart3,
-  Plus,
-  Search,
-  Calendar,
-  TrendingUp,
-  AlertTriangle,
-  Clock,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Download,
-  RefreshCcw,
-  Calculator,
-  Printer,
-  Activity,
-  FileText,
-} from "lucide-react";
-import { format, subMonths, isAfter } from "date-fns";
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 
 interface MeterReading {
   id: string;
-  equipmentId: string;
-  equipmentSerialNumber?: string;
-  equipmentModel?: string;
-  contractId?: string;
-  readingDate: string;
-  bwMeterReading?: number;
-  colorMeterReading?: number;
-  scanMeterReading?: number;
-  faxMeterReading?: number;
-  totalMeterReading: number;
-  previousMeterReading?: number;
-  readingDifference: number;
-  readingMethod: string;
-  readingType: string;
-  billingPeriod?: string;
-  notes?: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  deviceId: string;
+  collectionTimestamp: Date;
+  totalImpressions: number;
+  bwImpressions: number;
+  colorImpressions: number;
+  tonerLevels: { [key: string]: number };
+  rawData: any;
 }
 
-interface CustomerMeterReadingsProps {
+interface DeviceWithReadings {
+  deviceId: string;
+  deviceName: string;
+  serialNumber: string;
+  model: string;
+  readings: MeterReading[];
+}
+
+interface CustomerMetricsHistory {
   customerId: string;
-  customerName: string;
+  timeline: DeviceWithReadings[];
+  totalDevices: number;
+  totalReadings: number;
 }
 
-const readingMethodColors = {
-  manual: "bg-blue-100 text-blue-800",
-  automatic: "bg-green-100 text-green-800",
-  email: "bg-purple-100 text-purple-800",
-  remote: "bg-orange-100 text-orange-800",
-  service_call: "bg-gray-100 text-gray-800",
-};
+interface Props {
+  customerId: string;
+}
 
-const readingTypeColors = {
-  regular: "bg-green-100 text-green-800",
-  service: "bg-blue-100 text-blue-800",
-  billing: "bg-purple-100 text-purple-800",
-  estimate: "bg-yellow-100 text-yellow-800",
-  correction: "bg-red-100 text-red-800",
-};
+export default function CustomerMeterReadings({ customerId }: Props) {
+  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
-export function CustomerMeterReadings({ customerId, customerName }: CustomerMeterReadingsProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [equipmentFilter, setEquipmentFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("all");
-  const [selectedReading, setSelectedReading] = useState<MeterReading | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
-
-  // Fetch meter readings for this customer
-  const { data: meterReadings = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/meter-readings", "customer", customerId],
-    enabled: !!customerId,
+  // Fetch customer meter reading history
+  const { data: metricsHistory, isLoading } = useQuery<CustomerMetricsHistory>({
+    queryKey: ['/api/customers', customerId, 'metrics/history'],
+    select: (data: any) => ({
+      ...data,
+      timeline: data.timeline.map((device: any) => ({
+        ...device,
+        readings: device.readings.map((reading: any) => ({
+          ...reading,
+          collectionTimestamp: new Date(reading.collectionTimestamp),
+        })),
+      })),
+    }),
   });
 
-  // Fetch equipment list for filtering
-  const { data: equipment = [] } = useQuery({
-    queryKey: ["/api/equipment", "customer", customerId],
-    enabled: !!customerId,
-  });
-
-  // Filter readings based on search and filters
-  const filteredReadings = meterReadings.filter((reading: MeterReading) => {
-    const matchesSearch = 
-      reading.equipmentSerialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reading.equipmentModel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reading.notes?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesEquipment = equipmentFilter === "all" || reading.equipmentId === equipmentFilter;
-    
-    let matchesPeriod = true;
-    if (periodFilter !== "all") {
-      const readingDate = new Date(reading.readingDate);
-      const now = new Date();
-      switch (periodFilter) {
-        case "this_month":
-          matchesPeriod = readingDate.getMonth() === now.getMonth() && 
-                        readingDate.getFullYear() === now.getFullYear();
-          break;
-        case "last_month":
-          const lastMonth = subMonths(now, 1);
-          matchesPeriod = readingDate.getMonth() === lastMonth.getMonth() && 
-                        readingDate.getFullYear() === lastMonth.getFullYear();
-          break;
-        case "last_3_months":
-          const threeMonthsAgo = subMonths(now, 3);
-          matchesPeriod = isAfter(readingDate, threeMonthsAgo);
-          break;
-        case "last_6_months":
-          const sixMonthsAgo = subMonths(now, 6);
-          matchesPeriod = isAfter(readingDate, sixMonthsAgo);
-          break;
-      }
-    }
-    
-    return matchesSearch && matchesEquipment && matchesPeriod;
-  });
-
-  // Calculate summary statistics
-  const totalReadings = filteredReadings.length;
-  const totalVolume = filteredReadings.reduce((sum: number, reading: MeterReading) => 
-    sum + (reading.readingDifference || 0), 0);
-  const averageVolume = totalReadings > 0 ? Math.round(totalVolume / totalReadings) : 0;
-  const uniqueEquipment = new Set(filteredReadings.map((r: MeterReading) => r.equipmentId)).size;
-
-  // Get readings that need attention (no reading in last 30 days per equipment)
-  const equipmentLastReading = new Map();
-  filteredReadings.forEach((reading: MeterReading) => {
-    const current = equipmentLastReading.get(reading.equipmentId);
-    if (!current || new Date(reading.readingDate) > new Date(current.readingDate)) {
-      equipmentLastReading.set(reading.equipmentId, reading);
-    }
-  });
-
-  const overdueEquipment = Array.from(equipmentLastReading.values()).filter((reading: MeterReading) => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return new Date(reading.readingDate) < thirtyDaysAgo;
+  // Fetch customer devices for selection
+  const { data: customerDevices } = useQuery({
+    queryKey: ['/api/customers', customerId, 'devices'],
   });
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Header and Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Meter Readings</h2>
-          <p className="text-sm text-gray-600">
-            Track device usage for {customerName}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => refetch()}>
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Reading
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <BarChart3 className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Readings</p>
-                <p className="text-2xl font-bold text-gray-900">{totalReadings}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <Printer className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Equipment</p>
-                <p className="text-2xl font-bold text-gray-900">{uniqueEquipment}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Volume</p>
-                <p className="text-2xl font-bold text-gray-900">{totalVolume.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <Activity className="h-8 w-8 text-orange-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Avg Volume</p>
-                <p className="text-2xl font-bold text-gray-900">{averageVolume.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Overdue Alerts */}
-      {overdueEquipment.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mr-2" />
-              <h3 className="text-sm font-medium text-amber-800">
-                {overdueEquipment.length} equipment unit(s) haven't been read in over 30 days
-              </h3>
-            </div>
-            <div className="mt-2 text-sm text-amber-700">
-              Last readings: {overdueEquipment.map((r: MeterReading) => 
-                `${r.equipmentSerialNumber} (${format(new Date(r.readingDate), "MMM d")})`
-              ).join(", ")}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search readings..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading meter readings...</p>
             </div>
-            <Select value={equipmentFilter} onValueChange={setEquipmentFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Filter by equipment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Equipment</SelectItem>
-                {equipment.map((eq: any) => (
-                  <SelectItem key={eq.id} value={eq.id}>
-                    {eq.serialNumber} - {eq.modelNumber}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={periodFilter} onValueChange={setPeriodFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Filter by period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="this_month">This Month</SelectItem>
-                <SelectItem value="last_month">Last Month</SelectItem>
-                <SelectItem value="last_3_months">Last 3 Months</SelectItem>
-                <SelectItem value="last_6_months">Last 6 Months</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Readings Table */}
+  if (!metricsHistory || metricsHistory.timeline.length === 0) {
+    return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <BarChart3 className="h-5 w-5 mr-2" />
-            Meter Readings ({filteredReadings.length})
-          </CardTitle>
+          <CardTitle>Meter Readings</CardTitle>
+          <CardDescription>No meter reading data available</CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredReadings.length === 0 ? (
-            <div className="text-center py-8">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No meter readings found
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {searchTerm || equipmentFilter !== "all" || periodFilter !== "all"
-                  ? "No readings match your current filters."
-                  : "This customer doesn't have any meter readings yet."}
-              </p>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add First Reading
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Equipment</TableHead>
-                    <TableHead>Reading Date</TableHead>
-                    <TableHead>Total Reading</TableHead>
-                    <TableHead>Volume</TableHead>
-                    <TableHead>B&W</TableHead>
-                    <TableHead>Color</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredReadings.map((reading: MeterReading) => (
-                    <TableRow key={reading.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {reading.equipmentSerialNumber || "Unknown"}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {reading.equipmentModel}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(reading.readingDate), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {reading.totalMeterReading?.toLocaleString() || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <span className="font-medium">
-                            {reading.readingDifference?.toLocaleString() || "—"}
-                          </span>
-                          {reading.readingDifference && reading.readingDifference > 1000 && (
-                            <TrendingUp className="h-4 w-4 text-green-600 ml-1" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {reading.bwMeterReading?.toLocaleString() || "—"}
-                      </TableCell>
-                      <TableCell>
-                        {reading.colorMeterReading?.toLocaleString() || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={readingMethodColors[reading.readingMethod as keyof typeof readingMethodColors] || "bg-gray-100 text-gray-800"}>
-                          {reading.readingMethod?.replace("_", " ") || "Unknown"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={readingTypeColors[reading.readingType as keyof typeof readingTypeColors] || "bg-gray-100 text-gray-800"}>
-                          {reading.readingType || "Regular"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedReading(reading);
-                                setShowDetails(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Reading
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Calculator className="h-4 w-4 mr-2" />
-                              Calculate Billing
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <FileText className="h-4 w-4 mr-2" />
-                              Generate Report
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <div className="text-center py-12 text-gray-500">
+            <Printer className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No devices or meter readings found for this customer.</p>
+          </div>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Reading Details Dialog */}
-      <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Meter Reading Details</DialogTitle>
-          </DialogHeader>
-          {selectedReading && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium text-gray-900">Equipment</h4>
-                  <p className="text-gray-600">
-                    {selectedReading.equipmentSerialNumber} - {selectedReading.equipmentModel}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Reading Date</h4>
-                  <p className="text-gray-600">
-                    {format(new Date(selectedReading.readingDate), "MMMM d, yyyy")}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Total Reading</h4>
-                  <p className="text-lg font-bold text-gray-900">
-                    {selectedReading.totalMeterReading?.toLocaleString() || "—"}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Volume This Period</h4>
-                  <p className="text-lg font-bold text-gray-900">
-                    {selectedReading.readingDifference?.toLocaleString() || "—"}
-                  </p>
-                </div>
-              </div>
+  // Filter readings by date range
+  const getFilteredReadings = (readings: MeterReading[]) => {
+    const now = new Date();
+    let cutoffDate: Date;
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <h4 className="font-medium text-gray-900">Black & White</h4>
-                  <p className="text-gray-600">
-                    {selectedReading.bwMeterReading?.toLocaleString() || "—"}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Color</h4>
-                  <p className="text-gray-600">
-                    {selectedReading.colorMeterReading?.toLocaleString() || "—"}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Scan</h4>
-                  <p className="text-gray-600">
-                    {selectedReading.scanMeterReading?.toLocaleString() || "—"}
-                  </p>
-                </div>
-              </div>
+    switch (dateRange) {
+      case '7d':
+        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        cutoffDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        return readings;
+    }
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium text-gray-900">Reading Method</h4>
-                  <Badge className={readingMethodColors[selectedReading.readingMethod as keyof typeof readingMethodColors] || "bg-gray-100 text-gray-800"}>
-                    {selectedReading.readingMethod?.replace("_", " ") || "Unknown"}
-                  </Badge>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Reading Type</h4>
-                  <Badge className={readingTypeColors[selectedReading.readingType as keyof typeof readingTypeColors] || "bg-gray-100 text-gray-800"}>
-                    {selectedReading.readingType || "Regular"}
-                  </Badge>
-                </div>
-              </div>
+    return readings.filter((r) => r.collectionTimestamp >= cutoffDate);
+  };
 
-              {selectedReading.notes && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                    {selectedReading.notes}
-                  </p>
-                </div>
+  // Selected device data
+  const selectedDeviceData = selectedDevice
+    ? metricsHistory.timeline.find((d) => d.deviceId === selectedDevice)
+    : metricsHistory.timeline[0];
+
+  const filteredReadings = selectedDeviceData
+    ? getFilteredReadings(selectedDeviceData.readings)
+    : [];
+
+  // Prepare chart data
+  const chartData = filteredReadings
+    .map((reading) => ({
+      date: format(reading.collectionTimestamp, 'MMM dd'),
+      timestamp: reading.collectionTimestamp.getTime(),
+      totalImpressions: reading.totalImpressions,
+      bwImpressions: reading.bwImpressions,
+      colorImpressions: reading.colorImpressions,
+    }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  // Calculate usage statistics
+  const calculateUsage = () => {
+    if (filteredReadings.length < 2) {
+      return { bwUsage: 0, colorUsage: 0, totalUsage: 0 };
+    }
+
+    const oldest = filteredReadings[filteredReadings.length - 1];
+    const newest = filteredReadings[0];
+
+    return {
+      bwUsage: Math.max(0, newest.bwImpressions - oldest.bwImpressions),
+      colorUsage: Math.max(0, newest.colorImpressions - oldest.colorImpressions),
+      totalUsage: Math.max(0, newest.totalImpressions - oldest.totalImpressions),
+    };
+  };
+
+  const usage = calculateUsage();
+
+  // Calculate monthly average
+  const calculateMonthlyAverage = () => {
+    if (filteredReadings.length < 2) return 0;
+
+    const oldest = filteredReadings[filteredReadings.length - 1];
+    const newest = filteredReadings[0];
+    const daysDiff =
+      (newest.collectionTimestamp.getTime() - oldest.collectionTimestamp.getTime()) /
+      (1000 * 60 * 60 * 24);
+
+    if (daysDiff === 0) return 0;
+
+    const totalUsage = newest.totalImpressions - oldest.totalImpressions;
+    return Math.round((totalUsage / daysDiff) * 30);
+  };
+
+  const monthlyAverage = calculateMonthlyAverage();
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
+            <Printer className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metricsHistory.totalDevices}</div>
+            <p className="text-xs text-muted-foreground">{metricsHistory.totalReadings} readings</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Usage (Period)</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{usage.totalUsage.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              B&W: {usage.bwUsage.toLocaleString()} • Color: {usage.colorUsage.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Average</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{monthlyAverage.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">impressions per month</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Meter Reading History</CardTitle>
+              <CardDescription>Track device usage over time</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Date Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="90d">Last 90 days</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {metricsHistory.timeline.length > 1 && (
+                <Select
+                  value={selectedDevice || metricsHistory.timeline[0].deviceId}
+                  onValueChange={setSelectedDevice}
+                >
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select Device" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metricsHistory.timeline.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>
+                        {device.deviceName} ({device.serialNumber})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowDetails(false)}>
-                  Close
-                </Button>
-                <Button>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Reading
-                </Button>
-              </div>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="chart" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="chart">Chart View</TabsTrigger>
+              <TabsTrigger value="table">Table View</TabsTrigger>
+              <TabsTrigger value="device">Device Details</TabsTrigger>
+            </TabsList>
+
+            {/* Chart View */}
+            <TabsContent value="chart">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold mb-4">Total Impressions Over Time</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="totalImpressions"
+                        stroke="#8884d8"
+                        name="Total"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold mb-4">B&W vs Color Impressions</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="bwImpressions" fill="#6b7280" name="B&W" />
+                      <Bar dataKey="colorImpressions" fill="#3b82f6" name="Color" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Table View */}
+            <TabsContent value="table">
+              <div className="rounded-md border">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-gray-50">
+                      <th className="text-left p-3 text-sm font-semibold">Date & Time</th>
+                      <th className="text-right p-3 text-sm font-semibold">Total</th>
+                      <th className="text-right p-3 text-sm font-semibold">B&W</th>
+                      <th className="text-right p-3 text-sm font-semibold">Color</th>
+                      <th className="text-right p-3 text-sm font-semibold">Differential</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredReadings.map((reading, index) => {
+                      const prevReading = filteredReadings[index + 1];
+                      const diff = prevReading
+                        ? reading.totalImpressions - prevReading.totalImpressions
+                        : 0;
+
+                      return (
+                        <tr key={reading.id} className="border-b hover:bg-gray-50">
+                          <td className="p-3 text-sm">
+                            {format(reading.collectionTimestamp, 'PPpp')}
+                          </td>
+                          <td className="p-3 text-sm text-right">
+                            {reading.totalImpressions?.toLocaleString() || '-'}
+                          </td>
+                          <td className="p-3 text-sm text-right">
+                            {reading.bwImpressions?.toLocaleString() || '-'}
+                          </td>
+                          <td className="p-3 text-sm text-right">
+                            {reading.colorImpressions?.toLocaleString() || '-'}
+                          </td>
+                          <td className="p-3 text-sm text-right">
+                            {diff > 0 ? (
+                              <span className="text-green-600">+{diff.toLocaleString()}</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+
+            {/* Device Details */}
+            <TabsContent value="device">
+              {selectedDeviceData && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold mb-4">Device Information</h3>
+                    <dl className="grid grid-cols-2 gap-4">
+                      <div>
+                        <dt className="text-sm text-gray-600">Device Name</dt>
+                        <dd className="text-sm font-medium">{selectedDeviceData.deviceName}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-600">Serial Number</dt>
+                        <dd className="text-sm font-medium">{selectedDeviceData.serialNumber}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-600">Model</dt>
+                        <dd className="text-sm font-medium">{selectedDeviceData.model}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-600">Total Readings</dt>
+                        <dd className="text-sm font-medium">
+                          {selectedDeviceData.readings.length}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  {selectedDeviceData.readings[0] && (
+                    <div>
+                      <h3 className="font-semibold mb-4">Latest Reading</h3>
+                      <div className="rounded-lg border p-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600">Total Impressions</p>
+                            <p className="text-2xl font-bold">
+                              {selectedDeviceData.readings[0].totalImpressions?.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">B&W Impressions</p>
+                            <p className="text-2xl font-bold">
+                              {selectedDeviceData.readings[0].bwImpressions?.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Color Impressions</p>
+                            <p className="text-2xl font-bold">
+                              {selectedDeviceData.readings[0].colorImpressions?.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-4">
+                          Last updated:{' '}
+                          {format(selectedDeviceData.readings[0].collectionTimestamp, 'PPpp')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
