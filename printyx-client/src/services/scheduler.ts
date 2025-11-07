@@ -5,6 +5,8 @@ import { DeviceMetrics } from '../collectors/collector-interface';
 import { PrintyxAPIClient } from '../api/printyx-client';
 import { ConfigManager, DeviceConfig } from '../config/config-manager';
 import { NetworkScanner } from '../discovery/network-scanner';
+import { DataBuffer } from './data-buffer';
+import { MeterTracker } from './meter-tracker';
 import { getLogger } from '../utils/logger';
 
 export class MetricsScheduler {
@@ -14,14 +16,19 @@ export class MetricsScheduler {
   private snmpCollector = new SNMPCollector();
   private httpCollector = new HTTPCollector();
   private networkScanner = new NetworkScanner();
+  private dataBuffer: DataBuffer;
+  private meterTracker: MeterTracker;
 
   private collectionTask: cron.ScheduledTask | null = null;
   private heartbeatTask: cron.ScheduledTask | null = null;
+  private retryTask: cron.ScheduledTask | null = null;
   private isCollecting = false;
 
   constructor(configManager: ConfigManager, apiClient: PrintyxAPIClient) {
     this.configManager = configManager;
     this.apiClient = apiClient;
+    this.dataBuffer = new DataBuffer();
+    this.meterTracker = new MeterTracker();
   }
 
   /**
@@ -46,6 +53,14 @@ export class MetricsScheduler {
       this.sendHeartbeat();
     });
 
+    // Schedule retry of buffered submissions (every minute)
+    this.retryTask = cron.schedule('* * * * *', () => {
+      this.retryBufferedSubmissions();
+    });
+
+    // Process any buffered submissions from previous runs
+    this.retryBufferedSubmissions();
+
     // Run initial collection immediately
     this.collectAndSubmitMetrics();
 
@@ -66,6 +81,17 @@ export class MetricsScheduler {
     if (this.heartbeatTask) {
       this.heartbeatTask.stop();
       this.heartbeatTask = null;
+    }
+
+    if (this.retryTask) {
+      this.retryTask.stop();
+      this.retryTask = null;
+    }
+
+    // Log buffer stats before stopping
+    const bufferStats = this.dataBuffer.getStats();
+    if (bufferStats.totalSubmissions > 0) {
+      this.logger.warn(`Shutting down with ${bufferStats.totalSubmissions} submissions in buffer`);
     }
 
     this.logger.info('Scheduler stopped');
@@ -98,23 +124,62 @@ export class MetricsScheduler {
       const metricsResults = await Promise.allSettled(metricsPromises);
 
       // Extract successful metrics
-      const allMetrics: DeviceMetrics[] = metricsResults
+      const rawMetrics: DeviceMetrics[] = metricsResults
         .filter((result) => result.status === 'fulfilled')
         .map((result) => (result as PromiseFulfilledResult<DeviceMetrics>).value);
 
-      if (allMetrics.length === 0) {
+      if (rawMetrics.length === 0) {
         this.logger.error('Failed to collect metrics from any device');
         return;
       }
 
-      this.logger.info(`Collected metrics from ${allMetrics.length} devices`);
+      this.logger.info(`Collected metrics from ${rawMetrics.length} devices`);
 
-      // Submit to Printyx
+      // Process through meter tracker for accuracy
+      const processedMetrics = rawMetrics.map((metrics) =>
+        this.meterTracker.processMetrics(metrics),
+      );
+
+      // Log toner alerts
+      for (const metrics of processedMetrics) {
+        if (metrics.tonerAlerts && metrics.tonerAlerts.length > 0) {
+          for (const alert of metrics.tonerAlerts) {
+            this.logger.warn(`Toner Alert: ${alert.message}`, {
+              device: metrics.serialNumber,
+              severity: alert.severity,
+              shouldOrder: alert.shouldOrder,
+            });
+          }
+        }
+
+        if (metrics.hasRollover) {
+          this.logger.warn(`Counter rollover detected`, {
+            device: metrics.serialNumber,
+            differential: metrics.differential,
+          });
+        }
+
+        if (metrics.isDuplicate) {
+          this.logger.info(`Duplicate reading skipped (no change since last reading)`, {
+            device: metrics.serialNumber,
+          });
+        }
+      }
+
+      // Filter out duplicates for submission
+      const metricsToSubmit = processedMetrics.filter((m) => !m.isDuplicate);
+
+      if (metricsToSubmit.length === 0) {
+        this.logger.info('No new metrics to submit (all duplicates)');
+        return;
+      }
+
+      // Try to submit to Printyx
       try {
         const response = await this.apiClient.submitMetrics(
           config.client.id,
           config.client.version,
-          allMetrics,
+          metricsToSubmit,
         );
 
         this.logger.info('Metrics submission complete', {
@@ -128,12 +193,67 @@ export class MetricsScheduler {
           });
         }
       } catch (error) {
-        this.logger.error('Failed to submit metrics to Printyx', { error });
+        // Failed to submit - add to buffer for retry
+        this.logger.error('Failed to submit metrics to Printyx, adding to buffer', { error });
+        this.dataBuffer.add(config.client.id, config.client.version, metricsToSubmit);
+
+        const bufferStats = this.dataBuffer.getStats();
+        this.logger.info('Metrics buffered for retry', {
+          bufferSize: bufferStats.totalSubmissions,
+          totalDevices: bufferStats.totalDevices,
+        });
       }
     } catch (error) {
       this.logger.error('Error during metrics collection', { error });
     } finally {
       this.isCollecting = false;
+    }
+  }
+
+  /**
+   * Retry buffered submissions with exponential backoff
+   */
+  private async retryBufferedSubmissions(): Promise<void> {
+    const readyForRetry = this.dataBuffer.getReadyForRetry();
+
+    if (readyForRetry.length === 0) {
+      return;
+    }
+
+    this.logger.info(`Attempting to retry ${readyForRetry.length} buffered submissions`);
+
+    for (const submission of readyForRetry) {
+      try {
+        this.dataBuffer.markAttempted(submission.id);
+
+        const response = await this.apiClient.submitMetrics(
+          submission.clientId,
+          submission.clientVersion,
+          submission.devices,
+        );
+
+        this.logger.info('Buffered submission successful', {
+          id: submission.id,
+          attempts: submission.attempts + 1,
+          processed: response.processed,
+        });
+
+        // Remove from buffer on success
+        this.dataBuffer.remove(submission.id);
+      } catch (error) {
+        this.logger.warn('Buffered submission failed, will retry later', {
+          id: submission.id,
+          attempts: submission.attempts + 1,
+          error: error instanceof Error ? error.message : error,
+        });
+
+        // Will be retried with exponential backoff
+      }
+    }
+
+    const bufferStats = this.dataBuffer.getStats();
+    if (bufferStats.totalSubmissions > 0) {
+      this.logger.info('Buffer status', bufferStats);
     }
   }
 
