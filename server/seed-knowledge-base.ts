@@ -12,8 +12,8 @@ import {
   type InsertKnowledgeArticle,
 } from '@shared/schema';
 
-const DEMO_TENANT_ID = 'demo-tenant';
-const SYSTEM_USER_ID = 'system';
+const DEMO_TENANT_ID = '1d4522ad-b3d8-4018-8890-f9294b2efbe6'; // Demo Copier Dealer
+const SYSTEM_USER_ID = 'fb0bafa4-b8ec-4297-b48f-f7e3f66b582c'; // Knowledge Base System User
 
 interface CategoryMap {
   [key: string]: string;
