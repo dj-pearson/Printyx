@@ -176,7 +176,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Service Hub',
       icon: Wrench,
       path: '/service-hub',
-      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*', '/vehicle*', '/asset*', '/onboarding*', '/incident*', '/manufacturer*'],
+      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*', '/fleet-monitoring*', '/vehicle*', '/asset*', '/onboarding*', '/incident*', '/manufacturer*'],
       children: [
         { title: 'Service Hub', path: '/service-hub', icon: Wrench },
         { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
@@ -185,6 +185,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
         { title: 'Asset Management', path: '/asset-management', icon: Package },
         { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
+        { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
         { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
         { title: 'Preventive Maintenance', path: '/preventive-maintenance-scheduling', icon: Calendar },
         { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
