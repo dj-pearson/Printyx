@@ -424,6 +424,47 @@ export function registerClientMonitoringRoutes(app: Express) {
             rawData: deviceData.rawData || {},
           });
 
+          // Check for toner alerts and trigger notifications
+          if (deviceData.tonerLevels) {
+            const CRITICAL_THRESHOLD = 10;
+            const WARNING_THRESHOLD = 20;
+
+            for (const [color, level] of Object.entries(deviceData.tonerLevels)) {
+              if (level <= CRITICAL_THRESHOLD) {
+                // Critical toner level - trigger replenishment order
+                console.log(
+                  `[TONER ALERT] Critical: ${device[0].deviceName} - ${color} toner at ${level}%`,
+                );
+
+                // TODO: Integration with notification system
+                // Create notification for low toner
+                // Trigger automatic toner order if contract includes toner
+              } else if (level <= WARNING_THRESHOLD) {
+                // Warning level - notify but don't order yet
+                console.log(
+                  `[TONER ALERT] Warning: ${device[0].deviceName} - ${color} toner at ${level}%`,
+                );
+              }
+            }
+          }
+
+          // Check for meter differential and billing (if provided by client)
+          if (deviceData.rawData?.differential) {
+            const diff = deviceData.rawData.differential;
+
+            // Log usage for billing
+            console.log(`[BILLING] ${device[0].deviceName} usage since last reading:`, {
+              total: diff.totalImpressions,
+              bw: diff.bwImpressions,
+              color: diff.colorImpressions,
+              hasRollover: diff.hasRollover,
+            });
+
+            // TODO: Integration with billing system
+            // Calculate billable impressions based on service contract
+            // Generate invoice line items for overage clicks
+          }
+
           processedDevices.push({
             serialNumber: deviceData.serialNumber,
             status: 'success',
