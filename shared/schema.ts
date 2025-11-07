@@ -1507,6 +1507,10 @@ export const inventoryItems = pgTable('inventory_items', {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   tenantId: varchar('tenant_id').notNull(),
+  
+  // Basic Identification (legacy fields from simplified schema)
+  name: varchar('name').notNull(), // Item name (legacy, keep for compatibility)
+  category: varchar('category').notNull(), // Category (legacy, keep for compatibility)
 
   // E-Automate Compatibility
   externalItemId: varchar('external_item_id'), // E-Automate ItemKey
