@@ -107,6 +107,7 @@ import salesForecastingRoutes from './routes-sales-forecasting';
 import reportsRoutes from './routes-reports';
 import reportingArchitectureRoutes from './routes-reporting-architecture';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
+import billingRoutes from './routes-billing';
 // TEMPORARILY DISABLED: SEO routes causing cheerio dependency conflict
 // import seoRoutes from "./routes-seo";
 import {
@@ -7944,6 +7945,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Commission Management routes
   app.use(commissionRoutes);
+
+  // Register Billing routes
+  app.use('/api/billing', billingRoutes);
 
   // Register Salesforce test routes (development only)
   if (process.env.NODE_ENV === 'development') {
