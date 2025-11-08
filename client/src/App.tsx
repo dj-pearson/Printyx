@@ -10,6 +10,10 @@ import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import Signup from "@/pages/Signup";
+import VerifyEmail from "@/pages/VerifyEmail";
 const Homepage = React.lazy(() => import("@/pages/marketing/Homepage"));
 const CopierDealerCRM = React.lazy(() => import("@/pages/marketing/CopierDealerCRM"));
 const PrintServiceDispatchMobile = React.lazy(() => import("@/pages/marketing/PrintServiceDispatchMobile"));
@@ -66,6 +70,7 @@ import TenantSetup from "@/pages/TenantSetup";
 import Settings from "@/pages/Settings";
 import Pricing from "@/pages/Pricing";
 import SubscriptionSettings from "@/pages/SubscriptionSettings";
+import BillingPage from "@/pages/Billing";
 import DataEnrichment from "@/pages/DataEnrichment";
 import QuickBooksIntegration from "@/pages/QuickBooksIntegration";
 import ManufacturerIntegration from "@/pages/ManufacturerIntegration";
@@ -223,6 +228,10 @@ function Router() {
       ) : !isAuthenticated ? (
         <Switch>
           <Route path="/login" component={Login} />
+          <Route path="/signup" component={Signup} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/verify-email" component={VerifyEmail} />
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
@@ -459,6 +468,7 @@ function Router() {
           <Route path="/settings" component={Settings} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/settings/subscription" component={SubscriptionSettings} />
+          <Route path="/settings/billing" component={BillingPage} />
           <Route path="/company-ids-test" component={CompanyIdsTest} />
           <Route
             path="/customer-number-settings"
