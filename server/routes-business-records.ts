@@ -7,11 +7,12 @@ import {
   TenantRequest,
 } from "./middleware/tenancy";
 import { BusinessRecordsTransformer } from "./data-field-mapping";
-import { 
-  generateCompanyDisplayId, 
-  generateUniqueUrlSlug, 
-  updateBusinessRecordWithIdentifiers 
+import {
+  generateCompanyDisplayId,
+  generateUniqueUrlSlug,
+  updateBusinessRecordWithIdentifiers
 } from "./utils/company-id-generator";
+import { cacheControl, etag, varyByTenant } from "./middleware/cache-middleware";
 
 export function registerBusinessRecordRoutes(app: Express) {
   // Unified Business Records API - supports entire lead-to-customer lifecycle
@@ -21,6 +22,9 @@ export function registerBusinessRecordRoutes(app: Express) {
     "/api/business-records",
     resolveTenant,
     requireTenant,
+    varyByTenant(),
+    cacheControl(180), // Cache for 3 minutes
+    etag(),
     async (req: TenantRequest, res) => {
       try {
         const tenantId = req.tenantId!;
@@ -50,6 +54,9 @@ export function registerBusinessRecordRoutes(app: Express) {
     "/api/business-records/:identifier",
     resolveTenant,
     requireTenant,
+    varyByTenant(),
+    cacheControl(300), // Cache for 5 minutes
+    etag(),
     async (req: TenantRequest, res) => {
       try {
         const tenantId = req.tenantId!;
