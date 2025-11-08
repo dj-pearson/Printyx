@@ -23,6 +23,50 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React libraries
+          'vendor-react': ['react', 'react-dom', 'wouter'],
+
+          // UI component library (Radix UI)
+          'vendor-ui-core': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-tooltip',
+          ],
+          'vendor-ui-extra': [
+            '@radix-ui/react-accordion',
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-switch',
+            '@radix-ui/react-slider',
+          ],
+
+          // Data fetching & state management
+          'vendor-query': ['@tanstack/react-query'],
+
+          // Form handling
+          'vendor-form': ['react-hook-form', '@hookform/resolvers', 'zod', 'zod-validation-error'],
+
+          // Icons & UI utilities
+          'vendor-icons': ['lucide-react', 'react-icons'],
+
+          // Date handling
+          'vendor-date': ['date-fns', 'react-day-picker'],
+
+          // Charts & visualization
+          'vendor-charts': ['recharts'],
+
+          // Utilities
+          'vendor-utils': ['clsx', 'tailwind-merge', 'class-variance-authority'],
+        },
+      },
+    },
   },
   server: {
     fs: {
