@@ -3,6 +3,13 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import { db } from "./db";
+import { passwordResets } from "../shared/password-reset-schema";
+import { users } from "@shared/schema";
+import { eq, and, gt } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { EmailTemplates } from "./services/email-templates";
+import { emailService } from "./services/email-service";
 
 const router = express.Router();
 
@@ -10,6 +17,16 @@ const router = express.Router();
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+});
+
+// Password reset schemas
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 // Session management
@@ -27,6 +44,15 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many login attempts. Please try again later." },
+});
+
+// Rate limiting for password reset requests
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 requests per hour per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many password reset attempts. Please try again later." },
 });
 
 // Login endpoint
@@ -142,6 +168,192 @@ router.get("/user", async (req, res) => {
   } catch (error) {
     console.error("Get user error:", error);
     res.status(500).json({ message: "Failed to get user" });
+  }
+});
+
+// ============================================================================
+// PASSWORD RESET ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/auth/forgot-password
+ * Request password reset email
+ */
+router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+
+    // Always return success to prevent email enumeration
+    const successResponse = {
+      message: "If an account with that email exists, we've sent password reset instructions.",
+    };
+
+    // Find user by email
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    // If user doesn't exist, return success anyway (security best practice)
+    if (!user) {
+      console.log(`[PASSWORD RESET] No user found for email: ${email}`);
+      return res.json(successResponse);
+    }
+
+    // Generate secure random token
+    const token = randomBytes(32).toString('hex');
+
+    // Token expires in 1 hour
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    // Save reset token to database
+    await db.insert(passwordResets).values({
+      userId: user.id,
+      token,
+      expiresAt,
+    });
+
+    // Send password reset email
+    const emailTemplate = EmailTemplates.passwordReset({
+      userName: user.firstName || undefined,
+      userEmail: user.email,
+      resetToken: token,
+    });
+
+    await emailService.send({
+      to: user.email,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html,
+      text: emailTemplate.text,
+    });
+
+    console.log(`[PASSWORD RESET] Reset email sent to: ${email}`);
+    res.json(successResponse);
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(400).json({ message: "Invalid request" });
+  }
+});
+
+/**
+ * GET /api/auth/verify-reset-token/:token
+ * Verify if reset token is valid
+ */
+router.get("/verify-reset-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const [resetRecord] = await db
+      .select()
+      .from(passwordResets)
+      .where(
+        and(
+          eq(passwordResets.token, token),
+          gt(passwordResets.expiresAt, new Date()),
+          eq(passwordResets.usedAt, null as any)
+        )
+      )
+      .limit(1);
+
+    if (!resetRecord) {
+      return res.status(400).json({
+        valid: false,
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    res.json({
+      valid: true,
+      message: "Token is valid",
+    });
+  } catch (error) {
+    console.error("Verify reset token error:", error);
+    res.status(500).json({ message: "Failed to verify token" });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Reset password using token
+ */
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = resetPasswordSchema.parse(req.body);
+
+    // Find valid reset token
+    const [resetRecord] = await db
+      .select()
+      .from(passwordResets)
+      .where(
+        and(
+          eq(passwordResets.token, token),
+          gt(passwordResets.expiresAt, new Date()),
+          eq(passwordResets.usedAt, null as any)
+        )
+      )
+      .limit(1);
+
+    if (!resetRecord) {
+      return res.status(400).json({
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    // Get user
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, resetRecord.userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Update user password
+    await db
+      .update(users)
+      .set({ passwordHash })
+      .where(eq(users.id, user.id));
+
+    // Mark token as used
+    await db
+      .update(passwordResets)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResets.id, resetRecord.id));
+
+    // Send confirmation email
+    const emailTemplate = EmailTemplates.passwordChanged({
+      userName: user.firstName || undefined,
+      userEmail: user.email,
+    });
+
+    await emailService.send({
+      to: user.email,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html,
+      text: emailTemplate.text,
+    });
+
+    console.log(`[PASSWORD RESET] Password changed for user: ${user.id}`);
+
+    res.json({
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        message: "Invalid request",
+        errors: error.errors,
+      });
+    }
+    res.status(500).json({ message: "Failed to reset password" });
   }
 });
 
