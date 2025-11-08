@@ -150,6 +150,13 @@ export default function Login() {
                     ? "Signing in..."
                     : "Sign In"}
                 </Button>
+
+                <div className="text-center text-sm text-muted-foreground border-t pt-4 mt-4">
+                  Don't have an account?{" "}
+                  <a href="/signup" className="text-primary hover:underline font-medium">
+                    Sign up for free
+                  </a>
+                </div>
               </form>
             </Form>
           </CardContent>
