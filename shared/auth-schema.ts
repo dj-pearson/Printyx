@@ -28,3 +28,29 @@ export type PasswordReset = typeof passwordResets.$inferSelect;
 export type NewPasswordReset = typeof passwordResets.$inferInsert;
 
 export const insertPasswordResetSchema = createInsertSchema(passwordResets);
+
+/**
+ * EMAIL VERIFICATION SCHEMA
+ *
+ * Handles email verification tokens for new user signups.
+ * Tokens expire after 24 hours.
+ */
+
+export const emailVerifications = pgTable('email_verifications', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  verifiedAt: timestamp('verified_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  userIdIdx: index('email_verifications_user_id_idx').on(table.userId),
+  emailIdx: index('email_verifications_email_idx').on(table.email),
+  tokenIdx: index('email_verifications_token_idx').on(table.token),
+}));
+
+export type EmailVerification = typeof emailVerifications.$inferSelect;
+export type NewEmailVerification = typeof emailVerifications.$inferInsert;
+
+export const insertEmailVerificationSchema = createInsertSchema(emailVerifications);
