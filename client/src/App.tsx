@@ -70,6 +70,7 @@ import TenantSetup from "@/pages/TenantSetup";
 import Settings from "@/pages/Settings";
 import Pricing from "@/pages/Pricing";
 import SubscriptionSettings from "@/pages/SubscriptionSettings";
+import BillingPage from "@/pages/Billing";
 import DataEnrichment from "@/pages/DataEnrichment";
 import QuickBooksIntegration from "@/pages/QuickBooksIntegration";
 import ManufacturerIntegration from "@/pages/ManufacturerIntegration";
@@ -467,6 +468,7 @@ function Router() {
           <Route path="/settings" component={Settings} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/settings/subscription" component={SubscriptionSettings} />
+          <Route path="/settings/billing" component={BillingPage} />
           <Route path="/company-ids-test" component={CompanyIdsTest} />
           <Route
             path="/customer-number-settings"
