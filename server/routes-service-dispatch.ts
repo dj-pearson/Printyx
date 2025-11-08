@@ -9,11 +9,12 @@ const requireAuth = (req: any, res: any, next: any) => {
 import { db } from './db';
 import { serviceTickets, technicians } from '../shared/schema';
 import { eq, and, inArray, sql, desc, count } from 'drizzle-orm';
+import { cacheControl, etag } from './middleware/cache-middleware';
 
 const router = Router();
 
 // Get dispatch recommendations with AI optimization (converted to use real database data)
-router.get('/api/dispatch/recommendations', requireAuth, async (req: any, res) => {
+router.get('/api/dispatch/recommendations', requireAuth, cacheControl(120), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -87,7 +88,7 @@ router.get('/api/dispatch/recommendations', requireAuth, async (req: any, res) =
 });
 
 // Get technician availability (converted to use real database data)
-router.get('/api/dispatch/technicians/availability', requireAuth, async (req: any, res) => {
+router.get('/api/dispatch/technicians/availability', requireAuth, cacheControl(120), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -171,7 +172,7 @@ router.get('/api/dispatch/technicians/availability', requireAuth, async (req: an
 });
 
 // Get dispatch analytics (converted to use real database data)
-router.get('/api/dispatch/analytics', requireAuth, async (req: any, res) => {
+router.get('/api/dispatch/analytics', requireAuth, cacheControl(180), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -304,21 +305,14 @@ router.post('/api/dispatch/auto-assign', requireAuth, async (req: any, res) => {
       );
 
     const assignments = [];
+    const updatePromises = [];
+    const now = new Date();
 
     // Simple assignment logic - assign to first available technician
+    // Build assignment list first, then batch update
     for (const ticket of tickets) {
       if (availableTechnicians.length > 0) {
         const assignedTech = availableTechnicians[0];
-        
-        // Update ticket assignment
-        await db
-          .update(serviceTickets)
-          .set({
-            technicianId: assignedTech.id,
-            status: 'assigned',
-            updatedAt: new Date()
-          })
-          .where(eq(serviceTickets.id, ticket.id));
 
         assignments.push({
           ticketId: ticket.id,
@@ -328,10 +322,27 @@ router.post('/api/dispatch/auto-assign', requireAuth, async (req: any, res) => {
           confidence: 85
         });
 
+        // Collect update promises for batch execution
+        updatePromises.push(
+          db
+            .update(serviceTickets)
+            .set({
+              technicianId: assignedTech.id,
+              status: 'assigned',
+              updatedAt: now
+            })
+            .where(eq(serviceTickets.id, ticket.id))
+        );
+
         // Move technician to next in rotation
         availableTechnicians.shift();
         if (availableTechnicians.length === 0) break;
       }
+    }
+
+    // Execute all updates in parallel for better performance
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
     }
 
     res.json({ 
@@ -346,7 +357,7 @@ router.post('/api/dispatch/auto-assign', requireAuth, async (req: any, res) => {
 });
 
 // Get real-time technician tracking (converted to use real database data)
-router.get('/api/dispatch/tracking', requireAuth, async (req: any, res) => {
+router.get('/api/dispatch/tracking', requireAuth, cacheControl(60), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
