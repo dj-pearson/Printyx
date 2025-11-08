@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import {
   Card,
   CardContent,
@@ -63,11 +65,148 @@ const billingAddressSchema = z.object({
 
 type BillingAddressForm = z.infer<typeof billingAddressSchema>;
 
+// Initialize Stripe
+let stripePromise: any = null;
+
+const getStripePromise = async () => {
+  if (!stripePromise) {
+    try {
+      const response = await fetch('/api/billing/stripe/config');
+      const { publishableKey, configured } = await response.json();
+
+      if (configured && publishableKey) {
+        stripePromise = loadStripe(publishableKey);
+      }
+    } catch (error) {
+      console.error('Failed to load Stripe config:', error);
+    }
+  }
+  return stripePromise;
+};
+
+// Payment Method Form Component (uses Stripe Elements)
+function AddPaymentMethodForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Get setup intent client secret
+      const response = await fetch('/api/billing/stripe/setup-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const { clientSecret } = await response.json();
+
+      if (!clientSecret) {
+        throw new Error('Failed to create setup intent');
+      }
+
+      // Confirm card setup
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card element not found');
+      }
+
+      const { error, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!setupIntent?.payment_method) {
+        throw new Error('No payment method returned');
+      }
+
+      // Save payment method to backend
+      await fetch('/api/billing/payment-methods', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentMethodId: setupIntent.payment_method,
+        }),
+      });
+
+      // Refresh payment methods
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
+
+      toast({
+        title: 'Payment method added',
+        description: 'Your payment method has been successfully added.',
+      });
+
+      onSuccess();
+    } catch (error: any) {
+      toast({
+        title: 'Failed to add payment method',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="border rounded-lg p-4">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': {
+                  color: '#aab7c4',
+                },
+              },
+              invalid: {
+                color: '#9e2146',
+              },
+            },
+          }}
+        />
+      </div>
+
+      <div className="flex justify-end space-x-2">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={!stripe || isProcessing}>
+          {isProcessing ? 'Processing...' : 'Add Payment Method'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export default function Billing() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
+  const [stripePromiseState, setStripePromiseState] = useState<any>(null);
+
+  // Load Stripe on mount
+  useEffect(() => {
+    getStripePromise().then(setStripePromiseState);
+  }, []);
 
   const form = useForm<BillingAddressForm>({
     resolver: zodResolver(billingAddressSchema),
@@ -199,21 +338,34 @@ export default function Billing() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-800 font-medium">
-                        Stripe Integration Required
-                      </p>
-                      <p className="text-xs text-blue-700 mt-1">
-                        Payment processing will be enabled after Stripe setup is complete.
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setIsAddPaymentOpen(false)}
-                    >
-                      Close
-                    </Button>
+                    {stripePromiseState ? (
+                      <Elements stripe={stripePromiseState}>
+                        <AddPaymentMethodForm
+                          onSuccess={() => setIsAddPaymentOpen(false)}
+                          onCancel={() => setIsAddPaymentOpen(false)}
+                        />
+                      </Elements>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <p className="text-sm text-blue-800 font-medium">
+                            Loading Stripe...
+                          </p>
+                          <p className="text-xs text-blue-700 mt-1">
+                            {!process.env.STRIPE_PUBLISHABLE_KEY
+                              ? 'Stripe is not configured. Please set STRIPE_PUBLISHABLE_KEY in environment.'
+                              : 'Initializing payment processor...'}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => setIsAddPaymentOpen(false)}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </DialogContent>
               </Dialog>

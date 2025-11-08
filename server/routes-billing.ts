@@ -4,9 +4,11 @@ import {
   subscriptionPaymentMethods,
   billingHistory,
   tenantSubscriptions,
+  tenants,
 } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { z } from 'zod';
+import { StripeService, stripe } from './services/stripe-service';
 
 /**
  * BILLING ROUTES
@@ -63,18 +65,68 @@ router.get('/payment-methods', requireTenantContext, async (req: any, res) => {
 
 /**
  * POST /api/billing/payment-methods
- * Add a new payment method (will be implemented with Stripe)
+ * Add a new payment method via Stripe
  */
 router.post('/payment-methods', requireTenantContext, async (req: any, res) => {
   try {
-    // This will be implemented when Stripe integration is added
-    res.status(501).json({
-      error: 'Payment method addition not yet implemented',
-      message: 'Stripe integration required',
+    const tenantId = req.tenantId;
+    const { paymentMethodId, billingDetails } = req.body;
+
+    if (!paymentMethodId) {
+      return res.status(400).json({ error: 'Payment method ID is required' });
+    }
+
+    if (!StripeService.isConfigured()) {
+      return res.status(501).json({
+        error: 'Stripe is not configured',
+        message: 'Please set STRIPE_SECRET_KEY environment variable',
+      });
+    }
+
+    // Get or create Stripe customer for tenant
+    const stripeCustomerId = await StripeService.getOrCreateCustomer(tenantId);
+
+    // Attach payment method to customer
+    const paymentMethod = await StripeService.addPaymentMethod({
+      stripeCustomerId,
+      paymentMethodId,
+      setAsDefault: true,
     });
-  } catch (error) {
+
+    // Check if this is the first payment method
+    const existingMethods = await db
+      .select()
+      .from(subscriptionPaymentMethods)
+      .where(eq(subscriptionPaymentMethods.tenantId, tenantId));
+
+    const isFirst = existingMethods.length === 0;
+
+    // Store payment method in database
+    const [newPaymentMethod] = await db
+      .insert(subscriptionPaymentMethods)
+      .values({
+        tenantId,
+        provider: 'stripe',
+        stripePaymentMethodId: paymentMethod.id,
+        cardBrand: paymentMethod.card?.brand || '',
+        cardLast4: paymentMethod.card?.last4 || '',
+        cardExpMonth: paymentMethod.card?.exp_month || 0,
+        cardExpYear: paymentMethod.card?.exp_year || 0,
+        isDefault: isFirst,
+        billingDetails: billingDetails || paymentMethod.billing_details,
+      })
+      .returning();
+
+    res.json({
+      message: 'Payment method added successfully',
+      paymentMethod: newPaymentMethod,
+    });
+  } catch (error: any) {
     console.error('Failed to add payment method:', error);
-    res.status(500).json({ error: 'Failed to add payment method' });
+    res.status(500).json({
+      error: 'Failed to add payment method',
+      message: error.message,
+    });
   }
 });
 
@@ -118,7 +170,17 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
       }
     }
 
-    // Delete the payment method
+    // Remove from Stripe if configured
+    if (StripeService.isConfigured() && paymentMethod.stripePaymentMethodId) {
+      try {
+        await StripeService.removePaymentMethod(paymentMethod.stripePaymentMethodId);
+      } catch (error) {
+        console.error('Failed to remove from Stripe:', error);
+        // Continue with database deletion even if Stripe fails
+      }
+    }
+
+    // Delete the payment method from database
     await db
       .delete(subscriptionPaymentMethods)
       .where(eq(subscriptionPaymentMethods.id, paymentMethodId));
@@ -306,6 +368,113 @@ router.put('/address', requireTenantContext, async (req: any, res) => {
       });
     }
     res.status(500).json({ error: 'Failed to update billing address' });
+  }
+});
+
+// ============================================================================
+// STRIPE INTEGRATION
+// ============================================================================
+
+/**
+ * GET /api/billing/stripe/config
+ * Get Stripe publishable key for frontend
+ */
+router.get('/stripe/config', (req: any, res) => {
+  try {
+    if (!StripeService.isConfigured()) {
+      return res.status(501).json({
+        error: 'Stripe not configured',
+        configured: false,
+      });
+    }
+
+    const publishableKey = StripeService.getPublishableKey();
+    res.json({
+      publishableKey,
+      configured: true,
+    });
+  } catch (error: any) {
+    console.error('Failed to get Stripe config:', error);
+    res.status(500).json({
+      error: 'Failed to get Stripe configuration',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/billing/stripe/setup-intent
+ * Create a setup intent for adding payment methods
+ */
+router.post('/stripe/setup-intent', requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+
+    if (!StripeService.isConfigured() || !stripe) {
+      return res.status(501).json({
+        error: 'Stripe not configured',
+      });
+    }
+
+    // Get or create Stripe customer
+    const stripeCustomerId = await StripeService.getOrCreateCustomer(tenantId);
+
+    // Create setup intent
+    const setupIntent = await stripe.setupIntents.create({
+      customer: stripeCustomerId,
+      payment_method_types: ['card'],
+      metadata: {
+        tenantId,
+      },
+    });
+
+    res.json({
+      clientSecret: setupIntent.client_secret,
+    });
+  } catch (error: any) {
+    console.error('Failed to create setup intent:', error);
+    res.status(500).json({
+      error: 'Failed to create setup intent',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/billing/stripe/webhooks
+ * Handle Stripe webhook events
+ */
+router.post('/stripe/webhooks', async (req: any, res) => {
+  try {
+    const signature = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRET not configured');
+      return res.status(500).json({ error: 'Webhook secret not configured' });
+    }
+
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing stripe-signature header' });
+    }
+
+    // Verify and construct event
+    const event = StripeService.constructWebhookEvent(
+      req.body,
+      signature,
+      webhookSecret
+    );
+
+    // Handle the event
+    await StripeService.handleWebhookEvent(event);
+
+    res.json({ received: true });
+  } catch (error: any) {
+    console.error('Webhook error:', error);
+    res.status(400).json({
+      error: 'Webhook processing failed',
+      message: error.message,
+    });
   }
 });
 
