@@ -1036,7 +1036,15 @@ export const businessRecords = pgTable('business_records', {
   // Timestamps (E-Automate + Salesforce compatible)
   createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated / Salesforce CreatedDate
   updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified / Salesforce LastModifiedDate
-});
+}, (table) => ({
+  // Performance indexes for frequently queried columns
+  tenantTypeIdx: index('business_records_tenant_type_idx').on(table.tenantId, table.recordType),
+  tenantStatusIdx: index('business_records_tenant_status_idx').on(table.tenantId, table.status),
+  urlSlugIdx: index('business_records_url_slug_idx').on(table.urlSlug),
+  displayIdIdx: index('business_records_display_id_idx').on(table.companyDisplayId),
+  customerNumberIdx: index('business_records_customer_number_idx').on(table.customerNumber),
+  createdAtIdx: index('business_records_created_at_idx').on(table.createdAt),
+}));
 
 // For backward compatibility during migration
 export const leads = businessRecords; // Alias for existing code
@@ -2023,7 +2031,14 @@ export const deals = pgTable('deals', {
 
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
+}, (table) => ({
+  // Performance indexes for frequently queried columns
+  customerIdIdx: index('deals_customer_id_idx').on(table.customerId),
+  ownerIdIdx: index('deals_owner_id_idx').on(table.ownerId),
+  tenantStatusIdx: index('deals_tenant_status_idx').on(table.tenantId, table.status),
+  tenantStageIdx: index('deals_tenant_stage_idx').on(table.tenantId, table.stageId),
+  expectedCloseDateIdx: index('deals_expected_close_date_idx').on(table.expectedCloseDate),
+}));
 
 // Deal Activities - Track all interactions and updates
 export const dealActivities = pgTable('deal_activities', {
@@ -2619,7 +2634,14 @@ export const serviceTickets = pgTable('service_tickets', {
   resolvedAt: timestamp('resolved_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
+}, (table) => ({
+  // Performance indexes for frequently queried columns
+  customerIdIdx: index('service_tickets_customer_id_idx').on(table.customerId),
+  technicianIdIdx: index('service_tickets_technician_id_idx').on(table.assignedTechnicianId),
+  tenantStatusIdx: index('service_tickets_tenant_status_idx').on(table.tenantId, table.status),
+  tenantCreatedIdx: index('service_tickets_tenant_created_idx').on(table.tenantId, table.createdAt),
+  scheduledDateIdx: index('service_tickets_scheduled_date_idx').on(table.scheduledDate),
+}));
 
 // Service ticket updates/timeline table
 export const serviceTicketUpdates = pgTable('service_ticket_updates', {

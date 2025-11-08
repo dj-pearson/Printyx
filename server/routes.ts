@@ -128,6 +128,7 @@ import {
 } from './routes-pricing';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { BusinessRecordsTransformer } from './data-field-mapping';
+import { cacheControl, etag, varyByTenant } from './middleware/cache-middleware';
 // removed duplicate imports (db, drizzle operators, schema tables)
 
 // Basic authentication middleware - Updated to work with current auth system
@@ -4448,7 +4449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Records routes (client's customers/leads)
-  app.get('/api/customers', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/customers', requireAuth, requireAuth, requireAuth, cacheControl(180), etag(), async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -4492,7 +4493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/customers/:id', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/customers/:id', requireAuth, requireAuth, requireAuth, cacheControl(300), etag(), async (req: any, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.user?.tenantId;

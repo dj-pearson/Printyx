@@ -15,10 +15,11 @@ import {
   type DealStage,
   type DealActivity
 } from "@shared/schema";
+import { cacheControl, etag } from "./middleware/cache-middleware";
 
 export function registerDealsManagementRoutes(app: Express) {
   // Get all deals for tenant
-  app.get("/api/deals-management/deals", isAuthenticated, async (req: any, res) => {
+  app.get("/api/deals-management/deals", isAuthenticated, cacheControl(180), etag(), async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       
