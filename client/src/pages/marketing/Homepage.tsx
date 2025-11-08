@@ -186,10 +186,10 @@ const Homepage = () => {
                 Login
               </Button>
               <Button
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 opacity-75 cursor-not-allowed"
-                disabled
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                onClick={() => window.location.href = '/signup'}
               >
-                Coming October 1st
+                Start Free Trial
               </Button>
             </div>
 
@@ -238,10 +238,12 @@ const Homepage = () => {
                       Login
                     </Button>
                     <Button
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 opacity-75 cursor-not-allowed"
-                      disabled
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                      onClick={() => {
+                        window.location.href = "/signup";
+                      }}
                     >
-                      Coming October 1st
+                      Start Free Trial
                     </Button>
                   </div>
                 </SheetContent>
@@ -406,19 +408,19 @@ const Homepage = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-6 opacity-75 cursor-not-allowed"
-              disabled
+              className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-6"
+              onClick={() => window.location.href = '/signup'}
             >
-              Coming October 1st, 2025
+              Start Your Free Trial
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="text-lg px-8 py-6 border-white text-white hover:bg-white hover:text-blue-600 opacity-75 cursor-not-allowed"
-              disabled
+              className="text-lg px-8 py-6 border-white text-white hover:bg-white hover:text-blue-600"
+              onClick={() => window.location.href = '/login'}
             >
-              Get Early Access
+              Login to Your Account
             </Button>
           </div>
         </div>
