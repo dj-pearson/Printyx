@@ -304,21 +304,14 @@ router.post('/api/dispatch/auto-assign', requireAuth, async (req: any, res) => {
       );
 
     const assignments = [];
+    const updatePromises = [];
+    const now = new Date();
 
     // Simple assignment logic - assign to first available technician
+    // Build assignment list first, then batch update
     for (const ticket of tickets) {
       if (availableTechnicians.length > 0) {
         const assignedTech = availableTechnicians[0];
-        
-        // Update ticket assignment
-        await db
-          .update(serviceTickets)
-          .set({
-            technicianId: assignedTech.id,
-            status: 'assigned',
-            updatedAt: new Date()
-          })
-          .where(eq(serviceTickets.id, ticket.id));
 
         assignments.push({
           ticketId: ticket.id,
@@ -328,10 +321,27 @@ router.post('/api/dispatch/auto-assign', requireAuth, async (req: any, res) => {
           confidence: 85
         });
 
+        // Collect update promises for batch execution
+        updatePromises.push(
+          db
+            .update(serviceTickets)
+            .set({
+              technicianId: assignedTech.id,
+              status: 'assigned',
+              updatedAt: now
+            })
+            .where(eq(serviceTickets.id, ticket.id))
+        );
+
         // Move technician to next in rotation
         availableTechnicians.shift();
         if (availableTechnicians.length === 0) break;
       }
+    }
+
+    // Execute all updates in parallel for better performance
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
     }
 
     res.json({ 
