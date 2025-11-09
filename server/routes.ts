@@ -543,15 +543,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(blockRegistrations);
 
   // Setup session management
+  // SECURITY: Validate SESSION_SECRET is set in production
+  if (app.get('env') === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET environment variable must be set in production');
+  }
+
+  const sessionSecret = process.env.SESSION_SECRET || 'demo-secret-key-change-in-production';
+
   const pgStore = connectPg(session);
   app.use(
     session({
       store: new pgStore({
         conString: process.env.DATABASE_URL,
-        createTableIfMissing: false,
+        createTableIfMissing: true, // SECURITY FIX: Enable auto-creation
         tableName: 'sessions',
       }),
-      secret: process.env.SESSION_SECRET || 'demo-secret-key-change-in-production',
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -592,8 +599,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return csrfProtection(req, res, next);
   });
 
+  // SECURITY FIX: Add rate limiting to CSRF token endpoint to prevent token farming
+  const csrfTokenLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // 50 requests per IP per 15 minutes
+    message: { message: 'Too many CSRF token requests, please try again later.' },
+    standardHeaders: true,
+  });
+
   // CSRF token endpoint (for clients to fetch a token if needed)
-  app.get('/api/csrf-token', csrfProtection, (req: any, res) => {
+  app.get('/api/csrf-token', csrfTokenLimiter, csrfProtection, (req: any, res) => {
     try {
       // Generate a token on demand (CSRF middleware provides req.csrfToken())
       const token = req.csrfToken ? req.csrfToken() : null;
