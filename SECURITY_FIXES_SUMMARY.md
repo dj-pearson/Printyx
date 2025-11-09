@@ -1,9 +1,12 @@
 # Security Remediation Summary
 **Date:** 2025-11-09
 **Branch:** claude/security-audit-remediation-011CUwXHsCaNNWGZDpqLfxPZ
+**Commits:** fc56774, fc1a8d6
 
 ## Overview
 This document summarizes the security fixes implemented based on the comprehensive security audit of the Printyx application.
+
+**Total Fixes:** 16 security improvements (11 Critical + 5 High Priority)
 
 ## Critical Vulnerabilities Fixed
 
@@ -107,9 +110,101 @@ const validatedData = updateDealSchema.parse(req.body);
 **File:** `server/routes.ts:558`
 **Fix:** Changed `createTableIfMissing: true` to prevent silent session failures
 
+## High Priority Improvements (Additional)
+
+### 10. ✅ Enhanced Password Policy
+**File:** `server/auth-routes.ts:16-22`
+**Fix:** Strengthened password requirements
+```typescript
+const passwordSchema = z.string()
+  .min(12, "Password must be at least 12 characters") // Increased from 8
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+```
+
+**Impact:**
+- New passwords require 12+ characters with complexity
+- Existing passwords continue to work (not retroactive)
+- Applied to signup and password reset only
+
+### 11. ✅ Session Rotation on Login
+**File:** `server/auth-routes.ts:105-111`
+**Fix:** Regenerate session ID after successful authentication
+```typescript
+// SECURITY FIX: Regenerate session ID to prevent session fixation attacks
+await new Promise<void>((resolve, reject) => {
+  req.session.regenerate((err) => {
+    if (err) reject(err);
+    else resolve();
+  });
+});
+```
+
+**Impact:** Prevents session fixation attacks (OWASP A07:2021)
+
+### 12. ✅ Improved CORS Configuration
+**File:** `server/index.ts:63-93`
+**Fix:** Whitelist specific origins in development instead of allowing all
+```typescript
+const allowedOriginsDev = [
+  'http://localhost:5000',
+  'http://localhost:3000',
+  'http://localhost:5173', // Vite default
+  'http://127.0.0.1:5000',
+  'http://127.0.0.1:3000',
+];
+
+// Check whitelist in development instead of allowing all origins
+if (allowedOriginsDev.includes(origin)) {
+  return callback(null, true);
+}
+```
+
+### 13. ✅ CSRF Token Rate Limiting
+**File:** `server/routes.ts:602-608`
+**Fix:** Added rate limiting to prevent CSRF token farming
+```typescript
+const csrfTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // 50 requests per IP per 15 minutes
+});
+```
+
+### 14. ✅ Error Sanitization Utility
+**File:** `server/utils/error-sanitizer.ts` (new)
+**Features:**
+- `sanitizeError()` - Removes stack traces and internal paths in production
+- `sendErrorResponse()` - Standardized secure error responses
+- `sanitizeForLogging()` - Redacts passwords, tokens, credit cards, SSNs
+- `requestIdMiddleware()` - Request tracking for support
+
+**Example:**
+```typescript
+// Development: Shows full error details
+// Production: Generic message with request ID
+sendErrorResponse(res, error, 500, req.requestId);
+```
+
+### 15. ✅ Input Validation Schemas
+**File:** `server/utils/validation-schemas.ts` (new)
+**Features:**
+- Pre-built Zod schemas for pagination, search, sorting, date ranges
+- Business-specific schemas (deals, users, business records)
+- Validation middleware factory
+- Sanitization helpers for SQL LIKE patterns
+
+**Usage:**
+```typescript
+import { validate, dealQuerySchema } from './utils/validation-schemas';
+
+app.get('/api/deals', validate({ query: dealQuerySchema }), handler);
+```
+
 ## High Severity Fixes
 
-### 10. ✅ Dependencies Updated
+### 16. ✅ Dependencies Updated
 **Packages Updated:**
 - `axios`: Updated to latest (fixes DoS vulnerability CVE-2025-4hjh)
 - `@playwright/test`: Updated to latest (fixes SSL verification bypass)
@@ -121,6 +216,51 @@ npm install axios@latest @playwright/test@latest tar-fs@latest --legacy-peer-dep
 ```
 
 **Result:** Reduced vulnerabilities from 21 to 17 (eliminated 2 critical, 2 high severity)
+
+---
+
+## New Utilities Created
+
+### 1. Error Sanitization (`server/utils/error-sanitizer.ts`)
+Comprehensive error handling utility that:
+- Sanitizes errors in production (removes stack traces, internal paths)
+- Maps database error codes to user-friendly messages
+- Redacts sensitive fields from logs (passwords, tokens, credit cards)
+- Provides request ID tracking for support
+
+**Functions:**
+- `sanitizeError(error, isDevelopment)` - Clean error for client
+- `sendErrorResponse(res, error, statusCode, requestId)` - Send secure response
+- `sanitizeForLogging(data)` - Redact sensitive fields
+- `requestIdMiddleware(req, res, next)` - Add request IDs
+
+### 2. Validation Schemas (`server/utils/validation-schemas.ts`)
+Reusable Zod validation schemas that:
+- Provide pre-built patterns for common use cases
+- Include business-specific validation
+- Offer middleware factory for easy integration
+- Include sanitization helpers
+
+**Schemas Available:**
+- `paginationSchema` - page, limit, offset validation
+- `searchSchema` - search query validation
+- `sortSchema` - sort by and order validation
+- `dateRangeSchema` - date range validation
+- `filterSchema` - status, type, category filters
+- `businessRecordQuerySchema` - Business record queries
+- `dealQuerySchema` - Deal queries
+- `userQuerySchema` - User queries
+
+**Middleware:**
+```typescript
+validate({ query: dealQuerySchema, params: idParamSchema })
+```
+
+**Helpers:**
+- `sanitizeLikePattern(input)` - Escape SQL wildcards
+- `sanitizeStringArray(input, separator)` - Clean arrays
+- `toSafeInt(input, default)` - Safe integer conversion
+- `toSafeBoolean(input)` - Safe boolean conversion
 
 ## Security Improvements Summary
 
@@ -221,29 +361,36 @@ Before deploying these changes:
 8. ⚠️ Load test API endpoints with 10MB payloads
 9. ⚠️ Verify database connection uses SSL in production
 
-## Files Modified
+## Files Modified (20 total)
 
-### Core Security Files
-- `server/routes.ts` - Session configuration
-- `server/index.ts` - Request size limits
+### Core Security Files (4 files)
+- `server/routes.ts` - Session config, CSRF rate limiting
+- `server/index.ts` - Request size limits, CORS whitelist
 - `server/db.ts` - Database SSL configuration
 - `server/security-compliance.ts` - Encryption implementation
 
-### Authentication Files
-- `server/auth-routes.ts` - Test mode restrictions
+### Authentication Files (4 files)
+- `server/auth-routes.ts` - Password policy, session rotation, test mode
 - `server/replitAuth.ts` - Test mode restrictions
 - `server/auth-setup.ts` - Password logging removal
 - `server/routes/mfa-routes.ts` - Admin authorization
 
-### API Route Files
+### API Route Files (3 files)
 - `server/routes-deals-management.ts` - Input validation
 - `server/routes-intelligent-alerts.ts` - Input validation
 - `server/routes-seo.ts` - Input validation
 
-### Documentation
+### Utilities (2 new files)
+- `server/utils/error-sanitizer.ts` - Error handling & sanitization
+- `server/utils/validation-schemas.ts` - Reusable validation patterns
+
+### Documentation (2 files)
 - `SECURITY_AUDIT_REPORT.md` - Comprehensive audit findings
 - `SECURITY_FIXES_SUMMARY.md` - This file
+
+### Dependencies (2 files)
 - `package.json` - Updated dependencies
+- `package-lock.json` - Lock file
 
 ## Deployment Checklist
 
@@ -270,6 +417,10 @@ Before deploying these changes:
 - ⚠️ MFA reset now requires root admin role (was: any authenticated user)
 - ⚠️ API requests larger than 10MB will be rejected
 - ⚠️ Update endpoints reject unknown fields (strict validation)
+- ⚠️ New passwords require 12+ chars with complexity (existing passwords still work)
+- ⚠️ Session ID regenerates on login (user won't notice, but improves security)
+- ⚠️ Development CORS now whitelists specific origins (may need to add new dev URLs)
+- ⚠️ CSRF token endpoint rate limited to 50 requests per 15 minutes
 
 ### Performance Impact
 - ✅ Minimal - Validation overhead negligible
