@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
 import crypto from "crypto";
+// SECURITY FIX: Import requireRootAdmin middleware for admin-only endpoints
+import { requireRootAdmin } from '../routes-root-admin';
 
 const router = Router();
 
@@ -450,14 +452,12 @@ router.get("/backup-codes/count", async (req: Request, res: Response) => {
 // ==================== Admin Routes ====================
 
 // POST /api/mfa/admin/reset/:userId - Admin: Reset MFA for a user
-router.post("/admin/reset/:userId", async (req: Request, res: Response) => {
-  const user = req.session?.user;
+// SECURITY FIX: Added requireRootAdmin middleware to restrict access to root admins only
+router.post("/admin/reset/:userId", requireRootAdmin, async (req: Request, res: Response) => {
+  const user = (req as any).user || req.session?.user;
   if (!user) {
     return res.status(401).json({ error: "Not authenticated" });
   }
-
-  // TODO: Add admin role check here
-  // For now, any authenticated user can reset (this should be restricted to admins)
 
   try {
     const { userId } = req.params;

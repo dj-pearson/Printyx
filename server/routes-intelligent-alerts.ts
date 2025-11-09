@@ -583,14 +583,37 @@ router.get('/routing-rules', async (req, res) => {
   }
 });
 
+// SECURITY FIX: Add validation schemas to prevent mass assignment
+const routingRuleSchema = z.object({
+  name: z.string().max(255),
+  description: z.string().optional(),
+  priority: z.number().int().min(0),
+  enabled: z.boolean(),
+  conditions: z.any(), // JSON field
+  actions: z.any(), // JSON field
+  tenantId: z.string().uuid(),
+}).strict();
+
+const updateRoutingRuleSchema = z.object({
+  name: z.string().max(255).optional(),
+  description: z.string().optional(),
+  priority: z.number().int().min(0).optional(),
+  enabled: z.boolean().optional(),
+  conditions: z.any().optional(),
+  actions: z.any().optional(),
+}).strict();
+
 /**
  * POST /api/security/routing-rules
  * Create a routing rule
  */
 router.post('/routing-rules', async (req, res) => {
   try {
+    // SECURITY FIX: Validate input
+    const validatedData = routingRuleSchema.parse(req.body);
+
     const [rule] = await db.insert(alertRoutingRules)
-      .values(req.body)
+      .values(validatedData)
       .returning();
 
     res.status(201).json({
@@ -599,6 +622,9 @@ router.post('/routing-rules', async (req, res) => {
     });
   } catch (error) {
     console.error('Failed to create routing rule:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid input', details: error.errors });
+    }
     res.status(500).json({ error: 'Failed to create routing rule' });
   }
 });
@@ -609,8 +635,11 @@ router.post('/routing-rules', async (req, res) => {
  */
 router.put('/routing-rules/:ruleId', async (req, res) => {
   try {
+    // SECURITY FIX: Validate input to prevent mass assignment
+    const validatedData = updateRoutingRuleSchema.parse(req.body);
+
     const [updated] = await db.update(alertRoutingRules)
-      .set(req.body)
+      .set(validatedData)
       .where(eq(alertRoutingRules.id, req.params.ruleId))
       .returning();
 

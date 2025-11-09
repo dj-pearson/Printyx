@@ -13,7 +13,20 @@ import { TenantRequest } from './middleware/tenancy';
 // ============= ENCRYPTION UTILITIES =============
 
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32);
+
+// SECURITY FIX: Validate encryption key is properly set
+if (!process.env.ENCRYPTION_KEY) {
+  console.warn('WARNING: ENCRYPTION_KEY not set. Encrypted data features will be disabled.');
+}
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
+  ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
+  : null;
+
+// Validate key length if provided
+if (ENCRYPTION_KEY && ENCRYPTION_KEY.length !== 32) {
+  throw new Error('ENCRYPTION_KEY must be exactly 32 bytes (64 hex characters)');
+}
 
 export interface EncryptedData {
   encrypted: string;
@@ -21,16 +34,20 @@ export interface EncryptedData {
   tag: string;
 }
 
+// SECURITY FIX: Use createCipheriv instead of deprecated createCipher
 export function encryptSensitiveData(text: string): EncryptedData {
+  if (!ENCRYPTION_KEY) {
+    throw new Error('Cannot encrypt data: ENCRYPTION_KEY not configured');
+  }
+
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher(ENCRYPTION_ALGORITHM, ENCRYPTION_KEY);
-  cipher.setAAD(Buffer.from('additional-auth-data'));
-  
+  const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, ENCRYPTION_KEY, iv);
+
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
+
   const tag = cipher.getAuthTag();
-  
+
   return {
     encrypted,
     iv: iv.toString('hex'),
@@ -38,14 +55,22 @@ export function encryptSensitiveData(text: string): EncryptedData {
   };
 }
 
+// SECURITY FIX: Use createDecipheriv instead of deprecated createDecipher
 export function decryptSensitiveData(encryptedData: EncryptedData): string {
-  const decipher = crypto.createDecipher(ENCRYPTION_ALGORITHM, ENCRYPTION_KEY);
-  decipher.setAAD(Buffer.from('additional-auth-data'));
+  if (!ENCRYPTION_KEY) {
+    throw new Error('Cannot decrypt data: ENCRYPTION_KEY not configured');
+  }
+
+  const decipher = crypto.createDecipheriv(
+    ENCRYPTION_ALGORITHM,
+    ENCRYPTION_KEY,
+    Buffer.from(encryptedData.iv, 'hex')
+  );
   decipher.setAuthTag(Buffer.from(encryptedData.tag, 'hex'));
-  
+
   let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
-  
+
   return decrypted;
 }
 
