@@ -543,15 +543,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(blockRegistrations);
 
   // Setup session management
+  // SECURITY: Validate SESSION_SECRET is set in production
+  if (app.get('env') === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET environment variable must be set in production');
+  }
+
+  const sessionSecret = process.env.SESSION_SECRET || 'demo-secret-key-change-in-production';
+
   const pgStore = connectPg(session);
   app.use(
     session({
       store: new pgStore({
         conString: process.env.DATABASE_URL,
-        createTableIfMissing: false,
+        createTableIfMissing: true, // SECURITY FIX: Enable auto-creation
         tableName: 'sessions',
       }),
-      secret: process.env.SESSION_SECRET || 'demo-secret-key-change-in-production',
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
