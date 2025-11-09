@@ -126,16 +126,33 @@ export function registerDealsManagementRoutes(app: Express) {
     }
   });
 
+  // SECURITY FIX: Add validation schema to prevent mass assignment
+  const updateDealSchema = z.object({
+    title: z.string().max(255).optional(),
+    description: z.string().optional(),
+    amount: z.number().optional(),
+    probability: z.number().min(0).max(100).optional(),
+    expectedCloseDate: z.string().optional(),
+    stage: z.string().optional(),
+    status: z.enum(['open', 'won', 'lost']).optional(),
+    assignedTo: z.string().optional(),
+    businessRecordId: z.string().optional(),
+    notes: z.string().optional(),
+  }).strict(); // Reject unknown properties
+
   // Update deal
   app.put("/api/deals-management/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
 
+      // SECURITY FIX: Validate input to prevent mass assignment
+      const validatedData = updateDealSchema.parse(req.body);
+
       const [updatedDeal] = await db
         .update(deals)
         .set({
-          ...req.body,
+          ...validatedData,
           updatedAt: new Date()
         })
         .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
@@ -148,6 +165,9 @@ export function registerDealsManagementRoutes(app: Express) {
       res.json(updatedDeal);
     } catch (error) {
       console.error("Error updating deal:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
       res.status(500).json({ error: "Failed to update deal" });
     }
   });

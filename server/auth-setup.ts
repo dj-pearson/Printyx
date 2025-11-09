@@ -313,7 +313,8 @@ export async function setupDemoAuth() {
       const roleInfo = roleDefinitions.find(r => r.code === user.role);
       console.log(`${roleInfo?.name}:`);
       console.log(`  Email: ${user.email}`);
-      console.log(`  Password: ${user.password}`);
+      // SECURITY FIX: Never log passwords, even in development
+      console.log(`  Password: [Use password reset to set password]`);
       console.log(`  Level: ${user.level} (${user.department})\n`);
     });
 
