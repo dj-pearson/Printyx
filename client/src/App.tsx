@@ -87,13 +87,6 @@ const ManufacturerIntegrationAudit = React.lazy(() => import("@/pages/Manufactur
 const LeadsManagement = React.lazy(() => import("@/pages/LeadsManagement"));
 const QuoteProposalGeneration = React.lazy(() => import("@/pages/QuoteProposalGeneration"));
 const QuoteBuilderPage = React.lazy(() => import("@/pages/QuoteBuilderPage"));
-const ProductCatalogOptimization = React.lazy(() => import("@/pages/ProductCatalogOptimization"));
-const DealsManagementOptimization = React.lazy(() => import("@/pages/DealsManagementOptimization"));
-const PurchaseOrdersOptimization = React.lazy(() => import("@/pages/PurchaseOrdersOptimization"));
-const QuoteBuilderOptimization = React.lazy(() => import("@/pages/QuoteBuilderOptimization"));
-const TaskManagementOptimization = React.lazy(() => import("@/pages/TaskManagementOptimization"));
-const QuotesManagementOptimization = React.lazy(() => import("@/pages/QuotesManagementOptimization"));
-const QuoteProposalGenerationOptimization = React.lazy(() => import("@/pages/QuoteProposalGenerationOptimization"));
 const QuotesManagement = React.lazy(() => import("@/pages/QuotesManagement"));
 const CompanyIdsTest = React.lazy(() => import("@/pages/CompanyIdsTest"));
 const QuoteView = React.lazy(() => import("@/pages/QuoteView"));
@@ -357,43 +350,11 @@ function Router() {
             path="/service-dispatch"
             component={ServiceDispatchOptimization}
           />
-          <Route
-            path="/service-dispatch-optimization"
-            component={ServiceDispatchOptimization}
-          />
           <Route path="/technician-management" component={TechnicianManagement} />
           <Route path="/vehicle-management" component={VehicleManagement} />
           <Route path="/asset-management" component={AssetManagement} />
           <Route path="/mobile-field-service" component={MobileFieldService} />
           <Route path="/product-catalog" component={ProductCatalog} />
-          <Route
-            path="/product-catalog-optimization"
-            component={ProductCatalogOptimization}
-          />
-          <Route
-            path="/deals-management-optimization"
-            component={DealsManagementOptimization}
-          />
-          <Route
-            path="/purchase-orders-optimization"
-            component={PurchaseOrdersOptimization}
-          />
-          <Route
-            path="/quote-builder-optimization"
-            component={QuoteBuilderOptimization}
-          />
-          <Route
-            path="/task-management-optimization"
-            component={TaskManagementOptimization}
-          />
-          <Route
-            path="/quotes-management-optimization"
-            component={QuotesManagementOptimization}
-          />
-          <Route
-            path="/quote-proposal-generation-optimization"
-            component={QuoteProposalGenerationOptimization}
-          />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
           <Route path="/admin/product-models" component={ProductModels} />
@@ -487,10 +448,6 @@ function Router() {
           <Route
             path="/esignature-integration"
             component={ESignatureIntegration}
-          />
-          <Route
-            path="/service-dispatch-optimization"
-            component={ServiceDispatchOptimization}
           />
           <Route path="/service-hub" component={ServiceHub} />
           <Route path="/apollo-leads" component={ApolloLeadEnrichment} />
