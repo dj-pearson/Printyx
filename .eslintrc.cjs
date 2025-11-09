@@ -13,6 +13,9 @@ module.exports = {
   settings: {
     react: { version: 'detect' },
   },
+  rules: {
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+  },
   ignorePatterns: ['dist', 'node_modules'],
 };
 
