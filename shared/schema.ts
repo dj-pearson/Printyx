@@ -205,6 +205,132 @@ export {
   insertComplianceSettingsSchema,
 } from './security-schema';
 
+// Re-export User Lifecycle Management schemas
+export {
+  userProvisioningTemplates,
+  userLifecycleEvents,
+  onboardingChecklists,
+  offboardingWorkflows,
+  accessReviews,
+  accessReviewCertifications,
+  bulkUserOperations,
+  userImpersonationSessions,
+  lifecycleEventTypeEnum,
+  lifecycleStatusEnum,
+  accessReviewStatusEnum,
+  reviewDecisionEnum,
+  insertUserProvisioningTemplateSchema,
+  insertUserLifecycleEventSchema,
+  insertOnboardingChecklistSchema,
+  insertOffboardingWorkflowSchema,
+  insertAccessReviewSchema,
+  insertAccessReviewCertificationSchema,
+  insertBulkUserOperationSchema,
+  insertUserImpersonationSessionSchema,
+} from './user-lifecycle-schema';
+
+export type {
+  UserProvisioningTemplate,
+  InsertUserProvisioningTemplate,
+  UserLifecycleEvent,
+  InsertUserLifecycleEvent,
+  OnboardingChecklist,
+  InsertOnboardingChecklist,
+  OffboardingWorkflow,
+  InsertOffboardingWorkflow,
+  AccessReview,
+  InsertAccessReview,
+  AccessReviewCertification,
+  InsertAccessReviewCertification,
+  BulkUserOperation,
+  InsertBulkUserOperation,
+  UserImpersonationSession,
+  InsertUserImpersonationSession,
+} from './user-lifecycle-schema';
+
+// Re-export Intelligent Alerts & Incident Response schemas
+export {
+  alertTriageResults,
+  automatedContainmentLogs,
+  incidentCorrelations,
+  incidentResolutionPatterns,
+  proactiveThreatDetection,
+  alertRoutingRules,
+  resolutionSuggestionFeedback,
+  alertSeverityEnum,
+  alertPriorityEnum,
+  alertCategoryEnum,
+  alertStatusEnum,
+  containmentActionTypeEnum,
+  routingReasonEnum,
+  resolutionConfidenceEnum,
+  insertAlertTriageResultSchema,
+  insertAutomatedContainmentLogSchema,
+  insertIncidentCorrelationSchema,
+  insertIncidentResolutionPatternSchema,
+  insertProactiveThreatDetectionSchema,
+  insertAlertRoutingRuleSchema,
+  insertResolutionSuggestionFeedbackSchema,
+} from './intelligent-alerts-schema';
+
+export type {
+  AlertTriageResult,
+  InsertAlertTriageResult,
+  AutomatedContainmentLog,
+  InsertAutomatedContainmentLog,
+  IncidentCorrelation,
+  InsertIncidentCorrelation,
+  IncidentResolutionPattern,
+  InsertIncidentResolutionPattern,
+  ProactiveThreatDetection,
+  InsertProactiveThreatDetection,
+  AlertRoutingRule,
+  InsertAlertRoutingRule,
+  ResolutionSuggestionFeedback,
+  InsertResolutionSuggestionFeedback,
+} from './intelligent-alerts-schema';
+
+// Re-export Tenant Onboarding schemas
+export {
+  tenantOnboardingTemplates,
+  tenantOnboardingSessions,
+  integrationSetupLogs,
+  dataImportValidations,
+  tenantHealthScores,
+  onboardingAnalytics,
+  tenantCloneOperations,
+  onboardingStatusEnum,
+  onboardingStepStatusEnum,
+  companySizeEnum,
+  industryTypeEnum,
+  integrationStatusEnum,
+  healthScoreGradeEnum,
+  insertTenantOnboardingTemplateSchema,
+  insertTenantOnboardingSessionSchema,
+  insertIntegrationSetupLogSchema,
+  insertDataImportValidationSchema,
+  insertTenantHealthScoreSchema,
+  insertOnboardingAnalyticsSchema,
+  insertTenantCloneOperationSchema,
+} from './tenant-onboarding-schema';
+
+export type {
+  TenantOnboardingTemplate,
+  InsertTenantOnboardingTemplate,
+  TenantOnboardingSession,
+  InsertTenantOnboardingSession,
+  IntegrationSetupLog,
+  InsertIntegrationSetupLog,
+  DataImportValidation,
+  InsertDataImportValidation,
+  TenantHealthScore,
+  InsertTenantHealthScore,
+  OnboardingAnalytics,
+  InsertOnboardingAnalytics,
+  TenantCloneOperation,
+  InsertTenantCloneOperation,
+} from './tenant-onboarding-schema';
+
 // Re-export Commission Management schemas
 export {
   commissionPlans,
