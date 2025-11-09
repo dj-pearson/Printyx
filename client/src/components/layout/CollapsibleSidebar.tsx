@@ -69,18 +69,6 @@ function getNavigationSections(userRole: any): NavigationSection[] {
   const isPlatformRole = userRole.canAccessAllTenants === true;
   const isCompanyAdmin = userRole.name?.includes("Admin");
   const level = userRole.level || 1;
-  
-  // Debug: Always log the user role to console
-  console.log('SIDEBAR DEBUG - User Role Analysis:', {
-    userRole,
-    permissions,
-    isPlatformRole,
-    isCompanyAdmin,
-    level,
-    canAccessAllTenants: userRole.canAccessAllTenants,
-    roleName: userRole.name,
-    roleCode: userRole.code
-  });
 
   // Determine URL prefix based on role level and permissions
   const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
@@ -241,8 +229,6 @@ function getNavigationSections(userRole: any): NavigationSection[] {
 
   // Platform/Admin-specific sections - Root Admin only
   if (isPlatformRole) {
-    console.log('DEBUG - Platform Role detected, User role:', userRole);
-    
     const platformChildren = [
       { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
       { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
@@ -306,21 +292,6 @@ interface CollapsibleSidebarProps {
 
 export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
-
-  // Force console log regardless of conditions
-  React.useEffect(() => {
-    console.log('SIDEBAR MOUNT DEBUG - FORCED:', {
-      isAuthenticated,
-      user,
-      userRole: user?.role,
-      userRoleType: typeof user?.role,
-      hasUserRole: !!user?.role,
-      userRoleName: user?.role?.name,
-      userRoleCanAccessAllTenants: user?.role?.canAccessAllTenants,
-      userRoleLevel: user?.role?.level,
-      timestamp: new Date().toISOString()
-    });
-  }, [user, isAuthenticated]);
 
   // Get role-aware navigation sections using user.role directly
   const navigationSections = getNavigationSections(user?.role);

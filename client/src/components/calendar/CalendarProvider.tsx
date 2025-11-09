@@ -72,30 +72,30 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
     try {
       // TODO: Implement OAuth flow for calendar providers
       // This would normally initiate OAuth 2.0 flow
-      
+
       if (type === 'microsoft') {
         // Microsoft Graph OAuth flow
         // window.location.href = `/api/auth/microsoft?redirect_uri=${encodeURIComponent(window.location.origin)}`
         toast({
-          title: "Microsoft Calendar",
-          description: "Microsoft Graph OAuth integration will be available in next update.",
+          title: "Preview Mode - Microsoft Calendar",
+          description: "🚧 OAuth integration coming soon. This is a demo connection for testing the UI.",
         });
       } else if (type === 'google') {
         // Google Calendar OAuth flow
         // window.location.href = `/api/auth/google?redirect_uri=${encodeURIComponent(window.location.origin)}`
         toast({
-          title: "Google Calendar",
-          description: "Google Calendar OAuth integration will be available in next update.",
+          title: "Preview Mode - Google Calendar",
+          description: "🚧 OAuth integration coming soon. This is a demo connection for testing the UI.",
         });
       }
-      
+
       // Simulate connection for demo
-      setProviders(prev => prev.map(p => 
-        p.type === type 
+      setProviders(prev => prev.map(p =>
+        p.type === type
           ? { ...p, isConnected: true, accessToken: 'demo-token', expiresAt: new Date(Date.now() + 3600000) }
           : p
       ));
-      
+
     } catch (error) {
       toast({
         title: "Connection Failed",
@@ -135,65 +135,18 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
 
     try {
       // TODO: Implement actual API calls
-      if (provider.type === 'microsoft') {
-        // Microsoft Graph API call
-        // POST https://graph.microsoft.com/v1.0/me/events
-        console.log('Microsoft Graph event creation:', {
-          subject: event.title,
-          start: {
-            dateTime: event.startTime.toISOString(),
-            timeZone: 'America/New_York'
-          },
-          end: {
-            dateTime: event.endTime.toISOString(),
-            timeZone: 'America/New_York'
-          },
-          body: {
-            contentType: 'HTML',
-            content: event.description || ''
-          },
-          location: {
-            displayName: event.location || ''
-          },
-          attendees: event.attendees?.map(a => ({
-            emailAddress: {
-              address: a.email,
-              name: a.name
-            },
-            type: a.required ? 'required' : 'optional'
-          })) || []
-        });
-      } else if (provider.type === 'google') {
-        // Google Calendar API call
-        // POST https://www.googleapis.com/calendar/v3/calendars/primary/events
-        console.log('Google Calendar event creation:', {
-          summary: event.title,
-          start: {
-            dateTime: event.startTime.toISOString(),
-            timeZone: 'America/New_York'
-          },
-          end: {
-            dateTime: event.endTime.toISOString(),
-            timeZone: 'America/New_York'
-          },
-          description: event.description || '',
-          location: event.location || '',
-          attendees: event.attendees?.map(a => ({
-            email: a.email,
-            displayName: a.name,
-            responseStatus: 'needsAction'
-          })) || []
-        });
-      }
+      // When OAuth is implemented, make actual API calls here:
+      // - Microsoft Graph: POST https://graph.microsoft.com/v1.0/me/events
+      // - Google Calendar: POST https://www.googleapis.com/calendar/v3/calendars/primary/events
 
-      // Return mock event ID
+      // Return mock event ID for preview mode
       const eventId = `event-${Date.now()}`;
-      
+
       toast({
-        title: "Event Created",
-        description: `Calendar event has been created in ${provider.name}.`,
+        title: "Preview Mode - Event Created",
+        description: `📅 Event "${event.title}" simulated in ${provider.name}. Real calendar sync coming soon.`,
       });
-      
+
       return eventId;
       
     } catch (error) {
@@ -208,29 +161,29 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
 
   const updateEvent = async (eventId: string, event: Partial<CalendarEvent>, providerId: string) => {
     const provider = providers.find(p => p.id === providerId);
-    
+
     if (!provider || !provider.isConnected) {
       throw new Error('Calendar provider not connected');
     }
 
     // TODO: Implement actual API calls for updating events
     toast({
-      title: "Event Updated",
-      description: `Calendar event has been updated in ${provider.name}.`,
+      title: "Preview Mode - Event Updated",
+      description: `📝 Event changes simulated in ${provider.name}. Real calendar sync coming soon.`,
     });
   };
 
   const deleteEvent = async (eventId: string, providerId: string) => {
     const provider = providers.find(p => p.id === providerId);
-    
+
     if (!provider || !provider.isConnected) {
       throw new Error('Calendar provider not connected');
     }
 
     // TODO: Implement actual API calls for deleting events
     toast({
-      title: "Event Deleted",
-      description: `Calendar event has been deleted from ${provider.name}.`,
+      title: "Preview Mode - Event Deleted",
+      description: `🗑️ Event deletion simulated in ${provider.name}. Real calendar sync coming soon.`,
     });
   };
 
