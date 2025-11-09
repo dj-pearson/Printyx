@@ -60,14 +60,36 @@ app.use((req: any, res, next) => {
 // CORS configuration
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const allowedOriginsProd = [/^https?:\/\/([a-z0-9-]+\.)?printyx\.net$/i, 'https://printyx.net']; // subdomains + apex
+// SECURITY FIX: Whitelist specific origins even in development for better security
+const allowedOriginsDev = [
+  'http://localhost:5000',
+  'http://localhost:3000',
+  'http://localhost:5173', // Vite default
+  'http://127.0.0.1:5000',
+  'http://127.0.0.1:3000',
+];
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (isDevelopment || !origin) return callback(null, true);
-      if (allowedOriginsProd.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))) {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      // Check production origins
+      if (!isDevelopment) {
+        if (allowedOriginsProd.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))) {
+          return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+      }
+
+      // SECURITY FIX: In development, whitelist specific origins instead of allowing all
+      if (allowedOriginsDev.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+
+      console.warn(`[CORS] Blocked origin in development: ${origin}`);
+      return callback(new Error('Not allowed by CORS - add to allowedOriginsDev if needed'));
     },
     credentials: true,
   }),
