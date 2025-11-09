@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeletons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -514,11 +516,12 @@ export default function Contacts() {
   if (isLoading) {
     return (
       <MainLayout title="Contacts" description="Manage your contacts and leads">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading contacts...</p>
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="mb-6">
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-96" />
           </div>
+          <TableSkeleton rows={10} columns={5} />
         </div>
       </MainLayout>
     );
