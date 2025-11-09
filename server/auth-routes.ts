@@ -13,10 +13,18 @@ import { emailService } from "./services/email-service";
 
 const router = express.Router();
 
+// SECURITY FIX: Enhanced password validation with complexity requirements
+const passwordSchema = z.string()
+  .min(12, "Password must be at least 12 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
 // Login schema
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1),
+  password: z.string().min(1), // Don't validate complexity on login, only on creation/reset
 });
 
 // Password reset schemas
@@ -26,7 +34,7 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema, // SECURITY FIX: Use enhanced password validation
 });
 
 // Signup schema
@@ -41,7 +49,7 @@ const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema, // SECURITY FIX: Use enhanced password validation
   phone: z.string().optional(),
 
   // Company details
@@ -102,6 +110,14 @@ router.post("/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // SECURITY FIX: Regenerate session ID to prevent session fixation attacks
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
     // Set session
     req.session.userId = user.id;
     req.session.tenantId = user.tenantId || undefined;
@@ -142,9 +158,12 @@ router.post("/logout", (req, res) => {
 // Get current user
 router.get("/user", async (req, res) => {
   try {
-    // TEST MODE: Support Playwright testing with test header
-    const isTestMode = process.env.TEST_MODE === 'true' || !!process.env.TESTING_STRIPE_SECRET_KEY;
-    if (isTestMode && req.headers['x-test-auth'] === 'playwright') {
+    // SECURITY FIX: Restrict test mode to development/test environments only
+    const isTestMode = (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
+      && process.env.TEST_MODE === 'true';
+
+    const testAuthToken = process.env.TEST_AUTH_SECRET || 'playwright';
+    if (isTestMode && req.headers['x-test-auth'] === testAuthToken) {
       const testUserId = 'test-user-playwright';
       const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
       

@@ -145,11 +145,12 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // TEST MODE: Allow bypass for Playwright e2e testing
-  // Testing environment automatically provides TESTING_STRIPE_SECRET_KEY, use that as indicator
-  const isTestMode = process.env.TEST_MODE === 'true' || !!process.env.TESTING_STRIPE_SECRET_KEY;
-  
-  if (isTestMode && req.headers['x-test-auth'] === 'playwright') {
+  // SECURITY FIX: Restrict test mode to development/test environments only
+  const isTestMode = (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
+    && process.env.TEST_MODE === 'true';
+
+  const testAuthToken = process.env.TEST_AUTH_SECRET || 'playwright';
+  if (isTestMode && req.headers['x-test-auth'] === testAuthToken) {
     // Create or retrieve test user
     const testUserId = 'test-user-playwright';
     const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
