@@ -108,8 +108,7 @@ function LeadContactForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submission started", { leadId, formData });
-    
+
     // Validate required fields
     if (!formData.firstName || !formData.lastName) {
       console.error("Validation failed: Missing required fields");
@@ -124,14 +123,11 @@ function LeadContactForm({
     setIsLoading(true);
 
     try {
-      console.log("Making API request to create lead contact:", { leadId, formData });
-      
       const response = await apiRequest(`/api/leads/${leadId}/contacts`, {
         method: 'POST',
         data: formData,
       });
 
-      console.log("Lead contact created successfully:", response);
       onSuccess();
     } catch (error) {
       console.error("Error creating lead contact:", error);
@@ -481,9 +477,8 @@ export default function LeadDetailHubspot() {
               </Button>
               <Button 
                 variant="outline" 
-                size="sm" 
+                size="sm"
                 onClick={async () => {
-                  console.log("Add Contacts button clicked - DIRECT TEST");
                   alert("Button clicked! Check console for API test results...");
                   // Direct API test
                   try {
@@ -496,7 +491,6 @@ export default function LeadDetailHubspot() {
                         isPrimary: false,
                       },
                     });
-                    console.log("DIRECT API SUCCESS:", response);
                     alert("SUCCESS: Contact created!");
                     toast({
                       title: "Success",
@@ -2380,7 +2374,6 @@ export default function LeadDetailHubspot() {
       <Dialog
         open={dialogs.editRecord}
         onOpenChange={(open) => {
-          console.log("Dialog open state changed:", open);
           setDialogs((prev) => ({ ...prev, editRecord: open }));
         }}
       >
@@ -2391,7 +2384,6 @@ export default function LeadDetailHubspot() {
           <LeadContactForm
             leadId={id}
             onSuccess={() => {
-              console.log("Contact creation success callback triggered");
               setDialogs((prev) => ({ ...prev, editRecord: false }));
               queryClient.invalidateQueries({ queryKey: ["/api/leads", id, "contacts"] });
               toast({
@@ -2400,7 +2392,6 @@ export default function LeadDetailHubspot() {
               });
             }}
             onCancel={() => {
-              console.log("Contact creation cancelled");
               setDialogs((prev) => ({ ...prev, editRecord: false }));
             }}
           />

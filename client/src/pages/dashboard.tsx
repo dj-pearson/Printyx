@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
 import ModularDashboard from "@/components/ModularDashboard";
+import { DashboardSkeleton } from "@/components/ui/skeletons";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -24,12 +25,11 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <MainLayout title="Dashboard" description="Role-based metrics and business insights">
+        <div className="p-4 sm:p-6 lg:p-8">
+          <DashboardSkeleton />
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
