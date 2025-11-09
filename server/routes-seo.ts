@@ -80,23 +80,42 @@ router.post('/api/seo/settings', requireAuth, async (req: any, res) => {
       .where(eq(seoSettings.tenantId, tenantId))
       .limit(1);
 
+    // SECURITY FIX: Add validation schema to prevent mass assignment
+    const seoSettingsSchema = z.object({
+      metaTitle: z.string().max(255).optional(),
+      metaDescription: z.string().max(500).optional(),
+      metaKeywords: z.string().optional(),
+      ogTitle: z.string().max(255).optional(),
+      ogDescription: z.string().max(500).optional(),
+      ogImage: z.string().url().optional(),
+      twitterCard: z.string().optional(),
+      canonicalUrl: z.string().url().optional(),
+      structuredData: z.any().optional(), // JSON field
+      robots: z.string().optional(),
+    }).strict();
+
+    const validatedData = seoSettingsSchema.parse(req.body);
+
     let result;
     if (existing) {
       [result] = await db
         .update(seoSettings)
-        .set({ ...req.body, updatedAt: new Date() })
+        .set({ ...validatedData, updatedAt: new Date() })
         .where(eq(seoSettings.id, existing.id))
         .returning();
     } else {
       [result] = await db
         .insert(seoSettings)
-        .values({ ...req.body, tenantId })
+        .values({ ...validatedData, tenantId })
         .returning();
     }
 
     res.json(result);
   } catch (error: any) {
     console.error('Error updating SEO settings:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid input', details: error.errors });
+    }
     res.status(500).json({ message: error.message });
   }
 });
