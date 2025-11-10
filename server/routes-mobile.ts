@@ -1,6 +1,7 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+import { serviceReportPDFGenerator } from './services/service-report-pdf';
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
@@ -642,6 +643,111 @@ router.post('/api/mobile/service-report', requireAuth, async (req: any, res) => 
   } catch (error) {
     console.error('Error submitting service report:', error);
     res.status(500).json({ message: 'Failed to submit service report' });
+  }
+});
+
+// Generate and download PDF service report
+router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { reportId } = req.params;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    // In a real implementation, fetch the service report data from database
+    // For now, using mock data structure
+    const serviceReport = {
+      reportId: reportId,
+      ticketNumber: `TK-${reportId.substring(0, 8)}`,
+      completedAt: new Date(),
+      technician: {
+        name: req.user.name || 'Service Technician',
+        id: req.user.id,
+        phone: '+1-555-0100'
+      },
+      customer: {
+        name: 'Sample Customer Inc.',
+        address: '123 Business St, Suite 100, City, ST 12345',
+        phone: '+1-555-0200',
+        email: 'contact@customer.com'
+      },
+      equipment: {
+        make: 'Canon',
+        model: 'ImageRunner 2535i',
+        serialNumber: 'MX-2025-001',
+        location: '2nd Floor - Copy Center'
+      },
+      workSummary: {
+        workPerformed: [
+          'Replaced black toner cartridge',
+          'Cleaned paper feed mechanism',
+          'Updated firmware to latest version',
+          'Performed test prints for quality verification',
+          'Checked error logs and cleared historical errors'
+        ],
+        timeSpent: 90,
+        issuesFound: [
+          'Toner cartridge was at 5% capacity',
+          'Minor paper feed roller wear detected'
+        ],
+        recommendations: [
+          'Schedule preventive maintenance in 6 months',
+          'Monitor paper feed roller - may need replacement in 3-4 months',
+          'Consider upgrading to high-capacity toner cartridges for better cost efficiency'
+        ]
+      },
+      partsAndMaterials: {
+        partsUsed: [
+          {
+            partNumber: 'TNR-2535-BK',
+            description: 'Black Toner Cartridge',
+            quantity: 1,
+            cost: 89.99
+          },
+          {
+            partNumber: 'MNT-2535-KIT',
+            description: 'Maintenance Kit (supplies)',
+            quantity: 1,
+            cost: 45.00
+          }
+        ],
+        laborCost: 127.50,
+        totalPartsCost: 134.99,
+        totalCost: 262.49
+      },
+      equipmentStatus: {
+        meterReading: 145670,
+        operationalStatus: 'Fully Operational',
+        nextServiceDue: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 6 months from now
+      },
+      customerApproval: {
+        signedAt: new Date(),
+        customerNotes: 'Service completed promptly and professionally. Equipment working perfectly.',
+        satisfactionRating: 5
+      },
+      qualityChecks: {
+        functionalTest: true,
+        printQualityTest: true,
+        networkConnectivity: true,
+        customerTraining: false
+      }
+    };
+
+    // Generate PDF
+    const pdfStream = serviceReportPDFGenerator.generatePDF(serviceReport);
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="service-report-${reportId}.pdf"`);
+
+    // Pipe PDF stream to response
+    pdfStream.pipe(res);
+
+  } catch (error) {
+    console.error('Error generating service report PDF:', error);
+    res.status(500).json({ message: 'Failed to generate PDF service report' });
   }
 });
 

@@ -10,6 +10,7 @@ import { db } from './db';
 import { serviceTickets, technicians } from '../shared/schema';
 import { eq, and, inArray, sql, desc, count } from 'drizzle-orm';
 import { cacheControl, etag } from './middleware/cache-middleware';
+import { customerNotificationService } from './services/customer-notification-service';
 
 const router = Router();
 
@@ -177,6 +178,41 @@ router.get('/api/dispatch/recommendations', requireAuth, cacheControl(120), etag
 
           // Update assigned count for capacity tracking
           assignedCounts[availableTech.id] = (assignedCounts[availableTech.id] || 0) + 1;
+
+          // SEND AUTOMATED CUSTOMER NOTIFICATION
+          try {
+            const customerContact = await customerNotificationService.getCustomerContact(
+              tenantId,
+              ticket.customerId
+            );
+
+            if (customerContact) {
+              // Calculate ETA (default 30 minutes from now)
+              const eta = new Date(Date.now() + 30 * 60000);
+
+              // Send assignment notification
+              const notificationResult = await customerNotificationService.sendAssignmentNotification({
+                ticketId: ticket.id,
+                ticketNumber: ticket.ticketNumber,
+                technicianName: availableTech.name,
+                technicianPhone: availableTech.phone || undefined,
+                estimatedArrival: eta,
+                customerContact,
+                serviceDescription: ticket.title || 'service call',
+                trackingLink: `/track/${ticket.id}`
+              });
+
+              if (notificationResult.success) {
+                console.log(`[AUTO-DISPATCH] Customer notification sent for ticket ${ticket.id}`);
+              }
+
+              // Schedule 30-minute reminder
+              customerNotificationService.scheduleReminder(ticket.id, 30);
+            }
+          } catch (notificationError) {
+            console.error(`[AUTO-DISPATCH] Failed to send customer notification for ticket ${ticket.id}:`, notificationError);
+            // Don't fail the assignment if notification fails
+          }
         } catch (assignError) {
           console.error(`Error auto-assigning ticket ${ticket.id}:`, assignError);
           // Continue with recommendations even if auto-assign fails
