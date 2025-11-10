@@ -2,6 +2,11 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { serviceReportPDFGenerator } from './services/service-report-pdf';
+import {
+  SERVICE_CHECKLIST_TEMPLATES,
+  getTemplateById,
+  getTemplatesByServiceType
+} from './services/service-checklist-templates';
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
@@ -748,6 +753,81 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
   } catch (error) {
     console.error('Error generating service report PDF:', error);
     res.status(500).json({ message: 'Failed to generate PDF service report' });
+  }
+});
+
+/**
+ * SERVICE CHECKLIST TEMPLATES
+ * Pre-built checklists for mobile technicians
+ */
+
+// Get all available checklist templates
+router.get('/api/mobile/checklist-templates', requireAuth, (req: any, res) => {
+  try {
+    res.json({
+      success: true,
+      templates: SERVICE_CHECKLIST_TEMPLATES.map(t => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        serviceType: t.serviceType,
+        estimatedTime: t.estimatedTime,
+        itemCount: t.items.length,
+      })),
+    });
+  } catch (error) {
+    console.error('[CHECKLIST] Error fetching templates:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch checklist templates',
+    });
+  }
+});
+
+// Get specific checklist template with full details
+router.get('/api/mobile/checklist-templates/:templateId', requireAuth, (req: any, res) => {
+  try {
+    const { templateId } = req.params;
+    const template = getTemplateById(templateId);
+
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: 'Checklist template not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      template,
+    });
+  } catch (error) {
+    console.error('[CHECKLIST] Error fetching template:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch checklist template',
+    });
+  }
+});
+
+// Get checklist templates by service type
+router.get('/api/mobile/checklist-templates/by-type/:serviceType', requireAuth, (req: any, res) => {
+  try {
+    const { serviceType } = req.params;
+    const templates = getTemplatesByServiceType(serviceType);
+
+    res.json({
+      success: true,
+      serviceType,
+      templates,
+      count: templates.length,
+    });
+  } catch (error) {
+    console.error('[CHECKLIST] Error fetching templates by type:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch checklist templates',
+    });
   }
 });
 
