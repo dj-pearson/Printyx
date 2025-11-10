@@ -7971,3 +7971,36 @@ export type {
   SubscriptionNotification,
   NewSubscriptionNotification,
 } from './schema-subscriptions';
+
+// Re-export Print Cost Calculator schemas
+export {
+  calculatorSessions,
+  calculatorLeads,
+  emailSequenceTracking,
+  industryBenchmarks,
+  calculatorAnalyticsEvents,
+  deviceTypeEnum,
+  fleetAgeEnum,
+  industryTypeEnum,
+  painPointEnum,
+  userRoleEnum,
+  emailSequenceStatusEnum,
+  insertCalculatorSessionSchema,
+  insertCalculatorLeadSchema,
+  insertEmailSequenceTrackingSchema,
+  insertIndustryBenchmarkSchema,
+  insertCalculatorAnalyticsEventSchema,
+} from './print-cost-calculator-schema';
+
+export type {
+  CalculatorSession,
+  InsertCalculatorSession,
+  CalculatorLead,
+  InsertCalculatorLead,
+  EmailSequenceTracking,
+  InsertEmailSequenceTracking,
+  IndustryBenchmark,
+  InsertIndustryBenchmark,
+  CalculatorAnalyticsEvent,
+  InsertCalculatorAnalyticsEvent,
+} from './print-cost-calculator-schema';
