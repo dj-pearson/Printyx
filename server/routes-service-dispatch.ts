@@ -7,7 +7,7 @@ const requireAuth = (req: any, res: any, next: any) => {
   next();
 };
 import { db } from './db';
-import { serviceTickets, technicians } from '../shared/schema';
+import { serviceTickets, technicians, inventoryItems } from '../shared/schema';
 import { eq, and, inArray, sql, desc, count } from 'drizzle-orm';
 import { cacheControl, etag } from './middleware/cache-middleware';
 import { customerNotificationService } from './services/customer-notification-service';
@@ -550,10 +550,196 @@ router.get('/api/dispatch/tracking', requireAuth, cacheControl(60), etag(), asyn
     }));
 
     res.json(tracking);
-    
+
   } catch (error) {
     console.error('Error fetching tracking data:', error);
     res.status(500).json({ message: 'Failed to fetch tracking data' });
+  }
+});
+
+/**
+ * PARTS AVAILABILITY CHECK
+ * Verify parts availability before dispatch to prevent delays
+ */
+router.post('/api/dispatch/check-parts', requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { ticketId, requiredParts } = req.body;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    if (!requiredParts || !Array.isArray(requiredParts) || requiredParts.length === 0) {
+      return res.json({
+        available: true,
+        missingParts: [],
+        availableParts: [],
+        message: 'No parts required for this ticket'
+      });
+    }
+
+    // Check inventory for each required part
+    const partsCheck = await Promise.all(
+      requiredParts.map(async (partNumber: string) => {
+        const [inventoryItem] = await db
+          .select({
+            id: inventoryItems.id,
+            partNumber: inventoryItems.partNumber,
+            name: inventoryItems.name,
+            quantityAvailable: inventoryItems.quantityAvailable,
+            quantityOnHand: inventoryItems.quantityOnHand,
+            quantityOnOrder: inventoryItems.quantityOnOrder,
+          })
+          .from(inventoryItems)
+          .where(
+            and(
+              eq(inventoryItems.tenantId, tenantId),
+              eq(inventoryItems.partNumber, partNumber)
+            )
+          )
+          .limit(1);
+
+        if (!inventoryItem) {
+          return {
+            partNumber,
+            available: false,
+            reason: 'Part not found in inventory',
+            quantityAvailable: 0,
+            quantityOnOrder: 0,
+          };
+        }
+
+        const available = (inventoryItem.quantityAvailable || 0) > 0;
+
+        return {
+          partNumber,
+          name: inventoryItem.name,
+          available,
+          quantityAvailable: inventoryItem.quantityAvailable || 0,
+          quantityOnHand: inventoryItem.quantityOnHand || 0,
+          quantityOnOrder: inventoryItem.quantityOnOrder || 0,
+          reason: !available
+            ? `Out of stock (${inventoryItem.quantityOnOrder || 0} on order)`
+            : undefined,
+        };
+      })
+    );
+
+    const missingParts = partsCheck.filter(p => !p.available);
+    const availableParts = partsCheck.filter(p => p.available);
+    const allPartsAvailable = missingParts.length === 0;
+
+    res.json({
+      available: allPartsAvailable,
+      missingParts,
+      availableParts,
+      message: allPartsAvailable
+        ? 'All required parts are available'
+        : `${missingParts.length} part(s) unavailable - dispatch may be delayed`,
+      canDispatch: allPartsAvailable,
+    });
+  } catch (error) {
+    console.error('[PARTS CHECK] Error:', error);
+    res.status(500).json({ message: 'Failed to check parts availability' });
+  }
+});
+
+/**
+ * BATCH PARTS CHECK FOR MULTIPLE TICKETS
+ * Check parts availability for multiple tickets at once
+ */
+router.post('/api/dispatch/batch-check-parts', requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { ticketIds } = req.body;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    if (!ticketIds || !Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.json({ tickets: [] });
+    }
+
+    // Get tickets with their required parts
+    const tickets = await db
+      .select({
+        id: serviceTickets.id,
+        ticketNumber: serviceTickets.ticketNumber,
+        title: serviceTickets.title,
+        requiredParts: serviceTickets.requiredParts,
+      })
+      .from(serviceTickets)
+      .where(
+        and(
+          eq(serviceTickets.tenantId, tenantId),
+          inArray(serviceTickets.id, ticketIds)
+        )
+      );
+
+    // Check parts for each ticket
+    const results = await Promise.all(
+      tickets.map(async (ticket) => {
+        if (!ticket.requiredParts || ticket.requiredParts.length === 0) {
+          return {
+            ticketId: ticket.id,
+            ticketNumber: ticket.ticketNumber,
+            title: ticket.title,
+            partsAvailable: true,
+            missingPartsCount: 0,
+            message: 'No parts required',
+          };
+        }
+
+        // Check each required part
+        const partsCheck = await Promise.all(
+          ticket.requiredParts.map(async (partNumber: string) => {
+            const [item] = await db
+              .select({
+                quantityAvailable: inventoryItems.quantityAvailable,
+              })
+              .from(inventoryItems)
+              .where(
+                and(
+                  eq(inventoryItems.tenantId, tenantId),
+                  eq(inventoryItems.partNumber, partNumber)
+                )
+              )
+              .limit(1);
+
+            return (item?.quantityAvailable || 0) > 0;
+          })
+        );
+
+        const allAvailable = partsCheck.every(Boolean);
+        const missingCount = partsCheck.filter(a => !a).length;
+
+        return {
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          title: ticket.title,
+          partsAvailable: allAvailable,
+          missingPartsCount: missingCount,
+          totalPartsRequired: ticket.requiredParts.length,
+          message: allAvailable
+            ? 'All parts available'
+            : `${missingCount} part(s) missing`,
+        };
+      })
+    );
+
+    res.json({
+      tickets: results,
+      summary: {
+        total: results.length,
+        readyToDispatch: results.filter(r => r.partsAvailable).length,
+        needsParts: results.filter(r => !r.partsAvailable).length,
+      },
+    });
+  } catch (error) {
+    console.error('[BATCH PARTS CHECK] Error:', error);
+    res.status(500).json({ message: 'Failed to check parts availability' });
   }
 });
 
