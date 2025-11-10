@@ -13,11 +13,37 @@ import { cacheControl, etag } from './middleware/cache-middleware';
 
 const router = Router();
 
-// Get dispatch recommendations with AI optimization (converted to use real database data)
+// AUTO-ASSIGNMENT CONFIGURATION
+const AUTO_ASSIGN_THRESHOLD = 90; // Auto-assign if AI confidence >= 90%
+const AUTO_ASSIGN_ENABLED = true; // Toggle auto-assignment feature
+
+// Calculate AI confidence score for technician assignment
+function calculateAIScore(ticket: any, technician: any, assignedCount: number): number {
+  let score = 100;
+
+  // Priority matching (higher priority = higher urgency for assignment)
+  if (ticket.priority === 'urgent' || ticket.priority === 'high') {
+    score += 5; // Boost score for urgent tickets
+  }
+
+  // Availability score (fewer assigned tickets = better)
+  const capacityScore = Math.max(0, 100 - (assignedCount * 12.5)); // 8 tickets = 0 capacity
+  score = (score + capacityScore) / 2;
+
+  // Skill match (placeholder - in production, match ticket type to tech skills)
+  const skillMatch = 90; // Default high match
+  score = (score + skillMatch) / 2;
+
+  // Round to integer
+  return Math.min(100, Math.round(score));
+}
+
+// Get dispatch recommendations with AI optimization and AUTO-ASSIGNMENT
 router.get('/api/dispatch/recommendations', requireAuth, cacheControl(120), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+    const autoAssign = req.query.autoAssign !== 'false'; // Allow override via query param
+
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
@@ -44,7 +70,7 @@ router.get('/api/dispatch/recommendations', requireAuth, cacheControl(120), etag
       .orderBy(desc(serviceTickets.createdAt))
       .limit(10);
 
-    // Get available technicians
+    // Get available technicians with their current workload
     const availableTechnicians = await db
       .select()
       .from(technicians)
@@ -55,32 +81,124 @@ router.get('/api/dispatch/recommendations', requireAuth, cacheControl(120), etag
         )
       );
 
-    // Create recommendations based on real data
-    const recommendations = pendingTickets.map((ticket, index) => {
-      const availableTech = availableTechnicians[index % availableTechnicians.length];
-      
-      return {
+    // Get assigned ticket counts for capacity planning
+    const assignedTicketsQuery = await db
+      .select({
+        technicianId: serviceTickets.technicianId,
+        count: count(serviceTickets.id)
+      })
+      .from(serviceTickets)
+      .where(
+        and(
+          eq(serviceTickets.tenantId, tenantId),
+          inArray(serviceTickets.status, ['assigned', 'in_progress'])
+        )
+      )
+      .groupBy(serviceTickets.technicianId);
+
+    const assignedCounts = assignedTicketsQuery.reduce((acc, item) => {
+      if (item.technicianId) {
+        acc[item.technicianId] = item.count;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Create recommendations with AI scoring and auto-assignment
+    const recommendations = [];
+    const autoAssignedTickets = [];
+    const now = new Date();
+
+    for (let i = 0; i < pendingTickets.length; i++) {
+      const ticket = pendingTickets[i];
+      const availableTech = availableTechnicians[i % availableTechnicians.length];
+
+      if (!availableTech) {
+        recommendations.push({
+          id: `rec-${ticket.id}`,
+          ticketId: ticket.id,
+          ticketTitle: ticket.title || 'Service Request',
+          customerName: `Customer ${ticket.customerId}`,
+          priority: ticket.priority || 'medium',
+          estimatedDuration: 90,
+          recommendedTechnician: null,
+          suggestedTimeSlot: "Next Available",
+          createdAt: ticket.createdAt,
+          autoAssigned: false,
+          aiConfidence: 0
+        });
+        continue;
+      }
+
+      // Calculate AI confidence score
+      const assignedCount = assignedCounts[availableTech.id] || 0;
+      const aiConfidence = calculateAIScore(ticket, availableTech, assignedCount);
+
+      const recommendation = {
         id: `rec-${ticket.id}`,
         ticketId: ticket.id,
         ticketTitle: ticket.title || 'Service Request',
         customerName: `Customer ${ticket.customerId}`,
         priority: ticket.priority || 'medium',
         estimatedDuration: 90,
-        recommendedTechnician: availableTech ? {
+        recommendedTechnician: {
           id: availableTech.id,
           name: availableTech.name,
           currentLocation: availableTech.location || 'Service Center',
           skillMatch: 90,
-          availabilityScore: 100,
-          overallScore: 95
-        } : null,
+          availabilityScore: Math.max(0, 100 - (assignedCount * 12.5)),
+          overallScore: aiConfidence
+        },
         suggestedTimeSlot: "Next Available",
-        createdAt: ticket.createdAt
+        createdAt: ticket.createdAt,
+        autoAssigned: false,
+        aiConfidence: aiConfidence
       };
+
+      // AUTO-ASSIGN if confidence is high enough
+      if (AUTO_ASSIGN_ENABLED && autoAssign && aiConfidence >= AUTO_ASSIGN_THRESHOLD) {
+        try {
+          await db
+            .update(serviceTickets)
+            .set({
+              technicianId: availableTech.id,
+              status: 'assigned',
+              updatedAt: now
+            })
+            .where(eq(serviceTickets.id, ticket.id));
+
+          recommendation.autoAssigned = true;
+          autoAssignedTickets.push({
+            ticketId: ticket.id,
+            technicianId: availableTech.id,
+            technicianName: availableTech.name,
+            aiConfidence: aiConfidence,
+            assignedAt: now
+          });
+
+          // Update assigned count for capacity tracking
+          assignedCounts[availableTech.id] = (assignedCounts[availableTech.id] || 0) + 1;
+        } catch (assignError) {
+          console.error(`Error auto-assigning ticket ${ticket.id}:`, assignError);
+          // Continue with recommendations even if auto-assign fails
+        }
+      }
+
+      recommendations.push(recommendation);
+    }
+
+    res.json({
+      recommendations,
+      autoAssignmentEnabled: AUTO_ASSIGN_ENABLED && autoAssign,
+      autoAssignedCount: autoAssignedTickets.length,
+      autoAssignedTickets,
+      summary: {
+        totalPending: pendingTickets.length,
+        autoAssigned: autoAssignedTickets.length,
+        requiresManualReview: recommendations.filter(r => !r.autoAssigned).length,
+        averageConfidence: recommendations.reduce((sum, r) => sum + r.aiConfidence, 0) / recommendations.length
+      }
     });
 
-    res.json(recommendations);
-    
   } catch (error) {
     console.error('Error fetching dispatch recommendations:', error);
     res.status(500).json({ message: 'Failed to fetch dispatch recommendations' });
