@@ -4,6 +4,7 @@ import { db } from './db';
 import { requireAuth } from './auth-setup';
 import { contracts, serviceContracts, businessRecords } from '../shared/schema';
 import { renewalOpportunities, churnPredictions } from '../shared/customer-success-schema';
+import { contractRenewalWorkflow } from './services/contract-renewal-workflow';
 
 const router = express.Router();
 
@@ -347,6 +348,76 @@ router.post('/api/alerts/contract-expirations/:contractId/create-renewal', requi
     res.status(500).json({
       success: false,
       message: 'Failed to create renewal opportunity',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * RENEWAL WORKFLOW AUTOMATION
+ * Trigger automated renewal workflows at contract milestones
+ */
+router.post('/api/alerts/renewal-workflow/process', requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing tenant context'
+      });
+    }
+
+    // Process renewal milestones for this tenant
+    const processedContracts = await contractRenewalWorkflow.processRenewalMilestones(tenantId);
+
+    res.json({
+      success: true,
+      message: `Processed ${processedContracts.length} contracts`,
+      processed: processedContracts,
+      summary: {
+        totalProcessed: processedContracts.length,
+        tasksCreated: processedContracts.reduce((sum, c) => sum + c.tasksCreated, 0),
+        notificationsSent: processedContracts.filter(c => c.notificationsSent).length,
+        totalValue: processedContracts.reduce((sum, c) => sum + c.annualValue, 0),
+      }
+    });
+  } catch (error) {
+    console.error('[RENEWAL WORKFLOW] Error processing workflows:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process renewal workflows',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Get renewal workflow summary
+ * Shows contracts at each milestone
+ */
+router.get('/api/alerts/renewal-workflow/summary', requireAuth, async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing tenant context'
+      });
+    }
+
+    const summary = await contractRenewalWorkflow.getRenewalWorkflowSummary(tenantId);
+
+    res.json({
+      success: true,
+      ...summary
+    });
+  } catch (error) {
+    console.error('[RENEWAL WORKFLOW] Error getting summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get renewal workflow summary',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
