@@ -99,6 +99,7 @@ import { registerClientMonitoringRoutes } from './routes-client-monitoring';
 import { blockRegistrations } from './middleware/registration-lock';
 import customerPortalRoutes from './routes-customer-portal';
 import { serviceDispatchRouter } from './routes-service-dispatch';
+import { proactiveMaintenanceRouter } from './routes-proactive-maintenance';
 import commissionRoutes from './routes-commission';
 import enhancedServiceRoutes from './routes-enhanced-service';
 import { enhancedRBACRoutes } from './routes-enhanced-rbac';
@@ -8107,6 +8108,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('Failed to fetch billing anomaly alerts:', error);
       }
 
+      try {
+        // 4) Contract expiration alerts
+        const expiringContracts = await db
+          .select({
+            id: serviceContracts.id,
+            contractNumber: serviceContracts.contractNumber,
+            customerId: serviceContracts.customerId,
+            customerName: businessRecords.companyName,
+            endDate: serviceContracts.endDate,
+            daysUntilExpiration: sql`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`.as('days'),
+            monthlyValue: serviceContracts.monthlyBaseRate,
+            annualValue: sql`COALESCE(${serviceContracts.monthlyBaseRate}, 0) * 12`.as('annualValue'),
+          })
+          .from(serviceContracts)
+          .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
+          .where(
+            and(
+              eq(serviceContracts.tenantId, tenantId),
+              eq(serviceContracts.contractStatus, 'active'),
+              lte(serviceContracts.endDate, sql`NOW() + INTERVAL '90 days'`), // Next 90 days
+              gte(serviceContracts.endDate, sql`NOW()`),
+            ),
+          )
+          .orderBy(asc(serviceContracts.endDate))
+          .limit(15);
+
+        alerts.push(
+          ...expiringContracts.map((contract) => {
+            const days = parseInt(String(contract.daysUntilExpiration)) || 0;
+            let severity: 'low' | 'medium' | 'high' | 'critical' = 'medium';
+            let type = 'contract_renewal';
+
+            if (days <= 30) {
+              severity = 'critical';
+              type = 'contract_urgent';
+            } else if (days <= 60) {
+              severity = 'high';
+            }
+
+            const annualValue = parseFloat(String(contract.annualValue)) || 0;
+            const valueMsg = annualValue > 0 ? ` ($${annualValue.toLocaleString()}/year at risk)` : '';
+
+            return {
+              id: `contract_expiration_${contract.id}`,
+              type,
+              severity,
+              title: `Contract Expiring: ${contract.customerName}`,
+              message: `Contract ${contract.contractNumber} expires in ${days} days (${new Date(contract.endDate).toLocaleDateString()})${valueMsg}`,
+              category: 'business',
+              timestamp: new Date().toISOString(),
+              metadata: {
+                contractId: contract.id,
+                customerId: contract.customerId,
+                daysRemaining: days,
+                annualValue: annualValue,
+              },
+            };
+          }),
+        );
+      } catch (error) {
+        console.warn('Failed to fetch contract expiration alerts:', error);
+      }
+
       res.json(alerts);
     } catch (error) {
       console.error('Error fetching alerts:', error);
@@ -14841,8 +14905,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register customer portal routes
   app.use('/api/customer-portal', customerPortalRoutes);
 
+  // Register contract alerts routes (for renewal management and expiration tracking)
+  const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
+  app.use(contractAlertsRoutes);
+
   // Register Service Dispatch routes (converted from mock data to database queries)
   app.use(serviceDispatchRouter);
+
+  // Register Proactive Maintenance routes (predictive scheduling and equipment health)
+  app.use(proactiveMaintenanceRouter);
 
   // Register enhanced service routes
   app.use('/api', enhancedServiceRoutes);

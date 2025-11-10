@@ -34,6 +34,8 @@ const SalesReports = React.lazy(() => import("@/pages/placeholder/SalesReports")
 const ServiceReports = React.lazy(() => import("@/pages/placeholder/ServiceReports"));
 const RevenueReports = React.lazy(() => import("@/pages/placeholder/RevenueReports"));
 const Contracts = React.lazy(() => import("@/pages/contracts"));
+const ContractRenewalDashboard = React.lazy(() => import("@/pages/ContractRenewalDashboard"));
+const ProactiveServiceDashboard = React.lazy(() => import("@/pages/ProactiveServiceDashboard"));
 const ServiceDispatchOptimization = React.lazy(() => import("@/pages/ServiceDispatchOptimization"));
 const Inventory = React.lazy(() => import("@/pages/inventory"));
 const Billing = React.lazy(() => import("@/pages/billing"));
@@ -339,6 +341,7 @@ function Router() {
           <Route path="/service-reports" component={ServiceReports} />
           <Route path="/revenue-reports" component={RevenueReports} />
           <Route path="/contracts" component={Contracts} />
+          <Route path="/contract-renewals" component={ContractRenewalDashboard} />
           <Route path="/leases" component={Leases} />
           <Route path="/leases/new" component={LeaseForm} />
           <Route path="/leases/:id/edit" component={LeaseForm} />
@@ -350,6 +353,7 @@ function Router() {
             path="/service-dispatch"
             component={ServiceDispatchOptimization}
           />
+          <Route path="/proactive-service" component={ProactiveServiceDashboard} />
           <Route path="/technician-management" component={TechnicianManagement} />
           <Route path="/vehicle-management" component={VehicleManagement} />
           <Route path="/asset-management" component={AssetManagement} />
