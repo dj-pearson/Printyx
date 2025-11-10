@@ -99,6 +99,7 @@ import { registerClientMonitoringRoutes } from './routes-client-monitoring';
 import { blockRegistrations } from './middleware/registration-lock';
 import customerPortalRoutes from './routes-customer-portal';
 import { serviceDispatchRouter } from './routes-service-dispatch';
+import { proactiveMaintenanceRouter } from './routes-proactive-maintenance';
 import commissionRoutes from './routes-commission';
 import enhancedServiceRoutes from './routes-enhanced-service';
 import { enhancedRBACRoutes } from './routes-enhanced-rbac';
@@ -14910,6 +14911,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Service Dispatch routes (converted from mock data to database queries)
   app.use(serviceDispatchRouter);
+
+  // Register Proactive Maintenance routes (predictive scheduling and equipment health)
+  app.use(proactiveMaintenanceRouter);
 
   // Register enhanced service routes
   app.use('/api', enhancedServiceRoutes);
