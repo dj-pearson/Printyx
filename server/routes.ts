@@ -109,6 +109,7 @@ import reportsRoutes from './routes-reports';
 import reportingArchitectureRoutes from './routes-reporting-architecture';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
 import billingRoutes from './routes-billing';
+import printCostCalculatorRoutes from './routes-print-cost-calculator';
 // TEMPORARILY DISABLED: SEO routes causing cheerio dependency conflict
 // import seoRoutes from "./routes-seo";
 import {
@@ -14926,6 +14927,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register warehouse FPY routes
   app.use('/api', warehouseFpyRoutes);
+
+  // Register Print Cost Calculator routes (public and admin)
+  app.use(printCostCalculatorRoutes);
 
   // Register DoD enforcement routes
   const dodEnforcementRoutes = (await import('./routes-dod-enforcement')).default;
