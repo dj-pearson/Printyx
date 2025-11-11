@@ -196,6 +196,12 @@ const Homepage = () => {
                 Benefits
               </a>
               <a
+                href="/blog"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                Blog
+              </a>
+              <a
                 href="#testimonials"
                 className="text-gray-700 hover:text-blue-600 transition-colors"
               >
@@ -242,6 +248,13 @@ const Homepage = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Benefits
+                    </a>
+                    <a
+                      href="/blog"
+                      className="text-gray-700 hover:text-blue-600 transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Blog
                     </a>
                     <a
                       href="#testimonials"
