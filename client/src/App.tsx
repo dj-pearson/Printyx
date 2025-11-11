@@ -40,6 +40,7 @@ const DynamicPricingAIBlog = React.lazy(() => import("@/pages/blog/dynamic-prici
 // Conversion pages
 const ROICalculator = React.lazy(() => import("@/pages/marketing/ROICalculator"));
 const CaseStudies = React.lazy(() => import("@/pages/marketing/CaseStudies"));
+const CompetitiveBattleCard = React.lazy(() => import("@/pages/marketing/CompetitiveBattleCard"));
 
 // Feature implementations - AI/ML powered features
 const PredictiveContractProfitability = React.lazy(() => import("@/pages/PredictiveContractProfitability"));
@@ -266,6 +267,7 @@ function Router() {
           {/* Conversion pages */}
           <Route path="/roi-calculator" component={ROICalculator} />
           <Route path="/case-studies" component={CaseStudies} />
+          <Route path="/battle-card" component={CompetitiveBattleCard} />
 
           {/* Other marketing pages */}
           <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
