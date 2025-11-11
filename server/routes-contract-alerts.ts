@@ -1,10 +1,16 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
-import { requireAuth } from './auth-setup';
 import { contracts, serviceContracts, businessRecords } from '../shared/schema';
 import { renewalOpportunities, churnPredictions } from '../shared/customer-success-schema';
 import { contractRenewalWorkflow } from './services/contract-renewal-workflow';
+
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authenticated' });
+  }
+  next();
+};
 
 const router = express.Router();
 

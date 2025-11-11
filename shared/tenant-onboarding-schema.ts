@@ -8,13 +8,13 @@ import { createInsertSchema } from "drizzle-zod";
 
 // ============= ENUMS =============
 
-export const onboardingStatusEnum = pgEnum('onboarding_status', ['not_started', 'in_progress', 'completed', 'abandoned', 'failed']);
+export const tenantOnboardingStatusEnum = pgEnum('tenant_onboarding_status', ['not_started', 'in_progress', 'completed', 'abandoned', 'failed']);
 
-export const onboardingStepStatusEnum = pgEnum('onboarding_step_status', ['pending', 'in_progress', 'completed', 'skipped', 'failed']);
+export const tenantOnboardingStepStatusEnum = pgEnum('tenant_onboarding_step_status', ['pending', 'in_progress', 'completed', 'skipped', 'failed']);
 
 export const companySizeEnum = pgEnum('company_size', ['small', 'medium', 'large', 'enterprise']);
 
-export const industryTypeEnum = pgEnum('industry_type', [
+export const tenantIndustryTypeEnum = pgEnum('tenant_industry_type', [
   'managed_print_services',
   'it_services',
   'equipment_rental',
@@ -27,7 +27,7 @@ export const industryTypeEnum = pgEnum('industry_type', [
   'other'
 ]);
 
-export const integrationStatusEnum = pgEnum('integration_status', ['not_configured', 'configuring', 'testing', 'active', 'failed', 'disabled']);
+export const tenantIntegrationStatusEnum = pgEnum('tenant_integration_status', ['not_configured', 'configuring', 'testing', 'active', 'failed', 'disabled']);
 
 export const healthScoreGradeEnum = pgEnum('health_score_grade', ['excellent', 'good', 'fair', 'poor', 'critical']);
 
@@ -39,7 +39,7 @@ export const tenantOnboardingTemplates = pgTable("tenant_onboarding_templates", 
   // Template Identity
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  industry: industryTypeEnum("industry").notNull(),
+  industry: tenantIndustryTypeEnum("industry").notNull(),
   companySize: companySizeEnum("company_size").notNull(),
 
   // Organizational Structure Template
@@ -200,7 +200,7 @@ export const tenantOnboardingSessions = pgTable("tenant_onboarding_sessions", {
   // Current State
   currentStep: integer("current_step").notNull().default(1),
   totalSteps: integer("total_steps").notNull().default(8),
-  status: onboardingStatusEnum("status").notNull().default('not_started'),
+  status: tenantOnboardingStatusEnum("status").notNull().default('not_started'),
 
   // Step Data (collected through wizard)
   stepData: jsonb("step_data").$type<{
@@ -340,7 +340,7 @@ export const integrationSetupLogs = pgTable("integration_setup_logs", {
   autoConfigurationScore: integer("auto_configuration_score"), // 0-100, how much was automated
 
   // Status
-  status: integrationStatusEnum("status").notNull().default('not_configured'),
+  status: tenantIntegrationStatusEnum("status").notNull().default('not_configured'),
 
   // Performance
   setupDuration: integer("setup_duration_minutes"),
@@ -637,7 +637,7 @@ export const tenantCloneOperations = pgTable("tenant_clone_operations", {
   }>().notNull(),
 
   // Progress
-  status: onboardingStatusEnum("status").notNull().default('not_started'),
+  status: tenantOnboardingStatusEnum("status").notNull().default('not_started'),
   progressPercent: integer("progress_percent").default(0),
 
   // Items Cloned
