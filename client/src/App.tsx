@@ -37,6 +37,10 @@ const AIPredictiveMaintenanceBlog = React.lazy(() => import("@/pages/blog/ai-pre
 const EAutomateVsModernBlog = React.lazy(() => import("@/pages/blog/e-automate-vs-modern-cloud-platforms"));
 const DynamicPricingAIBlog = React.lazy(() => import("@/pages/blog/dynamic-pricing-ai-copier-dealers"));
 
+// Conversion pages
+const ROICalculator = React.lazy(() => import("@/pages/marketing/ROICalculator"));
+const CaseStudies = React.lazy(() => import("@/pages/marketing/CaseStudies"));
+
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
@@ -254,6 +258,10 @@ function Router() {
           <Route path="/blog/ai-predictive-maintenance-vs-reactive-service" component={AIPredictiveMaintenanceBlog} />
           <Route path="/blog/e-automate-vs-modern-cloud-platforms" component={EAutomateVsModernBlog} />
           <Route path="/blog/dynamic-pricing-ai-copier-dealers" component={DynamicPricingAIBlog} />
+
+          {/* Conversion pages */}
+          <Route path="/roi-calculator" component={ROICalculator} />
+          <Route path="/case-studies" component={CaseStudies} />
 
           {/* Other marketing pages */}
           <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
