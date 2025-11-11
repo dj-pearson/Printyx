@@ -342,6 +342,80 @@ export const discountRedemptions = pgTable('discount_redemptions', {
 }));
 
 // ============================================================================
+// SUBSCRIPTION ADD-ONS
+// ============================================================================
+
+export const subscriptionAddons = pgTable('subscription_addons', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Add-on details
+  name: varchar('name', { length: 100 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  description: text('description'),
+  category: varchar('category', { length: 50 }).notNull(), // one_time, recurring, usage_based
+  
+  // Pricing
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  billingCycle: varchar('billing_cycle', { length: 20 }), // monthly, annual, one_time
+  
+  // Add-on type specific settings
+  unit: varchar('unit', { length: 50 }), // users, GB, API_calls, hours, etc.
+  quantity: integer('quantity').default(1), // Base quantity included
+  
+  // Applicability
+  appliesToPlans: jsonb('applies_to_plans').default(sql`'[]'::jsonb`), // Plan slugs, empty = all plans
+  
+  // Display settings
+  displayOrder: integer('display_order').default(0),
+  isVisible: boolean('is_visible').default(true),
+  isActive: boolean('is_active').default(true),
+  
+  // Metadata
+  metadata: jsonb('metadata').default(sql`'{}'::jsonb`),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  slugIdx: index('subscription_addons_slug_idx').on(table.slug),
+  categoryIdx: index('subscription_addons_category_idx').on(table.category),
+}));
+
+export const tenantAddonSubscriptions = pgTable('tenant_addon_subscriptions', {
+  id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  subscriptionId: varchar('subscription_id').notNull().references(() => tenantSubscriptions.id, { onDelete: 'cascade' }),
+  addonId: varchar('addon_id').notNull().references(() => subscriptionAddons.id),
+  
+  // Subscription details
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  // Statuses: active, canceled, expired
+  
+  // Pricing
+  quantity: integer('quantity').notNull().default(1),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  
+  // Dates
+  startDate: timestamp('start_date').notNull().defaultNow(),
+  endDate: timestamp('end_date'), // For one-time add-ons
+  canceledAt: timestamp('canceled_at'),
+  
+  // Payment integration
+  stripeSubscriptionItemId: varchar('stripe_subscription_item_id'),
+  
+  // Metadata
+  metadata: jsonb('metadata').default(sql`'{}'::jsonb`),
+  notes: text('notes'),
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  tenantIdIdx: index('tenant_addon_subscriptions_tenant_id_idx').on(table.tenantId),
+  subscriptionIdIdx: index('tenant_addon_subscriptions_subscription_id_idx').on(table.subscriptionId),
+  addonIdIdx: index('tenant_addon_subscriptions_addon_id_idx').on(table.addonId),
+  statusIdx: index('tenant_addon_subscriptions_status_idx').on(table.status),
+}));
+
+// ============================================================================
 // ONBOARDING & TRIAL TRACKING
 // ============================================================================
 
@@ -485,6 +559,12 @@ export type NewDiscount = typeof discounts.$inferInsert;
 
 export type DiscountRedemption = typeof discountRedemptions.$inferSelect;
 export type NewDiscountRedemption = typeof discountRedemptions.$inferInsert;
+
+export type SubscriptionAddon = typeof subscriptionAddons.$inferSelect;
+export type NewSubscriptionAddon = typeof subscriptionAddons.$inferInsert;
+
+export type TenantAddonSubscription = typeof tenantAddonSubscriptions.$inferSelect;
+export type NewTenantAddonSubscription = typeof tenantAddonSubscriptions.$inferInsert;
 
 export type OnboardingProgress = typeof onboardingProgress.$inferSelect;
 export type NewOnboardingProgress = typeof onboardingProgress.$inferInsert;
