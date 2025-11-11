@@ -385,6 +385,74 @@ const features: NewSubscriptionFeature[] = [
     isCore: false,
     displayOrder: 84,
   },
+  {
+    name: 'SLA Guarantee',
+    slug: 'sla_guarantee',
+    description: '99.9% uptime SLA with guaranteed response times',
+    category: 'Support',
+    isCore: false,
+    displayOrder: 85,
+  },
+
+  // Mobile & Field Service
+  {
+    name: 'Mobile Service App',
+    slug: 'mobile_service_app',
+    description: 'Mobile app for field technicians with offline capabilities',
+    category: 'Service',
+    isCore: false,
+    displayOrder: 90,
+  },
+  {
+    name: 'GPS Tracking',
+    slug: 'gps_tracking',
+    description: 'Real-time technician location tracking',
+    category: 'Service',
+    isCore: false,
+    displayOrder: 91,
+  },
+  {
+    name: 'Mobile Photo Capture',
+    slug: 'mobile_photo_capture',
+    description: 'Capture and attach photos from mobile devices',
+    category: 'Service',
+    isCore: false,
+    displayOrder: 92,
+  },
+  {
+    name: 'Digital Signatures',
+    slug: 'digital_signatures',
+    description: 'Collect customer signatures on mobile devices',
+    category: 'Service',
+    isCore: false,
+    displayOrder: 93,
+  },
+
+  // Enterprise Features
+  {
+    name: 'White Label Options',
+    slug: 'white_label',
+    description: 'Custom branding with your logo and domain',
+    category: 'Platform',
+    isCore: false,
+    displayOrder: 100,
+  },
+  {
+    name: 'Custom Integrations',
+    slug: 'custom_integrations',
+    description: 'Build custom integrations with external systems',
+    category: 'Integrations',
+    isCore: false,
+    displayOrder: 101,
+  },
+  {
+    name: 'Advanced Forecasting',
+    slug: 'advanced_forecasting',
+    description: 'AI-powered analytics and revenue forecasting',
+    category: 'Analytics',
+    isCore: false,
+    displayOrder: 102,
+  },
 ];
 
 // Define subscription plans
@@ -393,15 +461,15 @@ const plans: NewSubscriptionPlan[] = [
   {
     name: 'Starter',
     slug: 'starter',
-    description: 'Perfect for small teams getting started with CRM and service management',
-    monthlyPrice: '49.00',
-    annualPrice: '470.00',
+    description: 'Perfect for small copier dealers (5-20 employees) with core contract management and meter billing',
+    monthlyPrice: '79.00',
+    annualPrice: '758.00',
     annualDiscount: 20, // 20% discount on annual
-    maxUsers: 5,
-    maxStorage: 5, // 5 GB
-    maxApiCalls: 1000,
-    maxLocations: 1,
-    maxBusinessRecords: 500,
+    maxUsers: 20,
+    maxStorage: 100, // 100 GB included
+    maxApiCalls: 10000,
+    maxLocations: 3,
+    maxBusinessRecords: 1000,
     trialEnabled: true,
     trialDays: 30,
     trialRequiresPayment: false,
@@ -437,17 +505,17 @@ const plans: NewSubscriptionPlan[] = [
   {
     name: 'Professional',
     slug: 'professional',
-    description: 'For growing businesses that need advanced features and integrations',
-    monthlyPrice: '149.00',
-    annualPrice: '1430.00',
+    description: 'For growing copier dealers (20-100 employees) with service dispatch, mobile app, and advanced inventory',
+    monthlyPrice: '99.00',
+    annualPrice: '950.00',
     annualDiscount: 20, // 20% discount on annual
-    maxUsers: 25,
-    maxStorage: 50, // 50 GB
-    maxApiCalls: 10000,
-    maxLocations: 5,
-    maxBusinessRecords: 5000,
+    maxUsers: 100,
+    maxStorage: 100, // 100 GB included
+    maxApiCalls: 50000,
+    maxLocations: 10,
+    maxBusinessRecords: -1, // Unlimited contracts
     trialEnabled: true,
-    trialDays: 14,
+    trialDays: 30,
     trialRequiresPayment: false,
     features: [
       // All Starter features
@@ -489,6 +557,11 @@ const plans: NewSubscriptionPlan[] = [
       'audit_logs',
       'priority_support',
       'phone_support',
+      // Mobile & Field Service
+      'mobile_service_app',
+      'gps_tracking',
+      'mobile_photo_capture',
+      'digital_signatures',
     ],
     displayOrder: 2,
     isPopular: true,
@@ -500,17 +573,17 @@ const plans: NewSubscriptionPlan[] = [
   {
     name: 'Enterprise',
     slug: 'enterprise',
-    description: 'For large organizations requiring unlimited scale and premium support',
-    monthlyPrice: '499.00',
-    annualPrice: '4790.00',
+    description: 'For large copier dealers (100+ employees) with dedicated account manager, API access, and SLA guarantees',
+    monthlyPrice: '149.00',
+    annualPrice: '1430.00',
     annualDiscount: 20, // 20% discount on annual
     maxUsers: -1, // Unlimited
-    maxStorage: -1, // Unlimited
-    maxApiCalls: -1, // Unlimited
+    maxStorage: -1, // Unlimited (100GB included, $50/100GB additional)
+    maxApiCalls: -1, // Unlimited (included up to limit, then $0.001/call)
     maxLocations: -1, // Unlimited
     maxBusinessRecords: -1, // Unlimited
     trialEnabled: true,
-    trialDays: 14,
+    trialDays: 30,
     trialRequiresPayment: true, // Enterprise requires payment method upfront
     features: [
       // All features
@@ -558,6 +631,16 @@ const plans: NewSubscriptionPlan[] = [
       'phone_support',
       'dedicated_account_manager',
       'onboarding_assistance',
+      // Mobile & Field Service
+      'mobile_service_app',
+      'gps_tracking',
+      'mobile_photo_capture',
+      'digital_signatures',
+      // Enterprise Features
+      'white_label',
+      'custom_integrations',
+      'advanced_forecasting',
+      'sla_guarantee',
     ],
     displayOrder: 3,
     isPopular: false,
