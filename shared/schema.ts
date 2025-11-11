@@ -299,11 +299,11 @@ export {
   tenantHealthScores,
   onboardingAnalytics,
   tenantCloneOperations,
-  onboardingStatusEnum,
-  onboardingStepStatusEnum,
+  tenantOnboardingStatusEnum,
+  tenantOnboardingStepStatusEnum,
   companySizeEnum,
-  industryTypeEnum,
-  integrationStatusEnum,
+  tenantIndustryTypeEnum,
+  tenantIntegrationStatusEnum,
   healthScoreGradeEnum,
   insertTenantOnboardingTemplateSchema,
   insertTenantOnboardingSessionSchema,
@@ -3146,8 +3146,8 @@ export const managerInsights = pgTable('manager_insights', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-// Onboarding Checklist Status Enum
-export const onboardingStatusEnum = pgEnum('onboarding_status', [
+// Equipment Onboarding Checklist Status Enum
+export const equipmentOnboardingStatusEnum = pgEnum('equipment_onboarding_status', [
   'draft',
   'in_progress',
   'pending_review',
@@ -3179,8 +3179,8 @@ export const printManagementEnum = pgEnum('print_management_system', [
   'none',
 ]);
 
-// Onboarding Checklists - Main checklist container
-export const onboardingChecklists = pgTable('onboarding_checklists', {
+// Equipment Onboarding Checklists - Main checklist container
+export const equipmentOnboardingChecklists = pgTable('equipment_onboarding_checklists', {
   id: varchar('id')
     .primaryKey()
     .default(sql`gen_random_uuid()`),
@@ -3194,7 +3194,7 @@ export const onboardingChecklists = pgTable('onboarding_checklists', {
   // Basic Information
   checklistTitle: varchar('checklist_title').notNull(),
   description: text('description'),
-  status: onboardingStatusEnum('status').default('draft'),
+  status: equipmentOnboardingStatusEnum('status').default('draft'),
   installationType: installationTypeEnum('installation_type').notNull(),
 
   // Customer Information (auto-populated from quote/order)
@@ -3423,8 +3423,8 @@ export const onboardingTasks = pgTable('onboarding_tasks', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-// Zod schemas for onboarding system
-export const insertOnboardingChecklistSchema = createInsertSchema(onboardingChecklists);
+// Zod schemas for equipment onboarding system
+export const insertEquipmentOnboardingChecklistSchema = createInsertSchema(equipmentOnboardingChecklists);
 
 export const insertOnboardingEquipmentSchema = createInsertSchema(onboardingEquipment);
 
@@ -3436,9 +3436,9 @@ export const insertOnboardingDynamicSectionSchema = createInsertSchema(onboardin
 
 export const insertOnboardingTaskSchema = createInsertSchema(onboardingTasks);
 
-// Types for onboarding system
-export type OnboardingChecklist = typeof onboardingChecklists.$inferSelect;
-export type InsertOnboardingChecklist = z.infer<typeof insertOnboardingChecklistSchema>;
+// Types for equipment onboarding system
+export type EquipmentOnboardingChecklist = typeof equipmentOnboardingChecklists.$inferSelect;
+export type InsertEquipmentOnboardingChecklist = z.infer<typeof insertEquipmentOnboardingChecklistSchema>;
 
 export type OnboardingEquipment = typeof onboardingEquipment.$inferSelect;
 export type InsertOnboardingEquipment = z.infer<typeof insertOnboardingEquipmentSchema>;
