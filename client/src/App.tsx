@@ -41,6 +41,10 @@ const DynamicPricingAIBlog = React.lazy(() => import("@/pages/blog/dynamic-prici
 const ROICalculator = React.lazy(() => import("@/pages/marketing/ROICalculator"));
 const CaseStudies = React.lazy(() => import("@/pages/marketing/CaseStudies"));
 
+// Feature implementations - AI/ML powered features
+const PredictiveContractProfitability = React.lazy(() => import("@/pages/PredictiveContractProfitability"));
+const AIServiceIntelligence = React.lazy(() => import("@/pages/AIServiceIntelligence"));
+
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
@@ -536,6 +540,8 @@ function Router() {
             component={AIAnalyticsDashboard}
           />
           <Route path="/predictive-analytics" component={PredictiveAnalytics} />
+          <Route path="/predictive-contract-profitability" component={PredictiveContractProfitability} />
+          <Route path="/ai-service-intelligence" component={AIServiceIntelligence} />
           <Route path="/integration-hub" component={IntegrationHub} />
           <Route path="/integrations" component={IntegrationHub} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
