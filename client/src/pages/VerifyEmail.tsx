@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tantml:invoke>
-<parameter name="query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Card,

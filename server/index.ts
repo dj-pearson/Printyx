@@ -67,6 +67,7 @@ const allowedOriginsDev = [
   'http://localhost:5173', // Vite default
   'http://127.0.0.1:5000',
   'http://127.0.0.1:3000',
+  /^https:\/\/.*\.replit\.dev$/, // Replit development environments
 ];
 
 app.use(
@@ -84,7 +85,7 @@ app.use(
       }
 
       // SECURITY FIX: In development, whitelist specific origins instead of allowing all
-      if (allowedOriginsDev.includes(origin)) {
+      if (allowedOriginsDev.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))) {
         return callback(null, true);
       }
 
