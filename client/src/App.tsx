@@ -25,6 +25,27 @@ const CopierDealerCRM = React.lazy(() => import("@/pages/marketing/CopierDealerC
 const PrintServiceDispatchMobile = React.lazy(() => import("@/pages/marketing/PrintServiceDispatchMobile"));
 const CanonMasterProductCatalog = React.lazy(() => import("@/pages/marketing/CanonMasterProductCatalog"));
 
+// Strategic landing pages
+const PredictiveIntelligence = React.lazy(() => import("@/pages/marketing/PredictiveIntelligence"));
+const ModernArchitecture = React.lazy(() => import("@/pages/marketing/ModernArchitecture"));
+const IntegrationMarketplace = React.lazy(() => import("@/pages/marketing/IntegrationMarketplace"));
+const DealerExpertise = React.lazy(() => import("@/pages/marketing/DealerExpertise"));
+
+// Blog pages
+const BlogIndex = React.lazy(() => import("@/pages/blog/index"));
+const AIPredictiveMaintenanceBlog = React.lazy(() => import("@/pages/blog/ai-predictive-maintenance-vs-reactive-service"));
+const EAutomateVsModernBlog = React.lazy(() => import("@/pages/blog/e-automate-vs-modern-cloud-platforms"));
+const DynamicPricingAIBlog = React.lazy(() => import("@/pages/blog/dynamic-pricing-ai-copier-dealers"));
+
+// Conversion pages
+const ROICalculator = React.lazy(() => import("@/pages/marketing/ROICalculator"));
+const CaseStudies = React.lazy(() => import("@/pages/marketing/CaseStudies"));
+const CompetitiveBattleCard = React.lazy(() => import("@/pages/marketing/CompetitiveBattleCard"));
+
+// Feature implementations - AI/ML powered features
+const PredictiveContractProfitability = React.lazy(() => import("@/pages/PredictiveContractProfitability"));
+const AIServiceIntelligence = React.lazy(() => import("@/pages/AIServiceIntelligence"));
+
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
@@ -230,6 +251,25 @@ function Router() {
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
           <Route path="/" component={Homepage} />
+
+          {/* Strategic landing pages */}
+          <Route path="/predictive-intelligence" component={PredictiveIntelligence} />
+          <Route path="/modern-architecture" component={ModernArchitecture} />
+          <Route path="/integration-marketplace" component={IntegrationMarketplace} />
+          <Route path="/dealer-expertise" component={DealerExpertise} />
+
+          {/* Blog routes */}
+          <Route path="/blog" component={BlogIndex} />
+          <Route path="/blog/ai-predictive-maintenance-vs-reactive-service" component={AIPredictiveMaintenanceBlog} />
+          <Route path="/blog/e-automate-vs-modern-cloud-platforms" component={EAutomateVsModernBlog} />
+          <Route path="/blog/dynamic-pricing-ai-copier-dealers" component={DynamicPricingAIBlog} />
+
+          {/* Conversion pages */}
+          <Route path="/roi-calculator" component={ROICalculator} />
+          <Route path="/case-studies" component={CaseStudies} />
+          <Route path="/battle-card" component={CompetitiveBattleCard} />
+
+          {/* Other marketing pages */}
           <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
           <Route
             path="/p/print-service-dispatch-mobile"
@@ -502,6 +542,8 @@ function Router() {
             component={AIAnalyticsDashboard}
           />
           <Route path="/predictive-analytics" component={PredictiveAnalytics} />
+          <Route path="/predictive-contract-profitability" component={PredictiveContractProfitability} />
+          <Route path="/ai-service-intelligence" component={AIServiceIntelligence} />
           <Route path="/integration-hub" component={IntegrationHub} />
           <Route path="/integrations" component={IntegrationHub} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
