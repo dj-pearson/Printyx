@@ -25,6 +25,18 @@ const CopierDealerCRM = React.lazy(() => import("@/pages/marketing/CopierDealerC
 const PrintServiceDispatchMobile = React.lazy(() => import("@/pages/marketing/PrintServiceDispatchMobile"));
 const CanonMasterProductCatalog = React.lazy(() => import("@/pages/marketing/CanonMasterProductCatalog"));
 
+// Strategic landing pages
+const PredictiveIntelligence = React.lazy(() => import("@/pages/marketing/PredictiveIntelligence"));
+const ModernArchitecture = React.lazy(() => import("@/pages/marketing/ModernArchitecture"));
+const IntegrationMarketplace = React.lazy(() => import("@/pages/marketing/IntegrationMarketplace"));
+const DealerExpertise = React.lazy(() => import("@/pages/marketing/DealerExpertise"));
+
+// Blog pages
+const BlogIndex = React.lazy(() => import("@/pages/blog/index"));
+const AIPredictiveMaintenanceBlog = React.lazy(() => import("@/pages/blog/ai-predictive-maintenance-vs-reactive-service"));
+const EAutomateVsModernBlog = React.lazy(() => import("@/pages/blog/e-automate-vs-modern-cloud-platforms"));
+const DynamicPricingAIBlog = React.lazy(() => import("@/pages/blog/dynamic-pricing-ai-copier-dealers"));
+
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
@@ -230,6 +242,20 @@ function Router() {
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
           <Route path="/" component={Homepage} />
+
+          {/* Strategic landing pages */}
+          <Route path="/predictive-intelligence" component={PredictiveIntelligence} />
+          <Route path="/modern-architecture" component={ModernArchitecture} />
+          <Route path="/integration-marketplace" component={IntegrationMarketplace} />
+          <Route path="/dealer-expertise" component={DealerExpertise} />
+
+          {/* Blog routes */}
+          <Route path="/blog" component={BlogIndex} />
+          <Route path="/blog/ai-predictive-maintenance-vs-reactive-service" component={AIPredictiveMaintenanceBlog} />
+          <Route path="/blog/e-automate-vs-modern-cloud-platforms" component={EAutomateVsModernBlog} />
+          <Route path="/blog/dynamic-pricing-ai-copier-dealers" component={DynamicPricingAIBlog} />
+
+          {/* Other marketing pages */}
           <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
           <Route
             path="/p/print-service-dispatch-mobile"
