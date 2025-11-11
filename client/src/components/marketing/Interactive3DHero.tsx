@@ -229,53 +229,53 @@ const Interactive3DHero = () => {
               isVisible ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'
             }`}
           >
-            <Badge className="mb-4 bg-blue-100 text-blue-900 border-blue-300">
-              Coming October 1st, 2025
+            <Badge className="mb-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
+              AI-Powered Intelligence Platform
             </Badge>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-              Unify Your
+              The Only
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {" "}Copier Business
+                {" "}Predictive{" "}
               </span>
+              Platform for Copier Dealers
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-700 mb-8 leading-relaxed">
-              Experience the future of copier dealer management with our intelligent 3D monitoring system. 
-              Watch your equipment performance in real-time and optimize operations with AI-powered insights.
+              Stop reacting. Start predicting. Modern cloud architecture with AI-powered intelligence that prevents equipment failures, optimizes contract pricing, and increases profitability by 15-25%. Built on technology 2-3 years ahead of legacy systems.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-6 opacity-75 cursor-not-allowed"
-                disabled
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-6"
+                onClick={() => window.location.href = '/signup'}
               >
-                Coming October 1st
+                Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 py-6 border-gray-300 hover:bg-gray-50 opacity-75 cursor-not-allowed"
-                disabled
+                className="text-lg px-8 py-6 border-gray-300 hover:bg-gray-50"
+                onClick={() => window.location.href = '/login'}
               >
-                Get Notified
+                Watch Demo
               </Button>
             </div>
 
-            <div className="flex items-center space-x-6 text-sm text-gray-600">
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                3D Equipment Monitoring
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-start">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-gray-700"><strong>80% prediction accuracy</strong> for equipment failures</span>
               </div>
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                Real-time Analytics
+              <div className="flex items-start">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-gray-700"><strong>Modern cloud architecture</strong> beats legacy by 2-3 years</span>
               </div>
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                Predictive Maintenance
+              <div className="flex items-start">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-gray-700"><strong>Integration marketplace</strong> with growing ecosystem</span>
               </div>
             </div>
           </div>
