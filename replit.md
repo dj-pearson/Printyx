@@ -65,6 +65,62 @@ Preferred communication style: Simple, everyday language.
 - **Product Accessories System**: Many-to-many relationship architecture for accessory compatibility.
 - **Product Models Import Deduplication**: Smart deduplication logic based on product code and name.
 - **AI-Powered Knowledge Base System**: Comprehensive knowledge management platform with article creation, version control, semantic search capabilities, category organization, feedback collection, and analytics tracking. Features 8-table architecture (categories, articles, versions, views, feedback, AI generation queue, embeddings, search queries) with multi-tenant support and RBAC integration.
+- **Subscription Management System**: Comprehensive SaaS pricing system with 3-tier pricing (Starter, Professional, Enterprise), 52 features across 8 categories, trial management, usage tracking, billing automation, and add-on support.
+
+## Subscription Pricing & Features
+
+### Pricing Tiers (Per User/Month)
+- **Starter Plan**: $79/month ($758/year with 20% discount)
+  - Target: 5-20 employees
+  - Contracts: Up to 50
+  - Locations: Up to 3
+  - Storage: 100GB
+  - API Calls: 10,000/month
+  - Core Features: Lead management, customer management, service tickets, technician dispatch, equipment tracking, basic inventory, invoice generation, basic reports, email integration, team collaboration, role-based access, email support
+
+- **Professional Plan**: $99/month ($950/year with 20% discount)
+  - Target: 20-100 employees
+  - Contracts: Unlimited
+  - Locations: Up to 10
+  - Storage: 100GB
+  - API Calls: 50,000/month
+  - Additional Features: All Starter features + Mobile service app, GPS tracking, mobile photo capture, digital signatures, preventive maintenance, purchase orders, multi-warehouse, meter billing, contract management, payment processing, recurring billing, advanced analytics, custom dashboards, QuickBooks/Salesforce/E-Automate integrations, API access, shared calendars, audit logs, priority support, phone support
+
+- **Enterprise Plan**: $149/month ($1,430/year with 20% discount)
+  - Target: 100+ employees
+  - Everything: Unlimited
+  - Additional Features: All Professional features + White label options, custom integrations, advanced forecasting, SLA guarantee (99.9% uptime), SSO integration, IP whitelisting, dedicated account manager, onboarding assistance, barcode scanning, predictive maintenance, webhook support
+
+### Feature Categories
+1. **CRM**: Lead management, customer management, deal pipeline, contact management, activity tracking
+2. **Service**: Service tickets, technician dispatch, equipment tracking, service history, preventive maintenance, predictive maintenance, mobile service app, GPS tracking, mobile photo capture, digital signatures
+3. **Inventory**: Parts inventory, stock levels, purchase orders, multi-warehouse, barcode scanning
+4. **Billing**: Invoice generation, meter billing, contract management, payment processing, recurring billing
+5. **Analytics**: Basic reports, advanced analytics, custom dashboards, advanced forecasting, data export
+6. **Integrations**: Email integration, QuickBooks/Salesforce/E-Automate integrations, API access, webhook support, custom integrations
+7. **Platform**: Team collaboration, document storage, shared calendars, white label options
+8. **Security**: Role-based access, data encryption, audit logs, SSO integration, IP whitelisting
+9. **Support**: Email support, priority support, phone support, dedicated account manager, onboarding assistance, SLA guarantee
+
+### Add-Ons
+**One-Time Add-Ons:**
+- Professional Implementation: $3,000 (4-6 weeks, includes project manager, custom configuration, data migration, training)
+- Data Migration Service: $2,000 (2-4 weeks, includes data extraction, cleansing, validation, mapping)
+- Advanced Training Package: $1,500 (1-2 weeks, includes admin and end-user training for up to 25 participants)
+- Custom Integration Development: $5,000 (6-8 weeks, includes custom API integration and 90-day support)
+
+**Recurring Add-Ons:**
+- Additional API Calls: $0.001/call (billed monthly, minimum 1,000 calls)
+- Additional Storage (100GB): $50/month
+- Premium Support Package: $500/month (24/7 support, 1-hour response time, priority bug fixes)
+- Additional Locations (5-pack): $100/month
+- Additional Users (10-pack): $200/month
+
+### Trial Management
+- All plans: 30-day free trial
+- Starter & Professional: No payment method required
+- Enterprise: Payment method required upfront
+- Trial includes full feature access
 
 ## External Dependencies
 
