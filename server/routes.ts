@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import connectPg from 'connect-pg-simple';
 import { storage } from './storage';
 import { authRoutes } from './auth-routes';
+import { trialRoutes } from './routes-trial';
 import {
   insertCustomerSchema,
   insertCompanySchema,
@@ -623,6 +624,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth routes
   app.use('/api/auth', authRoutes);
+
+  // Trial management routes
+  app.use('/api/trial', trialRoutes);
 
   // Tenants route for platform users (Root Admin / platform-only)
   app.get('/api/tenants', requireAuth, async (req: any, res) => {

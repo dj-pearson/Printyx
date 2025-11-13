@@ -217,5 +217,14 @@ app.use((req, res, next) => {
 
   server.listen(listenOptions, () => {
     log(`serving on port ${port}`);
+
+    // Initialize cron jobs for automated tasks
+    try {
+      const { cronService } = require('./services/cron-service');
+      cronService.initialize();
+      log('Cron jobs initialized successfully');
+    } catch (error) {
+      log('Warning: Failed to initialize cron jobs:', error);
+    }
   });
 })();

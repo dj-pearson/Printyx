@@ -231,6 +231,12 @@ export default function Billing() {
     queryKey: ["/api/billing/invoices"],
   });
 
+  // Fetch trial status
+  const { data: trialStatus } = useQuery({
+    queryKey: ["/api/trial/status"],
+    retry: false, // Don't retry if not in trial
+  });
+
   // Fetch billing info
   const { data: billingInfo } = useQuery({
     queryKey: ["/api/billing/info"],
@@ -313,6 +319,68 @@ export default function Billing() {
       description="Manage your payment methods and billing information"
     >
       <div className="space-y-6">
+        {/* Trial/Subscription Status */}
+        {trialStatus && trialStatus.status === 'active' && (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-blue-900">Free Trial Active</CardTitle>
+                  <CardDescription className="text-blue-700">
+                    {trialStatus.daysRemaining} days remaining
+                  </CardDescription>
+                </div>
+                {trialStatus.daysRemaining <= 3 && (
+                  <Badge variant="destructive">Ending Soon!</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Trial ends on:</p>
+                    <p className="text-sm text-blue-700">
+                      {new Date(trialStatus.trialEndDate).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                  {!paymentMethods || paymentMethods.length === 0 ? (
+                    <Button onClick={() => setIsAddPaymentOpen(true)} variant="default">
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Add Payment Method
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2 text-green-700">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="text-sm font-medium">Payment method on file</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg p-4 border border-blue-200">
+                  <p className="text-sm text-gray-700">
+                    {!paymentMethods || paymentMethods.length === 0 ? (
+                      <>
+                        <strong>⚠️ Action Required:</strong> Add a payment method to avoid service interruption
+                        when your trial ends. Your card won't be charged until after the trial period.
+                      </>
+                    ) : (
+                      <>
+                        <strong>✅ You're all set!</strong> Your subscription will automatically start when your
+                        trial ends. Cancel anytime before then if you change your mind.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Payment Methods Section */}
         <Card>
           <CardHeader>
