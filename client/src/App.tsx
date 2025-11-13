@@ -59,7 +59,7 @@ const ContractRenewalDashboard = React.lazy(() => import("@/pages/ContractRenewa
 const ProactiveServiceDashboard = React.lazy(() => import("@/pages/ProactiveServiceDashboard"));
 const ServiceDispatchOptimization = React.lazy(() => import("@/pages/ServiceDispatchOptimization"));
 const Inventory = React.lazy(() => import("@/pages/inventory"));
-const Billing = React.lazy(() => import("@/pages/billing"));
+const Billing = React.lazy(() => import("@/pages/Billing"));
 const Reports = React.lazy(() => import("@/pages/Reports"));
 const MeterReadings = React.lazy(() => import("@/pages/MeterReadings"));
 const ProductModels = React.lazy(() => import("@/pages/ProductModels"));
