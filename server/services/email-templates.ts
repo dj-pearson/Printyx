@@ -308,6 +308,143 @@ This email was sent to ${data.userEmail}
   }
 
   /**
+   * Trial Day 3 - Engagement Check
+   */
+  static trialDay3(data: EmailTemplateData): { subject: string; html: string; text: string } {
+    const dashboardUrl = `${this.baseUrl}/`;
+    const helpUrl = `${this.baseUrl}/help`;
+
+    return {
+      subject: 'Making the most of your Printyx trial',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          ${EMAIL_BASE_STYLES}
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">🚀 Getting Started with Printyx</h1>
+            </div>
+            <div class="content">
+              <p>Hello ${data.userName},</p>
+
+              <p>You're now 3 days into your Printyx trial! Here are some tips to help you get the most out of the platform:</p>
+
+              <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">🎯 Quick Wins</h3>
+                <ul style="line-height: 2;">
+                  <li><strong>Import your customers</strong> - Bulk import from CSV or integrate with your existing tools</li>
+                  <li><strong>Set up service dispatch</strong> - Optimize technician routes and reduce travel time</li>
+                  <li><strong>Configure meter billing</strong> - Automate your billing and increase accuracy</li>
+                  <li><strong>Connect integrations</strong> - Link QuickBooks, Salesforce, or other tools</li>
+                </ul>
+              </div>
+
+              <p style="text-align: center;">
+                <a href="${dashboardUrl}" class="button">Go to Dashboard</a>
+              </p>
+
+              <p><strong>Need help?</strong> Our team is standing by:</p>
+              <ul>
+                <li>📚 <a href="${helpUrl}">Browse our knowledge base</a></li>
+                <li>💬 Reply to this email to talk to our team</li>
+              </ul>
+            </div>
+            <div class="footer">
+              <p>© 2025 Printyx. All rights reserved.</p>
+              <p>This email was sent to ${data.userEmail}</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+Making the Most of Your Printyx Trial
+
+Hello ${data.userName},
+
+You're now 3 days into your Printyx trial! Here are some tips:
+
+QUICK WINS:
+• Import your customers
+• Set up service dispatch
+• Configure meter billing
+• Connect integrations
+
+Go to dashboard: ${dashboardUrl}
+
+Need help? Reply to this email!
+
+© 2025 Printyx
+      `.trim(),
+    };
+  }
+
+  /**
+   * Trial Day 7 - Mid-Trial
+   */
+  static trialDay7(data: EmailTemplateData): { subject: string; html: string; text: string } {
+    const dashboardUrl = `${this.baseUrl}/`;
+
+    return {
+      subject: "You're halfway through your Printyx trial",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          ${EMAIL_BASE_STYLES}
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">⏳ Halfway There!</h1>
+            </div>
+            <div class="content">
+              <p>Hello ${data.userName},</p>
+
+              <p>You're at the midpoint of your 14-day trial.</p>
+
+              <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">💡 Pro Tips</h3>
+                <ul style="line-height: 2;">
+                  <li>Set up automated meter billing (saves 10+ hours/month)</li>
+                  <li>Use smart dispatch to reduce drive time by 40%</li>
+                  <li>Track contract profitability</li>
+                </ul>
+              </div>
+
+              <p style="text-align: center;">
+                <a href="${dashboardUrl}" class="button">Continue Exploring</a>
+              </p>
+
+              <p><strong>Have questions?</strong> Reply to this email!</p>
+            </div>
+            <div class="footer">
+              <p>© 2025 Printyx. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+Halfway Through Your Trial
+
+Hello ${data.userName},
+
+You're at the midpoint of your 14-day trial.
+
+Pro tips: Set up automated billing, use smart dispatch, track profitability.
+
+Continue exploring: ${dashboardUrl}
+
+© 2025 Printyx
+      `.trim(),
+    };
+  }
+
+  /**
    * Trial Ending Soon
    */
   static trialEndingSoon(data: EmailTemplateData): { subject: string; html: string; text: string } {
