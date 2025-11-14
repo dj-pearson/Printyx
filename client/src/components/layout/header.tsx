@@ -20,9 +20,10 @@ import { useAuth } from "@/hooks/useAuth";
 interface HeaderProps {
   title?: string;
   description?: string;
+  onSearchClick?: () => void;
 }
 
-export default function Header({ title, description }: HeaderProps) {
+export default function Header({ title, description, onSearchClick }: HeaderProps) {
   const { user } = useAuth();
 
   return (
@@ -51,13 +52,20 @@ export default function Header({ title, description }: HeaderProps) {
           <div className="relative hidden sm:block">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search customers, tickets..."
-              className="pl-10 h-10 bg-gray-50 border-gray-200 focus:bg-white"
+              placeholder="Search customers, tickets... (⌘K)"
+              className="pl-10 h-10 bg-gray-50 border-gray-200 focus:bg-white cursor-pointer"
+              onClick={onSearchClick}
+              readOnly
             />
           </div>
           {/* Mobile search button */}
           <div className="sm:hidden flex justify-end">
-            <Button variant="ghost" size="icon" aria-label="Search">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Search"
+              onClick={onSearchClick}
+            >
               <Search className="h-5 w-5" />
             </Button>
           </div>
