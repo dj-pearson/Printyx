@@ -111,6 +111,7 @@ import reportingArchitectureRoutes from './routes-reporting-architecture';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
 import billingRoutes from './routes-billing';
 import printCostCalculatorRoutes from './routes-print-cost-calculator';
+import contentMarketingRoutes from './routes-content-marketing';
 // TEMPORARILY DISABLED: SEO routes causing cheerio dependency conflict
 // import seoRoutes from "./routes-seo";
 import {
@@ -14933,6 +14934,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api', warehouseFpyRoutes);
 
   // Register Print Cost Calculator routes (public and admin)
+  // Register content marketing routes (blog, guides, case studies, landing pages)
+  app.use(contentMarketingRoutes);
   app.use(printCostCalculatorRoutes);
 
   // Register DoD enforcement routes

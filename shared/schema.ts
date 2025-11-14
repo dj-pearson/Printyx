@@ -8010,3 +8010,40 @@ export type {
   CalculatorAnalyticsEvent,
   InsertCalculatorAnalyticsEvent,
 } from './print-cost-calculator-schema';
+
+// Re-export Content Marketing schemas
+export {
+  blogPosts,
+  guides,
+  caseStudies,
+  landingPages,
+  contentAnalytics,
+  contentFaqs,
+  contentCitations,
+  contentTypeEnum as contentMarketingTypeEnum,
+  contentStatusEnum,
+  contentCategoryEnum,
+  keywordTierEnum,
+  insertBlogPostSchema,
+  insertGuideSchema,
+  insertCaseStudySchema,
+  insertLandingPageSchema,
+  insertContentFaqSchema,
+  insertContentCitationSchema,
+} from './content-marketing-schema';
+
+export type {
+  BlogPost,
+  InsertBlogPost,
+  Guide,
+  InsertGuide,
+  CaseStudy,
+  InsertCaseStudy,
+  LandingPage,
+  InsertLandingPage,
+  ContentAnalytics,
+  ContentFaq,
+  InsertContentFaq,
+  ContentCitation,
+  InsertContentCitation,
+} from './content-marketing-schema';
