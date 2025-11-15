@@ -40,6 +40,9 @@ import {
   Filter,
   ArrowLeft,
   Upload,
+  Download,
+  FileText,
+  Trash2,
 } from "lucide-react";
 import MainLayout from "@/components/layout/main-layout";
 import { Link } from "wouter";
@@ -47,21 +50,35 @@ import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
 import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
 import MobileFAB from "@/components/layout/MobileFAB";
-import { 
-  type MasterProductModel, 
-  type EnabledProduct, 
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  BulkOperationsToolbar,
+  useBulkSelection,
+  BulkAction,
+} from "@/components/ui/bulk-operations-toolbar";
+import {
+  exportToCSV,
+  exportToJSON,
+  createExportColumn,
+} from "@/lib/export-utils";
+import { SavedFilters, useFilterState } from "@/components/ui/saved-filters";
+import {
+  type MasterProductModel,
+  type EnabledProduct,
   type InsertEnabledProduct,
-  insertEnabledProductSchema 
+  insertEnabledProductSchema
 } from "@shared/schema";
 
 export default function ProductCatalog() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedManufacturer, setSelectedManufacturer] = useState("all");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedItemType, setSelectedItemType] = useState("all");
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
-    new Set()
-  );
+  // Filter state management
+  const filterState = useFilterState({
+    searchTerm: '',
+    manufacturer: 'all',
+    category: 'all',
+    itemType: 'all',
+  });
+
+  const { searchTerm, manufacturer, category, itemType } = filterState.filters;
   const [masterCsvFile, setMasterCsvFile] = useState<File | null>(null);
   const [tenantCsvFile, setTenantCsvFile] = useState<File | null>(null);
   const [enableForm, setEnableForm] = useState({
@@ -99,16 +116,11 @@ export default function ProductCatalog() {
   const { data: masterProducts = [], isLoading: isLoadingMaster } = useQuery<MasterProductModel[]>({
     queryKey: [
       "/api/catalog/models",
-      {
-        manufacturer: selectedManufacturer,
-        search: searchTerm,
-        category: selectedCategory,
-        itemType: selectedItemType,
-      },
+      filterState.filters,
     ],
     queryFn: () =>
       apiRequest(
-        `/api/catalog/models?manufacturer=${selectedManufacturer}&search=${searchTerm}&category=${selectedCategory}`
+        `/api/catalog/models?manufacturer=${manufacturer}&search=${searchTerm}&category=${category}`
       ),
   });
 
@@ -129,6 +141,70 @@ export default function ProductCatalog() {
     ...new Set(
       masterProducts.map((p: MasterProductModel) => p.category).filter(Boolean)
     ),
+  ];
+
+  // Bulk selection for master products
+  const bulkSelection = useBulkSelection(masterProducts);
+
+  // Export functionality for master products
+  const handleBulkExport = (format: 'csv' | 'json') => {
+    const selectedMasterProducts = masterProducts.filter((p: MasterProductModel) =>
+      bulkSelection.isSelected(p.id)
+    );
+
+    const columns = [
+      createExportColumn('modelNumber', 'Model Number'),
+      createExportColumn('displayName', 'Display Name'),
+      createExportColumn('manufacturer', 'Manufacturer'),
+      createExportColumn('category', 'Category'),
+      createExportColumn('productType', 'Product Type'),
+      createExportColumn('dealerCost', 'Dealer Cost', 'currency'),
+      createExportColumn('msrp', 'MSRP', 'currency'),
+      createExportColumn('marginPercentage', 'Margin %'),
+    ];
+
+    if (format === 'csv') {
+      exportToCSV(selectedMasterProducts, columns, { filename: 'product-catalog-export' });
+    } else {
+      exportToJSON(selectedMasterProducts, columns, { filename: 'product-catalog-export' });
+    }
+
+    toast({
+      title: 'Export Complete',
+      description: `${selectedMasterProducts.length} product(s) exported successfully`,
+    });
+  };
+
+  // Bulk actions configuration
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'export-csv',
+      label: 'Export CSV',
+      icon: Download,
+      onClick: () => handleBulkExport('csv'),
+    },
+    {
+      id: 'export-json',
+      label: 'Export JSON',
+      icon: FileText,
+      onClick: () => handleBulkExport('json'),
+    },
+    {
+      id: 'enable',
+      label: 'Enable Selected',
+      icon: CheckCircle,
+      onClick: (ids) => {
+        const defaultOverrides = {
+          dealerCost: enableForm.dealerCost ? parseFloat(enableForm.dealerCost) : null,
+          companyPrice: enableForm.companyPrice ? parseFloat(enableForm.companyPrice) : null,
+          markupRuleId: enableForm.markupRuleId || null,
+        };
+        bulkEnableMutation.mutate({
+          masterProductIds: ids,
+          defaultOverrides,
+        });
+      },
+    },
   ];
 
   // Enable single product mutation
@@ -164,7 +240,7 @@ export default function ProductCatalog() {
         title: "Products enabled",
         description: `${data.enabled} products enabled, ${data.skipped} already enabled`,
       });
-      setSelectedProducts(new Set());
+      bulkSelection.clearSelection();
     },
     onError: (error: any) => {
       toast({
@@ -279,15 +355,6 @@ export default function ProductCatalog() {
     },
   });
 
-  const handleSelectProduct = (productId: string) => {
-    const newSelected = new Set(selectedProducts);
-    if (newSelected.has(productId)) {
-      newSelected.delete(productId);
-    } else {
-      newSelected.add(productId);
-    }
-    setSelectedProducts(newSelected);
-  };
 
   const handleEditProduct = (product: MasterProductModel) => {
     setEditingProduct(product.id);
@@ -334,25 +401,6 @@ export default function ProductCatalog() {
     });
   };
 
-  const handleBulkEnable = () => {
-    if (selectedProducts.size === 0) {
-      toast({ title: "No products selected", variant: "destructive" });
-      return;
-    }
-
-    bulkEnableMutation.mutate({
-      masterProductIds: Array.from(selectedProducts),
-      defaultOverrides: {
-        dealerCost: enableForm.dealerCost
-          ? parseFloat(enableForm.dealerCost)
-          : null,
-        companyPrice: enableForm.companyPrice
-          ? parseFloat(enableForm.companyPrice)
-          : null,
-        markupRuleId: enableForm.markupRuleId || null,
-      },
-    });
-  };
 
   const isProductEnabled = (productId: string) => {
     return enabledProducts.some(
@@ -525,6 +573,22 @@ export default function ProductCatalog() {
           </TabsList>
 
           <TabsContent value="browse" className="space-y-4">
+            {/* Saved Filters */}
+            <SavedFilters
+              filterState={filterState}
+              filterKey="product-catalog-filters"
+            />
+
+            {/* Bulk Operations Toolbar */}
+            <BulkOperationsToolbar
+              selectedCount={bulkSelection.selectedCount}
+              totalCount={masterProducts.length}
+              onClearSelection={bulkSelection.clearSelection}
+              onSelectAll={bulkSelection.selectAll}
+              selectedIds={bulkSelection.selectedIds}
+              actions={bulkActions}
+            />
+
             {/* Search and Filter Controls - Mobile Optimized */}
             <Card>
               <CardHeader className="pb-3">
@@ -543,15 +607,15 @@ export default function ProductCatalog() {
                     <Input
                       placeholder="Search by name or model..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => filterState.updateFilter('searchTerm', e.target.value)}
                       className="h-9"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Manufacturer</Label>
                     <Select
-                      value={selectedManufacturer}
-                      onValueChange={setSelectedManufacturer}
+                      value={manufacturer}
+                      onValueChange={(value) => filterState.updateFilter('manufacturer', value)}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder="All Manufacturers" />
@@ -569,8 +633,8 @@ export default function ProductCatalog() {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Category</Label>
                     <Select
-                      value={selectedCategory}
-                      onValueChange={setSelectedCategory}
+                      value={category}
+                      onValueChange={(value) => filterState.updateFilter('category', value)}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder="All Categories" />
@@ -588,8 +652,8 @@ export default function ProductCatalog() {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Product Type</Label>
                     <Select
-                      value={selectedItemType}
-                      onValueChange={setSelectedItemType}
+                      value={itemType}
+                      onValueChange={(value) => filterState.updateFilter('itemType', value)}
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder="All Types" />
@@ -602,17 +666,14 @@ export default function ProductCatalog() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Bulk Actions</Label>
+                    <Label className="text-sm font-medium">Actions</Label>
                     <Button
-                      onClick={handleBulkEnable}
-                      disabled={
-                        selectedProducts.size === 0 ||
-                        bulkEnableMutation.isPending
-                      }
+                      onClick={filterState.clearFilters}
+                      variant="outline"
                       className="w-full h-9 text-sm"
                       size="sm"
                     >
-                      Enable Selected ({selectedProducts.size})
+                      Clear Filters
                     </Button>
                     <Button
                       onClick={handleNormalizeCategories}
@@ -631,14 +692,14 @@ export default function ProductCatalog() {
             </Card>
 
             {/* Bulk Enable Form - Collapsible on Mobile */}
-            {selectedProducts.size > 0 && (
+            {bulkSelection.selectedCount > 0 && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">
                     Bulk Enable Settings
                   </CardTitle>
                   <CardDescription className="text-sm">
-                    Configure default settings for {selectedProducts.size}{" "}
+                    Configure default settings for {bulkSelection.selectedCount}{" "}
                     selected products
                   </CardDescription>
                 </CardHeader>
@@ -886,7 +947,7 @@ export default function ProductCatalog() {
                     })
                     .map((product: MasterProductModel) => {
                       const isEnabled = isProductEnabled(product.id);
-                      const isSelected = selectedProducts.has(product.id);
+                      const isSelected = bulkSelection.isSelected(product.id);
 
                       return (
                         <Card
@@ -920,9 +981,7 @@ export default function ProductCatalog() {
                                 ) : (
                                   <Checkbox
                                     checked={isSelected}
-                                    onCheckedChange={() =>
-                                      handleSelectProduct(product.id)
-                                    }
+                                    onCheckedChange={() => bulkSelection.toggleSelection(product.id)}
                                   />
                                 )}
                               </div>
