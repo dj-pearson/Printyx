@@ -20,6 +20,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState } from '@/components/ui/empty-state';
+import {
+  BulkOperationsToolbar,
+  useBulkSelection,
+  BulkAction,
+} from '@/components/ui/bulk-operations-toolbar';
+import {
+  exportToCSV,
+  exportToJSON,
+  createExportColumn,
+} from '@/lib/export-utils';
+import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
+import { QuoteTemplates } from '@/components/quotes/quote-templates';
 import {
   Select,
   SelectContent,
@@ -126,10 +140,15 @@ const statusConfig = {
 };
 
 export default function QuotesManagement() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
-  
+  // Filter state management
+  const filterState = useFilterState({
+    searchTerm: '',
+    statusFilter: 'all',
+    dateFilter: 'all',
+  });
+
+  const { searchTerm, statusFilter, dateFilter } = filterState.filters;
+
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -236,6 +255,90 @@ export default function QuotesManagement() {
     winRate: quotes.length > 0 ? (quotes.filter(q => q.status === 'accepted').length / quotes.length) * 100 : 0,
   };
 
+  // Bulk selection hook
+  const bulkSelection = useBulkSelection(filteredQuotes);
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (quoteIds: string[]) => {
+      // Delete all quotes in parallel
+      await Promise.all(
+        quoteIds.map(id => apiRequest(`/api/proposals/${id}`, 'DELETE'))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      bulkSelection.clearSelection();
+      toast({
+        title: 'Success',
+        description: `${bulkSelection.selectedCount} quote(s) deleted successfully`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete some quotes',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Bulk export function
+  const handleBulkExport = (format: 'csv' | 'json') => {
+    const selectedQuotes = quotes.filter(q =>
+      bulkSelection.selectedIds.includes(q.id)
+    );
+
+    const columns = [
+      createExportColumn('proposalNumber', 'Quote Number'),
+      createExportColumn('title', 'Title'),
+      createExportColumn('customerName', 'Customer'),
+      createExportColumn('contactName', 'Contact'),
+      createExportColumn('status', 'Status'),
+      createExportColumn('totalAmount', 'Total Amount', 'currency'),
+      createExportColumn('validUntil', 'Valid Until', 'date'),
+      createExportColumn('createdAt', 'Created Date', 'date'),
+      createExportColumn('assignedToName', 'Assigned To'),
+    ];
+
+    if (format === 'csv') {
+      exportToCSV(selectedQuotes, columns, { filename: 'quotes-export' });
+    } else {
+      exportToJSON(selectedQuotes, columns, { filename: 'quotes-export' });
+    }
+
+    toast({
+      title: 'Export Complete',
+      description: `${selectedQuotes.length} quote(s) exported successfully`,
+    });
+  };
+
+  // Bulk actions configuration
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'export-csv',
+      label: 'Export CSV',
+      icon: Download,
+      onClick: () => handleBulkExport('csv'),
+    },
+    {
+      id: 'export-json',
+      label: 'Export JSON',
+      icon: FileText,
+      onClick: () => handleBulkExport('json'),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      onClick: (ids) => bulkDeleteMutation.mutate(ids),
+      variant: 'destructive',
+      requiresConfirmation: true,
+      confirmationTitle: 'Delete Quotes',
+      confirmationDescription: `Are you sure you want to delete ${bulkSelection.selectedCount} quote(s)? This action cannot be undone.`,
+    },
+  ];
+
   const formatCurrency = (amount?: number) => {
     if (!amount) return '$0.00';
     return new Intl.NumberFormat('en-US', {
@@ -298,13 +401,21 @@ export default function QuotesManagement() {
           estimatedTime="2-4 hours"
         />
         {/* Header */}
-        <div className="flex justify-end items-center">
-          <div>
-            <Button onClick={handleCreateQuote}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Quote
-            </Button>
-          </div>
+        <div className="flex justify-end items-center gap-2">
+          <QuoteTemplates
+            onApplyTemplate={(template) => {
+              // In a real implementation, this would navigate to quote builder with template
+              toast({
+                title: 'Template Applied',
+                description: `${template.name} template will be loaded in the quote builder`,
+              });
+              handleCreateQuote();
+            }}
+          />
+          <Button onClick={handleCreateQuote}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Quote
+          </Button>
         </div>
 
         {/* Statistics Cards */}
@@ -368,14 +479,17 @@ export default function QuotesManagement() {
                   <Input
                     placeholder="Search quotes by title, number, or customer..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => filterState.updateFilter('searchTerm', e.target.value)}
                     className="pl-10"
                   />
                 </div>
               </div>
               
               <div className="flex gap-2">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => filterState.updateFilter('statusFilter', value)}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -388,7 +502,10 @@ export default function QuotesManagement() {
                   </SelectContent>
                 </Select>
 
-                <Select value={dateFilter} onValueChange={setDateFilter}>
+                <Select
+                  value={dateFilter}
+                  onValueChange={(value) => filterState.updateFilter('dateFilter', value)}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Date Range" />
                   </SelectTrigger>
@@ -400,6 +517,22 @@ export default function QuotesManagement() {
                     <SelectItem value="quarter">This Quarter</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Saved Filters */}
+                <SavedFilters
+                  storageKey="quotes.savedFilters"
+                  currentFilters={filterState.filters}
+                  onApplyFilter={filterState.applyFilters}
+                  onClearFilters={filterState.clearFilters}
+                  activeFilterCount={filterState.activeFilterCount}
+                  getFilterDescription={(filters) => {
+                    const parts: string[] = [];
+                    if (filters.searchTerm) parts.push(`Search: "${filters.searchTerm}"`);
+                    if (filters.statusFilter !== 'all') parts.push(`Status: ${filters.statusFilter}`);
+                    if (filters.dateFilter !== 'all') parts.push(`Date: ${filters.dateFilter}`);
+                    return parts.length > 0 ? parts.join(' • ') : 'No filters applied';
+                  }}
+                />
               </div>
             </div>
           </CardContent>
@@ -413,36 +546,72 @@ export default function QuotesManagement() {
               {filteredQuotes.length} of {quotes.length} quotes
             </CardDescription>
           </CardHeader>
+
+          {/* Bulk Operations Toolbar */}
+          <BulkOperationsToolbar
+            selectedCount={bulkSelection.selectedCount}
+            totalCount={filteredQuotes.length}
+            onClearSelection={bulkSelection.clearSelection}
+            onSelectAll={bulkSelection.selectAll}
+            selectedIds={bulkSelection.selectedIds}
+            actions={bulkActions}
+          />
+
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : filteredQuotes.length === 0 ? (
-              <div className="text-center py-12">
-                <Calculator className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">
-                  {searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
+              <EmptyState
+                icon={Calculator}
+                title={
+                  searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
                     ? 'No quotes match your filters'
                     : 'No quotes created yet'
-                  }
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
-                    ? 'Try adjusting your search criteria'
-                    : 'Create your first quote to get started'
-                  }
-                </p>
-                <Button onClick={handleCreateQuote}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Quote
-                </Button>
-              </div>
+                }
+                description={
+                  searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
+                    ? 'Try adjusting your search criteria to find what you\'re looking for'
+                    : 'Create your first quote to start managing sales opportunities'
+                }
+                type={searchTerm || statusFilter !== 'all' || dateFilter !== 'all' ? 'filter' : 'default'}
+                action={{
+                  label: 'Create Quote',
+                  onClick: handleCreateQuote,
+                  icon: Plus,
+                }}
+                secondaryAction={
+                  searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
+                    ? {
+                        label: 'Clear Filters',
+                        onClick: filterState.clearFilters,
+                        variant: 'outline',
+                      }
+                    : undefined
+                }
+                suggestions={
+                  quotes.length === 0 && !searchTerm
+                    ? [
+                        'Quotes help you provide pricing to potential customers',
+                        'Convert quotes to proposals for professional presentations',
+                        'Track quote status from draft to accepted',
+                      ]
+                    : undefined
+                }
+              />
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={bulkSelection.isAllSelected}
+                          onCheckedChange={bulkSelection.toggleAll}
+                          aria-label="Select all quotes"
+                        />
+                      </TableHead>
                       <TableHead>Quote #</TableHead>
                       <TableHead>Title</TableHead>
                       <TableHead>Customer</TableHead>
@@ -457,6 +626,13 @@ export default function QuotesManagement() {
                   <TableBody>
                     {filteredQuotes.map((quote) => (
                       <TableRow key={quote.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <Checkbox
+                            checked={bulkSelection.isSelected(quote.id)}
+                            onCheckedChange={() => bulkSelection.toggleSelection(quote.id)}
+                            aria-label={`Select quote ${quote.proposalNumber}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="font-medium text-primary">
                             {quote.proposalNumber}
