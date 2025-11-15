@@ -4,10 +4,25 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  BulkOperationsToolbar,
+  useBulkSelection,
+  BulkAction,
+} from "@/components/ui/bulk-operations-toolbar";
+import {
+  exportToCSV,
+  exportToJSON,
+  createExportColumn,
+} from "@/lib/export-utils";
+import { SavedFilters, useFilterState } from "@/components/ui/saved-filters";
 import {
   Table as UITable,
   TableBody,
@@ -26,6 +41,9 @@ import {
   MapPin,
   LayoutGrid,
   Rows,
+  Download,
+  FileText,
+  Trash2,
 } from "lucide-react";
 import {
   Dialog,
@@ -54,8 +72,17 @@ import {
 export default function Customers() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  // Filter state management
+  const filterState = useFilterState({
+    searchTerm: '',
+    industryFilter: 'all',
+    stateFilter: 'all',
+  });
+
+  const { searchTerm, industryFilter, stateFilter } = filterState.filters;
+
   const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
     if (typeof window !== "undefined") {
       return window.innerWidth < 768 ? "cards" : "table";
@@ -178,10 +205,10 @@ export default function Customers() {
   }, [customers, companies]);
 
   const filtered = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return enriched;
-    return enriched.filter((r: any) =>
-      [
+    return enriched.filter((r: any) => {
+      // Search filter
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch = !term || [
         r.companyName,
         r.primaryContactName,
         r.primaryContactEmail,
@@ -190,9 +217,115 @@ export default function Customers() {
         r.state,
       ]
         .filter(Boolean)
-        .some((v: string) => String(v).toLowerCase().includes(term))
+        .some((v: string) => String(v).toLowerCase().includes(term));
+
+      // Industry filter
+      const matchesIndustry = industryFilter === 'all' || r.industry === industryFilter;
+
+      // State filter
+      const matchesState = stateFilter === 'all' || r.state === stateFilter;
+
+      return matchesSearch && matchesIndustry && matchesState;
+    });
+  }, [enriched, searchTerm, industryFilter, stateFilter]);
+
+  // Get unique industries and states for filter dropdowns
+  const uniqueIndustries = useMemo(() => {
+    const industries = new Set(
+      enriched.map((c: any) => c.industry).filter(Boolean)
     );
-  }, [enriched, searchTerm]);
+    return Array.from(industries).sort();
+  }, [enriched]);
+
+  const uniqueStates = useMemo(() => {
+    const states = new Set(
+      enriched.map((c: any) => c.state).filter(Boolean)
+    );
+    return Array.from(states).sort();
+  }, [enriched]);
+
+  // Bulk selection
+  const bulkSelection = useBulkSelection(filtered);
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (customerIds: string[]) => {
+      await Promise.all(
+        customerIds.map(id => apiRequest(`/api/customers/${id}`, 'DELETE'))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      bulkSelection.clearSelection();
+      toast({
+        title: 'Success',
+        description: `${bulkSelection.selectedCount} customer(s) deleted successfully`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete some customers',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Bulk export function
+  const handleBulkExport = (format: 'csv' | 'json') => {
+    const selectedCustomers = filtered.filter((c: any) =>
+      bulkSelection.selectedIds.includes(c.id)
+    );
+
+    const columns = [
+      createExportColumn('companyName', 'Company Name'),
+      createExportColumn('industry', 'Industry'),
+      createExportColumn('city', 'City'),
+      createExportColumn('state', 'State'),
+      createExportColumn('phone', 'Phone'),
+      createExportColumn('website', 'Website'),
+      createExportColumn('primaryContactName', 'Primary Contact'),
+      createExportColumn('primaryContactEmail', 'Contact Email'),
+      createExportColumn('primaryContactPhone', 'Contact Phone'),
+    ];
+
+    if (format === 'csv') {
+      exportToCSV(selectedCustomers, columns, { filename: 'customers-export' });
+    } else {
+      exportToJSON(selectedCustomers, columns, { filename: 'customers-export' });
+    }
+
+    toast({
+      title: 'Export Complete',
+      description: `${selectedCustomers.length} customer(s) exported successfully`,
+    });
+  };
+
+  // Bulk actions configuration
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'export-csv',
+      label: 'Export CSV',
+      icon: Download,
+      onClick: () => handleBulkExport('csv'),
+    },
+    {
+      id: 'export-json',
+      label: 'Export JSON',
+      icon: FileText,
+      onClick: () => handleBulkExport('json'),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      onClick: (ids) => bulkDeleteMutation.mutate(ids),
+      variant: 'destructive',
+      requiresConfirmation: true,
+      confirmationTitle: 'Delete Customers',
+      confirmationDescription: `Are you sure you want to delete ${bulkSelection.selectedCount} customer(s)? This action cannot be undone.`,
+    },
+  ];
 
   return (
     <MainLayout
@@ -200,15 +333,89 @@ export default function Customers() {
       description="Manage your customer relationships and accounts"
     >
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search customers..."
-              className="pl-10 min-h-11 text-base sm:text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        {/* Search and Filters */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Search customers by name, email, industry, location..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => filterState.updateFilter('searchTerm', e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                {/* Industry Filter */}
+                {uniqueIndustries.length > 0 && (
+                  <Select
+                    value={industryFilter}
+                    onValueChange={(value) => filterState.updateFilter('industryFilter', value)}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Industries</SelectItem>
+                      {uniqueIndustries.map((industry) => (
+                        <SelectItem key={industry} value={industry}>
+                          {industry}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* State Filter */}
+                {uniqueStates.length > 0 && (
+                  <Select
+                    value={stateFilter}
+                    onValueChange={(value) => filterState.updateFilter('stateFilter', value)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {uniqueStates.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Saved Filters */}
+                <SavedFilters
+                  storageKey="customers.savedFilters"
+                  currentFilters={filterState.filters}
+                  onApplyFilter={filterState.applyFilters}
+                  onClearFilters={filterState.clearFilters}
+                  activeFilterCount={filterState.activeFilterCount}
+                  getFilterDescription={(filters) => {
+                    const parts: string[] = [];
+                    if (filters.searchTerm) parts.push(`Search: "${filters.searchTerm}"`);
+                    if (filters.industryFilter !== 'all') parts.push(`Industry: ${filters.industryFilter}`);
+                    if (filters.stateFilter !== 'all') parts.push(`State: ${filters.stateFilter}`);
+                    return parts.length > 0 ? parts.join(' • ') : 'No filters applied';
+                  }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* View Controls */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            {filtered.length > 0 && (
+              <Badge variant="secondary">
+                {filtered.length} {filtered.length === 1 ? 'customer' : 'customers'}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -229,14 +436,24 @@ export default function Customers() {
             </Button>
             <Button
               size="default"
-              className="flex items-center gap-2 min-h-11 px-4 py-2"
+              className="flex items-center gap-2"
               onClick={handleAddCustomer}
             >
               <Plus className="h-4 w-4" />
-              Add Customer
+              <span className="hidden sm:inline">Add Customer</span>
             </Button>
           </div>
         </div>
+
+        {/* Bulk Operations Toolbar */}
+        <BulkOperationsToolbar
+          selectedCount={bulkSelection.selectedCount}
+          totalCount={filtered.length}
+          onClearSelection={bulkSelection.clearSelection}
+          onSelectAll={bulkSelection.selectAll}
+          selectedIds={bulkSelection.selectedIds}
+          actions={bulkActions}
+        />
 
         {customersLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -325,6 +542,13 @@ export default function Customers() {
               <UITable>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={bulkSelection.isAllSelected}
+                        onCheckedChange={bulkSelection.toggleAll}
+                        aria-label="Select all customers"
+                      />
+                    </TableHead>
                     <TableHead>Company</TableHead>
                     <TableHead>Industry</TableHead>
                     <TableHead>Location</TableHead>
@@ -340,6 +564,13 @@ export default function Customers() {
                       className="cursor-pointer"
                       onClick={() => navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`)}
                     >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={bulkSelection.isSelected(row.id)}
+                          onCheckedChange={() => bulkSelection.toggleSelection(row.id)}
+                          aria-label={`Select ${row.companyName}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         {row.companyName}
                       </TableCell>
@@ -374,23 +605,43 @@ export default function Customers() {
         ) : (
           <Card>
             <CardContent className="py-8 sm:py-12">
-              <div className="text-center">
-                <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">
-                  No customers found
-                </h3>
-                <p className="text-sm sm:text-base text-muted-foreground mb-6">
-                  Get started by adding your first customer.
-                </p>
-                <Button
-                  size="default"
-                  className="flex items-center gap-2 min-h-11 px-4 py-2"
-                  onClick={handleAddCustomer}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Customer
-                </Button>
-              </div>
+              <EmptyState
+                icon={Users}
+                title={
+                  searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
+                    ? 'No customers match your filters'
+                    : 'No customers yet'
+                }
+                description={
+                  searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
+                    ? 'Try adjusting your search criteria or filters to find what you\'re looking for'
+                    : 'Start building your customer base by adding your first customer'
+                }
+                type={searchTerm || industryFilter !== 'all' || stateFilter !== 'all' ? 'filter' : 'default'}
+                action={{
+                  label: 'Add Customer',
+                  onClick: handleAddCustomer,
+                  icon: Plus,
+                }}
+                secondaryAction={
+                  searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
+                    ? {
+                        label: 'Clear Filters',
+                        onClick: filterState.clearFilters,
+                        variant: 'outline',
+                      }
+                    : undefined
+                }
+                suggestions={
+                  customers.length === 0 && !searchTerm
+                    ? [
+                        'Customers are the foundation of your business relationships',
+                        'Track contacts, deals, and service history in one place',
+                        'Export customer data anytime for reporting',
+                      ]
+                    : undefined
+                }
+              />
             </CardContent>
           </Card>
         )}
