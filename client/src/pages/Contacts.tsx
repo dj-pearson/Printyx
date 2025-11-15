@@ -77,6 +77,18 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from "@/components/layout/main-layout";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  BulkOperationsToolbar,
+  useBulkSelection,
+  BulkAction,
+} from "@/components/ui/bulk-operations-toolbar";
+import {
+  exportToCSV,
+  exportToJSON,
+  createExportColumn,
+} from "@/lib/export-utils";
+import { SavedFilters, useFilterState } from "@/components/ui/saved-filters";
 
 // Contact form schema
 const contactFormSchema = z.object({
@@ -137,15 +149,19 @@ interface Contact {
 export default function Contacts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [filters, setFilters] = useState({
-    contactOwner: "",
-    createDate: "",
-    lastActivityDate: "",
-    leadStatus: "",
-    view: "all",
+
+  // Filter state management
+  const filterState = useFilterState({
+    searchQuery: '',
+    contactOwner: '',
+    createDate: '',
+    lastActivityDate: '',
+    leadStatus: '',
+    view: 'all',
   });
+
+  const { searchQuery, contactOwner, leadStatus } = filterState.filters;
+
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [sortBy, setSortBy] = useState("lastActivityDate");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -338,8 +354,7 @@ export default function Contacts() {
   } = useQuery({
     queryKey: [
       "/api/company-contacts",
-      filters,
-      searchQuery,
+      filterState.filters,
       sortBy,
       sortOrder,
       currentPage,
@@ -368,20 +383,20 @@ export default function Contacts() {
         }
 
         // Apply view filter first
-        if (filters.view === "my" && !contact.ownerId) {
+        if (filterState.filters.view === "my" && !contact.ownerId) {
           return false;
         }
 
-        if (filters.view === "unassigned" && contact.ownerId) {
+        if (filterState.filters.view === "unassigned" && contact.ownerId) {
           return false;
         }
 
         // Apply other filters
-        if (filters.leadStatus && contact.leadStatus !== filters.leadStatus) {
+        if (filterState.filters.leadStatus && contact.leadStatus !== filterState.filters.leadStatus) {
           return false;
         }
 
-        if (filters.contactOwner && contact.ownerId !== filters.contactOwner) {
+        if (filterState.filters.contactOwner && contact.ownerId !== filterState.filters.contactOwner) {
           return false;
         }
 
@@ -425,26 +440,93 @@ export default function Contacts() {
     },
   });
 
-  const handleBulkDelete = async () => {
-    if (selectedContacts.length === 0) return;
-    if (
-      !confirm(
-        `Delete ${selectedContacts.length} selected contact(s)? This cannot be undone.`
-      )
-    )
-      return;
-    await Promise.all(
-      selectedContacts.map((id) =>
-        deleteContactMutation.mutateAsync(id).catch(() => null)
-      )
-    );
-    setSelectedContacts([]);
-    queryClient.invalidateQueries({ queryKey: ["/api/company-contacts"] });
-  };
 
   const contacts = contactsData?.contacts || [];
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
+
+  // Bulk selection hook
+  const bulkSelection = useBulkSelection(contacts);
+
+  // Bulk delete mutation using our new system
+  const bulkDeleteContactsMutation = useMutation({
+    mutationFn: async (contactIds: string[]) => {
+      await Promise.all(
+        contactIds.map(id => apiRequest(`/api/company-contacts/${id}`, 'DELETE'))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/company-contacts'] });
+      bulkSelection.clearSelection();
+      toast({
+        title: 'Success',
+        description: `${bulkSelection.selectedCount} contact(s) deleted successfully`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete some contacts',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Bulk export function
+  const handleBulkExport = (format: 'csv' | 'json') => {
+    const selectedContacts = contacts.filter((c: Contact) =>
+      bulkSelection.selectedIds.includes(c.id)
+    );
+
+    const columns = [
+      createExportColumn('firstName', 'First Name'),
+      createExportColumn('lastName', 'Last Name'),
+      createExportColumn('email', 'Email'),
+      createExportColumn('phone', 'Phone'),
+      createExportColumn('title', 'Title'),
+      createExportColumn('companyName', 'Company'),
+      createExportColumn('leadStatus', 'Lead Status'),
+      createExportColumn('lastContactDate', 'Last Contact', 'date'),
+      createExportColumn('ownerName', 'Owner'),
+    ];
+
+    if (format === 'csv') {
+      exportToCSV(selectedContacts, columns, { filename: 'contacts-export' });
+    } else {
+      exportToJSON(selectedContacts, columns, { filename: 'contacts-export' });
+    }
+
+    toast({
+      title: 'Export Complete',
+      description: `${selectedContacts.length} contact(s) exported successfully`,
+    });
+  };
+
+  // Bulk actions configuration
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'export-csv',
+      label: 'Export CSV',
+      icon: Download,
+      onClick: () => handleBulkExport('csv'),
+    },
+    {
+      id: 'export-json',
+      label: 'Export JSON',
+      icon: FileText,
+      onClick: () => handleBulkExport('json'),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      onClick: (ids) => bulkDeleteContactsMutation.mutate(ids),
+      variant: 'destructive',
+      requiresConfirmation: true,
+      confirmationTitle: 'Delete Contacts',
+      confirmationDescription: `Are you sure you want to delete ${bulkSelection.selectedCount} contact(s)? This action cannot be undone.`,
+    },
+  ];
 
   // Get unique values for filters
   const uniqueOwners = [
@@ -476,22 +558,6 @@ export default function Contacts() {
     }
   };
 
-  const handleSelectContact = (contactId: string) => {
-    setSelectedContacts((prev) =>
-      prev.includes(contactId)
-        ? prev.filter((id) => id !== contactId)
-        : [...prev, contactId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedContacts.length === contacts.length) {
-      setSelectedContacts([]);
-    } else {
-      setSelectedContacts(contacts.map((c: Contact) => c.id));
-    }
-  };
-
   const handleLogActivity = (contact: Contact) => {
     setSelectedContact(contact);
     setDialogs((prev) => ({ ...prev, logActivity: true }));
@@ -500,17 +566,6 @@ export default function Contacts() {
   const handleViewContact = (contact: Contact) => {
     setSelectedContact(contact);
     setDialogs((prev) => ({ ...prev, contactDetails: true }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      contactOwner: "",
-      createDate: "",
-      lastActivityDate: "",
-      leadStatus: "",
-      view: "all",
-    });
-    setSearchQuery("");
   };
 
   if (isLoading) {
@@ -1021,6 +1076,12 @@ export default function Contacts() {
           </div>
         </div>
 
+        {/* Saved Filters */}
+        <SavedFilters
+          filterState={filterState}
+          filterKey="contacts-filters"
+        />
+
         {/* Filters and Views */}
         <Card>
           <CardContent className="p-4 sm:p-6">
@@ -1028,34 +1089,26 @@ export default function Contacts() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
-                    variant={filters.view === "all" ? "default" : "outline"}
+                    variant={filterState.filters.view === "all" ? "default" : "outline"}
                     size="sm"
                     className="touch-manipulation active:scale-[0.98]"
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, view: "all" }))
-                    }
+                    onClick={() => filterState.updateFilter("view", "all")}
                   >
                     All contacts
                   </Button>
                   <Button
-                    variant={filters.view === "my" ? "default" : "outline"}
+                    variant={filterState.filters.view === "my" ? "default" : "outline"}
                     size="sm"
                     className="touch-manipulation active:scale-[0.98]"
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, view: "my" }))
-                    }
+                    onClick={() => filterState.updateFilter("view", "my")}
                   >
                     My contacts
                   </Button>
                   <Button
-                    variant={
-                      filters.view === "unassigned" ? "default" : "outline"
-                    }
+                    variant={filterState.filters.view === "unassigned" ? "default" : "outline"}
                     size="sm"
                     className="touch-manipulation active:scale-[0.98]"
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, view: "unassigned" }))
-                    }
+                    onClick={() => filterState.updateFilter("view", "unassigned")}
                   >
                     Unassigned
                   </Button>
@@ -1080,7 +1133,7 @@ export default function Contacts() {
                   <Input
                     placeholder="Search name, phone, email..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => filterState.updateFilter("searchQuery", e.target.value)}
                     className="pl-10"
                   />
                 </div>
@@ -1088,10 +1141,8 @@ export default function Contacts() {
 
               <div className="flex gap-2 flex-wrap">
                 <Select
-                  value={filters.contactOwner}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, contactOwner: value }))
-                  }
+                  value={filterState.filters.contactOwner}
+                  onValueChange={(value) => filterState.updateFilter("contactOwner", value)}
                 >
                   <SelectTrigger className="w-40 min-h-[44px] touch-manipulation">
                     <SelectValue placeholder="Contact owner" />
@@ -1107,10 +1158,8 @@ export default function Contacts() {
                 </Select>
 
                 <Select
-                  value={filters.leadStatus}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, leadStatus: value }))
-                  }
+                  value={filterState.filters.leadStatus}
+                  onValueChange={(value) => filterState.updateFilter("leadStatus", value)}
                 >
                   <SelectTrigger className="w-40 min-h-[44px] touch-manipulation">
                     <SelectValue placeholder="Lead status" />
@@ -1140,7 +1189,7 @@ export default function Contacts() {
                   variant="ghost"
                   size="sm"
                   className="min-h-[44px] touch-manipulation active:scale-[0.98]"
-                  onClick={clearFilters}
+                  onClick={filterState.clearFilters}
                 >
                   <span className="hidden sm:inline">Clear filters</span>
                   <span className="sm:hidden">Clear</span>
@@ -1159,10 +1208,8 @@ export default function Contacts() {
                   <div>
                     <Label>Create date</Label>
                     <Select
-                      value={filters.createDate}
-                      onValueChange={(value) =>
-                        setFilters((prev) => ({ ...prev, createDate: value }))
-                      }
+                      value={filterState.filters.createDate}
+                      onValueChange={(value) => filterState.updateFilter("createDate", value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Any time" />
@@ -1179,13 +1226,8 @@ export default function Contacts() {
                   <div>
                     <Label>Last activity date</Label>
                     <Select
-                      value={filters.lastActivityDate}
-                      onValueChange={(value) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          lastActivityDate: value,
-                        }))
-                      }
+                      value={filterState.filters.lastActivityDate}
+                      onValueChange={(value) => filterState.updateFilter("lastActivityDate", value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Any time" />
@@ -1246,42 +1288,15 @@ export default function Contacts() {
           </div>
         </div>
 
-        {/* Bulk Actions */}
-        {selectedContacts.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                <span className="font-medium text-blue-900">
-                  {selectedContacts.length} contact
-                  {selectedContacts.length !== 1 ? "s" : ""} selected
-                </span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
-                  <Mail className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Send email</span>
-                </Button>
-                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
-                  <Edit className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Edit properties</span>
-                </Button>
-                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
-                  <User className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Assign owner</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700 min-h-[44px] touch-manipulation active:scale-[0.98]"
-                  onClick={handleBulkDelete}
-                >
-                  <Trash2 className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Delete</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Bulk Operations Toolbar */}
+        <BulkOperationsToolbar
+          selectedCount={bulkSelection.selectedCount}
+          totalCount={contacts.length}
+          onClearSelection={bulkSelection.clearSelection}
+          onSelectAll={bulkSelection.selectAll}
+          selectedIds={bulkSelection.selectedIds}
+          actions={bulkActions}
+        />
 
         {/* Error Display */}
         {error && (
@@ -1307,26 +1322,46 @@ export default function Contacts() {
         <Card>
           <CardContent className="p-0">
             {contacts.length === 0 && !isLoading && !error ? (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No contacts found
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  {searchQuery ||
-                  Object.values(filters).some((f) => f && f !== "all")
-                    ? "No contacts match your current search and filters."
-                    : "You haven't added any contacts yet. Create your first contact to get started."}
-                </p>
-                <Button
-                  className="bg-orange-500 hover:bg-orange-600"
-                  onClick={() =>
-                    setDialogs((prev) => ({ ...prev, createContact: true }))
-                  }
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create your first contact
-                </Button>
+              <div className="py-12 px-4">
+                {searchQuery || Object.values(filterState.filters).some((f) => f && f !== "all" && f !== "") ? (
+                  <EmptyState
+                    icon={Search}
+                    title="No contacts found"
+                    description="No contacts match your current search and filters."
+                    type="search"
+                    action={{
+                      label: "Clear filters",
+                      onClick: filterState.clearFilters,
+                      icon: Filter,
+                    }}
+                    secondaryAction={{
+                      label: "Create contact",
+                      onClick: () => setDialogs((prev) => ({ ...prev, createContact: true })),
+                      icon: Plus,
+                    }}
+                    suggestions={[
+                      "Try adjusting your filters",
+                      "Search by name, email, or phone",
+                      "Check the lead status filter",
+                    ]}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Users}
+                    title="No contacts yet"
+                    description="You haven't added any contacts yet. Create your first contact to get started."
+                    action={{
+                      label: "Create contact",
+                      onClick: () => setDialogs((prev) => ({ ...prev, createContact: true })),
+                      icon: Plus,
+                    }}
+                    suggestions={[
+                      "Import contacts from a CSV file",
+                      "Add contacts manually",
+                      "Connect with your CRM",
+                    ]}
+                  />
+                )}
               </div>
             ) : (
               <>
@@ -1337,11 +1372,8 @@ export default function Contacts() {
                       <tr className="border-b bg-gray-50">
                         <th className="text-left p-4 w-12">
                           <Checkbox
-                            checked={
-                              selectedContacts.length === contacts.length &&
-                              contacts.length > 0
-                            }
-                            onCheckedChange={handleSelectAll}
+                            checked={bulkSelection.isAllSelected}
+                            onCheckedChange={bulkSelection.toggleAll}
                           />
                         </th>
                         <th className="text-left p-4 font-medium text-gray-700">
@@ -1376,10 +1408,8 @@ export default function Contacts() {
                         >
                           <td className="p-4">
                             <Checkbox
-                              checked={selectedContacts.includes(contact.id)}
-                              onCheckedChange={() =>
-                                handleSelectContact(contact.id)
-                              }
+                              checked={bulkSelection.isSelected(contact.id)}
+                              onCheckedChange={() => bulkSelection.toggleSelection(contact.id)}
                             />
                           </td>
                           <td className="p-4">
@@ -1510,10 +1540,8 @@ export default function Contacts() {
                       <div className="flex items-start justify-between mb-4 gap-3">
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                           <Checkbox
-                            checked={selectedContacts.includes(contact.id)}
-                            onCheckedChange={() =>
-                              handleSelectContact(contact.id)
-                            }
+                            checked={bulkSelection.isSelected(contact.id)}
+                            onCheckedChange={() => bulkSelection.toggleSelection(contact.id)}
                             className="min-w-[24px] min-h-[24px] touch-manipulation"
                           />
                           <Avatar className="h-12 w-12 flex-shrink-0">
