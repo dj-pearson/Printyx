@@ -9949,6 +9949,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const apolloRoutes = await import('./routes/apollo-routes');
   app.use('/api/apollo', apolloRoutes.default);
 
+  // Chrome Extension Routes (LinkedIn Lead Import)
+  const chromeExtensionRoutes = await import('./routes/chrome-extension-routes');
+  app.use('/api/extension', chromeExtensionRoutes.default);
+
   // Advanced Workflow Routes (file doesn't exist yet)
   // const advancedWorkflowRoutes = await import("./routes/advanced-workflow-routes");
   // app.use("/api", advancedWorkflowRoutes.default);
