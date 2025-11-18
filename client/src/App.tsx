@@ -284,7 +284,8 @@ function Router() {
       ) : (
         <>
           <SubscriptionBanner />
-          <Route path="/" component={Dashboard} />
+          <Switch>
+            <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/leads/:slug" component={CustomerDetail} />
@@ -621,6 +622,7 @@ function Router() {
           />
           <Route path="/onboarding/:id" component={OnboardingDetails} />
           <Route path="/sales/command-center" component={SalesCommandCenter} />
+          </Switch>
         </>
       )}
       <Route component={NotFound} />
