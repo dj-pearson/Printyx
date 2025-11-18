@@ -1,0 +1,167 @@
+/**
+ * Printyx Extension - LinkedIn Injector Styles
+ */
+
+/* Button Styles */
+.printyx-import-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  margin: 8px 8px 8px 0;
+
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 24px;
+
+  font-size: 14px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.printyx-import-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.printyx-import-btn:active {
+  transform: translateY(0);
+}
+
+.printyx-import-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Button States */
+.printyx-import-btn--loading {
+  background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+  cursor: wait;
+  pointer-events: none;
+}
+
+.printyx-import-btn--success {
+  background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+  cursor: default;
+  pointer-events: none;
+}
+
+.printyx-import-btn--error {
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+  cursor: pointer;
+}
+
+.printyx-import-btn--exists {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  cursor: default;
+}
+
+/* Loading Spinner */
+@keyframes printyx-spin {
+  to { transform: rotate(360deg); }
+}
+
+.printyx-spinner {
+  animation: printyx-spin 1s linear infinite;
+}
+
+/* Notification Styles */
+.printyx-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 999999;
+
+  min-width: 320px;
+  max-width: 400px;
+
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+
+  padding: 16px 20px;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  animation: printyx-slide-in 0.3s ease;
+}
+
+@keyframes printyx-slide-in {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.printyx-notification__content {
+  flex: 1;
+}
+
+.printyx-notification__content strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #1e293b;
+}
+
+.printyx-notification__content p {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.printyx-notification__close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  line-height: 20px;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.printyx-notification__close:hover {
+  color: #475569;
+}
+
+/* Notification Types */
+.printyx-notification--success {
+  border-left: 4px solid #22c55e;
+}
+
+.printyx-notification--error {
+  border-left: 4px solid #ef4444;
+}
+
+.printyx-notification--info {
+  border-left: 4px solid #3b82f6;
+}
+
+.printyx-notification--warning {
+  border-left: 4px solid #f59e0b;
+}
+
+/* Custom actions container (fallback) */
+.printyx-actions-container {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
