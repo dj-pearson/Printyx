@@ -1,0 +1,28 @@
+# Chrome Extension - .gitignore
+
+# Packed extension files
+*.zip
+*.crx
+*.pem
+
+# Development files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+tmp/
+temp/
+
+# Node modules (if you add build tools later)
+node_modules/
