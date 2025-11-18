@@ -215,16 +215,17 @@ app.use((req, res, next) => {
     ...(process.env.WINDOWS_COMPAT !== 'true' && { reusePort: true }),
   };
 
-  server.listen(listenOptions, () => {
+  server.listen(listenOptions, async () => {
     log(`serving on port ${port}`);
 
     // Initialize cron jobs for automated tasks
-    try {
-      const { cronService } = require('./services/cron-service');
-      cronService.initialize();
-      log('Cron jobs initialized successfully');
-    } catch (error) {
-      log('Warning: Failed to initialize cron jobs:', error);
-    }
+    // Temporarily disabled until node-cron dependency is resolved
+    // try {
+    //   const { cronService } = await import('./services/cron-service');
+    //   cronService.initialize();
+    //   log('Cron jobs initialized successfully');
+    // } catch (error) {
+    //   log('Warning: Failed to initialize cron jobs:', error);
+    // }
   });
 })();
