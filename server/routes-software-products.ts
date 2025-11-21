@@ -3,6 +3,15 @@ import { eq, and, desc, sql, count, like } from "drizzle-orm";
 import { db } from "./db";
 import { isAuthenticated } from "./replitAuth";
 import {
+  requireProductManager,
+  requireProductAdmin
+} from "./middleware/product-permissions";
+import {
+  filterPricingByRole,
+  filterPricingArrayByRole,
+  getCompanyPricingSettings
+} from "./services/pricing-service";
+import {
   softwareProducts,
   insertSoftwareProductSchema,
   type SoftwareProduct
@@ -13,26 +22,11 @@ export function registerSoftwareProductsRoutes(app: Express) {
   app.get("/api/software-products", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
+      const userRole = req.user?.role || req.session?.user?.role || 'standard';
       const { search, category, vendor, status } = req.query;
-      
+
       let query = db
-        .select({
-          id: softwareProducts.id,
-          productCode: softwareProducts.productCode,
-          productName: softwareProducts.productName,
-          category: softwareProducts.category,
-          vendor: softwareProducts.vendor,
-          description: softwareProducts.description,
-          version: softwareProducts.version,
-          price: softwareProducts.price,
-          costPrice: softwareProducts.costPrice,
-          licenseType: softwareProducts.licenseType,
-          supportIncluded: softwareProducts.supportIncluded,
-          systemRequirements: softwareProducts.systemRequirements,
-          status: softwareProducts.status,
-          createdAt: softwareProducts.createdAt,
-          updatedAt: softwareProducts.updatedAt
-        })
+        .select()
         .from(softwareProducts)
         .where(eq(softwareProducts.tenantId, tenantId));
 
@@ -56,7 +50,12 @@ export function registerSoftwareProductsRoutes(app: Express) {
       }
 
       const products = await query.orderBy(softwareProducts.productName);
-      res.json(products);
+
+      // Apply pricing visibility filtering based on user role
+      const settings = await getCompanyPricingSettings(tenantId);
+      const filteredProducts = filterPricingArrayByRole(products, userRole, settings || undefined);
+
+      res.json(filteredProducts);
     } catch (error) {
       console.error("Error fetching software products:", error);
       res.status(500).json({ error: "Failed to fetch software products" });
@@ -67,6 +66,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   app.get("/api/software-products/:id", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
+      const userRole = req.user?.role || req.session?.user?.role || 'standard';
       const productId = req.params.id;
 
       const [product] = await db
@@ -78,7 +78,11 @@ export function registerSoftwareProductsRoutes(app: Express) {
         return res.status(404).json({ error: "Software product not found" });
       }
 
-      res.json(product);
+      // Apply pricing visibility filtering based on user role
+      const settings = await getCompanyPricingSettings(tenantId);
+      const filteredProduct = filterPricingByRole(product, userRole, settings || undefined);
+
+      res.json(filteredProduct);
     } catch (error) {
       console.error("Error fetching software product:", error);
       res.status(500).json({ error: "Failed to fetch software product" });
@@ -86,7 +90,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   });
 
   // Create new software product
-  app.post("/api/software-products", isAuthenticated, async (req: any, res) => {
+  app.post("/api/software-products", isAuthenticated, requireProductManager, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -109,7 +113,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   });
 
   // Update software product
-  app.put("/api/software-products/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/software-products/:id", isAuthenticated, requireProductManager, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const productId = req.params.id;
@@ -135,7 +139,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   });
 
   // Delete software product
-  app.delete("/api/software-products/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/software-products/:id", isAuthenticated, requireProductAdmin, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const productId = req.params.id;

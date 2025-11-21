@@ -313,6 +313,57 @@ export function filterPricingArrayByRole<T extends Record<string, any>>(
 }
 
 /**
+ * Filter ALL cost/pricing fields for customer portal users
+ * This is a more aggressive filter that removes all cost-related data
+ * to ensure customers never see internal pricing information
+ */
+export function filterPricingForCustomer<T extends Record<string, any>>(
+  data: T
+): Partial<T> {
+  const filtered: any = { ...data };
+
+  // Remove all cost-related fields (comprehensive list)
+  const costFieldPatterns = [
+    'cost', 'price', 'dealer', 'rep', 'margin', 'markup',
+    'wholesale', 'purchase', 'invoice', 'billing'
+  ];
+
+  Object.keys(filtered).forEach(key => {
+    const lowerKey = key.toLowerCase();
+    // Check if key contains any cost-related patterns
+    const containsCostField = costFieldPatterns.some(pattern =>
+      lowerKey.includes(pattern)
+    );
+
+    if (containsCostField) {
+      // Keep only customer-facing price fields
+      if (lowerKey === 'price' ||
+          lowerKey === 'customerprice' ||
+          lowerKey === 'customer_price' ||
+          lowerKey === 'suggestedretail' ||
+          lowerKey === 'suggested_retail' ||
+          lowerKey === 'msrp') {
+        // Keep these customer-visible price fields
+      } else {
+        // Remove all other cost fields
+        delete filtered[key];
+      }
+    }
+  });
+
+  return filtered;
+}
+
+/**
+ * Filter array of data for customer portal users
+ */
+export function filterPricingArrayForCustomer<T extends Record<string, any>>(
+  dataArray: T[]
+): Partial<T>[] {
+  return dataArray.map(item => filterPricingForCustomer(item));
+}
+
+/**
  * Calculate complete pricing breakdown for a product
  */
 export interface PricingBreakdown {

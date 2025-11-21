@@ -3,6 +3,16 @@ import { eq, and, desc, sql, count, like } from "drizzle-orm";
 import { db } from "./db";
 import { isAuthenticated } from "./replitAuth";
 import {
+  requireProductManager,
+  requireProductAdmin,
+  requireInventoryManager
+} from "./middleware/product-permissions";
+import {
+  filterPricingByRole,
+  filterPricingArrayByRole,
+  getCompanyPricingSettings
+} from "./services/pricing-service";
+import {
   productModels,
   masterProductModels,
   insertProductModelSchema,
@@ -14,28 +24,11 @@ export function registerProductModelsRoutes(app: Express) {
   app.get("/api/product-models", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
+      const userRole = req.user?.role || req.session?.user?.role || 'standard';
       const { search, category, manufacturer, status } = req.query;
-      
+
       let query = db
-        .select({
-          id: productModels.id,
-          productCode: productModels.productCode,
-          productName: productModels.productName,
-          category: productModels.category,
-          manufacturer: productModels.manufacturer,
-          description: productModels.description,
-          specifications: productModels.specifications,
-          price: productModels.price,
-          costPrice: productModels.costPrice,
-          status: productModels.status,
-          stockQuantity: productModels.stockQuantity,
-          reorderLevel: productModels.reorderLevel,
-          weight: productModels.weight,
-          dimensions: productModels.dimensions,
-          warrantyPeriod: productModels.warrantyPeriod,
-          createdAt: productModels.createdAt,
-          updatedAt: productModels.updatedAt
-        })
+        .select()
         .from(productModels)
         .where(eq(productModels.tenantId, tenantId));
 
@@ -59,7 +52,12 @@ export function registerProductModelsRoutes(app: Express) {
       }
 
       const models = await query.orderBy(productModels.productName);
-      res.json(models);
+
+      // Apply pricing visibility filtering based on user role
+      const settings = await getCompanyPricingSettings(tenantId);
+      const filteredModels = filterPricingArrayByRole(models, userRole, settings || undefined);
+
+      res.json(filteredModels);
     } catch (error) {
       console.error("Error fetching product models:", error);
       res.status(500).json({ error: "Failed to fetch product models" });
@@ -70,6 +68,7 @@ export function registerProductModelsRoutes(app: Express) {
   app.get("/api/product-models/:id", isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
+      const userRole = req.user?.role || req.session?.user?.role || 'standard';
       const modelId = req.params.id;
 
       const [model] = await db
@@ -81,7 +80,11 @@ export function registerProductModelsRoutes(app: Express) {
         return res.status(404).json({ error: "Product model not found" });
       }
 
-      res.json(model);
+      // Apply pricing visibility filtering based on user role
+      const settings = await getCompanyPricingSettings(tenantId);
+      const filteredModel = filterPricingByRole(model, userRole, settings || undefined);
+
+      res.json(filteredModel);
     } catch (error) {
       console.error("Error fetching product model:", error);
       res.status(500).json({ error: "Failed to fetch product model" });
@@ -89,7 +92,7 @@ export function registerProductModelsRoutes(app: Express) {
   });
 
   // Create new product model
-  app.post("/api/product-models", isAuthenticated, async (req: any, res) => {
+  app.post("/api/product-models", isAuthenticated, requireProductManager, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -112,7 +115,7 @@ export function registerProductModelsRoutes(app: Express) {
   });
 
   // Update product model
-  app.put("/api/product-models/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/product-models/:id", isAuthenticated, requireProductManager, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const modelId = req.params.id;
@@ -138,7 +141,7 @@ export function registerProductModelsRoutes(app: Express) {
   });
 
   // Delete product model
-  app.delete("/api/product-models/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/product-models/:id", isAuthenticated, requireProductAdmin, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const modelId = req.params.id;
@@ -267,7 +270,7 @@ export function registerProductModelsRoutes(app: Express) {
   });
 
   // Bulk update stock quantities
-  app.patch("/api/product-models/bulk-stock-update", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/product-models/bulk-stock-update", isAuthenticated, requireInventoryManager, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { updates } = req.body; // Array of { id, stockQuantity }

@@ -941,10 +941,15 @@ export class CustomerPortalService {
 
   /**
    * Get equipment health data with comprehensive monitoring
+   *
+   * SECURITY NOTE: When implementing real equipment data fetching,
+   * ensure ALL cost-related fields are filtered out before returning
+   * to customer portal users. Use filterPricingForCustomer() from
+   * pricing-service.ts to sanitize equipment data.
    */
   async getEquipmentHealthData(
-    tenantId: string, 
-    customerId: string, 
+    tenantId: string,
+    customerId: string,
     timeRange: string = '30d',
     options: {
       equipmentIds?: string[];
@@ -954,9 +959,10 @@ export class CustomerPortalService {
     } = {}
   ): Promise<{ data: any[]; total: number; queryDuration?: number }> {
     const startTime = Date.now();
-    // In a real implementation, this would fetch from IoT sensors, equipment APIs, 
+    // In a real implementation, this would fetch from IoT sensors, equipment APIs,
     // service history, and usage analytics
     // For now, return comprehensive mock data
+    // TODO: When fetching real equipment data, apply filterPricingForCustomer()
     
     const mockHealthData = [
       {
