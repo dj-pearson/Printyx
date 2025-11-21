@@ -426,4 +426,3 @@ export function DashboardCharts({
 // =====================================================================
 
 export default InteractiveChart;
-export { DashboardCharts };
