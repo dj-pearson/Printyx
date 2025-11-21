@@ -50,9 +50,7 @@ const AIServiceIntelligence = React.lazy(() => import("@/pages/AIServiceIntellig
 const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
 const LeadDetail = React.lazy(() => import("@/pages/LeadDetail"));
-const SalesReports = React.lazy(() => import("@/pages/placeholder/SalesReports"));
-const ServiceReports = React.lazy(() => import("@/pages/placeholder/ServiceReports"));
-const RevenueReports = React.lazy(() => import("@/pages/placeholder/RevenueReports"));
+// Removed placeholder report imports - using Reports page instead
 const Contracts = React.lazy(() => import("@/pages/contracts"));
 const ContractRenewalDashboard = React.lazy(() => import("@/pages/ContractRenewalDashboard"));
 const ProactiveServiceDashboard = React.lazy(() => import("@/pages/ProactiveServiceDashboard"));
@@ -356,9 +354,10 @@ function Router() {
             component={CompanyContacts}
           />
           <Route path="/company-contacts" component={CompanyContacts} />
-          <Route path="/sales-reports" component={SalesReports} />
-          <Route path="/service-reports" component={ServiceReports} />
-          <Route path="/revenue-reports" component={RevenueReports} />
+          {/* Removed placeholder report pages - redirect to /reports (EnhancedReportsHub) */}
+          <Route path="/sales-reports" component={Reports} />
+          <Route path="/service-reports" component={Reports} />
+          <Route path="/revenue-reports" component={Reports} />
           <Route path="/contracts" component={Contracts} />
           <Route path="/contract-renewals" component={ContractRenewalDashboard} />
           <Route path="/leases" component={Leases} />
