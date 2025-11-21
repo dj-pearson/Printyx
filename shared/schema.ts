@@ -7997,6 +7997,28 @@ export type {
   NewConversionFunnelEvent,
 } from './schema-signups';
 
+// Re-export Dashboard Customization schemas
+export {
+  dashboardLayouts,
+  dashboardWidgets,
+  userDashboardPreferences,
+  dashboardWidgetLibrary,
+  dashboardSnapshots,
+} from './schema-dashboard';
+
+export type {
+  DashboardLayout,
+  NewDashboardLayout,
+  DashboardWidget,
+  NewDashboardWidget,
+  UserDashboardPreference,
+  NewUserDashboardPreference,
+  DashboardWidgetLibrary,
+  NewDashboardWidgetLibrary,
+  DashboardSnapshot,
+  NewDashboardSnapshot,
+} from './schema-dashboard';
+
 // Re-export Print Cost Calculator schemas
 export {
   calculatorSessions,
