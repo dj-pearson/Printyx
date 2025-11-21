@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cors from 'cors';
 import { registerRoutes } from './routes';
+import { seedDashboardWidgets } from './seed-dashboard-widgets';
 import { randomUUID, createHash } from 'crypto';
 import fs from 'fs';
 import { setupVite, serveStatic, log } from './vite';
