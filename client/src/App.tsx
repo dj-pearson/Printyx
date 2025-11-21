@@ -64,6 +64,7 @@ const Billing = React.lazy(() => import("@/pages/Billing"));
 const Reports = React.lazy(() => import("@/pages/EnhancedReportsHub"));
 const MeterReadings = React.lazy(() => import("@/pages/MeterReadings"));
 const ProductModels = React.lazy(() => import("@/pages/ProductModels"));
+const EnhancedProductModels = React.lazy(() => import("@/pages/EnhancedProductModels"));
 const ProductAccessories = React.lazy(() => import("@/pages/ProductAccessories"));
 const EnhancedProductAccessories = React.lazy(() => import("@/pages/EnhancedProductAccessories"));
 const ProfessionalServices = React.lazy(() => import("@/pages/ProfessionalServices"));
@@ -428,6 +429,7 @@ function Router() {
           <Route path="/product-catalog" component={ProductCatalog} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
+          <Route path="/product-models-v2" component={EnhancedProductModels} />
           <Route path="/pricing/settings" component={PricingSettings} />
           <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
           <Route path="/pricing/approvals" component={PriceApprovals} />
