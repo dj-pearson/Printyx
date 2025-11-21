@@ -116,6 +116,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       matchPatterns: [`${adminPrefix}/platform*`, `${adminPrefix}/root-admin*`, `${adminPrefix}/system*`, `${adminPrefix}/tenant*`, '/root-admin*', '/social-media*', '/security-compliance-management*', '/system-monitoring*', '/platform-configuration*', '/gpt5*'],
       children: [
         { title: 'Root Admin Dashboard', path: '/root-admin-dashboard', icon: Crown },
+        { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
         { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
         { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
         { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
