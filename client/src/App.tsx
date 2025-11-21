@@ -129,9 +129,9 @@ const RemoteMonitoring = React.lazy(() => import("@/pages/RemoteMonitoring"));
 const FleetMonitoringDashboard = React.lazy(() => import("@/pages/FleetMonitoringDashboard"));
 const DemoScheduling = React.lazy(() => import("@/pages/DemoScheduling"));
 const SocialMediaGenerator = React.lazy(() => import("@/pages/SocialMediaGenerator"));
-const SecurityManagement = React.lazy(() => import("@/pages/SecurityManagement"));
+const SecurityManagement = React.lazy(() => import("@/pages/SecurityComplianceManagement"));
 const SystemMonitoring = React.lazy(() => import("@/pages/SystemMonitoring"));
-const AccessControl = React.lazy(() => import("@/pages/AccessControl"));
+// const AccessControl = React.lazy(() => import("@/pages/AccessControl")); // File doesn't exist - using CustomerAccessManagement instead
 const RootAdminDashboard = React.lazy(() => import("@/pages/RootAdminDashboard"));
 const RootAdminSEO = React.lazy(() => import("@/pages/RootAdminSEO"));
 const SEODashboard = React.lazy(() => import("@/pages/SEODashboard"));
@@ -148,7 +148,7 @@ const DocumentManagement = React.lazy(() => import("@/pages/DocumentManagement")
 const MobileServiceApp = React.lazy(() => import("@/pages/MobileServiceApp"));
 const AdvancedAnalyticsDashboard = React.lazy(() => import("@/pages/AdvancedAnalyticsDashboard"));
 const BusinessProcessOptimization = React.lazy(() => import("@/pages/BusinessProcessOptimization"));
-const SecurityCompliance = React.lazy(() => import("@/pages/SecurityCompliance"));
+// const SecurityCompliance = React.lazy(() => import("@/pages/SecurityCompliance")); // File doesn't exist - using SecurityComplianceManagement instead
 const SecurityComplianceManagement = React.lazy(() => import("@/pages/SecurityComplianceManagement"));
 const IncidentResponseSystem = React.lazy(() => import("@/pages/IncidentResponseSystem"));
 const AIAnalyticsDashboard = React.lazy(() => import("@/pages/AIAnalyticsDashboard"));
