@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { db } from './db';
-import { 
-  masterProductModels, 
-  masterProductAccessories, 
+import {
+  masterProductModels,
+  masterProductAccessories,
   tenantEnabledProducts,
   insertMasterProductModelSchema,
   insertTenantEnabledProductSchema,
@@ -10,6 +10,7 @@ import {
   TenantEnabledProduct
 } from '@shared/schema';
 import { eq, and, like, or, desc, asc, inArray } from 'drizzle-orm';
+import { requireProductManager } from './middleware/product-permissions';
 
 const catalogRouter = Router();
 
@@ -141,7 +142,8 @@ catalogRouter.patch('/api/catalog/models/:id', async (req: any, res) => {
 // Tenant Enablement Routes
 
 // POST /api/catalog/models/:id/enable - Enable master product for tenant
-catalogRouter.post('/api/catalog/models/:id/enable', async (req: any, res) => {
+// Accessible to: Managers and above
+catalogRouter.post('/api/catalog/models/:id/enable', requireProductManager, async (req: any, res) => {
   try {
     const { id: masterProductId } = req.params;
     const user = req.user;
@@ -200,7 +202,8 @@ catalogRouter.post('/api/catalog/models/:id/enable', async (req: any, res) => {
 });
 
 // POST /api/catalog/models/bulk-enable - Bulk enable multiple products
-catalogRouter.post('/api/catalog/models/bulk-enable', async (req: any, res) => {
+// Accessible to: Managers and above
+catalogRouter.post('/api/catalog/models/bulk-enable', requireProductManager, async (req: any, res) => {
   try {
     const user = req.user;
     const tenantId = user?.tenantId;
@@ -331,7 +334,8 @@ catalogRouter.get('/api/enabled-products', async (req: any, res) => {
 });
 
 // PATCH /api/enabled-products/:id - Update tenant product overrides
-catalogRouter.patch('/api/enabled-products/:id', async (req: any, res) => {
+// Accessible to: Managers and above
+catalogRouter.patch('/api/enabled-products/:id', requireProductManager, async (req: any, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
