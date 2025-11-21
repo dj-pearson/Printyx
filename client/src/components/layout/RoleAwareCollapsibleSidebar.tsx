@@ -145,10 +145,9 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       id: 'crm',
       title: 'Sales Hub',
       icon: Target,
-      path: '/crm',
-      matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*', '/data-enrichment*', '/document-builder*'],
+      path: '/opportunities',
+      matchPatterns: ['/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*', '/data-enrichment*', '/document-builder*'],
       children: [
-        { title: 'CRM Dashboard', path: '/crm', icon: Target },
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
         { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
         { title: 'Contacts', path: '/contacts', icon: Users },
@@ -350,12 +349,11 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'System Administration',
       icon: Settings,
       path: '/workflow-automation',
-      matchPatterns: ['/workflow*', '/business-process*', '/business-records*', '/document-management*', '/security-compliance*', '/deployment*', '/customer-number*', '/seo*'],
+      matchPatterns: ['/workflow*', '/business-process*', '/document-management*', '/security-compliance*', '/deployment*', '/customer-number*', '/seo*'],
       children: [
         { title: 'SEO Management', path: '/seo', icon: Search },
         { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
         { title: 'Business Process Optimization', path: '/business-process-optimization', icon: TrendingUp },
-        { title: 'Business Records', path: '/business-records', icon: BookOpen },
         { title: 'Document Management', path: '/document-management', icon: FileText },
         { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
         { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
@@ -369,10 +367,16 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
   sections.push(
     {
       id: 'customers',
-      title: 'Customers',
+      title: 'Customers & CRM',
       icon: Building2,
       path: '/customers',
-      matchPatterns: ['/customers*']
+      matchPatterns: ['/customers*', '/crm*', '/business-records*'],
+      children: [
+        { title: 'All Records', path: '/customers', icon: Building2 },
+        { title: 'Leads', path: '/customers?tab=leads', icon: UserPlus },
+        { title: 'Prospects', path: '/customers?tab=prospects', icon: Users },
+        { title: 'Active Customers', path: '/customers?tab=active', icon: UserCheck },
+      ]
     },
     {
       id: 'settings',

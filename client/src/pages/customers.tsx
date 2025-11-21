@@ -6,12 +6,13 @@ import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BulkOperationsToolbar,
   useBulkSelection,
@@ -44,6 +45,9 @@ import {
   Download,
   FileText,
   Trash2,
+  UserCheck,
+  TrendingUp,
+  DollarSign,
 } from "lucide-react";
 import {
   Dialog,
@@ -71,17 +75,25 @@ import {
 
 export default function Customers() {
   const { isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
+
+  // Tab state for record type filtering - read from URL query param if present
+  const urlParams = new URLSearchParams(location.split('?')[1]);
+  const tabFromUrl = urlParams.get('tab') || 'all';
+  const [selectedTab, setSelectedTab] = useState<string>(tabFromUrl);
 
   // Filter state management
   const filterState = useFilterState({
     searchTerm: '',
     industryFilter: 'all',
     stateFilter: 'all',
+    statusFilter: 'all',
+    sourceFilter: 'all',
+    priorityFilter: 'all',
   });
 
-  const { searchTerm, industryFilter, stateFilter } = filterState.filters;
+  const { searchTerm, industryFilter, stateFilter, statusFilter, sourceFilter, priorityFilter } = filterState.filters;
 
   const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
     if (typeof window !== "undefined") {
@@ -156,6 +168,15 @@ export default function Customers() {
     setIsEditDialogOpen(true);
   };
 
+  // Sync tab with URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.split('?')[1]);
+    const tab = params.get('tab') || 'all';
+    if (tab !== selectedTab) {
+      setSelectedTab(tab);
+    }
+  }, [location]);
+
   useEffect(() => {
     const handler = () => {
       if (window.innerWidth < 768 && viewMode === "table") {
@@ -206,6 +227,23 @@ export default function Customers() {
 
   const filtered = useMemo(() => {
     return enriched.filter((r: any) => {
+      // Tab filter (record type)
+      const recordType = r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
+      const status = r.status || 'new';
+
+      let matchesTab = true;
+      if (selectedTab === 'leads') {
+        matchesTab = recordType === 'lead' || ['new', 'contacted', 'qualified', 'proposal_sent'].includes(status);
+      } else if (selectedTab === 'prospects') {
+        matchesTab = status === 'qualified' || status === 'proposal_sent';
+      } else if (selectedTab === 'customers') {
+        matchesTab = recordType === 'customer' || status === 'active' || status === 'inactive';
+      } else if (selectedTab === 'active') {
+        matchesTab = status === 'active';
+      } else if (selectedTab === 'inactive') {
+        matchesTab = status === 'inactive';
+      }
+
       // Search filter
       const term = searchTerm.trim().toLowerCase();
       const matchesSearch = !term || [
@@ -225,11 +263,46 @@ export default function Customers() {
       // State filter
       const matchesState = stateFilter === 'all' || r.state === stateFilter;
 
-      return matchesSearch && matchesIndustry && matchesState;
-    });
-  }, [enriched, searchTerm, industryFilter, stateFilter]);
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
 
-  // Get unique industries and states for filter dropdowns
+      // Source filter
+      const matchesSource = sourceFilter === 'all' || r.leadSource === sourceFilter || r.source === sourceFilter;
+
+      // Priority filter
+      const matchesPriority = priorityFilter === 'all' || r.priority === priorityFilter;
+
+      return matchesTab && matchesSearch && matchesIndustry && matchesState && matchesStatus && matchesSource && matchesPriority;
+    });
+  }, [enriched, selectedTab, searchTerm, industryFilter, stateFilter, statusFilter, sourceFilter, priorityFilter]);
+
+  // Calculate KPIs
+  const kpis = useMemo(() => {
+    const totalLeads = enriched.filter((r: any) => {
+      const recordType = r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
+      const status = r.status || 'new';
+      return recordType === 'lead' || ['new', 'contacted', 'qualified', 'proposal_sent'].includes(status);
+    }).length;
+
+    const totalCustomers = enriched.filter((r: any) => {
+      const recordType = r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
+      const status = r.status || 'new';
+      return recordType === 'customer' || status === 'active' || status === 'inactive';
+    }).length;
+
+    const activeCustomers = enriched.filter((r: any) => r.status === 'active').length;
+
+    const qualifiedLeads = enriched.filter((r: any) => r.status === 'qualified' || r.status === 'proposal_sent').length;
+
+    const pipelineValue = enriched.reduce((sum: number, r: any) => {
+      const value = parseFloat(r.estimatedDealValue || r.estimatedAmount || '0');
+      return sum + (isNaN(value) ? 0 : value);
+    }, 0);
+
+    return { totalLeads, totalCustomers, activeCustomers, qualifiedLeads, pipelineValue };
+  }, [enriched]);
+
+  // Get unique values for filter dropdowns
   const uniqueIndustries = useMemo(() => {
     const industries = new Set(
       enriched.map((c: any) => c.industry).filter(Boolean)
@@ -242,6 +315,13 @@ export default function Customers() {
       enriched.map((c: any) => c.state).filter(Boolean)
     );
     return Array.from(states).sort();
+  }, [enriched]);
+
+  const uniqueSources = useMemo(() => {
+    const sources = new Set(
+      enriched.map((c: any) => c.leadSource || c.source).filter(Boolean)
+    );
+    return Array.from(sources).sort();
   }, [enriched]);
 
   // Bulk selection
@@ -329,10 +409,80 @@ export default function Customers() {
 
   return (
     <MainLayout
-      title="Customers"
-      description="Manage your customer relationships and accounts"
+      title="Customers & CRM"
+      description="Manage your customer relationships, leads, and business records"
     >
       <div className="space-y-4 sm:space-y-6">
+        {/* KPI Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.totalLeads}</div>
+              <p className="text-xs text-muted-foreground">
+                In pipeline
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.totalCustomers}</div>
+              <p className="text-xs text-muted-foreground">
+                All time
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
+              <UserCheck className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.activeCustomers}</div>
+              <p className="text-xs text-muted-foreground">
+                Currently active
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Qualified Leads</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.qualifiedLeads}</div>
+              <p className="text-xs text-muted-foreground">
+                Ready to close
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${kpis.pipelineValue.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Total estimated
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Search and Filters */}
         <Card>
           <CardContent className="p-4">
@@ -354,7 +504,7 @@ export default function Customers() {
                     value={industryFilter}
                     onValueChange={(value) => filterState.updateFilter('industryFilter', value)}
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-36">
                       <SelectValue placeholder="Industry" />
                     </SelectTrigger>
                     <SelectContent>
@@ -374,7 +524,7 @@ export default function Customers() {
                     value={stateFilter}
                     onValueChange={(value) => filterState.updateFilter('stateFilter', value)}
                   >
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-28">
                       <SelectValue placeholder="State" />
                     </SelectTrigger>
                     <SelectContent>
@@ -388,6 +538,43 @@ export default function Customers() {
                   </Select>
                 )}
 
+                {/* Source Filter */}
+                {uniqueSources.length > 0 && (
+                  <Select
+                    value={sourceFilter}
+                    onValueChange={(value) => filterState.updateFilter('sourceFilter', value)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sources</SelectItem>
+                      {uniqueSources.map((source) => (
+                        <SelectItem key={source} value={source}>
+                          {source}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Priority Filter */}
+                <Select
+                  value={priorityFilter}
+                  onValueChange={(value) => filterState.updateFilter('priorityFilter', value)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+
                 {/* Saved Filters */}
                 <SavedFilters
                   storageKey="customers.savedFilters"
@@ -400,6 +587,8 @@ export default function Customers() {
                     if (filters.searchTerm) parts.push(`Search: "${filters.searchTerm}"`);
                     if (filters.industryFilter !== 'all') parts.push(`Industry: ${filters.industryFilter}`);
                     if (filters.stateFilter !== 'all') parts.push(`State: ${filters.stateFilter}`);
+                    if (filters.sourceFilter !== 'all') parts.push(`Source: ${filters.sourceFilter}`);
+                    if (filters.priorityFilter !== 'all') parts.push(`Priority: ${filters.priorityFilter}`);
                     return parts.length > 0 ? parts.join(' • ') : 'No filters applied';
                   }}
                 />
@@ -408,42 +597,54 @@ export default function Customers() {
           </CardContent>
         </Card>
 
-        {/* View Controls */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {filtered.length > 0 && (
-              <Badge variant="secondary">
-                {filtered.length} {filtered.length === 1 ? 'customer' : 'customers'}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={viewMode === "cards" ? "default" : "outline"}
-              size="icon"
-              onClick={() => setViewMode("cards")}
-              title="Card view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="icon"
-              onClick={() => setViewMode("table")}
-              title="Table view"
-            >
-              <Rows className="h-4 w-4" />
-            </Button>
-            <Button
-              size="default"
-              className="flex items-center gap-2"
-              onClick={handleAddCustomer}
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Customer</span>
-            </Button>
-          </div>
-        </div>
+        {/* Tabs for Record Type */}
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <TabsTrigger value="all">All Records</TabsTrigger>
+            <TabsTrigger value="leads">Leads</TabsTrigger>
+            <TabsTrigger value="prospects">Prospects</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="inactive">Inactive</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={selectedTab} className="space-y-4 sm:space-y-6">
+            {/* View Controls */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                {filtered.length > 0 && (
+                  <Badge variant="secondary">
+                    {filtered.length} {filtered.length === 1 ? 'record' : 'records'}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === "cards" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setViewMode("cards")}
+                  title="Card view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "table" ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setViewMode("table")}
+                  title="Table view"
+                >
+                  <Rows className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="default"
+                  className="flex items-center gap-2"
+                  onClick={handleAddCustomer}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Add Customer</span>
+                </Button>
+              </div>
+            </div>
 
         {/* Bulk Operations Toolbar */}
         <BulkOperationsToolbar
@@ -645,7 +846,9 @@ export default function Customers() {
             </CardContent>
           </Card>
         )}
-        
+          </TabsContent>
+        </Tabs>
+
         {/* Edit Customer Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
