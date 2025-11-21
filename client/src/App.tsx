@@ -218,14 +218,29 @@ function Router() {
     if (isAuthenticated && pathname === "/") {
       try {
         const lastRoute = localStorage.getItem(LAST_ROUTE_KEY);
-        if (lastRoute && lastRoute !== "/" && lastRoute !== "/login") {
+        // Only restore if it's a valid authenticated route (not data-enrichment or other edge cases)
+        if (lastRoute && lastRoute !== "/" && lastRoute !== "/login" && !lastRoute.includes("data-enrichment")) {
           setLocation(lastRoute);
+        } else {
+          // Clear invalid routes from localStorage
+          localStorage.removeItem(LAST_ROUTE_KEY);
         }
       } catch (error) {
         console.error("Error restoring route:", error);
       }
     }
   }, [isAuthenticated, pathname, setLocation]);
+  
+  // Clear route history on logout
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      try {
+        localStorage.removeItem(LAST_ROUTE_KEY);
+      } catch (error) {
+        console.error("Error clearing route:", error);
+      }
+    }
+  }, [isAuthenticated]);
 
   // Removed eager prefetching for better performance
   // Data will be fetched when components mount, which is more efficient
