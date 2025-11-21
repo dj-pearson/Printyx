@@ -7947,6 +7947,14 @@ export {
   tenantSubscriptionsRelations,
 } from './schema-subscriptions';
 
+// Re-export Signup/Trial CRM schemas
+export {
+  platformSignups,
+  trialActivityLog,
+  trialCommunications,
+  conversionFunnelEvents,
+} from './schema-signups';
+
 export type {
   SubscriptionPlan,
   NewSubscriptionPlan,
@@ -7977,6 +7985,17 @@ export type {
   SubscriptionNotification,
   NewSubscriptionNotification,
 } from './schema-subscriptions';
+
+export type {
+  PlatformSignup,
+  NewPlatformSignup,
+  TrialActivityLog,
+  NewTrialActivityLog,
+  TrialCommunication,
+  NewTrialCommunication,
+  ConversionFunnelEvent,
+  NewConversionFunnelEvent,
+} from './schema-signups';
 
 // Re-export Print Cost Calculator schemas
 export {
