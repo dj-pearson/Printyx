@@ -516,7 +516,8 @@ function Router() {
           {/* Consolidated into /security-compliance-management */}
           <Route path="/security-management" component={SecurityComplianceManagement} />
           <Route path="/system-monitoring" component={SystemMonitoring} />
-          <Route path="/access-control" component={AccessControl} />
+          {/* Consolidated into /role-management - AccessControl had mock data duplicating UserManagement + RoleManagement */}
+          <Route path="/access-control" component={RoleManagement} />
           <Route path="/role-management" component={RoleManagement} />
           <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
           <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
