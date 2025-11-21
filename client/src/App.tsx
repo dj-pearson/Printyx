@@ -509,10 +509,7 @@ function Router() {
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/document-management" component={DocumentManagement} />
           <Route path="/mobile-service-app" component={MobileServiceApp} />
-          <Route
-            path="/advanced-analytics"
-            component={AdvancedAnalyticsDashboard}
-          />
+          {/* Removed duplicate /advanced-analytics route - kept at line 450 pointing to AdvancedAnalytics */}
           <Route
             path="/advanced-analytics-dashboard"
             component={AdvancedAnalyticsDashboard}
@@ -535,7 +532,7 @@ function Router() {
             component={CustomerSelfServicePortal}
           />
           <Route path="/incident-response" component={IncidentResponseSystem} />
-          <Route path="/ai-analytics" component={AIAnalyticsDashboard} />
+          {/* Removed duplicate /ai-analytics route - using /ai-analytics-dashboard as primary */}
           <Route
             path="/ai-analytics-dashboard"
             component={AIAnalyticsDashboard}
