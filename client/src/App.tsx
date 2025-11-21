@@ -314,12 +314,9 @@ function Router() {
           <Route path="/quotes/:quoteId" component={QuoteBuilderPage} />
           <Route path="/quotes/:quoteId/view" component={QuoteView} />
           <Route path="/proposal-builder" component={ProposalBuilder} />
+          {/* Use /preventive-maintenance as primary route */}
           <Route
             path="/preventive-maintenance"
-            component={PreventiveMaintenanceScheduling}
-          />
-          <Route
-            path="/preventive-maintenance-scheduling"
             component={PreventiveMaintenanceScheduling}
           />
           <Route
@@ -335,10 +332,7 @@ function Router() {
             path="/financial-forecasting"
             component={FinancialForecasting}
           />
-          <Route
-            path="/equipment-lifecycle"
-            component={EquipmentLifecycleManagement}
-          />
+          {/* Fixed duplicate route: removed /equipment-lifecycle pointing to Management (line 298 has correct hub route) */}
           <Route
             path="/equipment-lifecycle-management"
             component={EquipmentLifecycleManagement}
@@ -349,7 +343,7 @@ function Router() {
           />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
-          <Route path="/mobile-service" component={MobileServiceApp} />
+          {/* Removed duplicate route - use /mobile-service-app as primary */}
           <Route path="/service-analytics" component={ServiceAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route
