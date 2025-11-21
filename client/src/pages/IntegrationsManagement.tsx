@@ -1,0 +1,275 @@
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+import { Plus, Zap, RefreshCw, X, Check, AlertCircle } from 'lucide-react';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+
+const integrationConfigSchema = z.object({
+  integrationKey: z.string(),
+  integrationName: z.string(),
+  credentials: z.record(z.string()),
+});
+
+const AVAILABLE_INTEGRATIONS = [
+  {
+    key: 'salesforce',
+    name: 'Salesforce CRM',
+    description: 'Sync leads, opportunities, and customer data',
+    icon: '☁️',
+    category: 'CRM',
+    fields: [
+      { name: 'instanceUrl', label: 'Instance URL', type: 'text', placeholder: 'https://your-instance.salesforce.com' },
+      { name: 'accessToken', label: 'Access Token', type: 'password' },
+    ],
+  },
+  {
+    key: 'quickbooks',
+    name: 'QuickBooks Online',
+    description: 'Sync invoices, customers, and financial data',
+    icon: '📊',
+    category: 'ERP',
+    fields: [
+      { name: 'realmId', label: 'Realm ID', type: 'text' },
+      { name: 'accessToken', label: 'Access Token', type: 'password' },
+    ],
+  },
+  {
+    key: 'e-automate',
+    name: 'E-Automate',
+    description: 'Sync equipment, service records, and fleet data',
+    icon: '⚙️',
+    category: 'ERP',
+    fields: [{ name: 'sessionToken', label: 'Session Token', type: 'password' }],
+  },
+  {
+    key: 'apollo',
+    name: 'Apollo.io',
+    description: 'Prospect and lead enrichment',
+    icon: '🎯',
+    category: 'Data Enrichment',
+    fields: [{ name: 'apiKey', label: 'API Key', type: 'password' }],
+  },
+  {
+    key: 'zoominfo',
+    name: 'ZoomInfo',
+    description: 'Company and contact data enrichment',
+    icon: '🔍',
+    category: 'Data Enrichment',
+    fields: [{ name: 'apiKey', label: 'API Key', type: 'password' }],
+  },
+];
+
+export function IntegrationsManagement() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<any>(null);
+  const { toast } = useToast();
+
+  const { data: integrations = [], isLoading } = useQuery({
+    queryKey: ['/api/integrations'],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/integrations', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      setIsDialogOpen(false);
+      toast({ title: 'Integration created', description: 'Connected successfully' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to create integration', variant: 'destructive' });
+    },
+  });
+
+  const testMutation = useMutation({
+    mutationFn: (integrationId: string) => apiRequest('POST', `/api/integrations/${integrationId}/test`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      toast({ title: 'Connection successful', description: 'Integration test passed' });
+    },
+    onError: () => {
+      toast({ title: 'Connection failed', description: 'Integration test failed', variant: 'destructive' });
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: (integrationId: string) => apiRequest('POST', `/api/integrations/${integrationId}/sync`, {}),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      toast({ title: 'Sync started', description: `${data.message}` });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: (integrationId: string) => apiRequest('POST', `/api/integrations/${integrationId}/disconnect`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
+      toast({ title: 'Disconnected', description: 'Integration removed' });
+    },
+  });
+
+  const handleAddIntegration = (integration: any) => {
+    setSelectedIntegration(integration);
+    setIsDialogOpen(true);
+  };
+
+  const getConnectedIntegration = (key: string) => integrations.find((i: any) => i.integrationKey === key);
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold">Integrations Management</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Connect Printyx with external business systems</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {AVAILABLE_INTEGRATIONS.map((integration) => {
+          const connected = getConnectedIntegration(integration.key);
+
+          return (
+            <Card key={integration.key} className={connected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <span className="text-3xl">{integration.icon}</span>
+                    <div>
+                      <CardTitle className="text-lg">{integration.name}</CardTitle>
+                      <CardDescription className="text-xs">{integration.category}</CardDescription>
+                    </div>
+                  </div>
+                  {connected && <Check className="w-5 h-5 text-green-600" />}
+                </div>
+                <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">{integration.description}</p>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {connected ? (
+                  <div className="space-y-2">
+                    <div className={`text-sm px-3 py-1 rounded flex items-center gap-2 ${
+                      connected.status === 'connected'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
+                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full ${connected.status === 'connected' ? 'bg-green-600' : 'bg-red-600'}`} />
+                      {connected.status === 'connected' ? 'Connected' : 'Error'}
+                    </div>
+                    {connected.lastSyncedAt && (
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Last sync: {new Date(connected.lastSyncedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => testMutation.mutate(connected.id)}
+                        disabled={testMutation.isPending}
+                      >
+                        <Zap className="w-3 h-3 mr-1" /> Test
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => syncMutation.mutate(connected.id)}
+                        disabled={syncMutation.isPending}
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" /> Sync
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => disconnectMutation.mutate(connected.id)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button onClick={() => handleAddIntegration(integration)} className="w-full">
+                    <Plus className="w-4 h-4 mr-2" /> Connect
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <IntegrationDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        integration={selectedIntegration}
+        onSubmit={(data) => createMutation.mutate(data)}
+        isLoading={createMutation.isPending}
+      />
+    </div>
+  );
+}
+
+function IntegrationDialog({ open, onOpenChange, integration, onSubmit, isLoading }: any) {
+  const form = useForm({
+    resolver: zodResolver(
+      z.object({
+        credentials: z.record(z.string()),
+      }),
+    ),
+    defaultValues: { credentials: {} },
+  });
+
+  const handleSubmit = (data: any) => {
+    onSubmit({
+      integrationKey: integration.key,
+      integrationName: integration.name,
+      credentials: data.credentials,
+    });
+  };
+
+  if (!integration) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Connect {integration.name}</DialogTitle>
+          <DialogDescription>Enter your credentials to connect this integration</DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {integration.fields.map((field: any) => (
+              <FormField
+                key={field.name}
+                control={form.control}
+                name={`credentials.${field.name}`}
+                render={({ field: fieldProps }) => (
+                  <FormItem>
+                    <FormLabel>{field.label}</FormLabel>
+                    <FormControl>
+                      <Input {...fieldProps} type={field.type} placeholder={field.placeholder} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
+
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Connecting...' : 'Connect'}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
