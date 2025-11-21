@@ -58,7 +58,7 @@ export default function RootAdminSignupsCRM() {
 
   // Fetch signups
   const { data: signupsData, isLoading: signupsLoading } = useQuery({
-    queryKey: ['/api/root-admin/signups', statusFilter, page],
+    queryKey: ['/api/root-admin/signups', statusFilter === 'all' ? '' : statusFilter, page],
   });
 
   // Fetch analytics
@@ -171,7 +171,7 @@ export default function RootAdminSignupsCRM() {
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Statuses</SelectItem>
+                        <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="trial_started">Trial Started</SelectItem>
                         <SelectItem value="activated">Activated</SelectItem>
