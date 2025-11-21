@@ -179,7 +179,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       children: [
         { title: 'Service Hub', path: '/service-hub', icon: Wrench },
         { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
-        { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
+        { title: 'Service Dispatch', path: '/service-dispatch', icon: Activity },
         { title: 'Technician Management', path: '/technician-management', icon: Users },
         { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
         { title: 'Asset Management', path: '/asset-management', icon: Package },
@@ -294,7 +294,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     matchPatterns: ['/task*'],
     children: [
       { title: 'Advanced Tasks', path: '/task-management', icon: Brain },
-      { title: 'Basic Tasks', path: '/basic-task-management', icon: CheckSquare }
+      { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare }
     ]
   });
 
