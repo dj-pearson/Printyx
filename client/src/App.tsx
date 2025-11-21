@@ -53,7 +53,6 @@ const AIServiceIntelligence = React.lazy(() => import("@/pages/AIServiceIntellig
 import Dashboard from "@/pages/dashboard";
 // const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
-const CRMEnhanced = React.lazy(() => import("@/pages/CRMEnhanced"));
 const LeadDetail = React.lazy(() => import("@/pages/LeadDetail"));
 const SalesReports = React.lazy(() => import("@/pages/placeholder/SalesReports"));
 const ServiceReports = React.lazy(() => import("@/pages/placeholder/ServiceReports"));
@@ -100,7 +99,6 @@ const ProductManagementHub = React.lazy(() => import("@/pages/ProductManagementH
 const PricingManagement = React.lazy(() => import("@/pages/PricingManagement"));
 const Contacts = React.lazy(() => import("@/pages/Contacts"));
 const CustomerDetail = React.lazy(() => import("@/pages/CustomerDetail"));
-const BusinessRecords = React.lazy(() => import("@/pages/BusinessRecords"));
 const TenantSetup = React.lazy(() => import("@/pages/TenantSetup"));
 const Settings = React.lazy(() => import("@/pages/Settings"));
 const Pricing = React.lazy(() => import("@/pages/Pricing"));
@@ -333,22 +331,17 @@ function Router() {
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/leads/:slug" component={CustomerDetail} />
-          <Route path="/crm" component={CRMEnhanced} />
-          <Route path="/business-records" component={BusinessRecords} />
+          {/* Consolidated into /customers */}
+          <Route path="/crm" component={Customers} />
+          <Route path="/business-records" component={Customers} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
           <Route path="/opportunities" component={DealsManagement} />
           <Route path="/deals-management" component={DealsManagement} />
           <Route path="/leads-management" component={LeadsManagement} />
           <Route path="/product-hub" component={ProductHub} />
-          <Route path="/admin/product-hub" component={ProductHub} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycle} />
-          <Route
-            path="/admin/equipment-lifecycle"
-            component={EquipmentLifecycle}
-          />
           <Route path="/purchase-orders" component={PurchaseOrders} />
-          <Route path="/admin/purchase-orders" component={PurchaseOrders} />
           <Route path="/warehouse-operations" component={WarehouseOperations} />
           <Route path="/crm-goals" component={CrmGoalsDashboard} />
           <Route path="/crm-goals-dashboard" component={CrmGoalsDashboard} />
@@ -366,12 +359,9 @@ function Router() {
           <Route path="/quotes/:quoteId" component={QuoteBuilderPage} />
           <Route path="/quotes/:quoteId/view" component={QuoteView} />
           <Route path="/proposal-builder" component={ProposalBuilder} />
+          {/* Use /preventive-maintenance as primary route */}
           <Route
             path="/preventive-maintenance"
-            component={PreventiveMaintenanceScheduling}
-          />
-          <Route
-            path="/preventive-maintenance-scheduling"
             component={PreventiveMaintenanceScheduling}
           />
           <Route
@@ -387,16 +377,9 @@ function Router() {
             path="/financial-forecasting"
             component={FinancialForecasting}
           />
-          <Route
-            path="/equipment-lifecycle"
-            component={EquipmentLifecycleManagement}
-          />
+          {/* Fixed duplicate route: removed /equipment-lifecycle pointing to Management (line 298 has correct hub route) */}
           <Route
             path="/equipment-lifecycle-management"
-            component={EquipmentLifecycleManagement}
-          />
-          <Route
-            path="/admin/equipment-lifecycle-management"
             component={EquipmentLifecycleManagement}
           />
           <Route
@@ -405,16 +388,12 @@ function Router() {
           />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
-          <Route path="/mobile-service" component={MobileServiceApp} />
+          {/* Removed duplicate route - use /mobile-service-app as primary */}
           <Route path="/service-analytics" component={ServiceAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
           <Route
             path="/mobile-field-operations"
             component={MobileFieldOperations}
-          />
-          <Route
-            path="/admin/warehouse-operations"
-            component={WarehouseOperations}
           />
           <Route path="/leads/:slug" component={LeadDetail} />
           <Route
@@ -446,38 +425,22 @@ function Router() {
           <Route path="/product-catalog" component={ProductCatalog} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
-          <Route path="/admin/product-models" component={ProductModels} />
           <Route
             path="/product-management-hub"
             component={ProductManagementHub}
           />
-          <Route
-            path="/admin/product-management-hub"
-            component={ProductManagementHub}
-          />
           <Route path="/product-accessories" component={EnhancedProductAccessories} />
+          {/* Legacy routes for backward compatibility */}
           <Route path="/enhanced-product-accessories" component={EnhancedProductAccessories} />
           <Route path="/product-accessories-legacy" component={ProductAccessories} />
-          <Route
-            path="/admin/product-accessories"
-            component={EnhancedProductAccessories}
-          />
           <Route
             path="/professional-services"
             component={ProfessionalServices}
           />
-          <Route
-            path="/admin/professional-services"
-            component={ProfessionalServices}
-          />
           <Route path="/service-products" component={ServiceProducts} />
-          <Route path="/admin/service-products" component={ServiceProducts} />
           <Route path="/software-products" component={SoftwareProducts} />
-          <Route path="/admin/software-products" component={SoftwareProducts} />
           <Route path="/supplies" component={Supplies} />
-          <Route path="/admin/supplies" component={Supplies} />
           <Route path="/managed-services" component={ManagedServices} />
-          <Route path="/admin/managed-services" component={ManagedServices} />
           <Route path="/billing" component={MeterBilling} />
           <Route path="/meter-billing" component={MeterBilling} />
           <Route
@@ -485,7 +448,6 @@ function Router() {
             component={AdvancedBillingEngine}
           />
           <Route path="/vendor-management" component={VendorManagement} />
-          <Route path="/admin/vendor-management" component={VendorManagement} />
           <Route path="/vendors" component={Vendors} />
           <Route path="/accounts-payable" component={AccountsPayable} />
           <Route path="/accounts-receivable" component={AccountsReceivable} />
@@ -509,10 +471,6 @@ function Router() {
           />
           <Route path="/basic-tasks" component={BasicTaskManagement} />
           <Route path="/pricing-management" component={PricingManagement} />
-          <Route
-            path="/admin/pricing-management"
-            component={PricingManagement}
-          />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
           <Route path="/pricing" component={Pricing} />
@@ -555,10 +513,7 @@ function Router() {
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/document-management" component={DocumentManagement} />
           <Route path="/mobile-service-app" component={MobileServiceApp} />
-          <Route
-            path="/advanced-analytics"
-            component={AdvancedAnalyticsDashboard}
-          />
+          {/* Removed duplicate /advanced-analytics route - kept at line 450 pointing to AdvancedAnalytics */}
           <Route
             path="/advanced-analytics-dashboard"
             component={AdvancedAnalyticsDashboard}
@@ -567,7 +522,8 @@ function Router() {
             path="/business-process-optimization"
             component={BusinessProcessOptimization}
           />
-          <Route path="/security-compliance" component={SecurityCompliance} />
+          {/* Consolidated into /security-compliance-management */}
+          <Route path="/security-compliance" component={SecurityComplianceManagement} />
           <Route
             path="/security-compliance-management"
             component={SecurityComplianceManagement}
@@ -581,7 +537,7 @@ function Router() {
             component={CustomerSelfServicePortal}
           />
           <Route path="/incident-response" component={IncidentResponseSystem} />
-          <Route path="/ai-analytics" component={AIAnalyticsDashboard} />
+          {/* Removed duplicate /ai-analytics route - using /ai-analytics-dashboard as primary */}
           <Route
             path="/ai-analytics-dashboard"
             component={AIAnalyticsDashboard}
@@ -596,22 +552,23 @@ function Router() {
             path="/social-media-generator"
             component={SocialMediaGenerator}
           />
-          <Route path="/security-management" component={SecurityManagement} />
+          {/* Consolidated into /security-compliance-management */}
+          <Route path="/security-management" component={SecurityComplianceManagement} />
           <Route path="/system-monitoring" component={SystemMonitoring} />
-          <Route path="/access-control" component={AccessControl} />
+          {/* Consolidated into /role-management - AccessControl had mock data duplicating UserManagement + RoleManagement */}
+          <Route path="/access-control" component={RoleManagement} />
           <Route path="/role-management" component={RoleManagement} />
           <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
           <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
           <Route path="/root-admin/seo" component={RootAdminSEO} />
           <Route path="/seo" component={SEODashboard} />
 
-          {/* Platform Admin Routes */}
+          {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
           <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
           <Route path="/admin/system-security" component={SystemSecurity} />
           <Route path="/admin/database-updater" component={DatabaseUpdaterPage} />
           <Route path="/admin/tenant-management" component={TenantManagement} />
           <Route path="/admin/user-management" component={UserManagement} />
-          <Route path="/admin/role-management" component={RoleManagement} />
           <Route path="/admin/system-settings" component={Settings} />
           <Route path="/admin/platform-analytics" component={AdvancedAnalyticsDashboard} />
           <Route
