@@ -7,14 +7,14 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { 
-  DollarSign, 
-  Target, 
-  TrendingUp, 
-  Users, 
-  Wrench, 
-  Clock, 
-  CheckCircle, 
+import {
+  DollarSign,
+  Target,
+  TrendingUp,
+  Users,
+  Wrench,
+  Clock,
+  CheckCircle,
   BarChart3,
   TrendingDown,
   AlertCircle,
@@ -22,7 +22,13 @@ import {
   CheckCircle2,
   Settings,
   Eye,
-  EyeOff
+  EyeOff,
+  Zap,
+  Plus,
+  FileText,
+  Calendar,
+  UserPlus,
+  BarChart2
 } from 'lucide-react';
 
 const IconMap = {
@@ -320,6 +326,35 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
         </div>
       )}
 
+      {/* Quick Actions */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Zap className="h-5 w-5" />
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {getQuickActions(userRole).map((action) => (
+            <Card
+              key={action.id}
+              className="hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => (window.location.href = action.path)}
+            >
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${action.bgColor} group-hover:scale-110 transition-transform`}>
+                  <action.icon className={`h-5 w-5 ${action.iconColor}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{action.label}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {action.description}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
       {/* SLA Breach Detection */}
       <BreachTiles />
 
@@ -403,6 +438,119 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
       )}
     </div>
   );
+}
+
+// Helper function to get role-based quick actions
+interface QuickAction {
+  id: string;
+  label: string;
+  icon: any;
+  path: string;
+  bgColor: string;
+  iconColor: string;
+  description: string;
+}
+
+function getQuickActions(userRole: string): QuickAction[] {
+  // Base actions available to all roles
+  const baseActions: QuickAction[] = [
+    {
+      id: 'new-ticket',
+      label: 'New Service Ticket',
+      icon: Wrench,
+      path: '/service-dispatch?action=create',
+      bgColor: 'bg-orange-100',
+      iconColor: 'text-orange-600',
+      description: 'Create service call'
+    },
+    {
+      id: 'add-customer',
+      label: 'Add Customer',
+      icon: Users,
+      path: '/customers?action=create',
+      bgColor: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      description: 'New customer record'
+    }
+  ];
+
+  // Sales-specific actions
+  if (userRole === 'sales' || userRole === 'sales_rep' || userRole === 'sales_manager') {
+    return [
+      ...baseActions,
+      {
+        id: 'new-deal',
+        label: 'Create Deal',
+        icon: Target,
+        path: '/deals?action=create',
+        bgColor: 'bg-green-100',
+        iconColor: 'text-green-600',
+        description: 'New sales opportunity'
+      },
+      {
+        id: 'new-quote',
+        label: 'New Quote',
+        icon: FileText,
+        path: '/quotes?action=create',
+        bgColor: 'bg-purple-100',
+        iconColor: 'text-purple-600',
+        description: 'Generate quote'
+      }
+    ];
+  }
+
+  // Service/Technician-specific actions
+  if (userRole === 'technician' || userRole === 'service_manager') {
+    return [
+      ...baseActions,
+      {
+        id: 'schedule-maintenance',
+        label: 'Schedule Maintenance',
+        icon: Calendar,
+        path: '/service-dispatch?action=schedule',
+        bgColor: 'bg-yellow-100',
+        iconColor: 'text-yellow-600',
+        description: 'Plan maintenance'
+      },
+      {
+        id: 'view-tickets',
+        label: 'My Tickets',
+        icon: Clock,
+        path: '/service-dispatch?filter=assigned_to_me',
+        bgColor: 'bg-indigo-100',
+        iconColor: 'text-indigo-600',
+        description: 'View assigned work'
+      }
+    ];
+  }
+
+  // Admin-specific actions
+  if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'platform_admin') {
+    return [
+      ...baseActions,
+      {
+        id: 'add-user',
+        label: 'Add User',
+        icon: UserPlus,
+        path: '/settings/users?action=create',
+        bgColor: 'bg-teal-100',
+        iconColor: 'text-teal-600',
+        description: 'Invite team member'
+      },
+      {
+        id: 'generate-report',
+        label: 'Generate Report',
+        icon: BarChart2,
+        path: '/reports?action=create',
+        bgColor: 'bg-pink-100',
+        iconColor: 'text-pink-600',
+        description: 'Create custom report'
+      }
+    ];
+  }
+
+  // Default actions for standard users
+  return baseActions;
 }
 
 // Helper function to get card descriptions
