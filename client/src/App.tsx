@@ -295,14 +295,8 @@ function Router() {
           <Route path="/deals-management" component={DealsManagement} />
           <Route path="/leads-management" component={LeadsManagement} />
           <Route path="/product-hub" component={ProductHub} />
-          <Route path="/admin/product-hub" component={ProductHub} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycle} />
-          <Route
-            path="/admin/equipment-lifecycle"
-            component={EquipmentLifecycle}
-          />
           <Route path="/purchase-orders" component={PurchaseOrders} />
-          <Route path="/admin/purchase-orders" component={PurchaseOrders} />
           <Route path="/warehouse-operations" component={WarehouseOperations} />
           <Route path="/crm-goals" component={CrmGoalsDashboard} />
           <Route path="/crm-goals-dashboard" component={CrmGoalsDashboard} />
@@ -350,10 +344,6 @@ function Router() {
             component={EquipmentLifecycleManagement}
           />
           <Route
-            path="/admin/equipment-lifecycle-management"
-            component={EquipmentLifecycleManagement}
-          />
-          <Route
             path="/commission-management"
             component={CommissionManagement}
           />
@@ -365,10 +355,6 @@ function Router() {
           <Route
             path="/mobile-field-operations"
             component={MobileFieldOperations}
-          />
-          <Route
-            path="/admin/warehouse-operations"
-            component={WarehouseOperations}
           />
           <Route path="/leads/:slug" component={LeadDetail} />
           <Route
@@ -400,38 +386,22 @@ function Router() {
           <Route path="/product-catalog" component={ProductCatalog} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
-          <Route path="/admin/product-models" component={ProductModels} />
           <Route
             path="/product-management-hub"
             component={ProductManagementHub}
           />
-          <Route
-            path="/admin/product-management-hub"
-            component={ProductManagementHub}
-          />
           <Route path="/product-accessories" component={EnhancedProductAccessories} />
+          {/* Legacy routes for backward compatibility */}
           <Route path="/enhanced-product-accessories" component={EnhancedProductAccessories} />
           <Route path="/product-accessories-legacy" component={ProductAccessories} />
-          <Route
-            path="/admin/product-accessories"
-            component={EnhancedProductAccessories}
-          />
           <Route
             path="/professional-services"
             component={ProfessionalServices}
           />
-          <Route
-            path="/admin/professional-services"
-            component={ProfessionalServices}
-          />
           <Route path="/service-products" component={ServiceProducts} />
-          <Route path="/admin/service-products" component={ServiceProducts} />
           <Route path="/software-products" component={SoftwareProducts} />
-          <Route path="/admin/software-products" component={SoftwareProducts} />
           <Route path="/supplies" component={Supplies} />
-          <Route path="/admin/supplies" component={Supplies} />
           <Route path="/managed-services" component={ManagedServices} />
-          <Route path="/admin/managed-services" component={ManagedServices} />
           <Route path="/billing" component={MeterBilling} />
           <Route path="/meter-billing" component={MeterBilling} />
           <Route
@@ -439,7 +409,6 @@ function Router() {
             component={AdvancedBillingEngine}
           />
           <Route path="/vendor-management" component={VendorManagement} />
-          <Route path="/admin/vendor-management" component={VendorManagement} />
           <Route path="/vendors" component={Vendors} />
           <Route path="/accounts-payable" component={AccountsPayable} />
           <Route path="/accounts-receivable" component={AccountsReceivable} />
@@ -463,10 +432,6 @@ function Router() {
           />
           <Route path="/basic-tasks" component={BasicTaskManagement} />
           <Route path="/pricing-management" component={PricingManagement} />
-          <Route
-            path="/admin/pricing-management"
-            component={PricingManagement}
-          />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
           <Route path="/pricing" component={Pricing} />
@@ -556,13 +521,12 @@ function Router() {
           <Route path="/root-admin/seo" component={RootAdminSEO} />
           <Route path="/seo" component={SEODashboard} />
 
-          {/* Platform Admin Routes */}
+          {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
           <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
           <Route path="/admin/system-security" component={SystemSecurity} />
           <Route path="/admin/database-updater" component={DatabaseUpdaterPage} />
           <Route path="/admin/tenant-management" component={TenantManagement} />
           <Route path="/admin/user-management" component={UserManagement} />
-          <Route path="/admin/role-management" component={RoleManagement} />
           <Route path="/admin/system-settings" component={Settings} />
           <Route path="/admin/platform-analytics" component={AdvancedAnalyticsDashboard} />
           <Route
