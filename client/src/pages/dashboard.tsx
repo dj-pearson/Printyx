@@ -5,9 +5,13 @@ import MainLayout from "@/components/layout/main-layout";
 import ModularDashboard from "@/components/ModularDashboard";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 
+console.log("📊 Dashboard module loading...");
+
 export default function Dashboard() {
+  console.log("📊 Dashboard component rendering");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  console.log("📊 Dashboard auth state:", { isAuthenticated, isLoading });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

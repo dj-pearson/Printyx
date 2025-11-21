@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useAuth } from "@/hooks/useAuth";
+
+console.log("📦 App.tsx: Module loaded");
 // Critical auth pages - keep eager for fast initial load
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
@@ -47,7 +49,9 @@ const PredictiveContractProfitability = React.lazy(() => import("@/pages/Predict
 const AIServiceIntelligence = React.lazy(() => import("@/pages/AIServiceIntelligence"));
 
 // Core app pages - lazy load everything for optimal bundle splitting
-const Dashboard = React.lazy(() => import("@/pages/dashboard"));
+// TEMPORARY: Load Dashboard eagerly to diagnose loading issue
+import Dashboard from "@/pages/dashboard";
+// const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
 const CRMEnhanced = React.lazy(() => import("@/pages/CRMEnhanced"));
 const LeadDetail = React.lazy(() => import("@/pages/LeadDetail"));
@@ -198,8 +202,10 @@ const UserManagement = React.lazy(() => import("@/pages/admin/UserManagement"));
 const LAST_ROUTE_KEY = "printyx_last_route";
 
 function Router() {
+  console.log("🎯 Router: Component rendering");
   const { isAuthenticated, isLoading } = useAuth();
   const [pathname, setLocation] = useLocation();
+  console.log("🎯 Router state:", { isAuthenticated, isLoading, pathname });
   useSeo(pathname);
 
   // Save current route to localStorage when authenticated
@@ -246,16 +252,21 @@ function Router() {
   // Data will be fetched when components mount, which is more efficient
   // and prevents unnecessary data fetching for pages the user might not visit
 
-  return (
-    <Switch>
-      {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-          <div className="text-center animate-fade-in">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 font-medium">Loading Printyx...</p>
-          </div>
+  console.log("🎯 Router: About to render with conditions:", { isLoading, isAuthenticated });
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center animate-fade-in">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading Printyx...</p>
         </div>
-      ) : !isAuthenticated ? (
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return (
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
@@ -296,11 +307,29 @@ function Router() {
           />
           <Route component={Homepage} />
         </Switch>
-      ) : (
-        <>
-          <SubscriptionBanner />
-          <Switch>
-            <Route path="/" component={Dashboard} />
+    );
+  }
+  
+  // Authenticated routes
+  console.log("✅ Router: Rendering authenticated routes");
+  return (
+    <>
+      <SubscriptionBanner />
+      <React.Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+            {console.log("⏳ Suspense fallback showing...")}
+            <div className="text-center animate-fade-in">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+            </div>
+          </div>
+        }
+      >
+        {console.log("🔄 Inside Suspense, rendering Switch...")}
+        <Switch>
+          {console.log("📍 Rendering routes, pathname:", pathname)}
+          <Route path="/" component={Dashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/leads/:slug" component={CustomerDetail} />
@@ -637,11 +666,10 @@ function Router() {
           />
           <Route path="/onboarding/:id" component={OnboardingDetails} />
           <Route path="/sales/command-center" component={SalesCommandCenter} />
-          </Switch>
-        </>
-      )}
-      <Route component={NotFound} />
-    </Switch>
+          <Route component={NotFound} />
+        </Switch>
+      </React.Suspense>
+    </>
   );
 }
 
