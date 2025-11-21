@@ -99,6 +99,36 @@ export type {
   InsertWorkflowStep,
 } from './enhanced-service-schema';
 
+// Re-export product pricing schemas
+export {
+  companyPricingSettings,
+  enhancedProductPricing,
+  enhancedQuotePricing,
+  enhancedQuotePricingLineItems,
+  priceChangeApprovals,
+  pricingApprovalStatusEnum,
+  markupTypeEnum,
+  insertCompanyPricingSettingsSchema,
+  insertEnhancedProductPricingSchema,
+  insertEnhancedQuotePricingSchema,
+  insertEnhancedQuotePricingLineItemsSchema,
+  insertPriceChangeApprovalSchema,
+} from './product-pricing-schema';
+
+export type {
+  CompanyPricingSettings,
+  InsertCompanyPricingSettings,
+  EnhancedProductPricing,
+  InsertEnhancedProductPricing,
+  EnhancedQuotePricing,
+  InsertEnhancedQuotePricing,
+  EnhancedQuotePricingLineItem,
+  InsertEnhancedQuotePricingLineItem,
+  PriceChangeApproval,
+  InsertPriceChangeApproval,
+  MarginAnalysisReport,
+} from './product-pricing-schema';
+
 // Re-export warehouse FPY schemas
 export {
   warehouseKittingOperations,
@@ -2644,13 +2674,30 @@ export const productModels = pgTable('product_models', {
   // Required Accessories (comma-separated accessory codes)
   requiredAccessories: text('required_accessories'),
 
-  // Pricing tiers
+  // Pricing tiers - Three-tier pricing model (Dealer Cost → Rep Cost → Customer Price)
+  // New Tier
   newActive: boolean('new_active').default(false),
-  newRepPrice: decimal('new_rep_price', { precision: 10, scale: 2 }),
+  newDealerCost: decimal('new_dealer_cost', { precision: 10, scale: 2 }), // Tier 1: Hard cost to dealer
+  newRepMarkupPercentage: decimal('new_rep_markup_percentage', { precision: 5, scale: 2 }), // Markup % for rep cost (null = use company default)
+  newRepCost: decimal('new_rep_cost', { precision: 10, scale: 2 }), // Tier 2: Cost to sales rep (calculated or manual)
+  newRepPrice: decimal('new_rep_price', { precision: 10, scale: 2 }), // Legacy field - being replaced by newRepCost
+  newSuggestedRetail: decimal('new_suggested_retail', { precision: 10, scale: 2 }), // Tier 3: MSRP/suggested customer price
+
+  // Upgrade Tier
   upgradeActive: boolean('upgrade_active').default(false),
-  upgradeRepPrice: decimal('upgrade_rep_price', { precision: 10, scale: 2 }),
+  upgradeDealerCost: decimal('upgrade_dealer_cost', { precision: 10, scale: 2 }),
+  upgradeRepMarkupPercentage: decimal('upgrade_rep_markup_percentage', { precision: 5, scale: 2 }),
+  upgradeRepCost: decimal('upgrade_rep_cost', { precision: 10, scale: 2 }),
+  upgradeRepPrice: decimal('upgrade_rep_price', { precision: 10, scale: 2 }), // Legacy field
+  upgradeSuggestedRetail: decimal('upgrade_suggested_retail', { precision: 10, scale: 2 }),
+
+  // Lexmark Tier
   lexmarkActive: boolean('lexmark_active').default(false),
-  lexmarkRepPrice: decimal('lexmark_rep_price', { precision: 10, scale: 2 }),
+  lexmarkDealerCost: decimal('lexmark_dealer_cost', { precision: 10, scale: 2 }),
+  lexmarkRepMarkupPercentage: decimal('lexmark_rep_markup_percentage', { precision: 5, scale: 2 }),
+  lexmarkRepCost: decimal('lexmark_rep_cost', { precision: 10, scale: 2 }),
+  lexmarkRepPrice: decimal('lexmark_rep_price', { precision: 10, scale: 2 }), // Legacy field
+  lexmarkSuggestedRetail: decimal('lexmark_suggested_retail', { precision: 10, scale: 2 }),
 
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
@@ -2672,13 +2719,30 @@ export const productAccessories = pgTable('product_accessories', {
   manufacturer: varchar('manufacturer'), // Canon, Xerox, etc.
   description: text('description'),
 
-  // Pricing
-  standardCost: decimal('standard_cost', { precision: 10, scale: 2 }),
-  standardRepPrice: decimal('standard_rep_price', { precision: 10, scale: 2 }),
-  newCost: decimal('new_cost', { precision: 10, scale: 2 }),
-  newRepPrice: decimal('new_rep_price', { precision: 10, scale: 2 }),
-  upgradeCost: decimal('upgrade_cost', { precision: 10, scale: 2 }),
-  upgradeRepPrice: decimal('upgrade_rep_price', { precision: 10, scale: 2 }),
+  // Pricing - Three-tier pricing model (Dealer Cost → Rep Cost → Customer Price)
+  // Standard Tier
+  standardCost: decimal('standard_cost', { precision: 10, scale: 2 }), // Legacy - being replaced by standardDealerCost
+  standardDealerCost: decimal('standard_dealer_cost', { precision: 10, scale: 2 }), // Tier 1: Hard cost to dealer
+  standardRepMarkupPercentage: decimal('standard_rep_markup_percentage', { precision: 5, scale: 2 }), // Markup % for rep cost
+  standardRepCost: decimal('standard_rep_cost', { precision: 10, scale: 2 }), // Tier 2: Cost to sales rep
+  standardRepPrice: decimal('standard_rep_price', { precision: 10, scale: 2 }), // Legacy field
+  standardSuggestedRetail: decimal('standard_suggested_retail', { precision: 10, scale: 2 }), // Tier 3: MSRP
+
+  // New Tier
+  newCost: decimal('new_cost', { precision: 10, scale: 2 }), // Legacy
+  newDealerCost: decimal('new_dealer_cost', { precision: 10, scale: 2 }),
+  newRepMarkupPercentage: decimal('new_rep_markup_percentage', { precision: 5, scale: 2 }),
+  newRepCost: decimal('new_rep_cost', { precision: 10, scale: 2 }),
+  newRepPrice: decimal('new_rep_price', { precision: 10, scale: 2 }), // Legacy field
+  newSuggestedRetail: decimal('new_suggested_retail', { precision: 10, scale: 2 }),
+
+  // Upgrade Tier
+  upgradeCost: decimal('upgrade_cost', { precision: 10, scale: 2 }), // Legacy
+  upgradeDealerCost: decimal('upgrade_dealer_cost', { precision: 10, scale: 2 }),
+  upgradeRepMarkupPercentage: decimal('upgrade_rep_markup_percentage', { precision: 5, scale: 2 }),
+  upgradeRepCost: decimal('upgrade_rep_cost', { precision: 10, scale: 2 }),
+  upgradeRepPrice: decimal('upgrade_rep_price', { precision: 10, scale: 2 }), // Legacy field
+  upgradeSuggestedRetail: decimal('upgrade_suggested_retail', { precision: 10, scale: 2 }),
 
   // Status and Requirements
   isActive: boolean('is_active').default(true),
