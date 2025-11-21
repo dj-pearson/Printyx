@@ -123,7 +123,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Database Management', path: '/database-management', icon: Database },
         { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
         { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
-        { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
+        { title: 'Role Management', path: '/role-management', icon: Users },
         { title: 'Tenant Setup', path: '/tenant-setup', icon: Settings },
         { title: 'Platform Configuration', path: '/platform-configuration', icon: Settings },
         { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
