@@ -1,0 +1,98 @@
+_app-c0b6284862fe3e8f.js:13 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+_app-c0b6284862fe3e8f.js:13 [LaunchDarkly] LaunchDarkly client initialized
+_app-c0b6284862fe3e8f.js:13 Adding extension: API Request Tester Object
+/~:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+_app-c0b6284862fe3e8f.js:13 Adding extension: API Request Tester Object
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'battery'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-c2a09f7ecb134b73.js:1
+framework-c2a09f7ecb134b73.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-c2a09f7ecb134b73.js:1
+dotdevproxy.janeway.replit.dev/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.janeway.replit.dev/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.janeway.replit.dev/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.riker.replit.dev/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.riker.replit.dev/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.riker.replit.dev/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.janeway.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.janeway.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.janeway.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.picard.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.picard.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.picard.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.worf.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.worf.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+dotdevproxy.worf.repl.co/__reachability:1  Failed to load resource: net::ERR_CERT_AUTHORITY_INVALID
+_app-c0b6284862fe3e8f.js:13 task queue exceeded allotted deadline by 175ms
+(anonymous) @ _app-c0b6284862fe3e8f.js:13
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 2
+stallwart.build.js:1 stallwart: failed ping 3
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.
+workspace_iframe.html:32 Unrecognized feature: 'battery'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.
+stallwart.build.js:1 stallwart: failed ping 1

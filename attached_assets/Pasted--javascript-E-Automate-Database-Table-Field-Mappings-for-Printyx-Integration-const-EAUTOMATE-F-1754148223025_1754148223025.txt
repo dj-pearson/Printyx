@@ -1,0 +1,397 @@
+```javascript
+// E-Automate Database Table Field Mappings for Printyx Integration
+
+const EAUTOMATE_FIELD_MAPPINGS = {
+  // Customer Management Table
+  'dbo.Customers': {
+    table_name: 'customers',
+    primary_key: 'CustomerKey',
+    fields: {
+      'CustomerKey': 'external_customer_id',
+      'CustomerName': 'company_name',
+      'Address1': 'address_line_1',
+      'Address2': 'address_line_2',
+      'City': 'city',
+      'State': 'state',
+      'ZipCode': 'zip_code',
+      'Phone': 'phone',
+      'Fax': 'fax',
+      'ContactName': 'primary_contact_name',
+      'Email': 'email',
+      'CustomerType': 'customer_type',
+      'SalesRep': 'assigned_sales_rep',
+      'Territory': 'territory',
+      'CreditLimit': 'credit_limit',
+      'PaymentTerms': 'payment_terms',
+      'TaxExempt': 'tax_exempt',
+      'TaxID': 'tax_id',
+      'Website': 'website',
+      'Notes': 'notes',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified',
+      'Active': 'is_active',
+      'BillingContact': 'billing_contact',
+      'BillingAddress1': 'billing_address_1',
+      'BillingAddress2': 'billing_address_2',
+      'BillingCity': 'billing_city',
+      'BillingState': 'billing_state',
+      'BillingZip': 'billing_zip_code'
+    }
+  },
+
+  // Equipment/Assets Table
+  'dbo.Equipment': {
+    table_name: 'equipment',
+    primary_key: 'EquipmentKey',
+    fields: {
+      'EquipmentKey': 'external_equipment_id',
+      'CustomerKey': 'external_customer_id',
+      'SerialNumber': 'serial_number',
+      'ModelNumber': 'model_number',
+      'Manufacturer': 'manufacturer',
+      'Description': 'description',
+      'InstallDate': 'install_date',
+      'WarrantyExpires': 'warranty_expires_date',
+      'LocationDescription': 'location_description',
+      'MeterType': 'meter_type',
+      'ColorCapable': 'is_color_capable',
+      'NetworkAddress': 'ip_address',
+      'AssetTag': 'asset_tag',
+      'PurchasePrice': 'purchase_price',
+      'MonthlyPayment': 'monthly_payment',
+      'LeaseExpires': 'lease_expires_date',
+      'ServiceContract': 'service_contract_number',
+      'LastServiceDate': 'last_service_date',
+      'NextServiceDue': 'next_service_due_date',
+      'Status': 'equipment_status',
+      'Notes': 'notes',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified'
+    }
+  },
+
+  // Service Contracts Table
+  'dbo.Contracts': {
+    table_name: 'service_contracts',
+    primary_key: 'ContractKey',
+    fields: {
+      'ContractKey': 'external_contract_id',
+      'CustomerKey': 'external_customer_id',
+      'EquipmentKey': 'external_equipment_id',
+      'ContractNumber': 'contract_number',
+      'ContractType': 'contract_type',
+      'StartDate': 'start_date',
+      'EndDate': 'end_date',
+      'BillingFrequency': 'billing_frequency',
+      'AutoRenewal': 'auto_renewal',
+      'SalesRep': 'sales_rep',
+      'CommissionRate': 'commission_rate',
+      'MonthlyRate': 'monthly_base_rate',
+      'BWOverageRate': 'bw_overage_rate',
+      'ColorOverageRate': 'color_overage_rate',
+      'BaseVolumeBW': 'base_volume_bw',
+      'BaseVolumeColor': 'base_volume_color',
+      'TotalValue': 'total_contract_value',
+      'Status': 'contract_status',
+      'IncludesToner': 'includes_toner',
+      'IncludesParts': 'includes_parts',
+      'IncludesLabor': 'includes_labor',
+      'ResponseTime': 'response_time_hours',
+      'Notes': 'contract_notes',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified'
+    }
+  },
+
+  // Meter Readings Table
+  'dbo.MeterReadings': {
+    table_name: 'meter_readings',
+    primary_key: 'ReadingKey',
+    fields: {
+      'ReadingKey': 'external_reading_id',
+      'EquipmentKey': 'external_equipment_id',
+      'ReadingDate': 'reading_date',
+      'BWMeter': 'bw_meter_reading',
+      'ColorMeter': 'color_meter_reading',
+      'ScanMeter': 'scan_meter_reading',
+      'FaxMeter': 'fax_meter_reading',
+      'LargePaperMeter': 'large_paper_meter_reading',
+      'ReadingMethod': 'reading_method', // manual, email, dca, remote
+      'TechnicianID': 'technician_id',
+      'Verified': 'is_verified',
+      'BillingPeriod': 'billing_period',
+      'InvoiceNumber': 'invoice_number',
+      'Notes': 'reading_notes',
+      'DateCreated': 'created_date'
+    }
+  },
+
+  // Service Calls/Work Orders Table
+  'dbo.ServiceCalls': {
+    table_name: 'service_calls',
+    primary_key: 'CallKey',
+    fields: {
+      'CallKey': 'external_service_call_id',
+      'CustomerKey': 'external_customer_id',
+      'EquipmentKey': 'external_equipment_id',
+      'CallNumber': 'service_call_number',
+      'CallDate': 'call_date',
+      'CallTime': 'call_time',
+      'CallType': 'call_type', // warranty, contract, billable, internal
+      'Priority': 'priority_level',
+      'ProblemDescription': 'problem_description',
+      'ProblemCode': 'problem_code',
+      'Resolution': 'resolution_description',
+      'ResolutionCode': 'resolution_code',
+      'TechnicianID': 'assigned_technician_id',
+      'DispatchedBy': 'dispatched_by_user_id',
+      'TimeOnSite': 'time_on_site_minutes',
+      'TravelTime': 'travel_time_minutes',
+      'CallStatus': 'call_status', // open, dispatched, completed, cancelled
+      'CompletedDate': 'completed_date',
+      'LaborCharge': 'labor_charge_amount',
+      'PartsCharge': 'parts_charge_amount',
+      'TravelCharge': 'travel_charge_amount',
+      'TotalCharge': 'total_charge_amount',
+      'Billable': 'is_billable',
+      'InvoiceNumber': 'invoice_number',
+      'CustomerSignature': 'customer_signature',
+      'CustomerSatisfaction': 'customer_satisfaction_rating',
+      'Notes': 'service_notes',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified'
+    }
+  },
+
+  // Inventory/Parts Table
+  'dbo.Inventory': {
+    table_name: 'inventory_items',
+    primary_key: 'ItemKey',
+    fields: {
+      'ItemKey': 'external_item_id',
+      'PartNumber': 'part_number',
+      'ManufacturerPartNumber': 'manufacturer_part_number',
+      'Description': 'item_description',
+      'Category': 'item_category',
+      'Manufacturer': 'manufacturer',
+      'QtyOnHand': 'quantity_on_hand',
+      'QtyCommitted': 'quantity_committed',
+      'QtyAvailable': 'quantity_available',
+      'QtyOnOrder': 'quantity_on_order',
+      'ReorderPoint': 'reorder_point',
+      'ReorderQty': 'reorder_quantity',
+      'MaxStockLevel': 'max_stock_level',
+      'Cost': 'unit_cost',
+      'AverageCost': 'average_cost',
+      'LastCost': 'last_cost',
+      'Price': 'unit_price',
+      'RetailPrice': 'retail_price',
+      'Location': 'warehouse_location',
+      'BinLocation': 'bin_location',
+      'Vendor': 'primary_vendor',
+      'VendorPartNumber': 'vendor_part_number',
+      'UOM': 'unit_of_measure',
+      'Weight': 'item_weight',
+      'Taxable': 'is_taxable',
+      'Serialized': 'is_serialized',
+      'Active': 'is_active',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified',
+      'LastSold': 'last_sold_date',
+      'LastReceived': 'last_received_date'
+    }
+  },
+
+  // Sales/Invoicing Table
+  'dbo.Invoices': {
+    table_name: 'invoices',
+    primary_key: 'InvoiceKey',
+    fields: {
+      'InvoiceKey': 'external_invoice_id',
+      'CustomerKey': 'external_customer_id',
+      'InvoiceNumber': 'invoice_number',
+      'InvoiceDate': 'invoice_date',
+      'DueDate': 'due_date',
+      'PONumber': 'po_number',
+      'SalesRep': 'sales_rep',
+      'InvoiceType': 'invoice_type', // sales, service, lease, rental
+      'Subtotal': 'subtotal_amount',
+      'TaxAmount': 'tax_amount',
+      'Total': 'total_amount',
+      'AmountPaid': 'amount_paid',
+      'Balance': 'balance_due',
+      'Status': 'invoice_status', // open, paid, partial, overdue, void
+      'PaymentTerms': 'payment_terms',
+      'BillingPeriodStart': 'billing_period_start',
+      'BillingPeriodEnd': 'billing_period_end',
+      'Notes': 'invoice_notes',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified'
+    }
+  },
+
+  // Invoice Line Items Table
+  'dbo.InvoiceDetails': {
+    table_name: 'invoice_line_items',
+    primary_key: 'DetailKey',
+    fields: {
+      'DetailKey': 'external_line_item_id',
+      'InvoiceKey': 'external_invoice_id',
+      'ItemKey': 'external_item_id',
+      'EquipmentKey': 'external_equipment_id',
+      'Description': 'line_description',
+      'Quantity': 'quantity',
+      'UnitPrice': 'unit_price',
+      'ExtendedPrice': 'extended_price',
+      'DiscountPercent': 'discount_percent',
+      'DiscountAmount': 'discount_amount',
+      'TaxRate': 'tax_rate',
+      'TaxAmount': 'tax_amount',
+      'LineTotal': 'line_total',
+      'GLAccount': 'gl_account_code',
+      'SerialNumber': 'serial_number',
+      'MeterStart': 'meter_start_reading',
+      'MeterEnd': 'meter_end_reading',
+      'MeterUsage': 'meter_usage',
+      'BillingType': 'billing_type' // base, overage, one-time, recurring
+    }
+  },
+
+  // Employees/Technicians Table
+  'dbo.Employees': {
+    table_name: 'employees',
+    primary_key: 'EmployeeKey',
+    fields: {
+      'EmployeeKey': 'external_employee_id',
+      'EmployeeNumber': 'employee_number',
+      'FirstName': 'first_name',
+      'LastName': 'last_name',
+      'Email': 'work_email',
+      'Phone': 'work_phone',
+      'Mobile': 'mobile_phone',
+      'Department': 'department',
+      'Title': 'job_title',
+      'HireDate': 'hire_date',
+      'TerminationDate': 'termination_date',
+      'Manager': 'manager_id',
+      'Territory': 'assigned_territory',
+      'CommissionRate': 'commission_rate',
+      'LaborRate': 'hourly_labor_rate',
+      'Active': 'is_active',
+      'TechnicianLevel': 'technician_certification_level',
+      'Notes': 'employee_notes',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified'
+    }
+  },
+
+  // Vendors/Suppliers Table
+  'dbo.Vendors': {
+    table_name: 'vendors',
+    primary_key: 'VendorKey',
+    fields: {
+      'VendorKey': 'external_vendor_id',
+      'VendorName': 'vendor_name',
+      'ContactName': 'primary_contact_name',
+      'Address1': 'address_line_1',
+      'Address2': 'address_line_2',
+      'City': 'city',
+      'State': 'state',
+      'ZipCode': 'zip_code',
+      'Phone': 'phone',
+      'Fax': 'fax',
+      'Email': 'email',
+      'Website': 'website',
+      'PaymentTerms': 'payment_terms',
+      'TaxID': 'tax_id',
+      'AccountNumber': 'account_number',
+      'CreditLimit': 'credit_limit',
+      'Active': 'is_active',
+      'Notes': 'vendor_notes',
+      'DateCreated': 'created_date',
+      'LastModified': 'last_modified'
+    }
+  }
+};
+
+// Common SQL queries for e-automate data extraction
+const EAUTOMATE_QUERIES = {
+  // Get all customers modified since last sync
+  customers: `
+    SELECT CustomerKey, CustomerName, Address1, Address2, City, State, ZipCode,
+           Phone, Fax, ContactName, Email, CustomerType, SalesRep, Territory,
+           CreditLimit, PaymentTerms, TaxExempt, TaxID, Website, Notes,
+           DateCreated, LastModified, Active,
+           BillingContact, BillingAddress1, BillingAddress2, 
+           BillingCity, BillingState, BillingZip
+    FROM dbo.Customers 
+    WHERE LastModified >= @lastSync OR DateCreated >= @lastSync
+    ORDER BY LastModified DESC
+  `,
+
+  // Get equipment with latest meter readings
+  equipment: `
+    SELECT e.EquipmentKey, e.CustomerKey, e.SerialNumber, e.ModelNumber,
+           e.Manufacturer, e.Description, e.InstallDate, e.WarrantyExpires,
+           e.LocationDescription, e.MeterType, e.ColorCapable, e.NetworkAddress,
+           e.AssetTag, e.PurchasePrice, e.MonthlyPayment, e.LeaseExpires,
+           e.ServiceContract, e.LastServiceDate, e.NextServiceDue,
+           e.Status, e.Notes, e.DateCreated, e.LastModified,
+           mr.BWMeter as LastBWMeter, mr.ColorMeter as LastColorMeter,
+           mr.ReadingDate as LastMeterDate
+    FROM dbo.Equipment e
+    LEFT JOIN (
+      SELECT EquipmentKey, 
+             MAX(ReadingDate) as ReadingDate,
+             BWMeter, ColorMeter
+      FROM dbo.MeterReadings
+      GROUP BY EquipmentKey, BWMeter, ColorMeter
+    ) mr ON e.EquipmentKey = mr.EquipmentKey
+    WHERE e.LastModified >= @lastSync OR e.DateCreated >= @lastSync
+  `,
+
+  // Get active service contracts
+  contracts: `
+    SELECT ContractKey, CustomerKey, EquipmentKey, ContractNumber, ContractType,
+           StartDate, EndDate, BillingFrequency, AutoRenewal, SalesRep,
+           CommissionRate, MonthlyRate, BWOverageRate, ColorOverageRate,
+           BaseVolumeBW, BaseVolumeColor, TotalValue, Status,
+           IncludesToner, IncludesParts, IncludesLabor, ResponseTime,
+           Notes, DateCreated, LastModified
+    FROM dbo.Contracts
+    WHERE LastModified >= @lastSync OR DateCreated >= @lastSync
+    AND Status = 'Active'
+  `,
+
+  // Get recent service calls
+  service_calls: `
+    SELECT CallKey, CustomerKey, EquipmentKey, CallNumber, CallDate, CallTime,
+           CallType, Priority, ProblemDescription, ProblemCode, Resolution,
+           ResolutionCode, TechnicianID, DispatchedBy, TimeOnSite, TravelTime,
+           CallStatus, CompletedDate, LaborCharge, PartsCharge, TravelCharge,
+           TotalCharge, Billable, InvoiceNumber, CustomerSatisfaction,
+           Notes, DateCreated, LastModified
+    FROM dbo.ServiceCalls
+    WHERE CallDate >= @lastSync
+    ORDER BY CallDate DESC
+  `,
+
+  // Get inventory items
+  inventory: `
+    SELECT ItemKey, PartNumber, ManufacturerPartNumber, Description, Category,
+           Manufacturer, QtyOnHand, QtyCommitted, QtyAvailable, QtyOnOrder,
+           ReorderPoint, ReorderQty, MaxStockLevel, Cost, AverageCost, LastCost,
+           Price, RetailPrice, Location, BinLocation, Vendor, VendorPartNumber,
+           UOM, Weight, Taxable, Serialized, Active, DateCreated, LastModified,
+           LastSold, LastReceived
+    FROM dbo.Inventory
+    WHERE LastModified >= @lastSync OR DateCreated >= @lastSync
+    AND Active = 1
+  `
+};
+
+module.exports = {
+  EAUTOMATE_FIELD_MAPPINGS,
+  EAUTOMATE_QUERIES
+};
+```

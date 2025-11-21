@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Optimization Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Safe area support test */
+        @supports (padding: env(safe-area-inset-top)) {
+            .safe-area-test {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+                background-color: lime;
+            }
+        }
+        
+        /* Touch target test */
+        .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            touch-action: manipulation;
+        }
+        
+        /* Form input test */
+        .mobile-input {
+            min-height: 44px;
+            font-size: 16px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-4">
+    <div class="max-w-sm mx-auto space-y-6">
+        <!-- Safe Area Test -->
+        <div class="safe-area-test p-4 rounded-lg">
+            <h2 class="text-lg font-bold">Safe Area Test</h2>
+            <p class="text-sm">If you see green padding on devices with notches/dynamic islands, safe area is working!</p>
+        </div>
+        
+        <!-- Touch Target Test -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-bold mb-4">Touch Target Test (44×44px minimum)</h2>
+            <div class="grid grid-cols-3 gap-3">
+                <button class="touch-target">Button 1</button>
+                <button class="touch-target">Button 2</button>
+                <button class="touch-target">Button 3</button>
+            </div>
+        </div>
+        
+        <!-- Form Input Test -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-bold mb-4">Form Input Test</h2>
+            <div class="space-y-3">
+                <input type="text" class="mobile-input w-full" placeholder="Text input (16px font to prevent zoom)">
+                <input type="email" class="mobile-input w-full" placeholder="Email input" inputmode="email">
+                <input type="tel" class="mobile-input w-full" placeholder="Phone input" inputmode="tel">
+                <input type="number" class="mobile-input w-full" placeholder="Number input" inputmode="numeric">
+            </div>
+        </div>
+        
+        <!-- Mobile-First Grid Test -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-bold mb-4">Mobile-First Grid Test</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div class="bg-blue-100 p-3 rounded">Item 1</div>
+                <div class="bg-green-100 p-3 rounded">Item 2</div>
+                <div class="bg-yellow-100 p-3 rounded">Item 3</div>
+                <div class="bg-red-100 p-3 rounded">Item 4</div>
+                <div class="bg-purple-100 p-3 rounded">Item 5</div>
+                <div class="bg-pink-100 p-3 rounded">Item 6</div>
+            </div>
+        </div>
+        
+        <!-- Typography Test -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-bold mb-4">Typography Test</h2>
+            <p class="text-base mb-2">Base text (16px on mobile, 14px on desktop)</p>
+            <p class="text-sm">Small text (14px on mobile, 12px on desktop)</p>
+            <p class="text-xs">Extra small text (12px on mobile, 10px on desktop)</p>
+        </div>
+        
+        <!-- Bottom Navigation Simulation -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-test">
+            <div class="flex items-center justify-around py-1 px-2 min-h-16">
+                <button class="flex flex-col items-center justify-center min-h-12 min-w-12 rounded-lg mx-1 touch-target">
+                    <span class="text-xs">Home</span>
+                </button>
+                <button class="flex flex-col items-center justify-center min-h-12 min-w-12 rounded-lg mx-1 touch-target">
+                    <span class="text-xs">Search</span>
+                </button>
+                <button class="flex flex-col items-center justify-center min-h-12 min-w-12 rounded-lg mx-1 touch-target">
+                    <span class="text-xs">Profile</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Add padding to prevent content from being hidden behind bottom nav -->
+        <div class="pb-20"></div>
+    </div>
+    
+    <script>
+        // Test touch events
+        document.querySelectorAll('.touch-target').forEach(button => {
+            button.addEventListener('touchstart', function(e) {
+                this.style.backgroundColor = '#1d4ed8';
+            });
+            
+            button.addEventListener('touchend', function(e) {
+                this.style.backgroundColor = '#3b82f6';
+            });
+        });
+        
+        // Log viewport and device info
+        console.log('Mobile Optimization Test Results:');
+        console.log('Viewport width:', window.innerWidth);
+        console.log('Viewport height:', window.innerHeight);
+        console.log('Device pixel ratio:', window.devicePixelRatio);
+        console.log('User agent:', navigator.userAgent);
+        console.log('Touch support:', 'ontouchstart' in window);
+        
+        // Test safe area support
+        const testElement = document.createElement('div');
+        testElement.style.paddingTop = 'env(safe-area-inset-top)';
+        if (testElement.style.paddingTop === 'env(safe-area-inset-top)') {
+            console.log('Safe area support: Not supported');
+        } else {
+            console.log('Safe area support: Supported');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1108 @@
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+Printyx:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+Printyx:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+Printyx:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+_app-e09a5948a2c44589.js:13 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+_app-e09a5948a2c44589.js:13 [LaunchDarkly] LaunchDarkly client initialized
+_app-e09a5948a2c44589.js:13 Adding extension: API Request Tester Object
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'battery'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+framework-55dd1aa748d7cbea.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-55dd1aa748d7cbea.js:1
+(anonymous) @ framework-55dd1aa748d7cbea.js:1
+uD @ framework-55dd1aa748d7cbea.js:1
+uI @ framework-55dd1aa748d7cbea.js:1
+uM @ framework-55dd1aa748d7cbea.js:1
+uS @ framework-55dd1aa748d7cbea.js:1
+C @ framework-55dd1aa748d7cbea.js:1
+z @ framework-55dd1aa748d7cbea.js:1
+Printyx:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+_app-e09a5948a2c44589.js:13 `DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+(anonymous) @ _app-e09a5948a2c44589.js:13
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1450
+W$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qH @ 4868d50f.9d02ee8023fd89a2.js:1406
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qI @ 4868d50f.9d02ee8023fd89a2.js:1406
+V7 @ 4868d50f.9d02ee8023fd89a2.js:1404
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+_app-e09a5948a2c44589.js:13 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ _app-e09a5948a2c44589.js:13
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1450
+W$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qH @ 4868d50f.9d02ee8023fd89a2.js:1406
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qI @ 4868d50f.9d02ee8023fd89a2.js:1406
+V7 @ 4868d50f.9d02ee8023fd89a2.js:1404
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+_app-e09a5948a2c44589.js:13 RangeError: Selection points outside of document
+    at euW (4868d50f.9d02ee8023fd89a2.js:1468:12628)
+    at new edu (4868d50f.9d02ee8023fd89a2.js:1468:19465)
+    at edu.create (4868d50f.9d02ee8023fd89a2.js:1468:19600)
+    at e (4868d50f.9d02ee8023fd89a2.js:1468:22148)
+    at edE.update (4868d50f.9d02ee8023fd89a2.js:1468:23300)
+    at epY.dispatch (4868d50f.9d02ee8023fd89a2.js:1474:6436)
+    at 4868d50f.9d02ee8023fd89a2.js:1537:11611
+    at W$ (4868d50f.9d02ee8023fd89a2.js:1406:14387)
+    at qH (4868d50f.9d02ee8023fd89a2.js:1406:43150)
+    at 4868d50f.9d02ee8023fd89a2.js:1406:41571
+    at q$ (4868d50f.9d02ee8023fd89a2.js:1406:41632)
+    at qI (4868d50f.9d02ee8023fd89a2.js:1406:26413)
+    at V7 (4868d50f.9d02ee8023fd89a2.js:1404:4732)
+    at 4868d50f.9d02ee8023fd89a2.js:1406:23813
+(anonymous) @ _app-e09a5948a2c44589.js:13
+Wt @ 4868d50f.9d02ee8023fd89a2.js:1406
+Wi.a.componentDidCatch.n.callback @ 4868d50f.9d02ee8023fd89a2.js:1406
+G0 @ 4868d50f.9d02ee8023fd89a2.js:1404
+WZ @ 4868d50f.9d02ee8023fd89a2.js:1406
+e @ 4868d50f.9d02ee8023fd89a2.js:1406
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qI @ 4868d50f.9d02ee8023fd89a2.js:1406
+V7 @ 4868d50f.9d02ee8023fd89a2.js:1404
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+stallwart.build.js:1 stallwart: failed ping 1
+_app-e09a5948a2c44589.js:13 `DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+(anonymous) @ _app-e09a5948a2c44589.js:13
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1450
+W$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qH @ 4868d50f.9d02ee8023fd89a2.js:1406
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qI @ 4868d50f.9d02ee8023fd89a2.js:1406
+V7 @ 4868d50f.9d02ee8023fd89a2.js:1404
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qR @ 4868d50f.9d02ee8023fd89a2.js:1406
+N @ 4868d50f.9d02ee8023fd89a2.js:1399
+_ @ 4868d50f.9d02ee8023fd89a2.js:1399
+h @ _app-e09a5948a2c44589.js:20
+i @ _app-e09a5948a2c44589.js:20
+_app-e09a5948a2c44589.js:13 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ _app-e09a5948a2c44589.js:13
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1450
+W$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qH @ 4868d50f.9d02ee8023fd89a2.js:1406
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qI @ 4868d50f.9d02ee8023fd89a2.js:1406
+V7 @ 4868d50f.9d02ee8023fd89a2.js:1404
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qR @ 4868d50f.9d02ee8023fd89a2.js:1406
+N @ 4868d50f.9d02ee8023fd89a2.js:1399
+_ @ 4868d50f.9d02ee8023fd89a2.js:1399
+h @ _app-e09a5948a2c44589.js:20
+i @ _app-e09a5948a2c44589.js:20
+_app-e09a5948a2c44589.js:13 RangeError: Selection points outside of document
+    at euW (4868d50f.9d02ee8023fd89a2.js:1468:12628)
+    at new edu (4868d50f.9d02ee8023fd89a2.js:1468:19465)
+    at edu.create (4868d50f.9d02ee8023fd89a2.js:1468:19600)
+    at e (4868d50f.9d02ee8023fd89a2.js:1468:22148)
+    at edE.update (4868d50f.9d02ee8023fd89a2.js:1468:23300)
+    at epY.dispatch (4868d50f.9d02ee8023fd89a2.js:1474:6436)
+    at 4868d50f.9d02ee8023fd89a2.js:1537:11611
+    at W$ (4868d50f.9d02ee8023fd89a2.js:1406:14387)
+    at qH (4868d50f.9d02ee8023fd89a2.js:1406:43150)
+    at 4868d50f.9d02ee8023fd89a2.js:1406:41571
+    at q$ (4868d50f.9d02ee8023fd89a2.js:1406:41632)
+    at qI (4868d50f.9d02ee8023fd89a2.js:1406:26413)
+    at V7 (4868d50f.9d02ee8023fd89a2.js:1404:4732)
+    at 4868d50f.9d02ee8023fd89a2.js:1406:23813
+(anonymous) @ _app-e09a5948a2c44589.js:13
+Wt @ 4868d50f.9d02ee8023fd89a2.js:1406
+Wi.a.componentDidCatch.n.callback @ 4868d50f.9d02ee8023fd89a2.js:1406
+G0 @ 4868d50f.9d02ee8023fd89a2.js:1404
+WZ @ 4868d50f.9d02ee8023fd89a2.js:1406
+e @ 4868d50f.9d02ee8023fd89a2.js:1406
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+q$ @ 4868d50f.9d02ee8023fd89a2.js:1406
+qI @ 4868d50f.9d02ee8023fd89a2.js:1406
+V7 @ 4868d50f.9d02ee8023fd89a2.js:1404
+(anonymous) @ 4868d50f.9d02ee8023fd89a2.js:1406
+stallwart.build.js:1 stallwart: failed ping 1
+stallwart.build.js:1 stallwart: failed ping 2
+stallwart.build.js:1 stallwart: failed ping 3
+stallwart.build.js:1 stallwart: failed ping 4
+stallwart.build.js:1 stallwart: failed ping 5
+stallwart.build.js:1 stallwart: session stalled
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.
+workspace_iframe.html:32 Unrecognized feature: 'battery'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+window.fetch @ VM18 eruda.js:2
+apply @ VM19 injected.js:253
+window.fetch @ VM34 main.tsx:41
+mutationFn @ VM145 QuoteView.tsx:92
+fn @ VM43 @tanstack_react-query.js:1189
+run @ VM43 @tanstack_react-query.js:494
+start @ VM43 @tanstack_react-query.js:536
+execute @ VM43 @tanstack_react-query.js:1225
+await in execute
+mutate @ VM43 @tanstack_react-query.js:2630
+(anonymous) @ VM43 @tanstack_react-query.js:3295
+handleExportPdf @ VM145 QuoteView.tsx:157
+callCallback2 @ VM40 chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev @ VM40 chunk-RPCDYKBN.js:3699
+invokeGuardedCallback @ VM40 chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError @ VM40 chunk-RPCDYKBN.js:3736
+executeDispatch @ VM40 chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder @ VM40 chunk-RPCDYKBN.js:7034
+processDispatchQueue @ VM40 chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins @ VM40 chunk-RPCDYKBN.js:7051
+(anonymous) @ VM40 chunk-RPCDYKBN.js:7174
+batchedUpdates$1 @ VM40 chunk-RPCDYKBN.js:18913
+batchedUpdates @ VM40 chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem @ VM40 chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ VM40 chunk-RPCDYKBN.js:5478
+dispatchEvent @ VM40 chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent @ VM40 chunk-RPCDYKBN.js:5449
+eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ VM18 eruda.js:2
+apply @ VM19 injected.js:253
+window.fetch @ VM34 main.tsx:41
+apiRequest @ VM42 queryClient.ts:43
+queryFn @ VM325 SystemAlertBell.tsx:65
+fetchFn @ VM43 @tanstack_react-query.js:840
+run @ VM43 @tanstack_react-query.js:494
+start @ VM43 @tanstack_react-query.js:536
+fetch @ VM43 @tanstack_react-query.js:926
+executeFetch_fn @ VM43 @tanstack_react-query.js:2211
+(anonymous) @ VM43 @tanstack_react-query.js:2245
+eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ VM18 eruda.js:2
+apply @ VM19 injected.js:253
+window.fetch @ VM34 main.tsx:41
+apiRequest @ VM42 queryClient.ts:43
+queryFn @ VM325 SystemAlertBell.tsx:65
+fetchFn @ VM43 @tanstack_react-query.js:840
+run @ VM43 @tanstack_react-query.js:494
+(anonymous) @ VM43 @tanstack_react-query.js:519
+Promise.then
+(anonymous) @ VM43 @tanstack_react-query.js:515
+Promise.catch
+run @ VM43 @tanstack_react-query.js:498
+start @ VM43 @tanstack_react-query.js:536
+fetch @ VM43 @tanstack_react-query.js:926
+executeFetch_fn @ VM43 @tanstack_react-query.js:2211
+(anonymous) @ VM43 @tanstack_react-query.js:2245
+eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ VM18 eruda.js:2
+apply @ VM19 injected.js:253
+window.fetch @ VM34 main.tsx:41
+apiRequest @ VM42 queryClient.ts:43
+queryFn @ VM325 SystemAlertBell.tsx:65
+fetchFn @ VM43 @tanstack_react-query.js:840
+run @ VM43 @tanstack_react-query.js:494
+(anonymous) @ VM43 @tanstack_react-query.js:519
+Promise.then
+(anonymous) @ VM43 @tanstack_react-query.js:515
+Promise.catch
+run @ VM43 @tanstack_react-query.js:498
+(anonymous) @ VM43 @tanstack_react-query.js:519
+Promise.then
+(anonymous) @ VM43 @tanstack_react-query.js:515
+Promise.catch
+run @ VM43 @tanstack_react-query.js:498
+start @ VM43 @tanstack_react-query.js:536
+fetch @ VM43 @tanstack_react-query.js:926
+executeFetch_fn @ VM43 @tanstack_react-query.js:2211
+(anonymous) @ VM43 @tanstack_react-query.js:2245
+eruda.js:2 [vite] server connection lost. Polling for restart...
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.
+workspace_iframe.html:32 Unrecognized feature: 'battery'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ SystemAlertBell.tsx:42
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=3b3e4a15:555
+flush @ @tanstack_react-query.js?v=3b3e4a15:569
+batch @ @tanstack_react-query.js?v=3b3e4a15:587
+dispatch_fn @ @tanstack_react-query.js?v=3b3e4a15:996
+setData @ @tanstack_react-query.js?v=3b3e4a15:696
+onSuccess @ @tanstack_react-query.js?v=3b3e4a15:897
+resolve @ @tanstack_react-query.js?v=3b3e4a15:456
+Promise.then
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19432
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=3b3e4a15:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
+workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
+flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ SystemAlertBell.tsx:42
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=3b3e4a15:555
+flush @ @tanstack_react-query.js?v=3b3e4a15:569
+batch @ @tanstack_react-query.js?v=3b3e4a15:587
+dispatch_fn @ @tanstack_react-query.js?v=3b3e4a15:996
+setData @ @tanstack_react-query.js?v=3b3e4a15:696
+onSuccess @ @tanstack_react-query.js?v=3b3e4a15:897
+resolve @ @tanstack_react-query.js?v=3b3e4a15:456
+Promise.then
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19432
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=3b3e4a15:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
+workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
+flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ SystemAlertBell.tsx:42
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=3b3e4a15:555
+flush @ @tanstack_react-query.js?v=3b3e4a15:569
+batch @ @tanstack_react-query.js?v=3b3e4a15:587
+dispatch_fn @ @tanstack_react-query.js?v=3b3e4a15:996
+setData @ @tanstack_react-query.js?v=3b3e4a15:696
+onSuccess @ @tanstack_react-query.js?v=3b3e4a15:897
+resolve @ @tanstack_react-query.js?v=3b3e4a15:456
+Promise.then
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19432
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=3b3e4a15:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
+workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
+flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ SystemAlertBell.tsx:42
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+(anonymous) @ queryClient.ts:202
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ PageAlerts.tsx:48
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+(anonymous) @ queryClient.ts:202
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ PageAlerts.tsx:48
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+(anonymous) @ queryClient.ts:202
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ SystemAlertBell.tsx:42
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+flushSync @ chunk-RPCDYKBN.js?v=3b3e4a15:18959
+flushSync$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:21538
+dispatchDiscreteCustomEvent @ chunk-Q6YJROYD.js?v=3b3e4a15:53
+handleSelect @ @radix-ui_react-dropdown-menu.js?v=3b3e4a15:432
+handleEvent @ chunk-5Q5YC75F.js?v=3b3e4a15:6
+callCallback2 @ chunk-RPCDYKBN.js?v=3b3e4a15:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3b3e4a15:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3b3e4a15:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3b3e4a15:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3b3e4a15:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3b3e4a15:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3b3e4a15:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3b3e4a15:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3b3e4a15:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ SystemAlertBell.tsx:42
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+flushSync @ chunk-RPCDYKBN.js?v=3b3e4a15:18959
+flushSync$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:21538
+dispatchDiscreteCustomEvent @ chunk-Q6YJROYD.js?v=3b3e4a15:53
+handleSelect @ @radix-ui_react-dropdown-menu.js?v=3b3e4a15:432
+handleEvent @ chunk-5Q5YC75F.js?v=3b3e4a15:6
+callCallback2 @ chunk-RPCDYKBN.js?v=3b3e4a15:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3b3e4a15:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3b3e4a15:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3b3e4a15:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3b3e4a15:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3b3e4a15:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3b3e4a15:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3b3e4a15:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3b3e4a15:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+mutationFn @ QuoteView.tsx:159
+fn @ @tanstack_react-query.js?v=3b3e4a15:1189
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+execute @ @tanstack_react-query.js?v=3b3e4a15:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=3b3e4a15:2630
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3295
+handleExportPdf @ QuoteView.tsx:232
+callCallback2 @ chunk-RPCDYKBN.js?v=3b3e4a15:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3b3e4a15:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3b3e4a15:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3b3e4a15:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3b3e4a15:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3b3e4a15:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3b3e4a15:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3b3e4a15:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3b3e4a15:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+apiRequest @ queryClient.ts:65
+queryFn @ SystemAlertBell.tsx:42
+fetchFn @ @tanstack_react-query.js?v=3b3e4a15:840
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:519
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:515
+Promise.catch
+run @ @tanstack_react-query.js?v=3b3e4a15:498
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+fetch @ @tanstack_react-query.js?v=3b3e4a15:926
+executeFetch_fn @ @tanstack_react-query.js?v=3b3e4a15:2211
+onSubscribe @ @tanstack_react-query.js?v=3b3e4a15:1898
+subscribe @ @tanstack_react-query.js?v=3b3e4a15:24
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=3b3e4a15:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=3b3e4a15:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=3b3e4a15:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=3b3e4a15:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=3b3e4a15:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=3b3e4a15:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=3b3e4a15:19416
+commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
+flushSync @ chunk-RPCDYKBN.js?v=3b3e4a15:18959
+flushSync$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:21538
+dispatchDiscreteCustomEvent @ chunk-Q6YJROYD.js?v=3b3e4a15:53
+handleSelect @ @radix-ui_react-dropdown-menu.js?v=3b3e4a15:432
+handleEvent @ chunk-5Q5YC75F.js?v=3b3e4a15:6
+callCallback2 @ chunk-RPCDYKBN.js?v=3b3e4a15:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3b3e4a15:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3b3e4a15:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3b3e4a15:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3b3e4a15:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3b3e4a15:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3b3e4a15:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3b3e4a15:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3b3e4a15:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
+injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apply @ injected.js:253
+window.fetch @ main.tsx:52
+mutationFn @ QuoteView.tsx:159
+fn @ @tanstack_react-query.js?v=3b3e4a15:1189
+run @ @tanstack_react-query.js?v=3b3e4a15:494
+start @ @tanstack_react-query.js?v=3b3e4a15:536
+execute @ @tanstack_react-query.js?v=3b3e4a15:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=3b3e4a15:2630
+(anonymous) @ @tanstack_react-query.js?v=3b3e4a15:3295
+handleExportPdf @ QuoteView.tsx:232
+callCallback2 @ chunk-RPCDYKBN.js?v=3b3e4a15:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3b3e4a15:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3b3e4a15:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3b3e4a15:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3b3e4a15:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3b3e4a15:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3b3e4a15:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3b3e4a15:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3b3e4a15:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3b3e4a15:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449

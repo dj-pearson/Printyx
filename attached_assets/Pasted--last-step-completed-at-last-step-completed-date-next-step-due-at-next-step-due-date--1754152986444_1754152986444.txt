@@ -1,0 +1,535 @@
+'last_step_completed_at': 'last_step_completed_date',
+     'next_step_due_at': 'next_step_due_date',
+     'status': 'sequence_status', // active, paused, finished, bounced, replied, unsubscribed
+     'priority_score': 'priority_score',
+     'sentiment_score': 'sentiment_score',
+     'engagement_score': 'engagement_score',
+     'response_time': 'avg_response_time_hours',
+     'opened_count': 'emails_opened_count',
+     'clicked_count': 'links_clicked_count',
+     'replied_count': 'replies_count',
+     'bounced_count': 'bounces_count',
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ },
+
+ // Calls/Phone Activities
+ 'calls': {
+   table_name: 'apollo_calls',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_call_id',
+     'user_id': 'user_id',
+     'person_id': 'external_contact_id',
+     'organization_id': 'external_company_id',
+     'account_id': 'apollo_account_id',
+     'recording_url': 'recording_url',
+     'voicemail_url': 'voicemail_url',
+     'call_duration': 'duration_seconds',
+     'call_disposition': 'call_disposition',
+     'call_sentiment': 'call_sentiment',
+     'note': 'call_notes',
+     'phone_number': 'phone_number',
+     'direction': 'call_direction', // inbound, outbound
+     'answered': 'was_answered',
+     'left_voicemail': 'left_voicemail',
+     'call_outcome': 'call_outcome', // connected, no_answer, busy, voicemail, wrong_number
+     'call_rating': 'call_rating',
+     'follow_up_needed': 'follow_up_needed',
+     'next_call_scheduled': 'next_call_date',
+     'transcription': 'call_transcription',
+     'keywords_mentioned': 'keywords_mentioned_json',
+     'objections_raised': 'objections_raised_json',
+     'pain_points_discussed': 'pain_points_json',
+     'next_steps': 'next_steps_json',
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ },
+
+ // Tasks/Activities
+ 'tasks': {
+   table_name: 'apollo_tasks',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_task_id',
+     'user_id': 'assigned_user_id',
+     'person_id': 'external_contact_id',
+     'organization_id': 'external_company_id',
+     'account_id': 'apollo_account_id',
+     'note': 'task_description',
+     'call_purpose': 'call_purpose',
+     'task_type': 'task_type', // call, email, linkedin, other
+     'status': 'task_status', // pending, completed, cancelled
+     'priority': 'priority_level', // high, medium, low
+     'due_at': 'due_date',
+     'completed_at': 'completed_date',
+     'reminder_at': 'reminder_date',
+     'outcome': 'task_outcome',
+     'follow_up_date': 'follow_up_date',
+     'tags': 'tags_json',
+     'custom_fields': 'custom_fields_json',
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ },
+
+ // Notes/Activities
+ 'notes': {
+   table_name: 'apollo_notes',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_note_id',
+     'user_id': 'user_id',
+     'person_id': 'external_contact_id',
+     'organization_id': 'external_company_id',
+     'account_id': 'apollo_account_id',
+     'note': 'note_content',
+     'note_type': 'note_type', // meeting, call, email, general
+     'visibility': 'visibility_level', // private, team, organization
+     'pinned': 'is_pinned',
+     'meeting_date': 'meeting_date',
+     'attendees': 'attendees_json',
+     'meeting_outcome': 'meeting_outcome',
+     'action_items': 'action_items_json',
+     'tags': 'tags_json',
+     'attachments': 'attachments_json',
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ },
+
+ // Email Messages
+ 'emailer_messages': {
+   table_name: 'apollo_email_messages',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_message_id',
+     'emailer_campaign_id': 'external_campaign_id',
+     'emailer_touch_id': 'external_touch_id',
+     'person_id': 'external_contact_id',
+     'user_id': 'user_id',
+     'subject': 'email_subject',
+     'body_text': 'email_body_text',
+     'body_html': 'email_body_html',
+     'from_email': 'from_email',
+     'to_email': 'to_email',
+     'cc_emails': 'cc_emails_json',
+     'bcc_emails': 'bcc_emails_json',
+     'reply_to_email': 'reply_to_email',
+     'message_id': 'message_id',
+     'thread_id': 'thread_id',
+     'in_reply_to_message_id': 'in_reply_to_message_id',
+     'status': 'message_status', // scheduled, sent, delivered, bounced, opened, clicked, replied
+     'scheduled_at': 'scheduled_date',
+     'sent_at': 'sent_date',
+     'delivered_at': 'delivered_date',
+     'opened_at': 'first_opened_date',
+     'clicked_at': 'first_clicked_date',
+     'replied_at': 'replied_date',
+     'bounced_at': 'bounced_date',
+     'bounce_reason': 'bounce_reason',
+     'opens_count': 'opens_count',
+     'clicks_count': 'clicks_count',
+     'links_clicked': 'links_clicked_json',
+     'tracking_pixel_enabled': 'tracking_enabled',
+     'priority': 'email_priority',
+     'spam_score': 'spam_score',
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ },
+
+ // Saved Lists/Searches
+ 'contact_lists': {
+   table_name: 'apollo_contact_lists',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_list_id',
+     'name': 'list_name',
+     'description': 'list_description',
+     'user_id': 'owner_user_id',
+     'team_id': 'team_id',
+     'num_contacts': 'contact_count',
+     'is_folder': 'is_folder',
+     'folder_id': 'folder_id',
+     'visibility': 'visibility_level', // private, team, organization
+     'list_type': 'list_type', // static, dynamic, smart
+     'search_criteria': 'search_criteria_json',
+     'last_updated_count': 'last_count_update',
+     'tags': 'tags_json',
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ },
+
+ // Account/Company Records in Apollo CRM
+ 'accounts': {
+   table_name: 'apollo_accounts',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_account_id',
+     'name': 'account_name',
+     'website_url': 'website',
+     'organization_id': 'external_company_id',
+     'owner_id': 'account_owner_id',
+     'team_id': 'team_id',
+     'industry': 'industry',
+     'account_stage_id': 'account_stage_id',
+     'stage_name': 'account_stage_name',
+     'source': 'account_source',
+     'annual_revenue': 'annual_revenue',
+     'employee_count': 'employee_count',
+     'description': 'account_description',
+     'next_step': 'next_step',
+     'last_activity_date': 'last_activity_date',
+     'phone': 'account_phone',
+     'billing_street': 'billing_street',
+     'billing_city': 'billing_city',
+     'billing_state': 'billing_state',
+     'billing_postal_code': 'billing_postal_code',
+     'billing_country': 'billing_country',
+     'shipping_street': 'shipping_street',
+     'shipping_city': 'shipping_city',
+     'shipping_state': 'shipping_state',
+     'shipping_postal_code': 'shipping_postal_code',
+     'shipping_country': 'shipping_country',
+     'typed_custom_fields': 'custom_fields_json',
+     'tags': 'tags_json',
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ },
+
+ // Meetings/Events
+ 'meetings': {
+   table_name: 'apollo_meetings',
+   primary_key: 'id',
+   fields: {
+     'id': 'external_meeting_id',
+     'user_id': 'organizer_user_id',
+     'person_id': 'external_contact_id',
+     'organization_id': 'external_company_id',
+     'account_id': 'apollo_account_id',
+     'title': 'meeting_title',
+     'description': 'meeting_description',
+     'start_time': 'start_time',
+     'end_time': 'end_time',
+     'duration_minutes': 'duration_minutes',
+     'location': 'meeting_location',
+     'meeting_type': 'meeting_type', // demo, discovery, proposal, closing, follow_up
+     'attendees': 'attendees_json',
+     'meeting_outcome': 'meeting_outcome',
+     'next_steps': 'next_steps_json',
+     'recording_url': 'recording_url',
+     'calendar_event_id': 'calendar_event_id',
+     'conference_url': 'conference_url',
+     'agenda': 'agenda_json',
+     'notes': 'meeting_notes',
+     'follow_up_date': 'follow_up_date',
+     'status': 'meeting_status', // scheduled, completed, cancelled, no_show
+     'created_at': 'created_date',
+     'updated_at': 'last_updated_date'
+   }
+ }
+};
+
+// Common Apollo.io API query structures and endpoints
+const APOLLO_API_QUERIES = {
+ // Search for people with filters
+ people_search: {
+   endpoint: '/v1/mixed_people/search',
+   method: 'POST',
+   body_structure: {
+     'q_person_name': 'string',
+     'q_person_title': 'string',
+     'person_titles': ['CEO', 'CTO', 'IT Director', 'Office Manager'],
+     'q_organization_name': 'string',
+     'organization_locations': ['United States', 'Canada'],
+     'organization_industries': ['Technology', 'Healthcare', 'Education'],
+     'organization_num_employees_ranges': ['1,10', '11,50', '51,200', '201,500'],
+     'organization_funding_events': ['Seed', 'Series A', 'Series B'],
+     'person_locations': ['United States'],
+     'person_seniorities': ['c_suite', 'vp', 'director', 'manager'],
+     'contact_email_status': ['verified'],
+     'departments': ['information_technology', 'finance', 'operations'],
+     'person_functions': ['engineering', 'sales', 'marketing'],
+     'technologies': ['Salesforce', 'Microsoft Office', 'AWS'],
+     'page': 1,
+     'per_page': 25,
+     'organization_latest_funding_stage_cd': ['seed', 'series_a'],
+     'organization_latest_funding_round_date': '2020-01-01..2024-12-31',
+     'organization_founded_year_range': '2000..2024'
+   }
+ },
+
+ // Search for organizations/companies
+ organizations_search: {
+   endpoint: '/v1/organizations/search',
+   method: 'POST',
+   body_structure: {
+     'q_organization_name': 'string',
+     'q_organization_domains': ['domain1.com', 'domain2.com'],
+     'organization_locations': ['United States'],
+     'organization_industries': ['Technology', 'Software'],
+     'organization_num_employees_ranges': ['51,200', '201,500'],
+     'organization_latest_funding_stage_cd': ['series_a', 'series_b'],
+     'organization_latest_funding_round_date': '2020-01-01..2024-12-31',
+     'technologies': ['Salesforce', 'Office 365', 'AWS'],
+     'organization_revenue_ranges': ['1M,10M', '10M,50M'],
+     'organization_founded_year_range': '2000..2024',
+     'publicly_traded_status': ['public', 'private'],
+     'page': 1,
+     'per_page': 25,
+     'sort_by_field': 'organization_num_employees',
+     'sort_ascending': false
+   }
+ },
+
+ // Get person details by ID
+ person_details: {
+   endpoint: '/v1/people/{person_id}',
+   method: 'GET',
+   params: {
+     'person_id': 'required'
+   }
+ },
+
+ // Get organization details by ID
+ organization_details: {
+   endpoint: '/v1/organizations/{organization_id}',
+   method: 'GET',
+   params: {
+     'organization_id': 'required'
+   }
+ },
+
+ // Create or update person
+ person_upsert: {
+   endpoint: '/v1/people',
+   method: 'POST',
+   body_structure: {
+     'first_name': 'string',
+     'last_name': 'string',
+     'organization_name': 'string',
+     'title': 'string',
+     'email': 'string',
+     'organization_domain': 'string',
+     'linkedin_url': 'string',
+     'phone': 'string',
+     'organization_id': 'string',
+     'present_raw_address': 'string',
+     'label_names': ['Hot Lead', 'Demo Scheduled'],
+     'typed_custom_fields': {}
+   }
+ },
+
+ // Create or update organization
+ organization_upsert: {
+   endpoint: '/v1/organizations',
+   method: 'POST',
+   body_structure: {
+     'name': 'string',
+     'website_url': 'string',
+     'linkedin_url': 'string',
+     'raw_address': 'string',
+     'phone_number': 'string',
+     'industry': 'string',
+     'keywords': ['keyword1', 'keyword2'],
+     'annual_revenue': 'number',
+     'estimated_num_employees': 'number',
+     'retail_location_count': 'number',
+     'label_names': ['Target Account', 'Enterprise'],
+     'typed_custom_fields': {}
+   }
+ },
+
+ // Add people to sequence
+ add_to_sequence: {
+   endpoint: '/v1/emailer_campaigns/{campaign_id}/add_contact_ids',
+   method: 'POST',
+   body_structure: {
+     'contact_ids': ['array_of_person_ids'],
+     'emailer_campaign_id': 'string',
+     'send_email_from_email_account_id': 'string',
+     'sequence_step_number': 1
+   }
+ },
+
+ // Create email campaign/sequence
+ create_sequence: {
+   endpoint: '/v1/emailer_campaigns',
+   method: 'POST',
+   body_structure: {
+     'name': 'string',
+     'permissions': 'everyone', // everyone, admins_only, specific_users
+     'label_ids': ['array_of_label_ids'],
+     'sequence_steps': [
+       {
+         'step_num': 1,
+         'type': 'auto_email',
+         'template': {
+           'subject': 'string',
+           'body_text': 'string',
+           'body_html': 'string'
+         },
+         'wait_mode': 'smart_sending', // smart_sending, precise_datetime
+         'exact_datetime': 'ISO_datetime_string',
+         'max_emails_per_day': 50,
+         'delays': [1, 2, 3] // days
+       }
+     ]
+   }
+ },
+
+ // Create task
+ create_task: {
+   endpoint: '/v1/tasks',
+   method: 'POST',
+   body_structure: {
+     'person_id': 'string',
+     'organization_id': 'string',
+     'note': 'string',
+     'call_purpose': 'string',
+     'task_type': 'call', // call, email, linkedin, other
+     'due_at': 'ISO_datetime_string',
+     'reminder_at': 'ISO_datetime_string',
+     'priority': 'medium' // high, medium, low
+   }
+ },
+
+ // Create note
+ create_note: {
+   endpoint: '/v1/notes',
+   method: 'POST',
+   body_structure: {
+     'person_id': 'string',
+     'organization_id': 'string',
+     'note': 'string',
+     'note_type': 'general', // meeting, call, email, general
+     'visibility': 'team' // private, team, organization
+   }
+ },
+
+ // Bulk enrich people
+ bulk_enrich_people: {
+   endpoint: '/v1/people/bulk_match',
+   method: 'POST',
+   body_structure: {
+     'reveals': [
+       {
+         'email': 'person@company.com',
+         'first_name': 'John',
+         'last_name': 'Doe',
+         'organization_name': 'Company Inc',
+         'domain': 'company.com'
+       }
+     ],
+     'reveal_personal_emails': false,
+     'reveal_phone_number': false
+   }
+ },
+
+ // Bulk enrich organizations
+ bulk_enrich_organizations: {
+   endpoint: '/v1/organizations/bulk_match',
+   method: 'POST',
+   body_structure: {
+     'reveals': [
+       {
+         'name': 'Company Inc',
+         'domain': 'company.com'
+       }
+     ]
+   }
+ },
+
+ // Get email campaign stats
+ campaign_stats: {
+   endpoint: '/v1/emailer_campaigns/{campaign_id}',
+   method: 'GET',
+   params: {
+     'campaign_id': 'required'
+   }
+ },
+
+ // Get contact lists
+ contact_lists: {
+   endpoint: '/v1/contact_lists',
+   method: 'GET',
+   params: {
+     'page': 1,
+     'per_page': 25
+   }
+ },
+
+ // Export contacts from list
+ export_contacts: {
+   endpoint: '/v1/contacts/search',
+   method: 'POST',
+   body_structure: {
+     'contact_list_ids': ['array_of_list_ids'],
+     'q_keywords': 'search_terms',
+     'sort_by_field': 'creation_date',
+     'sort_ascending': false,
+     'page': 1,
+     'per_page': 200
+   }
+ }
+};
+
+// Apollo.io API configuration and rate limits
+const APOLLO_API_CONFIG = {
+ base_url: 'https://api.apollo.io',
+ api_version: 'v1',
+ rate_limits: {
+   search_requests: '60/minute',
+   enrichment_requests: '120/minute',
+   sequence_actions: '30/minute',
+   bulk_operations: '10/minute',
+   daily_email_credits: 'varies_by_plan', // depends on subscription
+   monthly_contact_credits: 'varies_by_plan'
+ },
+ authentication: {
+   type: 'API Key',
+   header: 'X-Api-Key',
+   parameter_name: 'api_key'
+ },
+ pagination: {
+   max_page_size: 200,
+   default_page_size: 25
+ },
+ credit_system: {
+   contact_reveal: '1_credit_per_contact',
+   email_reveal: '1_credit_per_email',
+   phone_reveal: '1_credit_per_phone',
+   email_send: '1_credit_per_email_sent',
+   export_contact: '1_credit_per_contact_exported'
+ },
+ webhooks: {
+   supported_events: [
+     'person_created',
+     'person_updated',
+     'organization_created',
+     'organization_updated',
+     'emailer_campaign_finished',
+     'email_delivered',
+     'email_opened',
+     'email_clicked',
+     'email_replied',
+     'email_bounced',
+     'call_completed',
+     'meeting_completed',
+     'task_completed'
+   ],
+   endpoint_format: 'https://your-app.com/webhooks/apollo',
+   verification: 'HMAC-SHA256'
+ }
+};
+
+module.exports = {
+ APOLLO_FIELD_MAPPINGS,
+ APOLLO_API_QUERIES,
+ APOLLO_API_CONFIG
+};

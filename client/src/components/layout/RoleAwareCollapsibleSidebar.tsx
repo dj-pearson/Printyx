@@ -1,0 +1,714 @@
+import { useState, useEffect, useMemo } from "react";
+import { useLocation, Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  Target,
+  Wrench,
+  Package,
+  Truck,
+  DollarSign,
+  BarChart3,
+  CheckSquare,
+  Settings,
+  Plug,
+  ChevronDown,
+  ChevronRight,
+  Users,
+  UserPlus,
+  FileText,
+  TrendingUp,
+  PieChart,
+  Calendar,
+  Building2,
+  ShoppingCart,
+  Calculator,
+  CreditCard,
+  Activity,
+  Monitor,
+  Brain,
+  Layers,
+  Crown,
+  Globe,
+  Shield,
+  Database,
+  UserCheck,
+  Briefcase,
+  BookOpen,
+  AlertTriangle,
+  Cpu,
+  Hash,
+  Wand2,
+  MapPin,
+  Headphones,
+  Cog,
+  Zap,
+  Smartphone,
+  Rocket,
+  ClipboardList,
+  FileSignature,
+  Code,
+  Menu,
+  X,
+  Bot,
+  MessageSquare,
+  Search,
+  Mic,
+  Video,
+  Share2
+} from "lucide-react";
+
+interface NavigationItem {
+  title: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavigationSection {
+  id: string;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+  children?: NavigationItem[];
+  matchPatterns?: string[];
+}
+
+interface RoleAwareCollapsibleSidebarProps {
+  className?: string;
+}
+
+// Static navigation structure - prevents hook ordering issues
+const createNavigationSections = (userRole: any): NavigationSection[] => {
+  if (!userRole) return [];
+
+  const permissions = userRole.permissions || {};
+  const isPlatformRole = userRole.canAccessAllTenants === true;
+  const isCompanyAdmin = userRole.name?.includes("Admin");
+  const level = userRole.level || 1;
+  const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
+  const adminPrefix = useAdminRoutes ? "/admin" : "";
+
+  const sections: NavigationSection[] = [];
+
+  // Always visible
+  sections.push({
+    id: 'dashboard',
+    title: 'Dashboard',
+    icon: LayoutDashboard,
+    path: '/',
+    matchPatterns: ['/dashboard*']
+  });
+
+  // Platform Admin Hub - Only for platform roles
+  if (isPlatformRole) {
+    sections.push({
+      id: 'platform-admin',
+      title: 'Platform Admin',
+      icon: Crown,
+      path: `${adminPrefix}/platform`,
+      matchPatterns: [`${adminPrefix}/platform*`, `${adminPrefix}/root-admin*`, `${adminPrefix}/system*`, `${adminPrefix}/tenant*`, '/root-admin*', '/social-media*', '/security-compliance-management*', '/system-monitoring*', '/platform-configuration*', '/gpt5*'],
+      children: [
+        { title: 'Root Admin Dashboard', path: '/root-admin-dashboard', icon: Crown },
+        { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
+        { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
+        { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
+        { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
+        { title: 'System Monitoring', path: '/system-monitoring', icon: Monitor },
+        { title: 'Database Management', path: '/database-management', icon: Database },
+        { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
+        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
+        { title: 'Role Management', path: '/role-management', icon: Users },
+        { title: 'Tenant Setup', path: '/tenant-setup', icon: Settings },
+        { title: 'Platform Configuration', path: '/platform-configuration', icon: Settings },
+        { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
+        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 },
+        { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
+        { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
+        { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
+        { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
+        { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone }
+      ]
+    });
+
+
+  }
+
+  // Sales Hub
+  if (permissions.sales || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'crm',
+      title: 'Sales Hub',
+      icon: Target,
+      path: '/opportunities',
+      matchPatterns: ['/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*', '/data-enrichment*', '/document-builder*'],
+      children: [
+        { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
+        { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
+        { title: 'Contacts', path: '/contacts', icon: Users },
+        { title: 'Opportunities', path: '/opportunities', icon: Target },
+        { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
+        { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
+        { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: TrendingUp },
+        { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
+        { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
+        { title: 'Proposal Builder', path: '/proposal-builder', icon: FileText },
+        { title: 'Contracts', path: '/contracts', icon: FileSignature },
+        { title: 'Document Builder', path: '/document-builder', icon: FileText },
+        { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
+        { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
+        { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
+        { title: 'Commission Management', path: '/commission-management', icon: DollarSign }
+      ]
+    });
+  }
+
+  // Service Hub
+  if (permissions.service || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'service',
+      title: 'Service Hub',
+      icon: Wrench,
+      path: '/service-hub',
+      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*', '/fleet-monitoring*', '/vehicle*', '/asset*', '/onboarding*', '/incident*', '/manufacturer*'],
+      children: [
+        { title: 'Service Hub', path: '/service-hub', icon: Wrench },
+        { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
+        { title: 'Service Dispatch', path: '/service-dispatch', icon: Activity },
+        { title: 'Technician Management', path: '/technician-management', icon: Users },
+        { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
+        { title: 'Asset Management', path: '/asset-management', icon: Package },
+        { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
+        { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
+        { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
+        { title: 'Preventive Maintenance', path: '/preventive-maintenance-scheduling', icon: Calendar },
+        { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
+        { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
+        { title: 'Mobile Field Operations', path: '/mobile-field-operations', icon: Activity },
+        { title: 'Mobile Service App', path: '/mobile-service-app', icon: Smartphone },
+        { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
+        { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp },
+        { title: 'Incident Response', path: '/incident-response-system', icon: AlertTriangle },
+        { title: 'Manufacturer Integration', path: '/manufacturer-integration', icon: Plug }
+      ]
+    });
+  }
+
+  // Product Hub
+  if (permissions.products || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'products',
+      title: 'Product Hub',
+      icon: Package,
+      path: '/product-hub',
+      matchPatterns: ['/product*', '/supplies*', '/professional-services*', '/managed-services*', '/software-products*'],
+      children: [
+        { title: 'Product Hub', path: '/product-hub', icon: Package },
+        { title: 'Product Catalog', path: '/product-catalog', icon: Package },
+        { title: 'Product Models', path: '/product-models', icon: Package },
+        { title: 'Product Accessories', path: '/product-accessories', icon: Layers },
+        { title: 'Supplies', path: '/supplies', icon: Package },
+        { title: 'Software Products', path: '/software-products', icon: Code },
+        { title: 'Professional Services', path: '/professional-services', icon: FileText },
+        { title: 'Managed Services', path: '/managed-services', icon: Crown },
+        { title: 'Service Products', path: '/service-products', icon: Wrench }
+      ]
+    });
+  }
+
+  // Equipment Lifecycle Hub
+  if (permissions.inventory || permissions.purchasing || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'equipment',
+      title: 'Equipment Lifecycle',
+      icon: Truck,
+      path: '/equipment-lifecycle',
+      matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
+      children: [
+        { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
+        { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
+        { title: 'PO Optimization', path: '/purchase-orders-optimization', icon: ShoppingCart },
+        { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
+        { title: 'Inventory Management', path: '/inventory', icon: Package },
+        { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog }
+      ]
+    });
+  }
+
+  // Billing Hub
+  if (permissions.billing || permissions.finance || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'billing',
+      title: 'Billing Hub',
+      icon: DollarSign,
+      path: '/billing-hub',
+      matchPatterns: ['/billing*', '/invoices*', '/accounts*', '/meter-billing*', '/journal*', '/chart-of-accounts*', '/financial*', '/leases*'],
+      children: [
+        { title: 'Billing Hub', path: '/billing', icon: DollarSign },
+        { title: 'Leases', path: '/leases', icon: FileText },
+        { title: 'Chart of Accounts', path: '/chart-of-accounts', icon: Database },
+        { title: 'Advanced Billing Engine', path: '/advanced-billing', icon: Zap },
+        { title: 'Meter Billing', path: '/meter-billing', icon: Calculator },
+        { title: 'Invoices', path: '/invoices', icon: FileText },
+        { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
+        { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard },
+        { title: 'Vendors', path: '/vendors', icon: Building2 },
+        { title: 'Journal Entries', path: '/journal-entries', icon: BookOpen },
+        { title: 'Financial Forecasting', path: '/financial-forecasting', icon: TrendingUp }
+      ]
+    });
+  }
+
+  // Reports Hub
+  if (permissions.reports || isPlatformRole || isCompanyAdmin) {
+    sections.push({
+      id: 'reports',
+      title: 'Reports',
+      icon: BarChart3,
+      path: '/reports',
+      matchPatterns: ['/reports*', '/advanced-reporting*', '/performance-monitoring*', '/analytics*', '/executive*', '/financial-intelligence*', '/predictive*'],
+      children: [
+        { title: 'Reports Hub', path: '/reports', icon: BarChart3 },
+        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
+        { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
+        { title: 'Advanced Analytics', path: '/advanced-analytics', icon: Brain },
+        { title: 'Financial Intelligence', path: '/financial-intelligence-dashboard', icon: PieChart },
+        { title: 'Predictive Analytics', path: '/predictive-analytics', icon: TrendingUp },
+        { title: 'AI Analytics Dashboard', path: '/ai-analytics-dashboard', icon: Brain },
+        { title: 'Executive Dashboard', path: '/executive-dashboard', icon: Crown }
+      ]
+    });
+  }
+
+  // Task Management Hub - Always available
+  sections.push({
+    id: 'tasks',
+    title: 'Task Management',
+    icon: CheckSquare,
+    path: '/tasks',
+    matchPatterns: ['/task*'],
+    children: [
+      { title: 'Advanced Tasks', path: '/task-management', icon: Brain },
+      { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare }
+    ]
+  });
+
+  // AI Hub - Always available for AI-powered features
+  sections.push({
+    id: 'ai-hub',
+    title: 'AI Hub',
+    icon: Brain,
+    path: '/ai-hub',
+    matchPatterns: ['/ai*', '/calendar*', '/meeting*', '/search*'],
+    children: [
+      { title: 'AI Employees', path: '/ai-employees', icon: Bot },
+      { title: 'Calendar Integration', path: '/calendar', icon: Calendar },
+      { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
+      { title: 'AI Search & Knowledge', path: '/ai-search', icon: Search },
+      { title: 'AI Task Scheduling', path: '/ai-task-scheduling', icon: Brain },
+      { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare }
+    ]
+  });
+
+  // Knowledge Base - Always available for all users
+  sections.push({
+    id: 'knowledge-base',
+    title: 'Knowledge Base',
+    icon: BookOpen,
+    path: '/knowledge-base',
+    matchPatterns: ['/knowledge-base*']
+  });
+
+  // Integrations Hub - show if user has system permissions or is admin
+  if (permissions.system || isPlatformRole || isCompanyAdmin || level >= 3) {
+    sections.push({
+      id: 'integrations-hub',
+      title: 'Integrations',
+      icon: Plug,
+      path: '/integration-hub',
+      matchPatterns: ['/integration*', '/quickbooks*', '/erp*', '/esignature*', '/system-integrations*'],
+      children: [
+        { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
+        { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
+        { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
+        { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
+        { title: 'System Integrations', path: '/system-integrations', icon: Plug }
+      ]
+    });
+  }
+
+  // System Administration - show if user has system permissions or is admin
+  if (permissions.system || isPlatformRole || isCompanyAdmin || level >= 4) {
+    sections.push({
+      id: 'system-admin',
+      title: 'System Administration',
+      icon: Settings,
+      path: '/workflow-automation',
+      matchPatterns: ['/workflow*', '/business-process*', '/document-management*', '/security-compliance*', '/deployment*', '/customer-number*', '/seo*'],
+      children: [
+        { title: 'SEO Management', path: '/seo', icon: Search },
+        { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
+        { title: 'Business Process Optimization', path: '/business-process-optimization', icon: TrendingUp },
+        { title: 'Document Management', path: '/document-management', icon: FileText },
+        { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
+        { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
+        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
+        { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash }
+      ]
+    });
+  }
+
+  // Always visible core sections
+  sections.push(
+    {
+      id: 'customers',
+      title: 'Customers & CRM',
+      icon: Building2,
+      path: '/customers',
+      matchPatterns: ['/customers*', '/crm*', '/business-records*'],
+      children: [
+        { title: 'All Records', path: '/customers', icon: Building2 },
+        { title: 'Leads', path: '/customers?tab=leads', icon: UserPlus },
+        { title: 'Prospects', path: '/customers?tab=prospects', icon: Users },
+        { title: 'Active Customers', path: '/customers?tab=active', icon: UserCheck },
+      ]
+    },
+    {
+      id: 'settings',
+      title: 'Settings',
+      icon: Settings,
+      path: '/settings',
+      matchPatterns: ['/settings*']
+    }
+  );
+
+  return sections;
+};
+
+export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCollapsibleSidebarProps) {
+  const { user, isAuthenticated } = useAuth();
+  const [location] = useLocation();
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
+
+
+  // Use role from user object instead of separate API call
+  const userRole = user?.role;
+
+  // Stable navigation sections
+  const navigationSections = useMemo(() => 
+    createNavigationSections(userRole), 
+    [userRole?.name, userRole?.canAccessAllTenants, userRole?.level, JSON.stringify(userRole?.permissions)]
+  );
+
+  // Debug removed for cleaner console output
+
+  // Auto-expand based on current route
+  useEffect(() => {
+    const currentSection = navigationSections.find(section => {
+      if (location === section.path) return true;
+      
+      if (section.matchPatterns) {
+        return section.matchPatterns.some(pattern => {
+          const regexPattern = pattern.replace(/\*/g, '.*');
+          const regex = new RegExp(`^${regexPattern}`);
+          return regex.test(location);
+        });
+      }
+
+      if (section.children) {
+        return section.children.some(child => location === child.path);
+      }
+
+      return false;
+    });
+
+    setExpandedSections(prevExpanded => {
+      const newExpanded = new Set<string>();
+      
+      // Keep user-expanded sections
+      userExpandedSections.forEach(sectionId => {
+        newExpanded.add(sectionId);
+      });
+
+      // Add current section
+      if (currentSection) {
+        newExpanded.add(currentSection.id);
+      }
+
+      return newExpanded;
+    });
+  }, [location, navigationSections, userExpandedSections]);
+
+  const toggleSection = (sectionId: string) => {
+    setUserExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const isExpanded = (sectionId: string) => expandedSections.has(sectionId);
+  const isActive = (path: string) => location === path || location.startsWith(path + '/');
+
+  if (!isAuthenticated) {
+    return (
+      <div className={`bg-white border-r border-gray-200 ${className}`}>
+        <div className="p-4">
+          <div className="text-gray-500">Not authenticated</div>
+        </div>
+      </div>
+    );
+  }
+
+
+
+  if (!navigationSections || navigationSections.length === 0) {
+    return (
+      <div className={`bg-white border-r border-gray-200 ${className}`}>
+        <div className="p-4">
+          <div className="text-gray-500">No navigation sections available</div>
+          <div className="text-xs text-gray-400 mt-1">Role: {JSON.stringify(userRole)}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const renderNavigationItem = (section: NavigationSection) => {
+    const hasChildren = section.children && section.children.length > 0;
+    const isCurrentlyActive = isActive(section.path);
+    const isParentActive = section.children?.some(child => isActive(child.path));
+    const shouldShowAsActive = isCurrentlyActive || isParentActive;
+
+    if (hasChildren) {
+      return (
+        <Collapsible
+          key={section.id}
+          open={isExpanded(section.id)}
+          onOpenChange={() => toggleSection(section.id)}
+        >
+          <CollapsibleTrigger asChild>
+            <Button
+              variant={shouldShowAsActive ? "secondary" : "ghost"}
+              className="w-full justify-between h-auto py-3 px-4 mb-1"
+              data-testid={`nav-${section.id}`}
+            >
+              <div className="flex items-center gap-3">
+                <section.icon className="h-5 w-5" />
+                <span className="font-medium">{section.title}</span>
+              </div>
+              {isExpanded(section.id) ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="space-y-1 ml-4 mr-2 border-l border-gray-200 pl-4">
+            {section.children?.map((child) => (
+              <Link key={child.path} href={child.path}>
+                <Button
+                  variant={isActive(child.path) ? "secondary" : "ghost"}
+                  className="w-full justify-start h-auto py-2 px-3 text-sm"
+                  data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                >
+                  <child.icon className="h-4 w-4 mr-2" />
+                  {child.title}
+                </Button>
+              </Link>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
+    // Single item without children
+    return (
+      <Link key={section.id} href={section.path}>
+        <Button
+          variant={shouldShowAsActive ? "secondary" : "ghost"}
+          className="w-full justify-start h-auto py-3 px-4 mb-1"
+          data-testid={`nav-${section.id}`}
+        >
+          <div className="flex items-center gap-3">
+            <section.icon className="h-5 w-5" />
+            <span className="font-medium">{section.title}</span>
+          </div>
+        </Button>
+      </Link>
+    );
+  };
+
+  const { open, openMobile, isMobile } = useSidebar();
+  const sidebarOpen = isMobile ? openMobile : open;
+
+  return (
+    <Sidebar collapsible="icon" className="bg-slate-50 border-r border-slate-200" {...props}>
+      <SidebarHeader className="border-b border-slate-200 bg-white">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center gap-3 px-2 py-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
+                <Globe className="h-6 w-6 text-white" />
+              </div>
+              <div className="group-data-[collapsible=icon]:hidden">
+                <h1 className="text-xl font-bold text-slate-900">Printyx</h1>
+                <p className="text-xs text-slate-600 font-medium">Business Management</p>
+              </div>
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      
+      <SidebarContent className="py-6 px-4">
+        <SidebarGroup>
+          <SidebarGroupContent className="space-y-3">
+            <SidebarMenu>
+              {navigationSections.map((section) => {
+                const shouldShowAsActive = section.children
+                  ? section.children.some(child => isActive(child.path)) || isActive(section.path) ||
+                    (section.matchPatterns?.some(pattern => isActive(pattern)) ?? false)
+                  : isActive(section.path) || (section.matchPatterns?.some(pattern => isActive(pattern)) ?? false);
+
+                if (section.children) {
+                  return (
+                    <Collapsible key={section.id} open={isExpanded(section.id)} onOpenChange={() => toggleSection(section.id)}>
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton 
+                            className={cn(
+                              "w-full justify-between py-3 px-4 rounded-lg transition-all duration-200",
+                              shouldShowAsActive
+                                ? "bg-slate-800 hover:bg-slate-700 text-white" 
+                                : "hover:bg-slate-100 text-slate-700",
+                              "font-semibold text-sm mb-1"
+                            )}
+                            data-active={shouldShowAsActive}
+                            data-testid={`nav-${section.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <section.icon className={cn(
+                                "h-5 w-5", 
+                                shouldShowAsActive ? "text-white" : "text-slate-600"
+                              )} />
+                              <span className="font-semibold">{section.title}</span>
+                            </div>
+                            {isExpanded(section.id) ? (
+                              <ChevronDown className={cn(
+                                "h-4 w-4", 
+                                shouldShowAsActive ? "text-white" : "text-slate-500"
+                              )} />
+                            ) : (
+                              <ChevronRight className={cn(
+                                "h-4 w-4", 
+                                shouldShowAsActive ? "text-white" : "text-slate-500"
+                              )} />
+                            )}
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="ml-2 mt-1">
+                          <SidebarMenu>
+                            {section.children.map((child) => (
+                              <SidebarMenuItem key={child.path}>
+                                <SidebarMenuButton 
+                                  asChild 
+                                  className={cn(
+                                    "py-2.5 px-4 ml-6 rounded-md transition-all duration-200 text-sm font-normal",
+                                    "border-l-2 border-transparent hover:border-slate-300",
+                                    isActive(child.path)
+                                      ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500" 
+                                      : "hover:bg-slate-50 text-slate-600"
+                                  )}
+                                  data-active={isActive(child.path)}
+                                  data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                                >
+                                  <Link href={child.path}>
+                                    <child.icon className={cn(
+                                      "h-4 w-4", 
+                                      isActive(child.path) ? "text-blue-600" : "text-slate-500"
+                                    )} />
+                                    <span>{child.title}</span>
+                                    {isActive(child.path) && (
+                                      <Badge className="ml-auto bg-blue-600 text-white text-xs">
+                                        Active
+                                      </Badge>
+                                    )}
+                                  </Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            ))}
+                          </SidebarMenu>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                }
+
+                return (
+                  <SidebarMenuItem key={section.id}>
+                    <SidebarMenuButton 
+                      asChild 
+                      className={cn(
+                        "py-3 px-4 rounded-lg transition-all duration-200",
+                        shouldShowAsActive
+                          ? "bg-slate-800 hover:bg-slate-700 text-white" 
+                          : "hover:bg-slate-100 text-slate-700",
+                        "font-semibold text-sm mb-1"
+                      )}
+                      data-active={shouldShowAsActive}
+                      data-testid={`nav-${section.id}`}
+                    >
+                      <Link href={section.path}>
+                        <section.icon className={cn(
+                          "h-5 w-5", 
+                          shouldShowAsActive ? "text-white" : "text-slate-600"
+                        )} />
+                        <span className="font-semibold">{section.title}</span>
+                        {shouldShowAsActive && (
+                          <Badge className="ml-auto bg-blue-600 text-white text-xs">
+                            Active
+                          </Badge>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* User Profile Footer */}
+      <div className="mt-auto p-4 border-t">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={user?.avatar} />
+            <AvatarFallback className="bg-blue-100 text-blue-600">
+              {user?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="group-data-[collapsible=icon]:hidden flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user?.username || 'User'}
+            </p>
+            <p className="text-xs text-gray-500 truncate">
+              {userRole?.name || 'User'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Sidebar>
+  );
+}

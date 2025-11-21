@@ -1,0 +1,715 @@
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Building2,
+  User,
+  Plus,
+  Trash2,
+  Calculator,
+  Save,
+  Send,
+  MapPin,
+  FileText,
+  ArrowRight,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import CompanyContactSelector from './CompanyContactSelector';
+import ProductTypeSelector from './ProductTypeSelector';
+import LineItemManager from './LineItemManager';
+import PricingCalculator from './PricingCalculator';
+
+// Quote form schema
+const quoteSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  businessRecordId: z.string().min(1, 'Company is required'),
+  contactId: z.string().optional(),
+  billingAddress: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipCode: z.string().optional(),
+    country: z.string().optional(),
+  }).optional(),
+  pricingType: z.enum(['new', 'upgrade']).default('new'),
+  validUntil: z.string().optional(),
+  customerNotes: z.string().optional(),
+  internalNotes: z.string().optional(),
+  // Pricing fields
+  discountAmount: z.string().optional(),
+  discountPercentage: z.string().optional(),
+  taxAmount: z.string().optional(),
+  subtotal: z.string().optional(),
+  totalAmount: z.string().optional(),
+});
+
+type QuoteFormData = z.infer<typeof quoteSchema>;
+
+type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'supplies' | 'managed_services';
+
+interface LineItem {
+  id?: string;
+  lineNumber: number;
+  parentLineId?: string;
+  isSubline: boolean;
+  productType: ProductType;
+  productId: string;
+  productCode: string;
+  productName: string;
+  description?: string;
+  quantity: number;
+  msrp?: number;
+  listPrice?: number;
+  unitPrice: number;
+  totalPrice: number;
+  unitCost?: number;
+  margin?: number;
+  notes?: string;
+}
+
+interface QuoteBuilderProps {
+  initialQuoteId?: string;
+  onSave?: (quoteId: string) => void;
+  onCancel?: () => void;
+  onCreateProposal?: (quoteId: string) => void;
+}
+
+export default function QuoteBuilder({ 
+  initialQuoteId, 
+  onSave, 
+  onCancel,
+  onCreateProposal 
+}: QuoteBuilderProps) {
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [taxAmount, setTaxAmount] = useState<number>(0);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const form = useForm<QuoteFormData>({
+    resolver: zodResolver(quoteSchema),
+    defaultValues: {
+      title: '',
+      businessRecordId: '',
+      contactId: '',
+      billingAddress: {
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: 'US',
+      },
+      pricingType: 'new',
+      validUntil: '',
+      customerNotes: '',
+      internalNotes: '',
+      discountAmount: '0',
+      discountPercentage: '0',
+      taxAmount: '0',
+      subtotal: '0',
+      totalAmount: '0',
+    },
+  });
+
+  // Load existing quote if editing
+  const { data: existingQuote, isLoading: quoteLoading } = useQuery({
+    queryKey: [`/api/proposals/${initialQuoteId}`],
+    enabled: !!initialQuoteId && initialQuoteId !== 'new',
+    queryFn: async () => {
+      const response = await apiRequest(`/api/proposals/${initialQuoteId}`, 'GET');
+      return response;
+    },
+  });
+
+  // Fetch business records for company/contact selection
+  const { data: businessRecords } = useQuery({
+    queryKey: ['/api/business-records'],
+  });
+
+  // Handle URL parameters for pre-filling (e.g., from leads page)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const leadId = urlParams.get('leadId');
+    const companyName = urlParams.get('companyName');
+    const shouldPrefill = urlParams.get('prefill') === 'true';
+    
+    if (shouldPrefill && leadId && businessRecords && !initialQuoteId) {
+      // Find the lead/company in business records
+      const company = businessRecords.find((record: any) => record.id === leadId);
+      if (company) {
+        console.log('🏢 Pre-filling quote with company:', company.companyName);
+        setSelectedCompany(company);
+        form.setValue('businessRecordId', company.id);
+        form.setValue('title', `Quote for ${company.companyName}`);
+        
+        // Auto-populate billing address if available
+        if (company.address) {
+          form.setValue('billingAddress', {
+            street: company.address,
+            city: company.city || '',
+            state: company.state || '',
+            zipCode: company.zipCode || '',
+            country: 'US',
+          });
+        }
+      }
+    }
+  }, [businessRecords, form, initialQuoteId]);
+
+  // Populate form when existing quote is loaded
+  useEffect(() => {
+    if (existingQuote && !quoteLoading) {
+      console.log('📝 Populating form with existing quote:', existingQuote);
+      
+      // Update form with existing data
+      form.reset({
+        title: existingQuote.title || '',
+        businessRecordId: existingQuote.businessRecordId || '',
+        contactId: existingQuote.contactId || '',
+        billingAddress: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: 'US',
+        },
+        pricingType: 'new',
+        validUntil: existingQuote.validUntil ? existingQuote.validUntil.split('T')[0] : '',
+        customerNotes: existingQuote.customerNotes || '',
+        internalNotes: existingQuote.internalNotes || '',
+        discountAmount: existingQuote.discountAmount || '0',
+        discountPercentage: existingQuote.discountPercentage || '0',
+        taxAmount: existingQuote.taxAmount || '0',
+      });
+
+      // Set local state for pricing calculator
+      setDiscountAmount(parseFloat(existingQuote.discountAmount || '0'));
+      setDiscountPercentage(parseFloat(existingQuote.discountPercentage || '0'));
+      setTaxAmount(parseFloat(existingQuote.taxAmount || '0'));
+
+      // Find and set the selected company
+      if (existingQuote.businessRecordId && businessRecords) {
+        const company = businessRecords.find((record: any) => record.id === existingQuote.businessRecordId);
+        if (company) {
+          setSelectedCompany(company);
+          
+          // Also fetch and set the contact if contactId exists
+          if (existingQuote.contactId) {
+            // Fetch contacts for this company
+            apiRequest(`/api/business-records/${existingQuote.businessRecordId}/contacts`, 'GET')
+              .then((contacts: any[]) => {
+                const contact = contacts.find((c: any) => c.id === existingQuote.contactId);
+                if (contact) {
+                  setSelectedContact(contact);
+                }
+              })
+              .catch((error) => {
+                console.warn('Failed to fetch contacts for company:', error);
+              });
+          }
+        }
+      }
+
+      // Update line items if they exist
+      if (existingQuote.lineItems && existingQuote.lineItems.length > 0) {
+        const transformedLineItems = existingQuote.lineItems.map((item: any, index: number) => ({
+          id: item.id,
+          lineNumber: index + 1,
+          parentLineId: undefined,
+          isSubline: false,
+          productType: (item.itemType as ProductType) || 'product_models',
+          productId: item.productId || '',
+          productCode: '',
+          productName: item.productName || '',
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          msrp: 0,
+          listPrice: 0,
+          unitPrice: parseFloat(item.unitPrice || '0'),
+          totalPrice: parseFloat(item.totalPrice || '0'),
+          unitCost: 0,
+          margin: item.margin || 0,
+          notes: item.notes || '',
+        }));
+        setLineItems(transformedLineItems);
+        console.log('📦 Set line items:', transformedLineItems);
+      }
+    }
+  }, [existingQuote, quoteLoading, businessRecords, form]);
+
+  // Create or update quote mutation
+  const saveQuoteMutation = useMutation({
+    mutationFn: async (data: { quote: QuoteFormData; lineItems: LineItem[] }) => {
+      const subtotalAmount = data.lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const discountAmt = parseFloat(data.quote.discountAmount || '0');
+      const taxAmt = parseFloat(data.quote.taxAmount || '0');
+      const totalAmount = subtotalAmount - discountAmt + taxAmt;
+      
+      const quoteData = {
+        ...data.quote,
+        proposalType: 'quote',
+        status: 'draft',
+        // Keep validUntil as string - backend will convert to Date
+        lineItems: data.lineItems.map((item, index) => ({
+          lineNumber: index + 1,
+          itemType: item.productType || 'equipment', // Map productType to itemType
+          productId: item.productId,
+          productName: item.productName,
+          description: item.description || item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          margin: item.margin,
+          notes: item.notes,
+        })),
+        subtotal: subtotalAmount.toString(),
+        discountAmount: discountAmt.toString(),
+        discountPercentage: data.quote.discountPercentage || '0',
+        taxAmount: taxAmt.toString(),
+        totalAmount: totalAmount.toString(),
+      };
+
+      console.log('📤 Submitting quote:', quoteData);
+      
+      if (initialQuoteId && initialQuoteId !== 'new') {
+        return await apiRequest(`/api/proposals/${initialQuoteId}`, 'PATCH', quoteData);
+      } else {
+        return await apiRequest('/api/proposals', 'POST', quoteData);
+      }
+    },
+    onSuccess: (data) => {
+      // Force clear all related cache
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      queryClient.removeQueries({ queryKey: ['/api/proposals'] });
+      toast({
+        title: 'Success',
+        description: `Quote ${initialQuoteId ? 'updated' : 'created'} successfully`,
+      });
+      if (onSave) {
+        onSave(data.id);
+      }
+    },
+    onError: (error) => {
+      console.error('❌ Quote save error:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to ${initialQuoteId ? 'update' : 'create'} quote: ${error.message || 'Unknown error'}`,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Submit quote mutation (change status to sent)
+  const submitQuoteMutation = useMutation({
+    mutationFn: async (quoteId: string) => {
+      return await apiRequest(`/api/proposals/${quoteId}/status`, 'PATCH', { 
+        status: 'sent' 
+      });
+    },
+    onSuccess: () => {
+      // Force clear all related cache
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      queryClient.removeQueries({ queryKey: ['/api/proposals'] });
+      toast({
+        title: 'Success',
+        description: 'Quote submitted successfully',
+      });
+      // Redirect to quotes management after successful submission
+      if (onSave) {
+        onSave('redirect-to-management');
+      }
+    },
+  });
+
+  // This is now handled by the earlier useEffect that includes line items
+
+  // Line items are now loaded with the quote data in the useEffect above
+
+  const handleCompanySelect = (company: any) => {
+    setSelectedCompany(company);
+    form.setValue('businessRecordId', company.id);
+    
+    // Auto-populate billing address if available
+    if (company.address) {
+      form.setValue('billingAddress', {
+        street: company.address,
+        city: company.city,
+        state: company.state,
+        zipCode: company.zipCode,
+        country: 'US',
+      });
+    }
+  };
+
+  const handleContactSelect = (contact: any) => {
+    setSelectedContact(contact);
+    form.setValue('contactId', contact?.id || '');
+  };
+
+  const handleAddLineItem = (newItem: Omit<LineItem, 'lineNumber'>) => {
+    const lineNumber = Math.max(0, ...lineItems.map(item => item.lineNumber)) + 1;
+    setLineItems([...lineItems, { ...newItem, lineNumber }]);
+  };
+
+  const handleUpdateLineItem = (index: number, updatedItem: LineItem) => {
+    const updated = [...lineItems];
+    updated[index] = updatedItem;
+    setLineItems(updated);
+  };
+
+  const handleDeleteLineItem = (index: number) => {
+    const itemToDelete = lineItems[index];
+    const filtered = lineItems.filter((_, i) => {
+      // Remove the item and any sublines
+      if (i === index) return false;
+      if (itemToDelete.id && lineItems[i].parentLineId === itemToDelete.id) return false;
+      return true;
+    });
+    setLineItems(filtered);
+  };
+
+  const handleDiscountChange = (discountAmt: number, discountPct: number) => {
+    setDiscountAmount(discountAmt);
+    setDiscountPercentage(discountPct);
+    form.setValue('discountAmount', discountAmt.toString());
+    form.setValue('discountPercentage', discountPct.toString());
+  };
+
+  const handleTaxChange = (taxAmt: number) => {
+    setTaxAmount(taxAmt);
+    form.setValue('taxAmount', taxAmt.toString());
+  };
+
+  // Update form totals when line items, discount, or tax change
+  useEffect(() => {
+    const subtotalAmount = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalAmount = subtotalAmount - discountAmount + taxAmount;
+    
+    form.setValue('subtotal', subtotalAmount.toString());
+    form.setValue('totalAmount', totalAmount.toString());
+  }, [lineItems, discountAmount, taxAmount, form]);
+
+  const onSubmit = (data: QuoteFormData) => {
+    if (lineItems.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please add at least one line item',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    saveQuoteMutation.mutate({ quote: data, lineItems });
+  };
+
+  const handleSubmitQuote = async () => {
+    const formData = form.getValues();
+    if (lineItems.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please add at least one line item',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // First save the quote
+      const savedQuote = await saveQuoteMutation.mutateAsync({ 
+        quote: formData, 
+        lineItems 
+      });
+      
+      // Then submit it
+      await submitQuoteMutation.mutateAsync(savedQuote.id);
+    } catch (error) {
+      // Error handling is done in the mutations
+    }
+  };
+
+  const handleCreateProposal = async () => {
+    const formData = form.getValues();
+    if (lineItems.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please add at least one line item before creating a proposal',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // First save the quote if needed
+      let quoteId = initialQuoteId;
+      if (!quoteId) {
+        const savedQuote = await saveQuoteMutation.mutateAsync({ 
+          quote: formData, 
+          lineItems 
+        });
+        quoteId = savedQuote.id;
+      }
+      
+      // Navigate to proposal builder with quote data
+      if (onCreateProposal && quoteId) {
+        onCreateProposal(quoteId);
+      }
+    } catch (error) {
+      console.error('Error creating proposal:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create proposal. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const totals = {
+    subtotal: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
+    total: lineItems.reduce((sum, item) => sum + item.totalPrice, 0) - discountAmount + taxAmount,
+  };
+
+  if (quoteLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6 touch-manipulation">
+      <Card>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <Calculator className="h-5 w-5" />
+            {initialQuoteId ? 'Edit Quote' : 'New Quote Builder'}
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Build a comprehensive quote with line-by-line product selection
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+              {/* Quote Header */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Quote Title</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Equipment Quote - Company Name"
+                          className="min-h-[44px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="pricingType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Pricing Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Select pricing type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="new">New Customer Pricing</SelectItem>
+                          <SelectItem value="upgrade">Upgrade Pricing</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Company and Contact Selection */}
+              <CompanyContactSelector
+                selectedCompany={selectedCompany}
+                selectedContact={selectedContact}
+                onCompanySelect={handleCompanySelect}
+                onContactSelect={handleContactSelect}
+              />
+
+              {/* Valid Until Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="validUntil"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Valid Until</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          className="min-h-[44px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      {/* Line Items Management */}
+      <LineItemManager
+        lineItems={lineItems}
+        pricingType={form.watch('pricingType')}
+        onAddItem={handleAddLineItem}
+        onUpdateItem={handleUpdateLineItem}
+        onDeleteItem={handleDeleteLineItem}
+      />
+
+      {/* Pricing Calculator */}
+      <PricingCalculator
+        lineItems={lineItems}
+        subtotal={totals.subtotal}
+        total={totals.total}
+        initialDiscountAmount={discountAmount}
+        initialDiscountPercentage={discountPercentage}
+        initialTaxAmount={taxAmount}
+        onDiscountChange={handleDiscountChange}
+        onTaxChange={handleTaxChange}
+      />
+
+      {/* Notes Section */}
+      <Card>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-lg">Notes</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 space-y-4">
+          <Form {...form}>
+            <FormField
+              control={form.control}
+              name="customerNotes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">Customer Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Notes visible to customer..."
+                      className="min-h-[44px] resize-y"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="internalNotes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium">Internal Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Internal notes (not visible to customer)..."
+                      className="min-h-[44px] resize-y"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </Form>
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-2 sticky bottom-0 bg-background p-4 sm:p-0 border-t sm:border-0 -mx-4 sm:mx-0">
+        <div className="flex gap-2 order-2 sm:order-1">
+          {onCancel && (
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              className="flex-1 sm:flex-none min-h-[44px] active:scale-[0.98] transition-transform"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
+          <Button
+            variant="outline"
+            onClick={form.handleSubmit(onSubmit)}
+            disabled={saveQuoteMutation.isPending}
+            className="min-h-[44px] active:scale-[0.98] transition-transform"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {saveQuoteMutation.isPending ? 'Saving...' : 'Save Draft'}
+          </Button>
+          <Button
+            onClick={handleSubmitQuote}
+            disabled={saveQuoteMutation.isPending || submitQuoteMutation.isPending}
+            className="min-h-[44px] active:scale-[0.98] transition-transform"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            {submitQuoteMutation.isPending ? 'Submitting...' : 'Submit Quote'}
+          </Button>
+          {onCreateProposal && (
+            <Button
+              onClick={handleCreateProposal}
+              disabled={saveQuoteMutation.isPending}
+              className="bg-green-600 hover:bg-green-700 min-h-[44px] active:scale-[0.98] transition-transform"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Create Proposal</span>
+              <span className="sm:hidden">Proposal</span>
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

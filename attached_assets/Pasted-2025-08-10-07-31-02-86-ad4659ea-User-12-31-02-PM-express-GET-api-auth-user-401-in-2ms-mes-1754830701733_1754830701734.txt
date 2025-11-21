@@ -1,0 +1,156 @@
+2025-08-10 07:31:02.86
+ad4659ea
+User
+12:31:02 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Not authenticated"}
+2025-08-10 07:32:09.35
+ad4659ea
+User
+12:32:09 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Not authenticated"}
+2025-08-10 07:32:22.62
+ad4659ea
+User
+12:32:22 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Not authenticated"}
+2025-08-10 07:43:45.62
+ad4659ea
+User
+12:43:45 PM [express] POST /api/auth/login 200 in 5141ms :: {"message":"Login successful","user":{"id…
+2025-08-10 07:43:45.90
+ad4659ea
+User
+12:43:45 PM [express] GET /api/auth/user 200 in 145ms :: {"id":"58c36f26-c458-400b-8055-5dfa31afa88a"…
+2025-08-10 07:43:46.69
+ad4659ea
+User
+12:43:46 PM [express] GET /api/auth/user 304 in 136ms :: {"id":"58c36f26-c458-400b-8055-5dfa31afa88a"…
+2025-08-10 07:43:46.83
+ad4659ea
+User
+12:43:46 PM [express] GET /api/dashboard/card-config 200 in 88ms :: {"role":"sales","defaultCards":["…
+2025-08-10 07:43:47.10
+ad4659ea
+User
+12:43:47 PM [express] GET /api/tenants 200 in 345ms :: [{"id":"1d4522ad-b3d8-4018-8890-f9294b2efbe6",…
+2025-08-10 07:43:47.33
+ad4659ea
+User
+12:43:47 PM [express] GET /api/dashboard/modules 200 in 574ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:44:18.15
+ad4659ea
+User
+12:44:18 PM [express] GET /api/dashboard/modules 304 in 635ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:44:49.01
+ad4659ea
+User
+12:44:49 PM [express] GET /api/dashboard/modules 304 in 689ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:45:19.83
+ad4659ea
+User
+12:45:19 PM [express] GET /api/dashboard/modules 304 in 655ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:45:50.77
+ad4659ea
+User
+12:45:50 PM [express] GET /api/dashboard/modules 304 in 735ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:46:21.58
+ad4659ea
+User
+12:46:21 PM [express] GET /api/dashboard/modules 304 in 649ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:46:52.45
+ad4659ea
+User
+12:46:52 PM [express] GET /api/dashboard/modules 304 in 664ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:47:23.30
+ad4659ea
+User
+12:47:23 PM [express] GET /api/dashboard/modules 304 in 650ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:47:54.17
+ad4659ea
+User
+12:47:54 PM [express] GET /api/dashboard/modules 304 in 656ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:48:25.10
+ad4659ea
+User
+12:48:25 PM [express] GET /api/dashboard/modules 304 in 664ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:48:47.30
+ad4659ea
+User
+12:48:47 PM [express] GET /api/dashboard/card-config 304 in 373ms :: {"role":"sales","defaultCards":[…
+2025-08-10 07:48:55.55
+ad4659ea
+User
+12:48:55 PM [express] GET /api/dashboard/modules 304 in 376ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:49:26.45
+ad4659ea
+User
+12:49:26 PM [express] GET /api/dashboard/modules 304 in 659ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:49:57.32
+ad4659ea
+User
+12:49:57 PM [express] GET /api/dashboard/modules 304 in 636ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:50:28.30
+ad4659ea
+User
+12:50:28 PM [express] GET /api/dashboard/modules 304 in 673ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:50:59.06
+ad4659ea
+User
+12:50:59 PM [express] GET /api/dashboard/modules 304 in 656ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:51:29.91
+ad4659ea
+User
+12:51:29 PM [express] GET /api/dashboard/modules 304 in 693ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:52:00.66
+ad4659ea
+User
+12:52:00 PM [express] GET /api/dashboard/modules 304 in 649ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:52:31.45
+ad4659ea
+User
+12:52:31 PM [express] GET /api/dashboard/modules 304 in 660ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:53:02.22
+ad4659ea
+User
+12:53:02 PM [express] GET /api/dashboard/modules 304 in 665ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:53:32.95
+ad4659ea
+User
+12:53:32 PM [express] GET /api/dashboard/modules 304 in 645ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:53:47.81
+ad4659ea
+User
+12:53:47 PM [express] GET /api/dashboard/card-config 304 in 372ms :: {"role":"sales","defaultCards":[…
+2025-08-10 07:54:03.79
+ad4659ea
+User
+12:54:03 PM [express] GET /api/dashboard/modules 304 in 670ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:54:34.75
+ad4659ea
+User
+12:54:34 PM [express] GET /api/dashboard/modules 304 in 656ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:55:05.47
+ad4659ea
+User
+12:55:05 PM [express] GET /api/dashboard/modules 304 in 656ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:55:36.24
+ad4659ea
+User
+12:55:36 PM [express] GET /api/dashboard/modules 304 in 668ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:56:07.05
+ad4659ea
+User
+12:56:07 PM [express] GET /api/dashboard/modules 304 in 647ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:56:37.92
+ad4659ea
+User
+12:56:37 PM [express] GET /api/dashboard/modules 304 in 704ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:57:08.67
+ad4659ea
+User
+12:57:08 PM [express] GET /api/dashboard/modules 304 in 656ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:57:39.43
+ad4659ea
+User
+12:57:39 PM [express] GET /api/dashboard/modules 304 in 675ms :: {"modules":[{"id":"personal_revenue"…
+2025-08-10 07:58:10.27
+ad4659ea
+User
+12:58:10 PM [express] GET /api/dashboard/modules 304 in 671ms :: {"modules":[{"id":"personal_revenue"…

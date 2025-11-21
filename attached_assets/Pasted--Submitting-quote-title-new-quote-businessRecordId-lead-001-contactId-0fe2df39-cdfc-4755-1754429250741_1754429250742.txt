@@ -1,0 +1,109 @@
+ Submitting quote: {title: 'new quote', businessRecordId: 'lead-001', contactId: '0fe2df39-cdfc-4755-b0bf-dd560325c547', billingAddress: {…}, pricingType: 'new', …}
+queryClient.ts:26  POST https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apiRequest @ queryClient.ts:26
+mutationFn @ QuoteBuilder.tsx:174
+fn @ @tanstack_react-query.js?v=3d052ef2:1189
+run @ @tanstack_react-query.js?v=3d052ef2:494
+start @ @tanstack_react-query.js?v=3d052ef2:536
+execute @ @tanstack_react-query.js?v=3d052ef2:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=3d052ef2:2630
+handleSubmitQuote @ QuoteBuilder.tsx:330
+callCallback2 @ chunk-RPCDYKBN.js?v=3d052ef2:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3d052ef2:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3d052ef2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3d052ef2:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3d052ef2:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3d052ef2:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3d052ef2:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3d052ef2:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3d052ef2:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3d052ef2:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3d052ef2:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3d052ef2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3d052ef2:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3d052ef2:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3d052ef2:5449Understand this error
+  POST https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals 500 (Internal Server Error)
+window.fetch @ eruda.js:2
+apiRequest @ queryClient.ts:16
+mutationFn @ QuoteBuilder.tsx:146
+fn @ @tanstack_react-query.js:1189
+run @ @tanstack_react-query.js:494
+start @ @tanstack_react-query.js:536
+execute @ @tanstack_react-query.js:1225
+await in execute
+mutate @ @tanstack_react-query.js:2630
+handleSubmitQuote @ QuoteBuilder.tsx:282
+callCallback2 @ chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js:3736
+executeDispatch @ chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js:7034
+processDispatchQueue @ chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js:7051
+(anonymous) @ chunk-RPCDYKBN.js:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js:18913
+batchedUpdates @ chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js:5478
+dispatchEvent @ chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js:5449Understand this error
+Console.js:61 ❌ Quote save error: Error: 500: {"error":"Failed to create proposal","details":"null value in column \"item_type\" of relation \"proposal_line_items\" violates not-null constraint"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:33:3)
+    at async Object.mutationFn (QuoteBuilder.tsx:174:16)
+Mt.forEach.n.<computed> @ Console.js:61
+onError @ QuoteBuilder.tsx:190
+execute @ @tanstack_react-query.js?v=3d052ef2:1254
+await in execute
+mutate @ @tanstack_react-query.js?v=3d052ef2:2630
+handleSubmitQuote @ QuoteBuilder.tsx:330
+callCallback2 @ chunk-RPCDYKBN.js?v=3d052ef2:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3d052ef2:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3d052ef2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3d052ef2:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3d052ef2:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3d052ef2:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3d052ef2:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3d052ef2:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3d052ef2:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3d052ef2:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3d052ef2:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3d052ef2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3d052ef2:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3d052ef2:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3d052ef2:5449Understand this error
+Console.js:61 📤 Submitting quote: {title: 'new new', businessRecordId: 'lead-001', contactId: '88cca1f0-3ebc-4f57-a3dc-cca0f6597772', billingAddress: {…}, pricingType: 'new', …}
+queryClient.ts:26  POST https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals 500 (Internal Server Error)
+window.fetch @ Network.js:219
+apiRequest @ queryClient.ts:26
+mutationFn @ QuoteBuilder.tsx:174
+fn @ @tanstack_react-query.js?v=3d052ef2:1189
+run @ @tanstack_react-query.js?v=3d052ef2:494
+start @ @tanstack_react-query.js?v=3d052ef2:536
+execute @ @tanstack_react-query.js?v=3d052ef2:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=3d052ef2:2630
+handleSubmitQuote @ QuoteBuilder.tsx:330
+callCallback2 @ chunk-RPCDYKBN.js?v=3d052ef2:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=3d052ef2:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=3d052ef2:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=3d052ef2:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=3d052ef2:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=3d052ef2:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=3d052ef2:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=3d052ef2:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=3d052ef2:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=3d052ef2:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=3d052ef2:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3d052ef2:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3d052ef2:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=3d052ef2:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3d052ef2:5449Understand this error
+Console.js:61 ❌ Quote save error: Error: 500: {"error":"Failed to create proposal","details":"null value in column \"item_type\" of relation \"proposal_line_items\" violates not-null constraint"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:33:3)
+    at async Object.mutationFn (QuoteBuilder.tsx:174:16)

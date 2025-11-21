@@ -1,0 +1,721 @@
+// QuickBooks API Field Mappings for Printyx Integration
+
+const QUICKBOOKS_FIELD_MAPPINGS = {
+ // Customer/Account Object
+ 'Customer': {
+   table_name: 'customers',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_customer_id',
+     'Name': 'company_name',
+     'CompanyName': 'company_name',
+     'DisplayName': 'display_name',
+     'PrintOnCheckName': 'print_on_check_name',
+     'Active': 'is_active',
+     'CustomerTypeRef': 'customer_type_id',
+     'ParentRef': 'parent_customer_id',
+     'Level': 'customer_level',
+     'Job': 'is_sub_customer',
+     'BillWithParent': 'bill_with_parent',
+     'FullyQualifiedName': 'fully_qualified_name',
+     'Taxable': 'is_taxable',
+     'DefaultTaxCodeRef': 'default_tax_code_id',
+     'TaxExemptionReasonId': 'tax_exemption_reason',
+     'SalesTermRef': 'payment_terms_id',
+     'PaymentMethodRef': 'preferred_payment_method_id',
+     'Balance': 'current_balance',
+     'OpenBalanceDate': 'open_balance_date',
+     'BalanceWithJobs': 'balance_with_jobs',
+     'CreditLimit': 'credit_limit',
+     'AcctNum': 'account_number',
+     'OverDueBalance': 'overdue_balance',
+     'TotalRevenue': 'total_revenue',
+     'TotalExpense': 'total_expense',
+     'PreferredDeliveryMethod': 'preferred_delivery_method',
+     'ResaleNum': 'resale_number',
+     'JobInfo': 'job_info_json',
+     'Notes': 'customer_notes',
+     'PrimaryPhone': 'primary_phone_json',
+     'AlternatePhone': 'alternate_phone_json',
+     'Mobile': 'mobile_phone_json',
+     'Fax': 'fax_json',
+     'PrimaryEmailAddr': 'primary_email_json',
+     'WebAddr': 'website_json',
+     'BillAddr': 'billing_address_json',
+     'ShipAddr': 'shipping_address_json',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Vendor/Supplier Object
+ 'Vendor': {
+   table_name: 'vendors',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_vendor_id',
+     'Name': 'vendor_name',
+     'CompanyName': 'company_name',
+     'DisplayName': 'display_name',
+     'PrintOnCheckName': 'print_on_check_name',
+     'Active': 'is_active',
+     'VendorTypeRef': 'vendor_type_id',
+     'TaxIdentifier': 'tax_id',
+     'AcctNum': 'account_number',
+     'Vendor1099': 'is_1099_vendor',
+     'CurrencyRef': 'currency_id',
+     'APAccountRef': 'ap_account_id',
+     'TermRef': 'payment_terms_id',
+     'Balance': 'current_balance',
+     'OpenBalanceDate': 'open_balance_date',
+     'CreditLimit': 'credit_limit',
+     'Notes': 'vendor_notes',
+     'PrimaryPhone': 'primary_phone_json',
+     'AlternatePhone': 'alternate_phone_json',
+     'Mobile': 'mobile_phone_json',
+     'Fax': 'fax_json',
+     'PrimaryEmailAddr': 'primary_email_json',
+     'WebAddr': 'website_json',
+     'BillAddr': 'billing_address_json',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Item/Product Object
+ 'Item': {
+   table_name: 'products',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_item_id',
+     'Name': 'item_name',
+     'Description': 'item_description',
+     'Active': 'is_active',
+     'FullyQualifiedName': 'fully_qualified_name',
+     'Taxable': 'is_taxable',
+     'SalesTaxIncluded': 'sales_tax_included',
+     'PercentBased': 'is_percent_based',
+     'UnitPrice': 'unit_price',
+     'Type': 'item_type', // Inventory, NonInventory, Service, Category, Group, Fixed Asset
+     'IncomeAccountRef': 'income_account_id',
+     'PurchaseDesc': 'purchase_description',
+     'PurchaseCost': 'purchase_cost',
+     'ExpenseAccountRef': 'expense_account_id',
+     'COGSAccountRef': 'cogs_account_id',
+     'AssetAccountRef': 'asset_account_id',
+     'PrefVendorRef': 'preferred_vendor_id',
+     'AvgCost': 'average_cost',
+     'TrackQtyOnHand': 'track_quantity_on_hand',
+     'QtyOnHand': 'quantity_on_hand',
+     'QtyOnSalesOrder': 'quantity_on_sales_order',
+     'QtyOnPurchaseOrder': 'quantity_on_purchase_order',
+     'ReorderPoint': 'reorder_point',
+     'ManPartNum': 'manufacturer_part_number',
+     'Department': 'department',
+     'SubItem': 'is_sub_item',
+     'ParentRef': 'parent_item_id',
+     'Level': 'item_level',
+     'InventoryStartDate': 'inventory_start_date',
+     'BuildPoint': 'build_point',
+     'PrintGroupedItems': 'print_grouped_items',
+     'SpecialItem': 'is_special_item',
+     'SpecialItemType': 'special_item_type',
+     'ItemGroupDetail': 'item_group_detail_json',
+     'ItemAssemblyDetail': 'item_assembly_detail_json',
+     'UOMSetRef': 'unit_of_measure_set_id',
+     'SalesTaxCodeRef': 'sales_tax_code_id',
+     'PurchaseTaxCodeRef': 'purchase_tax_code_id',
+     'ClassRef': 'class_id',
+     'Source': 'item_source',
+     'TaxClassificationRef': 'tax_classification_id',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Invoice Object
+ 'Invoice': {
+   table_name: 'invoices',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_invoice_id',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json',
+     'CustomField': 'custom_fields_json',
+     'DocNumber': 'invoice_number',
+     'TxnDate': 'transaction_date',
+     'DepartmentRef': 'department_id',
+     'CurrencyRef': 'currency_id',
+     'ExchangeRate': 'exchange_rate',
+     'PrivateNote': 'private_note',
+     'LinkedTxn': 'linked_transactions_json',
+     'Line': 'line_items_json',
+     'TxnTaxDetail': 'tax_detail_json',
+     'CustomerRef': 'customer_id',
+     'CustomerMemo': 'customer_memo_json',
+     'BillAddr': 'billing_address_json',
+     'ShipAddr': 'shipping_address_json',
+     'FreeFormAddress': 'free_form_address',
+     'ShipMethodRef': 'shipping_method_id',
+     'ShipDate': 'ship_date',
+     'TrackingNum': 'tracking_number',
+     'ClassRef': 'class_id',
+     'PrintStatus': 'print_status',
+     'EmailStatus': 'email_status',
+     'BillEmail': 'bill_email_json',
+     'BillEmailCc': 'bill_email_cc_json',
+     'BillEmailBcc': 'bill_email_bcc_json',
+     'DeliveryInfo': 'delivery_info_json',
+     'InvoiceLink': 'invoice_link',
+     'RecurDataRef': 'recurring_data_id',
+     'TaxExemptionReasonId': 'tax_exemption_reason',
+     'ApplyTaxAfterDiscount': 'apply_tax_after_discount',
+     'HomeTotalAmt': 'home_total_amount',
+     'TotalAmt': 'total_amount',
+     'FinanceCharge': 'finance_charge',
+     'GlobalTaxCalculation': 'global_tax_calculation',
+     'AllowIPNPayment': 'allow_ipn_payment',
+     'AllowOnlinePayment': 'allow_online_payment',
+     'AllowOnlineCreditCardPayment': 'allow_online_credit_card_payment',
+     'AllowOnlineACHPayment': 'allow_online_ach_payment',
+     'DueDate': 'due_date',
+     'Balance': 'balance_due',
+     'DepositToAccountRef': 'deposit_to_account_id',
+     'Deposit': 'deposit_amount',
+     'domain': 'qb_domain'
+   }
+ },
+
+ // Bill/Vendor Invoice Object
+ 'Bill': {
+   table_name: 'vendor_bills',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_bill_id',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json',
+     'DocNumber': 'bill_number',
+     'TxnDate': 'transaction_date',
+     'DepartmentRef': 'department_id',
+     'CurrencyRef': 'currency_id',
+     'ExchangeRate': 'exchange_rate',
+     'PrivateNote': 'private_note',
+     'LinkedTxn': 'linked_transactions_json',
+     'Line': 'line_items_json',
+     'VendorRef': 'vendor_id',
+     'APAccountRef': 'ap_account_id',
+     'TotalAmt': 'total_amount',
+     'DueDate': 'due_date',
+     'Balance': 'balance_due',
+     'RemitToAddr': 'remit_to_address_json',
+     'TermRef': 'payment_terms_id',
+     'MemoRef': 'memo',
+     'TxnTaxDetail': 'tax_detail_json',
+     'GlobalTaxCalculation': 'global_tax_calculation',
+     'TransactionLocationType': 'transaction_location_type',
+     'ClassRef': 'class_id',
+     'SalesTermRef': 'sales_terms_id',
+     'RecurDataRef': 'recurring_data_id',
+     'domain': 'qb_domain'
+   }
+ },
+
+ // Payment Object
+ 'Payment': {
+   table_name: 'payments',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_payment_id',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json',
+     'TxnDate': 'transaction_date',
+     'CustomerRef': 'customer_id',
+     'RemitToAddr': 'remit_to_address_json',
+     'TotalAmt': 'total_amount',
+     'UnappliedAmt': 'unapplied_amount',
+     'ProcessPayment': 'process_payment',
+     'PaymentRefNum': 'payment_reference_number',
+     'CreditCardPayment': 'credit_card_payment_json',
+     'DepositToAccountRef': 'deposit_to_account_id',
+     'PaymentMethodRef': 'payment_method_id',
+     'PaymentType': 'payment_type',
+     'CheckPayment': 'check_payment_json',
+     'CashPayment': 'cash_payment_json',
+     'Line': 'line_items_json',
+     'TxnSource': 'transaction_source',
+     'ARAccountRef': 'ar_account_id',
+     'ExchangeRate': 'exchange_rate',
+     'CurrencyRef': 'currency_id',
+     'PrivateNote': 'private_note',
+     'domain': 'qb_domain'
+   }
+ },
+
+ // Sales Receipt Object
+ 'SalesReceipt': {
+   table_name: 'sales_receipts',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_sales_receipt_id',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json',
+     'CustomField': 'custom_fields_json',
+     'DocNumber': 'receipt_number',
+     'TxnDate': 'transaction_date',
+     'DepartmentRef': 'department_id',
+     'CurrencyRef': 'currency_id',
+     'ExchangeRate': 'exchange_rate',
+     'PrivateNote': 'private_note',
+     'Line': 'line_items_json',
+     'TxnTaxDetail': 'tax_detail_json',
+     'CustomerRef': 'customer_id',
+     'CustomerMemo': 'customer_memo_json',
+     'BillAddr': 'billing_address_json',
+     'ShipAddr': 'shipping_address_json',
+     'FreeFormAddress': 'free_form_address',
+     'ShipMethodRef': 'shipping_method_id',
+     'ShipDate': 'ship_date',
+     'TrackingNum': 'tracking_number',
+     'ClassRef': 'class_id',
+     'PrintStatus': 'print_status',
+     'EmailStatus': 'email_status',
+     'BillEmail': 'bill_email_json',
+     'PaymentMethodRef': 'payment_method_id',
+     'PaymentRefNum': 'payment_reference_number',
+     'PaymentType': 'payment_type',
+     'CheckPayment': 'check_payment_json',
+     'CreditCardPayment': 'credit_card_payment_json',
+     'DepositToAccountRef': 'deposit_to_account_id',
+     'TotalAmt': 'total_amount',
+     'ApplyTaxAfterDiscount': 'apply_tax_after_discount',
+     'HomeTotalAmt': 'home_total_amount',
+     'GlobalTaxCalculation': 'global_tax_calculation',
+     'domain': 'qb_domain'
+   }
+ },
+
+ // Purchase Order Object
+ 'PurchaseOrder': {
+   table_name: 'purchase_orders',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_po_id',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json',
+     'CustomField': 'custom_fields_json',
+     'DocNumber': 'po_number',
+     'TxnDate': 'transaction_date',
+     'DepartmentRef': 'department_id',
+     'CurrencyRef': 'currency_id',
+     'ExchangeRate': 'exchange_rate',
+     'PrivateNote': 'private_note',
+     'LinkedTxn': 'linked_transactions_json',
+     'Line': 'line_items_json',
+     'VendorRef': 'vendor_id',
+     'APAccountRef': 'ap_account_id',
+     'TotalAmt': 'total_amount',
+     'VendorAddr': 'vendor_address_json',
+     'ShipAddr': 'shipping_address_json',
+     'ShipMethodRef': 'shipping_method_id',
+     'ExpectedDate': 'expected_date',
+     'ShipDate': 'ship_date',
+     'TrackingNum': 'tracking_number',
+     'ClassRef': 'class_id',
+     'SalesTermRef': 'sales_terms_id',
+     'DueDate': 'due_date',
+     'VendorMemo': 'vendor_memo',
+     'MemoRef': 'memo_ref',
+     'EmailStatus': 'email_status',
+     'POEmail': 'po_email_json',
+     'TemplateRef': 'template_id',
+     'PrintStatus': 'print_status',
+     'TxnTaxDetail': 'tax_detail_json',
+     'GlobalTaxCalculation': 'global_tax_calculation',
+     'TransactionLocationType': 'transaction_location_type',
+     'domain': 'qb_domain'
+   }
+ },
+
+ // Account Object (Chart of Accounts)
+ 'Account': {
+   table_name: 'gl_accounts',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_account_id',
+     'Name': 'account_name',
+     'SubAccount': 'is_sub_account',
+     'ParentRef': 'parent_account_id',
+     'Description': 'account_description',
+     'FullyQualifiedName': 'fully_qualified_name',
+     'Active': 'is_active',
+     'Classification': 'account_classification', // Asset, Equity, Expense, Liability, Revenue
+     'AccountType': 'account_type',
+     'AccountSubType': 'account_sub_type',
+     'AcctNum': 'account_number',
+     'BankNum': 'bank_account_number',
+     'OpeningBalance': 'opening_balance',
+     'OpeningBalanceDate': 'opening_balance_date',
+     'CurrentBalance': 'current_balance',
+     'CurrentBalanceWithSubAccounts': 'current_balance_with_sub_accounts',
+     'CurrencyRef': 'currency_id',
+     'TaxCodeRef': 'tax_code_id',
+     'AccountAlias': 'account_alias',
+     'TaxAccount': 'is_tax_account',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Employee Object
+ 'Employee': {
+   table_name: 'employees',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_employee_id',
+     'Name': 'employee_name',
+     'Active': 'is_active',
+     'EmployeeNumber': 'employee_number',
+     'SSN': 'ssn',
+     'PrimaryAddr': 'primary_address_json',
+     'Mobile': 'mobile_phone_json',
+     'PrimaryPhone': 'primary_phone_json',
+     'PrimaryEmailAddr': 'primary_email_json',
+     'EmployeeType': 'employee_type',
+     'HiredDate': 'hire_date',
+     'ReleasedDate': 'termination_date',
+     'UseTimeEntry': 'use_time_entry',
+     'BillableTime': 'billable_time',
+     'BillRate': 'billing_rate',
+     'BirthDate': 'birth_date',
+     'Gender': 'gender',
+     'PrintOnCheckName': 'print_on_check_name',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // TimeActivity Object
+ 'TimeActivity': {
+   table_name: 'time_entries',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_time_entry_id',
+     'TxnDate': 'activity_date',
+     'NameOf': 'activity_type', // Employee, Vendor
+     'EmployeeRef': 'employee_id',
+     'VendorRef': 'vendor_id',
+     'CustomerRef': 'customer_id',
+     'ItemRef': 'service_item_id',
+     'ClassRef': 'class_id',
+     'PayrollItemRef': 'payroll_item_id',
+     'BillableStatus': 'billable_status',
+     'Taxable': 'is_taxable',
+     'HourlyRate': 'hourly_rate',
+     'Hours': 'hours_worked',
+     'Minutes': 'minutes_worked',
+     'BreakHours': 'break_hours',
+     'BreakMinutes': 'break_minutes',
+     'StartTime': 'start_time',
+     'EndTime': 'end_time',
+     'Description': 'activity_description',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Class Object (for tracking departments, locations, etc.)
+ 'Class': {
+   table_name: 'classes',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_class_id',
+     'Name': 'class_name',
+     'SubClass': 'is_sub_class',
+     'ParentRef': 'parent_class_id',
+     'FullyQualifiedName': 'fully_qualified_name',
+     'Active': 'is_active',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Department Object
+ 'Department': {
+   table_name: 'departments',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_department_id',
+     'Name': 'department_name',
+     'SubDepartment': 'is_sub_department',
+     'ParentRef': 'parent_department_id',
+     'FullyQualifiedName': 'fully_qualified_name',
+     'Active': 'is_active',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Tax Code Object
+ 'TaxCode': {
+   table_name: 'tax_codes',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_tax_code_id',
+     'Name': 'tax_code_name',
+     'Description': 'tax_code_description',
+     'Active': 'is_active',
+     'Taxable': 'is_taxable',
+     'TaxGroup': 'is_tax_group',
+     'SalesTaxRateList': 'sales_tax_rate_list_json',
+     'PurchaseTaxRateList': 'purchase_tax_rate_list_json',
+     'TaxGroupCodeRef': 'tax_group_code_id',
+     'ReferenceNumber': 'reference_number',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // Terms Object (Payment Terms)
+ 'Term': {
+   table_name: 'payment_terms',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_term_id',
+     'Name': 'term_name',
+     'Active': 'is_active',
+     'Type': 'term_type', // Standard, DateDriven
+     'DueDays': 'due_days',
+     'DiscountPercent': 'discount_percent',
+     'DiscountDays': 'discount_days',
+     'DayOfMonthDue': 'day_of_month_due',
+     'DueNextMonthDays': 'due_next_month_days',
+     'DiscountDayOfMonth': 'discount_day_of_month',
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ },
+
+ // PaymentMethod Object
+ 'PaymentMethod': {
+   table_name: 'payment_methods',
+   primary_key: 'Id',
+   fields: {
+     'Id': 'external_payment_method_id',
+     'Name': 'payment_method_name',
+     'Active': 'is_active',
+     'Type': 'payment_method_type', // CREDIT_CARD, NON_CREDIT_CARD
+     'domain': 'qb_domain',
+     'sparse': 'is_sparse',
+     'SyncToken': 'sync_token',
+     'MetaData': 'metadata_json'
+   }
+ }
+};
+
+// Common QuickBooks API Queries and Operations
+const QUICKBOOKS_API_QUERIES = {
+ // Get all customers with optional filters
+ customers: {
+   endpoint: '/v3/company/{companyId}/customers',
+   method: 'GET',
+   query_params: {
+     'fetchAll': 'true',
+     'maxresults': '1000',
+     'startposition': '1',
+     'where': "Active IN ('true', 'false')",
+     'orderby': 'MetaData.LastUpdatedTime DESC'
+   }
+ },
+
+ // Get customer by ID
+ customer_by_id: {
+   endpoint: '/v3/company/{companyId}/customer/{customerId}',
+   method: 'GET'
+ },
+
+ // Create customer
+ create_customer: {
+   endpoint: '/v3/company/{companyId}/customer',
+   method: 'POST',
+   body_structure: {
+     'Name': 'string',
+     'CompanyName': 'string',
+     'Active': true,
+     'Taxable': true,
+     'Job': false,
+     'BillWithParent': false,
+     'ParentRef': { 'value': 'string' },
+     'Level': 0,
+     'SalesTermRef': { 'value': 'string' },
+     'PaymentMethodRef': { 'value': 'string' },
+     'AccountRef': { 'value': 'string' },
+     'OpenBalanceDate': 'YYYY-MM-DD',
+     'Balance': 0.0,
+     'BillAddr': {
+       'Line1': 'string',
+       'Line2': 'string',
+       'City': 'string',
+       'CountrySubDivisionCode': 'string',
+       'PostalCode': 'string',
+       'Country': 'string'
+     },
+     'ShipAddr': {
+       'Line1': 'string',
+       'Line2': 'string',
+       'City': 'string',
+       'CountrySubDivisionCode': 'string',
+       'PostalCode': 'string',
+       'Country': 'string'
+     },
+     'Notes': 'string',
+     'GivenName': 'string',
+     'MiddleName': 'string',
+     'FamilyName': 'string',
+     'Suffix': 'string',
+     'FullyQualifiedName': 'string',
+     'PrintOnCheckName': 'string',
+     'PrimaryPhone': {
+       'FreeFormNumber': 'string'
+     },
+     'AlternatePhone': {
+       'FreeFormNumber': 'string'
+     },
+     'Mobile': {
+       'FreeFormNumber': 'string'
+     },
+     'Fax': {
+       'FreeFormNumber': 'string'
+     },
+     'PrimaryEmailAddr': {
+       'Address': 'string'
+     },
+     'WebAddr': {
+       'URI': 'string'
+     }
+   }
+ },
+
+ // Update customer
+ update_customer: {
+   endpoint: '/v3/company/{companyId}/customer',
+   method: 'POST',
+   body_structure: {
+     'Id': 'string', // Required for updates
+     'SyncToken': 'string', // Required for updates
+     'sparse': true,
+     // ... same fields as create_customer
+   }
+ },
+
+ // Get all items/products
+ items: {
+   endpoint: '/v3/company/{companyId}/items',
+   method: 'GET',
+   query_params: {
+     'fetchAll': 'true',
+     'maxresults': '1000',
+     "where": "Active IN ('true', 'false')"
+   }
+ },
+
+ // Create invoice
+ create_invoice: {
+   endpoint: '/v3/company/{companyId}/invoice',
+   method: 'POST',
+   body_structure: {
+     'Line': [
+       {
+         'Amount': 0.0,
+         'DetailType': 'SalesItemLineDetail',
+         'SalesItemLineDetail': {
+           'ItemRef': {
+             'value': 'string',
+             'name': 'string'
+           },
+           'UnitPrice': 0.0,
+           'Qty': 1,
+           'TaxCodeRef': {
+             'value': 'string'
+           }
+         }
+       }
+     ],
+     'CustomerRef': {
+       'value': 'string'
+     },
+     'TxnDate': 'YYYY-MM-DD',
+     'DueDate': 'YYYY-MM-DD',
+     'BillAddr': {
+       'Line1': 'string',
+       'City': 'string',
+       'CountrySubDivisionCode': 'string',
+       'PostalCode': 'string'
+     },
+     'ShipAddr': {
+       'Line1': 'string',
+       'City': 'string',
+       'CountrySubDivisionCode': 'string',
+       'PostalCode': 'string'
+     },
+     'SalesTermRef': {
+       'value': 'string'
+     },
+     'ShipMethodRef': {
+       'value': 'string'
+     },
+     'ShipDate': 'YYYY-MM-DD',
+     'TrackingNum': 'string',
+     'ClassRef': {
+       'value': 'string'
+     },
+     'PrintStatus': 'NotSet',
+     'EmailStatus': 'NotSet',
+     'BillEmail': {
+       'Address': 'string'
+     },
+     'BillEmailCc': {
+       'Address': 'string'
+     },
+     'BillEmailBcc': {
+       'Address': 'string'
+     },
+     'CustomerMemo': {
+       'value': 'string'
+     },
+     'PrivateNote': 'string',
+     'TxnTaxDetail': {
+       'TotalTax': 0.0,
+       'TxnTaxCodeRef': {
+         'value': 'string'
+       }
+     },
+     'CustomField': [
+       {
+         'DefinitionId': 'string',
+         'Name': 'string',
+         'Type': 'StringType',
+         'StringValue': 'string'
+       }
+     ]
+   }
+ },
