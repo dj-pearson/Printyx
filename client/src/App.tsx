@@ -49,7 +49,6 @@ const AIServiceIntelligence = React.lazy(() => import("@/pages/AIServiceIntellig
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import("@/pages/dashboard"));
 const Customers = React.lazy(() => import("@/pages/customers"));
-const CRMEnhanced = React.lazy(() => import("@/pages/CRMEnhanced"));
 const LeadDetail = React.lazy(() => import("@/pages/LeadDetail"));
 const SalesReports = React.lazy(() => import("@/pages/placeholder/SalesReports"));
 const ServiceReports = React.lazy(() => import("@/pages/placeholder/ServiceReports"));
@@ -96,7 +95,6 @@ const ProductManagementHub = React.lazy(() => import("@/pages/ProductManagementH
 const PricingManagement = React.lazy(() => import("@/pages/PricingManagement"));
 const Contacts = React.lazy(() => import("@/pages/Contacts"));
 const CustomerDetail = React.lazy(() => import("@/pages/CustomerDetail"));
-const BusinessRecords = React.lazy(() => import("@/pages/BusinessRecords"));
 const TenantSetup = React.lazy(() => import("@/pages/TenantSetup"));
 const Settings = React.lazy(() => import("@/pages/Settings"));
 const Pricing = React.lazy(() => import("@/pages/Pricing"));
@@ -288,8 +286,9 @@ function Router() {
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/leads/:slug" component={CustomerDetail} />
-          <Route path="/crm" component={CRMEnhanced} />
-          <Route path="/business-records" component={BusinessRecords} />
+          {/* Consolidated into /customers */}
+          <Route path="/crm" component={Customers} />
+          <Route path="/business-records" component={Customers} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
           <Route path="/opportunities" component={DealsManagement} />
