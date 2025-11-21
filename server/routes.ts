@@ -9842,6 +9842,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/subscriptions', subscriptionRoutes.default);
   app.use('/api/admin/subscriptions', adminSubscriptionRoutes.default);
 
+  // Signup & Trial CRM Routes
+  app.use('/api/root-admin/crm', signupCrmRoutes);
+
   // Customer Number Management Routes
   const customerNumberRoutes = await import('./routes-customer-numbers');
   app.use('/api/customer-numbers', customerNumberRoutes.customerNumberRoutes);
