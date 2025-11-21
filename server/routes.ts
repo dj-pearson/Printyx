@@ -76,6 +76,7 @@ import { registerDealsManagementRoutes } from './routes-deals-management';
 import { registerOpportunitiesRoutes } from './routes-opportunities';
 import { registerTechnicianManagementRoutes } from './routes-technician-management';
 import { registerProductModelsRoutes } from './routes-product-models';
+import { registerProductPricingRoutes } from './routes-product-pricing';
 import { registerSoftwareProductsRoutes } from './routes-software-products';
 import { registerInvoicesRoutes } from './routes-invoices';
 import { setupAuth } from './replitAuth';
@@ -15265,6 +15266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerOpportunitiesRoutes(app);
   registerTechnicianManagementRoutes(app);
   registerProductModelsRoutes(app);
+  registerProductPricingRoutes(app);
   registerSoftwareProductsRoutes(app);
   registerInvoicesRoutes(app);
   registerPurchaseOrderRoutes(app);
