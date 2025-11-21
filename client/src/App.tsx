@@ -95,6 +95,9 @@ const CrmGoalsDashboard = React.lazy(() => import("@/pages/CrmGoalsDashboard"));
 const MobileFieldService = React.lazy(() => import("@/pages/MobileFieldService"));
 const ProductManagementHub = React.lazy(() => import("@/pages/ProductManagementHub"));
 const PricingManagement = React.lazy(() => import("@/pages/PricingManagement"));
+const PricingSettings = React.lazy(() => import("@/pages/PricingSettings"));
+const MarginAnalysisReport = React.lazy(() => import("@/pages/MarginAnalysisReport"));
+const PriceApprovals = React.lazy(() => import("@/pages/PriceApprovals"));
 const Contacts = React.lazy(() => import("@/pages/Contacts"));
 const CustomerDetail = React.lazy(() => import("@/pages/CustomerDetail"));
 const TenantSetup = React.lazy(() => import("@/pages/TenantSetup"));
@@ -425,6 +428,9 @@ function Router() {
           <Route path="/product-catalog" component={ProductCatalog} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
+          <Route path="/pricing/settings" component={PricingSettings} />
+          <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
+          <Route path="/pricing/approvals" component={PriceApprovals} />
           <Route
             path="/product-management-hub"
             component={ProductManagementHub}
