@@ -8,7 +8,8 @@ export default defineConfig({
   out: "./migrations",
   // Include all schema files that define tables
   schema: [
-    "./shared/schema.ts", 
+    "./shared/schema.ts",
+    "./shared/product-pricing-schema.ts",
     "./server/sales-forecasting-schema.ts",
     "./shared/reporting-schema.ts"
   ],
