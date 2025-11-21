@@ -2,6 +2,7 @@ import type { Express } from 'express';
 import { createServer, type Server } from 'http';
 import { registerOnboardingRoutes } from './routes-onboarding';
 import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from './routes-export';
+import signupCrmRoutes from './routes-signup-crm';
 import session from 'express-session';
 import csurf from 'csurf';
 import rateLimit from 'express-rate-limit';
