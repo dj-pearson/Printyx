@@ -483,7 +483,8 @@ function Router() {
             path="/business-process-optimization"
             component={BusinessProcessOptimization}
           />
-          <Route path="/security-compliance" component={SecurityCompliance} />
+          {/* Consolidated into /security-compliance-management */}
+          <Route path="/security-compliance" component={SecurityComplianceManagement} />
           <Route
             path="/security-compliance-management"
             component={SecurityComplianceManagement}
@@ -512,7 +513,8 @@ function Router() {
             path="/social-media-generator"
             component={SocialMediaGenerator}
           />
-          <Route path="/security-management" component={SecurityManagement} />
+          {/* Consolidated into /security-compliance-management */}
+          <Route path="/security-management" component={SecurityComplianceManagement} />
           <Route path="/system-monitoring" component={SystemMonitoring} />
           <Route path="/access-control" component={AccessControl} />
           <Route path="/role-management" component={RoleManagement} />
