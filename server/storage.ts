@@ -299,6 +299,12 @@ import {
   type InsertTemplateVariable,
   type WorkflowEventRegistry,
   type InsertWorkflowEventRegistry,
+  assignmentGroups,
+  workflowApprovals,
+  type AssignmentGroup,
+  type InsertAssignmentGroup,
+  type WorkflowApproval,
+  type InsertWorkflowApproval,
 } from "@shared/schema";
 import {
   // Lead Scoring schemas
@@ -11792,6 +11798,115 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(renewalOpportunities.currentMrr));
+  }
+
+  // ==================== Assignment Groups ====================
+
+  async getAssignmentGroups(tenantId: string) {
+    return await db.query.assignmentGroups.findMany({
+      where: eq(assignmentGroups.tenantId, tenantId),
+      orderBy: (groups, { asc }) => [asc(groups.name)],
+    });
+  }
+
+  async getAssignmentGroup(id: string) {
+    return await db.query.assignmentGroups.findFirst({
+      where: eq(assignmentGroups.id, id),
+    });
+  }
+
+  async createAssignmentGroup(data: any) {
+    const [group] = await db.insert(assignmentGroups).values(data).returning();
+    return group;
+  }
+
+  async updateAssignmentGroup(id: string, data: any) {
+    const [updated] = await db.update(assignmentGroups)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(assignmentGroups.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAssignmentGroup(id: string) {
+    await db.delete(assignmentGroups).where(eq(assignmentGroups.id, id));
+  }
+
+  async isUserInGroup(userId: string, groupId: string | null): Promise<boolean> {
+    if (!groupId) return false;
+
+    const group = await db.query.assignmentGroups.findFirst({
+      where: eq(assignmentGroups.id, groupId),
+    });
+
+    if (!group || !group.members || !Array.isArray(group.members)) {
+      return false;
+    }
+
+    return group.members.includes(userId);
+  }
+
+  // ==================== Workflow Approvals ====================
+
+  async getUserApprovals(userId: string, tenantId: string, status?: string) {
+    // Get user's groups
+    const userGroups = await db.query.assignmentGroups.findMany({
+      where: and(
+        eq(assignmentGroups.tenantId, tenantId),
+        eq(assignmentGroups.isActive, true)
+      ),
+    });
+
+    const userGroupIds = userGroups
+      .filter(group => group.members && Array.isArray(group.members) && group.members.includes(userId))
+      .map(group => group.id);
+
+    // Build where conditions
+    const conditions = [eq(workflowApprovals.tenantId, tenantId)];
+
+    if (status) {
+      conditions.push(eq(workflowApprovals.status, status));
+    }
+
+    // Get approvals where user is directly assigned or is in assigned group
+    const approvals = await db.query.workflowApprovals.findMany({
+      where: and(...conditions),
+    });
+
+    // Filter to only approvals for this user or their groups
+    return approvals.filter(approval =>
+      approval.assignedToUserId === userId ||
+      (approval.assignedToGroupId && userGroupIds.includes(approval.assignedToGroupId))
+    );
+  }
+
+  async getWorkflowApproval(id: string) {
+    return await db.query.workflowApprovals.findFirst({
+      where: eq(workflowApprovals.id, id),
+    });
+  }
+
+  async getExecutionApprovals(executionId: string, tenantId: string) {
+    return await db.query.workflowApprovals.findMany({
+      where: and(
+        eq(workflowApprovals.executionId, executionId),
+        eq(workflowApprovals.tenantId, tenantId)
+      ),
+      orderBy: (approvals, { asc }) => [asc(approvals.requestedAt)],
+    });
+  }
+
+  async createWorkflowApproval(data: any) {
+    const [approval] = await db.insert(workflowApprovals).values(data).returning();
+    return approval;
+  }
+
+  async updateWorkflowApproval(id: string, data: any) {
+    const [updated] = await db.update(workflowApprovals)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workflowApprovals.id, id))
+      .returning();
+    return updated;
   }
 }
 

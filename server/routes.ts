@@ -9942,6 +9942,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const workflowAutomationRoutes = await import('./routes/workflow-automation-routes');
   app.use('/api', workflowAutomationRoutes.default);
 
+  // Document Automation Routes (OCR, AI extraction, generation)
+  const documentAutomationRoutes = await import('./routes-document-automation');
+  app.use(documentAutomationRoutes.default);
+
   // Lead Scoring & Qualification Routes
   const leadScoringRoutes = await import('./routes/lead-scoring-routes');
   app.use('/api/lead-scoring', leadScoringRoutes.default);
