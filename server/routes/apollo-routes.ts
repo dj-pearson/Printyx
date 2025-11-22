@@ -1,10 +1,10 @@
-import express from "express";
-import { apolloStorage } from "../apollo-storage";
-import { createApolloClientForTenant, ApolloSearchFilters, ApolloContact } from "../apollo-client";
-import { db } from '../../db';
-import { businessRecords } from "@shared/schema";
-import { eq } from "drizzle-orm";
-import { isAuthenticated } from "../replitAuth";
+import express from 'express';
+import { apolloStorage } from '../apollo-storage';
+import { createApolloClientForTenant, ApolloSearchFilters, ApolloContact } from '../apollo-client';
+import { db } from '../db';
+import { businessRecords } from '@shared/schema';
+import { eq } from 'drizzle-orm';
+import { isAuthenticated } from '../replitAuth';
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ function transformApolloContact(apolloContact: ApolloContact) {
     email: apolloContact.email,
     emailStatus: apolloContact.email_status,
     linkedinUrl: apolloContact.linkedin_url,
-    phoneNumbers: apolloContact.phone_numbers?.map(p => p.sanitized_number || p.raw_number) || [],
+    phoneNumbers: apolloContact.phone_numbers?.map((p) => p.sanitized_number || p.raw_number) || [],
     organizationId: apolloContact.organization_id,
     organizationName: apolloContact.organization?.name,
     websiteUrl: apolloContact.organization?.website_url,
@@ -27,7 +27,7 @@ function transformApolloContact(apolloContact: ApolloContact) {
     companySize: apolloContact.organization?.num_employees_enum,
     employeeCount: apolloContact.organization?.estimated_num_employees,
     industry: apolloContact.organization?.industry,
-    companyLocation: apolloContact.organization?.city 
+    companyLocation: apolloContact.organization?.city
       ? `${apolloContact.organization.city}, ${apolloContact.organization.state || ''} ${apolloContact.organization.country || ''}`.trim()
       : null,
     seniority: apolloContact.seniority,
@@ -38,11 +38,11 @@ function transformApolloContact(apolloContact: ApolloContact) {
 }
 
 // POST /api/apollo/search - Search for leads with filters
-router.post("/search", isAuthenticated, async (req, res) => {
+router.post('/search', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
     const filters: ApolloSearchFilters = req.body;
@@ -55,20 +55,22 @@ router.post("/search", isAuthenticated, async (req, res) => {
     const cached = await apolloStorage.getSearchCache(searchHash);
     if (cached && cached.apolloIds) {
       console.log(`Cache hit for search ${searchHash}`);
-      
+
       // Get full contact data from centralized cache
-      const contacts = await apolloStorage.getCentralizedContactsByIds(cached.apolloIds as string[]);
-      
+      const contacts = await apolloStorage.getCentralizedContactsByIds(
+        cached.apolloIds as string[],
+      );
+
       // Check which contacts this tenant has already seen
-      const tenantLeadPromises = contacts.map(c => 
-        apolloStorage.getTenantLeadByApolloId(c.apolloId, tenantId)
+      const tenantLeadPromises = contacts.map((c) =>
+        apolloStorage.getTenantLeadByApolloId(c.apolloId, tenantId),
       );
       const tenantLeads = await Promise.all(tenantLeadPromises);
-      
+
       // Merge contact data with tenant status
       const results = contacts.map((contact, idx) => ({
         ...contact,
-        tenantStatus: tenantLeads[idx]?.status || "new",
+        tenantStatus: tenantLeads[idx]?.status || 'new',
         addedToCrm: tenantLeads[idx]?.addedToCrm || false,
         tenantLeadId: tenantLeads[idx]?.id,
       }));
@@ -88,18 +90,18 @@ router.post("/search", isAuthenticated, async (req, res) => {
     // Cache miss - call Apollo API
     console.log(`Cache miss for search ${searchHash} - calling Apollo API`);
     const startTime = Date.now();
-    
+
     // Get tenant-specific Apollo client
     const apolloClient = await createApolloClientForTenant(tenantId);
     const apolloResponse = await apolloClient.searchPeople(filters);
-    
+
     const responseTime = Date.now() - startTime;
 
     // Track API usage
     await apolloStorage.trackApiUsage({
       tenantId,
-      endpoint: "/v1/mixed_people/search",
-      method: "POST",
+      endpoint: '/v1/mixed_people/search',
+      method: 'POST',
       requestParams: filters,
       statusCode: 200,
       success: true,
@@ -121,20 +123,20 @@ router.post("/search", isAuthenticated, async (req, res) => {
       searchFilters: filters,
       resultCount: apolloResponse.people.length,
       totalAvailable: apolloResponse.pagination.total_entries,
-      apolloIds: storedContacts.map(c => c.apolloId),
+      apolloIds: storedContacts.map((c) => c.apolloId),
       expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
       apiCreditsUsed: 1,
     });
 
     // Check tenant status for each contact
-    const tenantLeadPromises = storedContacts.map(c => 
-      apolloStorage.getTenantLeadByApolloId(c.apolloId, tenantId)
+    const tenantLeadPromises = storedContacts.map((c) =>
+      apolloStorage.getTenantLeadByApolloId(c.apolloId, tenantId),
     );
     const tenantLeads = await Promise.all(tenantLeadPromises);
 
     const results = storedContacts.map((contact, idx) => ({
       ...contact,
-      tenantStatus: tenantLeads[idx]?.status || "new",
+      tenantStatus: tenantLeads[idx]?.status || 'new',
       addedToCrm: tenantLeads[idx]?.addedToCrm || false,
       tenantLeadId: tenantLeads[idx]?.id,
     }));
@@ -145,14 +147,14 @@ router.post("/search", isAuthenticated, async (req, res) => {
       fromCache: false,
     });
   } catch (error: any) {
-    console.error("Apollo search error:", error);
-    
+    console.error('Apollo search error:', error);
+
     // Track failed API call
     if (req.session?.user) {
       await apolloStorage.trackApiUsage({
         tenantId: req.session.user.tenantId,
-        endpoint: "/v1/mixed_people/search",
-        method: "POST",
+        endpoint: '/v1/mixed_people/search',
+        method: 'POST',
         requestParams: req.body,
         statusCode: error.response?.status || 500,
         success: false,
@@ -162,20 +164,20 @@ router.post("/search", isAuthenticated, async (req, res) => {
       });
     }
 
-    return res.status(500).json({ 
-      error: "Failed to search leads", 
-      message: error.message 
+    return res.status(500).json({
+      error: 'Failed to search leads',
+      message: error.message,
     });
   }
 });
 
 // POST /api/apollo/leads/:contactId/add-to-crm - Add single lead to CRM
-router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) => {
+router.post('/leads/:contactId/add-to-crm', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
     const { contactId } = req.params;
@@ -183,15 +185,15 @@ router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) =>
     // Get contact from centralized cache
     const contact = await apolloStorage.getCentralizedContact(contactId);
     if (!contact) {
-      return res.status(404).json({ error: "Contact not found" });
+      return res.status(404).json({ error: 'Contact not found' });
     }
 
     // Check if already added
     const existingLead = await apolloStorage.getTenantLeadByApolloId(contactId, tenantId);
     if (existingLead?.addedToCrm) {
-      return res.status(400).json({ 
-        error: "Lead already added to CRM",
-        businessRecordId: existingLead.businessRecordId 
+      return res.status(400).json({
+        error: 'Lead already added to CRM',
+        businessRecordId: existingLead.businessRecordId,
       });
     }
 
@@ -202,10 +204,10 @@ router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) =>
         .from(businessRecords)
         .where(eq(businessRecords.email, contact.email))
         .limit(1);
-      
+
       if (duplicate) {
         return res.status(400).json({
-          error: "Contact with this email already exists in CRM",
+          error: 'Contact with this email already exists in CRM',
           existingRecord: duplicate,
         });
       }
@@ -216,9 +218,9 @@ router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) =>
       .insert(businessRecords)
       .values({
         tenantId,
-        recordType: "lead",
-        status: "new",
-        companyName: contact.organizationName || "Unknown Company",
+        recordType: 'lead',
+        status: 'new',
+        companyName: contact.organizationName || 'Unknown Company',
         website: contact.websiteUrl,
         industry: contact.industry,
         employeeCount: contact.employeeCount,
@@ -228,7 +230,7 @@ router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) =>
         phone: contact.phoneNumbers?.[0] || null,
         jobTitle: contact.title,
         linkedinUrl: contact.linkedinUrl,
-        leadSource: "Apollo.io",
+        leadSource: 'Apollo.io',
         createdBy: userId,
         ownerId: userId,
       })
@@ -240,17 +242,17 @@ router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) =>
         existingLead.id,
         tenantId,
         userId,
-        businessRecord.id
+        businessRecord.id,
       );
     } else {
       await apolloStorage.createTenantLead({
         tenantId,
         apolloContactId: contact.id,
         apolloId: contact.apolloId,
-        status: "added_to_crm",
+        status: 'added_to_crm',
         addedToCrm: true,
         businessRecordId: businessRecord.id,
-        discoveredVia: "apollo_search",
+        discoveredVia: 'apollo_search',
         addedAt: new Date(),
         addedBy: userId,
       });
@@ -259,30 +261,30 @@ router.post("/leads/:contactId/add-to-crm", isAuthenticated, async (req, res) =>
     return res.json({
       success: true,
       businessRecord,
-      message: "Lead successfully added to CRM",
+      message: 'Lead successfully added to CRM',
     });
   } catch (error: any) {
-    console.error("Add to CRM error:", error);
-    return res.status(500).json({ 
-      error: "Failed to add lead to CRM", 
-      message: error.message 
+    console.error('Add to CRM error:', error);
+    return res.status(500).json({
+      error: 'Failed to add lead to CRM',
+      message: error.message,
     });
   }
 });
 
 // POST /api/apollo/leads/bulk-add - Bulk add leads to CRM
-router.post("/leads/bulk-add", isAuthenticated, async (req, res) => {
+router.post('/leads/bulk-add', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
     const { contactIds } = req.body as { contactIds: string[] };
 
     if (!Array.isArray(contactIds) || contactIds.length === 0) {
-      return res.status(400).json({ error: "contactIds array is required" });
+      return res.status(400).json({ error: 'contactIds array is required' });
     }
 
     const results = {
@@ -314,7 +316,7 @@ router.post("/leads/bulk-add", isAuthenticated, async (req, res) => {
             .from(businessRecords)
             .where(eq(businessRecords.email, contact.email))
             .limit(1);
-          
+
           if (duplicate) {
             results.skipped++;
             continue;
@@ -326,9 +328,9 @@ router.post("/leads/bulk-add", isAuthenticated, async (req, res) => {
           .insert(businessRecords)
           .values({
             tenantId,
-            recordType: "lead",
-            status: "new",
-            companyName: contact.organizationName || "Unknown Company",
+            recordType: 'lead',
+            status: 'new',
+            companyName: contact.organizationName || 'Unknown Company',
             website: contact.websiteUrl,
             industry: contact.industry,
             employeeCount: contact.employeeCount,
@@ -338,7 +340,7 @@ router.post("/leads/bulk-add", isAuthenticated, async (req, res) => {
             phone: contact.phoneNumbers?.[0] || null,
             jobTitle: contact.title,
             linkedinUrl: contact.linkedinUrl,
-            leadSource: "Apollo.io",
+            leadSource: 'Apollo.io',
             createdBy: userId,
             ownerId: userId,
           })
@@ -350,17 +352,17 @@ router.post("/leads/bulk-add", isAuthenticated, async (req, res) => {
             existingLead.id,
             tenantId,
             userId,
-            businessRecord.id
+            businessRecord.id,
           );
         } else {
           await apolloStorage.createTenantLead({
             tenantId,
             apolloContactId: contact.id,
             apolloId: contact.apolloId,
-            status: "added_to_crm",
+            status: 'added_to_crm',
             addedToCrm: true,
             businessRecordId: businessRecord.id,
-            discoveredVia: "apollo_search",
+            discoveredVia: 'apollo_search',
             addedAt: new Date(),
             addedBy: userId,
           });
@@ -375,20 +377,20 @@ router.post("/leads/bulk-add", isAuthenticated, async (req, res) => {
 
     return res.json(results);
   } catch (error: any) {
-    console.error("Bulk add error:", error);
-    return res.status(500).json({ 
-      error: "Failed to bulk add leads", 
-      message: error.message 
+    console.error('Bulk add error:', error);
+    return res.status(500).json({
+      error: 'Failed to bulk add leads',
+      message: error.message,
     });
   }
 });
 
 // GET /api/apollo/stats - Get API usage stats
-router.get("/stats", isAuthenticated, async (req, res) => {
+router.get('/stats', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
     const endDate = new Date();
@@ -398,10 +400,10 @@ router.get("/stats", isAuthenticated, async (req, res) => {
 
     return res.json(stats);
   } catch (error: any) {
-    console.error("Stats error:", error);
-    return res.status(500).json({ 
-      error: "Failed to get stats", 
-      message: error.message 
+    console.error('Stats error:', error);
+    return res.status(500).json({
+      error: 'Failed to get stats',
+      message: error.message,
     });
   }
 });
@@ -411,15 +413,15 @@ router.get("/stats", isAuthenticated, async (req, res) => {
 // ============================================================================
 
 // GET /api/apollo/credentials - Get tenant's Apollo.io credentials (masked)
-router.get("/credentials", isAuthenticated, async (req, res) => {
+router.get('/credentials', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
-    const { storage } = await import("../storage");
-    const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
+    const { storage } = await import('../storage');
+    const credential = await storage.getIntegrationCredentialByProvider(tenantId, 'apollo');
 
     if (!credential) {
       return res.json({ configured: false });
@@ -432,72 +434,68 @@ router.get("/credentials", isAuthenticated, async (req, res) => {
       status: credential.status,
       createdAt: credential.createdAt,
       updatedAt: credential.updatedAt,
-      apiKeyMasked: credential.apiKey 
+      apiKeyMasked: credential.apiKey
         ? `${String(credential.apiKey).substring(0, 10)}...${String(credential.apiKey).slice(-4)}`
         : null,
       config: credential.config,
     });
   } catch (error: any) {
-    console.error("Get credentials error:", error);
-    return res.status(500).json({ 
-      error: "Failed to get credentials", 
-      message: error.message 
+    console.error('Get credentials error:', error);
+    return res.status(500).json({
+      error: 'Failed to get credentials',
+      message: error.message,
     });
   }
 });
 
 // POST /api/apollo/credentials - Save Apollo.io API key for tenant
-router.post("/credentials", isAuthenticated, async (req, res) => {
+router.post('/credentials', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
-    
+
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: "No tenant ID or user ID found" });
+      return res.status(403).json({ error: 'No tenant ID or user ID found' });
     }
 
     const { apiKey } = req.body;
 
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
-      return res.status(400).json({ error: "API key is required" });
+      return res.status(400).json({ error: 'API key is required' });
     }
 
-    const { storage } = await import("../storage");
-    
+    const { storage } = await import('../storage');
+
     // Check if credential already exists
-    const existing = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
+    const existing = await storage.getIntegrationCredentialByProvider(tenantId, 'apollo');
 
     if (existing) {
       // Update existing credential
-      const updated = await storage.updateIntegrationCredential(
-        existing.id,
-        tenantId,
-        {
-          apiKey: apiKey.trim(),
-          status: "active",
+      const updated = await storage.updateIntegrationCredential(existing.id, tenantId, {
+        apiKey: apiKey.trim(),
+        status: 'active',
+        updatedBy: userId,
+        updatedAt: new Date(),
+        config: {
+          ...existing.config,
+          lastUpdated: new Date().toISOString(),
           updatedBy: userId,
-          updatedAt: new Date(),
-          config: {
-            ...existing.config,
-            lastUpdated: new Date().toISOString(),
-            updatedBy: userId,
-          },
-        }
-      );
+        },
+      });
 
       return res.json({
         success: true,
-        message: "Apollo.io API key updated successfully",
+        message: 'Apollo.io API key updated successfully',
         credentialId: updated?.id,
       });
     } else {
       // Create new credential
       const credentialData = {
         tenantId,
-        provider: "apollo",
-        integrationName: "Apollo.io Lead Enrichment",
+        provider: 'apollo',
+        integrationName: 'Apollo.io Lead Enrichment',
         apiKey: apiKey.trim(),
-        status: "active",
+        status: 'active',
         createdBy: userId,
         updatedBy: userId,
         config: {
@@ -505,96 +503,102 @@ router.post("/credentials", isAuthenticated, async (req, res) => {
           createdBy: userId,
         },
       };
-      
-      console.log("Creating credential with data:", JSON.stringify({
-        ...credentialData,
-        apiKey: credentialData.apiKey ? `${credentialData.apiKey.substring(0, 10)}...` : null,
-      }));
-      
+
+      console.log(
+        'Creating credential with data:',
+        JSON.stringify({
+          ...credentialData,
+          apiKey: credentialData.apiKey ? `${credentialData.apiKey.substring(0, 10)}...` : null,
+        }),
+      );
+
       const created = await storage.createIntegrationCredential(credentialData);
 
       return res.json({
         success: true,
-        message: "Apollo.io API key saved successfully",
+        message: 'Apollo.io API key saved successfully',
         credentialId: created.id,
       });
     }
   } catch (error: any) {
-    console.error("Save credentials error:", error);
-    return res.status(500).json({ 
-      error: "Failed to save credentials", 
-      message: error.message 
+    console.error('Save credentials error:', error);
+    return res.status(500).json({
+      error: 'Failed to save credentials',
+      message: error.message,
     });
   }
 });
 
 // POST /api/apollo/credentials/verify - Test Apollo.io API key
-router.post("/credentials/verify", isAuthenticated, async (req, res) => {
+router.post('/credentials/verify', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
     const { apiKey } = req.body;
-    
+
     // If apiKey provided, test it directly (before saving)
     // Otherwise, test the saved credential
     let testApiKey: string;
-    
+
     if (apiKey) {
       testApiKey = apiKey.trim();
     } else {
-      const { storage } = await import("../storage");
-      const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
-      
-      console.log("Verify - Retrieved credential:", JSON.stringify({
-        found: !!credential,
-        hasApiKey: !!credential?.apiKey,
-        credentialId: credential?.id,
-        provider: credential?.provider,
-        tenantId: credential?.tenantId,
-      }));
-      
+      const { storage } = await import('../storage');
+      const credential = await storage.getIntegrationCredentialByProvider(tenantId, 'apollo');
+
+      console.log(
+        'Verify - Retrieved credential:',
+        JSON.stringify({
+          found: !!credential,
+          hasApiKey: !!credential?.apiKey,
+          credentialId: credential?.id,
+          provider: credential?.provider,
+          tenantId: credential?.tenantId,
+        }),
+      );
+
       if (!credential || !credential.apiKey) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           valid: false,
-          error: "No API key configured. Please save an API key first." 
+          error: 'No API key configured. Please save an API key first.',
         });
       }
-      
+
       testApiKey = credential.apiKey as string;
     }
 
     // Test the API key with a minimal search
-    const { ApolloClient } = await import("../apollo-client");
+    const { ApolloClient } = await import('../apollo-client');
     const testClient = new ApolloClient(testApiKey);
-    
+
     const startTime = Date.now();
     await testClient.searchPeople({
       page: 1,
       perPage: 1,
-      personTitles: ["CEO"], // Minimal test query
+      personTitles: ['CEO'], // Minimal test query
     });
     const responseTime = Date.now() - startTime;
 
     return res.json({
       valid: true,
-      message: "API key is valid and working",
+      message: 'API key is valid and working',
       responseTimeMs: responseTime,
     });
   } catch (error: any) {
-    console.error("Verify credentials error:", error);
-    
+    console.error('Verify credentials error:', error);
+
     // Parse error message for better user feedback
-    if (error.message?.includes("401") || error.message?.includes("403")) {
+    if (error.message?.includes('401') || error.message?.includes('403')) {
       return res.json({
         valid: false,
-        error: "Invalid API key. Please check your Apollo.io API key and try again.",
+        error: 'Invalid API key. Please check your Apollo.io API key and try again.',
       });
     }
-    
+
     return res.json({
       valid: false,
       error: `Failed to verify API key: ${error.message}`,
@@ -603,28 +607,28 @@ router.post("/credentials/verify", isAuthenticated, async (req, res) => {
 });
 
 // DELETE /api/apollo/credentials/:id - Remove Apollo.io credentials
-router.delete("/credentials/:id", isAuthenticated, async (req, res) => {
+router.delete('/credentials/:id', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
     const { id } = req.params;
-    const { storage } = await import("../storage");
+    const { storage } = await import('../storage');
 
     await storage.deleteIntegrationCredential(id, tenantId);
 
     return res.json({
       success: true,
-      message: "Apollo.io credentials removed successfully",
+      message: 'Apollo.io credentials removed successfully',
     });
   } catch (error: any) {
-    console.error("Delete credentials error:", error);
-    return res.status(500).json({ 
-      error: "Failed to delete credentials", 
-      message: error.message 
+    console.error('Delete credentials error:', error);
+    return res.status(500).json({
+      error: 'Failed to delete credentials',
+      message: error.message,
     });
   }
 });

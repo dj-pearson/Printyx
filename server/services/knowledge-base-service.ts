@@ -4,7 +4,7 @@
  * semantic search, and analytics
  */
 
-import { db } from '../../db';
+import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import AISearchKnowledgeService from './ai-search-knowledge-service';
 import { eq, and, sql, desc, asc, like, ilike, inArray, or } from 'drizzle-orm';
@@ -49,7 +49,7 @@ class KnowledgeBaseService {
       description?: string;
       parentCategoryId?: string;
       icon?: string;
-    }
+    },
   ): Promise<KnowledgeCategory> {
     console.log('📚 Creating knowledge base category:', categoryData.name);
 
@@ -62,7 +62,7 @@ class KnowledgeBaseService {
         const parentCategory = await db.query.knowledgeCategories.findFirst({
           where: and(
             eq(knowledgeCategories.id, categoryData.parentCategoryId),
-            eq(knowledgeCategories.tenantId, tenantId)
+            eq(knowledgeCategories.tenantId, tenantId),
           ),
         });
         categoryLevel = (parentCategory?.categoryLevel || 0) + 1;
@@ -98,7 +98,7 @@ class KnowledgeBaseService {
     options: {
       includeInactive?: boolean;
       parentCategoryId?: string | null;
-    } = {}
+    } = {},
   ): Promise<KnowledgeCategory[]> {
     const conditions = [eq(knowledgeCategories.tenantId, tenantId)];
 
@@ -127,7 +127,7 @@ class KnowledgeBaseService {
    */
   async getCategoriesWithArticleCounts(
     tenantId: string,
-    categories: KnowledgeCategory[]
+    categories: KnowledgeCategory[],
   ): Promise<any[]> {
     const categoriesWithCounts = await Promise.all(
       categories.map(async (category) => {
@@ -139,15 +139,15 @@ class KnowledgeBaseService {
             and(
               eq(knowledgeArticles.categoryId, category.id),
               eq(knowledgeArticles.tenantId, tenantId),
-              eq(knowledgeArticles.status, 'published')
-            )
+              eq(knowledgeArticles.status, 'published'),
+            ),
           );
 
         return {
           ...category,
           articleCount: articleCount[0]?.count || 0,
         };
-      })
+      }),
     );
 
     return categoriesWithCounts;
@@ -170,7 +170,7 @@ class KnowledgeBaseService {
       excerpt?: string;
       featuredImage?: string;
       isPublic?: boolean;
-    }
+    },
   ): Promise<KnowledgeArticle> {
     console.log('📝 Creating knowledge base article:', articleData.title);
 
@@ -194,8 +194,8 @@ class KnowledgeBaseService {
           plainTextContent: plainText,
           categoryId: articleData.categoryId,
           subcategory: articleData.subcategory,
-          contentType: articleData.contentType as any || 'tutorial',
-          difficultyLevel: articleData.difficultyLevel as any || 'beginner',
+          contentType: (articleData.contentType as any) || 'tutorial',
+          difficultyLevel: (articleData.difficultyLevel as any) || 'beginner',
           status: 'draft',
           keywords: keywords as any,
           searchKeywords: keywords as any,
@@ -236,17 +236,14 @@ class KnowledgeBaseService {
       status?: string;
       tags?: string[];
       excerpt?: string;
-    }
+    },
   ): Promise<KnowledgeArticle> {
     console.log('📝 Updating knowledge base article:', articleId);
 
     try {
       // Get current article
       const currentArticle = await db.query.knowledgeArticles.findFirst({
-        where: and(
-          eq(knowledgeArticles.id, articleId),
-          eq(knowledgeArticles.tenantId, tenantId)
-        ),
+        where: and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenantId, tenantId)),
       });
 
       if (!currentArticle) {
@@ -273,7 +270,7 @@ class KnowledgeBaseService {
         // Re-generate keywords
         const keywords = await this.extractKeywords(
           updates.title || currentArticle.title,
-          plainText
+          plainText,
         );
         updateData.keywords = keywords;
         updateData.searchKeywords = keywords;
@@ -283,7 +280,7 @@ class KnowledgeBaseService {
           tenantId,
           articleId,
           updates.title || currentArticle.title,
-          plainText
+          plainText,
         );
       }
 
@@ -298,19 +295,11 @@ class KnowledgeBaseService {
       const [updatedArticle] = await db
         .update(knowledgeArticles)
         .set(updateData)
-        .where(and(
-          eq(knowledgeArticles.id, articleId),
-          eq(knowledgeArticles.tenantId, tenantId)
-        ))
+        .where(and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenantId, tenantId)))
         .returning();
 
       // Create version history
-      await this.createVersion(
-        articleId,
-        updatedArticle,
-        userId,
-        'Article updated'
-      );
+      await this.createVersion(articleId, updatedArticle, userId, 'Article updated');
 
       console.log('✅ Article updated successfully');
       return updatedArticle;
@@ -330,23 +319,15 @@ class KnowledgeBaseService {
       incrementView?: boolean;
       userId?: string;
       sessionId?: string;
-    } = {}
+    } = {},
   ): Promise<KnowledgeArticle | undefined> {
     const article = await db.query.knowledgeArticles.findFirst({
-      where: and(
-        eq(knowledgeArticles.id, articleId),
-        eq(knowledgeArticles.tenantId, tenantId)
-      ),
+      where: and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenantId, tenantId)),
     });
 
     if (article && options.incrementView) {
       // Track view
-      await this.trackArticleView(
-        tenantId,
-        articleId,
-        options.userId,
-        options.sessionId
-      );
+      await this.trackArticleView(tenantId, articleId, options.userId, options.sessionId);
 
       // Increment view count
       await db
@@ -375,7 +356,7 @@ class KnowledgeBaseService {
       limit?: number;
       offset?: number;
       useSemanticSearch?: boolean;
-    } = {}
+    } = {},
   ): Promise<{
     articles: KnowledgeArticle[];
     total: number;
@@ -409,8 +390,8 @@ class KnowledgeBaseService {
         conditions.push(
           or(
             ilike(knowledgeArticles.title, `%${query}%`),
-            ilike(knowledgeArticles.plainTextContent, `%${query}%`)
-          )!
+            ilike(knowledgeArticles.plainTextContent, `%${query}%`),
+          )!,
         );
       }
 
@@ -453,7 +434,7 @@ class KnowledgeBaseService {
       includeExamples?: boolean;
       includeScreenshots?: boolean;
       tone?: string;
-    }
+    },
   ): Promise<{ queueId: string; message: string }> {
     console.log('🤖 Queueing AI article generation for:', params.topic);
 
@@ -478,7 +459,7 @@ class KnowledgeBaseService {
       console.log('✅ Article generation queued:', queueItem.id);
 
       // Process immediately (in production, this would be async via queue worker)
-      this.processAIGenerationQueue(queueItem.id, tenantId, userId).catch(err => {
+      this.processAIGenerationQueue(queueItem.id, tenantId, userId).catch((err) => {
         console.error('Background AI generation failed:', err);
       });
 
@@ -498,7 +479,7 @@ class KnowledgeBaseService {
   private async processAIGenerationQueue(
     queueId: string,
     tenantId: string,
-    userId: string
+    userId: string,
   ): Promise<void> {
     console.log('🔄 Processing AI generation queue:', queueId);
 
@@ -542,7 +523,7 @@ class KnowledgeBaseService {
         excerpt: generatedData.excerpt,
         tags: generatedData.tags || [],
         contentType: generatedData.contentType || 'tutorial',
-        difficultyLevel: queueItem.targetAudience as any || 'beginner',
+        difficultyLevel: (queueItem.targetAudience as any) || 'beginner',
       });
 
       // Mark article as AI-generated
@@ -607,7 +588,7 @@ class KnowledgeBaseService {
       rating?: number;
       comment?: string;
       suggestedCorrection?: string;
-    }
+    },
   ): Promise<ArticleFeedback> {
     console.log('💬 Submitting article feedback:', articleId);
 
@@ -657,7 +638,7 @@ class KnowledgeBaseService {
    */
   async getAnalytics(
     tenantId: string,
-    timeRange: { start: Date; end: Date }
+    timeRange: { start: Date; end: Date },
   ): Promise<{
     totalArticles: number;
     publishedArticles: number;
@@ -678,8 +659,8 @@ class KnowledgeBaseService {
         where: eq(knowledgeArticles.tenantId, tenantId),
       });
 
-      const publishedArticles = allArticles.filter(a => a.status === 'published');
-      const aiGeneratedArticles = allArticles.filter(a => a.aiGenerated);
+      const publishedArticles = allArticles.filter((a) => a.status === 'published');
+      const aiGeneratedArticles = allArticles.filter((a) => a.aiGenerated);
 
       const totalViews = allArticles.reduce((sum, a) => sum + a.viewCount, 0);
 
@@ -687,7 +668,7 @@ class KnowledgeBaseService {
       const topArticles = allArticles
         .sort((a, b) => b.viewCount - a.viewCount)
         .slice(0, 10)
-        .map(a => ({
+        .map((a) => ({
           id: a.id,
           title: a.title,
           views: a.viewCount,
@@ -699,7 +680,7 @@ class KnowledgeBaseService {
       });
 
       const popularCategories = categories
-        .map(c => ({
+        .map((c) => ({
           id: c.id,
           name: c.name,
           articleCount: c.articleCount,
@@ -734,7 +715,7 @@ class KnowledgeBaseService {
     articleId: string,
     article: KnowledgeArticle,
     userId: string,
-    changeDescription: string
+    changeDescription: string,
   ): Promise<ArticleVersion> {
     const [version] = await db
       .insert(articleVersions)
@@ -757,7 +738,7 @@ class KnowledgeBaseService {
     tenantId: string,
     articleId: string,
     userId?: string,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<void> {
     await db.insert(articleViews).values({
       tenantId,
@@ -771,7 +752,7 @@ class KnowledgeBaseService {
     tenantId: string,
     articleId: string,
     title: string,
-    content: string
+    content: string,
   ): Promise<void> {
     try {
       const embedding = await AISearchKnowledgeService.createContentEmbedding(
@@ -782,7 +763,7 @@ class KnowledgeBaseService {
           text: content,
           title,
           category: 'knowledge_base',
-        }
+        },
       );
 
       // Store embedding in database
@@ -805,15 +786,36 @@ class KnowledgeBaseService {
 
   private async extractKeywords(title: string, content: string): Promise<string[]> {
     const combinedText = `${title} ${content}`.toLowerCase();
-    const words = combinedText.split(/\W+/).filter(word =>
-      word.length > 3 &&
-      !['this', 'that', 'with', 'have', 'will', 'from', 'they', 'been', 'were', 'said', 'each', 'the', 'and', 'for'].includes(word)
-    );
+    const words = combinedText
+      .split(/\W+/)
+      .filter(
+        (word) =>
+          word.length > 3 &&
+          ![
+            'this',
+            'that',
+            'with',
+            'have',
+            'will',
+            'from',
+            'they',
+            'been',
+            'were',
+            'said',
+            'each',
+            'the',
+            'and',
+            'for',
+          ].includes(word),
+      );
 
-    const wordCounts = words.reduce((acc, word) => {
-      acc[word] = (acc[word] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const wordCounts = words.reduce(
+      (acc, word) => {
+        acc[word] = (acc[word] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return Object.entries(wordCounts)
       .sort(([, a], [, b]) => b - a)
@@ -887,7 +889,7 @@ Return JSON format:
     if (!content.sections) return '';
 
     return content.sections
-      .map(section => {
+      .map((section) => {
         if (typeof section.content === 'string') {
           return section.content;
         } else if (Array.isArray(section.content)) {
