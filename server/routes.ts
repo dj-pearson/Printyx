@@ -3,6 +3,7 @@ import { createServer, type Server } from 'http';
 import { registerOnboardingRoutes } from './routes-onboarding';
 import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from './routes-export';
 import signupCrmRoutes from './routes-signup-crm';
+import universalSearchRoutes from './routes-universal-search';
 import session from 'express-session';
 import csurf from 'csurf';
 import rateLimit from 'express-rate-limit';
@@ -97,6 +98,7 @@ import integrationHubRoutes from './routes-integration-hub';
 import { registerQuickBooksRoutes } from './routes-quickbooks-integration';
 import { setupSalesPipelineRoutes } from './routes-sales-pipeline';
 import { registerModularDashboardRoutes } from './routes-modular-dashboard';
+import { registerTodayDashboardRoutes } from './routes-today-dashboard';
 import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
 import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
 import { registerSalesHandoffRoutes } from './routes-sales-handoff';
@@ -633,6 +635,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Trial management routes
   app.use('/api/trial', trialRoutes);
+
+  // Universal search routes
+  app.use(universalSearchRoutes);
 
   // Tenants route for platform users (Root Admin / platform-only)
   app.get('/api/tenants', requireAuth, async (req: any, res) => {
@@ -14909,6 +14914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register modular dashboard routes
   registerModularDashboardRoutes(app);
+  registerTodayDashboardRoutes(app);
 
   // Register onboarding routes
   registerOnboardingRoutes(app);
@@ -15282,6 +15288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerQuickBooksRoutes(app);
   // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
   registerModularDashboardRoutes(app);
+  registerTodayDashboardRoutes(app);
   registerManufacturerIntegrationRoutes(app);
   registerLeadAssignmentRoutes(app);
   registerSalesHandoffRoutes(app);
