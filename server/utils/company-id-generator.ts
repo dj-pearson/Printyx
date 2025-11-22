@@ -1,6 +1,6 @@
-import { eq, sql, and } from "drizzle-orm";
-import { businessRecords } from "../../shared/schema.js";
-import { db } from "../db.js";
+import { eq, sql, and } from 'drizzle-orm';
+import { businessRecords } from '../../shared/schema.js';
+import { db } from '../db';
 
 /**
  * Generates a unique 8-digit company display ID
@@ -13,13 +13,13 @@ export async function generateCompanyDisplayId(tenantId: string): Promise<string
   while (attempts < maxAttempts) {
     // Generate random 8-digit number
     const displayId = Math.floor(10000000 + Math.random() * 90000000).toString();
-    
+
     // Check if this ID already exists in this tenant
     const existing = await db
       .select({ id: businessRecords.id })
       .from(businessRecords)
       .where(
-        sql`${businessRecords.tenantId} = ${tenantId} AND ${businessRecords.companyDisplayId} = ${displayId}`
+        sql`${businessRecords.tenantId} = ${tenantId} AND ${businessRecords.companyDisplayId} = ${displayId}`,
       )
       .limit(1);
 
@@ -41,9 +41,9 @@ export async function generateCompanyDisplayId(tenantId: string): Promise<string
  * Example: "customer-new-customer-company-43443425"
  */
 export function generateUrlSlug(
-  recordType: string, 
-  companyName: string, 
-  displayId: string
+  recordType: string,
+  companyName: string,
+  displayId: string,
 ): string {
   // Clean and normalize the company name
   const cleanCompanyName = companyName
@@ -61,24 +61,28 @@ export function generateUrlSlug(
 
   // Ensure we have a valid company name part
   const companySlug = cleanCompanyName || 'company';
-  
+
   return `${recordType}-${companySlug}-${displayId}`;
 }
 
 /**
  * Validates that a URL slug is unique within a tenant
  */
-export async function isSlugUnique(slug: string, tenantId: string, excludeId?: string): Promise<boolean> {
+export async function isSlugUnique(
+  slug: string,
+  tenantId: string,
+  excludeId?: string,
+): Promise<boolean> {
   let whereCondition = and(
     eq(businessRecords.tenantId, tenantId),
-    eq(businessRecords.urlSlug, slug)
+    eq(businessRecords.urlSlug, slug),
   );
 
   if (excludeId) {
     whereCondition = and(
       eq(businessRecords.tenantId, tenantId),
       eq(businessRecords.urlSlug, slug),
-      sql`${businessRecords.id} != ${excludeId}`
+      sql`${businessRecords.id} != ${excludeId}`,
     );
   }
 
@@ -99,10 +103,10 @@ export async function generateUniqueUrlSlug(
   companyName: string,
   displayId: string,
   tenantId: string,
-  excludeId?: string
+  excludeId?: string,
 ): Promise<string> {
   const baseSlug = generateUrlSlug(recordType, companyName, displayId);
-  
+
   // Check if base slug is unique
   if (await isSlugUnique(baseSlug, tenantId, excludeId)) {
     return baseSlug;
@@ -128,17 +132,23 @@ export async function updateBusinessRecordWithIdentifiers(
   recordId: string,
   tenantId: string,
   recordType: string,
-  companyName: string
+  companyName: string,
 ): Promise<{ companyDisplayId: string; urlSlug: string }> {
   const displayId = await generateCompanyDisplayId(tenantId);
-  const urlSlug = await generateUniqueUrlSlug(recordType, companyName, displayId, tenantId, recordId);
+  const urlSlug = await generateUniqueUrlSlug(
+    recordType,
+    companyName,
+    displayId,
+    tenantId,
+    recordId,
+  );
 
   await db
     .update(businessRecords)
     .set({
       companyDisplayId: displayId,
       urlSlug: urlSlug,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     })
     .where(eq(businessRecords.id, recordId));
 
@@ -154,11 +164,11 @@ export async function backfillExistingRecords(tenantId: string, limit = 100): Pr
     .select({
       id: businessRecords.id,
       recordType: businessRecords.recordType,
-      companyName: businessRecords.companyName
+      companyName: businessRecords.companyName,
     })
     .from(businessRecords)
     .where(
-      sql`${businessRecords.tenantId} = ${tenantId} AND ${businessRecords.companyDisplayId} IS NULL`
+      sql`${businessRecords.tenantId} = ${tenantId} AND ${businessRecords.companyDisplayId} IS NULL`,
     )
     .limit(limit);
 
@@ -170,7 +180,7 @@ export async function backfillExistingRecords(tenantId: string, limit = 100): Pr
         record.id,
         tenantId,
         record.recordType || 'lead',
-        record.companyName || 'Unnamed Company'
+        record.companyName || 'Unnamed Company',
       );
       updatedCount++;
     } catch (error) {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { db } from './db.js';
+import { db } from './db';
 import { documents } from '../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 
@@ -31,7 +31,7 @@ router.get('/', requireAuth, requireTenant, async (req: any, res) => {
       .from(documents)
       .where(eq(documents.tenantId, req.tenantId))
       .orderBy(documents.createdAt);
-    
+
     res.json(docs);
   } catch (error) {
     console.error('Error fetching documents:', error);
@@ -44,7 +44,7 @@ router.post('/', requireAuth, requireTenant, async (req: any, res) => {
   try {
     const session = req.session as any;
     const userId = session.userId;
-    
+
     const documentData = {
       ...req.body,
       tenantId: req.tenantId,
@@ -54,10 +54,7 @@ router.post('/', requireAuth, requireTenant, async (req: any, res) => {
       documentType: req.body.includeServiceContract ? 'purchase_service' : 'purchase_only',
     };
 
-    const [newDocument] = await db
-      .insert(documents)
-      .values(documentData)
-      .returning();
+    const [newDocument] = await db.insert(documents).values(documentData).returning();
 
     res.status(201).json(newDocument);
   } catch (error) {
@@ -72,12 +69,7 @@ router.get('/:id', requireAuth, requireTenant, async (req: any, res) => {
     const [document] = await db
       .select()
       .from(documents)
-      .where(
-        and(
-          eq(documents.id, req.params.id),
-          eq(documents.tenantId, req.tenantId)
-        )
-      );
+      .where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
@@ -96,12 +88,7 @@ router.post('/:id/pdf', requireAuth, requireTenant, async (req: any, res) => {
     const [document] = await db
       .select()
       .from(documents)
-      .where(
-        and(
-          eq(documents.id, req.params.id),
-          eq(documents.tenantId, req.tenantId)
-        )
-      );
+      .where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
@@ -109,13 +96,12 @@ router.post('/:id/pdf', requireAuth, requireTenant, async (req: any, res) => {
 
     // Generate HTML content for PDF
     const htmlContent = generateDocumentHTML(document);
-    
+
     // For now, return the HTML content as text
     // In production, you would use a library like puppeteer to generate PDF
     res.setHeader('Content-Type', 'text/html');
     res.setHeader('Content-Disposition', `attachment; filename="document-${document.id}.html"`);
     res.send(htmlContent);
-    
   } catch (error) {
     console.error('Error generating PDF:', error);
     res.status(500).json({ message: 'Failed to generate PDF' });
@@ -126,9 +112,9 @@ router.post('/:id/pdf', requireAuth, requireTenant, async (req: any, res) => {
 function generateDocumentHTML(doc: any): string {
   const lineItems = doc.lineItems || [];
   const total = lineItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
-  
+
   const currentDate = new Date().toLocaleDateString();
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -194,14 +180,18 @@ function generateDocumentHTML(doc: any): string {
         </tr>
       </thead>
       <tbody>
-        ${lineItems.map((item: any) => `
+        ${lineItems
+          .map(
+            (item: any) => `
           <tr>
             <td>${item.quantity || 1}</td>
             <td>${item.description || ''}</td>
             <td>$${(item.unitPrice || 0).toFixed(2)}</td>
             <td>$${(item.totalPrice || 0).toFixed(2)}</td>
           </tr>
-        `).join('')}
+        `,
+          )
+          .join('')}
         <tr class="total-row">
           <td colspan="3"><strong>Total*</strong></td>
           <td><strong>$${total.toFixed(2)}</strong></td>
@@ -211,7 +201,9 @@ function generateDocumentHTML(doc: any): string {
     <div><em>*PLUS ALL APPLICABLE SALES TAX</em></div>
   </div>
 
-  ${doc.includeServiceContract ? `
+  ${
+    doc.includeServiceContract
+      ? `
     <div class="page-break"></div>
     <div class="service-section">
       <div class="section-title">MAINTENANCE SERVICE AGREEMENT</div>
@@ -228,7 +220,7 @@ function generateDocumentHTML(doc: any): string {
         <strong>CHARGES:</strong><br>
         • Monthly Base Charge: $${(doc.monthlyBase || 30).toFixed(2)}<br>
         • Black & White Rate: $${(doc.blackRate || 0.008).toFixed(3)} per print over minimum<br>
-        • Color Rate: $${(doc.colorRate || 0.050).toFixed(3)} per print over minimum
+        • Color Rate: $${(doc.colorRate || 0.05).toFixed(3)} per print over minimum
       </div>
       
       <div style="margin: 15px 0;">
@@ -239,7 +231,9 @@ function generateDocumentHTML(doc: any): string {
       
       ${doc.autoRenewal ? '<div><strong>AUTO-RENEWAL:</strong> This agreement will automatically renew for successive 12-month terms unless terminated with 30 days written notice.</div>' : ''}
     </div>
-  ` : ''}
+  `
+      : ''
+  }
 
   <div class="terms-section">
     <strong>TERMS AND CONDITIONS</strong><br>
