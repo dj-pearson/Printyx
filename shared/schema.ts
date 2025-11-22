@@ -5868,8 +5868,8 @@ export type InsertProposalApproval = typeof proposalApprovals.$inferInsert;
 
 // ============= PRICING SYSTEM =============
 
-// Company Pricing Settings - Global markup rules
-export const companyPricingSettings = pgTable('company_pricing_settings', {
+// Company Pricing Settings - Global markup rules (exported from product-pricing-schema.ts)
+const companyPricingSettings_duplicate = pgTable('company_pricing_settings', {
   id: varchar('id')
     .primaryKey()
     .default(sql`gen_random_uuid()`),
@@ -6272,9 +6272,9 @@ export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
 export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
 
-// Pricing System Types
-export type CompanyPricingSetting = typeof companyPricingSettings.$inferSelect;
-export type InsertCompanyPricingSetting = typeof companyPricingSettings.$inferInsert;
+// Pricing System Types (using duplicate table reference)
+export type CompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferSelect;
+export type InsertCompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferInsert;
 
 export type ProductPricing = typeof productPricing.$inferSelect;
 export type InsertProductPricing = typeof productPricing.$inferInsert;
@@ -6285,8 +6285,8 @@ export type InsertQuotePricing = typeof quotePricing.$inferInsert;
 export type QuotePricingLineItem = typeof quotePricingLineItems.$inferSelect;
 export type InsertQuotePricingLineItem = typeof quotePricingLineItems.$inferInsert;
 
-// Pricing Schema Validations
-export const insertCompanyPricingSettingSchema = createInsertSchema(companyPricingSettings).omit({
+// Pricing Schema Validations (using duplicate table reference)
+export const insertCompanyPricingSettingSchema = createInsertSchema(companyPricingSettings_duplicate).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -8233,3 +8233,41 @@ export type {
   ExpansionOpportunity,
   InsertExpansionOpportunity,
 } from './renewal-management-schema';
+
+// Re-export Document Automation schemas
+export {
+  documentTemplates,
+  generatedDocuments,
+  documentUploads,
+  documentFieldMappings,
+  documentWorkflowActions,
+  documentNotifications,
+  documentTemplateTypeEnum,
+  documentFormatEnum,
+  ocrProcessingStatusEnum,
+  aiConfidenceEnum,
+  insertDocumentTemplateSchema,
+  selectDocumentTemplateSchema,
+  insertGeneratedDocumentSchema,
+  selectGeneratedDocumentSchema,
+  insertDocumentUploadSchema,
+  selectDocumentUploadSchema,
+  insertDocumentFieldMappingSchema,
+  selectDocumentFieldMappingSchema,
+  insertDocumentWorkflowActionSchema,
+  selectDocumentWorkflowActionSchema,
+} from './document-automation-schema';
+
+export type {
+  DocumentTemplate,
+  InsertDocumentTemplate,
+  GeneratedDocument,
+  InsertGeneratedDocument,
+  DocumentUpload,
+  InsertDocumentUpload,
+  DocumentFieldMapping,
+  InsertDocumentFieldMapping,
+  DocumentWorkflowAction,
+  InsertDocumentWorkflowAction,
+  DocumentNotification,
+} from './document-automation-schema';
