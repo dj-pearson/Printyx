@@ -47,6 +47,38 @@ export {
   insertPartsOrderItemSchema,
 } from './service-analysis-schema';
 
+// Re-export printyx-client schemas
+export {
+  clientRegistrations,
+  clientCollectedMetrics,
+  monitoredDevices,
+  clientActivityLogs,
+  tonerAlerts,
+  oidMappings,
+  deviceMeterHistory,
+  clientRegistrationsRelations,
+  monitoredDevicesRelations,
+  clientCollectedMetricsRelations,
+  tonerAlertsRelations,
+} from './printyx-client-schema';
+
+export type {
+  ClientRegistration,
+  NewClientRegistration,
+  ClientCollectedMetric,
+  NewClientCollectedMetric,
+  MonitoredDevice,
+  NewMonitoredDevice,
+  ClientActivityLog,
+  NewClientActivityLog,
+  TonerAlert,
+  NewTonerAlert,
+  OidMapping,
+  NewOidMapping,
+  DeviceMeterHistory,
+  NewDeviceMeterHistory,
+} from './printyx-client-schema';
+
 export type {
   ServiceCallAnalysis,
   ServicePartsUsed,
@@ -5866,33 +5898,8 @@ export type InsertProposalAnalytics = typeof proposalAnalytics.$inferInsert;
 export type ProposalApproval = typeof proposalApprovals.$inferSelect;
 export type InsertProposalApproval = typeof proposalApprovals.$inferInsert;
 
-// ============= PRICING SYSTEM =============
-
-// Company Pricing Settings - Global markup rules
-export const companyPricingSettings = pgTable('company_pricing_settings', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-
-  // Global Settings
-  defaultMarkupPercentage: decimal('default_markup_percentage', {
-    precision: 5,
-    scale: 2,
-  })
-    .notNull()
-    .default('20.00'),
-  allowSalespersonOverride: boolean('allow_salesperson_override').default(true),
-  minimumGrossProfitPercentage: decimal('minimum_gross_profit_percentage', {
-    precision: 5,
-    scale: 2,
-  }).default('5.00'),
-
-  // Settings
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+// NOTE: PRICING SYSTEM tables are imported from product-pricing-schema.ts
+// See lines 135-148 for re-exports
 
 // Product Pricing - Individual product pricing overrides
 export const productPricing = pgTable('product_pricing', {
@@ -6272,43 +6279,8 @@ export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
 export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
 
-// Pricing System Types
-export type CompanyPricingSetting = typeof companyPricingSettings.$inferSelect;
-export type InsertCompanyPricingSetting = typeof companyPricingSettings.$inferInsert;
-
-export type ProductPricing = typeof productPricing.$inferSelect;
-export type InsertProductPricing = typeof productPricing.$inferInsert;
-
-export type QuotePricing = typeof quotePricing.$inferSelect;
-export type InsertQuotePricing = typeof quotePricing.$inferInsert;
-
-export type QuotePricingLineItem = typeof quotePricingLineItems.$inferSelect;
-export type InsertQuotePricingLineItem = typeof quotePricingLineItems.$inferInsert;
-
-// Pricing Schema Validations
-export const insertCompanyPricingSettingSchema = createInsertSchema(companyPricingSettings).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertProductPricingSchema = createInsertSchema(productPricing).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertQuotePricingSchema = createInsertSchema(quotePricing).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertQuotePricingLineItemSchema = createInsertSchema(quotePricingLineItems).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// NOTE: Pricing System Types and Validations are imported from product-pricing-schema.ts
+// See lines 150-162 for type re-exports
 
 // Accounting Schema Validations
 export const insertVendorSchema = createInsertSchema(vendors).omit({
