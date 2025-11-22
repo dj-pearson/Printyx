@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import {
   userProvisioningTemplates,
   userLifecycleEvents,
@@ -90,16 +90,15 @@ export interface ImpersonateUserParams {
 // ========== USER PROVISIONING SERVICE ==========
 
 export class UserLifecycleService {
-
   // ==================== PROVISIONING TEMPLATES ====================
 
   /**
    * Create a new user provisioning template
    */
-  static async createTemplate(data: InsertUserProvisioningTemplate): Promise<UserProvisioningTemplate> {
-    const [template] = await db.insert(userProvisioningTemplates)
-      .values(data)
-      .returning();
+  static async createTemplate(
+    data: InsertUserProvisioningTemplate,
+  ): Promise<UserProvisioningTemplate> {
+    const [template] = await db.insert(userProvisioningTemplates).values(data).returning();
 
     return template;
   }
@@ -112,7 +111,7 @@ export class UserLifecycleService {
       return await db.query.userProvisioningTemplates.findMany({
         where: and(
           eq(userProvisioningTemplates.tenantId, tenantId),
-          eq(userProvisioningTemplates.isActive, true)
+          eq(userProvisioningTemplates.isActive, true),
         ),
         orderBy: [desc(userProvisioningTemplates.usageCount)],
       });
@@ -122,7 +121,7 @@ export class UserLifecycleService {
     return await db.query.userProvisioningTemplates.findMany({
       where: and(
         sql`${userProvisioningTemplates.tenantId} IS NULL`,
-        eq(userProvisioningTemplates.isActive, true)
+        eq(userProvisioningTemplates.isActive, true),
       ),
       orderBy: [desc(userProvisioningTemplates.usageCount)],
     });
@@ -142,7 +141,10 @@ export class UserLifecycleService {
   /**
    * Get default template for a category
    */
-  static async getDefaultTemplate(category: string, tenantId?: string): Promise<UserProvisioningTemplate | null> {
+  static async getDefaultTemplate(
+    category: string,
+    tenantId?: string,
+  ): Promise<UserProvisioningTemplate | null> {
     const template = await db.query.userProvisioningTemplates.findFirst({
       where: and(
         eq(userProvisioningTemplates.category, category),
@@ -150,7 +152,7 @@ export class UserLifecycleService {
         eq(userProvisioningTemplates.isActive, true),
         tenantId
           ? eq(userProvisioningTemplates.tenantId, tenantId)
-          : sql`${userProvisioningTemplates.tenantId} IS NULL`
+          : sql`${userProvisioningTemplates.tenantId} IS NULL`,
       ),
     });
 
@@ -178,7 +180,8 @@ export class UserLifecycleService {
     }
 
     // Create lifecycle event
-    const [lifecycleEvent] = await db.insert(userLifecycleEvents)
+    const [lifecycleEvent] = await db
+      .insert(userLifecycleEvents)
       .values({
         tenantId,
         userId: '', // Will update after user creation
@@ -202,7 +205,8 @@ export class UserLifecycleService {
       const userId = `user_${Date.now()}`;
 
       // Update lifecycle event with userId
-      await db.update(userLifecycleEvents)
+      await db
+        .update(userLifecycleEvents)
         .set({ userId })
         .where(eq(userLifecycleEvents.id, lifecycleEvent.id));
 
@@ -211,7 +215,8 @@ export class UserLifecycleService {
         await this.applyTemplate(userId, template, tenantId);
 
         // Update template usage stats
-        await db.update(userProvisioningTemplates)
+        await db
+          .update(userProvisioningTemplates)
           .set({
             usageCount: sql`${userProvisioningTemplates.usageCount} + 1`,
             lastUsedAt: new Date(),
@@ -221,7 +226,8 @@ export class UserLifecycleService {
 
       // Create onboarding checklist
       const checklistItems = this.generateChecklistItems(template);
-      const [checklist] = await db.insert(onboardingChecklists)
+      const [checklist] = await db
+        .insert(onboardingChecklists)
         .values({
           tenantId,
           userId,
@@ -242,7 +248,8 @@ export class UserLifecycleService {
       }
 
       // Update lifecycle event to completed
-      await db.update(userLifecycleEvents)
+      await db
+        .update(userLifecycleEvents)
         .set({
           status: 'completed',
           completedAt: new Date(),
@@ -273,10 +280,10 @@ export class UserLifecycleService {
         lifecycleEventId: lifecycleEvent.id,
         checklistId: checklist.id,
       };
-
     } catch (error) {
       // Mark lifecycle event as failed
-      await db.update(userLifecycleEvents)
+      await db
+        .update(userLifecycleEvents)
         .set({
           status: 'failed',
           failedAt: new Date(),
@@ -295,7 +302,7 @@ export class UserLifecycleService {
   private static async applyTemplate(
     userId: string,
     template: UserProvisioningTemplate,
-    tenantId: string
+    tenantId: string,
   ): Promise<void> {
     // TODO: Implement actual role and permission assignment
     // This would involve:
@@ -397,9 +404,11 @@ export class UserLifecycleService {
    * Calculate target completion date based on template
    */
   private static calculateTargetCompletion(template: UserProvisioningTemplate | null): Date {
-    const days = template?.onboardingSteps?.reduce((max, step) =>
-      Math.max(max, step.daysToComplete || 0), 7
-    ) || 7;
+    const days =
+      template?.onboardingSteps?.reduce(
+        (max, step) => Math.max(max, step.daysToComplete || 0),
+        7,
+      ) || 7;
 
     const target = new Date();
     target.setDate(target.getDate() + days);
@@ -415,7 +424,7 @@ export class UserLifecycleService {
   }> {
     const checkInDays = template?.checkInDays || [3, 7, 30];
 
-    return checkInDays.map(day => {
+    return checkInDays.map((day) => {
       const scheduledDate = new Date();
       scheduledDate.setDate(scheduledDate.getDate() + day);
       return {
@@ -443,7 +452,7 @@ export class UserLifecycleService {
   private static async sendWelcomeEmail(
     email: string,
     name: string,
-    template: UserProvisioningTemplate | null
+    template: UserProvisioningTemplate | null,
   ): Promise<void> {
     const emailTemplate = template?.welcomeEmailTemplate || 'default-welcome';
 
@@ -477,7 +486,8 @@ export class UserLifecycleService {
     const { tenantId, templateId, users: userList, triggeredBy } = params;
 
     // Create bulk operation record
-    const [bulkOp] = await db.insert(bulkUserOperations)
+    const [bulkOp] = await db
+      .insert(bulkUserOperations)
       .values({
         tenantId,
         operationType: 'import',
@@ -518,7 +528,6 @@ export class UserLifecycleService {
           status: 'success',
         });
         successCount++;
-
       } catch (error) {
         results.push({
           row: i + 1,
@@ -529,7 +538,8 @@ export class UserLifecycleService {
       }
 
       // Update progress
-      await db.update(bulkUserOperations)
+      await db
+        .update(bulkUserOperations)
         .set({
           processedRecords: i + 1,
           successfulRecords: successCount,
@@ -540,7 +550,8 @@ export class UserLifecycleService {
     }
 
     // Finalize operation
-    await db.update(bulkUserOperations)
+    await db
+      .update(bulkUserOperations)
       .set({
         status: 'completed',
         completedAt: new Date(),
@@ -567,7 +578,8 @@ export class UserLifecycleService {
     const { userId, tenantId, reason, lastWorkingDay, transferOwnershipTo, initiatedBy } = params;
 
     // Create lifecycle event
-    const [lifecycleEvent] = await db.insert(userLifecycleEvents)
+    const [lifecycleEvent] = await db
+      .insert(userLifecycleEvents)
       .values({
         tenantId,
         userId,
@@ -586,7 +598,8 @@ export class UserLifecycleService {
       .returning();
 
     // Create offboarding workflow
-    const [workflow] = await db.insert(offboardingWorkflows)
+    const [workflow] = await db
+      .insert(offboardingWorkflows)
       .values({
         tenantId,
         userId,
@@ -668,7 +681,8 @@ export class UserLifecycleService {
       await this.updateWorkflowStep(workflowId, 7, true);
 
       // Mark workflow as completed
-      await db.update(offboardingWorkflows)
+      await db
+        .update(offboardingWorkflows)
         .set({
           status: 'completed',
           completedAt: new Date(),
@@ -682,7 +696,8 @@ export class UserLifecycleService {
 
       // Update lifecycle event
       if (workflow.lifecycleEventId) {
-        await db.update(userLifecycleEvents)
+        await db
+          .update(userLifecycleEvents)
           .set({
             status: 'completed',
             completedAt: new Date(),
@@ -690,17 +705,18 @@ export class UserLifecycleService {
           })
           .where(eq(userLifecycleEvents.id, workflow.lifecycleEventId));
       }
-
     } catch (error) {
       // Mark workflow as failed
-      await db.update(offboardingWorkflows)
+      await db
+        .update(offboardingWorkflows)
         .set({
           status: 'failed',
         })
         .where(eq(offboardingWorkflows.id, workflowId));
 
       if (workflow.lifecycleEventId) {
-        await db.update(userLifecycleEvents)
+        await db
+          .update(userLifecycleEvents)
           .set({
             status: 'failed',
             failedAt: new Date(),
@@ -720,7 +736,7 @@ export class UserLifecycleService {
     workflowId: string,
     stepIndex: number,
     completed: boolean,
-    notes?: any
+    notes?: any,
   ): Promise<void> {
     const workflow = await db.query.offboardingWorkflows.findFirst({
       where: eq(offboardingWorkflows.id, workflowId),
@@ -738,7 +754,8 @@ export class UserLifecycleService {
       notes: notes ? JSON.stringify(notes) : undefined,
     };
 
-    await db.update(offboardingWorkflows)
+    await db
+      .update(offboardingWorkflows)
       .set({
         complianceChecklist: checklist,
       })
@@ -751,7 +768,8 @@ export class UserLifecycleService {
    * Create quarterly access review
    */
   static async createAccessReview(params: CreateAccessReviewParams): Promise<AccessReview> {
-    const { tenantId, managerId, reviewPeriod, reviewYear, reviewQuarter, organizationalUnitId } = params;
+    const { tenantId, managerId, reviewPeriod, reviewYear, reviewQuarter, organizationalUnitId } =
+      params;
 
     // Get users count for this manager/org unit
     // TODO: Implement actual user count logic based on org hierarchy
@@ -760,7 +778,8 @@ export class UserLifecycleService {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30); // 30 days to complete
 
-    const [review] = await db.insert(accessReviews)
+    const [review] = await db
+      .insert(accessReviews)
       .values({
         tenantId,
         reviewPeriod,
@@ -783,12 +802,15 @@ export class UserLifecycleService {
   /**
    * Get pending access reviews for a manager
    */
-  static async getPendingAccessReviews(managerId: string, tenantId: string): Promise<AccessReview[]> {
+  static async getPendingAccessReviews(
+    managerId: string,
+    tenantId: string,
+  ): Promise<AccessReview[]> {
     return await db.query.accessReviews.findMany({
       where: and(
         eq(accessReviews.tenantId, tenantId),
         eq(accessReviews.managerId, managerId),
-        inArray(accessReviews.status, ['not_started', 'in_progress', 'overdue'])
+        inArray(accessReviews.status, ['not_started', 'in_progress', 'overdue']),
       ),
       orderBy: [desc(accessReviews.dueDate)],
     });
@@ -803,9 +825,11 @@ export class UserLifecycleService {
     sessionId: string;
     expiresAt: Date;
   }> {
-    const { adminId, impersonatedUserId, tenantId, reason, ticketNumber, ipAddress, userAgent } = params;
+    const { adminId, impersonatedUserId, tenantId, reason, ticketNumber, ipAddress, userAgent } =
+      params;
 
-    const [session] = await db.insert(userImpersonationSessions)
+    const [session] = await db
+      .insert(userImpersonationSessions)
       .values({
         tenantId,
         adminId,
@@ -861,7 +885,8 @@ export class UserLifecycleService {
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - session.startedAt.getTime()) / 60000);
 
-    await db.update(userImpersonationSessions)
+    await db
+      .update(userImpersonationSessions)
       .set({
         isActive: false,
         endedAt: endTime,

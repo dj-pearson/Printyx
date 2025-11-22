@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import {
   tenantOnboardingTemplates,
   tenantOnboardingSessions,
@@ -83,16 +83,15 @@ export interface CloneTenantParams {
 // ========== TENANT ONBOARDING SERVICE ==========
 
 export class TenantOnboardingService {
-
   // ==================== TEMPLATES ====================
 
   /**
    * Create onboarding template
    */
-  static async createTemplate(data: InsertTenantOnboardingTemplate): Promise<TenantOnboardingTemplate> {
-    const [template] = await db.insert(tenantOnboardingTemplates)
-      .values(data)
-      .returning();
+  static async createTemplate(
+    data: InsertTenantOnboardingTemplate,
+  ): Promise<TenantOnboardingTemplate> {
+    const [template] = await db.insert(tenantOnboardingTemplates).values(data).returning();
 
     return template;
   }
@@ -102,7 +101,7 @@ export class TenantOnboardingService {
    */
   static async getTemplates(
     industry?: string,
-    companySize?: string
+    companySize?: string,
   ): Promise<TenantOnboardingTemplate[]> {
     const conditions = [eq(tenantOnboardingTemplates.isActive, true)];
 
@@ -125,14 +124,14 @@ export class TenantOnboardingService {
    */
   static async getDefaultTemplate(
     industry: string,
-    companySize: string
+    companySize: string,
   ): Promise<TenantOnboardingTemplate | null> {
     const template = await db.query.tenantOnboardingTemplates.findFirst({
       where: and(
         eq(tenantOnboardingTemplates.industry, industry as any),
         eq(tenantOnboardingTemplates.companySize, companySize as any),
         eq(tenantOnboardingTemplates.isDefault, true),
-        eq(tenantOnboardingTemplates.isActive, true)
+        eq(tenantOnboardingTemplates.isActive, true),
       ),
     });
 
@@ -170,7 +169,8 @@ export class TenantOnboardingService {
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     // Create session
-    const [session] = await db.insert(tenantOnboardingSessions)
+    const [session] = await db
+      .insert(tenantOnboardingSessions)
       .values({
         sessionToken,
         templateId: templateId || null,
@@ -187,7 +187,8 @@ export class TenantOnboardingService {
 
     // Update template usage
     if (template) {
-      await db.update(tenantOnboardingTemplates)
+      await db
+        .update(tenantOnboardingTemplates)
         .set({
           usageCount: sql`${tenantOnboardingTemplates.usageCount} + 1`,
           lastUsed: new Date(),
@@ -230,10 +231,11 @@ export class TenantOnboardingService {
 
     if (validationErrors.length > 0) {
       // Store validation errors
-      await db.update(tenantOnboardingSessions)
+      await db
+        .update(tenantOnboardingSessions)
         .set({
           validationErrors: {
-            ...session.validationErrors as any || {},
+            ...((session.validationErrors as any) || {}),
             [stepNumber]: validationErrors,
           },
         })
@@ -248,12 +250,12 @@ export class TenantOnboardingService {
 
     // Update step data
     const updatedStepData = {
-      ...session.stepData as any || {},
+      ...((session.stepData as any) || {}),
       [`step${stepNumber}_${this.getStepName(stepNumber)}`]: stepData,
     };
 
     // Add to completed steps
-    const completedSteps = session.stepsCompleted as number[] || [];
+    const completedSteps = (session.stepsCompleted as number[]) || [];
     if (!completedSteps.includes(stepNumber)) {
       completedSteps.push(stepNumber);
     }
@@ -265,7 +267,8 @@ export class TenantOnboardingService {
     const nextStep = stepNumber < 8 ? stepNumber + 1 : stepNumber;
 
     // Update session
-    const [updatedSession] = await db.update(tenantOnboardingSessions)
+    const [updatedSession] = await db
+      .update(tenantOnboardingSessions)
       .set({
         stepData: updatedStepData,
         stepsCompleted: completedSteps,
@@ -408,7 +411,7 @@ export class TenantOnboardingService {
     }
 
     // Verify all steps completed
-    const completedSteps = session.stepsCompleted as number[] || [];
+    const completedSteps = (session.stepsCompleted as number[]) || [];
     if (completedSteps.length < 8) {
       throw new Error(`Not all steps completed. Completed: ${completedSteps.length}/8`);
     }
@@ -423,7 +426,8 @@ export class TenantOnboardingService {
     const setupReport = this.generateSetupReport(session, healthScore);
 
     // Update session
-    await db.update(tenantOnboardingSessions)
+    await db
+      .update(tenantOnboardingSessions)
       .set({
         status: 'completed',
         tenantId,
@@ -435,10 +439,11 @@ export class TenantOnboardingService {
     // Update template analytics
     if (session.templateId) {
       const duration = Math.round(
-        (new Date().getTime() - session.startedAt.getTime()) / (1000 * 60)
+        (new Date().getTime() - session.startedAt.getTime()) / (1000 * 60),
       );
 
-      await db.update(tenantOnboardingTemplates)
+      await db
+        .update(tenantOnboardingTemplates)
         .set({
           avgOnboardingTime: sql`
             (COALESCE(${tenantOnboardingTemplates.avgOnboardingTime}, 0) *
@@ -466,17 +471,15 @@ export class TenantOnboardingService {
    */
   private static generateSetupReport(
     session: TenantOnboardingSession,
-    healthScore: TenantHealthScore
+    healthScore: TenantHealthScore,
   ): any {
-    const stepData = session.stepData as any || {};
+    const stepData = (session.stepData as any) || {};
 
     return {
       sessionId: session.id,
       templateUsed: session.templateId,
       completedAt: new Date().toISOString(),
-      duration: Math.round(
-        (new Date().getTime() - session.startedAt.getTime()) / (1000 * 60)
-      ),
+      duration: Math.round((new Date().getTime() - session.startedAt.getTime()) / (1000 * 60)),
       companyInfo: stepData.step1_companyInfo,
       organizationalStructure: {
         regionalOffices: stepData.step2_orgStructure?.regionalOffices?.length || 0,
@@ -511,7 +514,8 @@ export class TenantOnboardingService {
     const steps = this.getIntegrationSteps(integrationType);
 
     // Create setup log
-    const [log] = await db.insert(integrationSetupLogs)
+    const [log] = await db
+      .insert(integrationSetupLogs)
       .values({
         onboardingSessionId: sessionId || null,
         tenantId: tenantId || null,
@@ -534,7 +538,7 @@ export class TenantOnboardingService {
 
         // TODO: Implement actual integration setup
         // Placeholder delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         await this.updateSetupStep(log.id, i, 'completed');
       }
@@ -543,17 +547,17 @@ export class TenantOnboardingService {
       const testResults = await this.testIntegration(integrationType, configuration);
 
       // Update log with results
-      await db.update(integrationSetupLogs)
+      await db
+        .update(integrationSetupLogs)
         .set({
-          status: testResults.connectionTest?.passed && testResults.authTest?.passed
-            ? 'active'
-            : 'failed',
+          status:
+            testResults.connectionTest?.passed && testResults.authTest?.passed
+              ? 'active'
+              : 'failed',
           testsPassed: testResults.connectionTest?.passed && testResults.authTest?.passed,
           testResults,
           completedAt: new Date(),
-          setupDuration: Math.round(
-            (new Date().getTime() - log.startedAt.getTime()) / (1000 * 60)
-          ),
+          setupDuration: Math.round((new Date().getTime() - log.startedAt.getTime()) / (1000 * 60)),
         })
         .where(eq(integrationSetupLogs.id, log.id));
 
@@ -561,9 +565,9 @@ export class TenantOnboardingService {
         logId: log.id,
         testResults,
       };
-
     } catch (error) {
-      await db.update(integrationSetupLogs)
+      await db
+        .update(integrationSetupLogs)
         .set({
           status: 'failed',
           lastError: error instanceof Error ? error.message : 'Unknown error',
@@ -634,7 +638,7 @@ export class TenantOnboardingService {
   private static async updateSetupStep(
     logId: string,
     stepIndex: number,
-    status: 'pending' | 'in_progress' | 'completed' | 'failed'
+    status: 'pending' | 'in_progress' | 'completed' | 'failed',
   ): Promise<void> {
     const log = await db.query.integrationSetupLogs.findFirst({
       where: eq(integrationSetupLogs.id, logId),
@@ -650,7 +654,8 @@ export class TenantOnboardingService {
       completedAt: status === 'completed' ? new Date().toISOString() : undefined,
     };
 
-    await db.update(integrationSetupLogs)
+    await db
+      .update(integrationSetupLogs)
       .set({ setupSteps: steps })
       .where(eq(integrationSetupLogs.id, logId));
   }
@@ -658,10 +663,7 @@ export class TenantOnboardingService {
   /**
    * Test integration connection
    */
-  private static async testIntegration(
-    integrationType: string,
-    configuration: any
-  ): Promise<any> {
+  private static async testIntegration(integrationType: string, configuration: any): Promise<any> {
     // TODO: Implement actual integration testing
     return {
       connectionTest: { passed: true, message: 'Connection successful' },
@@ -706,7 +708,7 @@ export class TenantOnboardingService {
 
       if (rowErrors.length > 0) {
         invalidRows++;
-        rowErrors.forEach(error => {
+        rowErrors.forEach((error) => {
           errors.push({
             row: index + 1,
             column: error.column,
@@ -735,7 +737,8 @@ export class TenantOnboardingService {
     const bulkFixSuggestions = this.generateBulkFixSuggestions(errors, warnings);
 
     // Create validation record
-    const [validation] = await db.insert(dataImportValidations)
+    const [validation] = await db
+      .insert(dataImportValidations)
       .values({
         onboardingSessionId: sessionId || null,
         tenantId: tenantId || null,
@@ -762,17 +765,14 @@ export class TenantOnboardingService {
       validRows,
       invalidRows,
       errors,
-      canProceed: invalidRows === 0 || (validRows / csvData.length) > 0.8, // 80% valid threshold
+      canProceed: invalidRows === 0 || validRows / csvData.length > 0.8, // 80% valid threshold
     };
   }
 
   /**
    * Auto-map CSV columns to database fields
    */
-  private static async autoMapColumns(
-    dataType: string,
-    detectedColumns: string[]
-  ): Promise<any> {
+  private static async autoMapColumns(dataType: string, detectedColumns: string[]): Promise<any> {
     const mappings: any = {};
 
     // Field mapping definitions
@@ -808,12 +808,12 @@ export class TenantOnboardingService {
 
     const typeMap = fieldMaps[dataType] || {};
 
-    detectedColumns.forEach(column => {
+    detectedColumns.forEach((column) => {
       const columnLower = column.toLowerCase().trim();
 
       // Find best match
       for (const [dbField, variants] of Object.entries(typeMap)) {
-        if (variants.some(v => columnLower.includes(v) || v.includes(columnLower))) {
+        if (variants.some((v) => columnLower.includes(v) || v.includes(columnLower))) {
           mappings[column] = {
             mappedTo: dbField,
             confidence: this.calculateMappingConfidence(columnLower, variants),
@@ -844,7 +844,7 @@ export class TenantOnboardingService {
     if (variants.includes(column)) return 100;
 
     // Contains match = 90%
-    if (variants.some(v => column.includes(v) || v.includes(column))) {
+    if (variants.some((v) => column.includes(v) || v.includes(column))) {
       return 90;
     }
 
@@ -859,7 +859,8 @@ export class TenantOnboardingService {
     if (fieldName.includes('email') || fieldName.includes('Email')) return 'email';
     if (fieldName.includes('phone') || fieldName.includes('Phone')) return 'phone';
     if (fieldName.includes('date') || fieldName.includes('Date')) return 'date';
-    if (fieldName.includes('price') || fieldName.includes('cost') || fieldName.includes('amount')) return 'currency';
+    if (fieldName.includes('price') || fieldName.includes('cost') || fieldName.includes('amount'))
+      return 'currency';
     if (fieldName.includes('quantity') || fieldName.includes('count')) return 'number';
     return 'string';
   }
@@ -870,7 +871,7 @@ export class TenantOnboardingService {
   private static validateDataRow(
     dataType: string,
     row: any,
-    columnMappings: any
+    columnMappings: any,
   ): Array<{ column: string; type: string; message: string }> {
     const errors: Array<{ column: string; type: string; message: string }> = [];
 
@@ -878,9 +879,9 @@ export class TenantOnboardingService {
     const requiredFields = this.getRequiredFields(dataType);
 
     // Check required fields
-    requiredFields.forEach(field => {
+    requiredFields.forEach((field) => {
       const column = Object.keys(columnMappings).find(
-        col => columnMappings[col].mappedTo === field
+        (col) => columnMappings[col].mappedTo === field,
       );
 
       if (column && (!row[column] || row[column].toString().trim() === '')) {
@@ -965,17 +966,13 @@ export class TenantOnboardingService {
   /**
    * Check for duplicate rows
    */
-  private static checkDuplicate(
-    allRows: any[],
-    currentRow: any,
-    currentIndex: number
-  ): number {
+  private static checkDuplicate(allRows: any[], currentRow: any, currentIndex: number): number {
     for (let i = 0; i < currentIndex; i++) {
       const prevRow = allRows[i];
 
       // Simple duplicate check - could be more sophisticated
       const matchingFields = Object.keys(currentRow).filter(
-        key => currentRow[key] === prevRow[key]
+        (key) => currentRow[key] === prevRow[key],
       );
 
       if (matchingFields.length >= Object.keys(currentRow).length * 0.8) {
@@ -994,7 +991,7 @@ export class TenantOnboardingService {
 
     // Group errors by type
     const errorsByType: { [key: string]: any[] } = {};
-    errors.forEach(error => {
+    errors.forEach((error) => {
       if (!errorsByType[error.errorType]) {
         errorsByType[error.errorType] = [];
       }
@@ -1004,7 +1001,7 @@ export class TenantOnboardingService {
     // Generate suggestions
     if (errorsByType.invalid_format?.some((e: any) => e.column.toLowerCase().includes('phone'))) {
       const phoneErrors = errorsByType.invalid_format.filter((e: any) =>
-        e.column.toLowerCase().includes('phone')
+        e.column.toLowerCase().includes('phone'),
       );
 
       suggestions.push({
@@ -1054,10 +1051,10 @@ export class TenantOnboardingService {
     // Calculate overall score (weighted average)
     const overallScore = Math.round(
       isolationScore * 0.3 +
-      accessScore * 0.2 +
-      integrationScore * 0.2 +
-      dataQualityScore * 0.15 +
-      performanceScore * 0.15
+        accessScore * 0.2 +
+        integrationScore * 0.2 +
+        dataQualityScore * 0.15 +
+        performanceScore * 0.15,
     );
 
     // Determine grades
@@ -1080,11 +1077,14 @@ export class TenantOnboardingService {
       ...dataQualityChecks,
       ...performanceChecks,
     ];
-    const criticalIssues = allChecks.filter(c => !c.passed && c.check.includes('Critical')).length;
-    const warnings = allChecks.filter(c => !c.passed && !c.check.includes('Critical')).length;
+    const criticalIssues = allChecks.filter(
+      (c) => !c.passed && c.check.includes('Critical'),
+    ).length;
+    const warnings = allChecks.filter((c) => !c.passed && !c.check.includes('Critical')).length;
 
     // Create or update health score
-    const [healthScore] = await db.insert(tenantHealthScores)
+    const [healthScore] = await db
+      .insert(tenantHealthScores)
       .values({
         tenantId,
         overallScore,
@@ -1110,8 +1110,10 @@ export class TenantOnboardingService {
         criticalIssues,
         warnings,
         checksPerformed: allChecks.length,
-        checksPassed: allChecks.filter(c => c.passed).length,
-        checksPassRate: Math.round((allChecks.filter(c => c.passed).length / allChecks.length) * 100),
+        checksPassed: allChecks.filter((c) => c.passed).length,
+        checksPassRate: Math.round(
+          (allChecks.filter((c) => c.passed).length / allChecks.length) * 100,
+        ),
         nextCalculation: this.getNextCalculationDate(),
       })
       .returning()
@@ -1136,8 +1138,10 @@ export class TenantOnboardingService {
           criticalIssues,
           warnings,
           checksPerformed: allChecks.length,
-          checksPassed: allChecks.filter(c => c.passed).length,
-          checksPassRate: Math.round((allChecks.filter(c => c.passed).length / allChecks.length) * 100),
+          checksPassed: allChecks.filter((c) => c.passed).length,
+          checksPassRate: Math.round(
+            (allChecks.filter((c) => c.passed).length / allChecks.length) * 100,
+          ),
           calculatedAt: new Date(),
         },
       });
@@ -1179,7 +1183,7 @@ export class TenantOnboardingService {
       limit: 10,
     });
 
-    return integrations.map(integration => ({
+    return integrations.map((integration) => ({
       integration: integration.integrationType,
       check: 'Connection active',
       passed: integration.status === 'active',
@@ -1217,14 +1221,16 @@ export class TenantOnboardingService {
   private static calculateComponentScore(checks: any[]): number {
     if (checks.length === 0) return 100;
 
-    const passedChecks = checks.filter(c => c.passed).length;
+    const passedChecks = checks.filter((c) => c.passed).length;
     return Math.round((passedChecks / checks.length) * 100);
   }
 
   /**
    * Get health grade from score
    */
-  private static getHealthGrade(score: number): 'excellent' | 'good' | 'fair' | 'poor' | 'critical' {
+  private static getHealthGrade(
+    score: number,
+  ): 'excellent' | 'good' | 'fair' | 'poor' | 'critical' {
     if (score >= 90) return 'excellent';
     if (score >= 75) return 'good';
     if (score >= 60) return 'fair';
@@ -1282,7 +1288,8 @@ export class TenantOnboardingService {
 
     const targetTenantId = `tenant_${Date.now()}`;
 
-    const [operation] = await db.insert(tenantCloneOperations)
+    const [operation] = await db
+      .insert(tenantCloneOperations)
       .values({
         sourceTenantId,
         targetTenantId,
