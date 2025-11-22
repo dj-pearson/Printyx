@@ -665,4 +665,223 @@ router.get('/dashboard', async (req: Request, res: Response) => {
   }
 });
 
+// ==================== Assignment Groups ====================
+
+// GET /api/assignment-groups - Get all assignment groups for tenant
+router.get('/assignment-groups', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const groups = await storage.getAssignmentGroups(user.tenantId);
+    res.json(groups);
+  } catch (error) {
+    console.error('Get assignment groups error:', error);
+    res.status(500).json({ error: 'Failed to fetch assignment groups' });
+  }
+});
+
+// GET /api/assignment-groups/:id - Get a specific assignment group
+router.get('/assignment-groups/:id', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const group = await storage.getAssignmentGroup(req.params.id);
+    if (!group || group.tenantId !== user.tenantId) {
+      return res.status(404).json({ error: 'Assignment group not found' });
+    }
+
+    res.json(group);
+  } catch (error) {
+    console.error('Get assignment group error:', error);
+    res.status(500).json({ error: 'Failed to fetch assignment group' });
+  }
+});
+
+// POST /api/assignment-groups - Create an assignment group
+router.post('/assignment-groups', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { name, description, type, members } = req.body;
+
+    if (!name || !type) {
+      return res.status(400).json({ error: 'Name and type are required' });
+    }
+
+    const group = await storage.createAssignmentGroup({
+      tenantId: user.tenantId,
+      name,
+      description: description || null,
+      type,
+      members: members || [],
+      isActive: true,
+      createdBy: user.id,
+    });
+
+    res.status(201).json(group);
+  } catch (error) {
+    console.error('Create assignment group error:', error);
+    res.status(500).json({ error: 'Failed to create assignment group' });
+  }
+});
+
+// PUT /api/assignment-groups/:id - Update an assignment group
+router.put('/assignment-groups/:id', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const existing = await storage.getAssignmentGroup(req.params.id);
+    if (!existing || existing.tenantId !== user.tenantId) {
+      return res.status(404).json({ error: 'Assignment group not found' });
+    }
+
+    const { name, description, type, members, isActive } = req.body;
+
+    const updated = await storage.updateAssignmentGroup(req.params.id, {
+      name,
+      description,
+      type,
+      members,
+      isActive,
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update assignment group error:', error);
+    res.status(500).json({ error: 'Failed to update assignment group' });
+  }
+});
+
+// DELETE /api/assignment-groups/:id - Delete an assignment group
+router.delete('/assignment-groups/:id', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const group = await storage.getAssignmentGroup(req.params.id);
+    if (!group || group.tenantId !== user.tenantId) {
+      return res.status(404).json({ error: 'Assignment group not found' });
+    }
+
+    await storage.deleteAssignmentGroup(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete assignment group error:', error);
+    res.status(500).json({ error: 'Failed to delete assignment group' });
+  }
+});
+
+// ==================== Workflow Approvals ====================
+
+// GET /api/approvals - Get approvals for current user
+router.get('/approvals', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { status } = req.query;
+    const approvals = await storage.getUserApprovals(user.id, user.tenantId, status as string);
+    res.json(approvals);
+  } catch (error) {
+    console.error('Get approvals error:', error);
+    res.status(500).json({ error: 'Failed to fetch approvals' });
+  }
+});
+
+// GET /api/approvals/:id - Get a specific approval
+router.get('/approvals/:id', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const approval = await storage.getWorkflowApproval(req.params.id);
+    if (!approval || approval.tenantId !== user.tenantId) {
+      return res.status(404).json({ error: 'Approval not found' });
+    }
+
+    res.json(approval);
+  } catch (error) {
+    console.error('Get approval error:', error);
+    res.status(500).json({ error: 'Failed to fetch approval' });
+  }
+});
+
+// POST /api/approvals/:id/respond - Approve or reject an approval request
+router.post('/approvals/:id/respond', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { approved, comment } = req.body;
+
+    if (typeof approved !== 'boolean') {
+      return res.status(400).json({ error: 'Approved field is required and must be boolean' });
+    }
+
+    const approval = await storage.getWorkflowApproval(req.params.id);
+    if (!approval || approval.tenantId !== user.tenantId) {
+      return res.status(404).json({ error: 'Approval not found' });
+    }
+
+    // Check if user is authorized to approve
+    const canApprove =
+      approval.assignedToUserId === user.id ||
+      await storage.isUserInGroup(user.id, approval.assignedToGroupId);
+
+    if (!canApprove) {
+      return res.status(403).json({ error: 'You are not authorized to respond to this approval' });
+    }
+
+    if (approval.status !== 'pending') {
+      return res.status(400).json({ error: 'Approval has already been responded to' });
+    }
+
+    // Process the approval response
+    const { processApprovalResponse } = await import('../services/workflow-execution-service');
+    await processApprovalResponse(req.params.id, user.id, approved, comment);
+
+    const updated = await storage.getWorkflowApproval(req.params.id);
+    res.json(updated);
+  } catch (error) {
+    console.error('Respond to approval error:', error);
+    res.status(500).json({ error: 'Failed to respond to approval' });
+  }
+});
+
+// GET /api/approvals/execution/:executionId - Get approvals for a workflow execution
+router.get('/approvals/execution/:executionId', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const approvals = await storage.getExecutionApprovals(req.params.executionId, user.tenantId);
+    res.json(approvals);
+  } catch (error) {
+    console.error('Get execution approvals error:', error);
+    res.status(500).json({ error: 'Failed to fetch execution approvals' });
+  }
+});
+
 export default router;

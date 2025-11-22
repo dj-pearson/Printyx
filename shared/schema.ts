@@ -5900,6 +5900,33 @@ export type InsertProposalApproval = typeof proposalApprovals.$inferInsert;
 
 // NOTE: PRICING SYSTEM tables are imported from product-pricing-schema.ts
 // See lines 135-148 for re-exports
+// ============= PRICING SYSTEM =============
+
+// Company Pricing Settings - Global markup rules (exported from product-pricing-schema.ts)
+const companyPricingSettings_duplicate = pgTable('company_pricing_settings', {
+  id: varchar('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar('tenant_id').notNull(),
+
+  // Global Settings
+  defaultMarkupPercentage: decimal('default_markup_percentage', {
+    precision: 5,
+    scale: 2,
+  })
+    .notNull()
+    .default('20.00'),
+  allowSalespersonOverride: boolean('allow_salesperson_override').default(true),
+  minimumGrossProfitPercentage: decimal('minimum_gross_profit_percentage', {
+    precision: 5,
+    scale: 2,
+  }).default('5.00'),
+
+  // Settings
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
 
 // Product Pricing - Individual product pricing overrides
 export const productPricing = pgTable('product_pricing', {
@@ -6281,6 +6308,43 @@ export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
 
 // NOTE: Pricing System Types and Validations are imported from product-pricing-schema.ts
 // See lines 150-162 for type re-exports
+// Pricing System Types (using duplicate table reference)
+export type CompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferSelect;
+export type InsertCompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferInsert;
+
+export type ProductPricing = typeof productPricing.$inferSelect;
+export type InsertProductPricing = typeof productPricing.$inferInsert;
+
+export type QuotePricing = typeof quotePricing.$inferSelect;
+export type InsertQuotePricing = typeof quotePricing.$inferInsert;
+
+export type QuotePricingLineItem = typeof quotePricingLineItems.$inferSelect;
+export type InsertQuotePricingLineItem = typeof quotePricingLineItems.$inferInsert;
+
+// Pricing Schema Validations (using duplicate table reference)
+export const insertCompanyPricingSettingSchema = createInsertSchema(companyPricingSettings_duplicate).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProductPricingSchema = createInsertSchema(productPricing).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotePricingSchema = createInsertSchema(quotePricing).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotePricingLineItemSchema = createInsertSchema(quotePricingLineItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 // Accounting Schema Validations
 export const insertVendorSchema = createInsertSchema(vendors).omit({
@@ -7705,6 +7769,8 @@ export {
   workflowTemplates,
   templateVariables,
   workflowEventRegistry,
+  assignmentGroups,
+  workflowApprovals,
   workflowStatusEnum,
   triggerTypeEnum,
   stepActionTypeEnum,
@@ -7725,6 +7791,8 @@ export {
   insertWorkflowTemplateSchema,
   insertTemplateVariableSchema,
   insertWorkflowEventRegistrySchema,
+  insertAssignmentGroupSchema,
+  insertWorkflowApprovalSchema,
 } from './workflow-automation-schema';
 
 export type {
@@ -7741,6 +7809,8 @@ export type {
   WorkflowTemplate,
   TemplateVariable,
   WorkflowEventRegistry,
+  AssignmentGroup,
+  WorkflowApproval,
   InsertWorkflow,
   InsertWorkflowVersion,
   InsertWorkflowTrigger,
@@ -7754,6 +7824,8 @@ export type {
   InsertWorkflowTemplate,
   InsertTemplateVariable,
   InsertWorkflowEventRegistry,
+  InsertAssignmentGroup,
+  InsertWorkflowApproval,
 } from './workflow-automation-schema';
 
 // Re-export manufacturer order submission schemas
@@ -8197,3 +8269,41 @@ export type {
   ExpansionOpportunity,
   InsertExpansionOpportunity,
 } from './renewal-management-schema';
+
+// Re-export Document Automation schemas
+export {
+  documentTemplates,
+  generatedDocuments,
+  documentUploads,
+  documentFieldMappings,
+  documentWorkflowActions,
+  documentNotifications,
+  documentTemplateTypeEnum,
+  documentFormatEnum,
+  ocrProcessingStatusEnum,
+  aiConfidenceEnum,
+  insertDocumentTemplateSchema,
+  selectDocumentTemplateSchema,
+  insertGeneratedDocumentSchema,
+  selectGeneratedDocumentSchema,
+  insertDocumentUploadSchema,
+  selectDocumentUploadSchema,
+  insertDocumentFieldMappingSchema,
+  selectDocumentFieldMappingSchema,
+  insertDocumentWorkflowActionSchema,
+  selectDocumentWorkflowActionSchema,
+} from './document-automation-schema';
+
+export type {
+  DocumentTemplate,
+  InsertDocumentTemplate,
+  GeneratedDocument,
+  InsertGeneratedDocument,
+  DocumentUpload,
+  InsertDocumentUpload,
+  DocumentFieldMapping,
+  InsertDocumentFieldMapping,
+  DocumentWorkflowAction,
+  InsertDocumentWorkflowAction,
+  DocumentNotification,
+} from './document-automation-schema';
