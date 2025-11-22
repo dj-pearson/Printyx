@@ -98,6 +98,9 @@ import { registerQuickBooksRoutes } from './routes-quickbooks-integration';
 import { setupSalesPipelineRoutes } from './routes-sales-pipeline';
 import { registerModularDashboardRoutes } from './routes-modular-dashboard';
 import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
+import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
+import { registerSalesHandoffRoutes } from './routes-sales-handoff';
+import { registerRenewalManagementRoutes } from './routes-renewal-management';
 import { registerClientMonitoringRoutes } from './routes-client-monitoring';
 import { blockRegistrations } from './middleware/registration-lock';
 import customerPortalRoutes from './routes-customer-portal';
@@ -15280,6 +15283,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
   registerModularDashboardRoutes(app);
   registerManufacturerIntegrationRoutes(app);
+  registerLeadAssignmentRoutes(app);
+  registerSalesHandoffRoutes(app);
+  registerRenewalManagementRoutes(app);
 
   // Register Sales Forecasting routes
   app.use(salesForecastingRoutes);
