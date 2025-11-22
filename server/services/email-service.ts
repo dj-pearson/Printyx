@@ -52,23 +52,23 @@ class SendGridProvider implements EmailProvider {
 
   async send(message: EmailMessage) {
     try {
-      // TODO: Implement actual SendGrid API call
-      // const sgMail = require('@sendgrid/mail');
-      // sgMail.setApiKey(this.apiKey);
-      // const result = await sgMail.send({
-      //   to: message.to,
-      //   from: message.from || process.env.SENDGRID_FROM_EMAIL,
-      //   subject: message.subject,
-      //   text: message.text,
-      //   html: message.html,
-      // });
-      
-      console.log(`[SENDGRID] Email would be sent via SendGrid API`);
+      const sgMail = await import('@sendgrid/mail');
+      sgMail.default.setApiKey(this.apiKey);
+
+      const result = await sgMail.default.send({
+        to: message.to,
+        from: message.from || process.env.SENDGRID_FROM_EMAIL || 'notifications@printyx.com',
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+      });
+
+      console.log(`[SENDGRID] Email sent successfully`);
       console.log(`  To: ${message.to}, Subject: ${message.subject}`);
-      
+
       return {
-        success: false,
-        error: 'SendGrid integration not yet implemented. Install @sendgrid/mail package.',
+        success: true,
+        messageId: result[0].headers['x-message-id'],
       };
     } catch (error: any) {
       console.error('[SENDGRID] Error:', error);
@@ -93,33 +93,33 @@ class AWSSESProvider implements EmailProvider {
 
   async send(message: EmailMessage) {
     try {
-      // TODO: Implement actual AWS SES API call
-      // const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
-      // const ses = new SESClient({
-      //   region: this.region,
-      //   credentials: {
-      //     accessKeyId: this.accessKeyId,
-      //     secretAccessKey: this.secretAccessKey,
-      //   },
-      // });
-      // const result = await ses.send(new SendEmailCommand({
-      //   Source: message.from || process.env.AWS_SES_FROM_EMAIL,
-      //   Destination: { ToAddresses: [message.to] },
-      //   Message: {
-      //     Subject: { Data: message.subject },
-      //     Body: {
-      //       Html: { Data: message.html },
-      //       Text: { Data: message.text || '' },
-      //     },
-      //   },
-      // }));
-      
-      console.log(`[AWS SES] Email would be sent via AWS SES`);
+      const { SESClient, SendEmailCommand } = await import('@aws-sdk/client-ses');
+      const ses = new SESClient({
+        region: this.region,
+        credentials: {
+          accessKeyId: this.accessKeyId,
+          secretAccessKey: this.secretAccessKey,
+        },
+      });
+
+      const result = await ses.send(new SendEmailCommand({
+        Source: message.from || process.env.AWS_SES_FROM_EMAIL || 'notifications@printyx.com',
+        Destination: { ToAddresses: [message.to] },
+        Message: {
+          Subject: { Data: message.subject },
+          Body: {
+            Html: { Data: message.html },
+            Text: { Data: message.text || '' },
+          },
+        },
+      }));
+
+      console.log(`[AWS SES] Email sent successfully`);
       console.log(`  To: ${message.to}, Subject: ${message.subject}`);
-      
+
       return {
-        success: false,
-        error: 'AWS SES integration not yet implemented. Install @aws-sdk/client-ses package.',
+        success: true,
+        messageId: result.MessageId,
       };
     } catch (error: any) {
       console.error('[AWS SES] Error:', error);
@@ -140,22 +140,22 @@ class ResendProvider implements EmailProvider {
 
   async send(message: EmailMessage) {
     try {
-      // TODO: Implement actual Resend API call
-      // const { Resend } = require('resend');
-      // const resend = new Resend(this.apiKey);
-      // const result = await resend.emails.send({
-      //   from: message.from || process.env.RESEND_FROM_EMAIL,
-      //   to: message.to,
-      //   subject: message.subject,
-      //   html: message.html,
-      // });
-      
-      console.log(`[RESEND] Email would be sent via Resend API`);
+      const { Resend } = await import('resend');
+      const resend = new Resend(this.apiKey);
+
+      const result = await resend.emails.send({
+        from: message.from || process.env.RESEND_FROM_EMAIL || 'notifications@printyx.com',
+        to: message.to,
+        subject: message.subject,
+        html: message.html,
+      });
+
+      console.log(`[RESEND] Email sent successfully`);
       console.log(`  To: ${message.to}, Subject: ${message.subject}`);
-      
+
       return {
-        success: false,
-        error: 'Resend integration not yet implemented. Install resend package.',
+        success: true,
+        messageId: result.data?.id,
       };
     } catch (error: any) {
       console.error('[RESEND] Error:', error);
