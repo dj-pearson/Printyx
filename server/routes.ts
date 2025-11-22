@@ -104,6 +104,7 @@ import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
 import { registerSalesHandoffRoutes } from './routes-sales-handoff';
 import { registerRenewalManagementRoutes } from './routes-renewal-management';
 import { registerClientMonitoringRoutes } from './routes-client-monitoring';
+import { registerOidManagementRoutes } from './routes-oid-management';
 import { blockRegistrations } from './middleware/registration-lock';
 import customerPortalRoutes from './routes-customer-portal';
 import clientMetricsRoutes from './routes-client-metrics';
@@ -14931,6 +14932,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register client monitoring routes
   registerClientMonitoringRoutes(app);
+
+  // Register OID management routes (printer SNMP OID configuration)
+  registerOidManagementRoutes(app);
 
   // Register customer portal routes
   app.use('/api/customer-portal', customerPortalRoutes);
