@@ -1,5 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createWorker } from 'tesseract.js';
+let createWorker: any;
+try {
+  const tesseract = require('tesseract.js');
+  createWorker = tesseract.createWorker;
+} catch (e) {
+  createWorker = null;
+}
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { db } from '../db';
@@ -41,6 +47,9 @@ export class OCRService {
    * Initialize Tesseract.js worker
    */
   private static async initWorker() {
+    if (!createWorker) {
+      throw new Error('Tesseract.js is not available. OCR functionality is disabled.');
+    }
     if (!this.worker) {
       this.worker = await createWorker('eng', 1, {
         logger: (m) => {
