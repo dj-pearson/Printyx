@@ -2,8 +2,27 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+// Dynamically import Stripe to handle module resolution issues
+let loadStripe: any = null;
+let Elements: any = null;
+let CardElement: any = null;
+let useStripe: any = null;
+let useElements: any = null;
+
+(async () => {
+  try {
+    const stripeModule = await import("@stripe/stripe-js");
+    const stripeReactModule = await import("@stripe/react-stripe-js");
+    loadStripe = stripeModule.loadStripe;
+    Elements = stripeReactModule.Elements;
+    CardElement = stripeReactModule.CardElement;
+    useStripe = stripeReactModule.useStripe;
+    useElements = stripeReactModule.useElements;
+  } catch (e) {
+    console.warn("Stripe modules not available, payment functionality may be limited");
+  }
+})();
 import {
   Card,
   CardContent,
