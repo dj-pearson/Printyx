@@ -107,6 +107,7 @@ import { registerClientMonitoringRoutes } from './routes-client-monitoring';
 import { blockRegistrations } from './middleware/registration-lock';
 import customerPortalRoutes from './routes-customer-portal';
 import clientMetricsRoutes from './routes-client-metrics';
+import deviceMonitoringRoutes from './routes-device-monitoring';
 import { serviceDispatchRouter } from './routes-service-dispatch';
 import { proactiveMaintenanceRouter } from './routes-proactive-maintenance';
 import commissionRoutes from './routes-commission';
@@ -14936,6 +14937,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register client metrics routes (printer monitoring system)
   app.use('/api/client-metrics', clientMetricsRoutes);
+
+  // Register device monitoring routes (live device status and alerts)
+  app.use('/api/device-monitoring', deviceMonitoringRoutes);
 
   // Register contract alerts routes (for renewal management and expiration tracking)
   const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
