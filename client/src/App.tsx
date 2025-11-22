@@ -106,6 +106,7 @@ const Contacts = React.lazy(() => import("@/pages/Contacts"));
 const CustomerDetail = React.lazy(() => import("@/pages/CustomerDetail"));
 const TenantSetup = React.lazy(() => import("@/pages/TenantSetup"));
 const Settings = React.lazy(() => import("@/pages/Settings"));
+const MonitoringClients = React.lazy(() => import("@/pages/MonitoringClients"));
 const Pricing = React.lazy(() => import("@/pages/Pricing"));
 const SubscriptionSettings = React.lazy(() => import("@/pages/SubscriptionSettings"));
 const BillingPage = React.lazy(() => import("@/pages/Billing"));
@@ -488,6 +489,7 @@ function Router() {
           <Route path="/pricing-management" component={PricingManagement} />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
+          <Route path="/monitoring-clients" component={MonitoringClients} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/settings/subscription" component={SubscriptionSettings} />
           <Route path="/settings/billing" component={BillingPage} />
