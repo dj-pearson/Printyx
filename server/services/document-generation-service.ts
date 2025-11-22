@@ -6,7 +6,12 @@ import {
   type InsertGeneratedDocument,
 } from '../../shared/document-automation-schema';
 import { eq } from 'drizzle-orm';
-import Handlebars from 'handlebars';
+let Handlebars: any;
+try {
+  Handlebars = require('handlebars');
+} catch (e) {
+  Handlebars = null;
+}
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createWriteStream } from 'fs';
@@ -25,6 +30,7 @@ export class TemplateRenderingService {
    * Register custom Handlebars helpers
    */
   static registerHelpers() {
+    if (!Handlebars) return; // Skip if handlebars not available
     // Date formatting helper
     Handlebars.registerHelper('formatDate', function (date: any, format: string) {
       if (!date) return '';
