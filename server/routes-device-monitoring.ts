@@ -5,8 +5,8 @@ import {
   tonerAlerts,
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { requireAuth } from './middleware/auth-middleware';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
+const requireAuth = (req: any, res: any, next: any) => { if (!req.user) return res.status(401).json({ error: 'Unauthorized' }); next(); };
 
 const router = express.Router();
 
