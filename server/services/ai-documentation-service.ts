@@ -3,7 +3,7 @@
  * Intelligent document creation, AI writing assistance, and knowledge organization
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc, like, ilike } from 'drizzle-orm';
 

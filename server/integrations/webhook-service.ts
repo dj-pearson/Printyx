@@ -2,7 +2,7 @@
  * Webhook Service for Real-time Data Synchronization
  * Handles incoming webhooks from integrated services
  */
-import { db } from '../db';
+import { db } from '../../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { createSalesforceClient, createStripeClient, createMicrosoftGraphClient } from './oauth-config';

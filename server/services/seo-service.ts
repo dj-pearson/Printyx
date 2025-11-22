@@ -3,7 +3,7 @@
  * All functions interact with real databases and APIs
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import { eq, desc, and } from 'drizzle-orm';
 import {
   seoSettings,

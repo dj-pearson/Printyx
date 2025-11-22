@@ -3,7 +3,7 @@
  * Manages team coordination, project hierarchy, and collaborative scheduling
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import ClaudeAIService from './claude-ai-service';
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import DynamicReschedulingService from './dynamic-rescheduling-service';

@@ -3,7 +3,7 @@
  * AI-powered meeting recording, transcription, and intelligent note generation
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc } from 'drizzle-orm';
 

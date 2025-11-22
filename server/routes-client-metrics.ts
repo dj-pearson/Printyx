@@ -1,5 +1,5 @@
 import express, { Response } from 'express';
-import { db } from '../db';
+import { db } from './db';
 import {
   clientRegistrations,
   clientCollectedMetrics,

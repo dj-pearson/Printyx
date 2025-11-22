@@ -2,7 +2,7 @@
  * Integration Hub Dashboard Service
  * Provides real data for the integration hub dashboard
  */
-import { db } from '../db';
+import { db } from '../../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and, gte, lte, count } from 'drizzle-orm';
 import { IntegrationService } from './integration-service';
