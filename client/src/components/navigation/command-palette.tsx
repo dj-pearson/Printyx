@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import {
   CommandDialog,
   CommandEmpty,
