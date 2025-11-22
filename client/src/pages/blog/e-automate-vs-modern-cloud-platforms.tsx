@@ -210,7 +210,7 @@ const EAutomateVsModernPlatformsBlogPost = () => {
                   <li>Cloud GPUs for model training (scale on demand)</li>
                   <li>Automated feature engineering pipeline</li>
                   <li>A/B testing framework for model versions</li>
-                  <li>Real-time inference API with <100ms latency</li>
+                  <li>Real-time inference API with &lt;100ms latency</li>
                   <li>Daily retraining with new data</li>
                 </ul>
                 <p className="text-gray-800 font-semibold mt-4">
