@@ -1,5 +1,5 @@
 import { eq, and, desc, gte, lte, sql, isNull, or, inArray } from 'drizzle-orm';
-import { db } from '../db';
+import { db } from '../../db';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import {

@@ -3,7 +3,7 @@
  * Vector database search, AI query processing, and intelligent answer generation
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc, like, ilike } from 'drizzle-orm';
 

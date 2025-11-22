@@ -5,7 +5,7 @@
 
 import { google } from 'googleapis';
 import { Client } from '@microsoft/microsoft-graph-client';
-import { db } from '../db';
+import { db } from '../../db';
 import { eq, and } from 'drizzle-orm';
 
 interface CalendarEvent {

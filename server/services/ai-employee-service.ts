@@ -1,5 +1,5 @@
 // server/services/ai-employee-service.ts
-import { db } from '../db';
+import { db } from '../../db';
 import { eq, and, sql, desc, asc } from 'drizzle-orm';
 import ClaudeAIService from './claude-ai-service';
 

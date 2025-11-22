@@ -2,7 +2,7 @@
  * Error Monitoring and Retry Logic for Integrations
  * Handles integration failures, implements exponential backoff, and provides monitoring
  */
-import { db } from '../db';
+import { db } from '../../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
 

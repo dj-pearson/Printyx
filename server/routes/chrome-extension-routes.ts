@@ -1,6 +1,6 @@
 import express from "express";
 import { z } from "zod";
-import { db } from "../db";
+import { db } from '../../db';
 import { businessRecords } from "@shared/schema";
 import { eq, or, and, sql } from "drizzle-orm";
 import { isAuthenticated } from "../replitAuth";

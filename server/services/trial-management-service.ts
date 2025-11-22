@@ -4,7 +4,7 @@
  * Handles trial lifecycle, email automation, and subscription transitions
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import { users, tenants } from '../../shared/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { EmailTemplates } from './email-templates';
