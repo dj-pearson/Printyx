@@ -8152,3 +8152,76 @@ export type {
   ContentCitation,
   InsertContentCitation,
 } from './content-marketing-schema';
+
+// Re-export Lead Assignment schemas
+export {
+  salesTerritories,
+  leadAssignmentRules,
+  repCapacity,
+  leadAssignmentHistory,
+  leadAssignmentQueue,
+  insertSalesTerritorySchema,
+  insertLeadAssignmentRuleSchema,
+  insertRepCapacitySchema,
+  insertLeadAssignmentHistorySchema,
+  insertLeadAssignmentQueueSchema,
+} from './lead-assignment-schema';
+
+export type {
+  SalesTerritory,
+  InsertSalesTerritory,
+  LeadAssignmentRule,
+  InsertLeadAssignmentRule,
+  RepCapacity,
+  InsertRepCapacity,
+  LeadAssignmentHistory,
+  InsertLeadAssignmentHistory,
+  LeadAssignmentQueue,
+  InsertLeadAssignmentQueue,
+} from './lead-assignment-schema';
+
+// Re-export Sales Handoff schemas
+export {
+  salesHandoffChecklists,
+  handoffTaskTemplates,
+  handoffTasks,
+  implementationProjects,
+  insertSalesHandoffChecklistSchema,
+  insertHandoffTaskTemplateSchema,
+  insertHandoffTaskSchema,
+  insertImplementationProjectSchema,
+} from './sales-handoff-schema';
+
+export type {
+  SalesHandoffChecklist,
+  InsertSalesHandoffChecklist,
+  HandoffTaskTemplate,
+  InsertHandoffTaskTemplate,
+  HandoffTask,
+  InsertHandoffTask,
+  ImplementationProject,
+  InsertImplementationProject,
+} from './sales-handoff-schema';
+
+// Re-export Renewal Management schemas
+export {
+  contractRenewals,
+  renewalActivities,
+  renewalPlaybooks,
+  expansionOpportunities,
+  insertContractRenewalSchema,
+  insertRenewalActivitySchema,
+  insertRenewalPlaybookSchema,
+  insertExpansionOpportunitySchema,
+} from './renewal-management-schema';
+
+export type {
+  ContractRenewal,
+  InsertContractRenewal,
+  RenewalActivity,
+  InsertRenewalActivity,
+  RenewalPlaybook,
+  InsertRenewalPlaybook,
+  ExpansionOpportunity,
+  InsertExpansionOpportunity,
+} from './renewal-management-schema';
