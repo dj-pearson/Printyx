@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import {
   alertTriageResults,
   automatedContainmentLogs,
@@ -41,9 +41,17 @@ export interface TriageAlertParams {
 export interface ContainmentActionParams {
   alertId: string;
   tenantId: string;
-  actionType: 'suspend_user' | 'terminate_session' | 'block_ip' | 'quarantine_file' |
-              'disable_integration' | 'rate_limit' | 'force_password_reset' |
-              'enable_mfa' | 'restrict_permissions' | 'notify_team';
+  actionType:
+    | 'suspend_user'
+    | 'terminate_session'
+    | 'block_ip'
+    | 'quarantine_file'
+    | 'disable_integration'
+    | 'rate_limit'
+    | 'force_password_reset'
+    | 'enable_mfa'
+    | 'restrict_permissions'
+    | 'notify_team';
   target: string;
   reason: string;
   automated?: boolean;
@@ -61,8 +69,12 @@ export interface DetectAnomalyParams {
   tenantId: string;
   entityType: 'user' | 'ip' | 'resource';
   entityId: string;
-  anomalyType: 'unusual_login_time' | 'unusual_location' | 'excessive_data_access' |
-                'privilege_escalation' | 'suspicious_api_usage';
+  anomalyType:
+    | 'unusual_login_time'
+    | 'unusual_location'
+    | 'excessive_data_access'
+    | 'privilege_escalation'
+    | 'suspicious_api_usage';
   normalBehavior: any;
   observedBehavior: any;
   deviation: number;
@@ -71,14 +83,21 @@ export interface DetectAnomalyParams {
 // ========== INTELLIGENT ALERTS SERVICE ==========
 
 export class IntelligentAlertsService {
-
   // ==================== ALERT TRIAGE ====================
 
   /**
    * AI-powered alert triage and classification
    */
   static async triageAlert(params: TriageAlertParams): Promise<AlertTriageResult> {
-    const { alertId, tenantId, alertTitle, alertDescription, affectedResources, userId, ipAddress } = params;
+    const {
+      alertId,
+      tenantId,
+      alertTitle,
+      alertDescription,
+      affectedResources,
+      userId,
+      ipAddress,
+    } = params;
 
     // Gather context for AI analysis
     const context = await this.gatherAlertContext(tenantId, userId, ipAddress, affectedResources);
@@ -90,39 +109,36 @@ export class IntelligentAlertsService {
     const similarIncidents = await this.findSimilarIncidents(
       classification.category,
       alertDescription,
-      tenantId
+      tenantId,
     );
 
     // Generate resolution suggestions
-    const suggestions = await this.generateSuggestions(
-      classification.category,
-      similarIncidents
-    );
+    const suggestions = await this.generateSuggestions(classification.category, similarIncidents);
 
     // Determine routing
     const routing = await this.determineRouting(
       classification.severity,
       classification.category,
-      tenantId
+      tenantId,
     );
 
     // Check if auto-containment is needed
     const autoContainmentNeeded = this.shouldAutoContain(
       classification.severity,
       classification.priority,
-      classification.confidence
+      classification.confidence,
     );
 
     // Calculate risk score
     const riskScore = this.calculateRiskScore(classification, context, similarIncidents);
 
     // Determine if escalation is required
-    const requiresEscalation = classification.severity === 'critical' ||
-                               classification.priority === 'p1' ||
-                               riskScore > 80;
+    const requiresEscalation =
+      classification.severity === 'critical' || classification.priority === 'p1' || riskScore > 80;
 
     // Create triage result
-    const [triageResult] = await db.insert(alertTriageResults)
+    const [triageResult] = await db
+      .insert(alertTriageResults)
       .values({
         tenantId,
         alertId,
@@ -134,8 +150,9 @@ export class IntelligentAlertsService {
         routingRecommendation: routing,
         suggestions,
         autoContainmentNeeded,
-        autoContainmentActions: autoContainmentNeeded ?
-          this.generateContainmentActions(classification.category, userId, ipAddress) : [],
+        autoContainmentActions: autoContainmentNeeded
+          ? this.generateContainmentActions(classification.category, userId, ipAddress)
+          : [],
         riskScore,
         riskFactors: this.identifyRiskFactors(classification, context),
         potentialImpact: this.assessPotentialImpact(classification, affectedResources),
@@ -153,7 +170,13 @@ export class IntelligentAlertsService {
     }
 
     // Check for incident correlation
-    await this.checkIncidentCorrelation(alertId, tenantId, userId, ipAddress, classification.category);
+    await this.checkIncidentCorrelation(
+      alertId,
+      tenantId,
+      userId,
+      ipAddress,
+      classification.category,
+    );
 
     // Create audit log
     await db.insert(auditLogs).values({
@@ -185,7 +208,7 @@ export class IntelligentAlertsService {
     tenantId: string,
     userId?: string,
     ipAddress?: string,
-    affectedResources?: string[]
+    affectedResources?: string[],
   ): Promise<any> {
     const context: any = {
       timestamp: new Date().toISOString(),
@@ -197,14 +220,14 @@ export class IntelligentAlertsService {
         where: and(
           eq(auditLogs.tenantId, tenantId),
           eq(auditLogs.userId, userId),
-          gte(auditLogs.timestamp, sql`NOW() - INTERVAL '24 hours'`)
+          gte(auditLogs.timestamp, sql`NOW() - INTERVAL '24 hours'`),
         ),
         limit: 50,
         orderBy: [desc(auditLogs.timestamp)],
       });
 
       context.recentAuditLogs = recentLogs.length;
-      context.recentActions = recentLogs.map(log => log.action);
+      context.recentActions = recentLogs.map((log) => log.action);
     }
 
     // Check for other alerts from same IP
@@ -213,12 +236,12 @@ export class IntelligentAlertsService {
         where: and(
           eq(alertTriageResults.tenantId, tenantId),
           sql`${alertTriageResults.contextGathered}->>'ipAddress' = ${ipAddress}`,
-          gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '24 hours'`)
+          gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '24 hours'`),
         ),
         limit: 10,
       });
 
-      context.relatedAlerts = relatedAlerts.map(a => a.alertId);
+      context.relatedAlerts = relatedAlerts.map((a) => a.alertId);
     }
 
     // System state
@@ -237,7 +260,7 @@ export class IntelligentAlertsService {
   private static async classifyAlert(
     title: string,
     description: string,
-    context: any
+    context: any,
   ): Promise<{
     severity: 'low' | 'medium' | 'high' | 'critical';
     priority: 'p1' | 'p2' | 'p3' | 'p4';
@@ -261,7 +284,11 @@ export class IntelligentAlertsService {
       severity = 'critical';
       priority = 'p1';
       confidence = 90;
-    } else if (text.includes('high') || text.includes('unauthorized') || text.includes('suspicious')) {
+    } else if (
+      text.includes('high') ||
+      text.includes('unauthorized') ||
+      text.includes('suspicious')
+    ) {
       severity = 'high';
       priority = 'p2';
       confidence = 85;
@@ -276,19 +303,30 @@ export class IntelligentAlertsService {
     }
 
     // Category detection
-    if (text.includes('data') && (text.includes('breach') || text.includes('leak') || text.includes('export'))) {
+    if (
+      text.includes('data') &&
+      (text.includes('breach') || text.includes('leak') || text.includes('export'))
+    ) {
       category = 'data_breach';
       reasoning = 'Data breach indicators detected';
     } else if (text.includes('malware') || text.includes('virus') || text.includes('trojan')) {
       category = 'malware';
       reasoning = 'Malware indicators detected';
-    } else if (text.includes('unauthorized') || text.includes('access denied') || text.includes('forbidden')) {
+    } else if (
+      text.includes('unauthorized') ||
+      text.includes('access denied') ||
+      text.includes('forbidden')
+    ) {
       category = 'unauthorized_access';
       reasoning = 'Unauthorized access attempt detected';
     } else if (text.includes('ddos') || text.includes('flood') || text.includes('rate limit')) {
       category = 'ddos';
       reasoning = 'DDoS attack pattern detected';
-    } else if (text.includes('brute force') || text.includes('failed login') || text.includes('password')) {
+    } else if (
+      text.includes('brute force') ||
+      text.includes('failed login') ||
+      text.includes('password')
+    ) {
       category = 'brute_force';
       reasoning = 'Brute force attack pattern detected';
     } else if (text.includes('sql injection') || text.includes('sqli')) {
@@ -297,7 +335,11 @@ export class IntelligentAlertsService {
     } else if (text.includes('xss') || text.includes('script injection')) {
       category = 'xss';
       reasoning = 'XSS attack detected';
-    } else if (text.includes('privilege') || text.includes('escalation') || text.includes('elevation')) {
+    } else if (
+      text.includes('privilege') ||
+      text.includes('escalation') ||
+      text.includes('elevation')
+    ) {
       category = 'privilege_escalation';
       reasoning = 'Privilege escalation attempt detected';
     }
@@ -326,21 +368,23 @@ export class IntelligentAlertsService {
   private static async findSimilarIncidents(
     category: string,
     description: string,
-    tenantId: string
-  ): Promise<Array<{
-    incidentId: string;
-    similarity: number;
-    resolution: string;
-    resolutionTime: number;
-    successRate: number;
-  }>> {
+    tenantId: string,
+  ): Promise<
+    Array<{
+      incidentId: string;
+      similarity: number;
+      resolution: string;
+      resolutionTime: number;
+      successRate: number;
+    }>
+  > {
     // Get incidents in same category
     const pastIncidents = await db.query.alertTriageResults.findMany({
       where: and(
         eq(alertTriageResults.tenantId, tenantId),
         sql`${alertTriageResults.aiClassification}->>'category' = ${category}`,
         eq(alertTriageResults.humanReviewed, true),
-        eq(alertTriageResults.classificationAccurate, true)
+        eq(alertTriageResults.classificationAccurate, true),
       ),
       limit: 20,
       orderBy: [desc(alertTriageResults.createdAt)],
@@ -348,10 +392,10 @@ export class IntelligentAlertsService {
 
     // Calculate similarity scores (placeholder - would use vector similarity in production)
     const similar = pastIncidents
-      .map(incident => {
+      .map((incident) => {
         const similarity = this.calculateTextSimilarity(
           description,
-          incident.alertDescription || ''
+          incident.alertDescription || '',
         );
 
         return {
@@ -362,7 +406,7 @@ export class IntelligentAlertsService {
           successRate: 85, // TODO: Get actual success rate
         };
       })
-      .filter(item => item.similarity > 50) // Only include >50% similar
+      .filter((item) => item.similarity > 50) // Only include >50% similar
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, 5); // Top 5 most similar
 
@@ -376,8 +420,8 @@ export class IntelligentAlertsService {
     const words1 = text1.toLowerCase().split(/\s+/);
     const words2 = text2.toLowerCase().split(/\s+/);
 
-    const commonWords = words1.filter(word => words2.includes(word));
-    const similarity = (commonWords.length * 2) / (words1.length + words2.length) * 100;
+    const commonWords = words1.filter((word) => words2.includes(word));
+    const similarity = ((commonWords.length * 2) / (words1.length + words2.length)) * 100;
 
     return Math.round(similarity);
   }
@@ -387,21 +431,23 @@ export class IntelligentAlertsService {
    */
   private static async generateSuggestions(
     category: string,
-    similarIncidents: any[]
-  ): Promise<Array<{
-    suggestionId: string;
-    title: string;
-    steps: Array<{
-      stepNumber: number;
-      description: string;
-      automated: boolean;
-      command?: string;
-    }>;
-    estimatedTime: number;
-    successRate: number;
-    confidence: 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-    basedOn?: string;
-  }>> {
+    similarIncidents: any[],
+  ): Promise<
+    Array<{
+      suggestionId: string;
+      title: string;
+      steps: Array<{
+        stepNumber: number;
+        description: string;
+        automated: boolean;
+        command?: string;
+      }>;
+      estimatedTime: number;
+      successRate: number;
+      confidence: 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
+      basedOn?: string;
+    }>
+  > {
     // Get resolution patterns for this category
     const patterns = await db.query.incidentResolutionPatterns.findMany({
       where: eq(incidentResolutionPatterns.category, category as any),
@@ -416,9 +462,10 @@ export class IntelligentAlertsService {
       estimatedTime: pattern.avgResolutionTime,
       successRate: pattern.successRate,
       confidence: pattern.confidence,
-      basedOn: similarIncidents.length > 0
-        ? `Similar to incident #${similarIncidents[0].incidentId}`
-        : undefined,
+      basedOn:
+        similarIncidents.length > 0
+          ? `Similar to incident #${similarIncidents[0].incidentId}`
+          : undefined,
     }));
 
     // Add default suggestion if no patterns found
@@ -448,7 +495,7 @@ export class IntelligentAlertsService {
   private static async determineRouting(
     severity: string,
     category: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<{
     assignTo: string;
     teamId?: string;
@@ -462,11 +509,8 @@ export class IntelligentAlertsService {
     // Get active routing rules
     const rules = await db.query.alertRoutingRules.findMany({
       where: and(
-        or(
-          eq(alertRoutingRules.tenantId, tenantId),
-          sql`${alertRoutingRules.tenantId} IS NULL`
-        ),
-        eq(alertRoutingRules.isActive, true)
+        or(eq(alertRoutingRules.tenantId, tenantId), sql`${alertRoutingRules.tenantId} IS NULL`),
+        eq(alertRoutingRules.isActive, true),
       ),
       orderBy: [desc(alertRoutingRules.priority)],
     });
@@ -506,7 +550,7 @@ export class IntelligentAlertsService {
   private static shouldAutoContain(
     severity: string,
     priority: string,
-    confidence: number
+    confidence: number,
   ): boolean {
     // Auto-contain if high confidence and critical/P1
     if (confidence >= 90 && (severity === 'critical' || priority === 'p1')) {
@@ -527,7 +571,7 @@ export class IntelligentAlertsService {
   private static generateContainmentActions(
     category: string,
     userId?: string,
-    ipAddress?: string
+    ipAddress?: string,
   ): Array<{
     actionType: string;
     target: string;
@@ -594,16 +638,24 @@ export class IntelligentAlertsService {
   private static calculateRiskScore(
     classification: any,
     context: any,
-    similarIncidents: any[]
+    similarIncidents: any[],
   ): number {
     let score = 0;
 
     // Base score from severity
     switch (classification.severity) {
-      case 'critical': score += 40; break;
-      case 'high': score += 30; break;
-      case 'medium': score += 20; break;
-      case 'low': score += 10; break;
+      case 'critical':
+        score += 40;
+        break;
+      case 'high':
+        score += 30;
+        break;
+      case 'medium':
+        score += 20;
+        break;
+      case 'low':
+        score += 10;
+        break;
     }
 
     // Add for recent similar incidents
@@ -652,10 +704,7 @@ export class IntelligentAlertsService {
   /**
    * Assess potential impact
    */
-  private static assessPotentialImpact(
-    classification: any,
-    affectedResources?: string[]
-  ): string {
+  private static assessPotentialImpact(classification: any, affectedResources?: string[]): string {
     const resourceCount = affectedResources?.length || 0;
 
     if (classification.severity === 'critical') {
@@ -683,8 +732,8 @@ export class IntelligentAlertsService {
       .where(
         and(
           eq(alertTriageResults.tenantId, tenantId),
-          gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '7 days'`)
-        )
+          gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '7 days'`),
+        ),
       );
 
     return result[0]?.count || 0;
@@ -698,7 +747,7 @@ export class IntelligentAlertsService {
   private static async executeAutoContainment(
     alertId: string,
     tenantId: string,
-    actions: any[]
+    actions: any[],
   ): Promise<void> {
     for (const action of actions) {
       await this.executeContainmentAction({
@@ -715,7 +764,9 @@ export class IntelligentAlertsService {
   /**
    * Execute a specific containment action
    */
-  static async executeContainmentAction(params: ContainmentActionParams): Promise<AutomatedContainmentLog> {
+  static async executeContainmentAction(
+    params: ContainmentActionParams,
+  ): Promise<AutomatedContainmentLog> {
     const { alertId, tenantId, actionType, target, reason, automated = false, executedBy } = params;
 
     let success = false;
@@ -734,24 +785,17 @@ export class IntelligentAlertsService {
         case 'terminate_session':
           // TODO: Implement session termination
           const sessions = await db.query.securitySessions.findMany({
-            where: and(
-              eq(securitySessions.userId, target),
-              eq(securitySessions.isActive, true)
-            ),
+            where: and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)),
           });
 
-          await db.update(securitySessions)
+          await db
+            .update(securitySessions)
             .set({
               isActive: false,
               terminatedAt: new Date(),
               terminationReason: 'security',
             })
-            .where(
-              and(
-                eq(securitySessions.userId, target),
-                eq(securitySessions.isActive, true)
-              )
-            );
+            .where(and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)));
 
           result = `Terminated ${sessions.length} active session(s) for user ${target}`;
           success = true;
@@ -808,7 +852,6 @@ export class IntelligentAlertsService {
         default:
           throw new Error(`Unknown action type: ${actionType}`);
       }
-
     } catch (error) {
       success = false;
       errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -816,7 +859,8 @@ export class IntelligentAlertsService {
     }
 
     // Log the containment action
-    const [log] = await db.insert(automatedContainmentLogs)
+    const [log] = await db
+      .insert(automatedContainmentLogs)
       .values({
         tenantId,
         alertId,
@@ -863,14 +907,14 @@ export class IntelligentAlertsService {
     tenantId: string,
     userId?: string,
     ipAddress?: string,
-    category?: string
+    category?: string,
   ): Promise<void> {
     // Find related incidents from past 24 hours
     const relatedIncidents = await db.query.alertTriageResults.findMany({
       where: and(
         eq(alertTriageResults.tenantId, tenantId),
         gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '24 hours'`),
-        sql`${alertTriageResults.alertId} != ${alertId}` // Exclude current alert
+        sql`${alertTriageResults.alertId} != ${alertId}`, // Exclude current alert
       ),
       limit: 50,
     });
@@ -927,7 +971,8 @@ export class IntelligentAlertsService {
         affectedSystems: [],
         affectedUsers: userId ? [userId] : [],
         combinedRiskScore: 80, // TODO: Calculate combined risk
-        estimatedImpact: 'Multiple related security incidents suggest coordinated attack or compromised account',
+        estimatedImpact:
+          'Multiple related security incidents suggest coordinated attack or compromised account',
         allIncidentsResolved: false,
       });
     }
@@ -939,7 +984,15 @@ export class IntelligentAlertsService {
    * Detect anomalous behavior proactively
    */
   static async detectAnomaly(params: DetectAnomalyParams): Promise<void> {
-    const { tenantId, entityType, entityId, anomalyType, normalBehavior, observedBehavior, deviation } = params;
+    const {
+      tenantId,
+      entityType,
+      entityId,
+      anomalyType,
+      normalBehavior,
+      observedBehavior,
+      deviation,
+    } = params;
 
     // Calculate risk score based on deviation
     let riskScore = Math.min(Math.round(deviation), 100);
@@ -955,13 +1008,14 @@ export class IntelligentAlertsService {
         eq(proactiveThreatDetection.tenantId, tenantId),
         eq(proactiveThreatDetection.affectedEntityId, entityId),
         eq(proactiveThreatDetection.detectionType, 'anomaly'),
-        inArray(proactiveThreatDetection.status, ['monitoring', 'alert_created'])
+        inArray(proactiveThreatDetection.status, ['monitoring', 'alert_created']),
       ),
     });
 
     if (existing) {
       // Update detection count
-      await db.update(proactiveThreatDetection)
+      await db
+        .update(proactiveThreatDetection)
         .set({
           detectionCount: sql`${proactiveThreatDetection.detectionCount} + 1`,
           lastDetectedAt: new Date(),
@@ -1011,7 +1065,7 @@ export class IntelligentAlertsService {
     category: string,
     resolutionSteps: any[],
     resolutionTime: number,
-    successful: boolean
+    successful: boolean,
   ): Promise<void> {
     // Find existing pattern
     const existing = await db.query.incidentResolutionPatterns.findFirst({
@@ -1025,10 +1079,11 @@ export class IntelligentAlertsService {
       const newSuccessRate = Math.round((newResolved / newTotal) * 100);
 
       const newAvgTime = Math.round(
-        (existing.avgResolutionTime * existing.totalIncidents + resolutionTime) / newTotal
+        (existing.avgResolutionTime * existing.totalIncidents + resolutionTime) / newTotal,
       );
 
-      await db.update(incidentResolutionPatterns)
+      await db
+        .update(incidentResolutionPatterns)
         .set({
           totalIncidents: newTotal,
           totalResolved: newResolved,

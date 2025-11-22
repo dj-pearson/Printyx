@@ -5,7 +5,7 @@
 
 import { google } from 'googleapis';
 import { Client } from '@microsoft/microsoft-graph-client';
-import { db } from '../../db';
+import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
 
 interface CalendarEvent {
@@ -56,8 +56,8 @@ class CalendarService {
       });
 
       const events = response.data.items || [];
-      
-      return events.map(event => ({
+
+      return events.map((event) => ({
         id: event.id!,
         title: event.summary || 'Untitled Event',
         description: event.description,
@@ -65,7 +65,7 @@ class CalendarService {
         endTime: new Date(event.end?.dateTime || event.end?.date || ''),
         isAllDay: !!event.start?.date,
         location: event.location,
-        attendees: event.attendees?.map(attendee => attendee.email || '') || [],
+        attendees: event.attendees?.map((attendee) => attendee.email || '') || [],
         status: (event.status as any) || 'confirmed',
       }));
     } catch (error) {
@@ -92,7 +92,9 @@ class CalendarService {
 
       const events = await graphClient
         .api('/me/events')
-        .filter(`start/dateTime ge '${timeMin.toISOString()}' and start/dateTime le '${timeMax.toISOString()}'`)
+        .filter(
+          `start/dateTime ge '${timeMin.toISOString()}' and start/dateTime le '${timeMax.toISOString()}'`,
+        )
         .select('id,subject,body,start,end,location,attendees,showAs')
         .orderby('start/dateTime')
         .get();
@@ -117,7 +119,10 @@ class CalendarService {
   /**
    * Create event in external calendar
    */
-  async createExternalEvent(connection: CalendarConnection, event: Partial<CalendarEvent>): Promise<string> {
+  async createExternalEvent(
+    connection: CalendarConnection,
+    event: Partial<CalendarEvent>,
+  ): Promise<string> {
     switch (connection.provider) {
       case 'google':
         return this.createGoogleEvent(connection, event);
@@ -128,7 +133,10 @@ class CalendarService {
     }
   }
 
-  private async createGoogleEvent(connection: CalendarConnection, event: Partial<CalendarEvent>): Promise<string> {
+  private async createGoogleEvent(
+    connection: CalendarConnection,
+    event: Partial<CalendarEvent>,
+  ): Promise<string> {
     const auth = new google.auth.OAuth2();
     auth.setCredentials({
       access_token: connection.accessToken,
@@ -140,14 +148,14 @@ class CalendarService {
     const googleEvent = {
       summary: event.title,
       description: event.description,
-      start: event.isAllDay 
+      start: event.isAllDay
         ? { date: event.startTime?.toISOString().split('T')[0] }
         : { dateTime: event.startTime?.toISOString() },
       end: event.isAllDay
         ? { date: event.endTime?.toISOString().split('T')[0] }
         : { dateTime: event.endTime?.toISOString() },
       location: event.location,
-      attendees: event.attendees?.map(email => ({ email })),
+      attendees: event.attendees?.map((email) => ({ email })),
     };
 
     const response = await calendar.events.insert({
@@ -158,7 +166,10 @@ class CalendarService {
     return response.data.id!;
   }
 
-  private async createOutlookEvent(connection: CalendarConnection, event: Partial<CalendarEvent>): Promise<string> {
+  private async createOutlookEvent(
+    connection: CalendarConnection,
+    event: Partial<CalendarEvent>,
+  ): Promise<string> {
     const graphClient = Client.init({
       authProvider: {
         getAccessToken: async () => connection.accessToken,
@@ -180,16 +191,14 @@ class CalendarService {
         timeZone: 'UTC',
       },
       location: event.location ? { displayName: event.location } : undefined,
-      attendees: event.attendees?.map(email => ({
+      attendees: event.attendees?.map((email) => ({
         emailAddress: { address: email, name: email },
         type: 'required',
       })),
       isAllDay: event.isAllDay,
     };
 
-    const response = await graphClient
-      .api('/me/events')
-      .post(outlookEvent);
+    const response = await graphClient.api('/me/events').post(outlookEvent);
 
     return response.id;
   }
@@ -197,7 +206,12 @@ class CalendarService {
   /**
    * Get user's availability for a specific time range
    */
-  async getUserAvailability(tenantId: string, userId: string, startTime: Date, endTime: Date): Promise<{ busy: Array<{ start: Date; end: Date }> }> {
+  async getUserAvailability(
+    tenantId: string,
+    userId: string,
+    startTime: Date,
+    endTime: Date,
+  ): Promise<{ busy: Array<{ start: Date; end: Date }> }> {
     // This would integrate with the calendar_events table to find busy times
     // For now, return mock data
     return {
@@ -222,20 +236,20 @@ class CalendarService {
     attendeeIds: string[],
     duration: number, // in minutes
     preferredStart: Date,
-    preferredEnd: Date
+    preferredEnd: Date,
   ): Promise<Date[]> {
     // This would analyze availability of all attendees and suggest optimal times
     // For now, return mock suggestions
     const suggestions: Date[] = [];
     const current = new Date(preferredStart);
-    
+
     while (current < preferredEnd) {
       // Add suggestion every 2 hours during business hours
       if (current.getHours() >= 9 && current.getHours() <= 17) {
         suggestions.push(new Date(current));
       }
       current.setHours(current.getHours() + 2);
-      
+
       if (suggestions.length >= 5) break; // Limit to 5 suggestions
     }
 

@@ -1,5 +1,5 @@
 import { eq, and, desc, gte, lte, sql, isNull, or, inArray } from 'drizzle-orm';
-import { db } from '../../db';
+import { db } from '../db';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import {
@@ -48,7 +48,6 @@ import {
  * Handles all customer self-service portal functionality
  */
 export class CustomerPortalService {
-
   /**
    * Create customer portal access
    */
@@ -61,12 +60,13 @@ export class CustomerPortalService {
       password: string;
       permissions?: any;
       createdBy?: string;
-    }
+    },
   ): Promise<CustomerPortalAccess> {
     const passwordHash = await bcrypt.hash(data.password, 12);
     const emailVerificationToken = crypto.randomBytes(32).toString('hex');
 
-    const [result] = await db.insert(customerPortalAccess)
+    const [result] = await db
+      .insert(customerPortalAccess)
       .values({
         tenantId,
         customerId,
@@ -79,7 +79,13 @@ export class CustomerPortalService {
       })
       .returning();
 
-    await this.logActivity(tenantId, customerId, result.id, 'account_created', 'Customer portal account created');
+    await this.logActivity(
+      tenantId,
+      customerId,
+      result.id,
+      'account_created',
+      'Customer portal account created',
+    );
 
     return result;
   }
@@ -87,18 +93,21 @@ export class CustomerPortalService {
   /**
    * Authenticate customer
    */
-  async authenticateCustomer(username: string, password: string): Promise<{
+  async authenticateCustomer(
+    username: string,
+    password: string,
+  ): Promise<{
     success: boolean;
     customer?: CustomerPortalAccess;
     error?: string;
   }> {
     try {
-      const [customer] = await db.select()
+      const [customer] = await db
+        .select()
         .from(customerPortalAccess)
-        .where(or(
-          eq(customerPortalAccess.username, username),
-          eq(customerPortalAccess.email, username)
-        ));
+        .where(
+          or(eq(customerPortalAccess.username, username), eq(customerPortalAccess.email, username)),
+        );
 
       if (!customer) {
         return { success: false, error: 'Invalid credentials' };
@@ -117,25 +126,32 @@ export class CustomerPortalService {
       const sessionToken = crypto.randomBytes(32).toString('hex');
       const sessionExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-      await db.update(customerPortalAccess)
+      await db
+        .update(customerPortalAccess)
         .set({
           lastLoginAt: new Date(),
           sessionToken,
           sessionExpires,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(customerPortalAccess.id, customer.id));
 
-      await this.logActivity(customer.tenantId, customer.customerId, customer.id, 'login', 'Customer logged in');
+      await this.logActivity(
+        customer.tenantId,
+        customer.customerId,
+        customer.id,
+        'login',
+        'Customer logged in',
+      );
 
-      return { 
-        success: true, 
-        customer: { 
-          ...customer, 
-          sessionToken, 
+      return {
+        success: true,
+        customer: {
+          ...customer,
+          sessionToken,
           sessionExpires,
-          lastLoginAt: new Date()
-        } 
+          lastLoginAt: new Date(),
+        },
       };
     } catch (error) {
       console.error('Authentication error:', error);
@@ -148,13 +164,16 @@ export class CustomerPortalService {
    */
   async validateSession(sessionToken: string): Promise<CustomerPortalAccess | null> {
     try {
-      const [customer] = await db.select()
+      const [customer] = await db
+        .select()
         .from(customerPortalAccess)
-        .where(and(
-          eq(customerPortalAccess.sessionToken, sessionToken),
-          gte(customerPortalAccess.sessionExpires, new Date()),
-          eq(customerPortalAccess.status, 'active')
-        ));
+        .where(
+          and(
+            eq(customerPortalAccess.sessionToken, sessionToken),
+            gte(customerPortalAccess.sessionExpires, new Date()),
+            eq(customerPortalAccess.status, 'active'),
+          ),
+        );
 
       return customer || null;
     } catch (error) {
@@ -170,12 +189,16 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     customerPortalUserId: string,
-    data: Omit<InsertCustomerServiceRequest, 'tenantId' | 'customerId' | 'customerPortalUserId' | 'requestNumber'>
+    data: Omit<
+      InsertCustomerServiceRequest,
+      'tenantId' | 'customerId' | 'customerPortalUserId' | 'requestNumber'
+    >,
   ): Promise<CustomerServiceRequest> {
     // Generate unique request number
     const requestNumber = await this.generateRequestNumber(tenantId, 'SR');
 
-    const [result] = await db.insert(customerServiceRequests)
+    const [result] = await db
+      .insert(customerServiceRequests)
       .values({
         ...data,
         tenantId,
@@ -196,8 +219,15 @@ export class CustomerPortalService {
       relatedServiceRequestId: result.id,
     });
 
-    await this.logActivity(tenantId, customerId, customerPortalUserId, 'submit_service_request', 
-      `Submitted service request #${requestNumber}`, 'service_request', result.id);
+    await this.logActivity(
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      'submit_service_request',
+      `Submitted service request #${requestNumber}`,
+      'service_request',
+      result.id,
+    );
 
     return result;
   }
@@ -213,13 +243,13 @@ export class CustomerPortalService {
       limit?: number;
       offset?: number;
       fields?: string[];
-    } = {}
+    } = {},
   ): Promise<{ data: CustomerServiceRequest[]; total: number; queryDuration?: number }> {
     const startTime = Date.now();
-    
+
     const conditions = [
       eq(customerServiceRequests.tenantId, tenantId),
-      eq(customerServiceRequests.customerId, customerId)
+      eq(customerServiceRequests.customerId, customerId),
     ];
 
     if (options.status) {
@@ -229,36 +259,44 @@ export class CustomerPortalService {
     const whereClause = and(...conditions);
 
     // Selective field query optimization
-    const selectFields = options.fields ? 
-      Object.fromEntries(options.fields.map(field => [field, customerServiceRequests[field as keyof typeof customerServiceRequests]])) : 
-      undefined;
+    const selectFields = options.fields
+      ? Object.fromEntries(
+          options.fields.map((field) => [
+            field,
+            customerServiceRequests[field as keyof typeof customerServiceRequests],
+          ]),
+        )
+      : undefined;
 
     // Get total count and data in parallel for performance
     const [totalResult, data] = await Promise.all([
-      db.select({ count: sql<number>`count(*)` })
+      db
+        .select({ count: sql<number>`count(*)` })
         .from(customerServiceRequests)
         .where(whereClause),
-      selectFields ? 
-        db.select(selectFields)
-          .from(customerServiceRequests)
-          .where(whereClause)
-          .orderBy(desc(customerServiceRequests.submittedAt))
-          .limit(options.limit || 50)
-          .offset(options.offset || 0) :
-        db.select()
-          .from(customerServiceRequests)
-          .where(whereClause)
-          .orderBy(desc(customerServiceRequests.submittedAt))
-          .limit(options.limit || 50)
-          .offset(options.offset || 0)
+      selectFields
+        ? db
+            .select(selectFields)
+            .from(customerServiceRequests)
+            .where(whereClause)
+            .orderBy(desc(customerServiceRequests.submittedAt))
+            .limit(options.limit || 50)
+            .offset(options.offset || 0)
+        : db
+            .select()
+            .from(customerServiceRequests)
+            .where(whereClause)
+            .orderBy(desc(customerServiceRequests.submittedAt))
+            .limit(options.limit || 50)
+            .offset(options.offset || 0),
     ]);
 
     const queryDuration = Date.now() - startTime;
-    
+
     return {
       data: data as CustomerServiceRequest[],
       total: totalResult[0]?.count || 0,
-      queryDuration
+      queryDuration,
     };
   }
 
@@ -271,7 +309,7 @@ export class CustomerPortalService {
       status?: string;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<CustomerServiceRequest[]> {
     const conditions = [eq(customerServiceRequests.tenantId, tenantId)];
 
@@ -279,7 +317,8 @@ export class CustomerPortalService {
       conditions.push(eq(customerServiceRequests.status, options.status as any));
     }
 
-    return await db.select()
+    return await db
+      .select()
       .from(customerServiceRequests)
       .where(and(...conditions))
       .orderBy(desc(customerServiceRequests.submittedAt))
@@ -293,15 +332,18 @@ export class CustomerPortalService {
   async getServiceRequestById(
     tenantId: string,
     customerId: string,
-    requestId: string
+    requestId: string,
   ): Promise<CustomerServiceRequest | null> {
-    const [result] = await db.select()
+    const [result] = await db
+      .select()
       .from(customerServiceRequests)
-      .where(and(
-        eq(customerServiceRequests.tenantId, tenantId),
-        eq(customerServiceRequests.customerId, customerId),
-        eq(customerServiceRequests.id, requestId)
-      ));
+      .where(
+        and(
+          eq(customerServiceRequests.tenantId, tenantId),
+          eq(customerServiceRequests.customerId, customerId),
+          eq(customerServiceRequests.id, requestId),
+        ),
+      );
 
     return result || null;
   }
@@ -314,10 +356,10 @@ export class CustomerPortalService {
     requestId: string,
     statusUpdate: UpdateServiceRequestStatusRequest,
     changedByType: 'customer' | 'dealer_user' | 'system' | 'technician' = 'dealer_user',
-    changedById?: string
-  ): Promise<{ 
-    serviceRequest: CustomerServiceRequest; 
-    statusHistory: CustomerServiceRequestStatusHistory; 
+    changedById?: string,
+  ): Promise<{
+    serviceRequest: CustomerServiceRequest;
+    statusHistory: CustomerServiceRequestStatusHistory;
   }> {
     // Validate required fields
     if (!statusUpdate.changedByName) {
@@ -327,12 +369,15 @@ export class CustomerPortalService {
     // Use database transaction for integrity
     return await db.transaction(async (tx) => {
       // First get the current service request with proper tenantId constraint
-      const [currentRequest] = await tx.select()
+      const [currentRequest] = await tx
+        .select()
         .from(customerServiceRequests)
-        .where(and(
-          eq(customerServiceRequests.tenantId, tenantId),
-          eq(customerServiceRequests.id, requestId)
-        ));
+        .where(
+          and(
+            eq(customerServiceRequests.tenantId, tenantId),
+            eq(customerServiceRequests.id, requestId),
+          ),
+        );
 
       if (!currentRequest) {
         throw new Error('Service request not found');
@@ -358,8 +403,9 @@ export class CustomerPortalService {
         case 'completed':
           // Set both completion timestamps
           lifecycleUpdates.completedAt = now;
-          lifecycleUpdates.actualCompletionDate = statusUpdate.actualCompletionDate ? 
-            new Date(statusUpdate.actualCompletionDate) : now;
+          lifecycleUpdates.actualCompletionDate = statusUpdate.actualCompletionDate
+            ? new Date(statusUpdate.actualCompletionDate)
+            : now;
           // Backfill acknowledged timestamp if not set
           if (!currentRequest.acknowledgedAt) {
             lifecycleUpdates.acknowledgedAt = now;
@@ -371,12 +417,15 @@ export class CustomerPortalService {
       }
 
       // Update the service request status with SECURE tenantId constraint
-      const [updatedRequest] = await tx.update(customerServiceRequests)
+      const [updatedRequest] = await tx
+        .update(customerServiceRequests)
         .set(lifecycleUpdates)
-        .where(and(
-          eq(customerServiceRequests.id, requestId),
-          eq(customerServiceRequests.tenantId, tenantId) // CRITICAL: tenant constraint for security
-        ))
+        .where(
+          and(
+            eq(customerServiceRequests.id, requestId),
+            eq(customerServiceRequests.tenantId, tenantId), // CRITICAL: tenant constraint for security
+          ),
+        )
         .returning();
 
       // Verify the update affected exactly one row
@@ -385,7 +434,8 @@ export class CustomerPortalService {
       }
 
       // Record status change in history
-      const [statusHistory] = await tx.insert(customerServiceRequestStatusHistory)
+      const [statusHistory] = await tx
+        .insert(customerServiceRequestStatusHistory)
         .values({
           tenantId,
           serviceRequestId: requestId,
@@ -397,40 +447,41 @@ export class CustomerPortalService {
           changedByType,
           changedById,
           changedByName: statusUpdate.changedByName,
-          estimatedCompletionDate: statusUpdate.estimatedCompletionDate ? 
-            new Date(statusUpdate.estimatedCompletionDate) : null,
-          actualCompletionDate: statusUpdate.actualCompletionDate ? 
-            new Date(statusUpdate.actualCompletionDate) : null,
+          estimatedCompletionDate: statusUpdate.estimatedCompletionDate
+            ? new Date(statusUpdate.estimatedCompletionDate)
+            : null,
+          actualCompletionDate: statusUpdate.actualCompletionDate
+            ? new Date(statusUpdate.actualCompletionDate)
+            : null,
         })
         .returning();
 
       // Create notification for customer if status change is customer-visible
       // This is done within transaction to ensure consistency
       if (statusUpdate.customerVisibleNotes || newStatus !== previousStatus) {
-        await tx.insert(customerNotifications)
-          .values({
-            tenantId,
-            customerId: currentRequest.customerId,
-            customerPortalUserId: currentRequest.customerPortalUserId,
-            type: 'service_update',
-            title: `Service Request Status Updated`,
-            message: statusUpdate.customerVisibleNotes || 
-              `Your service request #${currentRequest.requestNumber} status has been updated to ${newStatus.replace('_', ' ')}.`,
-            relatedServiceRequestId: requestId,
-          });
-      }
-
-      // Log the activity within transaction
-      await tx.insert(customerPortalActivityLog)
-        .values({
+        await tx.insert(customerNotifications).values({
           tenantId,
           customerId: currentRequest.customerId,
           customerPortalUserId: currentRequest.customerPortalUserId,
-          activityType: 'update_service_request_status',
-          description: `Status updated from ${previousStatus} to ${newStatus}`,
-          relatedEntityType: 'service_request',
-          relatedEntityId: requestId,
+          type: 'service_update',
+          title: `Service Request Status Updated`,
+          message:
+            statusUpdate.customerVisibleNotes ||
+            `Your service request #${currentRequest.requestNumber} status has been updated to ${newStatus.replace('_', ' ')}.`,
+          relatedServiceRequestId: requestId,
         });
+      }
+
+      // Log the activity within transaction
+      await tx.insert(customerPortalActivityLog).values({
+        tenantId,
+        customerId: currentRequest.customerId,
+        customerPortalUserId: currentRequest.customerPortalUserId,
+        activityType: 'update_service_request_status',
+        description: `Status updated from ${previousStatus} to ${newStatus}`,
+        relatedEntityType: 'service_request',
+        relatedEntityId: requestId,
+      });
 
       return { serviceRequest: updatedRequest, statusHistory };
     });
@@ -442,28 +493,34 @@ export class CustomerPortalService {
   async getServiceRequestStatusHistory(
     tenantId: string,
     customerId: string,
-    requestId: string
+    requestId: string,
   ): Promise<CustomerServiceRequestStatusHistory[]> {
     // Verify the request belongs to the customer
-    const [request] = await db.select()
+    const [request] = await db
+      .select()
       .from(customerServiceRequests)
-      .where(and(
-        eq(customerServiceRequests.tenantId, tenantId),
-        eq(customerServiceRequests.customerId, customerId),
-        eq(customerServiceRequests.id, requestId)
-      ));
+      .where(
+        and(
+          eq(customerServiceRequests.tenantId, tenantId),
+          eq(customerServiceRequests.customerId, customerId),
+          eq(customerServiceRequests.id, requestId),
+        ),
+      );
 
     if (!request) {
       throw new Error('Service request not found');
     }
 
     // Get status history ordered by creation date
-    return await db.select()
+    return await db
+      .select()
       .from(customerServiceRequestStatusHistory)
-      .where(and(
-        eq(customerServiceRequestStatusHistory.tenantId, tenantId),
-        eq(customerServiceRequestStatusHistory.serviceRequestId, requestId)
-      ))
+      .where(
+        and(
+          eq(customerServiceRequestStatusHistory.tenantId, tenantId),
+          eq(customerServiceRequestStatusHistory.serviceRequestId, requestId),
+        ),
+      )
       .orderBy(desc(customerServiceRequestStatusHistory.createdAt));
   }
 
@@ -474,9 +531,10 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     customerPortalUserId: string,
-    data: Omit<InsertCustomerMeterSubmission, 'tenantId' | 'customerId' | 'customerPortalUserId'>
+    data: Omit<InsertCustomerMeterSubmission, 'tenantId' | 'customerId' | 'customerPortalUserId'>,
   ): Promise<CustomerMeterSubmission> {
-    const [result] = await db.insert(customerMeterSubmissions)
+    const [result] = await db
+      .insert(customerMeterSubmissions)
       .values({
         ...data,
         tenantId,
@@ -485,8 +543,13 @@ export class CustomerPortalService {
       })
       .returning();
 
-    await this.logActivity(tenantId, customerId, customerPortalUserId, 'submit_meter_reading', 
-      `Submitted meter reading for equipment ${data.equipmentSerialNumber}`);
+    await this.logActivity(
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      'submit_meter_reading',
+      `Submitted meter reading for equipment ${data.equipmentSerialNumber}`,
+    );
 
     return result;
   }
@@ -498,18 +561,19 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     equipmentId?: string,
-    limit: number = 50
+    limit: number = 50,
   ): Promise<CustomerMeterSubmission[]> {
     const conditions = [
       eq(customerMeterSubmissions.tenantId, tenantId),
-      eq(customerMeterSubmissions.customerId, customerId)
+      eq(customerMeterSubmissions.customerId, customerId),
     ];
 
     if (equipmentId) {
       conditions.push(eq(customerMeterSubmissions.equipmentId, equipmentId));
     }
 
-    return await db.select()
+    return await db
+      .select()
       .from(customerMeterSubmissions)
       .where(and(...conditions))
       .orderBy(desc(customerMeterSubmissions.submissionDate))
@@ -523,12 +587,16 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     customerPortalUserId: string,
-    orderData: Omit<InsertCustomerSupplyOrder, 'tenantId' | 'customerId' | 'customerPortalUserId' | 'orderNumber'>,
-    items: Omit<InsertCustomerSupplyOrderItem, 'orderId'>[]
+    orderData: Omit<
+      InsertCustomerSupplyOrder,
+      'tenantId' | 'customerId' | 'customerPortalUserId' | 'orderNumber'
+    >,
+    items: Omit<InsertCustomerSupplyOrderItem, 'orderId'>[],
   ): Promise<{ order: CustomerSupplyOrder; items: any[] }> {
     const orderNumber = await this.generateRequestNumber(tenantId, 'SO');
 
-    const [order] = await db.insert(customerSupplyOrders)
+    const [order] = await db
+      .insert(customerSupplyOrders)
       .values({
         ...orderData,
         tenantId,
@@ -538,8 +606,9 @@ export class CustomerPortalService {
       })
       .returning();
 
-    const orderItems = await db.insert(customerSupplyOrderItems)
-      .values(items.map(item => ({ ...item, orderId: order.id })))
+    const orderItems = await db
+      .insert(customerSupplyOrderItems)
+      .values(items.map((item) => ({ ...item, orderId: order.id })))
       .returning();
 
     // Calculate totals
@@ -547,7 +616,8 @@ export class CustomerPortalService {
     const tax = subtotal * 0.08; // 8% tax rate - should be configurable
     const total = subtotal + tax + parseFloat(orderData.shipping || '0');
 
-    await db.update(customerSupplyOrders)
+    await db
+      .update(customerSupplyOrders)
       .set({
         subtotal: subtotal.toFixed(2),
         tax: tax.toFixed(2),
@@ -565,8 +635,15 @@ export class CustomerPortalService {
       relatedSupplyOrderId: order.id,
     });
 
-    await this.logActivity(tenantId, customerId, customerPortalUserId, 'create_supply_order', 
-      `Created supply order #${orderNumber}`, 'supply_order', order.id);
+    await this.logActivity(
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      'create_supply_order',
+      `Created supply order #${orderNumber}`,
+      'supply_order',
+      order.id,
+    );
 
     return { order, items: orderItems };
   }
@@ -581,23 +658,27 @@ export class CustomerPortalService {
       status?: string;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<any[]> {
     const conditions = [
       eq(customerSupplyOrders.tenantId, tenantId),
-      eq(customerSupplyOrders.customerId, customerId)
+      eq(customerSupplyOrders.customerId, customerId),
     ];
 
     if (options.status) {
       conditions.push(eq(customerSupplyOrders.status, options.status as any));
     }
 
-    return await db.select({
-      order: customerSupplyOrders,
-      items: customerSupplyOrderItems
-    })
+    return await db
+      .select({
+        order: customerSupplyOrders,
+        items: customerSupplyOrderItems,
+      })
       .from(customerSupplyOrders)
-      .leftJoin(customerSupplyOrderItems, eq(customerSupplyOrders.id, customerSupplyOrderItems.orderId))
+      .leftJoin(
+        customerSupplyOrderItems,
+        eq(customerSupplyOrders.id, customerSupplyOrderItems.orderId),
+      )
       .where(and(...conditions))
       .orderBy(desc(customerSupplyOrders.createdAt))
       .limit(options.limit || 50)
@@ -611,11 +692,15 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     customerPortalUserId: string,
-    data: Omit<InsertCustomerPayment, 'tenantId' | 'customerId' | 'customerPortalUserId' | 'paymentNumber'>
+    data: Omit<
+      InsertCustomerPayment,
+      'tenantId' | 'customerId' | 'customerPortalUserId' | 'paymentNumber'
+    >,
   ): Promise<CustomerPayment> {
     const paymentNumber = await this.generateRequestNumber(tenantId, 'PAY');
 
-    const [result] = await db.insert(customerPayments)
+    const [result] = await db
+      .insert(customerPayments)
       .values({
         ...data,
         tenantId,
@@ -635,8 +720,15 @@ export class CustomerPortalService {
       relatedPaymentId: result.id,
     });
 
-    await this.logActivity(tenantId, customerId, customerPortalUserId, 'submit_payment', 
-      `Submitted payment #${paymentNumber}`, 'payment', result.id);
+    await this.logActivity(
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      'submit_payment',
+      `Submitted payment #${paymentNumber}`,
+      'payment',
+      result.id,
+    );
 
     return result;
   }
@@ -647,14 +739,14 @@ export class CustomerPortalService {
   async getCustomerPayments(
     tenantId: string,
     customerId: string,
-    limit: number = 50
+    limit: number = 50,
   ): Promise<CustomerPayment[]> {
-    return await db.select()
+    return await db
+      .select()
       .from(customerPayments)
-      .where(and(
-        eq(customerPayments.tenantId, tenantId),
-        eq(customerPayments.customerId, customerId)
-      ))
+      .where(
+        and(eq(customerPayments.tenantId, tenantId), eq(customerPayments.customerId, customerId)),
+      )
       .orderBy(desc(customerPayments.paymentDate))
       .limit(limit);
   }
@@ -669,18 +761,19 @@ export class CustomerPortalService {
       unreadOnly?: boolean;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<CustomerNotification[]> {
     const conditions = [
       eq(customerNotifications.tenantId, tenantId),
-      eq(customerNotifications.customerId, customerId)
+      eq(customerNotifications.customerId, customerId),
     ];
 
     if (options.unreadOnly) {
       conditions.push(eq(customerNotifications.isPortalRead, false));
     }
 
-    return await db.select()
+    return await db
+      .select()
       .from(customerNotifications)
       .where(and(...conditions))
       .orderBy(desc(customerNotifications.createdAt))
@@ -692,24 +785,25 @@ export class CustomerPortalService {
    * Mark notification as read
    */
   async markNotificationAsRead(notificationId: string, tenantId: string): Promise<void> {
-    await db.update(customerNotifications)
+    await db
+      .update(customerNotifications)
       .set({
         isPortalRead: true,
-        portalReadAt: new Date()
+        portalReadAt: new Date(),
       })
-      .where(and(
-        eq(customerNotifications.id, notificationId),
-        eq(customerNotifications.tenantId, tenantId)
-      ));
+      .where(
+        and(
+          eq(customerNotifications.id, notificationId),
+          eq(customerNotifications.tenantId, tenantId),
+        ),
+      );
   }
 
   /**
    * Create notification
    */
   async createNotification(data: InsertCustomerNotification): Promise<CustomerNotification> {
-    const [result] = await db.insert(customerNotifications)
-      .values(data)
-      .returning();
+    const [result] = await db.insert(customerNotifications).values(data).returning();
 
     return result;
   }
@@ -726,20 +820,19 @@ export class CustomerPortalService {
     relatedRecordType?: string,
     relatedRecordId?: string,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
   ): Promise<void> {
-    await db.insert(customerPortalActivityLog)
-      .values({
-        tenantId,
-        customerId,
-        customerPortalUserId,
-        action,
-        description,
-        relatedRecordType,
-        relatedRecordId,
-        ipAddress,
-        userAgent,
-      });
+    await db.insert(customerPortalActivityLog).values({
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      action,
+      description,
+      relatedRecordType,
+      relatedRecordId,
+      ipAddress,
+      userAgent,
+    });
   }
 
   /**
@@ -751,52 +844,70 @@ export class CustomerPortalService {
       pendingPayments,
       recentMeterReadings,
       unreadNotifications,
-      pendingSupplyOrders
+      pendingSupplyOrders,
     ] = await Promise.all([
       // Active service requests
-      db.select({ count: sql`count(*)` })
+      db
+        .select({ count: sql`count(*)` })
         .from(customerServiceRequests)
-        .where(and(
-          eq(customerServiceRequests.tenantId, tenantId),
-          eq(customerServiceRequests.customerId, customerId),
-          sql`${customerServiceRequests.status} NOT IN ('completed', 'cancelled')`
-        )),
+        .where(
+          and(
+            eq(customerServiceRequests.tenantId, tenantId),
+            eq(customerServiceRequests.customerId, customerId),
+            sql`${customerServiceRequests.status} NOT IN ('completed', 'cancelled')`,
+          ),
+        ),
 
       // Pending payments
-      db.select({ count: sql`count(*)` })
+      db
+        .select({ count: sql`count(*)` })
         .from(customerPayments)
-        .where(and(
-          eq(customerPayments.tenantId, tenantId),
-          eq(customerPayments.customerId, customerId),
-          eq(customerPayments.status, 'pending')
-        )),
+        .where(
+          and(
+            eq(customerPayments.tenantId, tenantId),
+            eq(customerPayments.customerId, customerId),
+            eq(customerPayments.status, 'pending'),
+          ),
+        ),
 
       // Recent meter readings (last 30 days)
-      db.select({ count: sql`count(*)` })
+      db
+        .select({ count: sql`count(*)` })
         .from(customerMeterSubmissions)
-        .where(and(
-          eq(customerMeterSubmissions.tenantId, tenantId),
-          eq(customerMeterSubmissions.customerId, customerId),
-          gte(customerMeterSubmissions.submissionDate, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
-        )),
+        .where(
+          and(
+            eq(customerMeterSubmissions.tenantId, tenantId),
+            eq(customerMeterSubmissions.customerId, customerId),
+            gte(
+              customerMeterSubmissions.submissionDate,
+              new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            ),
+          ),
+        ),
 
       // Unread notifications
-      db.select({ count: sql`count(*)` })
+      db
+        .select({ count: sql`count(*)` })
         .from(customerNotifications)
-        .where(and(
-          eq(customerNotifications.tenantId, tenantId),
-          eq(customerNotifications.customerId, customerId),
-          eq(customerNotifications.isPortalRead, false)
-        )),
+        .where(
+          and(
+            eq(customerNotifications.tenantId, tenantId),
+            eq(customerNotifications.customerId, customerId),
+            eq(customerNotifications.isPortalRead, false),
+          ),
+        ),
 
       // Pending supply orders
-      db.select({ count: sql`count(*)` })
+      db
+        .select({ count: sql`count(*)` })
         .from(customerSupplyOrders)
-        .where(and(
-          eq(customerSupplyOrders.tenantId, tenantId),
-          eq(customerSupplyOrders.customerId, customerId),
-          sql`${customerSupplyOrders.status} IN ('submitted', 'confirmed', 'processing')`
-        ))
+        .where(
+          and(
+            eq(customerSupplyOrders.tenantId, tenantId),
+            eq(customerSupplyOrders.customerId, customerId),
+            sql`${customerSupplyOrders.status} IN ('submitted', 'confirmed', 'processing')`,
+          ),
+        ),
     ]);
 
     return {
@@ -813,7 +924,9 @@ export class CustomerPortalService {
    */
   private async generateRequestNumber(tenantId: string, prefix: string): Promise<string> {
     const year = new Date().getFullYear();
-    const sequence = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    const sequence = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, '0');
     return `${prefix}-${year}-${sequence}`;
   }
 
@@ -822,7 +935,8 @@ export class CustomerPortalService {
    */
   async resetPassword(email: string): Promise<{ success: boolean; message: string }> {
     try {
-      const [customer] = await db.select()
+      const [customer] = await db
+        .select()
         .from(customerPortalAccess)
         .where(eq(customerPortalAccess.email, email));
 
@@ -833,11 +947,12 @@ export class CustomerPortalService {
       const resetToken = crypto.randomBytes(32).toString('hex');
       const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      await db.update(customerPortalAccess)
+      await db
+        .update(customerPortalAccess)
         .set({
           passwordResetToken: resetToken,
           passwordResetExpires: resetExpires,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(customerPortalAccess.id, customer.id));
 
@@ -853,14 +968,12 @@ export class CustomerPortalService {
   /**
    * Update customer preferences
    */
-  async updateCustomerPreferences(
-    customerPortalUserId: string,
-    preferences: any
-  ): Promise<void> {
-    await db.update(customerPortalAccess)
+  async updateCustomerPreferences(customerPortalUserId: string, preferences: any): Promise<void> {
+    await db
+      .update(customerPortalAccess)
       .set({
         preferences,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(customerPortalAccess.id, customerPortalUserId));
   }
@@ -877,8 +990,8 @@ export class CustomerPortalService {
         serialNumber: 'ABC123456',
         model: 'Canon imageRUNNER ADVANCE C3530i',
         location: 'Main Office',
-        contractId: 'CONTRACT-001'
-      }
+        contractId: 'CONTRACT-001',
+      },
     ];
   }
 
@@ -887,13 +1000,16 @@ export class CustomerPortalService {
    */
   async verifyCustomerAccess(tenantId: string, customerId: string): Promise<void> {
     try {
-      const [customer] = await db.select()
+      const [customer] = await db
+        .select()
         .from(customerPortalAccess)
-        .where(and(
-          eq(customerPortalAccess.tenantId, tenantId),
-          eq(customerPortalAccess.customerId, customerId),
-          eq(customerPortalAccess.status, 'active')
-        ));
+        .where(
+          and(
+            eq(customerPortalAccess.tenantId, tenantId),
+            eq(customerPortalAccess.customerId, customerId),
+            eq(customerPortalAccess.status, 'active'),
+          ),
+        );
 
       if (!customer) {
         throw new Error('CUSTOMER_ACCESS_DENIED');
@@ -910,20 +1026,24 @@ export class CustomerPortalService {
   /**
    * Verify equipment ownership - ensure equipment belongs to customer
    */
-  async verifyEquipmentOwnership(tenantId: string, customerId: string, equipmentId: string): Promise<void> {
+  async verifyEquipmentOwnership(
+    tenantId: string,
+    customerId: string,
+    equipmentId: string,
+  ): Promise<void> {
     try {
       // In a real implementation, this would check against your equipment/contracts tables
       // For now, we'll check if the equipment ID follows expected patterns and belongs to the customer
-      
+
       // First verify customer access
       await this.verifyCustomerAccess(tenantId, customerId);
-      
+
       // Mock equipment ownership verification - in reality this would query equipment tables
       // that have foreign keys to customers and tenants
       const mockEquipmentOwnership = {
         'eq-001': ['demo-customer-001', 'customer-001'],
         'eq-002': ['demo-customer-001', 'customer-001'],
-        'eq-003': ['demo-customer-002', 'customer-002']
+        'eq-003': ['demo-customer-002', 'customer-002'],
       };
 
       const allowedCustomers = mockEquipmentOwnership[equipmentId];
@@ -931,7 +1051,10 @@ export class CustomerPortalService {
         throw new Error('EQUIPMENT_ACCESS_DENIED');
       }
     } catch (error) {
-      if (error.message === 'EQUIPMENT_ACCESS_DENIED' || error.message === 'CUSTOMER_ACCESS_DENIED') {
+      if (
+        error.message === 'EQUIPMENT_ACCESS_DENIED' ||
+        error.message === 'CUSTOMER_ACCESS_DENIED'
+      ) {
         throw error;
       }
       console.error('Error verifying equipment ownership:', error);
@@ -943,21 +1066,21 @@ export class CustomerPortalService {
    * Get equipment health data with comprehensive monitoring
    */
   async getEquipmentHealthData(
-    tenantId: string, 
-    customerId: string, 
+    tenantId: string,
+    customerId: string,
     timeRange: string = '30d',
     options: {
       equipmentIds?: string[];
       includeAlerts?: boolean;
       includeMetrics?: boolean;
       fields?: string[];
-    } = {}
+    } = {},
   ): Promise<{ data: any[]; total: number; queryDuration?: number }> {
     const startTime = Date.now();
-    // In a real implementation, this would fetch from IoT sensors, equipment APIs, 
+    // In a real implementation, this would fetch from IoT sensors, equipment APIs,
     // service history, and usage analytics
     // For now, return comprehensive mock data
-    
+
     const mockHealthData = [
       {
         id: 'eq-001',
@@ -978,7 +1101,7 @@ export class CustomerPortalService {
             { color: 'black', level: 78, status: 'good' },
             { color: 'cyan', level: 45, status: 'warning' },
             { color: 'magenta', level: 82, status: 'good' },
-            { color: 'yellow', level: 67, status: 'good' }
+            { color: 'yellow', level: 67, status: 'good' },
           ],
           paperLevels: 85,
           drumLifeRemaining: 73,
@@ -986,14 +1109,14 @@ export class CustomerPortalService {
           temperature: 72,
           humidity: 45,
           errorCount: 2,
-          jamRate: 0.8
+          jamRate: 0.8,
         },
         recentActivity: [
           { date: '2024-12-01', type: 'print', count: 156 },
           { date: '2024-12-02', type: 'copy', count: 89 },
           { date: '2024-12-03', type: 'scan', count: 45 },
           { date: '2024-12-04', type: 'print', count: 178 },
-          { date: '2024-12-05', type: 'copy', count: 92 }
+          { date: '2024-12-05', type: 'copy', count: 92 },
         ],
         alerts: [
           {
@@ -1001,15 +1124,15 @@ export class CustomerPortalService {
             type: 'warning',
             message: 'Cyan toner level is low (45%)',
             timestamp: '2024-12-05T10:30:00Z',
-            resolved: false
-          }
+            resolved: false,
+          },
         ],
         connectionStatus: {
           isOnline: true,
           lastSeen: '2024-12-05T11:45:00Z',
           signalStrength: 95,
-          ipAddress: '192.168.1.101'
-        }
+          ipAddress: '192.168.1.101',
+        },
       },
       {
         id: 'eq-002',
@@ -1026,23 +1149,21 @@ export class CustomerPortalService {
         monthlyAverage: 3200,
         predictedMaintenanceDate: '2025-01-15',
         healthMetrics: {
-          tonerLevels: [
-            { color: 'black', level: 23, status: 'critical' }
-          ],
+          tonerLevels: [{ color: 'black', level: 23, status: 'critical' }],
           paperLevels: 92,
           drumLifeRemaining: 45,
           fuserLifeRemaining: 67,
           temperature: 75,
           humidity: 42,
           errorCount: 5,
-          jamRate: 1.2
+          jamRate: 1.2,
         },
         recentActivity: [
           { date: '2024-12-01', type: 'print', count: 98 },
           { date: '2024-12-02', type: 'scan', count: 34 },
           { date: '2024-12-03', type: 'print', count: 112 },
           { date: '2024-12-04', type: 'copy', count: 23 },
-          { date: '2024-12-05', type: 'print', count: 145 }
+          { date: '2024-12-05', type: 'print', count: 145 },
         ],
         alerts: [
           {
@@ -1050,22 +1171,22 @@ export class CustomerPortalService {
             type: 'critical',
             message: 'Black toner level critically low (23%) - order replacement immediately',
             timestamp: '2024-12-05T09:15:00Z',
-            resolved: false
+            resolved: false,
           },
           {
             id: 'alert-003',
             type: 'warning',
             message: 'Drum life at 45% - consider scheduling replacement',
             timestamp: '2024-12-04T14:20:00Z',
-            resolved: false
-          }
+            resolved: false,
+          },
         ],
         connectionStatus: {
           isOnline: true,
           lastSeen: '2024-12-05T11:42:00Z',
           signalStrength: 87,
-          ipAddress: '192.168.1.102'
-        }
+          ipAddress: '192.168.1.102',
+        },
       },
       {
         id: 'eq-003',
@@ -1086,7 +1207,7 @@ export class CustomerPortalService {
             { color: 'black', level: 67, status: 'good' },
             { color: 'cyan', level: 12, status: 'critical' },
             { color: 'magenta', level: 34, status: 'warning' },
-            { color: 'yellow', level: 8, status: 'critical' }
+            { color: 'yellow', level: 8, status: 'critical' },
           ],
           paperLevels: 15,
           drumLifeRemaining: 23,
@@ -1094,14 +1215,14 @@ export class CustomerPortalService {
           temperature: 78,
           humidity: 48,
           errorCount: 12,
-          jamRate: 3.4
+          jamRate: 3.4,
         },
         recentActivity: [
           { date: '2024-12-01', type: 'print', count: 67 },
           { date: '2024-12-02', type: 'copy', count: 45 },
           { date: '2024-12-03', type: 'scan', count: 23 },
           { date: '2024-12-04', type: 'print', count: 89 },
-          { date: '2024-12-05', type: 'copy', count: 56 }
+          { date: '2024-12-05', type: 'copy', count: 56 },
         ],
         alerts: [
           {
@@ -1109,60 +1230,60 @@ export class CustomerPortalService {
             type: 'critical',
             message: 'Multiple toner cartridges critically low - service required',
             timestamp: '2024-12-05T08:00:00Z',
-            resolved: false
+            resolved: false,
           },
           {
             id: 'alert-005',
             type: 'critical',
             message: 'Paper tray nearly empty (15%)',
             timestamp: '2024-12-05T10:45:00Z',
-            resolved: false
+            resolved: false,
           },
           {
             id: 'alert-006',
             type: 'warning',
             message: 'Service overdue - scheduled maintenance required',
             timestamp: '2024-12-05T07:30:00Z',
-            resolved: false
-          }
+            resolved: false,
+          },
         ],
         connectionStatus: {
           isOnline: true,
           lastSeen: '2024-12-05T11:30:00Z',
           signalStrength: 72,
-          ipAddress: '192.168.1.103'
-        }
-      }
+          ipAddress: '192.168.1.103',
+        },
+      },
     ];
 
     // Apply filters based on options
     let filteredData = mockHealthData;
-    
+
     if (options.equipmentIds && options.equipmentIds.length > 0) {
-      filteredData = filteredData.filter(equipment => 
-        options.equipmentIds!.includes(equipment.id)
+      filteredData = filteredData.filter((equipment) =>
+        options.equipmentIds!.includes(equipment.id),
       );
     }
-    
+
     if (options.includeAlerts === false) {
-      filteredData = filteredData.map(equipment => ({
+      filteredData = filteredData.map((equipment) => ({
         ...equipment,
-        alerts: []
+        alerts: [],
       }));
     }
-    
+
     if (options.includeMetrics === false) {
-      filteredData = filteredData.map(equipment => ({
+      filteredData = filteredData.map((equipment) => ({
         ...equipment,
-        healthMetrics: null
+        healthMetrics: null,
       }));
     }
-    
+
     // Apply selective field queries for payload optimization
     if (options.fields && options.fields.length > 0) {
-      filteredData = filteredData.map(equipment => {
+      filteredData = filteredData.map((equipment) => {
         const selectedFields: any = {};
-        options.fields!.forEach(field => {
+        options.fields!.forEach((field) => {
           if (equipment.hasOwnProperty(field)) {
             selectedFields[field] = equipment[field];
           }
@@ -1170,15 +1291,15 @@ export class CustomerPortalService {
         return selectedFields;
       });
     }
-    
+
     const queryDuration = Date.now() - startTime;
-    
+
     // Filter data based on time range if needed
     // In a real implementation, you would query actual data based on timeRange
     return {
       data: filteredData,
       total: filteredData.length,
-      queryDuration
+      queryDuration,
     };
   }
 
@@ -1193,7 +1314,7 @@ export class CustomerPortalService {
     preferredDate: string,
     maintenanceType: string,
     notes?: string,
-    urgency: string = 'medium'
+    urgency: string = 'medium',
   ): Promise<any> {
     const maintenanceNumber = await this.generateRequestNumber(tenantId, 'MAINT');
 
@@ -1210,7 +1331,7 @@ export class CustomerPortalService {
       preferredDate,
       notes,
       status: 'scheduled',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     // Create notification
@@ -1223,8 +1344,15 @@ export class CustomerPortalService {
       message: `Maintenance request #${maintenanceNumber} has been scheduled for ${new Date(preferredDate).toLocaleDateString()}.`,
     });
 
-    await this.logActivity(tenantId, customerId, customerPortalUserId, 'schedule_maintenance', 
-      `Scheduled maintenance #${maintenanceNumber}`, 'maintenance', maintenanceRequest.id);
+    await this.logActivity(
+      tenantId,
+      customerId,
+      customerPortalUserId,
+      'schedule_maintenance',
+      `Scheduled maintenance #${maintenanceNumber}`,
+      'maintenance',
+      maintenanceRequest.id,
+    );
 
     return maintenanceRequest;
   }
@@ -1235,12 +1363,12 @@ export class CustomerPortalService {
   async getUsageAnalytics(
     tenantId: string,
     customerId: string,
-    options: UsageAnalyticsRequest
+    options: UsageAnalyticsRequest,
   ): Promise<UsageAnalytics> {
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
-    
+
     switch (options.timeRange) {
       case '7d':
         startDate.setDate(endDate.getDate() - 7);
@@ -1260,7 +1388,8 @@ export class CustomerPortalService {
     }
 
     // Get meter readings for the period
-    let query = db.select()
+    let query = db
+      .select()
       .from(customerMeterSubmissions)
       .where(
         and(
@@ -1268,8 +1397,8 @@ export class CustomerPortalService {
           eq(customerMeterSubmissions.customerId, customerId),
           gte(customerMeterSubmissions.readingDate, startDate.toISOString()),
           lte(customerMeterSubmissions.readingDate, endDate.toISOString()),
-          eq(customerMeterSubmissions.isValidated, true)
-        )
+          eq(customerMeterSubmissions.isValidated, true),
+        ),
       )
       .orderBy(desc(customerMeterSubmissions.readingDate));
 
@@ -1282,8 +1411,8 @@ export class CustomerPortalService {
           gte(customerMeterSubmissions.readingDate, startDate.toISOString()),
           lte(customerMeterSubmissions.readingDate, endDate.toISOString()),
           eq(customerMeterSubmissions.isValidated, true),
-          inArray(customerMeterSubmissions.equipmentId, options.equipmentIds)
-        )
+          inArray(customerMeterSubmissions.equipmentId, options.equipmentIds),
+        ),
       );
     }
 
@@ -1294,11 +1423,16 @@ export class CustomerPortalService {
       meterReadings,
       options,
       startDate,
-      endDate
+      endDate,
     );
 
-    await this.logActivity(tenantId, customerId, '', 'view_analytics', 
-      `Viewed usage analytics for period: ${options.timeRange}`);
+    await this.logActivity(
+      tenantId,
+      customerId,
+      '',
+      'view_analytics',
+      `Viewed usage analytics for period: ${options.timeRange}`,
+    );
 
     return analytics;
   }
@@ -1310,7 +1444,7 @@ export class CustomerPortalService {
     meterReadings: CustomerMeterSubmission[],
     options: UsageAnalyticsRequest,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<UsageAnalytics> {
     const timeRange = options.timeRange;
     const lastUpdated = new Date().toISOString();
@@ -1336,7 +1470,8 @@ export class CustomerPortalService {
     const maintenanceCost = Math.floor(totalImpressions / 1000) * 25; // $25 per 1000 pages
     const supplyCost = (totalImpressions / 2500) * 85; // $85 per toner cartridge (2500 pages)
 
-    const totalCost = blackWhiteCost + colorCost + largeFormatCost + scanCost + maintenanceCost + supplyCost;
+    const totalCost =
+      blackWhiteCost + colorCost + largeFormatCost + scanCost + maintenanceCost + supplyCost;
     const costPerPage = totalImpressions > 0 ? totalCost / totalImpressions : 0;
 
     // Environmental calculations
@@ -1346,8 +1481,9 @@ export class CustomerPortalService {
     // Efficiency score (based on color ratio, scan usage, etc.)
     const colorRatio = totalImpressions > 0 ? (totalColor / totalImpressions) * 100 : 0;
     const scanRatio = totalImpressions > 0 ? (totalScans / totalImpressions) * 100 : 0;
-    const efficiencyScore = Math.min(100, 
-      100 - (colorRatio * 0.5) + (scanRatio * 0.3) // Lower color usage and higher scan usage = better efficiency
+    const efficiencyScore = Math.min(
+      100,
+      100 - colorRatio * 0.5 + scanRatio * 0.3, // Lower color usage and higher scan usage = better efficiency
     );
 
     // Generate trends data using deltas
@@ -1361,13 +1497,24 @@ export class CustomerPortalService {
 
     // Comparison data (current vs previous period)
     const comparison = await this.calculateUsageComparison(
-      totalImpressions, averageDaily, averageMonthly, colorRatio, totalCost, 
-      costPerPage, efficiencyScore, carbonFootprint, timeRange
+      totalImpressions,
+      averageDaily,
+      averageMonthly,
+      colorRatio,
+      totalCost,
+      costPerPage,
+      efficiencyScore,
+      carbonFootprint,
+      timeRange,
     );
 
     // Generate recommendations
     const recommendations = this.generateUsageRecommendations(
-      colorRatio, scanRatio, costPerPage, efficiencyScore, totalImpressions
+      colorRatio,
+      scanRatio,
+      costPerPage,
+      efficiencyScore,
+      totalImpressions,
     );
 
     return {
@@ -1384,7 +1531,7 @@ export class CustomerPortalService {
         costPerPage,
         efficiencyScore,
         carbonFootprint,
-        paperSaved
+        paperSaved,
       },
       trends,
       equipmentUsage,
@@ -1395,11 +1542,11 @@ export class CustomerPortalService {
         scanCost,
         maintenanceCost,
         supplyCost,
-        totalCost
+        totalCost,
       },
       peakUsage,
       comparison,
-      recommendations
+      recommendations,
     };
   }
 
@@ -1418,14 +1565,14 @@ export class CustomerPortalService {
   }> {
     // Group readings by equipment
     const equipmentReadings = new Map<string, CustomerMeterSubmission[]>();
-    
-    readings.forEach(reading => {
+
+    readings.forEach((reading) => {
       if (!equipmentReadings.has(reading.equipmentId)) {
         equipmentReadings.set(reading.equipmentId, []);
       }
       equipmentReadings.get(reading.equipmentId)!.push(reading);
     });
-    
+
     const deltas: Array<{
       equipmentId: string;
       readingDate: Date;
@@ -1436,29 +1583,48 @@ export class CustomerPortalService {
       scanImpressions: number;
       faxImpressions: number;
     }> = [];
-    
+
     // Calculate deltas per equipment
     equipmentReadings.forEach((equipmentReadings, equipmentId) => {
       // Sort by reading date ascending
-      const sortedReadings = equipmentReadings.sort((a, b) => 
-        new Date(a.readingDate).getTime() - new Date(b.readingDate).getTime()
+      const sortedReadings = equipmentReadings.sort(
+        (a, b) => new Date(a.readingDate).getTime() - new Date(b.readingDate).getTime(),
       );
-      
+
       // Calculate deltas between consecutive readings
       for (let i = 1; i < sortedReadings.length; i++) {
         const current = sortedReadings[i];
         const previous = sortedReadings[i - 1];
-        
+
         // Calculate the difference (actual usage)
-        const totalDelta = Math.max(0, (current.totalImpressions || 0) - (previous.totalImpressions || 0));
-        const bwDelta = Math.max(0, (current.blackWhiteImpressions || 0) - (previous.blackWhiteImpressions || 0));
-        const colorDelta = Math.max(0, (current.colorImpressions || 0) - (previous.colorImpressions || 0));
-        const largeDelta = Math.max(0, (current.largeFormatImpressions || 0) - (previous.largeFormatImpressions || 0));
-        const scanDelta = Math.max(0, (current.scanImpressions || 0) - (previous.scanImpressions || 0));
-        const faxDelta = Math.max(0, (current.faxImpressions || 0) - (previous.faxImpressions || 0));
-        
+        const totalDelta = Math.max(
+          0,
+          (current.totalImpressions || 0) - (previous.totalImpressions || 0),
+        );
+        const bwDelta = Math.max(
+          0,
+          (current.blackWhiteImpressions || 0) - (previous.blackWhiteImpressions || 0),
+        );
+        const colorDelta = Math.max(
+          0,
+          (current.colorImpressions || 0) - (previous.colorImpressions || 0),
+        );
+        const largeDelta = Math.max(
+          0,
+          (current.largeFormatImpressions || 0) - (previous.largeFormatImpressions || 0),
+        );
+        const scanDelta = Math.max(
+          0,
+          (current.scanImpressions || 0) - (previous.scanImpressions || 0),
+        );
+        const faxDelta = Math.max(
+          0,
+          (current.faxImpressions || 0) - (previous.faxImpressions || 0),
+        );
+
         // Only include positive deltas (filter out meter resets or invalid readings)
-        if (totalDelta > 0 && totalDelta < 100000) { // Clamp outliers
+        if (totalDelta > 0 && totalDelta < 100000) {
+          // Clamp outliers
           deltas.push({
             equipmentId,
             readingDate: new Date(current.readingDate),
@@ -1467,12 +1633,12 @@ export class CustomerPortalService {
             colorImpressions: colorDelta,
             largeFormatImpressions: largeDelta,
             scanImpressions: scanDelta,
-            faxImpressions: faxDelta
+            faxImpressions: faxDelta,
           });
         }
       }
     });
-    
+
     return deltas;
   }
 
@@ -1492,12 +1658,12 @@ export class CustomerPortalService {
     }>,
     periodType: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): UsageTrend[] {
     // Group readings by period
     const trendMap = new Map<string, any>();
 
-    deltas.forEach(delta => {
+    deltas.forEach((delta) => {
       const date = delta.readingDate;
       let periodKey: string;
 
@@ -1526,7 +1692,7 @@ export class CustomerPortalService {
           colorImpressions: 0,
           largeFormatImpressions: 0,
           scanImpressions: 0,
-          faxImpressions: 0
+          faxImpressions: 0,
         });
       }
 
@@ -1541,13 +1707,20 @@ export class CustomerPortalService {
     });
 
     // Calculate cost and efficiency for each trend point
-    return Array.from(trendMap.values()).map(trend => ({
-      ...trend,
-      costEstimate: (trend.blackWhiteImpressions * 0.03) + (trend.colorImpressions * 0.12) + 
-                   (trend.largeFormatImpressions * 0.25) + (trend.scanImpressions * 0.01),
-      efficiency: trend.totalImpressions > 0 ? 
-        Math.min(100, 100 - ((trend.colorImpressions / trend.totalImpressions) * 50)) : 100
-    })).sort((a, b) => a.date.localeCompare(b.date));
+    return Array.from(trendMap.values())
+      .map((trend) => ({
+        ...trend,
+        costEstimate:
+          trend.blackWhiteImpressions * 0.03 +
+          trend.colorImpressions * 0.12 +
+          trend.largeFormatImpressions * 0.25 +
+          trend.scanImpressions * 0.01,
+        efficiency:
+          trend.totalImpressions > 0
+            ? Math.min(100, 100 - (trend.colorImpressions / trend.totalImpressions) * 50)
+            : 100,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   }
 
   /**
@@ -1564,14 +1737,14 @@ export class CustomerPortalService {
       scanImpressions: number;
       faxImpressions: number;
     }>,
-    originalReadings: CustomerMeterSubmission[]
+    originalReadings: CustomerMeterSubmission[],
   ): Promise<EquipmentUsageSummary[]> {
     const equipmentMap = new Map<string, any>();
 
     // Initialize equipment tracking from original readings
-    originalReadings.forEach(reading => {
+    originalReadings.forEach((reading) => {
       const equipmentId = reading.equipmentId;
-      
+
       if (!equipmentMap.has(equipmentId)) {
         equipmentMap.set(equipmentId, {
           equipmentId,
@@ -1579,7 +1752,7 @@ export class CustomerPortalService {
           serialNumber: reading.equipmentSerialNumber,
           totalImpressions: 0,
           deltaCount: 0,
-          lastReading: reading.readingDate
+          lastReading: reading.readingDate,
         });
       }
 
@@ -1590,7 +1763,7 @@ export class CustomerPortalService {
     });
 
     // Sum deltas per equipment (actual usage)
-    deltas.forEach(delta => {
+    deltas.forEach((delta) => {
       const equipment = equipmentMap.get(delta.equipmentId);
       if (equipment) {
         equipment.totalImpressions += delta.totalImpressions;
@@ -1598,16 +1771,16 @@ export class CustomerPortalService {
       }
     });
 
-    return Array.from(equipmentMap.values()).map(equipment => {
-      const monthlyAverage = equipment.deltaCount > 0 ? 
-        equipment.totalImpressions / equipment.deltaCount * 30 : 0;
-      
+    return Array.from(equipmentMap.values()).map((equipment) => {
+      const monthlyAverage =
+        equipment.deltaCount > 0 ? (equipment.totalImpressions / equipment.deltaCount) * 30 : 0;
+
       // Simple utilization calculation (could be enhanced with actual capacity data)
       const utilizationRate = Math.min(100, (monthlyAverage / 1000) * 100); // Assume 1000 pages/month target
-      
+
       const costPerPage = 0.05; // Average cost per page
       const efficiency = Math.min(100, 90 + Math.random() * 20); // Mock efficiency score
-      
+
       return {
         equipmentId: equipment.equipmentId,
         equipmentName: equipment.equipmentName,
@@ -1618,7 +1791,7 @@ export class CustomerPortalService {
         costPerPage,
         efficiency,
         lastReading: equipment.lastReading,
-        trendDirection: Math.random() > 0.5 ? 'up' : 'stable' as 'up' | 'down' | 'stable'
+        trendDirection: Math.random() > 0.5 ? 'up' : ('stable' as 'up' | 'down' | 'stable'),
       };
     });
   }
@@ -1635,22 +1808,22 @@ export class CustomerPortalService {
         { hour: 10, averageVolume: 98 },
         { hour: 11, averageVolume: 87 },
         { hour: 14, averageVolume: 67 },
-        { hour: 15, averageVolume: 89 }
+        { hour: 15, averageVolume: 89 },
       ],
       dailyPeaks: [
         { dayOfWeek: 1, averageVolume: 450 }, // Monday
         { dayOfWeek: 2, averageVolume: 520 }, // Tuesday
         { dayOfWeek: 3, averageVolume: 480 }, // Wednesday
         { dayOfWeek: 4, averageVolume: 465 }, // Thursday
-        { dayOfWeek: 5, averageVolume: 380 }  // Friday
+        { dayOfWeek: 5, averageVolume: 380 }, // Friday
       ],
       monthlyPeaks: [
         { month: 1, averageVolume: 8200 },
         { month: 3, averageVolume: 9500 },
         { month: 6, averageVolume: 7800 },
         { month: 9, averageVolume: 9200 },
-        { month: 12, averageVolume: 6500 }
-      ]
+        { month: 12, averageVolume: 6500 },
+      ],
     };
   }
 
@@ -1666,7 +1839,7 @@ export class CustomerPortalService {
     costPerPage: number,
     efficiencyScore: number,
     carbonFootprint: number,
-    timeRange: string
+    timeRange: string,
   ): Promise<any> {
     // Mock previous period data for comparison
     // In real implementation, query actual previous period data
@@ -1683,7 +1856,7 @@ export class CustomerPortalService {
       costPerPage,
       efficiencyScore,
       carbonFootprint,
-      paperSaved: 0
+      paperSaved: 0,
     };
 
     const previous = {
@@ -1697,17 +1870,19 @@ export class CustomerPortalService {
       costPerPage: costPerPage * (0.95 + Math.random() * 0.1),
       efficiencyScore: efficiencyScore * (0.9 + Math.random() * 0.2),
       carbonFootprint: carbonFootprint * previousPeriodMultiplier,
-      paperSaved: 0
+      paperSaved: 0,
     };
 
-    const percentageChange = previous.totalVolume > 0 ? 
-      ((current.totalVolume - previous.totalVolume) / previous.totalVolume) * 100 : 0;
+    const percentageChange =
+      previous.totalVolume > 0
+        ? ((current.totalVolume - previous.totalVolume) / previous.totalVolume) * 100
+        : 0;
 
     return {
       current,
       previous,
       percentageChange,
-      trendDirection: percentageChange > 5 ? 'up' : percentageChange < -5 ? 'down' : 'stable'
+      trendDirection: percentageChange > 5 ? 'up' : percentageChange < -5 ? 'down' : 'stable',
     };
   }
 
@@ -1719,7 +1894,7 @@ export class CustomerPortalService {
     scanRatio: number,
     costPerPage: number,
     efficiencyScore: number,
-    totalImpressions: number
+    totalImpressions: number,
   ): any[] {
     const recommendations = [];
 
@@ -1727,9 +1902,9 @@ export class CustomerPortalService {
       recommendations.push({
         type: 'cost_saving',
         title: 'Reduce Color Printing',
-        description: `${colorRatio.toFixed(1)}% of your prints are in color. Consider using black & white for internal documents to save up to ${(colorRatio * totalImpressions * 0.09 / 100).toFixed(0)} dollars per month.`,
+        description: `${colorRatio.toFixed(1)}% of your prints are in color. Consider using black & white for internal documents to save up to ${((colorRatio * totalImpressions * 0.09) / 100).toFixed(0)} dollars per month.`,
         impact: 'high',
-        effort: 'low'
+        effort: 'low',
       });
     }
 
@@ -1737,9 +1912,12 @@ export class CustomerPortalService {
       recommendations.push({
         type: 'environmental',
         title: 'Increase Digital Scanning',
-        description: 'Only ' + scanRatio.toFixed(1) + '% of your activity is scanning. Consider scanning documents instead of printing for better environmental impact.',
+        description:
+          'Only ' +
+          scanRatio.toFixed(1) +
+          '% of your activity is scanning. Consider scanning documents instead of printing for better environmental impact.',
         impact: 'medium',
-        effort: 'low'
+        effort: 'low',
       });
     }
 
@@ -1749,7 +1927,7 @@ export class CustomerPortalService {
         title: 'Optimize Print Settings',
         description: `Your cost per page of $${costPerPage.toFixed(3)} is above average. Consider draft mode printing and duplex settings to reduce costs.`,
         impact: 'medium',
-        effort: 'low'
+        effort: 'low',
       });
     }
 
@@ -1757,9 +1935,10 @@ export class CustomerPortalService {
       recommendations.push({
         type: 'efficiency',
         title: 'Improve Print Efficiency',
-        description: 'Your efficiency score is below optimal. Review print policies and user training to improve resource utilization.',
+        description:
+          'Your efficiency score is below optimal. Review print policies and user training to improve resource utilization.',
         impact: 'medium',
-        effort: 'medium'
+        effort: 'medium',
       });
     }
 
@@ -1767,9 +1946,10 @@ export class CustomerPortalService {
       recommendations.push({
         type: 'maintenance',
         title: 'Schedule Preventive Maintenance',
-        description: 'With high usage volume, regular maintenance will ensure optimal performance and reduce long-term costs.',
+        description:
+          'With high usage volume, regular maintenance will ensure optimal performance and reduce long-term costs.',
         impact: 'high',
-        effort: 'low'
+        effort: 'low',
       });
     }
 
@@ -1781,15 +1961,15 @@ export class CustomerPortalService {
    */
   private findPeakDay(readings: CustomerMeterSubmission[]): string {
     const dayTotals = new Map<string, number>();
-    
-    readings.forEach(reading => {
+
+    readings.forEach((reading) => {
       const day = new Date(reading.readingDate).toLocaleDateString('en-US', { weekday: 'long' });
       dayTotals.set(day, (dayTotals.get(day) || 0) + (reading.totalImpressions || 0));
     });
 
     let peakDay = 'Monday';
     let peakVolume = 0;
-    
+
     dayTotals.forEach((volume, day) => {
       if (volume > peakVolume) {
         peakVolume = volume;
@@ -1801,7 +1981,7 @@ export class CustomerPortalService {
   }
 
   private findPeakVolume(readings: CustomerMeterSubmission[]): number {
-    return Math.max(...readings.map(r => r.totalImpressions || 0));
+    return Math.max(...readings.map((r) => r.totalImpressions || 0));
   }
 
   /**
@@ -1811,7 +1991,7 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     equipmentId: string,
-    timeRange: string = '30d'
+    timeRange: string = '30d',
   ): Promise<any> {
     // Use the new comprehensive analytics but filter for single equipment
     const analytics = await this.getUsageAnalytics(tenantId, customerId, {
@@ -1820,12 +2000,12 @@ export class CustomerPortalService {
       includeComparison: true,
       includeCosts: true,
       includeRecommendations: true,
-      periodType: 'daily'
+      periodType: 'daily',
     });
 
     // Return legacy format for backward compatibility
-    const equipment = analytics.equipmentUsage.find(eq => eq.equipmentId === equipmentId);
-    
+    const equipment = analytics.equipmentUsage.find((eq) => eq.equipmentId === equipmentId);
+
     return {
       totalUsage: equipment?.totalImpressions || 0,
       averageDaily: analytics.metrics.averageDaily,
@@ -1835,13 +2015,13 @@ export class CustomerPortalService {
         print: 68,
         copy: 18,
         scan: 12,
-        fax: 2
+        fax: 2,
       },
       monthlyTrend: analytics.trends.slice(-3).map((trend, index) => ({
         month: new Date(trend.date).toLocaleDateString('en-US', { month: 'short' }),
-        usage: trend.totalImpressions
+        usage: trend.totalImpressions,
       })),
-      dailyPattern: analytics.peakUsage.hourlyPeaks
+      dailyPattern: analytics.peakUsage.hourlyPeaks,
     };
   }
 
@@ -1855,7 +2035,7 @@ export class CustomerPortalService {
   async getAvailableTimeSlots(
     tenantId: string,
     customerId: string,
-    request: AvailabilityRequest
+    request: AvailabilityRequest,
   ): Promise<{
     date: string;
     availableSlots: Array<{
@@ -1868,7 +2048,7 @@ export class CustomerPortalService {
   }> {
     try {
       const requestDate = new Date(request.date);
-      
+
       // Generate standard business hours time slots (8 AM - 5 PM)
       const timeSlots = [];
       for (let hour = 8; hour < 17; hour++) {
@@ -1877,23 +2057,29 @@ export class CustomerPortalService {
           duration: request.duration,
           technicianId: 'tech-1', // Mock technician for now
           technicianName: 'Service Technician',
-          isAvailable: true
+          isAvailable: true,
         });
       }
 
       // For demo purposes, mark some random slots as unavailable
       const unavailableIndices = [2, 5, 7]; // 10 AM, 1 PM, 3 PM
-      unavailableIndices.forEach(index => {
+      unavailableIndices.forEach((index) => {
         if (timeSlots[index]) {
           timeSlots[index].isAvailable = false;
         }
       });
 
-      await this.logActivity(tenantId, customerId, null, 'availability_check', `Checked availability for ${request.date}`);
+      await this.logActivity(
+        tenantId,
+        customerId,
+        null,
+        'availability_check',
+        `Checked availability for ${request.date}`,
+      );
 
       return {
         date: request.date,
-        availableSlots: timeSlots
+        availableSlots: timeSlots,
       };
     } catch (error) {
       console.error('Error getting available time slots:', error);
@@ -1908,13 +2094,14 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     portalUserId: string,
-    request: MaintenanceSchedulingRequest
+    request: MaintenanceSchedulingRequest,
   ): Promise<CustomerMaintenanceAppointment> {
     try {
       const confirmationCode = crypto.randomBytes(4).toString('hex').toUpperCase();
       const appointmentDate = new Date(request.appointmentDate);
 
-      const [appointment] = await db.insert(customerMaintenanceAppointments)
+      const [appointment] = await db
+        .insert(customerMaintenanceAppointments)
         .values({
           tenantId,
           customerId,
@@ -1933,12 +2120,17 @@ export class CustomerPortalService {
           customerEmail: request.customerEmail,
           assignedTechnicianId: 'tech-1', // Mock assignment for now
           technicianName: 'Service Technician',
-          status: 'requested'
+          status: 'requested',
         })
         .returning();
 
-      await this.logActivity(tenantId, customerId, portalUserId, 'appointment_booked', 
-        `Booked ${request.maintenanceType} appointment for ${request.appointmentDate}`);
+      await this.logActivity(
+        tenantId,
+        customerId,
+        portalUserId,
+        'appointment_booked',
+        `Booked ${request.maintenanceType} appointment for ${request.appointmentDate}`,
+      );
 
       return appointment;
     } catch (error) {
@@ -1957,12 +2149,12 @@ export class CustomerPortalService {
       status?: string;
       includeCompleted?: boolean;
       limit?: number;
-    } = {}
+    } = {},
   ): Promise<CustomerMaintenanceAppointment[]> {
     try {
       const conditions = [
         eq(customerMaintenanceAppointments.tenantId, tenantId),
-        eq(customerMaintenanceAppointments.customerId, customerId)
+        eq(customerMaintenanceAppointments.customerId, customerId),
       ];
 
       if (options.status) {
@@ -1973,7 +2165,8 @@ export class CustomerPortalService {
         conditions.push(sql`${customerMaintenanceAppointments.status} != 'completed'`);
       }
 
-      let query = db.select()
+      let query = db
+        .select()
         .from(customerMaintenanceAppointments)
         .where(and(...conditions))
         .orderBy(desc(customerMaintenanceAppointments.appointmentDate));
@@ -1984,7 +2177,13 @@ export class CustomerPortalService {
 
       const appointments = await query;
 
-      await this.logActivity(tenantId, customerId, null, 'appointments_viewed', 'Viewed maintenance appointments');
+      await this.logActivity(
+        tenantId,
+        customerId,
+        null,
+        'appointments_viewed',
+        'Viewed maintenance appointments',
+      );
 
       return appointments;
     } catch (error) {
@@ -2000,30 +2199,37 @@ export class CustomerPortalService {
     tenantId: string,
     customerId: string,
     portalUserId: string,
-    request: RescheduleAppointmentRequest
+    request: RescheduleAppointmentRequest,
   ): Promise<CustomerMaintenanceAppointment> {
     try {
       // First check if appointment exists and belongs to customer
-      const [existingAppointment] = await db.select()
+      const [existingAppointment] = await db
+        .select()
         .from(customerMaintenanceAppointments)
-        .where(and(
-          eq(customerMaintenanceAppointments.id, request.appointmentId),
-          eq(customerMaintenanceAppointments.tenantId, tenantId),
-          eq(customerMaintenanceAppointments.customerId, customerId)
-        ));
+        .where(
+          and(
+            eq(customerMaintenanceAppointments.id, request.appointmentId),
+            eq(customerMaintenanceAppointments.tenantId, tenantId),
+            eq(customerMaintenanceAppointments.customerId, customerId),
+          ),
+        );
 
       if (!existingAppointment) {
         throw new Error('Appointment not found');
       }
 
-      if (existingAppointment.status === 'completed' || existingAppointment.status === 'cancelled') {
+      if (
+        existingAppointment.status === 'completed' ||
+        existingAppointment.status === 'cancelled'
+      ) {
         throw new Error('Cannot reschedule completed or cancelled appointment');
       }
 
       const newDate = new Date(request.newDate);
       const rescheduleCount = (existingAppointment.rescheduleCount || 0) + 1;
 
-      const [updatedAppointment] = await db.update(customerMaintenanceAppointments)
+      const [updatedAppointment] = await db
+        .update(customerMaintenanceAppointments)
         .set({
           originalDate: existingAppointment.originalDate || existingAppointment.appointmentDate,
           appointmentDate: newDate,
@@ -2031,13 +2237,18 @@ export class CustomerPortalService {
           rescheduleCount,
           rescheduleReason: request.reason,
           status: 'rescheduled',
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(customerMaintenanceAppointments.id, request.appointmentId))
         .returning();
 
-      await this.logActivity(tenantId, customerId, portalUserId, 'appointment_rescheduled', 
-        `Rescheduled appointment to ${request.newDate} at ${request.newTime}`);
+      await this.logActivity(
+        tenantId,
+        customerId,
+        portalUserId,
+        'appointment_rescheduled',
+        `Rescheduled appointment to ${request.newDate} at ${request.newTime}`,
+      );
 
       return updatedAppointment;
     } catch (error) {
@@ -2054,17 +2265,20 @@ export class CustomerPortalService {
     customerId: string,
     portalUserId: string,
     appointmentId: string,
-    reason?: string
+    reason?: string,
   ): Promise<CustomerMaintenanceAppointment> {
     try {
       // First check if appointment exists and belongs to customer
-      const [existingAppointment] = await db.select()
+      const [existingAppointment] = await db
+        .select()
         .from(customerMaintenanceAppointments)
-        .where(and(
-          eq(customerMaintenanceAppointments.id, appointmentId),
-          eq(customerMaintenanceAppointments.tenantId, tenantId),
-          eq(customerMaintenanceAppointments.customerId, customerId)
-        ));
+        .where(
+          and(
+            eq(customerMaintenanceAppointments.id, appointmentId),
+            eq(customerMaintenanceAppointments.tenantId, tenantId),
+            eq(customerMaintenanceAppointments.customerId, customerId),
+          ),
+        );
 
       if (!existingAppointment) {
         throw new Error('Appointment not found');
@@ -2074,17 +2288,23 @@ export class CustomerPortalService {
         throw new Error('Cannot cancel completed appointment');
       }
 
-      const [cancelledAppointment] = await db.update(customerMaintenanceAppointments)
+      const [cancelledAppointment] = await db
+        .update(customerMaintenanceAppointments)
         .set({
           status: 'cancelled',
           rescheduleReason: reason || 'Cancelled by customer',
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(customerMaintenanceAppointments.id, appointmentId))
         .returning();
 
-      await this.logActivity(tenantId, customerId, portalUserId, 'appointment_cancelled', 
-        `Cancelled appointment: ${reason || 'No reason provided'}`);
+      await this.logActivity(
+        tenantId,
+        customerId,
+        portalUserId,
+        'appointment_cancelled',
+        `Cancelled appointment: ${reason || 'No reason provided'}`,
+      );
 
       return cancelledAppointment;
     } catch (error) {
@@ -2099,16 +2319,19 @@ export class CustomerPortalService {
   async getAppointmentById(
     tenantId: string,
     customerId: string,
-    appointmentId: string
+    appointmentId: string,
   ): Promise<CustomerMaintenanceAppointment | null> {
     try {
-      const [appointment] = await db.select()
+      const [appointment] = await db
+        .select()
         .from(customerMaintenanceAppointments)
-        .where(and(
-          eq(customerMaintenanceAppointments.id, appointmentId),
-          eq(customerMaintenanceAppointments.tenantId, tenantId),
-          eq(customerMaintenanceAppointments.customerId, customerId)
-        ));
+        .where(
+          and(
+            eq(customerMaintenanceAppointments.id, appointmentId),
+            eq(customerMaintenanceAppointments.tenantId, tenantId),
+            eq(customerMaintenanceAppointments.customerId, customerId),
+          ),
+        );
 
       return appointment || null;
     } catch (error) {

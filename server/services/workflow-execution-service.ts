@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
 import {
   workflowExecutions,
@@ -46,7 +46,8 @@ export async function executeWorkflow(executionId: string): Promise<void> {
     }
 
     // Update status to running
-    await db.update(workflowExecutions)
+    await db
+      .update(workflowExecutions)
       .set({
         status: 'running',
         startedAt: new Date(),
@@ -76,7 +77,7 @@ export async function executeWorkflow(executionId: string): Promise<void> {
       const stepSuccess = await executeStep(step, {
         executionId: execution.id,
         tenantId: execution.tenantId,
-        workflowContext: execution.context as Record<string, any> || {},
+        workflowContext: (execution.context as Record<string, any>) || {},
         userId: execution.initiatedBy || undefined,
       });
 
@@ -91,7 +92,8 @@ export async function executeWorkflow(executionId: string): Promise<void> {
 
     // Update final status
     const finalStatus = allStepsSucceeded ? 'completed' : 'failed';
-    await db.update(workflowExecutions)
+    await db
+      .update(workflowExecutions)
       .set({
         status: finalStatus,
         completedAt: new Date(),
@@ -112,7 +114,8 @@ export async function executeWorkflow(executionId: string): Promise<void> {
     console.error(`[Workflow Execution] Error executing workflow ${executionId}:`, error);
 
     // Update status to failed
-    await db.update(workflowExecutions)
+    await db
+      .update(workflowExecutions)
       .set({
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -136,10 +139,7 @@ export async function executeWorkflow(executionId: string): Promise<void> {
 /**
  * Execute a single workflow step
  */
-async function executeStep(
-  step: WorkflowStepAutomation,
-  context: StepContext
-): Promise<boolean> {
+async function executeStep(step: WorkflowStepAutomation, context: StepContext): Promise<boolean> {
   console.log(`[Workflow Step] Executing step: ${step.name} (${step.actionType})`);
 
   let retryCount = 0;
@@ -148,24 +148,28 @@ async function executeStep(
   while (retryCount <= (step.maxRetries || 0)) {
     try {
       // Create step execution record
-      const [stepExecution] = await db.insert(workflowExecutionSteps).values({
-        executionId: context.executionId,
-        stepId: step.id,
-        stepName: step.name,
-        status: 'running',
-        input: context.workflowContext,
-        output: null,
-        error: null,
-        retryCount,
-        startedAt: new Date(),
-        completedAt: null,
-      }).returning();
+      const [stepExecution] = await db
+        .insert(workflowExecutionSteps)
+        .values({
+          executionId: context.executionId,
+          stepId: step.id,
+          stepName: step.name,
+          status: 'running',
+          input: context.workflowContext,
+          output: null,
+          error: null,
+          retryCount,
+          startedAt: new Date(),
+          completedAt: null,
+        })
+        .returning();
 
       // Execute the step based on action type
       const result = await executeStepAction(step, context);
 
       // Update step execution with success
-      await db.update(workflowExecutionSteps)
+      await db
+        .update(workflowExecutionSteps)
         .set({
           status: 'completed',
           output: result,
@@ -183,7 +187,7 @@ async function executeStep(
         retryCount++;
         const delayMs = (step.retryDelaySeconds || 60) * 1000;
         console.log(`[Workflow Step] Retrying in ${delayMs}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       } else {
         break;
       }
@@ -198,10 +202,7 @@ async function executeStep(
 /**
  * Execute the actual step action based on type
  */
-async function executeStepAction(
-  step: WorkflowStepAutomation,
-  context: StepContext
-): Promise<any> {
+async function executeStepAction(step: WorkflowStepAutomation, context: StepContext): Promise<any> {
   const config = step.config as Record<string, any>;
 
   switch (step.actionType) {
@@ -232,10 +233,7 @@ async function executeStepAction(
  * Create Task Action
  * Creates a task and assigns it to a user or group
  */
-async function createTaskAction(
-  config: Record<string, any>,
-  context: StepContext
-): Promise<any> {
+async function createTaskAction(config: Record<string, any>, context: StepContext): Promise<any> {
   console.log('[Task Action] Creating task');
 
   // Interpolate values from context
@@ -268,21 +266,24 @@ async function createTaskAction(
   }
 
   // Create the task
-  const [task] = await db.insert(tasks).values({
-    tenantId: context.tenantId,
-    title,
-    description,
-    status: 'todo',
-    priority: priority as 'low' | 'medium' | 'high' | 'urgent',
-    assignedTo,
-    createdBy: context.userId || 'system',
-    dueDate,
-    customFields: {
-      workflowExecutionId: context.executionId,
-      workflowContext: context.workflowContext,
-      ...config.customFields,
-    },
-  }).returning();
+  const [task] = await db
+    .insert(tasks)
+    .values({
+      tenantId: context.tenantId,
+      title,
+      description,
+      status: 'todo',
+      priority: priority as 'low' | 'medium' | 'high' | 'urgent',
+      assignedTo,
+      createdBy: context.userId || 'system',
+      dueDate,
+      customFields: {
+        workflowExecutionId: context.executionId,
+        workflowContext: context.workflowContext,
+        ...config.customFields,
+      },
+    })
+    .returning();
 
   console.log(`[Task Action] Created task: ${task.id} - "${task.title}"`);
 
@@ -299,7 +300,7 @@ async function createTaskAction(
  */
 async function createApprovalAction(
   config: Record<string, any>,
-  context: StepContext
+  context: StepContext,
 ): Promise<any> {
   console.log('[Approval Action] Creating approval request');
 
@@ -319,19 +320,22 @@ async function createApprovalAction(
   }
 
   // Create approval request
-  const [approval] = await db.insert(workflowApprovals).values({
-    tenantId: context.tenantId,
-    executionId: context.executionId,
-    stepExecutionId: stepExecution.id,
-    assignedToUserId: config.assignToUserId || null,
-    assignedToGroupId: config.assignToGroupId || null,
-    status: 'pending',
-    dueDate,
-    contextData: {
-      ...context.workflowContext,
-      approvalMessage: interpolateString(config.message || '', context.workflowContext),
-    },
-  }).returning();
+  const [approval] = await db
+    .insert(workflowApprovals)
+    .values({
+      tenantId: context.tenantId,
+      executionId: context.executionId,
+      stepExecutionId: stepExecution.id,
+      assignedToUserId: config.assignToUserId || null,
+      assignedToGroupId: config.assignToGroupId || null,
+      status: 'pending',
+      dueDate,
+      contextData: {
+        ...context.workflowContext,
+        approvalMessage: interpolateString(config.message || '', context.workflowContext),
+      },
+    })
+    .returning();
 
   console.log(`[Approval Action] Created approval request: ${approval.id}`);
 
@@ -350,7 +354,7 @@ async function createApprovalAction(
  */
 async function sendNotificationAction(
   config: Record<string, any>,
-  context: StepContext
+  context: StepContext,
 ): Promise<any> {
   console.log('[Notification Action] Sending notification');
 
@@ -372,10 +376,7 @@ async function sendNotificationAction(
  * Send Email Action
  * Sends an email
  */
-async function sendEmailAction(
-  config: Record<string, any>,
-  context: StepContext
-): Promise<any> {
+async function sendEmailAction(config: Record<string, any>, context: StepContext): Promise<any> {
   console.log('[Email Action] Sending email');
 
   const to = config.to || [];
@@ -396,10 +397,7 @@ async function sendEmailAction(
  * Wait Delay Action
  * Delays execution for a specified time
  */
-async function waitDelayAction(
-  config: Record<string, any>,
-  context: StepContext
-): Promise<any> {
+async function waitDelayAction(config: Record<string, any>, context: StepContext): Promise<any> {
   const delaySeconds = config.delaySeconds || 60;
   const delayMs = delaySeconds * 1000;
 
@@ -407,7 +405,7 @@ async function waitDelayAction(
 
   // In production, this would schedule a job to resume later
   // For now, we'll use setTimeout for demo purposes
-  await new Promise(resolve => setTimeout(resolve, delayMs));
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
 
   return {
     delayed: delaySeconds,
@@ -443,12 +441,13 @@ export async function processApprovalResponse(
   approvalId: string,
   userId: string,
   approved: boolean,
-  comment?: string
+  comment?: string,
 ): Promise<void> {
   console.log(`[Approval] Processing response for approval: ${approvalId}`);
 
   // Update approval record
-  await db.update(workflowApprovals)
+  await db
+    .update(workflowApprovals)
     .set({
       status: approved ? 'approved' : 'rejected',
       approvedBy: userId,
@@ -484,9 +483,13 @@ export async function processApprovalResponse(
   if (approved) {
     // In production, this would resume the paused workflow
     // For now, we'll just log it
-    console.log(`[Approval] Approval approved, resuming workflow execution: ${approval.executionId}`);
+    console.log(
+      `[Approval] Approval approved, resuming workflow execution: ${approval.executionId}`,
+    );
   } else {
     // Workflow should be cancelled or handle rejection
-    console.log(`[Approval] Approval rejected, workflow may need to handle rejection: ${approval.executionId}`);
+    console.log(
+      `[Approval] Approval rejected, workflow may need to handle rejection: ${approval.executionId}`,
+    );
   }
 }

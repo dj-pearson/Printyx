@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
 import {
   workflowTriggers,
@@ -43,7 +43,7 @@ export async function emitWorkflowEvent(
   eventName: string,
   tenantId: string,
   payload: EventPayload,
-  userId?: string
+  userId?: string,
 ): Promise<string[]> {
   console.log(`[Workflow Event] Emitting event: ${eventName} for tenant: ${tenantId}`);
 
@@ -53,7 +53,7 @@ export async function emitWorkflowEvent(
       where: and(
         eq(workflowTriggers.eventName, eventName),
         eq(workflowTriggers.enabled, true),
-        eq(workflowTriggers.type, 'event')
+        eq(workflowTriggers.type, 'event'),
       ),
       with: {
         workflow: true,
@@ -101,19 +101,22 @@ export async function emitWorkflowEvent(
       const context = mapPayloadToContext(payload, trigger.payloadMapping as any);
 
       // Create workflow execution
-      const [execution] = await db.insert(workflowExecutions).values({
-        workflowId: workflow.id,
-        workflowVersionId: version.id,
-        triggerId: trigger.id,
-        tenantId,
-        status: 'queued',
-        initiatedBy: userId || 'system',
-        context,
-        result: null,
-        error: null,
-        startedAt: null,
-        completedAt: null,
-      }).returning();
+      const [execution] = await db
+        .insert(workflowExecutions)
+        .values({
+          workflowId: workflow.id,
+          workflowVersionId: version.id,
+          triggerId: trigger.id,
+          tenantId,
+          status: 'queued',
+          initiatedBy: userId || 'system',
+          context,
+          result: null,
+          error: null,
+          startedAt: null,
+          completedAt: null,
+        })
+        .returning();
 
       // Log execution event
       await db.insert(workflowExecutionEvents).values({
@@ -125,7 +128,9 @@ export async function emitWorkflowEvent(
       });
 
       executionIds.push(execution.id);
-      console.log(`[Workflow Event] Created execution: ${execution.id} for workflow: ${workflow.name}`);
+      console.log(
+        `[Workflow Event] Created execution: ${execution.id} for workflow: ${workflow.name}`,
+      );
     }
 
     // Trigger asynchronous execution (in production, this would use a job queue)
@@ -147,7 +152,7 @@ export async function emitWorkflowEvent(
  */
 async function evaluateTriggerConditions(
   triggerId: string,
-  payload: EventPayload
+  payload: EventPayload,
 ): Promise<boolean> {
   const conditions = await db.query.workflowConditions.findMany({
     where: eq(workflowConditions.triggerId, triggerId),
@@ -158,12 +163,15 @@ async function evaluateTriggerConditions(
   }
 
   // Group conditions by conditionGroup
-  const groups = conditions.reduce((acc, condition) => {
-    const group = condition.conditionGroup || 'default';
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(condition);
-    return acc;
-  }, {} as Record<string, typeof conditions>);
+  const groups = conditions.reduce(
+    (acc, condition) => {
+      const group = condition.conditionGroup || 'default';
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(condition);
+      return acc;
+    },
+    {} as Record<string, typeof conditions>,
+  );
 
   // Evaluate each group (groups are OR'd together)
   for (const groupConditions of Object.values(groups)) {
@@ -179,10 +187,7 @@ async function evaluateTriggerConditions(
 /**
  * Evaluate a group of conditions (within group, conditions are AND'd/OR'd based on operator)
  */
-function evaluateConditionGroup(
-  conditions: any[],
-  payload: EventPayload
-): boolean {
+function evaluateConditionGroup(conditions: any[], payload: EventPayload): boolean {
   // Sort by order index
   conditions.sort((a, b) => a.orderIndex - b.orderIndex);
 
@@ -195,7 +200,7 @@ function evaluateConditionGroup(
       leftValue,
       condition.operator,
       rightValue,
-      condition.dataType
+      condition.dataType,
     );
 
     // Apply logical operator
@@ -223,7 +228,7 @@ function evaluateCondition(
   leftValue: any,
   operator: string,
   rightValue: any,
-  dataType: string
+  dataType: string,
 ): boolean {
   // Handle null checks first
   if (operator === 'is_null') {
@@ -301,7 +306,7 @@ function getNestedValue(obj: any, path: string): any {
  */
 function mapPayloadToContext(
   payload: EventPayload,
-  mapping: Record<string, string> | null
+  mapping: Record<string, string> | null,
 ): EventPayload {
   if (!mapping) {
     return payload; // No mapping, use payload as-is
@@ -324,10 +329,7 @@ async function processQueuedExecutions(tenantId: string): Promise<void> {
   console.log(`[Workflow Execution] Processing queued executions for tenant: ${tenantId}`);
 
   const queuedExecutions = await db.query.workflowExecutions.findMany({
-    where: and(
-      eq(workflowExecutions.tenantId, tenantId),
-      eq(workflowExecutions.status, 'queued')
-    ),
+    where: and(eq(workflowExecutions.tenantId, tenantId), eq(workflowExecutions.status, 'queued')),
     limit: 10, // Process in batches
   });
 
