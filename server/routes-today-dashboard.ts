@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "../db";
+import { db } from './db';
 import { eq, and, gte, lte, desc, sql, isNull, or } from "drizzle-orm";
 import {
   activities,

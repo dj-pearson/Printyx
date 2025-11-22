@@ -4,7 +4,7 @@
  * semantic search, and analytics
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import ClaudeAIService from './claude-ai-service';
 import AISearchKnowledgeService from './ai-search-knowledge-service';
 import { eq, and, sql, desc, asc, like, ilike, inArray, or } from 'drizzle-orm';

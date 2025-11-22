@@ -2,7 +2,7 @@
  * Integration Service Layer
  * Handles OAuth flows and API interactions for third-party services
  */
-import { db } from '../db';
+import { db } from '../../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { 
