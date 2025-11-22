@@ -52,21 +52,21 @@ class TwilioProvider implements SMSProvider {
 
   async send(message: SMSMessage) {
     try {
-      // TODO: Implement actual Twilio API call
-      // const twilio = require('twilio');
-      // const client = twilio(this.accountSid, this.authToken);
-      // const result = await client.messages.create({
-      //   body: message.body,
-      //   from: message.from || this.phoneNumber,
-      //   to: message.to,
-      // });
-      
-      console.log(`[TWILIO] SMS would be sent via Twilio API`);
+      const twilio = await import('twilio');
+      const client = twilio.default(this.accountSid, this.authToken);
+
+      const result = await client.messages.create({
+        body: message.body,
+        from: message.from || this.phoneNumber,
+        to: message.to,
+      });
+
+      console.log(`[TWILIO] SMS sent successfully`);
       console.log(`  To: ${message.to}, Body: ${message.body.substring(0, 50)}...`);
-      
+
       return {
-        success: false,
-        error: 'Twilio integration not yet implemented. Install twilio package.',
+        success: true,
+        messageId: result.sid,
       };
     } catch (error: any) {
       console.error('[TWILIO] Error:', error);
@@ -91,32 +91,32 @@ class AWSSNSProvider implements SMSProvider {
 
   async send(message: SMSMessage) {
     try {
-      // TODO: Implement actual AWS SNS API call
-      // const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
-      // const sns = new SNSClient({
-      //   region: this.region,
-      //   credentials: {
-      //     accessKeyId: this.accessKeyId,
-      //     secretAccessKey: this.secretAccessKey,
-      //   },
-      // });
-      // const result = await sns.send(new PublishCommand({
-      //   Message: message.body,
-      //   PhoneNumber: message.to,
-      //   MessageAttributes: {
-      //     'AWS.SNS.SMS.SMSType': {
-      //       DataType: 'String',
-      //       StringValue: 'Transactional',
-      //     },
-      //   },
-      // }));
-      
-      console.log(`[AWS SNS] SMS would be sent via AWS SNS`);
+      const { SNSClient, PublishCommand } = await import('@aws-sdk/client-sns');
+      const sns = new SNSClient({
+        region: this.region,
+        credentials: {
+          accessKeyId: this.accessKeyId,
+          secretAccessKey: this.secretAccessKey,
+        },
+      });
+
+      const result = await sns.send(new PublishCommand({
+        Message: message.body,
+        PhoneNumber: message.to,
+        MessageAttributes: {
+          'AWS.SNS.SMS.SMSType': {
+            DataType: 'String',
+            StringValue: 'Transactional',
+          },
+        },
+      }));
+
+      console.log(`[AWS SNS] SMS sent successfully`);
       console.log(`  To: ${message.to}, Body: ${message.body.substring(0, 50)}...`);
-      
+
       return {
-        success: false,
-        error: 'AWS SNS integration not yet implemented. Install @aws-sdk/client-sns package.',
+        success: true,
+        messageId: result.MessageId,
       };
     } catch (error: any) {
       console.error('[AWS SNS] Error:', error);

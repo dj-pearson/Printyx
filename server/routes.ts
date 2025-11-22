@@ -121,8 +121,8 @@ import warehouseFpyRoutes from './routes-warehouse-fpy';
 import billingRoutes from './routes-billing';
 import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
-// TEMPORARILY DISABLED: SEO routes causing cheerio dependency conflict
-// import seoRoutes from "./routes-seo";
+import seoRoutes from "./routes-seo";
+import { registerOidManagementRoutes } from './routes-oid-management';
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -15312,9 +15312,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Breach Detection routes
   app.use('/api', breachDetectionRoutes);
 
-  // TEMPORARILY DISABLED: SEO routes causing cheerio dependency conflict
   // Register SEO Management routes
-  // app.use(seoRoutes);
+  app.use(seoRoutes);
+
+  // Register OID Management routes
+  registerOidManagementRoutes(app);
 
   // Register DoD Validation routes
   const validateRoutes = await import('./routes-validate');
