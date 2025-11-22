@@ -1,5 +1,5 @@
 import { eq, and, desc, gte, lte, isNull, or } from 'drizzle-orm';
-import { db } from '../db';
+import { db } from '../../db';
 import {
   manufacturerIntegrations,
   deviceRegistrations,

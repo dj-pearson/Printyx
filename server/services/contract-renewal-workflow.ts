@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../../db';
 import { serviceContracts, tasks, businessRecords } from '../../shared/schema';
 import { eq, and, sql, lte, gte } from 'drizzle-orm';
 import { emailService } from './email-service';

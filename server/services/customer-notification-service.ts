@@ -1,6 +1,6 @@
 import { emailService } from './email-service';
 import { smsService } from './sms-service';
-import { db } from '../db';
+import { db } from '../../db';
 import { businessRecords, serviceTickets } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 

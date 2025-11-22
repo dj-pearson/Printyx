@@ -1,7 +1,7 @@
 import express from "express";
 import { apolloStorage } from "../apollo-storage";
 import { createApolloClientForTenant, ApolloSearchFilters, ApolloContact } from "../apollo-client";
-import { db } from "../db";
+import { db } from '../../db';
 import { businessRecords } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { isAuthenticated } from "../replitAuth";

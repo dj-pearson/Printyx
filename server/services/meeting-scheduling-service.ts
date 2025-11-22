@@ -3,7 +3,7 @@
  * Intelligent meeting coordination, availability optimization, and automated scheduling
  */
 
-import { db } from '../db';
+import { db } from '../../db';
 import ClaudeAIService from './claude-ai-service';
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import TeamCollaborationService from './team-collaboration-service';
