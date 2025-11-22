@@ -1,0 +1,41 @@
+{
+  "client": {
+    "id": "client-001",
+    "name": "Main Office Client",
+    "version": "1.0.0"
+  },
+  "api": {
+    "endpoint": "https://your-printyx-instance.com",
+    "apiKey": "pk_your_api_key_here",
+    "tenantId": "1",
+    "timeout": 30000,
+    "security": {
+      "rejectUnauthorized": true,
+      "minTLSVersion": "TLSv1.2"
+    }
+  },
+  "collection": {
+    "pollingInterval": 300,
+    "discoveryEnabled": true,
+    "networkRanges": ["192.168.1.0/24"],
+    "retryAttempts": 3,
+    "timeout": 10000
+  },
+  "devices": [
+    {
+      "ipAddress": "192.168.1.100",
+      "protocol": "snmp",
+      "snmpCommunity": "public",
+      "snmpVersion": "2c",
+      "snmpPort": 161
+    }
+  ],
+  "alerts": {
+    "tonerThreshold": 15,
+    "paperThreshold": 20
+  },
+  "logging": {
+    "level": "info",
+    "file": "printyx-client.log"
+  }
+}
