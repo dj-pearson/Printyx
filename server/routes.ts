@@ -121,8 +121,6 @@ import warehouseFpyRoutes from './routes-warehouse-fpy';
 import billingRoutes from './routes-billing';
 import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
-import seoRoutes from "./routes-seo";
-import { registerOidManagementRoutes } from './routes-oid-management';
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -15311,12 +15309,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Breach Detection routes
   app.use('/api', breachDetectionRoutes);
-
-  // Register SEO Management routes
-  app.use(seoRoutes);
-
-  // Register OID Management routes
-  registerOidManagementRoutes(app);
 
   // Register DoD Validation routes
   const validateRoutes = await import('./routes-validate');
