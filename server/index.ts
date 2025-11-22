@@ -4,7 +4,6 @@ import compression from 'compression';
 import cors from 'cors';
 import { registerRoutes } from './routes';
 import { seedDashboardWidgets } from './seed-dashboard-widgets';
-import integrationsRouter from './routes-integrations-real';
 import { randomUUID, createHash } from 'crypto';
 import fs from 'fs';
 import { setupVite, serveStatic, log } from './vite';
