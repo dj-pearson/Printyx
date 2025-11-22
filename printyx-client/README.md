@@ -145,10 +145,11 @@ nssm start PrintyxClient
 ### Getting API Credentials
 
 1. Log in to your Printyx platform
-2. Navigate to **Settings** → **Monitoring Clients**
-3. Click **"Add New Client"**
-4. Copy the generated API key (shown only once!)
-5. Note your Tenant ID from the settings page
+2. Navigate to **Monitoring** → **Monitoring Clients**
+3. Click **"Register New Client"**
+4. Enter a client name and optional location
+5. Copy the generated API key (shown only once!)
+6. The tenant ID will be automatically associated with your account
 
 ### Configuration File
 
@@ -162,9 +163,9 @@ Edit `config.json`:
     "version": "1.0.0"
   },
   "api": {
-    "endpoint": "https://your-printyx.com/api/client-metrics/submit",
-    "apiKey": "your-api-key-here",
-    "tenantId": "your-tenant-id",
+    "endpoint": "https://your-printyx.com",
+    "apiKey": "pk_your_api_key_here",
+    "tenantId": "1",
     "timeout": 30000
   },
   "collection": {
