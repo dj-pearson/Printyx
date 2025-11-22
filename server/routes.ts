@@ -98,6 +98,7 @@ import integrationHubRoutes from './routes-integration-hub';
 import { registerQuickBooksRoutes } from './routes-quickbooks-integration';
 import { setupSalesPipelineRoutes } from './routes-sales-pipeline';
 import { registerModularDashboardRoutes } from './routes-modular-dashboard';
+import { registerTodayDashboardRoutes } from './routes-today-dashboard';
 import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
 import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
 import { registerSalesHandoffRoutes } from './routes-sales-handoff';
@@ -14913,6 +14914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register modular dashboard routes
   registerModularDashboardRoutes(app);
+  registerTodayDashboardRoutes(app);
 
   // Register onboarding routes
   registerOnboardingRoutes(app);
@@ -15286,6 +15288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerQuickBooksRoutes(app);
   // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
   registerModularDashboardRoutes(app);
+  registerTodayDashboardRoutes(app);
   registerManufacturerIntegrationRoutes(app);
   registerLeadAssignmentRoutes(app);
   registerSalesHandoffRoutes(app);
