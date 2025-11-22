@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { db } from "./db";
-import { businessRecords, deals, activities, quotes } from "@shared/schema";
-import { ilike, or, and, eq, sql } from "drizzle-orm";
-import type { Request, Response } from "express";
+import { Router } from 'express';
+import { db } from './db';
+import { businessRecords, deals, businessRecordActivities, quotes } from '@shared/schema';
+import { ilike, or, and, eq, sql } from 'drizzle-orm';
+import type { Request, Response } from 'express';
 
 const router = Router();
 
@@ -12,7 +12,7 @@ interface TenantRequest extends Request {
 
 interface SearchResult {
   id: string;
-  type: "customer" | "lead" | "deal" | "activity" | "quote";
+  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote';
   title: string;
   subtitle?: string;
   path?: string;
@@ -29,11 +29,11 @@ interface SearchResult {
  * Searches across customers, leads, deals, activities, and quotes
  * Returns unified results sorted by relevance
  */
-router.get("/api/universal-search", async (req: TenantRequest, res: Response) => {
+router.get('/api/universal-search', async (req: TenantRequest, res: Response) => {
   try {
     const { tenantId } = req;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID required" });
+      return res.status(400).json({ message: 'Tenant ID required' });
     }
 
     const query = req.query.q as string;
@@ -67,18 +67,16 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
             ilike(businessRecords.companyName, searchTerm),
             ilike(businessRecords.contactName, searchTerm),
             ilike(businessRecords.email, searchTerm),
-            ilike(businessRecords.phone, searchTerm)
-          )
-        )
+            ilike(businessRecords.phone, searchTerm),
+          ),
+        ),
       )
       .limit(limit);
 
     for (const record of businessRecordsResults) {
-      const isLead = record.recordType === "lead";
-      const title = record.companyName || record.contactName || "Unnamed";
-      const subtitle = [record.contactName, record.email, record.phone]
-        .filter(Boolean)
-        .join(" • ");
+      const isLead = record.recordType === 'lead';
+      const title = record.companyName || record.contactName || 'Unnamed';
+      const subtitle = [record.contactName, record.email, record.phone].filter(Boolean).join(' • ');
 
       // Calculate relevance score
       let relevance = 10;
@@ -90,18 +88,16 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
       }
 
       results.push({
-        id: `${isLead ? "lead" : "customer"}-${record.id}`,
-        type: isLead ? "lead" : "customer",
+        id: `${isLead ? 'lead' : 'customer'}-${record.id}`,
+        type: isLead ? 'lead' : 'customer',
         title,
         subtitle,
         path: record.urlSlug
-          ? `/${isLead ? "leads" : "customers"}/${record.urlSlug}`
-          : `/${isLead ? "leads" : "customers"}?id=${record.id}`,
+          ? `/${isLead ? 'leads' : 'customers'}/${record.urlSlug}`
+          : `/${isLead ? 'leads' : 'customers'}?id=${record.id}`,
         metadata: {
           status: record.status || undefined,
-          value: record.estimatedValue
-            ? `$${record.estimatedValue.toLocaleString()}`
-            : undefined,
+          value: record.estimatedValue ? `$${record.estimatedValue.toLocaleString()}` : undefined,
         },
         relevance,
       });
@@ -123,16 +119,13 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
       .where(
         and(
           eq(deals.tenantId, tenantId),
-          or(
-            ilike(deals.name, searchTerm),
-            ilike(businessRecords.companyName, searchTerm)
-          )
-        )
+          or(ilike(deals.name, searchTerm), ilike(businessRecords.companyName, searchTerm)),
+        ),
       )
       .limit(limit);
 
     for (const deal of dealsResults) {
-      const title = deal.name || "Unnamed Deal";
+      const title = deal.name || 'Unnamed Deal';
       const subtitle = [
         deal.companyName,
         deal.stage,
@@ -141,7 +134,7 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
           : null,
       ]
         .filter(Boolean)
-        .join(" • ");
+        .join(' • ');
 
       let relevance = 8;
       if (deal.name?.toLowerCase().includes(query.toLowerCase())) {
@@ -150,7 +143,7 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
 
       results.push({
         id: `deal-${deal.id}`,
-        type: "deal",
+        type: 'deal',
         title,
         subtitle,
         path: `/deals?id=${deal.id}`,
@@ -166,43 +159,41 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
     try {
       const activitiesResults = await db
         .select({
-          id: activities.id,
-          title: activities.title,
-          type: activities.type,
-          status: activities.status,
-          dueDate: activities.dueDate,
+          id: businessRecordActivities.id,
+          title: businessRecordActivities.title,
+          type: businessRecordActivities.type,
+          status: businessRecordActivities.status,
+          dueDate: businessRecordActivities.dueDate,
           companyName: businessRecords.companyName,
         })
-        .from(activities)
+        .from(businessRecordActivities)
         .leftJoin(
           businessRecords,
-          eq(activities.businessRecordId, businessRecords.id)
+          eq(businessRecordActivities.businessRecordId, businessRecords.id),
         )
         .where(
           and(
-            eq(activities.tenantId, tenantId),
+            eq(businessRecordActivities.tenantId, tenantId),
             or(
-              ilike(activities.title, searchTerm),
-              ilike(activities.notes, searchTerm)
-            )
-          )
+              ilike(businessRecordActivities.title, searchTerm),
+              ilike(businessRecordActivities.notes, searchTerm),
+            ),
+          ),
         )
         .limit(limit);
 
       for (const activity of activitiesResults) {
-        const title = activity.title || `${activity.type || "Activity"}`;
+        const title = activity.title || `${activity.type || 'Activity'}`;
         const subtitle = [
           activity.companyName,
-          activity.dueDate
-            ? `Due: ${new Date(activity.dueDate).toLocaleDateString()}`
-            : null,
+          activity.dueDate ? `Due: ${new Date(activity.dueDate).toLocaleDateString()}` : null,
         ]
           .filter(Boolean)
-          .join(" • ");
+          .join(' • ');
 
         results.push({
           id: `activity-${activity.id}`,
-          type: "activity",
+          type: 'activity',
           title,
           subtitle,
           path: `/activities?id=${activity.id}`,
@@ -214,7 +205,7 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
       }
     } catch (error) {
       // Activities table might not exist in all setups, continue without it
-      console.warn("Could not search activities:", error);
+      console.warn('Could not search activities:', error);
     }
 
     // Search quotes
@@ -235,9 +226,9 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
             eq(quotes.tenantId, tenantId),
             or(
               ilike(quotes.quoteNumber, searchTerm),
-              ilike(businessRecords.companyName, searchTerm)
-            )
-          )
+              ilike(businessRecords.companyName, searchTerm),
+            ),
+          ),
         )
         .limit(limit);
 
@@ -250,18 +241,16 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
             : null,
         ]
           .filter(Boolean)
-          .join(" • ");
+          .join(' • ');
 
         results.push({
           id: `quote-${quote.id}`,
-          type: "quote",
+          type: 'quote',
           title,
           subtitle,
           path: `/quotes?id=${quote.id}`,
           metadata: {
-            value: quote.totalAmount
-              ? `$${quote.totalAmount.toLocaleString()}`
-              : undefined,
+            value: quote.totalAmount ? `$${quote.totalAmount.toLocaleString()}` : undefined,
             status: quote.status || undefined,
           },
           relevance: 7,
@@ -269,18 +258,16 @@ router.get("/api/universal-search", async (req: TenantRequest, res: Response) =>
       }
     } catch (error) {
       // Quotes table might not exist in all setups, continue without it
-      console.warn("Could not search quotes:", error);
+      console.warn('Could not search quotes:', error);
     }
 
     // Sort by relevance and limit
-    const sortedResults = results
-      .sort((a, b) => b.relevance - a.relevance)
-      .slice(0, limit);
+    const sortedResults = results.sort((a, b) => b.relevance - a.relevance).slice(0, limit);
 
     res.json(sortedResults);
   } catch (error) {
-    console.error("Universal search error:", error);
-    res.status(500).json({ message: "Search failed" });
+    console.error('Universal search error:', error);
+    res.status(500).json({ message: 'Search failed' });
   }
 });
 

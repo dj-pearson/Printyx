@@ -3,7 +3,7 @@
  * Intelligent document creation, AI writing assistance, and knowledge organization
  */
 
-import { db } from '../../db';
+import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc, like, ilike } from 'drizzle-orm';
 
@@ -159,13 +159,14 @@ class AIDocumentationService {
       sourceId?: string;
       initialContent?: Record<string, any>;
       tags?: string[];
-    }
+    },
   ): Promise<AIDocument> {
     console.log('📄 Creating new AI document:', documentData.title);
-    
+
     try {
-      const documentType = documentData.documentTypeId ? 
-        await this.getDocumentType(tenantId, documentData.documentTypeId) : null;
+      const documentType = documentData.documentTypeId
+        ? await this.getDocumentType(tenantId, documentData.documentTypeId)
+        : null;
 
       // Generate initial content structure if not provided
       let content = documentData.initialContent || {};
@@ -215,7 +216,7 @@ class AIDocumentationService {
         editCount: 0,
         createdBy: userId,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       console.log('✅ AI document created successfully:', document.id);
@@ -234,21 +235,21 @@ class AIDocumentationService {
     userId: string,
     meetingId: string,
     transcriptionData: any,
-    documentType: 'meeting_minutes' | 'summary' | 'action_items' = 'meeting_minutes'
+    documentType: 'meeting_minutes' | 'summary' | 'action_items' = 'meeting_minutes',
   ): Promise<AIDocument> {
     console.log('🎙️ Generating document from meeting transcription:', meetingId);
-    
+
     try {
       const prompt = this.buildMeetingDocumentPrompt(transcriptionData, documentType);
-      
+
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
-        max_tokens: 4000
+        max_tokens: 4000,
       });
 
       const generatedContent = JSON.parse(aiResponse);
-      
+
       const document = await this.createDocument(tenantId, userId, {
         title: generatedContent.title,
         description: `AI-generated ${documentType.replace('_', ' ')} from meeting`,
@@ -256,7 +257,7 @@ class AIDocumentationService {
         sourceType: 'meeting_transcription',
         sourceId: meetingId,
         initialContent: generatedContent.content,
-        tags: ['meeting', documentType, 'ai-generated']
+        tags: ['meeting', documentType, 'ai-generated'],
       });
 
       console.log('✅ Document generated from meeting successfully');
@@ -279,7 +280,7 @@ class AIDocumentationService {
       existingContent?: Record<string, any>;
       tone?: string;
       length?: 'brief' | 'medium' | 'detailed';
-    } = {}
+    } = {},
   ): Promise<{
     content: Record<string, any>;
     plainText: string;
@@ -287,30 +288,30 @@ class AIDocumentationService {
     suggestions: ContentSuggestion[];
   }> {
     console.log('✨ Generating AI content for section:', sectionType);
-    
+
     try {
       const enhancedPrompt = this.buildSectionPrompt(prompt, sectionType, context);
-      
+
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: enhancedPrompt }],
         temperature: 0.4,
-        max_tokens: 2000
+        max_tokens: 2000,
       });
 
       const generatedData = JSON.parse(aiResponse);
-      
+
       // Generate content suggestions
       const suggestions = await this.generateContentSuggestions(
         documentId,
         generatedData.content,
-        sectionType
+        sectionType,
       );
 
       return {
         content: generatedData.content,
         plainText: generatedData.plainText,
         confidenceScore: generatedData.confidenceScore || 0.85,
-        suggestions
+        suggestions,
       };
     } catch (error) {
       console.error('AI content generation failed:', error);
@@ -318,7 +319,7 @@ class AIDocumentationService {
         content: { text: 'Failed to generate content. Please try again.' },
         plainText: 'Failed to generate content. Please try again.',
         confidenceScore: 0,
-        suggestions: []
+        suggestions: [],
       };
     }
   }
@@ -334,7 +335,7 @@ class AIDocumentationService {
       targetAudience?: string;
       purpose?: string;
       tone?: string;
-    } = {}
+    } = {},
   ): Promise<{
     improvedContent: string;
     suggestions: ContentSuggestion[];
@@ -347,7 +348,7 @@ class AIDocumentationService {
     }>;
   }> {
     console.log('🔧 Improving content with AI assistance:', improvementType);
-    
+
     try {
       const prompt = `Improve the following content for ${improvementType}:
 
@@ -377,37 +378,39 @@ Provide improvements and explain each change. Return JSON format:
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
-        max_tokens: 3000
+        max_tokens: 3000,
       });
 
       const improvementData = JSON.parse(aiResponse);
-      
+
       // Convert changes to content suggestions
-      const suggestions: ContentSuggestion[] = improvementData.changes.map((change: any, index: number) => ({
-        id: `suggestion-${Date.now()}-${index}`,
-        documentId,
-        tenantId: 'mock-tenant',
-        suggestionType: improvementType,
-        suggestionTitle: `${improvementType.charAt(0).toUpperCase() + improvementType.slice(1)} Improvement`,
-        suggestionDescription: change.reasoning,
-        originalContent: change.original,
-        suggestedContent: change.improved,
-        changeType: 'replacement',
-        confidenceScore: improvementData.confidenceScore,
-        importanceLevel: 'medium',
-        reasoning: change.reasoning,
-        status: 'pending',
-        tags: [improvementType],
-        affectsSections: [],
-        aiModelUsed: 'claude-3-5-sonnet-20241022',
-        generatedAt: new Date()
-      }));
+      const suggestions: ContentSuggestion[] = improvementData.changes.map(
+        (change: any, index: number) => ({
+          id: `suggestion-${Date.now()}-${index}`,
+          documentId,
+          tenantId: 'mock-tenant',
+          suggestionType: improvementType,
+          suggestionTitle: `${improvementType.charAt(0).toUpperCase() + improvementType.slice(1)} Improvement`,
+          suggestionDescription: change.reasoning,
+          originalContent: change.original,
+          suggestedContent: change.improved,
+          changeType: 'replacement',
+          confidenceScore: improvementData.confidenceScore,
+          importanceLevel: 'medium',
+          reasoning: change.reasoning,
+          status: 'pending',
+          tags: [improvementType],
+          affectsSections: [],
+          aiModelUsed: 'claude-3-5-sonnet-20241022',
+          generatedAt: new Date(),
+        }),
+      );
 
       return {
         improvedContent: improvementData.improvedContent,
         suggestions,
         confidenceScore: improvementData.confidenceScore,
-        changes: improvementData.changes
+        changes: improvementData.changes,
       };
     } catch (error) {
       console.error('Content improvement failed:', error);
@@ -415,7 +418,7 @@ Provide improvements and explain each change. Return JSON format:
         improvedContent: content,
         suggestions: [],
         confidenceScore: 0,
-        changes: []
+        changes: [],
       };
     }
   }
@@ -433,7 +436,7 @@ Provide improvements and explain each change. Return JSON format:
       content: Record<string, any>;
       tags?: string[];
       targetAudience?: string;
-    }
+    },
   ): Promise<{
     id: string;
     aiEnhancements: {
@@ -445,18 +448,18 @@ Provide improvements and explain each change. Return JSON format:
     };
   }> {
     console.log('📚 Creating knowledge base article:', articleData.title);
-    
+
     try {
       const plainTextContent = this.extractPlainText(articleData.content);
       const wordCount = this.countWords(plainTextContent);
       const estimatedReadingTime = Math.ceil(wordCount / 200);
-      
+
       // Generate AI enhancements
       const enhancements = await this.generateKnowledgeEnhancements(
         articleData.title,
         plainTextContent,
         articleData.category,
-        articleData.targetAudience
+        articleData.targetAudience,
       );
 
       const article = {
@@ -490,13 +493,13 @@ Provide improvements and explain each change. Return JSON format:
         contentFreshnessScore: 1.0,
         createdBy: userId,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       console.log('✅ Knowledge article created with AI enhancements');
       return {
         id: article.id,
-        aiEnhancements: enhancements
+        aiEnhancements: enhancements,
       };
     } catch (error) {
       console.error('Failed to create knowledge article:', error);
@@ -521,7 +524,7 @@ Provide improvements and explain each change. Return JSON format:
       limit?: number;
       offset?: number;
       includeContent?: boolean;
-    } = {}
+    } = {},
   ): Promise<{
     results: Array<{
       document: AIDocument;
@@ -534,9 +537,9 @@ Provide improvements and explain each change. Return JSON format:
     suggestions: string[];
   }> {
     console.log('🔍 Searching documents with AI ranking:', query);
-    
+
     const startTime = Date.now();
-    
+
     try {
       // Mock search results with AI relevance ranking
       const mockResults = [
@@ -556,11 +559,11 @@ Provide improvements and explain each change. Return JSON format:
             estimatedReadingTime: 6,
             aiConfidenceScore: 0.92,
             viewCount: 45,
-            editCount: 3
+            editCount: 3,
           } as AIDocument,
           relevanceScore: 0.95,
           matchedContent: ['Q4 planning objectives', 'strategic decisions made'],
-          highlights: ['Q4', 'planning', 'strategic']
+          highlights: ['Q4', 'planning', 'strategic'],
         },
         {
           document: {
@@ -578,21 +581,21 @@ Provide improvements and explain each change. Return JSON format:
             estimatedReadingTime: 4,
             aiConfidenceScore: 0.88,
             viewCount: 23,
-            editCount: 1
+            editCount: 1,
           } as AIDocument,
           relevanceScore: 0.78,
           matchedContent: ['client proposal structure', 'professional template'],
-          highlights: ['client', 'proposal', 'template']
-        }
+          highlights: ['client', 'proposal', 'template'],
+        },
       ];
 
       const searchTime = Date.now() - startTime;
-      
+
       return {
         results: mockResults,
         totalResults: mockResults.length,
         searchTime,
-        suggestions: ['meeting minutes', 'project reports', 'client proposals']
+        suggestions: ['meeting minutes', 'project reports', 'client proposals'],
       };
     } catch (error) {
       console.error('Document search failed:', error);
@@ -605,7 +608,7 @@ Provide improvements and explain each change. Return JSON format:
    */
   async getWritingAnalytics(
     tenantId: string,
-    timeRange: { start: Date; end: Date }
+    timeRange: { start: Date; end: Date },
   ): Promise<{
     documentsCreated: number;
     aiSessionsConducted: number;
@@ -620,7 +623,7 @@ Provide improvements and explain each change. Return JSON format:
     recommendations: string[];
   }> {
     console.log('📊 Generating AI writing analytics...');
-    
+
     // Mock analytics data
     return {
       documentsCreated: 127,
@@ -634,32 +637,35 @@ Provide improvements and explain each change. Return JSON format:
         { type: 'Meeting Minutes', count: 45 },
         { type: 'Business Proposal', count: 32 },
         { type: 'Project Report', count: 28 },
-        { type: 'Knowledge Article', count: 22 }
+        { type: 'Knowledge Article', count: 22 },
       ],
       contentQualityTrends: [
         { date: '2025-09-20', score: 0.82 },
         { date: '2025-09-21', score: 0.85 },
         { date: '2025-09-22', score: 0.87 },
         { date: '2025-09-23', score: 0.89 },
-        { date: '2025-09-24', score: 0.87 }
+        { date: '2025-09-24', score: 0.87 },
       ],
       aiInsights: [
         'AI-generated content quality has improved by 12% over the past month',
         'Meeting minutes are the most frequently created document type',
         'Users accept 78% of AI content suggestions, indicating high relevance',
-        'Average document completion time has decreased by 35% with AI assistance'
+        'Average document completion time has decreased by 35% with AI assistance',
       ],
       recommendations: [
         'Consider creating more templates for frequently used document types',
         'Implement advanced formatting suggestions to improve document presentation',
         'Add industry-specific writing prompts for better content relevance',
-        'Introduce collaborative editing features for team document creation'
-      ]
+        'Introduce collaborative editing features for team document creation',
+      ],
     };
   }
 
   // Helper methods
-  private async getDocumentType(tenantId: string, documentTypeId: string): Promise<DocumentType | null> {
+  private async getDocumentType(
+    tenantId: string,
+    documentTypeId: string,
+  ): Promise<DocumentType | null> {
     // Mock document type retrieval
     return {
       id: documentTypeId,
@@ -679,13 +685,13 @@ Provide improvements and explain each change. Return JSON format:
       successRate: 0.85,
       isSystemTemplate: true,
       isActive: true,
-      createdBy: 'system'
+      createdBy: 'system',
     };
   }
 
   private async generateInitialContent(
     documentType: DocumentType,
-    documentData: any
+    documentData: any,
   ): Promise<{
     content: Record<string, any>;
     aiGeneratedPercentage: number;
@@ -694,18 +700,19 @@ Provide improvements and explain each change. Return JSON format:
   }> {
     const prompts = documentType.aiWritingPrompts;
     const content = {
-      sections: documentType.templateStructure.sections?.map((section: string) => ({
-        type: section,
-        content: `[AI will generate ${section} content based on your input]`,
-        aiGenerated: true
-      })) || []
+      sections:
+        documentType.templateStructure.sections?.map((section: string) => ({
+          type: section,
+          content: `[AI will generate ${section} content based on your input]`,
+          aiGenerated: true,
+        })) || [],
     };
 
     return {
       content,
       aiGeneratedPercentage: 0.8,
       aiConfidenceScore: 0.75,
-      prompts
+      prompts,
     };
   }
 
@@ -765,7 +772,7 @@ Generate content in JSON format:
   private async generateContentSuggestions(
     documentId: string,
     content: Record<string, any>,
-    sectionType: string
+    sectionType: string,
   ): Promise<ContentSuggestion[]> {
     // Mock content suggestions
     return [
@@ -775,7 +782,8 @@ Generate content in JSON format:
         tenantId: 'mock-tenant',
         suggestionType: 'clarity',
         suggestionTitle: 'Improve Clarity',
-        suggestionDescription: 'Consider breaking this long sentence into shorter ones for better readability.',
+        suggestionDescription:
+          'Consider breaking this long sentence into shorter ones for better readability.',
         originalContent: 'Original text content',
         suggestedContent: 'Improved text content',
         changeType: 'replacement',
@@ -786,8 +794,8 @@ Generate content in JSON format:
         tags: ['clarity', 'readability'],
         affectsSections: [],
         aiModelUsed: 'claude-3-5-sonnet-20241022',
-        generatedAt: new Date()
-      }
+        generatedAt: new Date(),
+      },
     ];
   }
 
@@ -795,7 +803,7 @@ Generate content in JSON format:
     title: string,
     content: string,
     category: string,
-    targetAudience?: string
+    targetAudience?: string,
   ): Promise<{
     summary: string;
     keywords: string[];
@@ -807,9 +815,13 @@ Generate content in JSON format:
     return {
       summary: `This article covers ${title.toLowerCase()} with practical examples and step-by-step guidance for ${targetAudience || 'users'}.`,
       keywords: ['tutorial', 'guide', 'how-to', category.toLowerCase()],
-      relatedTopics: [`Advanced ${category}`, `${category} Best Practices`, `Common ${category} Issues`],
+      relatedTopics: [
+        `Advanced ${category}`,
+        `${category} Best Practices`,
+        `Common ${category} Issues`,
+      ],
       difficultyLevel: 'intermediate',
-      qualityScore: 0.88
+      qualityScore: 0.88,
     };
   }
 
@@ -843,5 +855,3 @@ Generate content in JSON format:
 }
 
 export default new AIDocumentationService();
-
-

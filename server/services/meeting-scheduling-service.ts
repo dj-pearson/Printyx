@@ -3,7 +3,7 @@
  * Intelligent meeting coordination, availability optimization, and automated scheduling
  */
 
-import { db } from '../../db';
+import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import TeamCollaborationService from './team-collaboration-service';
@@ -139,7 +139,7 @@ class MeetingSchedulingService {
     processingStatus: string;
   }> {
     console.log('📅 Creating intelligent scheduling request:', requestData.title);
-    
+
     try {
       // Create the scheduling request
       const request: SchedulingRequest = {
@@ -157,7 +157,7 @@ class MeetingSchedulingService {
         optionalParticipants: requestData.optionalParticipants || [],
         roomRequirements: requestData.roomRequirements || {},
         priority: requestData.priority || 'medium',
-        deadline: requestData.deadline
+        deadline: requestData.deadline,
       };
 
       // Generate AI-optimized scheduling suggestions
@@ -167,7 +167,7 @@ class MeetingSchedulingService {
       return {
         requestId: request.id,
         suggestions,
-        processingStatus: 'completed'
+        processingStatus: 'completed',
       };
     } catch (error) {
       console.error('Failed to create scheduling request:', error);
@@ -178,16 +178,18 @@ class MeetingSchedulingService {
   /**
    * Generate AI-optimized scheduling suggestions
    */
-  private async generateSchedulingSuggestions(request: SchedulingRequest): Promise<SchedulingSuggestion[]> {
+  private async generateSchedulingSuggestions(
+    request: SchedulingRequest,
+  ): Promise<SchedulingSuggestion[]> {
     console.log('🧠 Generating AI-optimized scheduling suggestions...');
-    
+
     try {
       // Get participant availability
       const participantAvailability = await this.analyzeParticipantAvailability(
         request.requiredParticipants,
         request.optionalParticipants,
         request.earliestStartTime,
-        request.latestEndTime
+        request.latestEndTime,
       );
 
       // Get room availability if needed
@@ -203,9 +205,12 @@ Required Participants: ${request.requiredParticipants.length}
 Optional Participants: ${request.optionalParticipants.length}
 
 Participant Availability Summary:
-${Object.entries(participantAvailability.summary).map(([userId, data]) => 
-  `- ${userId}: ${(data as any).availableSlots} available slots, best productivity: ${(data as any).bestProductivityHours.join(', ')}`
-).join('\n')}
+${Object.entries(participantAvailability.summary)
+  .map(
+    ([userId, data]) =>
+      `- ${userId}: ${(data as any).availableSlots} available slots, best productivity: ${(data as any).bestProductivityHours.join(', ')}`,
+  )
+  .join('\n')}
 
 Room Requirements: ${JSON.stringify(request.roomRequirements)}
 Available Rooms: ${roomSuggestions.length}
@@ -244,26 +249,30 @@ Return JSON with suggestions:
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: aiPrompt }],
         temperature: 0.3,
-        max_tokens: 2000
+        max_tokens: 2000,
       });
 
       const aiSuggestions = JSON.parse(aiResponse);
-      
+
       // Enhance suggestions with room data and conflict resolution
       const enhancedSuggestions: SchedulingSuggestion[] = [];
-      
+
       for (const suggestion of aiSuggestions.suggestions) {
         const startTime = new Date(suggestion.startTime);
         const endTime = new Date(suggestion.endTime);
-        
+
         // Find best room for this time slot
-        const timeSlotRooms = await this.findRoomsForTimeSlot(startTime, endTime, request.roomRequirements);
-        
+        const timeSlotRooms = await this.findRoomsForTimeSlot(
+          startTime,
+          endTime,
+          request.roomRequirements,
+        );
+
         // Analyze potential conflicts
         const conflicts = await this.analyzeSchedulingConflicts(
           startTime,
           endTime,
-          request.requiredParticipants
+          request.requiredParticipants,
         );
 
         enhancedSuggestions.push({
@@ -274,7 +283,7 @@ Return JSON with suggestions:
           roomSuggestions: timeSlotRooms,
           conflictResolutions: conflicts,
           optimizationFactors: suggestion.optimizationFactors,
-          reasoning: suggestion.reasoning
+          reasoning: suggestion.reasoning,
         });
       }
 
@@ -292,14 +301,14 @@ Return JSON with suggestions:
     requiredParticipants: string[],
     optionalParticipants: string[],
     startRange?: Date,
-    endRange?: Date
+    endRange?: Date,
   ): Promise<{
     windows: AvailabilityWindow[];
     summary: Record<string, any>;
     conflicts: Array<{ userId: string; conflict: string; severity: string }>;
   }> {
     console.log('📊 Analyzing participant availability...');
-    
+
     const allParticipants = [...requiredParticipants, ...optionalParticipants];
     const windows: AvailabilityWindow[] = [];
     const summary: Record<string, any> = {};
@@ -308,30 +317,32 @@ Return JSON with suggestions:
     // Mock availability analysis - in production, this would query actual calendars
     for (const userId of allParticipants) {
       const userAvailability = await this.getUserAvailability(userId, startRange, endRange);
-      
+
       summary[userId] = {
         availableSlots: userAvailability.availableSlots.length,
         busySlots: userAvailability.busySlots.length,
         bestProductivityHours: userAvailability.bestProductivityHours,
         meetingFatigueRisk: userAvailability.meetingFatigueRisk,
-        flexibility: userAvailability.flexibility
+        flexibility: userAvailability.flexibility,
       };
 
       // Add availability windows
-      windows.push(...userAvailability.availableSlots.map(slot => ({
-        start: slot.start,
-        end: slot.end,
-        userId,
-        confidence: slot.confidence,
-        type: 'free' as const
-      })));
+      windows.push(
+        ...userAvailability.availableSlots.map((slot) => ({
+          start: slot.start,
+          end: slot.end,
+          userId,
+          confidence: slot.confidence,
+          type: 'free' as const,
+        })),
+      );
 
       // Check for conflicts
       if (userAvailability.meetingFatigueRisk > 0.7) {
         conflicts.push({
           userId,
           conflict: 'High meeting fatigue risk',
-          severity: 'medium'
+          severity: 'medium',
         });
       }
 
@@ -339,7 +350,7 @@ Return JSON with suggestions:
         conflicts.push({
           userId,
           conflict: 'Limited scheduling flexibility',
-          severity: 'high'
+          severity: 'high',
         });
       }
     }
@@ -353,7 +364,7 @@ Return JSON with suggestions:
   private async getUserAvailability(
     userId: string,
     startRange?: Date,
-    endRange?: Date
+    endRange?: Date,
   ): Promise<{
     availableSlots: Array<{ start: Date; end: Date; confidence: number }>;
     busySlots: Array<{ start: Date; end: Date; context: string }>;
@@ -364,44 +375,46 @@ Return JSON with suggestions:
     // Mock user availability - in production, this would integrate with calendar APIs
     const now = new Date();
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    
+
     return {
       availableSlots: [
         {
           start: new Date(tomorrow.getTime() + 9 * 60 * 60 * 1000), // 9 AM tomorrow
           end: new Date(tomorrow.getTime() + 12 * 60 * 60 * 1000), // 12 PM tomorrow
-          confidence: 0.9
+          confidence: 0.9,
         },
         {
           start: new Date(tomorrow.getTime() + 14 * 60 * 60 * 1000), // 2 PM tomorrow
           end: new Date(tomorrow.getTime() + 17 * 60 * 60 * 1000), // 5 PM tomorrow
-          confidence: 0.8
-        }
+          confidence: 0.8,
+        },
       ],
       busySlots: [
         {
           start: new Date(tomorrow.getTime() + 13 * 60 * 60 * 1000), // 1 PM tomorrow
           end: new Date(tomorrow.getTime() + 14 * 60 * 60 * 1000), // 2 PM tomorrow
-          context: 'Lunch break'
-        }
+          context: 'Lunch break',
+        },
       ],
       bestProductivityHours: ['9 AM', '10 AM', '2 PM', '3 PM'],
       meetingFatigueRisk: Math.random() * 0.5, // 0-50% fatigue risk
-      flexibility: 0.7 + Math.random() * 0.3 // 70-100% flexibility
+      flexibility: 0.7 + Math.random() * 0.3, // 70-100% flexibility
     };
   }
 
   /**
    * Find optimal rooms for meeting requirements
    */
-  private async findOptimalRooms(request: SchedulingRequest): Promise<Array<{
-    roomId: string;
-    roomName: string;
-    suitabilityScore: number;
-    availabilityConfirmed: boolean;
-  }>> {
+  private async findOptimalRooms(request: SchedulingRequest): Promise<
+    Array<{
+      roomId: string;
+      roomName: string;
+      suitabilityScore: number;
+      availabilityConfirmed: boolean;
+    }>
+  > {
     console.log('🏢 Finding optimal meeting rooms...');
-    
+
     // Mock room data - in production, this would query the meeting_rooms table
     const availableRooms = [
       {
@@ -410,7 +423,7 @@ Return JSON with suggestions:
         capacity: 12,
         equipment: ['projector', 'whiteboard', 'video_conf'],
         features: ['screen_sharing', 'wireless_presentation'],
-        aiPopularityScore: 0.8
+        aiPopularityScore: 0.8,
       },
       {
         roomId: 'room-2',
@@ -418,7 +431,7 @@ Return JSON with suggestions:
         capacity: 4,
         equipment: ['tv_display', 'conference_phone'],
         features: ['video_conf'],
-        aiPopularityScore: 0.6
+        aiPopularityScore: 0.6,
       },
       {
         roomId: 'room-3',
@@ -426,11 +439,12 @@ Return JSON with suggestions:
         capacity: 20,
         equipment: ['projector', 'sound_system', 'microphones'],
         features: ['video_conf', 'recording'],
-        aiPopularityScore: 0.7
-      }
+        aiPopularityScore: 0.7,
+      },
     ];
 
-    const participantCount = request.requiredParticipants.length + request.optionalParticipants.length;
+    const participantCount =
+      request.requiredParticipants.length + request.optionalParticipants.length;
     const roomSuggestions = [];
 
     for (const room of availableRooms) {
@@ -451,8 +465,11 @@ Return JSON with suggestions:
 
       // Equipment match
       const requiredEquipment = request.roomRequirements.equipment || [];
-      const equipmentMatch = requiredEquipment.filter((eq: string) => room.equipment.includes(eq)).length;
-      const equipmentScore = requiredEquipment.length > 0 ? equipmentMatch / requiredEquipment.length : 0.5;
+      const equipmentMatch = requiredEquipment.filter((eq: string) =>
+        room.equipment.includes(eq),
+      ).length;
+      const equipmentScore =
+        requiredEquipment.length > 0 ? equipmentMatch / requiredEquipment.length : 0.5;
       suitabilityScore += equipmentScore * 0.2;
 
       // Popularity/quality score
@@ -462,7 +479,7 @@ Return JSON with suggestions:
         roomId: room.roomId,
         roomName: room.roomName,
         suitabilityScore: Math.min(1.0, suitabilityScore),
-        availabilityConfirmed: true // Mock - would check actual availability
+        availabilityConfirmed: true, // Mock - would check actual availability
       });
     }
 
@@ -475,13 +492,15 @@ Return JSON with suggestions:
   private async findRoomsForTimeSlot(
     startTime: Date,
     endTime: Date,
-    requirements: Record<string, any>
-  ): Promise<Array<{
-    roomId: string;
-    roomName: string;
-    suitabilityScore: number;
-    availabilityConfirmed: boolean;
-  }>> {
+    requirements: Record<string, any>,
+  ): Promise<
+    Array<{
+      roomId: string;
+      roomName: string;
+      suitabilityScore: number;
+      availabilityConfirmed: boolean;
+    }>
+  > {
     // This would check actual room bookings and availability
     // For now, return mock data
     return [
@@ -489,14 +508,14 @@ Return JSON with suggestions:
         roomId: 'room-1',
         roomName: 'Conference Room A',
         suitabilityScore: 0.9,
-        availabilityConfirmed: true
+        availabilityConfirmed: true,
       },
       {
         roomId: 'room-2',
         roomName: 'Huddle Room 1',
         suitabilityScore: 0.7,
-        availabilityConfirmed: true
-      }
+        availabilityConfirmed: true,
+      },
     ];
   }
 
@@ -506,12 +525,14 @@ Return JSON with suggestions:
   private async analyzeSchedulingConflicts(
     startTime: Date,
     endTime: Date,
-    participantIds: string[]
-  ): Promise<Array<{
-    type: string;
-    description: string;
-    impact: 'low' | 'medium' | 'high';
-  }>> {
+    participantIds: string[],
+  ): Promise<
+    Array<{
+      type: string;
+      description: string;
+      impact: 'low' | 'medium' | 'high';
+    }>
+  > {
     const conflicts = [];
 
     // Mock conflict analysis
@@ -519,7 +540,7 @@ Return JSON with suggestions:
       conflicts.push({
         type: 'outside_business_hours',
         description: 'Meeting scheduled outside standard business hours',
-        impact: 'medium' as const
+        impact: 'medium' as const,
       });
     }
 
@@ -527,7 +548,7 @@ Return JSON with suggestions:
       conflicts.push({
         type: 'lunch_time_conflict',
         description: 'Meeting conflicts with typical lunch hours',
-        impact: 'low' as const
+        impact: 'low' as const,
       });
     }
 
@@ -536,7 +557,7 @@ Return JSON with suggestions:
       conflicts.push({
         type: 'participant_conflict',
         description: 'One participant has a potential scheduling conflict',
-        impact: 'medium' as const
+        impact: 'medium' as const,
       });
     }
 
@@ -548,7 +569,7 @@ Return JSON with suggestions:
    */
   private generateFallbackSuggestions(request: SchedulingRequest): SchedulingSuggestion[] {
     console.log('⚠️ Generating fallback scheduling suggestions');
-    
+
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(10, 0, 0, 0); // 10 AM tomorrow
@@ -565,10 +586,10 @@ Return JSON with suggestions:
           participantProductivity: 0.7,
           travelTime: 0.8,
           meetingFatigue: 0.7,
-          businessPriority: 0.6
+          businessPriority: 0.6,
         },
-        reasoning: 'Fallback suggestion - standard business hours'
-      }
+        reasoning: 'Fallback suggestion - standard business hours',
+      },
     ];
   }
 
@@ -578,10 +599,10 @@ Return JSON with suggestions:
   async scheduleMeeting(
     requestId: string,
     selectedSuggestion: SchedulingSuggestion,
-    roomId?: string
+    roomId?: string,
   ): Promise<Meeting> {
     console.log('📅 Scheduling meeting from request:', requestId);
-    
+
     try {
       // Mock meeting creation
       const meeting: Meeting = {
@@ -596,7 +617,7 @@ Return JSON with suggestions:
         isRecurring: false,
         organizerId: 'mock-user',
         agenda: [],
-        participants: []
+        participants: [],
       };
 
       // Send invitations to participants
@@ -604,7 +625,12 @@ Return JSON with suggestions:
 
       // Book room if specified
       if (roomId) {
-        await this.bookMeetingRoom(meeting.id, roomId, selectedSuggestion.startTime, selectedSuggestion.endTime);
+        await this.bookMeetingRoom(
+          meeting.id,
+          roomId,
+          selectedSuggestion.startTime,
+          selectedSuggestion.endTime,
+        );
       }
 
       console.log('✅ Meeting scheduled successfully:', meeting.id);
@@ -630,7 +656,7 @@ Return JSON with suggestions:
     meetingId: string,
     roomId: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
   ): Promise<void> {
     console.log('🏢 Booking meeting room:', roomId);
     // This would create a room booking record
@@ -639,7 +665,10 @@ Return JSON with suggestions:
   /**
    * Get meeting analytics and insights
    */
-  async getMeetingAnalytics(tenantId: string, timeRange: { start: Date; end: Date }): Promise<{
+  async getMeetingAnalytics(
+    tenantId: string,
+    timeRange: { start: Date; end: Date },
+  ): Promise<{
     totalMeetings: number;
     totalMeetingHours: number;
     averageMeetingDuration: number;
@@ -655,7 +684,7 @@ Return JSON with suggestions:
     };
   }> {
     console.log('📊 Generating meeting analytics for tenant:', tenantId);
-    
+
     // Mock analytics data
     return {
       totalMeetings: 347,
@@ -669,13 +698,13 @@ Return JSON with suggestions:
         'Consider shorter default meeting durations to improve efficiency',
         'Implement buffer time between meetings to improve on-time starts',
         'Use AI-suggested optimal times to increase attendance rates',
-        'Room A is underutilized - consider promoting for larger meetings'
+        'Room A is underutilized - consider promoting for larger meetings',
       ],
       trends: {
         meetingFrequency: 'stable',
         averageDuration: 'decreasing',
-        attendanceRate: 'improving'
-      }
+        attendanceRate: 'improving',
+      },
     };
   }
 
@@ -690,7 +719,7 @@ Return JSON with suggestions:
       maximizeProductivity: number;
       improveAttendance: number;
       optimizeRoomUsage: number;
-    }
+    },
   ): Promise<{
     originalSchedule: any[];
     optimizedSchedule: any[];
@@ -709,7 +738,7 @@ Return JSON with suggestions:
     }>;
   }> {
     console.log('🔧 Optimizing existing meeting schedule...');
-    
+
     // Mock optimization results
     return {
       originalSchedule: [],
@@ -718,7 +747,7 @@ Return JSON with suggestions:
         meetingFatigueReduction: 23.5, // % reduction
         productivityIncrease: 18.2, // % increase
         attendanceImprovement: 12.8, // % improvement
-        roomUtilizationImprovement: 15.4 // % improvement
+        roomUtilizationImprovement: 15.4, // % improvement
       },
       changes: [
         {
@@ -726,16 +755,16 @@ Return JSON with suggestions:
           changeType: 'reschedule',
           oldValue: { startTime: '2025-09-27T13:00:00Z' },
           newValue: { startTime: '2025-09-27T10:00:00Z' },
-          reasoning: 'Moved to participant productivity peak hours'
+          reasoning: 'Moved to participant productivity peak hours',
         },
         {
           meetingId: 'meeting-2',
           changeType: 'duration_adjustment',
           oldValue: { duration: 60 },
           newValue: { duration: 45 },
-          reasoning: 'Historical data shows 45 minutes is optimal for this meeting type'
-        }
-      ]
+          reasoning: 'Historical data shows 45 minutes is optimal for this meeting type',
+        },
+      ],
     };
   }
 }

@@ -1,15 +1,15 @@
-import { db } from "../../db";
+import { db } from '../db';
 import {
   documentTemplates,
   generatedDocuments,
   type DocumentTemplate,
   type InsertGeneratedDocument,
-} from "../../shared/document-automation-schema";
-import { eq } from "drizzle-orm";
-import Handlebars from "handlebars";
-import * as fs from "fs/promises";
-import * as path from "path";
-import { createWriteStream } from "fs";
+} from '../../shared/document-automation-schema';
+import { eq } from 'drizzle-orm';
+import Handlebars from 'handlebars';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { createWriteStream } from 'fs';
 
 // We'll use these libraries for document generation:
 // - puppeteer: HTML to PDF
@@ -26,73 +26,73 @@ export class TemplateRenderingService {
    */
   static registerHelpers() {
     // Date formatting helper
-    Handlebars.registerHelper("formatDate", function (date: any, format: string) {
-      if (!date) return "";
+    Handlebars.registerHelper('formatDate', function (date: any, format: string) {
+      if (!date) return '';
       const d = new Date(date);
 
       switch (format) {
-        case "short":
+        case 'short':
           return d.toLocaleDateString();
-        case "long":
-          return d.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
+        case 'long':
+          return d.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
           });
-        case "iso":
-          return d.toISOString().split("T")[0];
+        case 'iso':
+          return d.toISOString().split('T')[0];
         default:
           return d.toLocaleDateString();
       }
     });
 
     // Currency formatting helper
-    Handlebars.registerHelper("formatCurrency", function (amount: any) {
-      if (amount === null || amount === undefined) return "$0.00";
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
+    Handlebars.registerHelper('formatCurrency', function (amount: any) {
+      if (amount === null || amount === undefined) return '$0.00';
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
       }).format(amount);
     });
 
     // Number formatting helper
-    Handlebars.registerHelper("formatNumber", function (num: any, decimals = 0) {
-      if (num === null || num === undefined) return "0";
-      return new Intl.NumberFormat("en-US", {
+    Handlebars.registerHelper('formatNumber', function (num: any, decimals = 0) {
+      if (num === null || num === undefined) return '0';
+      return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(num);
     });
 
     // Conditional helpers
-    Handlebars.registerHelper("eq", function (a: any, b: any) {
+    Handlebars.registerHelper('eq', function (a: any, b: any) {
       return a === b;
     });
 
-    Handlebars.registerHelper("gt", function (a: any, b: any) {
+    Handlebars.registerHelper('gt', function (a: any, b: any) {
       return a > b;
     });
 
-    Handlebars.registerHelper("lt", function (a: any, b: any) {
+    Handlebars.registerHelper('lt', function (a: any, b: any) {
       return a < b;
     });
 
     // Array helpers
-    Handlebars.registerHelper("join", function (array: any[], separator: string) {
-      return array?.join(separator) || "";
+    Handlebars.registerHelper('join', function (array: any[], separator: string) {
+      return array?.join(separator) || '';
     });
 
     // String helpers
-    Handlebars.registerHelper("uppercase", function (str: string) {
-      return str?.toUpperCase() || "";
+    Handlebars.registerHelper('uppercase', function (str: string) {
+      return str?.toUpperCase() || '';
     });
 
-    Handlebars.registerHelper("lowercase", function (str: string) {
-      return str?.toLowerCase() || "";
+    Handlebars.registerHelper('lowercase', function (str: string) {
+      return str?.toLowerCase() || '';
     });
 
     // Default value helper
-    Handlebars.registerHelper("default", function (value: any, defaultValue: any) {
+    Handlebars.registerHelper('default', function (value: any, defaultValue: any) {
       return value || defaultValue;
     });
   }
@@ -124,7 +124,7 @@ export class TemplateRenderingService {
       serviceCallId?: number;
       invoiceId?: number;
     },
-    tenantId: number
+    tenantId: number,
   ): Promise<Record<string, any>> {
     const dataContext: Record<string, any> = {};
 
@@ -132,10 +132,7 @@ export class TemplateRenderingService {
     if (contextIds.businessRecordId) {
       const record = await db.query.businessRecords.findFirst({
         where: (records, { eq, and }) =>
-          and(
-            eq(records.id, contextIds.businessRecordId!),
-            eq(records.tenantId, tenantId)
-          ),
+          and(eq(records.id, contextIds.businessRecordId!), eq(records.tenantId, tenantId)),
       });
       if (record) {
         dataContext.businessRecord = record;
@@ -147,10 +144,7 @@ export class TemplateRenderingService {
     if (contextIds.quoteId) {
       const quote = await db.query.quotes.findFirst({
         where: (quotes, { eq, and }) =>
-          and(
-            eq(quotes.id, contextIds.quoteId!),
-            eq(quotes.tenantId, tenantId)
-          ),
+          and(eq(quotes.id, contextIds.quoteId!), eq(quotes.tenantId, tenantId)),
         with: {
           lineItems: true,
         },
@@ -164,10 +158,7 @@ export class TemplateRenderingService {
     if (contextIds.dealId) {
       const deal = await db.query.deals.findFirst({
         where: (deals, { eq, and }) =>
-          and(
-            eq(deals.id, contextIds.dealId!),
-            eq(deals.tenantId, tenantId)
-          ),
+          and(eq(deals.id, contextIds.dealId!), eq(deals.tenantId, tenantId)),
       });
       if (deal) {
         dataContext.deal = deal;
@@ -178,10 +169,7 @@ export class TemplateRenderingService {
     if (contextIds.serviceCallId) {
       const serviceCall = await db.query.serviceCalls.findFirst({
         where: (calls, { eq, and }) =>
-          and(
-            eq(calls.id, contextIds.serviceCallId!),
-            eq(calls.tenantId, tenantId)
-          ),
+          and(eq(calls.id, contextIds.serviceCallId!), eq(calls.tenantId, tenantId)),
       });
       if (serviceCall) {
         dataContext.serviceCall = serviceCall;
@@ -192,10 +180,7 @@ export class TemplateRenderingService {
     if (contextIds.invoiceId) {
       const invoice = await db.query.invoices.findFirst({
         where: (invoices, { eq, and }) =>
-          and(
-            eq(invoices.id, contextIds.invoiceId!),
-            eq(invoices.tenantId, tenantId)
-          ),
+          and(eq(invoices.id, contextIds.invoiceId!), eq(invoices.tenantId, tenantId)),
       });
       if (invoice) {
         dataContext.invoice = invoice;
@@ -218,37 +203,34 @@ export class PDFGenerationService {
   /**
    * Generate PDF from HTML content
    */
-  static async generatePDF(
-    htmlContent: string,
-    pageSettings?: any
-  ): Promise<Buffer> {
-    const puppeteer = require("puppeteer");
+  static async generatePDF(htmlContent: string, pageSettings?: any): Promise<Buffer> {
+    const puppeteer = require('puppeteer');
 
     let browser;
     try {
       browser = await puppeteer.launch({
         headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
 
       const page = await browser.newPage();
       await page.setContent(htmlContent, {
-        waitUntil: "networkidle0",
+        waitUntil: 'networkidle0',
       });
 
       const pdfOptions: any = {
-        format: pageSettings?.format || "A4",
+        format: pageSettings?.format || 'A4',
         margin: pageSettings?.margin || {
-          top: "1in",
-          right: "1in",
-          bottom: "1in",
-          left: "1in",
+          top: '1in',
+          right: '1in',
+          bottom: '1in',
+          left: '1in',
         },
         printBackground: true,
       };
 
       if (pageSettings?.orientation) {
-        pdfOptions.landscape = pageSettings.orientation === "landscape";
+        pdfOptions.landscape = pageSettings.orientation === 'landscape';
       }
 
       const pdfBuffer = await page.pdf(pdfOptions);
@@ -315,7 +297,7 @@ export class PDFGenerationService {
 <head>
   <meta charset="utf-8">
   ${defaultStyles}
-  ${customStyles ? `<style>${customStyles}</style>` : ""}
+  ${customStyles ? `<style>${customStyles}</style>` : ''}
 </head>
 <body>
   ${content}
@@ -334,14 +316,10 @@ export class DOCXGenerationService {
    * Generate DOCX from HTML content
    * Note: This is a simplified version. For production, use htmlDocx library
    */
-  static async generateDOCX(
-    htmlContent: string
-  ): Promise<Buffer> {
+  static async generateDOCX(htmlContent: string): Promise<Buffer> {
     // For now, we'll return a placeholder
     // In production, use the htmlDocx library to convert HTML to DOCX
-    const placeholder = Buffer.from(
-      "DOCX generation requires htmlDocx library to be installed"
-    );
+    const placeholder = Buffer.from('DOCX generation requires htmlDocx library to be installed');
     return placeholder;
   }
 }
@@ -369,32 +347,29 @@ export class DocumentGenerationService {
     tenantId: number,
     options?: {
       name?: string;
-      format?: "pdf" | "docx" | "html";
+      format?: 'pdf' | 'docx' | 'html';
       customData?: Record<string, any>;
-    }
+    },
   ): Promise<number> {
     // Fetch template
     const template = await db.query.documentTemplates.findFirst({
       where: (templates, { eq, and }) =>
-        and(
-          eq(templates.id, templateId),
-          eq(templates.tenantId, tenantId)
-        ),
+        and(eq(templates.id, templateId), eq(templates.tenantId, tenantId)),
     });
 
     if (!template) {
-      throw new Error("Template not found");
+      throw new Error('Template not found');
     }
 
     if (!template.isActive) {
-      throw new Error("Template is not active");
+      throw new Error('Template is not active');
     }
 
     // Fetch data context
     let dataContext = await TemplateRenderingService.fetchDataContext(
       template.fieldMapping as Record<string, string>,
       contextIds,
-      tenantId
+      tenantId,
     );
 
     // Merge custom data if provided
@@ -403,10 +378,7 @@ export class DocumentGenerationService {
     }
 
     // Render template
-    const renderedContent = TemplateRenderingService.renderTemplate(
-      template.content,
-      dataContext
-    );
+    const renderedContent = TemplateRenderingService.renderTemplate(template.content, dataContext);
 
     // Generate document based on format
     const format = options?.format || template.format;
@@ -414,31 +386,28 @@ export class DocumentGenerationService {
     let fileBuffer: Buffer | null = null;
     let fileSize = 0;
 
-    if (format === "pdf") {
+    if (format === 'pdf') {
       const htmlWithStyles = PDFGenerationService.wrapHTMLWithStyles(
         renderedContent,
-        template.styles ? JSON.stringify(template.styles) : undefined
+        template.styles ? JSON.stringify(template.styles) : undefined,
       );
 
-      fileBuffer = await PDFGenerationService.generatePDF(
-        htmlWithStyles,
-        template.pageSettings
-      );
+      fileBuffer = await PDFGenerationService.generatePDF(htmlWithStyles, template.pageSettings);
 
       // Save to file
-      const fileName = `${Date.now()}-${template.name.replace(/\s+/g, "-")}.pdf`;
-      filePath = path.join(process.cwd(), "attached_assets", "generated-documents", fileName);
+      const fileName = `${Date.now()}-${template.name.replace(/\s+/g, '-')}.pdf`;
+      filePath = path.join(process.cwd(), 'attached_assets', 'generated-documents', fileName);
 
       // Ensure directory exists
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, fileBuffer);
 
       fileSize = fileBuffer.length;
-    } else if (format === "docx") {
+    } else if (format === 'docx') {
       fileBuffer = await DOCXGenerationService.generateDOCX(renderedContent);
 
-      const fileName = `${Date.now()}-${template.name.replace(/\s+/g, "-")}.docx`;
-      filePath = path.join(process.cwd(), "attached_assets", "generated-documents", fileName);
+      const fileName = `${Date.now()}-${template.name.replace(/\s+/g, '-')}.docx`;
+      filePath = path.join(process.cwd(), 'attached_assets', 'generated-documents', fileName);
 
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, fileBuffer);
@@ -446,8 +415,8 @@ export class DocumentGenerationService {
       fileSize = fileBuffer.length;
     } else {
       // HTML format - save as-is
-      const fileName = `${Date.now()}-${template.name.replace(/\s+/g, "-")}.html`;
-      filePath = path.join(process.cwd(), "attached_assets", "generated-documents", fileName);
+      const fileName = `${Date.now()}-${template.name.replace(/\s+/g, '-')}.html`;
+      filePath = path.join(process.cwd(), 'attached_assets', 'generated-documents', fileName);
 
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, renderedContent);
@@ -456,28 +425,32 @@ export class DocumentGenerationService {
     }
 
     // Create generated document record
-    const [generatedDoc] = await db.insert(generatedDocuments).values({
-      tenantId,
-      templateId: template.id,
-      templateVersion: template.version,
-      name: options?.name || `${template.name} - ${new Date().toLocaleDateString()}`,
-      type: template.type,
-      format,
-      content: renderedContent,
-      filePath,
-      fileSize,
-      dataContext,
-      workflowId: contextIds.workflowId,
-      taskId: contextIds.taskId,
-      businessRecordId: contextIds.businessRecordId,
-      quoteId: contextIds.quoteId,
-      dealId: contextIds.dealId,
-      serviceCallId: contextIds.serviceCallId,
-      generatedBy: userId,
-    }).returning();
+    const [generatedDoc] = await db
+      .insert(generatedDocuments)
+      .values({
+        tenantId,
+        templateId: template.id,
+        templateVersion: template.version,
+        name: options?.name || `${template.name} - ${new Date().toLocaleDateString()}`,
+        type: template.type,
+        format,
+        content: renderedContent,
+        filePath,
+        fileSize,
+        dataContext,
+        workflowId: contextIds.workflowId,
+        taskId: contextIds.taskId,
+        businessRecordId: contextIds.businessRecordId,
+        quoteId: contextIds.quoteId,
+        dealId: contextIds.dealId,
+        serviceCallId: contextIds.serviceCallId,
+        generatedBy: userId,
+      })
+      .returning();
 
     // Update template usage
-    await db.update(documentTemplates)
+    await db
+      .update(documentTemplates)
       .set({
         usageCount: template.usageCount + 1,
         lastUsedAt: new Date(),
@@ -506,20 +479,14 @@ export class DocumentGenerationService {
     userId: number,
     tenantId: number,
     options?: {
-      format?: "pdf" | "docx" | "html";
-    }
+      format?: 'pdf' | 'docx' | 'html';
+    },
   ): Promise<number[]> {
     const generatedDocIds: number[] = [];
 
     for (const context of contextList) {
       try {
-        const docId = await this.generateDocument(
-          templateId,
-          context,
-          userId,
-          tenantId,
-          options
-        );
+        const docId = await this.generateDocument(templateId, context, userId, tenantId, options);
         generatedDocIds.push(docId);
       } catch (error: any) {
         console.error(`Failed to generate document for context:`, context, error);
@@ -536,23 +503,17 @@ export class DocumentGenerationService {
   static async previewTemplate(
     templateId: number,
     sampleData: Record<string, any>,
-    tenantId: number
+    tenantId: number,
   ): Promise<string> {
     const template = await db.query.documentTemplates.findFirst({
       where: (templates, { eq, and }) =>
-        and(
-          eq(templates.id, templateId),
-          eq(templates.tenantId, tenantId)
-        ),
+        and(eq(templates.id, templateId), eq(templates.tenantId, tenantId)),
     });
 
     if (!template) {
-      throw new Error("Template not found");
+      throw new Error('Template not found');
     }
 
-    return TemplateRenderingService.renderTemplate(
-      template.content,
-      sampleData
-    );
+    return TemplateRenderingService.renderTemplate(template.content, sampleData);
   }
 }
