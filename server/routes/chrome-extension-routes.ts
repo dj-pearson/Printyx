@@ -1,12 +1,12 @@
-import express from "express";
-import { z } from "zod";
-import { db } from '../../db';
-import { businessRecords } from "@shared/schema";
-import { eq, or, and, sql } from "drizzle-orm";
-import { isAuthenticated } from "../replitAuth";
-import { createApolloClientForTenant } from "../apollo-client";
-import { apolloStorage } from "../apollo-storage";
-import crypto from "crypto";
+import express from 'express';
+import { z } from 'zod';
+import { db } from '../db';
+import { businessRecords } from '@shared/schema';
+import { eq, or, and, sql } from 'drizzle-orm';
+import { isAuthenticated } from '../replitAuth';
+import { createApolloClientForTenant } from '../apollo-client';
+import { apolloStorage } from '../apollo-storage';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ const router = express.Router();
 // ============================================================================
 
 const quickImportSchema = z.object({
-  source: z.enum(["linkedin", "salesforce"]),
+  source: z.enum(['linkedin', 'salesforce']),
   name: z.string().min(1),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
@@ -45,11 +45,11 @@ function parseFullName(fullName: string): { firstName: string; lastName: string 
   const nameParts = fullName.trim().split(/\s+/);
 
   if (nameParts.length === 1) {
-    return { firstName: nameParts[0], lastName: "" };
+    return { firstName: nameParts[0], lastName: '' };
   }
 
   const firstName = nameParts[0];
-  const lastName = nameParts.slice(1).join(" ");
+  const lastName = nameParts.slice(1).join(' ');
 
   return { firstName, lastName };
 }
@@ -64,7 +64,7 @@ async function enrichViaApollo(
     lastName?: string;
     organizationName?: string;
     email?: string;
-  }
+  },
 ): Promise<any | null> {
   try {
     const apolloClient = await createApolloClientForTenant(tenantId);
@@ -101,7 +101,7 @@ async function enrichViaApollo(
 
     return null;
   } catch (error: any) {
-    console.error("Apollo enrichment error:", error.message);
+    console.error('Apollo enrichment error:', error.message);
     return null;
   }
 }
@@ -116,15 +116,15 @@ async function checkDuplicateRecord(
     email?: string;
     name?: string;
     company?: string;
-  }
+  },
 ) {
   const conditions = [eq(businessRecords.tenantId, tenantId)];
 
   // Primary check: LinkedIn URL (most reliable)
   if (params.linkedinUrl) {
     const normalizedUrl = params.linkedinUrl
-      .replace(/^https?:\/\/(www\.)?/, "")
-      .replace(/\/$/, "")
+      .replace(/^https?:\/\/(www\.)?/, '')
+      .replace(/\/$/, '')
       .toLowerCase();
 
     const [exactMatch] = await db
@@ -133,13 +133,13 @@ async function checkDuplicateRecord(
       .where(
         and(
           eq(businessRecords.tenantId, tenantId),
-          sql`LOWER(REPLACE(REPLACE(${businessRecords.linkedinUrl}, 'https://', ''), 'www.', '')) = ${normalizedUrl}`
-        )
+          sql`LOWER(REPLACE(REPLACE(${businessRecords.linkedinUrl}, 'https://', ''), 'www.', '')) = ${normalizedUrl}`,
+        ),
       )
       .limit(1);
 
     if (exactMatch) {
-      return { exists: true, record: exactMatch, matchType: "linkedinUrl" };
+      return { exists: true, record: exactMatch, matchType: 'linkedinUrl' };
     }
   }
 
@@ -151,13 +151,13 @@ async function checkDuplicateRecord(
       .where(
         and(
           eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.email, params.email.toLowerCase())
-        )
+          eq(businessRecords.email, params.email.toLowerCase()),
+        ),
       )
       .limit(1);
 
     if (emailMatch) {
-      return { exists: true, record: emailMatch, matchType: "email" };
+      return { exists: true, record: emailMatch, matchType: 'email' };
     }
   }
 
@@ -171,13 +171,13 @@ async function checkDuplicateRecord(
           eq(businessRecords.tenantId, tenantId),
           sql`LOWER(${businessRecords.companyName}) = LOWER(${params.company})`,
           sql`(LOWER(CONCAT(${businessRecords.firstName}, ' ', ${businessRecords.lastName})) = LOWER(${params.name}) OR
-               LOWER(CONCAT(${businessRecords.lastName}, ' ', ${businessRecords.firstName})) = LOWER(${params.name}))`
-        )
+               LOWER(CONCAT(${businessRecords.lastName}, ' ', ${businessRecords.firstName})) = LOWER(${params.name}))`,
+        ),
       )
       .limit(1);
 
     if (fuzzyMatch) {
-      return { exists: true, record: fuzzyMatch, matchType: "nameAndCompany" };
+      return { exists: true, record: fuzzyMatch, matchType: 'nameAndCompany' };
     }
   }
 
@@ -200,13 +200,13 @@ async function checkDuplicateRecord(
  * 4. Create business_record with enriched data
  * 5. Return created record with enrichment metadata
  */
-router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
+router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
   try {
     const tenantId = req.user.tenantId;
     const userId = req.user.claims?.sub || req.user.id;
 
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: "No tenant ID or user ID found" });
+      return res.status(403).json({ error: 'No tenant ID or user ID found' });
     }
 
     // Validate input
@@ -250,7 +250,7 @@ router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
 
     // Step 2: Enrich via Apollo.io (if configured)
     let enrichedData = null;
-    let enrichmentSource = "manual";
+    let enrichmentSource = 'manual';
 
     try {
       enrichedData = await enrichViaApollo(tenantId, {
@@ -261,7 +261,7 @@ router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
       });
 
       if (enrichedData) {
-        enrichmentSource = "apollo";
+        enrichmentSource = 'apollo';
         console.log(`[Chrome Extension] Enriched via Apollo.io - found email:`, enrichedData.email);
       }
     } catch (error: any) {
@@ -272,12 +272,12 @@ router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
     // Step 3: Create business record
     const recordData = {
       tenantId,
-      recordType: "lead" as const,
-      status: "new",
+      recordType: 'lead' as const,
+      status: 'new',
 
       // Basic info from LinkedIn
-      firstName: firstName || "",
-      lastName: lastName || "",
+      firstName: firstName || '',
+      lastName: lastName || '',
       jobTitle: data.jobTitle || enrichedData?.title || null,
       companyName: data.company,
       linkedinUrl: data.linkedinUrl || enrichedData?.linkedinUrl || null,
@@ -297,23 +297,23 @@ router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
       country: enrichedData?.country || null,
 
       // Metadata
-      leadSource: `Chrome Extension - ${data.source === "linkedin" ? "LinkedIn" : "Salesforce"}`,
+      leadSource: `Chrome Extension - ${data.source === 'linkedin' ? 'LinkedIn' : 'Salesforce'}`,
       createdBy: userId,
       ownerId: userId,
 
       // Tags for tracking
-      tags: enrichmentSource === "apollo" ? ["Apollo.io Enriched", "Chrome Extension"] : ["Chrome Extension"],
+      tags:
+        enrichmentSource === 'apollo'
+          ? ['Apollo.io Enriched', 'Chrome Extension']
+          : ['Chrome Extension'],
     };
 
-    const [businessRecord] = await db
-      .insert(businessRecords)
-      .values(recordData)
-      .returning();
+    const [businessRecord] = await db.insert(businessRecords).values(recordData).returning();
 
     console.log(`[Chrome Extension] Created business record:`, businessRecord.id);
 
     // Step 4: Track in Apollo if enriched
-    if (enrichmentSource === "apollo" && enrichedData?.apolloId) {
+    if (enrichmentSource === 'apollo' && enrichedData?.apolloId) {
       try {
         // Store in centralized Apollo contacts cache
         await apolloStorage.createOrUpdateCentralizedContact({
@@ -342,15 +342,15 @@ router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
           tenantId,
           apolloContactId: enrichedData.apolloId,
           apolloId: enrichedData.apolloId,
-          status: "added_to_crm",
+          status: 'added_to_crm',
           addedToCrm: true,
           businessRecordId: businessRecord.id,
-          discoveredVia: "chrome_extension",
+          discoveredVia: 'chrome_extension',
           addedAt: new Date(),
           addedBy: userId,
         });
       } catch (storageError) {
-        console.error("[Chrome Extension] Failed to track in Apollo storage:", storageError);
+        console.error('[Chrome Extension] Failed to track in Apollo storage:', storageError);
         // Non-critical error, continue
       }
     }
@@ -370,22 +370,23 @@ router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
             industry: !!enrichedData.industry,
           }
         : null,
-      message: enrichmentSource === "apollo"
-        ? "Contact added and enriched with Apollo.io data"
-        : "Contact added successfully (enrichment not available)",
+      message:
+        enrichmentSource === 'apollo'
+          ? 'Contact added and enriched with Apollo.io data'
+          : 'Contact added successfully (enrichment not available)',
     });
   } catch (error: any) {
-    console.error("[Chrome Extension] Quick import error:", error);
+    console.error('[Chrome Extension] Quick import error:', error);
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
-        error: "Invalid request data",
+        error: 'Invalid request data',
         details: error.errors,
       });
     }
 
     return res.status(500).json({
-      error: "Failed to import contact",
+      error: 'Failed to import contact',
       message: error.message,
     });
   }
@@ -397,12 +398,12 @@ router.post("/leads/quick-import", isAuthenticated, async (req: any, res) => {
  * Check if lead already exists before importing
  * Query params: linkedinUrl, email, name, company
  */
-router.get("/leads/check-duplicate", isAuthenticated, async (req: any, res) => {
+router.get('/leads/check-duplicate', isAuthenticated, async (req: any, res) => {
   try {
     const tenantId = req.user.tenantId;
 
     if (!tenantId) {
-      return res.status(403).json({ error: "No tenant ID found" });
+      return res.status(403).json({ error: 'No tenant ID found' });
     }
 
     // Validate query params
@@ -426,17 +427,17 @@ router.get("/leads/check-duplicate", isAuthenticated, async (req: any, res) => {
         : null,
     });
   } catch (error: any) {
-    console.error("[Chrome Extension] Duplicate check error:", error);
+    console.error('[Chrome Extension] Duplicate check error:', error);
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
-        error: "Invalid query parameters",
+        error: 'Invalid query parameters',
         details: error.errors,
       });
     }
 
     return res.status(500).json({
-      error: "Failed to check for duplicates",
+      error: 'Failed to check for duplicates',
       message: error.message,
     });
   }
@@ -448,17 +449,17 @@ router.get("/leads/check-duplicate", isAuthenticated, async (req: any, res) => {
  * Generate API key for Chrome extension authentication
  * This creates a persistent API key that the extension stores securely
  */
-router.post("/auth/generate-key", isAuthenticated, async (req: any, res) => {
+router.post('/auth/generate-key', isAuthenticated, async (req: any, res) => {
   try {
     const tenantId = req.user.tenantId;
     const userId = req.user.claims?.sub || req.user.id;
 
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: "No tenant ID or user ID found" });
+      return res.status(403).json({ error: 'No tenant ID or user ID found' });
     }
 
     // Generate a secure random API key
-    const apiKey = `pyx_ext_${crypto.randomBytes(32).toString("hex")}`;
+    const apiKey = `pyx_ext_${crypto.randomBytes(32).toString('hex')}`;
 
     // TODO: Store API key in database (create extension_api_keys table)
     // For now, we'll return it and rely on session-based auth
@@ -475,13 +476,13 @@ router.post("/auth/generate-key", isAuthenticated, async (req: any, res) => {
       tenantId,
       userId,
       expiresAt: null, // TODO: Add expiration
-      message: "API key generated successfully. Keep this secure!",
-      warning: "This key will only be shown once. Store it securely in the Chrome extension.",
+      message: 'API key generated successfully. Keep this secure!',
+      warning: 'This key will only be shown once. Store it securely in the Chrome extension.',
     });
   } catch (error: any) {
-    console.error("[Chrome Extension] API key generation error:", error);
+    console.error('[Chrome Extension] API key generation error:', error);
     return res.status(500).json({
-      error: "Failed to generate API key",
+      error: 'Failed to generate API key',
       message: error.message,
     });
   }
@@ -492,23 +493,23 @@ router.post("/auth/generate-key", isAuthenticated, async (req: any, res) => {
  *
  * Health check endpoint for extension to verify API connectivity
  */
-router.get("/health", isAuthenticated, async (req: any, res) => {
+router.get('/health', isAuthenticated, async (req: any, res) => {
   const tenantId = req.user.tenantId;
   const userId = req.user.claims?.sub || req.user.id;
 
   // Check Apollo.io integration status
   let apolloConfigured = false;
   try {
-    const { storage } = await import("../storage");
-    const credential = await storage.getIntegrationCredentialByProvider(tenantId, "apollo");
-    apolloConfigured = !!(credential && credential.apiKey && credential.status === "active");
+    const { storage } = await import('../storage');
+    const credential = await storage.getIntegrationCredentialByProvider(tenantId, 'apollo');
+    apolloConfigured = !!(credential && credential.apiKey && credential.status === 'active');
   } catch (error) {
     // Apollo not configured
   }
 
   return res.json({
-    status: "healthy",
-    version: "1.0.0",
+    status: 'healthy',
+    version: '1.0.0',
     tenant: {
       id: tenantId,
       userId,

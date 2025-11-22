@@ -1,5 +1,5 @@
-import { db } from '../../db';
-import { eq, and } from "drizzle-orm";
+import { db } from '../db';
+import { eq, and } from 'drizzle-orm';
 import {
   companyPricingSettings,
   enhancedProductPricing,
@@ -7,7 +7,7 @@ import {
   productAccessories,
   type CompanyPricingSettings,
   type EnhancedProductPricing,
-} from "@shared/schema";
+} from '@shared/schema';
 
 /**
  * Pricing Service - Handles three-tier pricing calculations and RBAC visibility
@@ -32,12 +32,12 @@ import {
 const ROLE_LEVELS = {
   'platform-admin': 1,
   'super-admin': 2,
-  'admin': 3,
-  'manager': 4,
-  'standard': 5,
-  'support': 6,
+  admin: 3,
+  manager: 4,
+  standard: 5,
+  support: 6,
   'read-only': 7,
-  'guest': 8,
+  guest: 8,
 };
 
 /**
@@ -77,10 +77,7 @@ export function canEditDealerCost(userRole: string): boolean {
  * Check if user can edit customer price
  * Depends on company settings
  */
-export function canEditCustomerPrice(
-  userRole: string,
-  settings?: CompanyPricingSettings
-): boolean {
+export function canEditCustomerPrice(userRole: string, settings?: CompanyPricingSettings): boolean {
   // Managers and above can always edit
   const roleLevel = ROLE_LEVELS[userRole.toLowerCase() as keyof typeof ROLE_LEVELS] || 999;
   if (roleLevel <= 4) return true;
@@ -99,7 +96,7 @@ export function requiresApproval(
   originalPrice: number,
   newPrice: number,
   repCost: number,
-  settings?: CompanyPricingSettings
+  settings?: CompanyPricingSettings,
 ): boolean {
   // Managers and above don't need approval
   const roleLevel = ROLE_LEVELS[userRole.toLowerCase() as keyof typeof ROLE_LEVELS] || 999;
@@ -130,7 +127,7 @@ export function calculateRepCost(
   dealerCost: number,
   productMarkupPercentage: number | null,
   settings: CompanyPricingSettings | null,
-  productCategory?: string
+  productCategory?: string,
 ): number {
   let markupPercentage: number;
 
@@ -145,7 +142,8 @@ export function calculateRepCost(
     typeof settings.categoryMarkupOverrides === 'object'
   ) {
     const categoryOverrides = settings.categoryMarkupOverrides as Record<string, number>;
-    markupPercentage = categoryOverrides[productCategory] ||
+    markupPercentage =
+      categoryOverrides[productCategory] ||
       parseFloat(settings.defaultMarkupPercentage?.toString() || '13');
   }
   // 3. Fall back to company default
@@ -159,10 +157,7 @@ export function calculateRepCost(
 /**
  * Calculate margin percentage
  */
-export function calculateMarginPercentage(
-  customerPrice: number,
-  cost: number
-): number {
+export function calculateMarginPercentage(customerPrice: number, cost: number): number {
   if (cost === 0) return 0;
   return ((customerPrice - cost) / cost) * 100;
 }
@@ -172,7 +167,7 @@ export function calculateMarginPercentage(
  */
 export function calculateDiscountPercentage(
   originalPrice: number,
-  discountedPrice: number
+  discountedPrice: number,
 ): number {
   if (originalPrice === 0) return 0;
   return ((originalPrice - discountedPrice) / originalPrice) * 100;
@@ -184,7 +179,7 @@ export function calculateDiscountPercentage(
 export function validateMinimumMargin(
   customerPrice: number,
   dealerCost: number,
-  settings: CompanyPricingSettings | null
+  settings: CompanyPricingSettings | null,
 ): { valid: boolean; message?: string; actualMargin: number; requiredMargin: number } {
   const minMarginPercentage = parseFloat(settings?.minMarginPercentage?.toString() || '5');
   const actualMargin = calculateMarginPercentage(customerPrice, dealerCost);
@@ -209,7 +204,7 @@ export function validateMinimumMargin(
  * Get company pricing settings for a tenant
  */
 export async function getCompanyPricingSettings(
-  tenantId: string
+  tenantId: string,
 ): Promise<CompanyPricingSettings | null> {
   try {
     const [settings] = await db
@@ -229,7 +224,7 @@ export async function getCompanyPricingSettings(
  * Get or create default company pricing settings
  */
 export async function getOrCreatePricingSettings(
-  tenantId: string
+  tenantId: string,
 ): Promise<CompanyPricingSettings> {
   let settings = await getCompanyPricingSettings(tenantId);
 
@@ -266,14 +261,14 @@ export async function getOrCreatePricingSettings(
 export function filterPricingByRole<T extends Record<string, any>>(
   data: T,
   userRole: string,
-  settings?: CompanyPricingSettings
+  settings?: CompanyPricingSettings,
 ): Partial<T> {
   const filtered: any = { ...data };
 
   // Remove dealer cost fields if user can't see them
   if (!canSeeDealerCost(userRole, settings)) {
     // Remove all *DealerCost fields
-    Object.keys(filtered).forEach(key => {
+    Object.keys(filtered).forEach((key) => {
       if (key.toLowerCase().includes('dealercost') || key.toLowerCase().includes('dealer_cost')) {
         delete filtered[key];
       }
@@ -282,7 +277,7 @@ export function filterPricingByRole<T extends Record<string, any>>(
 
   // Remove rep cost fields if user can't see them (though this is rare)
   if (!canSeeRepCost(userRole, settings)) {
-    Object.keys(filtered).forEach(key => {
+    Object.keys(filtered).forEach((key) => {
       if (key.toLowerCase().includes('repcost') || key.toLowerCase().includes('rep_cost')) {
         delete filtered[key];
       }
@@ -291,7 +286,7 @@ export function filterPricingByRole<T extends Record<string, any>>(
 
   // Remove margin fields if settings say so
   if (settings && !settings.showMarginToReps && !canSeeDealerCost(userRole, settings)) {
-    Object.keys(filtered).forEach(key => {
+    Object.keys(filtered).forEach((key) => {
       if (key.toLowerCase().includes('margin')) {
         delete filtered[key];
       }
@@ -307,9 +302,9 @@ export function filterPricingByRole<T extends Record<string, any>>(
 export function filterPricingArrayByRole<T extends Record<string, any>>(
   dataArray: T[],
   userRole: string,
-  settings?: CompanyPricingSettings
+  settings?: CompanyPricingSettings,
 ): Partial<T>[] {
-  return dataArray.map(item => filterPricingByRole(item, userRole, settings));
+  return dataArray.map((item) => filterPricingByRole(item, userRole, settings));
 }
 
 /**
@@ -336,19 +331,14 @@ export async function calculatePricingBreakdown(
   userRole: string,
   dealerCost: number,
   productMarkupPercentage: number | null = null,
-  productCategory?: string
+  productCategory?: string,
 ): Promise<PricingBreakdown> {
   const settings = await getOrCreatePricingSettings(tenantId);
 
-  const repCost = calculateRepCost(
-    dealerCost,
-    productMarkupPercentage,
-    settings,
-    productCategory
-  );
+  const repCost = calculateRepCost(dealerCost, productMarkupPercentage, settings, productCategory);
 
-  const markupPercentage = productMarkupPercentage ??
-    parseFloat(settings.defaultMarkupPercentage?.toString() || '13');
+  const markupPercentage =
+    productMarkupPercentage ?? parseFloat(settings.defaultMarkupPercentage?.toString() || '13');
 
   return {
     dealerCost,
@@ -386,7 +376,7 @@ export interface PricingVisibility {
  */
 export async function getPricingVisibility(
   tenantId: string,
-  userRole: string
+  userRole: string,
 ): Promise<PricingVisibility> {
   const settings = await getOrCreatePricingSettings(tenantId);
 

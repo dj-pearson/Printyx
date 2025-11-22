@@ -2,7 +2,7 @@
  * Error Monitoring and Retry Logic for Integrations
  * Handles integration failures, implements exponential backoff, and provides monitoring
  */
-import { db } from '../../db';
+import { db } from '../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
 
@@ -57,50 +57,50 @@ export class ErrorMonitor {
       baseDelayMs: 5000,
       maxDelayMs: 300000, // 5 minutes
       exponentialFactor: 2,
-      jitterMs: 1000
+      jitterMs: 1000,
     },
     rate_limit: {
       maxRetries: 5,
       baseDelayMs: 60000, // 1 minute
       maxDelayMs: 3600000, // 1 hour
       exponentialFactor: 2,
-      jitterMs: 5000
+      jitterMs: 5000,
     },
     timeout: {
       maxRetries: 3,
       baseDelayMs: 2000,
       maxDelayMs: 60000, // 1 minute
       exponentialFactor: 1.5,
-      jitterMs: 500
+      jitterMs: 500,
     },
     network: {
       maxRetries: 5,
       baseDelayMs: 1000,
       maxDelayMs: 120000, // 2 minutes
       exponentialFactor: 2,
-      jitterMs: 200
+      jitterMs: 200,
     },
     api_error: {
       maxRetries: 2,
       baseDelayMs: 10000,
       maxDelayMs: 600000, // 10 minutes
       exponentialFactor: 3,
-      jitterMs: 2000
+      jitterMs: 2000,
     },
     validation: {
       maxRetries: 1,
       baseDelayMs: 1000,
       maxDelayMs: 5000,
       exponentialFactor: 1,
-      jitterMs: 0
+      jitterMs: 0,
     },
     unknown: {
       maxRetries: 2,
       baseDelayMs: 5000,
       maxDelayMs: 300000, // 5 minutes
       exponentialFactor: 2,
-      jitterMs: 1000
-    }
+      jitterMs: 1000,
+    },
   };
 
   /**
@@ -112,11 +112,11 @@ export class ErrorMonitor {
     provider: string,
     operation: string,
     error: Error,
-    metadata?: any
+    metadata?: any,
   ): Promise<string> {
     const errorType = this.classifyError(error);
     const policy = this.retryPolicies[errorType];
-    
+
     const integrationError: IntegrationError = {
       id: this.generateErrorId(),
       integrationId,
@@ -132,7 +132,7 @@ export class ErrorMonitor {
       resolved: false,
       metadata,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     this.errors.set(integrationError.id, integrationError);
@@ -153,7 +153,7 @@ export class ErrorMonitor {
       errorType,
       message: error.message,
       retryCount: integrationError.retryCount,
-      maxRetries: integrationError.maxRetries
+      maxRetries: integrationError.maxRetries,
     });
 
     return integrationError.id;
@@ -167,12 +167,20 @@ export class ErrorMonitor {
     const httpStatus = this.extractHttpStatus(error);
 
     // Authentication errors
-    if (httpStatus === 401 || message.includes('unauthorized') || message.includes('invalid token')) {
+    if (
+      httpStatus === 401 ||
+      message.includes('unauthorized') ||
+      message.includes('invalid token')
+    ) {
       return 'auth';
     }
 
     // Rate limiting
-    if (httpStatus === 429 || message.includes('rate limit') || message.includes('too many requests')) {
+    if (
+      httpStatus === 429 ||
+      message.includes('rate limit') ||
+      message.includes('too many requests')
+    ) {
       return 'rate_limit';
     }
 
@@ -217,9 +225,9 @@ export class ErrorMonitor {
    * Check if error should be retried
    */
   private static shouldRetry(error: IntegrationError): boolean {
-    return error.retryCount < error.maxRetries && 
-           error.errorType !== 'validation' && 
-           !error.resolved;
+    return (
+      error.retryCount < error.maxRetries && error.errorType !== 'validation' && !error.resolved
+    );
   }
 
   /**
@@ -227,16 +235,19 @@ export class ErrorMonitor {
    */
   private static async scheduleRetry(error: IntegrationError): Promise<void> {
     const policy = this.retryPolicies[error.errorType];
-    
+
     // Calculate delay with exponential backoff and jitter
-    const exponentialDelay = policy.baseDelayMs * Math.pow(policy.exponentialFactor, error.retryCount);
+    const exponentialDelay =
+      policy.baseDelayMs * Math.pow(policy.exponentialFactor, error.retryCount);
     const jitter = Math.random() * policy.jitterMs;
     const delay = Math.min(exponentialDelay + jitter, policy.maxDelayMs);
-    
+
     error.nextRetryAt = new Date(Date.now() + delay);
     error.updatedAt = new Date();
-    
-    console.log(`Scheduling retry for error ${error.id} in ${delay}ms (attempt ${error.retryCount + 1}/${error.maxRetries})`);
+
+    console.log(
+      `Scheduling retry for error ${error.id} in ${delay}ms (attempt ${error.retryCount + 1}/${error.maxRetries})`,
+    );
 
     // Clear existing timeout if any
     const existingTimeout = this.retryQueue.get(error.id);
@@ -265,16 +276,18 @@ export class ErrorMonitor {
     error.updatedAt = new Date();
     error.nextRetryAt = undefined;
 
-    console.log(`Executing retry for error ${errorId} (attempt ${error.retryCount}/${error.maxRetries})`);
+    console.log(
+      `Executing retry for error ${errorId} (attempt ${error.retryCount}/${error.maxRetries})`,
+    );
 
     try {
       // Execute the retry based on operation type
       const success = await this.retryOperation(error);
-      
+
       if (success) {
         error.resolved = true;
         console.log(`Retry successful for error ${errorId}`);
-        
+
         // Update integration status to connected
         await this.updateIntegrationStatus(error.integrationId, 'connected');
       } else {
@@ -288,7 +301,7 @@ export class ErrorMonitor {
       }
     } catch (retryError) {
       console.error(`Retry failed for error ${errorId}:`, retryError);
-      
+
       // Schedule next retry if attempts remain
       if (this.shouldRetry(error)) {
         await this.scheduleRetry(error);
@@ -376,12 +389,16 @@ export class ErrorMonitor {
   /**
    * Update integration status in database
    */
-  private static async updateIntegrationStatus(integrationId: string, status: string): Promise<void> {
+  private static async updateIntegrationStatus(
+    integrationId: string,
+    status: string,
+  ): Promise<void> {
     try {
-      await db.update(systemIntegrations)
-        .set({ 
+      await db
+        .update(systemIntegrations)
+        .set({
           status,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(systemIntegrations.id, integrationId));
     } catch (error) {
@@ -394,7 +411,8 @@ export class ErrorMonitor {
    */
   static async getIntegrationHealth(integrationId: string): Promise<IntegrationHealth | null> {
     try {
-      const integration = await db.select()
+      const integration = await db
+        .select()
         .from(systemIntegrations)
         .where(eq(systemIntegrations.id, integrationId))
         .limit(1);
@@ -403,15 +421,16 @@ export class ErrorMonitor {
         return null;
       }
 
-      const errors = Array.from(this.errors.values())
-        .filter(error => error.integrationId === integrationId);
+      const errors = Array.from(this.errors.values()).filter(
+        (error) => error.integrationId === integrationId,
+      );
 
-      const recentErrors = errors.filter(error => 
-        error.createdAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
+      const recentErrors = errors.filter(
+        (error) => error.createdAt > new Date(Date.now() - 24 * 60 * 60 * 1000),
       );
 
       const totalAttempts = recentErrors.length;
-      const successCount = recentErrors.filter(error => error.resolved).length;
+      const successCount = recentErrors.filter((error) => error.resolved).length;
       const errorCount = totalAttempts - successCount;
       const errorRate = totalAttempts > 0 ? (errorCount / totalAttempts) * 100 : 0;
 
@@ -434,7 +453,7 @@ export class ErrorMonitor {
         lastSuccess: integration[0].lastSync || undefined,
         responseTime: this.calculateAverageResponseTime(integrationId),
         errorCount,
-        successCount
+        successCount,
       };
     } catch (error) {
       console.error(`Failed to get integration health:`, error);
@@ -447,12 +466,12 @@ export class ErrorMonitor {
    */
   private static calculateUptime(errors: IntegrationError[]): number {
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentErrors = errors.filter(error => error.createdAt > last24Hours);
-    
+    const recentErrors = errors.filter((error) => error.createdAt > last24Hours);
+
     // Simple uptime calculation: assume 5 minutes downtime per unresolved error
-    const downtime = recentErrors.filter(error => !error.resolved).length * 5;
+    const downtime = recentErrors.filter((error) => !error.resolved).length * 5;
     const uptime = Math.max(0, (24 * 60 - downtime) / (24 * 60)) * 100;
-    
+
     return Math.round(uptime * 100) / 100;
   }
 
@@ -469,7 +488,7 @@ export class ErrorMonitor {
    */
   static getErrorsForIntegration(integrationId: string): IntegrationError[] {
     return Array.from(this.errors.values())
-      .filter(error => error.integrationId === integrationId)
+      .filter((error) => error.integrationId === integrationId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
@@ -478,7 +497,7 @@ export class ErrorMonitor {
    */
   static getUnresolvedErrors(): IntegrationError[] {
     return Array.from(this.errors.values())
-      .filter(error => !error.resolved)
+      .filter((error) => !error.resolved)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
@@ -490,14 +509,14 @@ export class ErrorMonitor {
     if (error) {
       error.resolved = true;
       error.updatedAt = new Date();
-      
+
       // Cancel any pending retries
       const timeout = this.retryQueue.get(errorId);
       if (timeout) {
         clearTimeout(timeout);
         this.retryQueue.delete(errorId);
       }
-      
+
       return true;
     }
     return false;

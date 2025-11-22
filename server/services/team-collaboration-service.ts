@@ -3,7 +3,7 @@
  * Manages team coordination, project hierarchy, and collaborative scheduling
  */
 
-import { db } from '../../db';
+import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import DynamicReschedulingService from './dynamic-rescheduling-service';
@@ -125,7 +125,7 @@ class TeamCollaborationService {
    */
   async createTeam(teamData: Partial<Team>): Promise<Team> {
     console.log('👥 Creating new team:', teamData.name);
-    
+
     try {
       // Mock team creation - in production, this would use Drizzle ORM
       const team: Team = {
@@ -139,7 +139,7 @@ class TeamCollaborationService {
         isActive: true,
         createdBy: teamData.createdBy || 'system',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       // Initialize team with AI-suggested collaboration settings
@@ -159,11 +159,11 @@ class TeamCollaborationService {
    */
   async addTeamMember(teamId: string, memberData: Partial<TeamMember>): Promise<TeamMember> {
     console.log('👤 Adding team member to team:', teamId);
-    
+
     try {
       // Analyze optimal role and capacity for new member
       const optimalAssignment = await this.analyzeOptimalMemberAssignment(teamId, memberData);
-      
+
       const member: TeamMember = {
         id: `member-${Date.now()}`,
         teamId,
@@ -175,7 +175,7 @@ class TeamCollaborationService {
         skills: memberData.skills || [],
         availabilityPattern: memberData.availabilityPattern || {},
         joinedAt: new Date(),
-        isActive: true
+        isActive: true,
       };
 
       // Trigger team rebalancing if needed
@@ -196,11 +196,11 @@ class TeamCollaborationService {
    */
   async createProject(projectData: Partial<Project>): Promise<Project> {
     console.log('📋 Creating new project:', projectData.name);
-    
+
     try {
       // Use AI to analyze project complexity and requirements
       const aiAnalysis = await this.analyzeProjectWithAI(projectData);
-      
+
       const project: Project = {
         id: `project-${Date.now()}`,
         tenantId: projectData.tenantId || 'mock-tenant',
@@ -227,7 +227,7 @@ class TeamCollaborationService {
         notificationSettings: aiAnalysis.notificationSettings,
         createdBy: projectData.createdBy || 'system',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       // Generate project milestones and tasks using AI
@@ -246,12 +246,12 @@ class TeamCollaborationService {
    */
   async optimizeTaskAssignments(teamId: string, tasks: any[]): Promise<TaskAssignment[]> {
     console.log('🎯 Optimizing task assignments for team:', teamId);
-    
+
     try {
       // Get team members and their current workload
       const teamMembers = await this.getTeamMembers(teamId);
       const currentCapacity = await this.analyzeTeamCapacity(teamId);
-      
+
       // Use AI to optimize assignments
       const optimizationPrompt = `Optimize task assignments for maximum efficiency:
 
@@ -260,10 +260,10 @@ Available Tasks: ${tasks.length}
 Current Team Utilization: ${Math.round(currentCapacity.averageUtilization)}%
 
 Team Member Skills and Capacity:
-${teamMembers.map(m => `- ${m.userId}: Skills: ${m.skills.join(', ')}, Capacity: ${m.workloadCapacity}x, Current: ${currentCapacity.memberAnalytics[m.userId]?.utilizationPercentage || 0}%`).join('\n')}
+${teamMembers.map((m) => `- ${m.userId}: Skills: ${m.skills.join(', ')}, Capacity: ${m.workloadCapacity}x, Current: ${currentCapacity.memberAnalytics[m.userId]?.utilizationPercentage || 0}%`).join('\n')}
 
 Tasks to Assign:
-${tasks.map(t => `- ${t.title}: Priority: ${t.priority}, Est. Hours: ${t.estimatedDuration/60}, Skills: ${t.requiredSkills?.join(', ') || 'general'}`).join('\n')}
+${tasks.map((t) => `- ${t.title}: Priority: ${t.priority}, Est. Hours: ${t.estimatedDuration / 60}, Skills: ${t.requiredSkills?.join(', ') || 'general'}`).join('\n')}
 
 Optimization Goals:
 1. Balance workload across team members
@@ -293,19 +293,19 @@ Return JSON with assignments:
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: optimizationPrompt }],
         temperature: 0.3,
-        max_tokens: 2000
+        max_tokens: 2000,
       });
 
       const optimization = JSON.parse(aiResponse);
-      
+
       // Create task assignments based on AI recommendations
       const assignments: TaskAssignment[] = [];
-      
+
       for (const assignment of optimization.assignments) {
         const taskAssignment: TaskAssignment = {
           id: `assignment-${Date.now()}-${Math.random()}`,
           taskId: assignment.taskId,
-          projectId: tasks.find(t => t.id === assignment.taskId)?.projectId,
+          projectId: tasks.find((t) => t.id === assignment.taskId)?.projectId,
           assignedTo: assignment.assignedTo,
           assignedBy: 'ai-optimizer',
           assignmentType: assignment.assignmentType,
@@ -316,9 +316,9 @@ Return JSON with assignments:
           aiWorkloadOptimization: optimization.workloadBalance,
           status: 'assigned',
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         };
-        
+
         assignments.push(taskAssignment);
       }
 
@@ -342,20 +342,20 @@ Return JSON with assignments:
     recommendations: string[];
   }> {
     console.log('📊 Analyzing team capacity:', teamId);
-    
+
     try {
       const teamMembers = await this.getTeamMembers(teamId);
       const memberAnalytics: Record<string, TeamCapacityAnalysis> = {};
-      
+
       let totalCapacity = 0;
       let totalAllocated = 0;
-      
+
       // Mock capacity analysis for each member
       for (const member of teamMembers) {
         const weeklyHours = 40; // Standard work week
         const availableHours = weeklyHours * member.workloadCapacity;
         const allocatedHours = Math.random() * availableHours; // Mock current allocation
-        
+
         memberAnalytics[member.userId] = {
           teamId,
           userId: member.userId,
@@ -368,37 +368,41 @@ Return JSON with assignments:
           aiRecommendedCapacity: availableHours * 0.85, // 85% recommended max
           projectsCount: Math.floor(Math.random() * 5) + 1,
           tasksCount: Math.floor(Math.random() * 15) + 3,
-          overdueTasksCount: Math.floor(Math.random() * 3)
+          overdueTasksCount: Math.floor(Math.random() * 3),
         };
-        
+
         totalCapacity += availableHours;
         totalAllocated += allocatedHours;
       }
-      
+
       const averageUtilization = (totalAllocated / totalCapacity) * 100;
-      
+
       // Identify bottlenecks and generate recommendations
       const bottlenecks = [];
       const recommendations = [];
-      
+
       for (const [userId, analytics] of Object.entries(memberAnalytics)) {
         if (analytics.utilizationPercentage > 90) {
-          bottlenecks.push(`${userId} is over-utilized at ${Math.round(analytics.utilizationPercentage)}%`);
+          bottlenecks.push(
+            `${userId} is over-utilized at ${Math.round(analytics.utilizationPercentage)}%`,
+          );
           recommendations.push(`Redistribute tasks from ${userId} to prevent burnout`);
         }
-        
+
         if (analytics.utilizationPercentage < 50) {
-          recommendations.push(`${userId} has additional capacity for ${Math.round(analytics.totalCapacityHours - analytics.allocatedHours)} hours`);
+          recommendations.push(
+            `${userId} has additional capacity for ${Math.round(analytics.totalCapacityHours - analytics.allocatedHours)} hours`,
+          );
         }
       }
-      
+
       return {
         averageUtilization,
         totalCapacity,
         allocatedCapacity: totalAllocated,
         memberAnalytics,
         bottlenecks,
-        recommendations
+        recommendations,
       };
     } catch (error) {
       console.error('Team capacity analysis failed:', error);
@@ -408,7 +412,7 @@ Return JSON with assignments:
         allocatedCapacity: 0,
         memberAnalytics: {},
         bottlenecks: [],
-        recommendations: []
+        recommendations: [],
       };
     }
   }
@@ -418,29 +422,32 @@ Return JSON with assignments:
    */
   async generateCollaborationInsights(teamId: string): Promise<CollaborationInsights> {
     console.log('🧠 Generating collaboration insights for team:', teamId);
-    
+
     try {
       // Get team performance data
       const capacityAnalysis = await this.analyzeTeamCapacity(teamId);
       const teamMembers = await this.getTeamMembers(teamId);
-      const recentProjects = await this.getTeamProjects(teamId, { status: ['active', 'completed'], limit: 5 });
-      
+      const recentProjects = await this.getTeamProjects(teamId, {
+        status: ['active', 'completed'],
+        limit: 5,
+      });
+
       // Use AI to analyze collaboration patterns
       const insightsPrompt = `Analyze team collaboration effectiveness:
 
 Team Size: ${teamMembers.length} members
 Average Utilization: ${Math.round(capacityAnalysis.averageUtilization)}%
-Active Projects: ${recentProjects.filter(p => p.status === 'active').length}
-Completed Projects: ${recentProjects.filter(p => p.status === 'completed').length}
+Active Projects: ${recentProjects.filter((p) => p.status === 'active').length}
+Completed Projects: ${recentProjects.filter((p) => p.status === 'completed').length}
 
 Team Member Roles:
-${teamMembers.map(m => `- ${m.role}: ${m.skills.length} skills, ${Math.round(m.workloadCapacity * 100)}% capacity`).join('\n')}
+${teamMembers.map((m) => `- ${m.role}: ${m.skills.length} skills, ${Math.round(m.workloadCapacity * 100)}% capacity`).join('\n')}
 
 Current Bottlenecks:
 ${capacityAnalysis.bottlenecks.join('\n')}
 
 Recent Project Performance:
-${recentProjects.map(p => `- ${p.name}: ${p.status}, ${p.completionPercentage}% complete`).join('\n')}
+${recentProjects.map((p) => `- ${p.name}: ${p.status}, ${p.completionPercentage}% complete`).join('\n')}
 
 Analyze and return JSON:
 {
@@ -466,11 +473,11 @@ Analyze and return JSON:
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: insightsPrompt }],
         temperature: 0.4,
-        max_tokens: 1500
+        max_tokens: 1500,
       });
 
       const insights = JSON.parse(aiResponse);
-      
+
       console.log('✅ Generated collaboration insights:', insights.teamHealthScore);
       return insights;
     } catch (error) {
@@ -482,7 +489,7 @@ Analyze and return JSON:
         communicationFrequency: 8.0,
         knowledgeSharingScore: 0.6,
         recommendations: ['Unable to generate insights - please try again'],
-        bottlenecks: []
+        bottlenecks: [],
       };
     }
   }
@@ -509,7 +516,7 @@ Analyze and return JSON:
     }>;
   }> {
     console.log('🤝 Coordinating cross-team dependencies for project:', projectId);
-    
+
     try {
       // Mock dependencies - in production, this would query the database
       const dependencies = [
@@ -520,7 +527,7 @@ Analyze and return JSON:
           dependencyType: 'technical_review',
           status: 'requested',
           neededByDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          aiCoordinationScore: 0.8
+          aiCoordinationScore: 0.8,
         },
         {
           id: 'dep-2',
@@ -529,29 +536,29 @@ Analyze and return JSON:
           dependencyType: 'resource_allocation',
           status: 'in_progress',
           neededByDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-          aiCoordinationScore: 0.6
-        }
+          aiCoordinationScore: 0.6,
+        },
       ];
 
       // Generate coordination plan using AI
       const coordinationPrompt = `Create cross-team coordination plan:
 
 Project Dependencies:
-${dependencies.map(d => `- ${d.requestingTeam} needs ${d.dependencyType} from ${d.providingTeam} by ${d.neededByDate.toISOString().split('T')[0]} (Status: ${d.status})`).join('\n')}
+${dependencies.map((d) => `- ${d.requestingTeam} needs ${d.dependencyType} from ${d.providingTeam} by ${d.neededByDate.toISOString().split('T')[0]} (Status: ${d.status})`).join('\n')}
 
 Generate coordination plan and risk assessment to ensure smooth collaboration.`;
 
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: coordinationPrompt }],
         temperature: 0.3,
-        max_tokens: 1000
+        max_tokens: 1000,
       });
 
       const coordinationPlan = [
         'Schedule daily stand-ups between dependent teams',
         'Set up shared communication channels for real-time updates',
         'Create dependency tracking dashboard',
-        'Establish escalation procedures for blocked dependencies'
+        'Establish escalation procedures for blocked dependencies',
       ];
 
       const riskAssessment = [
@@ -559,27 +566,27 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
           risk: 'Technical review delay',
           probability: 0.3,
           impact: 'medium',
-          mitigation: 'Assign backup reviewer and set clear timeline'
+          mitigation: 'Assign backup reviewer and set clear timeline',
         },
         {
           risk: 'Resource allocation conflict',
           probability: 0.4,
           impact: 'high',
-          mitigation: 'Pre-allocate resources and create resource pool'
-        }
+          mitigation: 'Pre-allocate resources and create resource pool',
+        },
       ];
 
       return {
         dependencies,
         coordinationPlan,
-        riskAssessment
+        riskAssessment,
       };
     } catch (error) {
       console.error('Cross-team coordination failed:', error);
       return {
         dependencies: [],
         coordinationPlan: ['Manual coordination required'],
-        riskAssessment: []
+        riskAssessment: [],
       };
     }
   }
@@ -591,11 +598,14 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
       workloadBalancing: true,
       skillBasedAssignment: true,
       burnoutPrevention: true,
-      collaborationOptimization: true
+      collaborationOptimization: true,
     };
   }
 
-  private async analyzeOptimalMemberAssignment(teamId: string, memberData: Partial<TeamMember>): Promise<{
+  private async analyzeOptimalMemberAssignment(
+    teamId: string,
+    memberData: Partial<TeamMember>,
+  ): Promise<{
     recommendedRole: 'manager' | 'lead' | 'member' | 'observer';
     recommendedPermissions: string[];
     recommendedCapacity: number;
@@ -606,7 +616,7 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
       recommendedRole: 'member',
       recommendedPermissions: ['view_tasks', 'edit_own_tasks', 'comment'],
       recommendedCapacity: 1.0,
-      rebalanceRequired: false
+      rebalanceRequired: false,
     };
   }
 
@@ -627,7 +637,7 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
       resourceRequirements: { developers: 2, designers: 1, managers: 1 },
       timelineConfidence: 0.78,
       collaborationSettings: { dailyStandups: true, weeklyReviews: true },
-      notificationSettings: { milestoneUpdates: true, taskAssignments: true }
+      notificationSettings: { milestoneUpdates: true, taskAssignments: true },
     };
   }
 
@@ -649,7 +659,7 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
         skills: ['leadership', 'sales', 'project_management'],
         availabilityPattern: {},
         joinedAt: new Date(),
-        isActive: true
+        isActive: true,
       },
       {
         id: 'member-2',
@@ -661,8 +671,8 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
         skills: ['technical', 'installation', 'troubleshooting'],
         availabilityPattern: {},
         joinedAt: new Date(),
-        isActive: true
-      }
+        isActive: true,
+      },
     ];
   }
 
@@ -685,8 +695,8 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
         notificationSettings: {},
         createdBy: 'user-1',
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ];
   }
 

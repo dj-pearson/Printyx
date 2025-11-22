@@ -4,7 +4,7 @@
  * Handles trial lifecycle, email automation, and subscription transitions
  */
 
-import { db } from '../../db';
+import { db } from '../db';
 import { users, tenants } from '../../shared/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { EmailTemplates } from './email-templates';
@@ -24,21 +24,13 @@ export class TrialManagementService {
    * Get trial status for a user
    */
   static async getTrialStatus(userId: string): Promise<TrialStatus | null> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
     if (!user || !user.tenantId) {
       return null;
     }
 
-    const [tenant] = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.id, user.tenantId))
-      .limit(1);
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, user.tenantId)).limit(1);
 
     if (!tenant || !tenant.createdAt) {
       return null;
@@ -50,12 +42,12 @@ export class TrialManagementService {
     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
     const now = new Date();
-    const daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysRemaining = Math.ceil(
+      (trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     const status: 'active' | 'expired' | 'converted' =
-      daysRemaining > 0 ? 'active' :
-      daysRemaining <= 0 ? 'expired' :
-      'active';
+      daysRemaining > 0 ? 'active' : daysRemaining <= 0 ? 'expired' : 'active';
 
     return {
       userId: user.id,
@@ -70,13 +62,12 @@ export class TrialManagementService {
   /**
    * Send trial email based on days elapsed
    */
-  static async sendTrialEmail(userId: string, emailType: 'day3' | 'day7' | 'day11' | 'day13' | 'expired'): Promise<boolean> {
+  static async sendTrialEmail(
+    userId: string,
+    emailType: 'day3' | 'day7' | 'day11' | 'day13' | 'expired',
+  ): Promise<boolean> {
     try {
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
       if (!user) {
         console.error(`[TRIAL EMAIL] User not found: ${userId}`);
@@ -95,7 +86,7 @@ export class TrialManagementService {
         trialEndDate: trialStatus.trialEndDate.toLocaleDateString('en-US', {
           month: 'long',
           day: 'numeric',
-          year: 'numeric'
+          year: 'numeric',
         }),
         trialDays: trialStatus.daysRemaining,
       };
@@ -177,7 +168,7 @@ export class TrialManagementService {
           // Calculate days elapsed since trial start
           const now = new Date();
           const daysElapsed = Math.floor(
-            (now.getTime() - trialStatus.trialStartDate.getTime()) / (1000 * 60 * 60 * 24)
+            (now.getTime() - trialStatus.trialStartDate.getTime()) / (1000 * 60 * 60 * 24),
           );
 
           // Send appropriate email based on trial day
@@ -204,7 +195,9 @@ export class TrialManagementService {
         }
       }
 
-      console.log(`[TRIAL PROCESSING] Completed: ${results.processed} processed, ${results.sent} sent, ${results.errors} errors`);
+      console.log(
+        `[TRIAL PROCESSING] Completed: ${results.processed} processed, ${results.sent} sent, ${results.errors} errors`,
+      );
       return results;
     } catch (error) {
       console.error('[TRIAL PROCESSING] Fatal error:', error);

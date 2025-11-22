@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { db } from '../../db';
+import { db } from '../db';
 import { tenants, tenantSubscriptions, users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
@@ -14,7 +14,9 @@ import { eq } from 'drizzle-orm';
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
 if (!stripeSecretKey) {
-  console.warn('⚠️  STRIPE_SECRET_KEY not found in environment. Stripe integration will be in test mode.');
+  console.warn(
+    '⚠️  STRIPE_SECRET_KEY not found in environment. Stripe integration will be in test mode.',
+  );
 }
 
 export const stripe = stripeSecretKey
@@ -57,7 +59,9 @@ export class StripeService {
    */
   static async createCustomer(params: CreateCustomerParams): Promise<string> {
     if (!stripe) {
-      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+      throw new Error(
+        'Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.',
+      );
     }
 
     const { tenantId, email, name, phone, metadata = {} } = params;
@@ -87,7 +91,7 @@ export class StripeService {
       .update(tenants)
       .set({
         metadata: {
-          ...(tenant.metadata as any || {}),
+          ...((tenant.metadata as any) || {}),
           stripeCustomerId: customer.id,
         },
         updatedAt: new Date(),
@@ -111,7 +115,7 @@ export class StripeService {
       throw new Error('Tenant not found');
     }
 
-    const tenantMetadata = tenant.metadata as any || {};
+    const tenantMetadata = (tenant.metadata as any) || {};
     if (tenantMetadata.stripeCustomerId) {
       return tenantMetadata.stripeCustomerId;
     }
@@ -217,7 +221,9 @@ export class StripeService {
 
     const subscription = await stripe.subscriptions.create(subscriptionParams);
 
-    console.log(`✅ Created Stripe subscription ${subscription.id} for customer ${stripeCustomerId}`);
+    console.log(
+      `✅ Created Stripe subscription ${subscription.id} for customer ${stripeCustomerId}`,
+    );
     return subscription;
   }
 
@@ -226,7 +232,7 @@ export class StripeService {
    */
   static async cancelSubscription(
     subscriptionId: string,
-    immediate: boolean = false
+    immediate: boolean = false,
   ): Promise<Stripe.Subscription> {
     if (!stripe) {
       throw new Error('Stripe is not configured');
@@ -247,7 +253,7 @@ export class StripeService {
    */
   static async updateSubscription(
     subscriptionId: string,
-    priceId: string
+    priceId: string,
   ): Promise<Stripe.Subscription> {
     if (!stripe) {
       throw new Error('Stripe is not configured');
@@ -272,7 +278,7 @@ export class StripeService {
     amount: number,
     currency: string = 'usd',
     customerId?: string,
-    metadata?: Record<string, string>
+    metadata?: Record<string, string>,
   ): Promise<Stripe.PaymentIntent> {
     if (!stripe) {
       throw new Error('Stripe is not configured');
@@ -305,7 +311,10 @@ export class StripeService {
   /**
    * List invoices for customer
    */
-  static async listInvoices(stripeCustomerId: string, limit: number = 12): Promise<Stripe.Invoice[]> {
+  static async listInvoices(
+    stripeCustomerId: string,
+    limit: number = 12,
+  ): Promise<Stripe.Invoice[]> {
     if (!stripe) {
       throw new Error('Stripe is not configured');
     }
@@ -335,7 +344,7 @@ export class StripeService {
   static constructWebhookEvent(
     payload: string | Buffer,
     signature: string,
-    webhookSecret: string
+    webhookSecret: string,
   ): Stripe.Event {
     if (!stripe) {
       throw new Error('Stripe is not configured');
@@ -467,14 +476,18 @@ export class StripeService {
   /**
    * Webhook handler: Payment method attached
    */
-  private static async handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod): Promise<void> {
+  private static async handlePaymentMethodAttached(
+    paymentMethod: Stripe.PaymentMethod,
+  ): Promise<void> {
     console.log(`✅ Payment method attached: ${paymentMethod.id}`);
   }
 
   /**
    * Webhook handler: Payment method detached
    */
-  private static async handlePaymentMethodDetached(paymentMethod: Stripe.PaymentMethod): Promise<void> {
+  private static async handlePaymentMethodDetached(
+    paymentMethod: Stripe.PaymentMethod,
+  ): Promise<void> {
     console.log(`✅ Payment method detached: ${paymentMethod.id}`);
   }
 

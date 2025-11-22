@@ -3,7 +3,7 @@
  * All functions interact with real databases and APIs
  */
 
-import { db } from '../../db';
+import { db } from '../db';
 import { eq, desc, and } from 'drizzle-orm';
 import {
   seoSettings,
@@ -116,7 +116,10 @@ export async function performComprehensiveSEOAudit(url: string): Promise<AuditRe
     const lowIssues = issues.filter((i) => i.severity === 'low').length;
 
     // Calculate scores (100 base, deduct points for issues)
-    const technicalScore = Math.max(0, 100 - criticalIssues * 10 - highIssues * 5 - mediumIssues * 2 - lowIssues);
+    const technicalScore = Math.max(
+      0,
+      100 - criticalIssues * 10 - highIssues * 5 - mediumIssues * 2 - lowIssues,
+    );
     const contentScore = Math.max(0, 100 - contentChecks.issueCount * 5);
     const performanceScore = Math.max(0, 100 - performanceChecks.issueCount * 7);
     const overallScore = Math.round((technicalScore + contentScore + performanceScore) / 3);
@@ -369,7 +372,7 @@ export async function crawlWebsite(
   startUrl: string,
   maxPages: number = 100,
   maxDepth: number = 3,
-  tenantId: string
+  tenantId: string,
 ): Promise<CrawlPage[]> {
   const visited = new Set<string>();
   const toVisit: Array<{ url: string; depth: number }> = [{ url: startUrl, depth: 0 }];
@@ -524,7 +527,10 @@ export async function crawlWebsite(
 
 // ============= PAGESPEED INSIGHTS (Core Web Vitals) =============
 
-export async function checkCoreWebVitalsWithAPI(url: string, device: 'mobile' | 'desktop' = 'mobile') {
+export async function checkCoreWebVitalsWithAPI(
+  url: string,
+  device: 'mobile' | 'desktop' = 'mobile',
+) {
   const apiKey = process.env.PAGESPEED_INSIGHTS_API_KEY;
 
   if (!apiKey) {
@@ -533,7 +539,7 @@ export async function checkCoreWebVitalsWithAPI(url: string, device: 'mobile' | 
 
   try {
     const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(
-      url
+      url,
     )}&strategy=${device}&key=${apiKey}`;
 
     const response = await fetch(apiUrl);
@@ -701,7 +707,12 @@ export async function checkBrokenLinks(sourceUrl: string) {
           isBroken,
           statusCode,
           errorMessage,
-          linkValue: linkType === 'internal' && !isNoFollow ? 80 : linkType === 'external' && !isNoFollow ? 60 : 20,
+          linkValue:
+            linkType === 'internal' && !isNoFollow
+              ? 80
+              : linkType === 'external' && !isNoFollow
+                ? 60
+                : 20,
         });
 
         // Rate limiting
@@ -741,10 +752,18 @@ export async function checkSecurityHeaders(url: string) {
       issues.push({ type: 'hsts', severity: 'high', message: 'Missing HSTS header' });
     }
     if (!hasXFrameOptions) {
-      issues.push({ type: 'clickjacking', severity: 'medium', message: 'Missing X-Frame-Options header' });
+      issues.push({
+        type: 'clickjacking',
+        severity: 'medium',
+        message: 'Missing X-Frame-Options header',
+      });
     }
     if (!hasXContentTypeOptions) {
-      issues.push({ type: 'mime', severity: 'low', message: 'Missing X-Content-Type-Options header' });
+      issues.push({
+        type: 'mime',
+        severity: 'low',
+        message: 'Missing X-Content-Type-Options header',
+      });
     }
     if (!hasCsp) {
       issues.push({ type: 'csp', severity: 'medium', message: 'Missing Content-Security-Policy' });
@@ -793,12 +812,9 @@ export async function analyzeMobileFriendliness(url: string) {
     }
 
     // Check font sizes
-    const smallText = $('*')
-      .filter(
-        (i, el) =>
-          $(el).css('font-size') && parseInt($(el).css('font-size')) < 12
-      )
-      .length;
+    const smallText = $('*').filter(
+      (i, el) => $(el).css('font-size') && parseInt($(el).css('font-size')) < 12,
+    ).length;
     if (smallText > 0) {
       issues.push(`${smallText} elements with small text`);
     }

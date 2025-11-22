@@ -1,28 +1,23 @@
-import type { Express } from "express";
-import { db } from "./db.js";
-import {
-  tasks,
-  projects,
-  taskComments,
-  timeEntries,
-} from "../shared/task-schema.js";
-import { users } from "../shared/schema.js";
-import { eq, and, desc, sql, isNull, or, inArray } from "drizzle-orm";
-import { isAuthenticated } from "./replitAuth.js";
-import { z } from "zod";
+import type { Express } from 'express';
+import { db } from './db';
+import { tasks, projects, taskComments, timeEntries } from '../shared/task-schema.js';
+import { users } from '../shared/schema.js';
+import { eq, and, desc, sql, isNull, or, inArray } from 'drizzle-orm';
+import { isAuthenticated } from './replitAuth.js';
+import { z } from 'zod';
 
 // Enhanced task routes for advanced task management functionality
 export function registerEnhancedTaskRoutes(app: Express) {
   // Get enhanced tasks with all related data
-  app.get("/api/tasks/enhanced", isAuthenticated, async (req: any, res) => {
+  app.get('/api/tasks/enhanced', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
-      
+
       if (!tenantId) {
-        console.log("Enhanced tasks: Missing tenantId for user:", req.user);
-        return res.status(401).json({ message: "Missing tenant context" });
+        console.log('Enhanced tasks: Missing tenantId for user:', req.user);
+        return res.status(401).json({ message: 'Missing tenant context' });
       }
-      
+
       const { projectId, assignedTo, status, priority } = req.query;
 
       let query = db
@@ -66,10 +61,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
         .from(tasks)
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .leftJoin(projects, eq(tasks.projectId, projects.id))
-        .leftJoin(
-          sql`${users} as creator`,
-          eq(tasks.createdBy, sql`creator.id`)
-        )
+        .leftJoin(sql`${users} as creator`, eq(tasks.createdBy, sql`creator.id`))
         .where(eq(tasks.tenantId, tenantId));
 
       // Apply filters
@@ -111,13 +103,13 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(rootTasks);
     } catch (error) {
-      console.error("Error fetching enhanced tasks:", error);
-      res.status(500).json({ error: "Failed to fetch tasks" });
+      console.error('Error fetching enhanced tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
 
   // Get enhanced projects with workflow data
-  app.get("/api/projects/enhanced", isAuthenticated, async (req: any, res) => {
+  app.get('/api/projects/enhanced', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
 
@@ -149,10 +141,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
         })
         .from(projects)
         .leftJoin(sql`${users} as pm`, eq(projects.projectManager, sql`pm.id`))
-        .leftJoin(
-          sql`${tasks} as task_tasks`,
-          eq(projects.id, sql`task_tasks.project_id`)
-        )
+        .leftJoin(sql`${tasks} as task_tasks`, eq(projects.id, sql`task_tasks.project_id`))
         .where(eq(projects.tenantId, tenantId))
         .groupBy(
           projects.id,
@@ -172,19 +161,19 @@ export function registerEnhancedTaskRoutes(app: Express) {
           projects.tags,
           projects.createdAt,
           sql`pm.first_name`,
-          sql`pm.last_name`
+          sql`pm.last_name`,
         )
         .orderBy(desc(projects.updatedAt));
 
       res.json(projectsData);
     } catch (error) {
-      console.error("Error fetching enhanced projects:", error);
-      res.status(500).json({ error: "Failed to fetch projects" });
+      console.error('Error fetching enhanced projects:', error);
+      res.status(500).json({ error: 'Failed to fetch projects' });
     }
   });
 
   // Get team members for task assignment
-  app.get("/api/users/team", isAuthenticated, async (req: any, res) => {
+  app.get('/api/users/team', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
 
@@ -202,13 +191,13 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(teamMembers);
     } catch (error) {
-      console.error("Error fetching team members:", error);
-      res.status(500).json({ error: "Failed to fetch team members" });
+      console.error('Error fetching team members:', error);
+      res.status(500).json({ error: 'Failed to fetch team members' });
     }
   });
 
   // Create task with enhanced data
-  app.post("/api/tasks/enhanced", isAuthenticated, async (req: any, res) => {
+  app.post('/api/tasks/enhanced', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const userId = req.user?.claims?.sub;
@@ -235,13 +224,13 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.status(201).json(newTask);
     } catch (error) {
-      console.error("Error creating enhanced task:", error);
-      res.status(500).json({ error: "Failed to create task" });
+      console.error('Error creating enhanced task:', error);
+      res.status(500).json({ error: 'Failed to create task' });
     }
   });
 
   // Update task with enhanced functionality
-  app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+  app.patch('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
@@ -252,7 +241,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
       };
 
       // If marking as completed, set completedAt
-      if (req.body.status === "completed" && req.body.status !== undefined) {
+      if (req.body.status === 'completed' && req.body.status !== undefined) {
         updateData.completedAt = new Date();
         updateData.completionPercentage = 100;
       }
@@ -264,7 +253,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
         .returning();
 
       if (!updatedTask) {
-        return res.status(404).json({ error: "Task not found" });
+        return res.status(404).json({ error: 'Task not found' });
       }
 
       // Update parent task progress if this is a subtask
@@ -274,50 +263,46 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error updating task:", error);
-      res.status(500).json({ error: "Failed to update task" });
+      console.error('Error updating task:', error);
+      res.status(500).json({ error: 'Failed to update task' });
     }
   });
 
   // Add comment to task
-  app.post(
-    "/api/tasks/:id/comments",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        const taskId = req.params.id;
-        const userId = req.user?.claims?.sub;
+  app.post('/api/tasks/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const taskId = req.params.id;
+      const userId = req.user?.claims?.sub;
 
-        const [comment] = await db
-          .insert(taskComments)
-          .values({
-            tenantId,
-            taskId,
-            userId,
-            comment: req.body.comment,
-          })
-          .returning();
+      const [comment] = await db
+        .insert(taskComments)
+        .values({
+          tenantId,
+          taskId,
+          userId,
+          comment: req.body.comment,
+        })
+        .returning();
 
-        // Update comment count
-        await db
-          .update(tasks)
-          .set({
-            commentCount: sql`${tasks.commentCount} + 1`,
-            updatedAt: new Date(),
-          })
-          .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
+      // Update comment count
+      await db
+        .update(tasks)
+        .set({
+          commentCount: sql`${tasks.commentCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
 
-        res.status(201).json(comment);
-      } catch (error) {
-        console.error("Error adding comment:", error);
-        res.status(500).json({ error: "Failed to add comment" });
-      }
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      res.status(500).json({ error: 'Failed to add comment' });
     }
-  );
+  });
 
   // Add time entry
-  app.post("/api/tasks/:id/time", isAuthenticated, async (req: any, res) => {
+  app.post('/api/tasks/:id/time', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
@@ -346,19 +331,19 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.status(201).json(timeEntry);
     } catch (error) {
-      console.error("Error adding time entry:", error);
-      res.status(500).json({ error: "Failed to add time entry" });
+      console.error('Error adding time entry:', error);
+      res.status(500).json({ error: 'Failed to add time entry' });
     }
   });
 
   // Bulk update tasks
-  app.patch("/api/tasks/bulk", isAuthenticated, async (req: any, res) => {
+  app.patch('/api/tasks/bulk', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { taskIds, updates } = req.body;
 
       if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
-        return res.status(400).json({ error: "Task IDs are required" });
+        return res.status(400).json({ error: 'Task IDs are required' });
       }
 
       const updateData = {
@@ -374,13 +359,13 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(updatedTasks);
     } catch (error) {
-      console.error("Error bulk updating tasks:", error);
-      res.status(500).json({ error: "Failed to bulk update tasks" });
+      console.error('Error bulk updating tasks:', error);
+      res.status(500).json({ error: 'Failed to bulk update tasks' });
     }
   });
 
   // Delete task
-  app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+  app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
@@ -392,20 +377,16 @@ export function registerEnhancedTaskRoutes(app: Express) {
         .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
 
       if (!task) {
-        return res.status(404).json({ error: "Task not found" });
+        return res.status(404).json({ error: 'Task not found' });
       }
 
       // Delete all subtasks first
       await db
         .delete(tasks)
-        .where(
-          and(eq(tasks.parentTaskId, taskId), eq(tasks.tenantId, tenantId))
-        );
+        .where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenantId, tenantId)));
 
       // Delete the task
-      await db
-        .delete(tasks)
-        .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
+      await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
 
       // Update parent task progress if this was a subtask
       if (task.parentTaskId) {
@@ -414,8 +395,8 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting task:", error);
-      res.status(500).json({ error: "Failed to delete task" });
+      console.error('Error deleting task:', error);
+      res.status(500).json({ error: 'Failed to delete task' });
     }
   });
 }
@@ -435,23 +416,18 @@ async function updateParentTaskProgress(parentTaskId: string) {
 
     // Calculate average completion percentage
     const avgCompletion = Math.round(
-      subtasks.reduce((sum, task) => sum + task.completionPercentage, 0) /
-        subtasks.length
+      subtasks.reduce((sum, task) => sum + task.completionPercentage, 0) / subtasks.length,
     );
 
     // Determine status based on subtasks
-    let status = "todo";
-    const completedCount = subtasks.filter(
-      (task) => task.status === "completed"
-    ).length;
-    const inProgressCount = subtasks.filter(
-      (task) => task.status === "in_progress"
-    ).length;
+    let status = 'todo';
+    const completedCount = subtasks.filter((task) => task.status === 'completed').length;
+    const inProgressCount = subtasks.filter((task) => task.status === 'in_progress').length;
 
     if (completedCount === subtasks.length) {
-      status = "completed";
+      status = 'completed';
     } else if (inProgressCount > 0 || completedCount > 0) {
-      status = "in_progress";
+      status = 'in_progress';
     }
 
     await db
@@ -460,10 +436,10 @@ async function updateParentTaskProgress(parentTaskId: string) {
         completionPercentage: avgCompletion,
         status: status as any,
         updatedAt: new Date(),
-        ...(status === "completed" ? { completedAt: new Date() } : {}),
+        ...(status === 'completed' ? { completedAt: new Date() } : {}),
       })
       .where(eq(tasks.id, parentTaskId));
   } catch (error) {
-    console.error("Error updating parent task progress:", error);
+    console.error('Error updating parent task progress:', error);
   }
 }
