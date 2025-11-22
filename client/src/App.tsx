@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useAuth } from "@/hooks/useAuth";
+import { CommandPalette } from "@/components/navigation/command-palette";
+import { useCommandPalette } from "@/hooks/useCommandPalette";
 
 console.log("📦 App.tsx: Module loaded");
 // Critical auth pages - keep eager for fast initial load
@@ -93,6 +95,7 @@ const EquipmentLifecycle = React.lazy(() => import("@/pages/EquipmentLifecycle")
 const PurchaseOrders = React.lazy(() => import("@/pages/PurchaseOrders"));
 const WarehouseOperations = React.lazy(() => import("@/pages/WarehouseOperations"));
 const CrmGoalsDashboard = React.lazy(() => import("@/pages/CrmGoalsDashboard"));
+const TodayDashboard = React.lazy(() => import("@/pages/TodayDashboard"));
 const MobileFieldService = React.lazy(() => import("@/pages/MobileFieldService"));
 const ProductManagementHub = React.lazy(() => import("@/pages/ProductManagementHub"));
 const PricingManagement = React.lazy(() => import("@/pages/PricingManagement"));
@@ -206,6 +209,7 @@ function Router() {
   console.log("🎯 Router: Component rendering");
   const { isAuthenticated, isLoading } = useAuth();
   const [pathname, setLocation] = useLocation();
+  const { open, setOpen } = useCommandPalette();
   console.log("🎯 Router state:", { isAuthenticated, isLoading, pathname });
   useSeo(pathname);
 
@@ -316,6 +320,7 @@ function Router() {
   return (
     <>
       <SubscriptionBanner />
+      <CommandPalette open={open} onOpenChange={setOpen} />
       <React.Suspense
         fallback={
           <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -331,6 +336,8 @@ function Router() {
         <Switch>
           {console.log("📍 Rendering routes, pathname:", pathname)}
           <Route path="/" component={Dashboard} />
+          <Route path="/today" component={TodayDashboard} />
+          <Route path="/dashboard/today" component={TodayDashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/leads/:slug" component={CustomerDetail} />
