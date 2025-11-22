@@ -7733,6 +7733,8 @@ export {
   workflowTemplates,
   templateVariables,
   workflowEventRegistry,
+  assignmentGroups,
+  workflowApprovals,
   workflowStatusEnum,
   triggerTypeEnum,
   stepActionTypeEnum,
@@ -7753,6 +7755,8 @@ export {
   insertWorkflowTemplateSchema,
   insertTemplateVariableSchema,
   insertWorkflowEventRegistrySchema,
+  insertAssignmentGroupSchema,
+  insertWorkflowApprovalSchema,
 } from './workflow-automation-schema';
 
 export type {
@@ -7769,6 +7773,8 @@ export type {
   WorkflowTemplate,
   TemplateVariable,
   WorkflowEventRegistry,
+  AssignmentGroup,
+  WorkflowApproval,
   InsertWorkflow,
   InsertWorkflowVersion,
   InsertWorkflowTrigger,
@@ -7782,6 +7788,8 @@ export type {
   InsertWorkflowTemplate,
   InsertTemplateVariable,
   InsertWorkflowEventRegistry,
+  InsertAssignmentGroup,
+  InsertWorkflowApproval,
 } from './workflow-automation-schema';
 
 // Re-export manufacturer order submission schemas
