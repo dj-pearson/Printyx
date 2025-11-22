@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import {
   tenants,
   subscriptionPlans,
@@ -77,7 +77,15 @@ export class SubscriptionService {
    * Create a new subscription for a tenant
    */
   static async createSubscription(params: CreateSubscriptionParams): Promise<TenantSubscription> {
-    const { tenantId, planSlug, billingCycle, startTrial = true, discountCode, paymentMethodId, stripeCustomerId } = params;
+    const {
+      tenantId,
+      planSlug,
+      billingCycle,
+      startTrial = true,
+      discountCode,
+      paymentMethodId,
+      stripeCustomerId,
+    } = params;
 
     // Get plan details
     const plan = await db.query.subscriptionPlans.findFirst({
@@ -114,7 +122,8 @@ export class SubscriptionService {
     }
 
     // Calculate amount
-    const baseAmount = billingCycle === 'annual' ? parseFloat(plan.annualPrice) : parseFloat(plan.monthlyPrice);
+    const baseAmount =
+      billingCycle === 'annual' ? parseFloat(plan.annualPrice) : parseFloat(plan.monthlyPrice);
     let amount = baseAmount;
 
     // Apply discount if provided
@@ -211,7 +220,7 @@ export class SubscriptionService {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`
+        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
       with: {
         plan: true,
@@ -237,7 +246,7 @@ export class SubscriptionService {
       where: and(
         eq(usageMetrics.tenantId, tenantId),
         lte(usageMetrics.periodStart, now),
-        gte(usageMetrics.periodEnd, now)
+        gte(usageMetrics.periodEnd, now),
       ),
     });
 
@@ -250,7 +259,7 @@ export class SubscriptionService {
     };
 
     // Apply custom limits if set
-    const customLimits = subscription.customLimits as any || {};
+    const customLimits = (subscription.customLimits as any) || {};
     const limits = {
       users: customLimits.maxUsers || plan.maxUsers,
       storage: customLimits.maxStorage || plan.maxStorage,
@@ -267,8 +276,9 @@ export class SubscriptionService {
       overageDetails.users = currentUsage.users - limits.users;
       isOverLimit = true;
     }
-    if (limits.storage !== -1 && currentUsage.storage > limits.storage * 1024) { // Convert GB to MB
-      overageDetails.storage = currentUsage.storage - (limits.storage * 1024);
+    if (limits.storage !== -1 && currentUsage.storage > limits.storage * 1024) {
+      // Convert GB to MB
+      overageDetails.storage = currentUsage.storage - limits.storage * 1024;
       isOverLimit = true;
     }
     if (limits.apiCalls !== -1 && currentUsage.apiCalls > limits.apiCalls) {
@@ -286,7 +296,7 @@ export class SubscriptionService {
 
     // Calculate days until renewal
     const daysUntilRenewal = Math.ceil(
-      (subscription.currentPeriodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+      (subscription.currentPeriodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
     );
 
     // Calculate trial days remaining
@@ -294,7 +304,7 @@ export class SubscriptionService {
     if (subscription.isTrialing && subscription.trialEndDate) {
       trialDaysRemaining = Math.max(
         0,
-        Math.ceil((subscription.trialEndDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+        Math.ceil((subscription.trialEndDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
       );
     }
 
@@ -339,7 +349,7 @@ export class SubscriptionService {
     const currentSubscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`
+        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
       orderBy: [desc(tenantSubscriptions.createdAt)],
     });
@@ -362,7 +372,10 @@ export class SubscriptionService {
     }
 
     const newBillingCycle = billingCycle || currentSubscription.billingCycle;
-    const newAmount = newBillingCycle === 'annual' ? parseFloat(newPlan.annualPrice) : parseFloat(newPlan.monthlyPrice);
+    const newAmount =
+      newBillingCycle === 'annual'
+        ? parseFloat(newPlan.annualPrice)
+        : parseFloat(newPlan.monthlyPrice);
 
     if (immediate) {
       // Immediate change - update current subscription
@@ -432,7 +445,7 @@ export class SubscriptionService {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`
+        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
       orderBy: [desc(tenantSubscriptions.createdAt)],
     });
@@ -506,11 +519,14 @@ export class SubscriptionService {
   /**
    * Convert trial to paid subscription
    */
-  static async convertTrialToPaid(tenantId: string, paymentMethodId?: string): Promise<TenantSubscription> {
+  static async convertTrialToPaid(
+    tenantId: string,
+    paymentMethodId?: string,
+  ): Promise<TenantSubscription> {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        eq(tenantSubscriptions.status, 'trialing')
+        eq(tenantSubscriptions.status, 'trialing'),
       ),
       orderBy: [desc(tenantSubscriptions.createdAt)],
     });
@@ -520,9 +536,10 @@ export class SubscriptionService {
     }
 
     const now = new Date();
-    const newPeriodEnd = subscription.billingCycle === 'annual'
-      ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
-      : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const newPeriodEnd =
+      subscription.billingCycle === 'annual'
+        ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
+        : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
 
     // Update subscription
     const [updatedSubscription] = await db
@@ -580,7 +597,7 @@ export class SubscriptionService {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        eq(tenantSubscriptions.status, 'trialing')
+        eq(tenantSubscriptions.status, 'trialing'),
       ),
       orderBy: [desc(tenantSubscriptions.createdAt)],
     });
@@ -595,7 +612,8 @@ export class SubscriptionService {
     }
 
     // Check if payment method is on file
-    const hasPaymentMethod = !!subscription.stripeCustomerId || !!subscription.stripePaymentIntentId;
+    const hasPaymentMethod =
+      !!subscription.stripeCustomerId || !!subscription.stripePaymentIntentId;
 
     if (hasPaymentMethod) {
       // Auto-convert to paid if payment method exists
@@ -649,7 +667,11 @@ export class SubscriptionService {
   /**
    * Grant free subscription (admin action)
    */
-  static async grantFreeSubscription(tenantId: string, planSlug: string, reason?: string): Promise<TenantSubscription> {
+  static async grantFreeSubscription(
+    tenantId: string,
+    planSlug: string,
+    reason?: string,
+  ): Promise<TenantSubscription> {
     const plan = await db.query.subscriptionPlans.findFirst({
       where: eq(subscriptionPlans.slug, planSlug),
     });
@@ -719,7 +741,9 @@ export class SubscriptionService {
   /**
    * Create subscription notification
    */
-  private static async createNotification(notification: Omit<NewSubscriptionNotification, 'status'>): Promise<void> {
+  private static async createNotification(
+    notification: Omit<NewSubscriptionNotification, 'status'>,
+  ): Promise<void> {
     await db.insert(subscriptionNotifications).values({
       ...notification,
       status: 'pending',
@@ -742,13 +766,13 @@ export class SubscriptionService {
         and(
           eq(tenantSubscriptions.status, 'trialing'),
           gte(tenantSubscriptions.trialEndDate, now),
-          lte(tenantSubscriptions.trialEndDate, sevenDaysFromNow)
-        )
+          lte(tenantSubscriptions.trialEndDate, sevenDaysFromNow),
+        ),
       );
 
     for (const subscription of expiringTrials) {
       const daysRemaining = Math.ceil(
-        (subscription.trialEndDate!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+        (subscription.trialEndDate!.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
       );
 
       // Send warnings at 7, 3, and 1 day marks
@@ -796,7 +820,9 @@ export class SubscriptionService {
           overageMessages.push(`${status.overageDetails.users} users over limit`);
         }
         if (status.overageDetails.storage) {
-          overageMessages.push(`${Math.round(status.overageDetails.storage / 1024)}GB over storage limit`);
+          overageMessages.push(
+            `${Math.round(status.overageDetails.storage / 1024)}GB over storage limit`,
+          );
         }
         if (status.overageDetails.apiCalls) {
           overageMessages.push(`${status.overageDetails.apiCalls} API calls over limit`);
@@ -817,11 +843,19 @@ export class SubscriptionService {
         const warningThreshold = 0.8;
         const warnings = [];
 
-        if (status.limits.users !== -1 && status.usage.users >= status.limits.users * warningThreshold) {
+        if (
+          status.limits.users !== -1 &&
+          status.usage.users >= status.limits.users * warningThreshold
+        ) {
           warnings.push(`users (${status.usage.users}/${status.limits.users})`);
         }
-        if (status.limits.storage !== -1 && status.usage.storage >= status.limits.storage * 1024 * warningThreshold) {
-          warnings.push(`storage (${Math.round(status.usage.storage / 1024)}/${status.limits.storage}GB)`);
+        if (
+          status.limits.storage !== -1 &&
+          status.usage.storage >= status.limits.storage * 1024 * warningThreshold
+        ) {
+          warnings.push(
+            `storage (${Math.round(status.usage.storage / 1024)}/${status.limits.storage}GB)`,
+          );
         }
 
         if (warnings.length > 0) {

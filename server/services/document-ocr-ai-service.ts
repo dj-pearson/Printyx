@@ -1,10 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { createWorker } from "tesseract.js";
-import * as fs from "fs/promises";
-import * as path from "path";
-import { db } from "../../db";
-import { documentUploads, documentFieldMappings } from "../../shared/document-automation-schema";
-import { eq } from "drizzle-orm";
+import Anthropic from '@anthropic-ai/sdk';
+import { createWorker } from 'tesseract.js';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { db } from '../db';
+import { documentUploads, documentFieldMappings } from '../../shared/document-automation-schema';
+import { eq } from 'drizzle-orm';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -17,12 +17,15 @@ export interface OCRResult {
 }
 
 export interface AIFieldExtractionResult {
-  extractedFields: Record<string, {
-    value: any;
-    confidence: "high" | "medium" | "low" | "manual";
-    source: string;
-    reasoning?: string;
-  }>;
+  extractedFields: Record<
+    string,
+    {
+      value: any;
+      confidence: 'high' | 'medium' | 'low' | 'manual';
+      source: string;
+      reasoning?: string;
+    }
+  >;
   suggestedMapping?: Record<string, string>;
   issues?: string[];
   requiresReview: boolean;
@@ -44,7 +47,7 @@ export class OCRService {
           if (m.status === 'recognizing text') {
             console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
           }
-        }
+        },
       });
     }
     return this.worker;
@@ -63,9 +66,9 @@ export class OCRService {
         confidence: Math.round(data.confidence),
       };
     } catch (error: any) {
-      console.error("OCR Error:", error);
+      console.error('OCR Error:', error);
       return {
-        text: "",
+        text: '',
         confidence: 0,
         error: error.message,
       };
@@ -89,9 +92,9 @@ export class OCRService {
         confidence: 85, // PDF text extraction is generally reliable
       };
     } catch (error: any) {
-      console.error("PDF OCR Error:", error);
+      console.error('PDF OCR Error:', error);
       return {
-        text: "",
+        text: '',
         confidence: 0,
         error: error.message,
       };
@@ -110,7 +113,7 @@ export class OCRService {
       return this.extractTextFromImage(filePath);
     } else {
       return {
-        text: "",
+        text: '',
         confidence: 0,
         error: `Unsupported file type: ${ext}`,
       };
@@ -139,7 +142,7 @@ export class AIFieldExtractionService {
     documentText: string,
     targetEntityType: string,
     fieldMappingId?: number,
-    customPrompt?: string
+    customPrompt?: string,
   ): Promise<AIFieldExtractionResult> {
     try {
       // Get field mapping configuration if provided
@@ -156,12 +159,12 @@ export class AIFieldExtractionService {
 
       // Call Claude API
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5-20250929",
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 4096,
         system: systemPrompt,
         messages: [
           {
-            role: "user",
+            role: 'user',
             content: userPrompt,
           },
         ],
@@ -169,8 +172,8 @@ export class AIFieldExtractionService {
 
       // Parse the response
       const content = response.content[0];
-      if (content.type !== "text") {
-        throw new Error("Unexpected response type from Claude");
+      if (content.type !== 'text') {
+        throw new Error('Unexpected response type from Claude');
       }
 
       const result = JSON.parse(content.text);
@@ -183,7 +186,7 @@ export class AIFieldExtractionService {
         requiresReview: result.requiresReview !== false, // Default to true
       };
     } catch (error: any) {
-      console.error("AI Field Extraction Error:", error);
+      console.error('AI Field Extraction Error:', error);
       return {
         extractedFields: {},
         requiresReview: true,
@@ -195,10 +198,7 @@ export class AIFieldExtractionService {
   /**
    * Build system prompt for Claude
    */
-  private static buildSystemPrompt(
-    targetEntityType: string,
-    fieldMapping: any
-  ): string {
+  private static buildSystemPrompt(targetEntityType: string, fieldMapping: any): string {
     const basePrompt = `You are an expert document processing AI that extracts structured data from documents.
 
 Your task is to analyze document text and extract relevant fields for a ${targetEntityType} entity.
@@ -244,71 +244,69 @@ Extract values that match these target fields. Use the exact field names in your
   /**
    * Build default user prompt
    */
-  private static buildDefaultPrompt(
-    documentText: string,
-    targetEntityType: string
-  ): string {
+  private static buildDefaultPrompt(documentText: string, targetEntityType: string): string {
     const commonFields: Record<string, string[]> = {
       purchase_order: [
-        "po_number",
-        "vendor_name",
-        "vendor_address",
-        "order_date",
-        "delivery_date",
-        "total_amount",
-        "items",
-        "contact_person",
-        "phone",
-        "email",
+        'po_number',
+        'vendor_name',
+        'vendor_address',
+        'order_date',
+        'delivery_date',
+        'total_amount',
+        'items',
+        'contact_person',
+        'phone',
+        'email',
       ],
       quote: [
-        "quote_number",
-        "customer_name",
-        "customer_address",
-        "quote_date",
-        "expiration_date",
-        "total_amount",
-        "items",
-        "terms",
-        "contact_person",
+        'quote_number',
+        'customer_name',
+        'customer_address',
+        'quote_date',
+        'expiration_date',
+        'total_amount',
+        'items',
+        'terms',
+        'contact_person',
       ],
       invoice: [
-        "invoice_number",
-        "customer_name",
-        "invoice_date",
-        "due_date",
-        "total_amount",
-        "items",
-        "payment_terms",
-        "billing_address",
+        'invoice_number',
+        'customer_name',
+        'invoice_date',
+        'due_date',
+        'total_amount',
+        'items',
+        'payment_terms',
+        'billing_address',
       ],
       contract: [
-        "contract_number",
-        "parties",
-        "effective_date",
-        "expiration_date",
-        "contract_value",
-        "terms",
-        "signatures",
+        'contract_number',
+        'parties',
+        'effective_date',
+        'expiration_date',
+        'contract_value',
+        'terms',
+        'signatures',
       ],
       business_record: [
-        "company_name",
-        "contact_name",
-        "address",
-        "city",
-        "state",
-        "zip",
-        "phone",
-        "email",
-        "website",
-        "industry",
+        'company_name',
+        'contact_name',
+        'address',
+        'city',
+        'state',
+        'zip',
+        'phone',
+        'email',
+        'website',
+        'industry',
       ],
     };
 
     const expectedFields = commonFields[targetEntityType] || [];
-    const fieldsDesc = expectedFields.length > 0
-      ? `\n\nExpected fields for ${targetEntityType}: ${expectedFields.join(", ")}`
-      : "";
+    const fieldsDesc =
+      expectedFields.length > 0
+        ? `\n\nExpected fields for ${targetEntityType}: ${expectedFields.join(', ')}`
+        : '';
 
     return `Analyze the following document and extract structured data.${fieldsDesc}
 
@@ -324,7 +322,7 @@ Extract all relevant fields, determine confidence levels, and suggest appropriat
   static async validateExtractedFields(
     extractedFields: Record<string, any>,
     targetEntityType: string,
-    fieldMappingId?: number
+    fieldMappingId?: number,
   ): Promise<{
     isValid: boolean;
     errors: string[];
@@ -370,7 +368,7 @@ Extract all relevant fields, determine confidence levels, and suggest appropriat
           }
 
           // Confidence check
-          if (value.confidence === "low") {
+          if (value.confidence === 'low') {
             warnings.push(`Field '${field}' has low confidence, please review`);
           }
         }
@@ -389,7 +387,7 @@ Extract all relevant fields, determine confidence levels, and suggest appropriat
    */
   static async transformFields(
     extractedFields: Record<string, any>,
-    fieldMappingId: number
+    fieldMappingId: number,
   ): Promise<Record<string, any>> {
     const fieldMapping = await db.query.documentFieldMappings.findFirst({
       where: eq(documentFieldMappings.id, fieldMappingId),
@@ -448,10 +446,7 @@ export class DocumentProcessingService {
   /**
    * Process uploaded document: OCR + AI extraction
    */
-  static async processDocument(
-    uploadId: number,
-    tenantId: number
-  ): Promise<void> {
+  static async processDocument(uploadId: number, tenantId: number): Promise<void> {
     try {
       // Get document upload record
       const upload = await db.query.documentUploads.findFirst({
@@ -459,25 +454,24 @@ export class DocumentProcessingService {
       });
 
       if (!upload || upload.tenantId !== tenantId) {
-        throw new Error("Document not found");
+        throw new Error('Document not found');
       }
 
       // Step 1: OCR
       console.log(`Starting OCR for document ${uploadId}`);
-      await db.update(documentUploads)
-        .set({ ocrStatus: "processing" })
+      await db
+        .update(documentUploads)
+        .set({ ocrStatus: 'processing' })
         .where(eq(documentUploads.id, uploadId));
 
-      const ocrResult = await OCRService.extractText(
-        upload.filePath,
-        upload.fileType
-      );
+      const ocrResult = await OCRService.extractText(upload.filePath, upload.fileType);
 
-      await db.update(documentUploads)
+      await db
+        .update(documentUploads)
         .set({
           ocrText: ocrResult.text,
           ocrConfidence: ocrResult.confidence,
-          ocrStatus: ocrResult.error ? "failed" : "completed",
+          ocrStatus: ocrResult.error ? 'failed' : 'completed',
           ocrError: ocrResult.error,
           ocrProcessedAt: new Date(),
         })
@@ -492,19 +486,20 @@ export class DocumentProcessingService {
 
       const aiResult = await AIFieldExtractionService.extractFields(
         ocrResult.text,
-        upload.targetEntityType || "unknown",
+        upload.targetEntityType || 'unknown',
         undefined, // Could pass fieldMappingId here
-        undefined  // Could pass custom prompt here
+        undefined, // Could pass custom prompt here
       );
 
       // Step 3: Validate extracted fields
       const validation = await AIFieldExtractionService.validateExtractedFields(
         aiResult.extractedFields,
-        upload.targetEntityType || "unknown"
+        upload.targetEntityType || 'unknown',
       );
 
       // Update document upload with AI results
-      await db.update(documentUploads)
+      await db
+        .update(documentUploads)
         .set({
           aiExtractedFields: aiResult.extractedFields,
           aiFieldMapping: aiResult.suggestedMapping,
@@ -518,9 +513,10 @@ export class DocumentProcessingService {
     } catch (error: any) {
       console.error(`Document processing failed for ${uploadId}:`, error);
 
-      await db.update(documentUploads)
+      await db
+        .update(documentUploads)
         .set({
-          ocrStatus: "failed",
+          ocrStatus: 'failed',
           ocrError: error.message,
           aiError: error.message,
         })

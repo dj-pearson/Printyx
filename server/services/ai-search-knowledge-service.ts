@@ -3,7 +3,7 @@
  * Vector database search, AI query processing, and intelligent answer generation
  */
 
-import { db } from '../../db';
+import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc, like, ilike } from 'drizzle-orm';
 
@@ -11,7 +11,12 @@ interface VectorEmbedding {
   id: string;
   tenantId: string;
   contentId: string;
-  contentType: 'document' | 'meeting_transcription' | 'knowledge_article' | 'email' | 'chat_message';
+  contentType:
+    | 'document'
+    | 'meeting_transcription'
+    | 'knowledge_article'
+    | 'email'
+    | 'chat_message';
   contentSection?: string;
   embeddingVector: number[]; // 1536-dimensional vector
   embeddingModel: string;
@@ -208,7 +213,7 @@ class AISearchKnowledgeService {
       createdAt?: Date;
       accessLevel?: string;
       accessPermissions?: string[];
-    }
+    },
   ): Promise<VectorEmbedding> {
     console.log('🔍 Creating vector embedding for content:', contentId);
 
@@ -252,7 +257,7 @@ class AISearchKnowledgeService {
         lastUpdatedEmbedding: new Date(),
         embeddingSource: 'api',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       console.log('✅ Vector embedding created successfully');
@@ -279,7 +284,7 @@ class AISearchKnowledgeService {
       accessLevel?: string[];
       dateRange?: { start: Date; end: Date };
       includeAnswer?: boolean;
-    } = {}
+    } = {},
   ): Promise<{
     queryId: string;
     results: Array<{
@@ -340,30 +345,30 @@ class AISearchKnowledgeService {
         clickedResults: [],
         resultQualityFeedback: {},
         querySuccessIndicators: {},
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
       // Mock semantic search results - in production, this would use vector database
       const mockEmbeddings = await this.getMockEmbeddings(tenantId, options);
-      
+
       // Calculate similarities and rank results
       const searchResults = mockEmbeddings
-        .map(embedding => ({
+        .map((embedding) => ({
           ...embedding,
           similarity: this.cosineSimilarity(queryEmbedding, embedding.embeddingVector),
           relevanceScore: this.calculateRelevanceScore(
             queryText,
             embedding.contentText,
             embedding.contentKeywords,
-            this.cosineSimilarity(queryEmbedding, embedding.embeddingVector)
-          )
+            this.cosineSimilarity(queryEmbedding, embedding.embeddingVector),
+          ),
         }))
-        .filter(result => result.similarity >= (options.minSimilarity || 0.3))
+        .filter((result) => result.similarity >= (options.minSimilarity || 0.3))
         .sort((a, b) => b.relevanceScore - a.relevanceScore)
         .slice(0, options.maxResults || 10);
 
       // Format results
-      const formattedResults = searchResults.map(result => ({
+      const formattedResults = searchResults.map((result) => ({
         contentId: result.contentId,
         contentType: result.contentType,
         title: result.contentTitle || 'Untitled',
@@ -374,15 +379,15 @@ class AISearchKnowledgeService {
           author: result.contentAuthorId,
           createdAt: result.contentCreatedAt,
           category: result.contentCategory,
-          tags: result.contentTags
+          tags: result.contentTags,
         },
-        highlights: this.extractHighlights(result.contentText, queryText)
+        highlights: this.extractHighlights(result.contentText, queryText),
       }));
 
       // Generate AI answer if requested
       let aiAnswer: AIGeneratedAnswer | undefined;
       let answerTime = 0;
-      
+
       if (options.includeAnswer && formattedResults.length > 0) {
         const answerStartTime = Date.now();
         aiAnswer = await this.generateAIAnswer(searchQuery, formattedResults);
@@ -397,10 +402,12 @@ class AISearchKnowledgeService {
 
       // Update search query with results
       searchQuery.resultsCount = formattedResults.length;
-      searchQuery.topResultScores = formattedResults.slice(0, 5).map(r => r.relevanceScore);
+      searchQuery.topResultScores = formattedResults.slice(0, 5).map((r) => r.relevanceScore);
       searchQuery.responseTimeMs = totalTime;
 
-      console.log(`✅ Semantic search completed: ${formattedResults.length} results in ${totalTime}ms`);
+      console.log(
+        `✅ Semantic search completed: ${formattedResults.length} results in ${totalTime}ms`,
+      );
 
       return {
         queryId: searchQuery.id,
@@ -412,8 +419,8 @@ class AISearchKnowledgeService {
           totalResults: formattedResults.length,
           searchTime: totalTime,
           embeddingTime,
-          answerTime: answerTime > 0 ? answerTime : undefined
-        }
+          answerTime: answerTime > 0 ? answerTime : undefined,
+        },
       };
     } catch (error) {
       console.error('Semantic search failed:', error);
@@ -426,15 +433,19 @@ class AISearchKnowledgeService {
    */
   private async generateAIAnswer(
     query: SearchQuery,
-    searchResults: Array<any>
+    searchResults: Array<any>,
   ): Promise<AIGeneratedAnswer> {
     console.log('🧠 Generating AI answer for query:', query.queryText);
 
     try {
       // Prepare context from search results
-      const context = searchResults.slice(0, 5).map((result, index) => 
-        `Source ${index + 1} (${result.contentType}): ${result.title}\n${result.excerpt}`
-      ).join('\n\n');
+      const context = searchResults
+        .slice(0, 5)
+        .map(
+          (result, index) =>
+            `Source ${index + 1} (${result.contentType}): ${result.title}\n${result.excerpt}`,
+        )
+        .join('\n\n');
 
       const answerPrompt = `Based on the following search results, provide a comprehensive and accurate answer to the user's question.
 
@@ -473,7 +484,7 @@ Return JSON format:
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: answerPrompt }],
         temperature: 0.3,
-        max_tokens: 2000
+        max_tokens: 2000,
       });
 
       const answerData = JSON.parse(aiResponse);
@@ -485,14 +496,14 @@ Return JSON format:
         answerText: answerData.answerText,
         answerConfidence: answerData.confidenceScore || 0.85,
         answerType: answerData.answerType || 'synthesized',
-        sourceDocuments: searchResults.slice(0, 5).map(result => ({
+        sourceDocuments: searchResults.slice(0, 5).map((result) => ({
           id: result.contentId,
           type: result.contentType,
           title: result.title,
           excerpt: result.excerpt,
-          relevanceScore: result.relevanceScore
+          relevanceScore: result.relevanceScore,
         })),
-        sourceConfidence: searchResults.slice(0, 5).map(r => r.relevanceScore),
+        sourceConfidence: searchResults.slice(0, 5).map((r) => r.relevanceScore),
         citationStyle: 'inline',
         answerSections: answerData.answerSections || [],
         keyPoints: answerData.keyPoints || [],
@@ -512,7 +523,7 @@ Return JSON format:
         version: 1,
         isCurrent: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       console.log('✅ AI answer generated successfully');
@@ -536,7 +547,7 @@ Return JSON format:
       attributes?: Record<string, any>;
       facts?: string[];
       relatedEntities?: string[];
-    }
+    },
   ): Promise<KnowledgeEntity> {
     console.log('📚 Creating knowledge entity:', entityData.name);
 
@@ -566,7 +577,7 @@ Return JSON format:
         entityStatus: 'active',
         qualityScore: 0.75,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       console.log('✅ Knowledge entity created successfully');
@@ -582,7 +593,7 @@ Return JSON format:
    */
   async getSearchAnalytics(
     tenantId: string,
-    timeRange: { start: Date; end: Date }
+    timeRange: { start: Date; end: Date },
   ): Promise<{
     totalQueries: number;
     uniqueUsers: number;
@@ -617,20 +628,20 @@ Return JSON format:
         { type: 'factual', count: 298, percentage: 23.9 },
         { type: 'troubleshooting', count: 234, percentage: 18.8 },
         { type: 'definition', count: 198, percentage: 15.9 },
-        { type: 'comparison', count: 130, percentage: 10.4 }
+        { type: 'comparison', count: 130, percentage: 10.4 },
       ],
       popularSearchTerms: [
         { term: 'meeting transcription', count: 156, trend: 'increasing' },
         { term: 'AI documentation', count: 134, trend: 'stable' },
         { term: 'team collaboration', count: 98, trend: 'increasing' },
         { term: 'calendar integration', count: 87, trend: 'decreasing' },
-        { term: 'task scheduling', count: 76, trend: 'stable' }
+        { term: 'task scheduling', count: 76, trend: 'stable' },
       ],
       trendingTopics: [
         { topic: 'AI Writing Assistant', growth: 45.2, volume: 234 },
         { topic: 'Vector Search', growth: 38.7, volume: 187 },
         { topic: 'Knowledge Management', growth: 29.3, volume: 298 },
-        { topic: 'Semantic Search', growth: 22.1, volume: 156 }
+        { topic: 'Semantic Search', growth: 22.1, volume: 156 },
       ],
       averageResponseTime: 342, // milliseconds
       averageResultCount: 7.3,
@@ -644,31 +655,31 @@ Return JSON format:
       mostRetrievedContent: [
         { contentId: 'doc-1', title: 'Meeting Transcription Setup Guide', retrievalCount: 234 },
         { contentId: 'article-1', title: 'AI Documentation Best Practices', retrievalCount: 198 },
-        { contentId: 'doc-3', title: 'Team Collaboration Workflows', retrievalCount: 167 }
+        { contentId: 'doc-3', title: 'Team Collaboration Workflows', retrievalCount: 167 },
       ],
       contentGapIndicators: [
         'Frequent searches for "advanced scheduling algorithms" with low satisfaction',
         'High demand for "integration troubleshooting" content',
-        'Users asking about "mobile app features" not covered in current content'
+        'Users asking about "mobile app features" not covered in current content',
       ],
       aiInsights: [
         'Search query complexity has increased by 23% over the past month, indicating users are becoming more sophisticated',
         'How-to queries have the highest satisfaction rates (4.6/5) but also the longest response times',
         'Users who receive AI-generated answers are 67% more likely to complete their search sessions successfully',
-        'Trending topics show strong interest in advanced AI features and automation capabilities'
+        'Trending topics show strong interest in advanced AI features and automation capabilities',
       ],
       optimizationRecommendations: [
         'Expand content coverage for advanced scheduling and automation topics',
         'Improve response times for complex how-to queries by pre-generating common answers',
         'Create more visual content and step-by-step guides for troubleshooting topics',
-        'Implement query suggestion features to help users formulate better search queries'
+        'Implement query suggestion features to help users formulate better search queries',
       ],
       contentSuggestions: [
         'Create comprehensive guide on advanced scheduling algorithms and customization',
         'Develop troubleshooting knowledge base for common integration issues',
         'Add mobile app documentation and feature guides',
-        'Create video tutorials for complex setup and configuration processes'
-      ]
+        'Create video tutorials for complex setup and configuration processes',
+      ],
     };
   }
 
@@ -680,39 +691,71 @@ Return JSON format:
   }> {
     // Simple intent analysis - in production, this would use more sophisticated NLP
     let intent: any = 'factual';
-    
+
     if (queryText.toLowerCase().includes('how to') || queryText.toLowerCase().includes('how do')) {
       intent = 'how_to';
-    } else if (queryText.toLowerCase().includes('what is') || queryText.toLowerCase().includes('define')) {
+    } else if (
+      queryText.toLowerCase().includes('what is') ||
+      queryText.toLowerCase().includes('define')
+    ) {
       intent = 'definition';
-    } else if (queryText.toLowerCase().includes('vs') || queryText.toLowerCase().includes('compare')) {
+    } else if (
+      queryText.toLowerCase().includes('vs') ||
+      queryText.toLowerCase().includes('compare')
+    ) {
       intent = 'comparison';
-    } else if (queryText.toLowerCase().includes('error') || queryText.toLowerCase().includes('problem')) {
+    } else if (
+      queryText.toLowerCase().includes('error') ||
+      queryText.toLowerCase().includes('problem')
+    ) {
       intent = 'troubleshooting';
     }
 
     return {
       intent,
-      expandedTerms: queryText.toLowerCase().split(' ').filter(word => word.length > 3),
+      expandedTerms: queryText
+        .toLowerCase()
+        .split(' ')
+        .filter((word) => word.length > 3),
       semanticAnalysis: {
         complexity: queryText.split(' ').length > 10 ? 'high' : 'medium',
-        specificity: queryText.includes('specific') || queryText.includes('exactly') ? 'high' : 'medium'
-      }
+        specificity:
+          queryText.includes('specific') || queryText.includes('exactly') ? 'high' : 'medium',
+      },
     };
   }
 
   private async extractKeywords(text: string, title?: string): Promise<string[]> {
     // Simple keyword extraction - in production, this would use NLP libraries
     const combinedText = `${title || ''} ${text}`.toLowerCase();
-    const words = combinedText.split(/\W+/).filter(word => 
-      word.length > 3 && !['this', 'that', 'with', 'have', 'will', 'from', 'they', 'been', 'were', 'said', 'each'].includes(word)
+    const words = combinedText
+      .split(/\W+/)
+      .filter(
+        (word) =>
+          word.length > 3 &&
+          ![
+            'this',
+            'that',
+            'with',
+            'have',
+            'will',
+            'from',
+            'they',
+            'been',
+            'were',
+            'said',
+            'each',
+          ].includes(word),
+      );
+
+    const wordCounts = words.reduce(
+      (acc, word) => {
+        acc[word] = (acc[word] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
     );
-    
-    const wordCounts = words.reduce((acc, word) => {
-      acc[word] = (acc[word] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
+
     return Object.entries(wordCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
@@ -722,25 +765,25 @@ Return JSON format:
   private calculateContentQuality(text: string, title?: string): number {
     // Simple quality assessment based on length, structure, and completeness
     let score = 0.5; // Base score
-    
+
     // Length factor
     if (text.length > 1000) score += 0.2;
     else if (text.length > 500) score += 0.1;
-    
+
     // Structure factor
     if (title && title.length > 10) score += 0.1;
     if (text.includes('\n\n')) score += 0.1; // Paragraphs
     if (text.match(/\d+\./)) score += 0.1; // Numbered lists
-    
+
     return Math.min(score, 1.0);
   }
 
   private calculateFreshnessScore(createdAt?: Date): number {
     if (!createdAt) return 0.5;
-    
+
     const now = new Date();
     const ageInDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    
+
     if (ageInDays < 7) return 1.0;
     if (ageInDays < 30) return 0.9;
     if (ageInDays < 90) return 0.7;
@@ -752,52 +795,53 @@ Return JSON format:
     query: string,
     content: string,
     keywords: string[],
-    vectorSimilarity: number
+    vectorSimilarity: number,
   ): number {
     // Combine vector similarity with keyword matching and other factors
     let score = vectorSimilarity * 0.7; // 70% weight on vector similarity
-    
+
     // Keyword matching (30% weight)
     const queryWords = query.toLowerCase().split(' ');
-    const keywordMatches = keywords.filter(keyword => 
-      queryWords.some(word => keyword.includes(word) || word.includes(keyword))
+    const keywordMatches = keywords.filter((keyword) =>
+      queryWords.some((word) => keyword.includes(word) || word.includes(keyword)),
     ).length;
     const keywordScore = Math.min(keywordMatches / Math.max(keywords.length, 1), 1.0);
     score += keywordScore * 0.3;
-    
+
     return Math.min(score, 1.0);
   }
 
   private generateExcerpt(content: string, query: string, maxLength: number = 200): string {
     const queryWords = query.toLowerCase().split(' ');
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    
+    const sentences = content.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+
     // Find sentence with most query word matches
     let bestSentence = sentences[0] || '';
     let maxMatches = 0;
-    
+
     for (const sentence of sentences) {
-      const matches = queryWords.filter(word => 
-        sentence.toLowerCase().includes(word)
-      ).length;
-      
+      const matches = queryWords.filter((word) => sentence.toLowerCase().includes(word)).length;
+
       if (matches > maxMatches) {
         maxMatches = matches;
         bestSentence = sentence;
       }
     }
-    
+
     if (bestSentence.length <= maxLength) {
       return bestSentence.trim();
     }
-    
+
     return bestSentence.substring(0, maxLength - 3).trim() + '...';
   }
 
   private extractHighlights(content: string, query: string): string[] {
-    const queryWords = query.toLowerCase().split(' ').filter(word => word.length > 3);
+    const queryWords = query
+      .toLowerCase()
+      .split(' ')
+      .filter((word) => word.length > 3);
     const highlights: string[] = [];
-    
+
     for (const word of queryWords) {
       const regex = new RegExp(`\\b${word}\\b`, 'gi');
       const matches = content.match(regex);
@@ -805,38 +849,44 @@ Return JSON format:
         highlights.push(...matches.slice(0, 3)); // Max 3 highlights per word
       }
     }
-    
+
     return [...new Set(highlights)]; // Remove duplicates
   }
 
   private extractRelatedTopics(searchResults: Array<any>): string[] {
-    const allTags = searchResults.flatMap(result => result.source.tags || []);
-    const tagCounts = allTags.reduce((acc, tag) => {
-      acc[tag] = (acc[tag] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
+    const allTags = searchResults.flatMap((result) => result.source.tags || []);
+    const tagCounts = allTags.reduce(
+      (acc, tag) => {
+        acc[tag] = (acc[tag] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
     return Object.entries(tagCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 8)
       .map(([tag]) => tag);
   }
 
-  private async generateSuggestedQueries(originalQuery: string, searchResults: Array<any>): Promise<string[]> {
+  private async generateSuggestedQueries(
+    originalQuery: string,
+    searchResults: Array<any>,
+  ): Promise<string[]> {
     // Generate related query suggestions based on results
     const topics = this.extractRelatedTopics(searchResults);
     const suggestions = [
       `How to implement ${originalQuery}`,
       `${originalQuery} best practices`,
       `${originalQuery} troubleshooting`,
-      `Advanced ${originalQuery} techniques`
+      `Advanced ${originalQuery} techniques`,
     ];
-    
+
     // Add topic-based suggestions
-    topics.slice(0, 3).forEach(topic => {
+    topics.slice(0, 3).forEach((topic) => {
       suggestions.push(`${originalQuery} ${topic}`);
     });
-    
+
     return suggestions.slice(0, 6);
   }
 
@@ -850,7 +900,8 @@ Return JSON format:
         contentType: 'document',
         embeddingVector: Array.from({ length: 1536 }, () => Math.random() - 0.5),
         embeddingModel: 'text-embedding-ada-002',
-        contentText: 'Meeting transcription setup involves configuring your recording platform, setting up AI processing, and customizing output formats. The system supports multiple platforms including Zoom, Teams, and Google Meet.',
+        contentText:
+          'Meeting transcription setup involves configuring your recording platform, setting up AI processing, and customizing output formats. The system supports multiple platforms including Zoom, Teams, and Google Meet.',
         contentTitle: 'Meeting Transcription Setup Guide',
         contentSummary: 'Complete guide for setting up AI-powered meeting transcription',
         contentKeywords: ['meeting', 'transcription', 'setup', 'AI', 'recording'],
@@ -869,7 +920,7 @@ Return JSON format:
         lastUpdatedEmbedding: new Date(),
         embeddingSource: 'api',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'embed-2',
@@ -878,7 +929,8 @@ Return JSON format:
         contentType: 'knowledge_article',
         embeddingVector: Array.from({ length: 1536 }, () => Math.random() - 0.5),
         embeddingModel: 'text-embedding-ada-002',
-        contentText: 'AI-powered documentation leverages natural language processing to automatically generate, improve, and organize business documents. Key features include content suggestions, grammar checking, and intelligent formatting.',
+        contentText:
+          'AI-powered documentation leverages natural language processing to automatically generate, improve, and organize business documents. Key features include content suggestions, grammar checking, and intelligent formatting.',
         contentTitle: 'AI Documentation Best Practices',
         contentSummary: 'Best practices for using AI in document creation and management',
         contentKeywords: ['AI', 'documentation', 'writing', 'automation', 'best practices'],
@@ -892,13 +944,13 @@ Return JSON format:
         accessPermissions: [],
         contentQualityScore: 0.88,
         engagementScore: 0.79,
-        freshnessScore: 0.90,
+        freshnessScore: 0.9,
         embeddingConfidence: 0.93,
         lastUpdatedEmbedding: new Date(),
         embeddingSource: 'batch_process',
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ];
   }
 }
