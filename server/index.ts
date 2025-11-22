@@ -220,13 +220,12 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
 
     // Initialize cron jobs for automated tasks
-    // Temporarily disabled until node-cron dependency is resolved
-    // try {
-    //   const { cronService } = await import('./services/cron-service');
-    //   cronService.initialize();
-    //   log('Cron jobs initialized successfully');
-    // } catch (error) {
-    //   log('Warning: Failed to initialize cron jobs:', error);
-    // }
+    try {
+      const { cronService } = await import('./services/cron-service');
+      cronService.initialize();
+      log('Cron jobs initialized successfully');
+    } catch (error) {
+      log('Warning: Failed to initialize cron jobs:', error);
+    }
   });
 })();
