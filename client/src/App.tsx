@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useAuth } from "@/hooks/useAuth";
+import { CommandPalette } from "@/components/navigation/command-palette";
+import { useCommandPalette } from "@/hooks/useCommandPalette";
 
 console.log("📦 App.tsx: Module loaded");
 // Critical auth pages - keep eager for fast initial load
@@ -206,6 +208,7 @@ function Router() {
   console.log("🎯 Router: Component rendering");
   const { isAuthenticated, isLoading } = useAuth();
   const [pathname, setLocation] = useLocation();
+  const { open, setOpen } = useCommandPalette();
   console.log("🎯 Router state:", { isAuthenticated, isLoading, pathname });
   useSeo(pathname);
 
@@ -316,6 +319,7 @@ function Router() {
   return (
     <>
       <SubscriptionBanner />
+      <CommandPalette open={open} onOpenChange={setOpen} />
       <React.Suspense
         fallback={
           <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
