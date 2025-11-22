@@ -48,6 +48,7 @@ export class MeterTracker {
           bwImpressions: 0,
           colorImpressions: 0,
           largeImpressions: 0,
+          hasRollover: false,
         },
         isFirstReading: true,
         isDuplicate: false,
@@ -67,6 +68,7 @@ export class MeterTracker {
           bwImpressions: 0,
           colorImpressions: 0,
           largeImpressions: 0,
+          hasRollover: false,
         },
         isFirstReading: false,
         isDuplicate: true,
@@ -203,8 +205,8 @@ export class MeterTracker {
    * Check toner levels and generate alerts
    */
   private checkTonerLevels(
-    current?: { [key: string]: number },
-    previous?: { [key: string]: number },
+    current?: { [key: string]: number | undefined },
+    previous?: { [key: string]: number | undefined },
   ): TonerAlert[] {
     const alerts: TonerAlert[] = [];
 
@@ -215,6 +217,9 @@ export class MeterTracker {
     const CRITICAL_THRESHOLD = 10; // Critical at 10%
 
     for (const [color, level] of Object.entries(current)) {
+      // Skip undefined levels
+      if (level === undefined || level === null) continue;
+
       // Critical alert
       if (level <= CRITICAL_THRESHOLD) {
         alerts.push({
@@ -236,8 +241,9 @@ export class MeterTracker {
         });
       }
       // Trend alert (dropping quickly)
-      else if (previous && previous[color]) {
-        const drop = previous[color] - level;
+      else if (previous && previous[color] !== undefined && previous[color] !== null) {
+        const prevLevel = previous[color]!;
+        const drop = prevLevel - level;
         if (drop > 10) {
           // Dropped more than 10% since last reading
           alerts.push({
@@ -332,7 +338,7 @@ export interface MeterRecord {
   lastMeters: MeterReadings;
   lastTimestamp: string;
   totalReadings: number;
-  lastTonerLevels?: { [key: string]: number };
+  lastTonerLevels?: { [key: string]: number | undefined };
 }
 
 export interface MeterDifferential {
