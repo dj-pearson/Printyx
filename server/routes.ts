@@ -3,6 +3,7 @@ import { createServer, type Server } from 'http';
 import { registerOnboardingRoutes } from './routes-onboarding';
 import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from './routes-export';
 import signupCrmRoutes from './routes-signup-crm';
+import universalSearchRoutes from './routes-universal-search';
 import session from 'express-session';
 import csurf from 'csurf';
 import rateLimit from 'express-rate-limit';
@@ -633,6 +634,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Trial management routes
   app.use('/api/trial', trialRoutes);
+
+  // Universal search routes
+  app.use(universalSearchRoutes);
 
   // Tenants route for platform users (Root Admin / platform-only)
   app.get('/api/tenants', requireAuth, async (req: any, res) => {
