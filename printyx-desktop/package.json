@@ -1,0 +1,98 @@
+{
+  "name": "printyx-desktop",
+  "version": "1.0.0",
+  "description": "Printyx Printer Monitoring Desktop Application",
+  "main": "dist/main/main.js",
+  "author": "Printyx",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "tsx watch src/main/main.ts",
+    "dev:renderer": "vite",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "esbuild src/main/main.ts src/preload/preload.ts --bundle --platform=node --outdir=dist/main --external:electron --external:better-sqlite3 --external:node-snmp-native",
+    "build:renderer": "vite build",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:linux": "npm run build && electron-builder --linux",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "electron-log": "^5.2.4",
+    "electron-store": "^10.0.0",
+    "electron-updater": "^6.3.9",
+    "net-snmp": "^3.11.2",
+    "node-snmp-native": "^2.0.0",
+    "node-windows": "^1.0.0-beta.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/net-snmp": "^3.7.5",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.25.0",
+    "lucide-react": "^0.453.0",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.19"
+  },
+  "build": {
+    "appId": "com.printyx.desktop",
+    "productName": "Printyx Monitor",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "Printyx"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Printyx Monitor"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.icns",
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png",
+      "category": "Utility"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "printyx",
+      "repo": "printyx-desktop"
+    }
+  }
+}

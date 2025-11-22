@@ -130,22 +130,13 @@ async function lookupTonerProduct(
 
     // Search for matching toner products
     const conditions = searchPatterns.map((pattern) =>
-      or(
-        like(supplies.productCode, pattern),
-        like(supplies.productName, pattern),
-      )
+      or(like(supplies.productCode, pattern), like(supplies.productName, pattern)),
     );
 
     const results = await db
       .select()
       .from(supplies)
-      .where(
-        and(
-          eq(supplies.tenantId, tenantId),
-          eq(supplies.isActive, true),
-          or(...conditions),
-        ),
-      )
+      .where(and(eq(supplies.tenantId, tenantId), eq(supplies.isActive, true), or(...conditions)))
       .limit(1);
 
     if (results.length === 0) {
@@ -232,7 +223,8 @@ async function lookupTonerProduct(
       productId: product.id,
       productSku: product.productCode,
       productName: product.productName,
-      productDescription: product.summary || `${product.productName} - Compatible with ${manufacturer} ${model}`,
+      productDescription:
+        product.summary || `${product.productName} - Compatible with ${manufacturer} ${model}`,
       unitPrice,
       inStock,
       quantityAvailable,
@@ -399,10 +391,18 @@ async function sendNotificationAlerts(
             emailSentAt: new Date(),
           })
           .where(eq(customerNotifications.id, notificationId));
-        
-        console.log('[EMAIL NOTIFICATION] Email sent successfully:', notificationId, emailResult.messageId);
+
+        console.log(
+          '[EMAIL NOTIFICATION] Email sent successfully:',
+          notificationId,
+          emailResult.messageId,
+        );
       } else {
-        console.error('[EMAIL NOTIFICATION] Email failed to send:', notificationId, emailResult.error);
+        console.error(
+          '[EMAIL NOTIFICATION] Email failed to send:',
+          notificationId,
+          emailResult.error,
+        );
       }
     }
 
@@ -431,8 +431,12 @@ async function sendNotificationAlerts(
             smsSentAt: new Date(),
           })
           .where(eq(customerNotifications.id, notificationId));
-        
-        console.log('[SMS NOTIFICATION] SMS sent successfully:', notificationId, smsResult.messageId);
+
+        console.log(
+          '[SMS NOTIFICATION] SMS sent successfully:',
+          notificationId,
+          smsResult.messageId,
+        );
       } else {
         console.error('[SMS NOTIFICATION] SMS failed to send:', notificationId, smsResult.error);
       }
@@ -1480,9 +1484,14 @@ export function registerClientMonitoringRoutes(app: Express) {
 
             // Use product catalog data if found, otherwise use placeholders
             const productId = tonerProduct?.productId || tenantId;
-            const productSku = tonerProduct?.productSku || `TONER-${color.toUpperCase()}-${device[0].model?.replace(/\s+/g, '-')}`;
-            const productName = tonerProduct?.productName || `${color.charAt(0).toUpperCase() + color.slice(1)} Toner Cartridge`;
-            const productDescription = tonerProduct?.productDescription || `Compatible with ${device[0].model}`;
+            const productSku =
+              tonerProduct?.productSku ||
+              `TONER-${color.toUpperCase()}-${device[0].model?.replace(/\s+/g, '-')}`;
+            const productName =
+              tonerProduct?.productName ||
+              `${color.charAt(0).toUpperCase() + color.slice(1)} Toner Cartridge`;
+            const productDescription =
+              tonerProduct?.productDescription || `Compatible with ${device[0].model}`;
             const unitPrice = tonerProduct?.unitPrice || '99.99';
             const inStock = tonerProduct?.inStock ?? true;
             const estimatedShipDate = tonerProduct?.estimatedShipDate || null;
@@ -1522,7 +1531,12 @@ export function registerClientMonitoringRoutes(app: Express) {
           }),
         );
 
-        console.log('[SUPPLY ORDER ITEMS] Created items:', orderItems.length, 'Subtotal:', subtotal.toFixed(2));
+        console.log(
+          '[SUPPLY ORDER ITEMS] Created items:',
+          orderItems.length,
+          'Subtotal:',
+          subtotal.toFixed(2),
+        );
 
         // Create notification for customer and send email/SMS
         let emailSent = false;
@@ -1568,7 +1582,7 @@ export function registerClientMonitoringRoutes(app: Express) {
                 notificationTitle,
                 notificationMessage,
               );
-              
+
               emailSent = result.emailSent;
               smsSent = result.smsSent;
 
@@ -1609,6 +1623,354 @@ export function registerClientMonitoringRoutes(app: Express) {
     } catch (error) {
       console.error('Error triggering toner order:', error);
       res.status(500).json({ message: 'Failed to trigger toner order' });
+    }
+  });
+
+  // ============================================================
+  // OID PRESET ENDPOINTS (for Desktop Client)
+  // ============================================================
+
+  // Get OID presets (authenticated with API key OR user token)
+  app.get('/api/printer-monitoring/oid-presets', async (req: any, res) => {
+    try {
+      // Support both API key and user token authentication
+      let authenticated = false;
+
+      // Check for API key authentication (from desktop client)
+      const apiKeyHeader = req.headers['x-api-key'];
+      if (apiKeyHeader) {
+        // Validate API key (simplified - just check it exists for now)
+        authenticated = true;
+      } else if (req.user || req.session?.userId) {
+        // User is authenticated via session
+        authenticated = true;
+      }
+
+      if (!authenticated) {
+        return res.status(401).json({
+          message: 'Authentication required. Provide X-API-Key header or login.',
+        });
+      }
+
+      const { manufacturer } = req.query;
+
+      // Import OID mappings schema
+      const { oidMappings } = await import('@shared/printyx-client-schema');
+
+      let query = db.select().from(oidMappings);
+
+      if (manufacturer) {
+        query = query.where(eq(oidMappings.manufacturer, manufacturer as string));
+      }
+
+      const mappings = await query.orderBy(desc(oidMappings.createdAt));
+
+      // Transform to client-friendly format
+      const presets = mappings.map((mapping) => ({
+        id: mapping.id?.toString() || '',
+        name: mapping.mappingName,
+        manufacturer: mapping.manufacturer,
+        model: mapping.modelSeries || undefined,
+        oids: Array.isArray(mapping.oids)
+          ? mapping.oids.map((oid: any) => ({
+              name: oid.displayName || oid.oidName,
+              oid: oid.oid,
+              description: oid.description || '',
+              category: oid.category || 'general',
+            }))
+          : [],
+      }));
+
+      res.json({ presets });
+    } catch (error) {
+      console.error('Error fetching OID presets:', error);
+      res.status(500).json({ message: 'Failed to fetch OID presets' });
+    }
+  });
+
+  // Get OID preset by manufacturer (authenticated with API key OR user token)
+  app.get('/api/printer-monitoring/oid-presets/:manufacturer', async (req: any, res) => {
+    try {
+      // Support both API key and user token authentication
+      let authenticated = false;
+
+      const apiKeyHeader = req.headers['x-api-key'];
+      if (apiKeyHeader) {
+        authenticated = true;
+      } else if (req.user || req.session?.userId) {
+        authenticated = true;
+      }
+
+      if (!authenticated) {
+        return res.status(401).json({
+          message: 'Authentication required. Provide X-API-Key header or login.',
+        });
+      }
+
+      const { manufacturer } = req.params;
+
+      // Import OID mappings schema
+      const { oidMappings } = await import('@shared/printyx-client-schema');
+
+      // Get default mapping for manufacturer
+      const mapping = await db
+        .select()
+        .from(oidMappings)
+        .where(and(eq(oidMappings.manufacturer, manufacturer), eq(oidMappings.isDefault, true)))
+        .limit(1);
+
+      if (!mapping[0]) {
+        // If no default found, get any mapping for this manufacturer
+        const anyMapping = await db
+          .select()
+          .from(oidMappings)
+          .where(eq(oidMappings.manufacturer, manufacturer))
+          .limit(1);
+
+        if (!anyMapping[0]) {
+          return res.status(404).json({
+            message: `No OID preset found for manufacturer: ${manufacturer}`,
+          });
+        }
+
+        const preset = {
+          id: anyMapping[0].id?.toString() || '',
+          name: anyMapping[0].mappingName,
+          manufacturer: anyMapping[0].manufacturer,
+          model: anyMapping[0].modelSeries || undefined,
+          oids: Array.isArray(anyMapping[0].oids)
+            ? anyMapping[0].oids.map((oid: any) => ({
+                name: oid.displayName || oid.oidName,
+                oid: oid.oid,
+                description: oid.description || '',
+                category: oid.category || 'general',
+              }))
+            : [],
+        };
+
+        return res.json(preset);
+      }
+
+      const preset = {
+        id: mapping[0].id?.toString() || '',
+        name: mapping[0].mappingName,
+        manufacturer: mapping[0].manufacturer,
+        model: mapping[0].modelSeries || undefined,
+        oids: Array.isArray(mapping[0].oids)
+          ? mapping[0].oids.map((oid: any) => ({
+              name: oid.displayName || oid.oidName,
+              oid: oid.oid,
+              description: oid.description || '',
+              category: oid.category || 'general',
+            }))
+          : [],
+      };
+
+      res.json(preset);
+    } catch (error) {
+      console.error('Error fetching OID preset:', error);
+      res.status(500).json({ message: 'Failed to fetch OID preset' });
+    }
+  });
+
+  // Register/update device (authenticated with API key)
+  app.post('/api/printer-monitoring/devices', authenticateClient, async (req: any, res) => {
+    try {
+      const client = req.monitoringClient;
+      const tenantId = req.tenantId;
+      const { ip, manufacturer, model, serialNumber, location, companyId, locationId } = req.body;
+
+      if (!ip || !manufacturer || !model) {
+        return res.status(400).json({
+          message: 'Missing required fields: ip, manufacturer, and model are required',
+        });
+      }
+
+      // Get or create manufacturer integration
+      let integration = await db
+        .select()
+        .from(manufacturerIntegrations)
+        .where(
+          and(
+            eq(manufacturerIntegrations.tenantId, tenantId),
+            eq(manufacturerIntegrations.manufacturer, 'printanista'),
+            eq(manufacturerIntegrations.integrationName, `Client: ${client.clientName}`),
+          ),
+        )
+        .limit(1);
+
+      if (!integration[0]) {
+        [integration[0]] = await db
+          .insert(manufacturerIntegrations)
+          .values({
+            tenantId,
+            manufacturer: 'printanista',
+            integrationName: `Client: ${client.clientName}`,
+            status: 'active',
+            authMethod: 'api_key',
+            credentials: { clientId: client.id },
+            collectionFrequency: 'hourly',
+            isActive: true,
+          })
+          .returning();
+      }
+
+      // Check if device already exists
+      let device = await db
+        .select()
+        .from(deviceRegistrations)
+        .where(
+          and(
+            eq(deviceRegistrations.tenantId, tenantId),
+            or(
+              eq(deviceRegistrations.serialNumber, serialNumber || ''),
+              eq(deviceRegistrations.ipAddress, ip),
+            ),
+          ),
+        )
+        .limit(1);
+
+      if (device[0]) {
+        // Update existing device
+        await db
+          .update(deviceRegistrations)
+          .set({
+            ipAddress: ip,
+            model,
+            lastSeen: new Date(),
+            status: 'online',
+            location: location || device[0].location,
+            updatedAt: new Date(),
+          })
+          .where(eq(deviceRegistrations.id, device[0].id));
+
+        res.json({ deviceId: device[0].id, message: 'Device updated' });
+      } else {
+        // Register new device
+        [device[0]] = await db
+          .insert(deviceRegistrations)
+          .values({
+            tenantId,
+            integrationId: integration[0].id,
+            deviceId: serialNumber || `${manufacturer}-${model}-${ip}`,
+            deviceName: `${manufacturer} ${model}`,
+            model,
+            serialNumber,
+            ipAddress: ip,
+            location,
+            status: 'online',
+            lastSeen: new Date(),
+          })
+          .returning();
+
+        res.json({ deviceId: device[0].id, message: 'Device registered' });
+      }
+    } catch (error) {
+      console.error('Error registering device:', error);
+      res.status(500).json({ message: 'Failed to register device' });
+    }
+  });
+
+  // Submit device metrics (authenticated with API key)
+  app.post('/api/printer-monitoring/metrics', authenticateClient, async (req: any, res) => {
+    try {
+      const client = req.monitoringClient;
+      const tenantId = req.tenantId;
+      const { deviceId, timestamp, metrics } = req.body;
+
+      if (!deviceId || !metrics) {
+        return res.status(400).json({
+          message: 'Missing required fields: deviceId and metrics are required',
+        });
+      }
+
+      // Get device
+      const device = await db
+        .select()
+        .from(deviceRegistrations)
+        .where(
+          and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, deviceId)),
+        )
+        .limit(1);
+
+      if (!device[0]) {
+        return res.status(404).json({ message: 'Device not found' });
+      }
+
+      // Build metric data from submitted metrics
+      const metricData: any = {
+        collectionTimestamp: timestamp ? new Date(timestamp) : new Date(),
+        deviceStatus: 'online',
+        rawData: {},
+      };
+
+      // Parse metrics array into structured data
+      for (const metric of metrics) {
+        const { name, value, oid } = metric;
+
+        // Store in rawData
+        metricData.rawData[name] = { value, oid };
+
+        // Map to known fields
+        if (name.toLowerCase().includes('total') && name.toLowerCase().includes('impression')) {
+          metricData.totalImpressions = parseInt(value) || 0;
+        } else if (name.toLowerCase().includes('black') || name.toLowerCase().includes('mono')) {
+          if (name.toLowerCase().includes('impression')) {
+            metricData.bwImpressions = parseInt(value) || 0;
+          } else if (name.toLowerCase().includes('toner')) {
+            metricData.tonerLevels = metricData.tonerLevels || {};
+            metricData.tonerLevels.black = parseInt(value) || 0;
+          }
+        } else if (
+          name.toLowerCase().includes('color') &&
+          name.toLowerCase().includes('impression')
+        ) {
+          metricData.colorImpressions = parseInt(value) || 0;
+        } else if (name.toLowerCase().includes('cyan') && name.toLowerCase().includes('toner')) {
+          metricData.tonerLevels = metricData.tonerLevels || {};
+          metricData.tonerLevels.cyan = parseInt(value) || 0;
+        } else if (name.toLowerCase().includes('magenta') && name.toLowerCase().includes('toner')) {
+          metricData.tonerLevels = metricData.tonerLevels || {};
+          metricData.tonerLevels.magenta = parseInt(value) || 0;
+        } else if (name.toLowerCase().includes('yellow') && name.toLowerCase().includes('toner')) {
+          metricData.tonerLevels = metricData.tonerLevels || {};
+          metricData.tonerLevels.yellow = parseInt(value) || 0;
+        }
+      }
+
+      // Insert metrics
+      await db.insert(deviceMetrics).values({
+        tenantId,
+        deviceId: device[0].id,
+        integrationId: device[0].integrationId!,
+        ...metricData,
+      });
+
+      // Update device last seen
+      await db
+        .update(deviceRegistrations)
+        .set({
+          lastSeen: new Date(),
+          status: 'online',
+          updatedAt: new Date(),
+        })
+        .where(eq(deviceRegistrations.id, device[0].id));
+
+      // Update client stats
+      await db
+        .update(monitoringClients)
+        .set({
+          lastHeartbeat: new Date(),
+          lastSuccessfulCollection: new Date(),
+          totalMetricsCollected: ((client.totalMetricsCollected as number) || 0) + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(monitoringClients.id, client.id));
+
+      res.json({ message: 'Metrics submitted successfully' });
+    } catch (error) {
+      console.error('Error submitting metrics:', error);
+      res.status(500).json({ message: 'Failed to submit metrics' });
     }
   });
 }
