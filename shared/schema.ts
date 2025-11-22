@@ -5899,34 +5899,7 @@ export type ProposalApproval = typeof proposalApprovals.$inferSelect;
 export type InsertProposalApproval = typeof proposalApprovals.$inferInsert;
 
 // NOTE: PRICING SYSTEM tables are imported from product-pricing-schema.ts
-// See lines 135-148 for re-exports
 // ============= PRICING SYSTEM =============
-
-// Company Pricing Settings - Global markup rules (exported from product-pricing-schema.ts)
-const companyPricingSettings_duplicate = pgTable('company_pricing_settings', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-
-  // Global Settings
-  defaultMarkupPercentage: decimal('default_markup_percentage', {
-    precision: 5,
-    scale: 2,
-  })
-    .notNull()
-    .default('20.00'),
-  allowSalespersonOverride: boolean('allow_salesperson_override').default(true),
-  minimumGrossProfitPercentage: decimal('minimum_gross_profit_percentage', {
-    precision: 5,
-    scale: 2,
-  }).default('5.00'),
-
-  // Settings
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
 
 // Product Pricing - Individual product pricing overrides
 export const productPricing = pgTable('product_pricing', {
@@ -6307,11 +6280,7 @@ export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
 
 // NOTE: Pricing System Types and Validations are imported from product-pricing-schema.ts
-// See lines 150-162 for type re-exports
-// Pricing System Types (using duplicate table reference)
-export type CompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferSelect;
-export type InsertCompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferInsert;
-
+// Pricing System Types
 export type ProductPricing = typeof productPricing.$inferSelect;
 export type InsertProductPricing = typeof productPricing.$inferInsert;
 
@@ -6320,13 +6289,6 @@ export type InsertQuotePricing = typeof quotePricing.$inferInsert;
 
 export type QuotePricingLineItem = typeof quotePricingLineItems.$inferSelect;
 export type InsertQuotePricingLineItem = typeof quotePricingLineItems.$inferInsert;
-
-// Pricing Schema Validations (using duplicate table reference)
-export const insertCompanyPricingSettingSchema = createInsertSchema(companyPricingSettings_duplicate).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
 export const insertProductPricingSchema = createInsertSchema(productPricing).omit({
   id: true,
