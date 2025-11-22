@@ -95,6 +95,7 @@ const EquipmentLifecycle = React.lazy(() => import("@/pages/EquipmentLifecycle")
 const PurchaseOrders = React.lazy(() => import("@/pages/PurchaseOrders"));
 const WarehouseOperations = React.lazy(() => import("@/pages/WarehouseOperations"));
 const CrmGoalsDashboard = React.lazy(() => import("@/pages/CrmGoalsDashboard"));
+const TodayDashboard = React.lazy(() => import("@/pages/TodayDashboard"));
 const MobileFieldService = React.lazy(() => import("@/pages/MobileFieldService"));
 const ProductManagementHub = React.lazy(() => import("@/pages/ProductManagementHub"));
 const PricingManagement = React.lazy(() => import("@/pages/PricingManagement"));
@@ -335,6 +336,8 @@ function Router() {
         <Switch>
           {console.log("📍 Rendering routes, pathname:", pathname)}
           <Route path="/" component={Dashboard} />
+          <Route path="/today" component={TodayDashboard} />
+          <Route path="/dashboard/today" component={TodayDashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
           <Route path="/leads/:slug" component={CustomerDetail} />
