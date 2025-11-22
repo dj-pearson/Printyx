@@ -47,6 +47,38 @@ export {
   insertPartsOrderItemSchema,
 } from './service-analysis-schema';
 
+// Re-export printyx-client schemas
+export {
+  clientRegistrations,
+  clientCollectedMetrics,
+  monitoredDevices,
+  clientActivityLogs,
+  tonerAlerts,
+  oidMappings,
+  deviceMeterHistory,
+  clientRegistrationsRelations,
+  monitoredDevicesRelations,
+  clientCollectedMetricsRelations,
+  tonerAlertsRelations,
+} from './printyx-client-schema';
+
+export type {
+  ClientRegistration,
+  NewClientRegistration,
+  ClientCollectedMetric,
+  NewClientCollectedMetric,
+  MonitoredDevice,
+  NewMonitoredDevice,
+  ClientActivityLog,
+  NewClientActivityLog,
+  TonerAlert,
+  NewTonerAlert,
+  OidMapping,
+  NewOidMapping,
+  DeviceMeterHistory,
+  NewDeviceMeterHistory,
+} from './printyx-client-schema';
+
 export type {
   ServiceCallAnalysis,
   ServicePartsUsed,
@@ -5866,6 +5898,8 @@ export type InsertProposalAnalytics = typeof proposalAnalytics.$inferInsert;
 export type ProposalApproval = typeof proposalApprovals.$inferSelect;
 export type InsertProposalApproval = typeof proposalApprovals.$inferInsert;
 
+// NOTE: PRICING SYSTEM tables are imported from product-pricing-schema.ts
+// See lines 135-148 for re-exports
 // ============= PRICING SYSTEM =============
 
 // Company Pricing Settings - Global markup rules (exported from product-pricing-schema.ts)
@@ -6272,6 +6306,8 @@ export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
 export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
 
+// NOTE: Pricing System Types and Validations are imported from product-pricing-schema.ts
+// See lines 150-162 for type re-exports
 // Pricing System Types (using duplicate table reference)
 export type CompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferSelect;
 export type InsertCompanyPricingSetting = typeof companyPricingSettings_duplicate.$inferInsert;
