@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import { serviceContracts, tasks, businessRecords } from '../../shared/schema';
 import { eq, and, sql, lte, gte } from 'drizzle-orm';
 import { emailService } from './email-service';
@@ -26,34 +26,42 @@ const RENEWAL_MILESTONES: RenewalMilestone[] = [
   {
     daysBeforeExpiration: 180,
     taskTitle: 'Contract Renewal Planning',
-    taskDescription: 'Review contract terms and customer relationship. Plan renewal strategy and pricing.',
+    taskDescription:
+      'Review contract terms and customer relationship. Plan renewal strategy and pricing.',
     priority: 'low',
     notificationSubject: 'Contract Renewal Planning - 6 Months Out',
-    notificationMessage: 'Contract expiring in 6 months. Time to review relationship and plan renewal approach.',
+    notificationMessage:
+      'Contract expiring in 6 months. Time to review relationship and plan renewal approach.',
   },
   {
     daysBeforeExpiration: 90,
     taskTitle: 'Initiate Renewal Outreach',
-    taskDescription: 'Contact customer to discuss renewal. Schedule meeting to review service and terms.',
+    taskDescription:
+      'Contact customer to discuss renewal. Schedule meeting to review service and terms.',
     priority: 'medium',
     notificationSubject: 'Action Required: Contract Renewal Outreach - 90 Days',
-    notificationMessage: 'Contract expiring in 90 days. Begin renewal conversations now to ensure retention.',
+    notificationMessage:
+      'Contract expiring in 90 days. Begin renewal conversations now to ensure retention.',
   },
   {
     daysBeforeExpiration: 60,
     taskTitle: 'Renewal Proposal Follow-up',
-    taskDescription: 'Follow up on renewal discussions. Prepare and send renewal proposal with updated terms.',
+    taskDescription:
+      'Follow up on renewal discussions. Prepare and send renewal proposal with updated terms.',
     priority: 'high',
     notificationSubject: 'Urgent: Renewal Proposal Required - 60 Days',
-    notificationMessage: 'Contract expiring in 60 days. Customer proposal must be prepared and sent.',
+    notificationMessage:
+      'Contract expiring in 60 days. Customer proposal must be prepared and sent.',
   },
   {
     daysBeforeExpiration: 30,
     taskTitle: 'Final Renewal Escalation',
-    taskDescription: 'URGENT: Final attempt to secure renewal. Escalate to management if necessary.',
+    taskDescription:
+      'URGENT: Final attempt to secure renewal. Escalate to management if necessary.',
     priority: 'urgent',
     notificationSubject: 'CRITICAL: Contract Expiring in 30 Days',
-    notificationMessage: 'Contract expiring in 30 days. Immediate action required to prevent customer loss.',
+    notificationMessage:
+      'Contract expiring in 30 days. Immediate action required to prevent customer loss.',
   },
 ];
 
@@ -80,21 +88,17 @@ export class ContractRenewalWorkflow {
       for (const milestone of RENEWAL_MILESTONES) {
         const contracts = await this.getContractsAtMilestone(
           tenantId,
-          milestone.daysBeforeExpiration
+          milestone.daysBeforeExpiration,
         );
 
         for (const contract of contracts) {
-          const result = await this.triggerRenewalWorkflow(
-            tenantId,
-            contract,
-            milestone
-          );
+          const result = await this.triggerRenewalWorkflow(tenantId, contract, milestone);
           processedContracts.push(result);
         }
       }
 
       console.log(
-        `[RENEWAL WORKFLOW] Processed ${processedContracts.length} contracts for tenant ${tenantId}`
+        `[RENEWAL WORKFLOW] Processed ${processedContracts.length} contracts for tenant ${tenantId}`,
       );
 
       return processedContracts;
@@ -107,10 +111,7 @@ export class ContractRenewalWorkflow {
   /**
    * Get contracts at a specific milestone (within 1 day window)
    */
-  private async getContractsAtMilestone(
-    tenantId: string,
-    daysBeforeExpiration: number
-  ) {
+  private async getContractsAtMilestone(tenantId: string, daysBeforeExpiration: number) {
     const contracts = await db
       .select({
         id: serviceContracts.id,
@@ -120,7 +121,8 @@ export class ContractRenewalWorkflow {
         endDate: serviceContracts.endDate,
         monthlyBaseRate: serviceContracts.monthlyBaseRate,
         assignedSalesRepId: serviceContracts.assignedSalesRepId,
-        daysUntilExpiration: sql<number>`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`.as('days'),
+        daysUntilExpiration:
+          sql<number>`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`.as('days'),
       })
       .from(serviceContracts)
       .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
@@ -131,13 +133,13 @@ export class ContractRenewalWorkflow {
           // Contract expires in (days ± 1 day) - catches today's milestone
           lte(
             sql`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`,
-            daysBeforeExpiration + 1
+            daysBeforeExpiration + 1,
           ),
           gte(
             sql`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`,
-            daysBeforeExpiration - 1
-          )
-        )
+            daysBeforeExpiration - 1,
+          ),
+        ),
       );
 
     return contracts;
@@ -149,7 +151,7 @@ export class ContractRenewalWorkflow {
   private async triggerRenewalWorkflow(
     tenantId: string,
     contract: any,
-    milestone: RenewalMilestone
+    milestone: RenewalMilestone,
   ): Promise<ProcessedContract> {
     let tasksCreated = 0;
     let notificationsSent = false;
@@ -163,8 +165,8 @@ export class ContractRenewalWorkflow {
           and(
             eq(tasks.tenantId, tenantId),
             eq(tasks.relatedRecordId, contract.id),
-            sql`${tasks.title} LIKE ${milestone.taskTitle}%`
-          )
+            sql`${tasks.title} LIKE ${milestone.taskTitle}%`,
+          ),
         )
         .limit(1);
 
@@ -191,7 +193,7 @@ export class ContractRenewalWorkflow {
 
         tasksCreated++;
         console.log(
-          `[RENEWAL WORKFLOW] Created task for contract ${contract.contractNumber} at ${milestone.daysBeforeExpiration}-day milestone`
+          `[RENEWAL WORKFLOW] Created task for contract ${contract.contractNumber} at ${milestone.daysBeforeExpiration}-day milestone`,
         );
       }
 
@@ -201,7 +203,7 @@ export class ContractRenewalWorkflow {
         // For now, just log the intent
         notificationsSent = true;
         console.log(
-          `[RENEWAL WORKFLOW] Notification triggered for sales rep ${contract.assignedSalesRepId}`
+          `[RENEWAL WORKFLOW] Notification triggered for sales rep ${contract.assignedSalesRepId}`,
         );
 
         // Optional: Send email notification (if email service is configured)
@@ -228,7 +230,7 @@ export class ContractRenewalWorkflow {
     } catch (error) {
       console.error(
         `[RENEWAL WORKFLOW] Error processing contract ${contract.contractNumber}:`,
-        error
+        error,
       );
       throw error;
     }
@@ -237,10 +239,7 @@ export class ContractRenewalWorkflow {
   /**
    * Generate email notification HTML
    */
-  private generateRenewalNotificationEmail(
-    contract: any,
-    milestone: RenewalMilestone
-  ): string {
+  private generateRenewalNotificationEmail(contract: any, milestone: RenewalMilestone): string {
     const annualValue = (contract.monthlyBaseRate || 0) * 12;
 
     return `
@@ -287,19 +286,16 @@ export class ContractRenewalWorkflow {
       RENEWAL_MILESTONES.map(async (milestone) => {
         const contracts = await this.getContractsAtMilestone(
           tenantId,
-          milestone.daysBeforeExpiration
+          milestone.daysBeforeExpiration,
         );
 
         return {
           milestone: `${milestone.daysBeforeExpiration} days`,
           contractCount: contracts.length,
-          totalValue: contracts.reduce(
-            (sum, c) => sum + (c.monthlyBaseRate || 0) * 12,
-            0
-          ),
+          totalValue: contracts.reduce((sum, c) => sum + (c.monthlyBaseRate || 0) * 12, 0),
           priority: milestone.priority,
         };
-      })
+      }),
     );
 
     return {

@@ -1,4 +1,4 @@
-import { db } from '../../db';
+import { db } from '../db';
 import {
   usageMetrics,
   dailyUsageSnapshots,
@@ -30,14 +30,16 @@ export class UsageTrackingService {
   /**
    * Initialize or get current usage period for tenant
    */
-  static async getCurrentUsagePeriod(tenantId: string): Promise<typeof usageMetrics.$inferSelect | null> {
+  static async getCurrentUsagePeriod(
+    tenantId: string,
+  ): Promise<typeof usageMetrics.$inferSelect | null> {
     const now = new Date();
 
     // Get subscription to determine period boundaries
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`
+        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
       orderBy: [desc(tenantSubscriptions.createdAt)],
     });
@@ -51,7 +53,7 @@ export class UsageTrackingService {
       where: and(
         eq(usageMetrics.tenantId, tenantId),
         lte(usageMetrics.periodStart, now),
-        gte(usageMetrics.periodEnd, now)
+        gte(usageMetrics.periodEnd, now),
       ),
     });
 
@@ -113,7 +115,7 @@ export class UsageTrackingService {
 
     // Track feature usage if endpoint provided
     if (endpoint) {
-      const featureUsage = usage.featureUsage as Record<string, number> || {};
+      const featureUsage = (usage.featureUsage as Record<string, number>) || {};
       featureUsage[endpoint] = (featureUsage[endpoint] || 0) + 1;
 
       await db
@@ -170,42 +172,27 @@ export class UsageTrackingService {
         and(
           eq(users.tenantId, tenantId),
           eq(users.isActive, true),
-          gte(users.lastLoginAt, thirtyDaysAgo)
-        )
+          gte(users.lastLoginAt, thirtyDaysAgo),
+        ),
       );
 
     // Count total users
     const [totalUsersCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(users)
-      .where(
-        and(
-          eq(users.tenantId, tenantId),
-          eq(users.isActive, true)
-        )
-      );
+      .where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)));
 
     // Count active locations
     const [locationsCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(locations)
-      .where(
-        and(
-          eq(locations.tenantId, tenantId),
-          eq(locations.isActive, true)
-        )
-      );
+      .where(and(eq(locations.tenantId, tenantId), eq(locations.isActive, true)));
 
     // Count business records
     const [recordsCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(businessRecords)
-      .where(
-        and(
-          eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.isDeleted, false)
-        )
-      );
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.isDeleted, false)));
 
     // Get storage usage
     // TODO: Implement actual storage calculation from documents, attachments, etc.
@@ -242,7 +229,7 @@ export class UsageTrackingService {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`
+        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
       orderBy: [desc(tenantSubscriptions.createdAt)],
     });
@@ -265,7 +252,7 @@ export class UsageTrackingService {
     }
 
     // Apply custom limits if set
-    const customLimits = subscription.customLimits as any || {};
+    const customLimits = (subscription.customLimits as any) || {};
     const limits = {
       maxUsers: customLimits.maxUsers || plan.maxUsers,
       maxStorage: customLimits.maxStorage || plan.maxStorage,
@@ -284,7 +271,7 @@ export class UsageTrackingService {
     }
 
     if (limits.maxStorage !== -1 && usage.storageUsedMb > limits.maxStorage * 1024) {
-      overages.storage = usage.storageUsedMb - (limits.maxStorage * 1024);
+      overages.storage = usage.storageUsedMb - limits.maxStorage * 1024;
       isOverLimit = true;
     }
 
@@ -330,10 +317,7 @@ export class UsageTrackingService {
 
     // Check if snapshot already exists for today
     const existing = await db.query.dailyUsageSnapshots.findFirst({
-      where: and(
-        eq(dailyUsageSnapshots.tenantId, tenantId),
-        eq(dailyUsageSnapshots.date, today)
-      ),
+      where: and(eq(dailyUsageSnapshots.tenantId, tenantId), eq(dailyUsageSnapshots.date, today)),
     });
 
     if (existing) {
@@ -364,7 +348,7 @@ export class UsageTrackingService {
   static async getUsageHistory(
     tenantId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<Array<typeof dailyUsageSnapshots.$inferSelect>> {
     return db
       .select()
@@ -373,8 +357,8 @@ export class UsageTrackingService {
         and(
           eq(dailyUsageSnapshots.tenantId, tenantId),
           gte(dailyUsageSnapshots.date, startDate),
-          lte(dailyUsageSnapshots.date, endDate)
-        )
+          lte(dailyUsageSnapshots.date, endDate),
+        ),
       )
       .orderBy(dailyUsageSnapshots.date);
   }
@@ -382,7 +366,11 @@ export class UsageTrackingService {
   /**
    * Reset usage metrics for new billing period
    */
-  static async resetForNewPeriod(tenantId: string, periodStart: Date, periodEnd: Date): Promise<void> {
+  static async resetForNewPeriod(
+    tenantId: string,
+    periodStart: Date,
+    periodEnd: Date,
+  ): Promise<void> {
     // Create new usage period
     await db.insert(usageMetrics).values({
       tenantId,
@@ -486,7 +474,7 @@ export class UsageTrackingService {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`
+        sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
       orderBy: [desc(tenantSubscriptions.createdAt)],
     });
@@ -504,7 +492,7 @@ export class UsageTrackingService {
     }
 
     // Apply custom limits if set
-    const customLimits = subscription.customLimits as any || {};
+    const customLimits = (subscription.customLimits as any) || {};
     const limits = {
       users: customLimits.maxUsers || plan.maxUsers,
       storage: customLimits.maxStorage || plan.maxStorage,
@@ -516,10 +504,20 @@ export class UsageTrackingService {
     // Calculate percentages (-1 means unlimited, show as 0%)
     const percentages = {
       users: limits.users === -1 ? 0 : Math.min(100, (usage.totalUsers / limits.users) * 100),
-      storage: limits.storage === -1 ? 0 : Math.min(100, (usage.storageUsedMb / (limits.storage * 1024)) * 100),
-      apiCalls: limits.apiCalls === -1 ? 0 : Math.min(100, (usage.apiCalls / limits.apiCalls) * 100),
-      locations: limits.locations === -1 ? 0 : Math.min(100, (usage.activeLocations / limits.locations) * 100),
-      businessRecords: limits.businessRecords === -1 ? 0 : Math.min(100, (usage.businessRecords / limits.businessRecords) * 100),
+      storage:
+        limits.storage === -1
+          ? 0
+          : Math.min(100, (usage.storageUsedMb / (limits.storage * 1024)) * 100),
+      apiCalls:
+        limits.apiCalls === -1 ? 0 : Math.min(100, (usage.apiCalls / limits.apiCalls) * 100),
+      locations:
+        limits.locations === -1
+          ? 0
+          : Math.min(100, (usage.activeLocations / limits.locations) * 100),
+      businessRecords:
+        limits.businessRecords === -1
+          ? 0
+          : Math.min(100, (usage.businessRecords / limits.businessRecords) * 100),
     };
 
     return {
