@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "@db";
+import { db } from "./db";
 import { businessRecords, deals, activities, quotes } from "@shared/schema";
 import { ilike, or, and, eq, sql } from "drizzle-orm";
 import type { Request, Response } from "express";
