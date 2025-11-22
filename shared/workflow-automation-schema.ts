@@ -51,6 +51,8 @@ export const stepActionTypeEnum = pgEnum("step_action_type", [
   "loop",
   "transform_data",
   "call_integration",
+  "require_approval",
+  "wait_for_approval",
 ]);
 
 export const executionStatusEnum = pgEnum("execution_status", [
@@ -422,6 +424,69 @@ export const workflowEventRegistry = pgTable(
   })
 );
 
+// 14. Assignment Groups - Groups/roles that can be assigned tasks
+export const assignmentGroups = pgTable(
+  "assignment_groups",
+  {
+    id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId: varchar("tenant_id").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    type: varchar("type", { length: 50 }).notNull(), // "role", "department", "team", "custom"
+    members: jsonb("members").$type<string[]>().notNull().default([]), // User IDs
+    isActive: boolean("is_active").notNull().default(true),
+    createdBy: varchar("created_by"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index("assignment_groups_tenant_idx").on(table.tenantId),
+    typeIdx: index("assignment_groups_type_idx").on(table.type),
+  })
+);
+
+// 15. Workflow Approvals - Track approval requests and responses
+export const workflowApprovals = pgTable(
+  "workflow_approvals",
+  {
+    id: varchar("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tenantId: varchar("tenant_id").notNull(),
+    executionId: varchar("execution_id")
+      .notNull()
+      .references(() => workflowExecutions.id, { onDelete: "cascade" }),
+    stepExecutionId: varchar("step_execution_id")
+      .notNull()
+      .references(() => workflowExecutionSteps.id, { onDelete: "cascade" }),
+
+    // Assignment - can be user or group
+    assignedToUserId: varchar("assigned_to_user_id"), // Direct user assignment
+    assignedToGroupId: varchar("assigned_to_group_id").references(() => assignmentGroups.id), // Group assignment
+
+    // Approval details
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // "pending", "approved", "rejected", "cancelled"
+    approvedBy: varchar("approved_by"), // User ID who approved/rejected
+    approvalComment: text("approval_comment"),
+    dueDate: timestamp("due_date"),
+
+    // Context data from workflow
+    contextData: jsonb("context_data"), // Order number, products, customer info, etc.
+
+    // Timestamps
+    requestedAt: timestamp("requested_at").notNull().defaultNow(),
+    respondedAt: timestamp("responded_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index("workflow_approvals_tenant_idx").on(table.tenantId),
+    executionIdx: index("workflow_approvals_execution_idx").on(table.executionId),
+    statusIdx: index("workflow_approvals_status_idx").on(table.status),
+    assignedUserIdx: index("workflow_approvals_assigned_user_idx").on(table.assignedToUserId),
+    assignedGroupIdx: index("workflow_approvals_assigned_group_idx").on(table.assignedToGroupId),
+    dueDateIdx: index("workflow_approvals_due_date_idx").on(table.dueDate),
+  })
+);
+
 // ==================== Insert Schemas ====================
 
 export const insertWorkflowSchema = createInsertSchema(workflows).omit({
@@ -505,6 +570,18 @@ export const insertWorkflowEventRegistrySchema = createInsertSchema(
   updatedAt: true,
 });
 
+export const insertAssignmentGroupSchema = createInsertSchema(assignmentGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkflowApprovalSchema = createInsertSchema(workflowApprovals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // ==================== Types ====================
 
 export type Workflow = typeof workflows.$inferSelect;
@@ -520,6 +597,8 @@ export type WorkflowExecutionEvent = typeof workflowExecutionEvents.$inferSelect
 export type WorkflowTemplate = typeof workflowTemplates.$inferSelect;
 export type TemplateVariable = typeof templateVariables.$inferSelect;
 export type WorkflowEventRegistry = typeof workflowEventRegistry.$inferSelect;
+export type AssignmentGroup = typeof assignmentGroups.$inferSelect;
+export type WorkflowApproval = typeof workflowApprovals.$inferSelect;
 
 export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
 export type InsertWorkflowVersion = z.infer<typeof insertWorkflowVersionSchema>;
@@ -544,3 +623,5 @@ export type InsertTemplateVariable = z.infer<typeof insertTemplateVariableSchema
 export type InsertWorkflowEventRegistry = z.infer<
   typeof insertWorkflowEventRegistrySchema
 >;
+export type InsertAssignmentGroup = z.infer<typeof insertAssignmentGroupSchema>;
+export type InsertWorkflowApproval = z.infer<typeof insertWorkflowApprovalSchema>;
