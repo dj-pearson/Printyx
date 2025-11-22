@@ -63,148 +63,10 @@ const billingAddressSchema = z.object({
 
 type BillingAddressForm = z.infer<typeof billingAddressSchema>;
 
-// Initialize Stripe
-let stripePromise: any = null;
-
-const getStripePromise = async () => {
-  if (!stripePromise) {
-    try {
-      const response = await fetch('/api/billing/stripe/config');
-      const { publishableKey, configured } = await response.json();
-
-      if (configured && publishableKey) {
-        stripePromise = loadStripe(publishableKey);
-      }
-    } catch (error) {
-      console.error('Failed to load Stripe config:', error);
-    }
-  }
-  return stripePromise;
-};
-
-// Payment Method Form Component (uses Stripe Elements)
-function AddPaymentMethodForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      // Get setup intent client secret
-      const response = await fetch('/api/billing/stripe/setup-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const { clientSecret } = await response.json();
-
-      if (!clientSecret) {
-        throw new Error('Failed to create setup intent');
-      }
-
-      // Confirm card setup
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        throw new Error('Card element not found');
-      }
-
-      const { error, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
-        payment_method: {
-          card: cardElement,
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (!setupIntent?.payment_method) {
-        throw new Error('No payment method returned');
-      }
-
-      // Save payment method to backend
-      await fetch('/api/billing/payment-methods', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentMethodId: setupIntent.payment_method,
-        }),
-      });
-
-      // Refresh payment methods
-      queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
-
-      toast({
-        title: 'Payment method added',
-        description: 'Your payment method has been successfully added.',
-      });
-
-      onSuccess();
-    } catch (error: any) {
-      toast({
-        title: 'Failed to add payment method',
-        description: error.message || 'Please try again',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="border rounded-lg p-4">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4',
-                },
-              },
-              invalid: {
-                color: '#9e2146',
-              },
-            },
-          }}
-        />
-      </div>
-
-      <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={!stripe || isProcessing}>
-          {isProcessing ? 'Processing...' : 'Add Payment Method'}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
 export default function Billing() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
-  const [stripePromiseState, setStripePromiseState] = useState<any>(null);
-
-  // Load Stripe on mount
-  useEffect(() => {
-    getStripePromise().then(setStripePromiseState);
-  }, []);
 
   const form = useForm<BillingAddressForm>({
     resolver: zodResolver(billingAddressSchema),
@@ -346,32 +208,11 @@ export default function Billing() {
                       })}
                     </p>
                   </div>
-                  {!paymentMethods || paymentMethods.length === 0 ? (
-                    <Button onClick={() => setIsAddPaymentOpen(true)} variant="default">
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Add Payment Method
-                    </Button>
-                  ) : (
-                    <div className="flex items-center gap-2 text-green-700">
-                      <CheckCircle className="h-5 w-5" />
-                      <span className="text-sm font-medium">Payment method on file</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="bg-white rounded-lg p-4 border border-blue-200">
                   <p className="text-sm text-gray-700">
-                    {!paymentMethods || paymentMethods.length === 0 ? (
-                      <>
-                        <strong>⚠️ Action Required:</strong> Add a payment method to avoid service interruption
-                        when your trial ends. Your card won't be charged until after the trial period.
-                      </>
-                    ) : (
-                      <>
-                        <strong>✅ You're all set!</strong> Your subscription will automatically start when your
-                        trial ends. Cancel anytime before then if you change your mind.
-                      </>
-                    )}
+                    <strong>✅ Active Trial:</strong> Your subscription will start when your trial ends. Cancel anytime before then if you change your mind.
                   </p>
                 </div>
               </div>
@@ -379,115 +220,28 @@ export default function Billing() {
           </Card>
         )}
 
-        {/* Payment Methods Section */}
-        <Card>
+        {/* Payment Methods Section - Disabled */}
+        <Card className="opacity-50">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Payment Methods</CardTitle>
                 <CardDescription>
-                  Manage your payment methods for subscription billing
+                  Payment method management coming soon
                 </CardDescription>
               </div>
-              <Dialog open={isAddPaymentOpen} onOpenChange={setIsAddPaymentOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Payment Method
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Payment Method</DialogTitle>
-                    <DialogDescription>
-                      Add a new credit or debit card for billing
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {stripePromiseState ? (
-                      <Elements stripe={stripePromiseState}>
-                        <AddPaymentMethodForm
-                          onSuccess={() => setIsAddPaymentOpen(false)}
-                          onCancel={() => setIsAddPaymentOpen(false)}
-                        />
-                      </Elements>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <p className="text-sm text-blue-800 font-medium">
-                            Loading Stripe...
-                          </p>
-                          <p className="text-xs text-blue-700 mt-1">
-                            {!process.env.STRIPE_PUBLISHABLE_KEY
-                              ? 'Stripe is not configured. Please set STRIPE_PUBLISHABLE_KEY in environment.'
-                              : 'Initializing payment processor...'}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => setIsAddPaymentOpen(false)}
-                        >
-                          Close
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
             </div>
           </CardHeader>
           <CardContent>
-            {loadingPaymentMethods ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading payment methods...
-              </div>
-            ) : !paymentMethods || paymentMethods.length === 0 ? (
-              <div className="text-center py-8">
-                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  No payment methods on file
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Add a payment method to continue your subscription after the trial ends
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {paymentMethods.map((method: any) => (
-                  <div
-                    key={method.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <CreditCard className="h-8 w-8 text-muted-foreground" />
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium">
-                            {method.cardBrand?.toUpperCase()} •••• {method.cardLast4}
-                          </p>
-                          {method.isDefault && (
-                            <Badge variant="secondary">Default</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Expires {method.cardExpMonth}/{method.cardExpYear}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deletePaymentMutation.mutate(method.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="text-center py-8">
+              <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">
+                Payment functionality is being configured
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This feature will be available shortly
+              </p>
+            </div>
           </CardContent>
         </Card>
 
