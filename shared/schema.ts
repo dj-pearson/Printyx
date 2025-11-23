@@ -8293,3 +8293,34 @@ export type {
   WhiteLabelPreset,
   InsertWhiteLabelPreset,
 } from './white-label-schema';
+
+// Re-export Auto-Supply Replenishment schemas
+export {
+  supplyMonitoring,
+  autoSupplyOrders,
+  supplyUsageHistory,
+  supplyReplenishmentRules,
+  supplyReplenishmentAnalytics,
+  supplyReplenishmentStatusEnum,
+  supplyTypeEnum,
+  orderPriorityEnum,
+  supplyMonitoringRelations,
+  autoSupplyOrdersRelations,
+  supplyUsageHistoryRelations,
+} from './auto-supply-replenishment-schema';
+
+// Re-export Contract Renewal Autopilot schemas
+export {
+  contractRenewalTracking,
+  renewalProposals,
+  renewalAutomationRules,
+  renewalAnalytics,
+  renewalCommunicationLog,
+  contractStatusEnum,
+  renewalRiskEnum,
+  contractTypeEnum,
+  renewalActionEnum,
+  contractRenewalTrackingRelations,
+  renewalProposalsRelations,
+  renewalCommunicationLogRelations,
+} from './contract-renewal-schema';

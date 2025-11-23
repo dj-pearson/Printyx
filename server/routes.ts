@@ -104,6 +104,8 @@ import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
 import { registerAutoLeadRoutingRoutes } from './routes-auto-lead-routing';
 import { registerPredictiveServiceDispatchRoutes } from './routes-predictive-service-dispatch';
 import { registerWhiteLabelRoutes } from './routes-white-label';
+import autoSupplyReplenishmentRoutes from './routes-auto-supply-replenishment';
+import contractRenewalRoutes from './routes-contract-renewal';
 import { registerSalesHandoffRoutes } from './routes-sales-handoff';
 import { registerRenewalManagementRoutes } from './routes-renewal-management';
 import { registerClientMonitoringRoutes } from './routes-client-monitoring';
@@ -15307,6 +15309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
   registerWhiteLabelRoutes(app);
+  app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
+  app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
   registerRenewalManagementRoutes(app);
 
