@@ -12,6 +12,7 @@ import { storage } from './storage';
 import { authRoutes } from './auth-routes';
 import { trialRoutes } from './routes-trial';
 import emailParserRoutes from './routes-email-parser';
+import mobileTechnicianRoutes from './routes-mobile-technician';
 import {
   insertCustomerSchema,
   insertCompanySchema,
@@ -14990,6 +14991,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register email parser routes
   app.use('/api/email-parser', emailParserRoutes);
+
+  // Register mobile technician routes
+  app.use('/api/mobile', mobileTechnicianRoutes);
 
   // Register Platform CRM routes (root admin tenant management and lifecycle)
   const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records')).default;
