@@ -8324,3 +8324,78 @@ export {
   renewalProposalsRelations,
   renewalCommunicationLogRelations,
 } from './contract-renewal-schema';
+// ============================================================================
+// PLATFORM CRM SCHEMAS
+// ============================================================================
+
+// Re-export Platform CRM schemas
+export {
+  // Tables
+  platformBusinessRecords,
+  platformContacts,
+  platformDeals,
+  platformActivities,
+  platformLeadScoringRules,
+  platformLeadScoreCalculations,
+  platformBantQualification,
+  platformSalesTerritories,
+  platformLeadAssignmentRules,
+  platformRepCapacity,
+  platformLeadAssignmentHistory,
+  platformHealthScores,
+  platformChurnPredictions,
+  platformSuccessInterventions,
+  platformRenewalOpportunities,
+  platformSalesGoals,
+  platformActivityReports,
+  platformCohortAnalysis,
+
+  // Enums
+  platformRecordTypeEnum,
+  platformRecordStatusEnum,
+  platformDealStageEnum,
+  platformActivityTypeEnum,
+  platformHealthStatusEnum,
+  platformChurnRiskEnum,
+  platformLeadGradeEnum,
+  platformLeadTierEnum,
+} from './platform-crm-schema';
+
+export type {
+  PlatformBusinessRecord,
+  NewPlatformBusinessRecord,
+  PlatformContact,
+  NewPlatformContact,
+  PlatformDeal,
+  NewPlatformDeal,
+  PlatformActivity,
+  NewPlatformActivity,
+  PlatformLeadScoringRule,
+  NewPlatformLeadScoringRule,
+  PlatformLeadScoreCalculation,
+  NewPlatformLeadScoreCalculation,
+  PlatformBantQualification,
+  NewPlatformBantQualification,
+  PlatformSalesTerritory,
+  NewPlatformSalesTerritory,
+  PlatformLeadAssignmentRule,
+  NewPlatformLeadAssignmentRule,
+  PlatformRepCapacity,
+  NewPlatformRepCapacity,
+  PlatformLeadAssignmentHistory,
+  NewPlatformLeadAssignmentHistory,
+  PlatformHealthScore,
+  NewPlatformHealthScore,
+  PlatformChurnPrediction,
+  NewPlatformChurnPrediction,
+  PlatformSuccessIntervention,
+  NewPlatformSuccessIntervention,
+  PlatformRenewalOpportunity,
+  NewPlatformRenewalOpportunity,
+  PlatformSalesGoal,
+  NewPlatformSalesGoal,
+  PlatformActivityReport,
+  NewPlatformActivityReport,
+  PlatformCohortAnalysis,
+  NewPlatformCohortAnalysis,
+} from './platform-crm-schema';
