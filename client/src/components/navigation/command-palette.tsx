@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useLocation } from "wouter";
-import { navigate } from "wouter/use-browser-location";
 import {
   CommandDialog,
   CommandEmpty,
@@ -199,6 +198,7 @@ const PAGE_NAVIGATION: SearchResult[] = [
 ];
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Fetch search results from API when query changes
