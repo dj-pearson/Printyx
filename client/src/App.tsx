@@ -51,6 +51,7 @@ const AutopilotDashboard = React.lazy(() => import("@/pages/AutopilotDashboard")
 const ConnectDashboard = React.lazy(() => import("@/pages/ConnectDashboard"));
 const CompareEAutomate = React.lazy(() => import("@/pages/CompareEAutomate"));
 const AutoLeadRoutingDashboard = React.lazy(() => import("@/pages/AutoLeadRoutingDashboard"));
+const PredictiveServiceDispatchDashboard = React.lazy(() => import("@/pages/PredictiveServiceDispatchDashboard"));
 
 // Feature implementations - AI/ML powered features
 const PredictiveContractProfitability = React.lazy(() => import("@/pages/PredictiveContractProfitability"));
@@ -414,6 +415,7 @@ function Router() {
           {/* Competitive Differentiation Routes */}
           <Route path="/autopilot" component={AutopilotDashboard} />
           <Route path="/auto-lead-routing" component={AutoLeadRoutingDashboard} />
+          <Route path="/predictive-service-dispatch" component={PredictiveServiceDispatchDashboard} />
           <Route path="/connect" component={ConnectDashboard} />
           <Route path="/compare-eautomate" component={CompareEAutomate} />
 
