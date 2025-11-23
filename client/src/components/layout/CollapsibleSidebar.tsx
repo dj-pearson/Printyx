@@ -90,10 +90,12 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     title: 'Autopilot',
     icon: Zap,
     path: '/autopilot',
-    matchPatterns: ['/autopilot*', '/workflow-automation*'],
+    matchPatterns: ['/autopilot*', '/workflow-automation*', '/auto-lead-routing*', '/predictive-service-dispatch*'],
     badge: 'AI',
     children: [
       { title: 'Autopilot Dashboard', path: '/autopilot', icon: Zap },
+      { title: 'Auto Lead Routing', path: '/auto-lead-routing', icon: Activity },
+      { title: 'Predictive Dispatch', path: '/predictive-service-dispatch', icon: Wrench },
       { title: 'Workflow Automation', path: '/workflow-automation', icon: Wand2 },
       { title: 'Compare E-Automate', path: '/compare-eautomate', icon: BarChart3 }
     ]
