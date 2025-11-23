@@ -154,6 +154,10 @@ const PlatformBusinessRecords = React.lazy(() => import("@/pages/PlatformBusines
 const PlatformBusinessRecordDetail = React.lazy(() => import("@/pages/PlatformBusinessRecordDetail"));
 const PlatformDealsPipeline = React.lazy(() => import("@/pages/PlatformDealsPipeline"));
 const PlatformDealDetail = React.lazy(() => import("@/pages/PlatformDealDetail"));
+const PlatformTerritories = React.lazy(() => import("@/pages/PlatformTerritories"));
+const PlatformLeadScoring = React.lazy(() => import("@/pages/PlatformLeadScoring"));
+const PlatformAssignmentRules = React.lazy(() => import("@/pages/PlatformAssignmentRules"));
+const PlatformCustomerSuccess = React.lazy(() => import("@/pages/PlatformCustomerSuccess"));
 const DatabaseManagement = React.lazy(() => import("@/pages/DatabaseManagement"));
 const SalesPipelineForecasting = React.lazy(() => import("@/pages/SalesPipelineForecasting"));
 const SalesPipelineWorkflow = React.lazy(() => import("@/pages/SalesPipelineWorkflow"));
@@ -599,6 +603,10 @@ function Router() {
           <Route path="/platform-crm/business-records" component={PlatformBusinessRecords} />
           <Route path="/platform-crm/deals/:id" component={PlatformDealDetail} />
           <Route path="/platform-crm/pipeline" component={PlatformDealsPipeline} />
+          <Route path="/platform-crm/territories" component={PlatformTerritories} />
+          <Route path="/platform-crm/lead-scoring" component={PlatformLeadScoring} />
+          <Route path="/platform-crm/assignment-rules" component={PlatformAssignmentRules} />
+          <Route path="/platform-crm/customer-success" component={PlatformCustomerSuccess} />
 
           {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
           <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
