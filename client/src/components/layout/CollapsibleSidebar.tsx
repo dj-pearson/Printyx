@@ -55,7 +55,9 @@ import {
   MessageSquare,
   Search,
   Mic,
-  Video
+  Video,
+  Heart,
+  Sparkles
 } from "lucide-react";
 import useCollapsibleNavigation, { NavigationSection } from "@/hooks/useCollapsibleNavigation";
 
@@ -81,6 +83,44 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     icon: LayoutDashboard,
     path: '/',
     matchPatterns: ['/dashboard*']
+  });
+
+  // Competitive Differentiation - Always visible
+  sections.push({
+    id: 'autopilot',
+    title: 'Autopilot',
+    icon: Zap,
+    path: '/autopilot',
+    matchPatterns: ['/autopilot*', '/workflow-automation*', '/auto-lead-routing*', '/predictive-service-dispatch*', '/auto-supply-replenishment*', '/contract-renewal-autopilot*', '/scheduled-reports*', '/meeting-to-proposal*'],
+    badge: 'AI',
+    children: [
+      { title: 'Autopilot Dashboard', path: '/autopilot', icon: Zap },
+      { title: 'Auto Lead Routing', path: '/auto-lead-routing', icon: Activity },
+      { title: 'Predictive Dispatch', path: '/predictive-service-dispatch', icon: Wrench },
+      { title: 'Auto-Supply Replenishment', path: '/auto-supply-replenishment', icon: Package },
+      { title: 'Contract Renewal Autopilot', path: '/contract-renewal-autopilot', icon: FileText },
+      { title: 'Scheduled Reports', path: '/scheduled-reports', icon: Calendar },
+      { title: 'Meeting → Proposal AI', path: '/meeting-to-proposal', icon: Sparkles },
+      { title: 'Workflow Automation', path: '/workflow-automation', icon: Wand2 },
+      { title: 'Compare E-Automate', path: '/compare-eautomate', icon: BarChart3 }
+    ]
+  });
+
+  sections.push({
+    id: 'connect',
+    title: 'Connect',
+    icon: Heart,
+    path: '/connect',
+    matchPatterns: ['/connect*', '/integration-marketplace*', '/customer-success*', '/customer-portal*', '/customer-self-service-portal*', '/white-label*'],
+    badge: 'New',
+    children: [
+      { title: 'Connect Dashboard', path: '/connect', icon: Heart },
+      { title: 'Integration Marketplace', path: '/integration-marketplace', icon: Package },
+      { title: 'Customer Success', path: '/customer-success-management', icon: Users },
+      { title: 'Customer Portal', path: '/customer-self-service-portal', icon: Globe },
+      { title: 'White-Label Portal', path: '/white-label', icon: Settings },
+      { title: 'Compare E-Automate', path: '/compare-eautomate', icon: BarChart3 }
+    ]
   });
 
   // Sales & CRM Hub - Role-aware
