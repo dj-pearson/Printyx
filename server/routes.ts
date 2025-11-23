@@ -13,6 +13,7 @@ import { authRoutes } from './auth-routes';
 import { trialRoutes } from './routes-trial';
 import emailParserRoutes from './routes-email-parser';
 import mobileTechnicianRoutes from './routes-mobile-technician';
+import equipmentQRRoutes from './routes-equipment-qr';
 import {
   insertCustomerSchema,
   insertCompanySchema,
@@ -14994,6 +14995,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register mobile technician routes
   app.use('/api/mobile', mobileTechnicianRoutes);
+
+  // Register equipment QR code routes
+  app.use('/api/equipment', equipmentQRRoutes);
 
   // Register Platform CRM routes (root admin tenant management and lifecycle)
   const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records')).default;
