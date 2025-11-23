@@ -103,6 +103,7 @@ import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-int
 import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
 import { registerAutoLeadRoutingRoutes } from './routes-auto-lead-routing';
 import { registerPredictiveServiceDispatchRoutes } from './routes-predictive-service-dispatch';
+import { registerWhiteLabelRoutes } from './routes-white-label';
 import { registerSalesHandoffRoutes } from './routes-sales-handoff';
 import { registerRenewalManagementRoutes } from './routes-renewal-management';
 import { registerClientMonitoringRoutes } from './routes-client-monitoring';
@@ -15305,6 +15306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerLeadAssignmentRoutes(app);
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
+  registerWhiteLabelRoutes(app);
   registerSalesHandoffRoutes(app);
   registerRenewalManagementRoutes(app);
 

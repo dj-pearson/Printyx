@@ -106,12 +106,13 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     title: 'Connect',
     icon: Heart,
     path: '/connect',
-    matchPatterns: ['/connect*', '/customer-success*', '/customer-portal*', '/customer-self-service-portal*'],
+    matchPatterns: ['/connect*', '/customer-success*', '/customer-portal*', '/customer-self-service-portal*', '/white-label*'],
     badge: 'New',
     children: [
       { title: 'Connect Dashboard', path: '/connect', icon: Heart },
       { title: 'Customer Success', path: '/customer-success-management', icon: Users },
       { title: 'Customer Portal', path: '/customer-self-service-portal', icon: Globe },
+      { title: 'White-Label Portal', path: '/white-label', icon: Settings },
       { title: 'Compare E-Automate', path: '/compare-eautomate', icon: BarChart3 }
     ]
   });
