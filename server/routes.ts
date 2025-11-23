@@ -101,6 +101,7 @@ import { registerModularDashboardRoutes } from './routes-modular-dashboard';
 import { registerTodayDashboardRoutes } from './routes-today-dashboard';
 import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
 import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
+import { registerAutoLeadRoutingRoutes } from './routes-auto-lead-routing';
 import { registerSalesHandoffRoutes } from './routes-sales-handoff';
 import { registerRenewalManagementRoutes } from './routes-renewal-management';
 import { registerClientMonitoringRoutes } from './routes-client-monitoring';
@@ -15301,6 +15302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerTodayDashboardRoutes(app);
   registerManufacturerIntegrationRoutes(app);
   registerLeadAssignmentRoutes(app);
+  registerAutoLeadRoutingRoutes(app);
   registerSalesHandoffRoutes(app);
   registerRenewalManagementRoutes(app);
 
