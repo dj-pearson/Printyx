@@ -1,4 +1,4 @@
-import { db } from "@db";
+import { db } from '../db';
 import { eq, and, lt, gte, desc, sql, between } from "drizzle-orm";
 import {
   contractRenewalTracking,
