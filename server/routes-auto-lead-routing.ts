@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { autoLeadRoutingService } from './services/auto-lead-routing-service';
-import { leadAssignmentHistory, leadScoreCalculations, repCapacity, businessRecords } from '@shared/schema';
+import { platformLeadAssignmentHistory as leadAssignmentHistory, platformLeadScoreCalculations as leadScoreCalculations, platformRepCapacity as repCapacity, businessRecords } from '@shared/schema';
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 
 export function registerAutoLeadRoutingRoutes(app: Express) {
