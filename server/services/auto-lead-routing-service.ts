@@ -3,7 +3,7 @@ import {
   businessRecords,
   leadScoringRules,
   leadScoreCalculations,
-  bantQualificationCriteria,
+  platformBantQualification as bantQualificationCriteria,
   leadAssignmentRules,
   repCapacity,
   salesTerritories,
