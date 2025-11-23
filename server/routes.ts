@@ -14987,6 +14987,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { default: updaterRoutes } = await import('./database-updater/api/updater-routes');
   app.use('/api/database-updater', updaterRoutes);
 
+  // Register Platform CRM routes (root admin tenant management and lifecycle)
+  const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records')).default;
+  const platformDealsRoutes = (await import('./routes-platform-deals')).default;
+  const platformActivitiesRoutes = (await import('./routes-platform-activities')).default;
+  const platformCustomerSuccessRoutes = (await import('./routes-platform-customer-success')).default;
+  const platformAnalyticsRoutes = (await import('./routes-platform-analytics')).default;
+
+  app.use('/api/platform-crm', platformBusinessRecordsRoutes);
+  app.use('/api/platform-deals', platformDealsRoutes);
+  app.use('/api/platform-activities', platformActivitiesRoutes);
+  app.use('/api/platform-cs', platformCustomerSuccessRoutes);
+  app.use('/api/platform-analytics', platformAnalyticsRoutes);
+
   // Company search endpoint for phone tickets (placed before other company routes)
   app.get('/api/phone-tickets/search-companies', async (req, res) => {
     try {
