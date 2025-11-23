@@ -8269,3 +8269,27 @@ export type {
   InsertDocumentWorkflowAction,
   DocumentNotification,
 } from './document-automation-schema';
+
+// Re-export White Label schemas
+export {
+  whiteLabelConfig,
+  whiteLabelEmailTemplates,
+  whiteLabelPresets,
+  EMAIL_TEMPLATE_TYPES,
+  insertWhiteLabelConfigSchema,
+  updateWhiteLabelConfigSchema,
+  insertWhiteLabelEmailTemplateSchema,
+  updateWhiteLabelEmailTemplateSchema,
+  insertWhiteLabelPresetSchema,
+} from './white-label-schema';
+
+export type {
+  WhiteLabelConfig,
+  InsertWhiteLabelConfig,
+  UpdateWhiteLabelConfig,
+  WhiteLabelEmailTemplate,
+  InsertWhiteLabelEmailTemplate,
+  UpdateWhiteLabelEmailTemplate,
+  WhiteLabelPreset,
+  InsertWhiteLabelPreset,
+} from './white-label-schema';
