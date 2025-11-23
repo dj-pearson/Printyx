@@ -1,5 +1,5 @@
 import { Router, type Request, Response, NextFunction } from "express";
-import { db } from "@db";
+import { db } from './db';
 import { eq, and, desc } from "drizzle-orm";
 import { contractRenewalTracking, renewalProposals } from "@shared/schema";
 import * as renewalService from "./services/contract-renewal-service";
