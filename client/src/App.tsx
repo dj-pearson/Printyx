@@ -147,6 +147,11 @@ const RootAdminSignupsCRM = React.lazy(() => import("@/pages/RootAdminSignupsCRM
 const RootAdminSEO = React.lazy(() => import("@/pages/RootAdminSEO"));
 const SEODashboard = React.lazy(() => import("@/pages/SEODashboard"));
 const PlatformConfiguration = React.lazy(() => import("@/pages/PlatformConfiguration"));
+
+// Platform CRM - Full tenant lifecycle management for root admins
+const PlatformCRMDashboard = React.lazy(() => import("@/pages/PlatformCRMDashboard"));
+const PlatformBusinessRecords = React.lazy(() => import("@/pages/PlatformBusinessRecords"));
+const PlatformDealsPipeline = React.lazy(() => import("@/pages/PlatformDealsPipeline"));
 const DatabaseManagement = React.lazy(() => import("@/pages/DatabaseManagement"));
 const SalesPipelineForecasting = React.lazy(() => import("@/pages/SalesPipelineForecasting"));
 const SalesPipelineWorkflow = React.lazy(() => import("@/pages/SalesPipelineWorkflow"));
@@ -584,6 +589,12 @@ function Router() {
           <Route path="/root-admin-signups-crm" component={RootAdminSignupsCRM} />
           <Route path="/root-admin/seo" component={RootAdminSEO} />
           <Route path="/seo" component={SEODashboard} />
+
+          {/* Platform CRM Routes - Full tenant lifecycle management */}
+          <Route path="/platform-crm" component={PlatformCRMDashboard} />
+          <Route path="/platform-crm/dashboard" component={PlatformCRMDashboard} />
+          <Route path="/platform-crm/business-records" component={PlatformBusinessRecords} />
+          <Route path="/platform-crm/pipeline" component={PlatformDealsPipeline} />
 
           {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
           <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
