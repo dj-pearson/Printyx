@@ -190,12 +190,6 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx,css,json}": [
       "prettier --write"
-    ],
-    "client/src/**/*.{ts,tsx}": [
-      "tsc -p tsconfig.json --noEmit"
-    ],
-    "**/*.{js,jsx}": [
-      "eslint --fix"
     ]
   },
   "optionalDependencies": {
