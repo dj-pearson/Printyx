@@ -1,12 +1,6 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { predictiveServiceDispatchService } from './services/predictive-service-dispatch-service';
-import {
-  equipmentMetrics,
-  serviceCallsEnhanced,
-  technicianResourcesEnhanced,
-  equipment
-} from '@shared/schema';
 import { eq, and, desc, sql, gte, lte, isNull } from 'drizzle-orm';
 
 export function registerPredictiveServiceDispatchRoutes(app: Express) {
