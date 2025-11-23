@@ -90,10 +90,10 @@ export default function CompareEAutomate() {
           description: 'Email, SMS, tasks, approvals, conditional logic, and more'
         },
         {
-          name: 'AI Document Generation',
+          name: 'AI Meeting Notes → Proposal Pipeline',
           printyx: true,
           eautomate: false,
-          description: 'Auto-generate proposals, quotes, and reports from meeting notes'
+          description: 'Upload meeting notes, AI extracts requirements and generates full proposals with pricing'
         },
         {
           name: 'Smart Churn Prediction',
@@ -226,6 +226,12 @@ export default function CompareEAutomate() {
           printyx: true,
           eautomate: false,
           description: 'Ask questions in plain English, get instant answers'
+        },
+        {
+          name: 'Scheduled Reports with Email Delivery',
+          printyx: true,
+          eautomate: false,
+          description: 'Auto-generate and email reports on daily/weekly/monthly schedules'
         }
       ]
     },
@@ -294,6 +300,12 @@ export default function CompareEAutomate() {
           description: 'RESTful APIs for all features, easy integrations'
         },
         {
+          name: 'Integration Marketplace (16+ Integrations)',
+          printyx: true,
+          eautomate: false,
+          description: 'Pre-built integrations with QuickBooks, Salesforce, Stripe, DocuSign, and more'
+        },
+        {
           name: 'Multi-Tenant SaaS',
           printyx: true,
           eautomate: true,
@@ -336,7 +348,7 @@ export default function CompareEAutomate() {
           </p>
           <div className="flex justify-center gap-8 mb-8">
             <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">70+</div>
+              <div className="text-4xl font-bold text-primary mb-2">75+</div>
               <p className="text-sm text-muted-foreground">Unique features</p>
             </div>
             <div className="text-center">
