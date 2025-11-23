@@ -1,5 +1,5 @@
 import { Router, type Request, Response, NextFunction } from "express";
-import { db } from "@db";
+import { db } from './db';
 import { eq, and, desc } from "drizzle-orm";
 import { supplyMonitoring, autoSupplyOrders } from "@shared/schema";
 import * as supplyService from "./services/auto-supply-replenishment-service";
