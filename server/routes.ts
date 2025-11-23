@@ -11,6 +11,7 @@ import connectPg from 'connect-pg-simple';
 import { storage } from './storage';
 import { authRoutes } from './auth-routes';
 import { trialRoutes } from './routes-trial';
+import emailParserRoutes from './routes-email-parser';
 import {
   insertCustomerSchema,
   insertCompanySchema,
@@ -14986,6 +14987,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register database updater routes
   const { default: updaterRoutes } = await import('./database-updater/api/updater-routes');
   app.use('/api/database-updater', updaterRoutes);
+
+  // Register email parser routes
+  app.use('/api/email-parser', emailParserRoutes);
 
   // Register Platform CRM routes (root admin tenant management and lifecycle)
   const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records')).default;
