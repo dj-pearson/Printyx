@@ -52,6 +52,8 @@ const AutopilotDashboard = React.lazy(() => import("@/pages/AutopilotDashboard")
 const ConnectDashboard = React.lazy(() => import("@/pages/ConnectDashboard"));
 const CompareEAutomate = React.lazy(() => import("@/pages/CompareEAutomate"));
 const IntegrationMarketplaceDashboard = React.lazy(() => import("@/pages/IntegrationMarketplaceDashboard"));
+const ScheduledReportsDashboard = React.lazy(() => import("@/pages/ScheduledReportsDashboard"));
+const MeetingToProposalDashboard = React.lazy(() => import("@/pages/MeetingToProposalDashboard"));
 const AutoLeadRoutingDashboard = React.lazy(() => import("@/pages/AutoLeadRoutingDashboard"));
 const PredictiveServiceDispatchDashboard = React.lazy(() => import("@/pages/PredictiveServiceDispatchDashboard"));
 const WhiteLabelDashboard = React.lazy(() => import("@/pages/WhiteLabelDashboard"));
@@ -426,6 +428,8 @@ function Router() {
           <Route path="/contract-renewal-autopilot" component={ContractRenewalDashboard} />
           <Route path="/compare-eautomate" component={CompareEAutomate} />
           <Route path="/integration-marketplace" component={IntegrationMarketplaceDashboard} />
+          <Route path="/scheduled-reports" component={ScheduledReportsDashboard} />
+          <Route path="/meeting-to-proposal" component={MeetingToProposalDashboard} />
 
           <Route
             path="/mobile-field-operations"
