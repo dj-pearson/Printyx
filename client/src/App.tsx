@@ -46,6 +46,11 @@ const ROICalculator = React.lazy(() => import("@/pages/marketing/ROICalculator")
 const CaseStudies = React.lazy(() => import("@/pages/marketing/CaseStudies"));
 const CompetitiveBattleCard = React.lazy(() => import("@/pages/marketing/CompetitiveBattleCard"));
 
+// Competitive Differentiation Pages
+const AutopilotDashboard = React.lazy(() => import("@/pages/AutopilotDashboard"));
+const ConnectDashboard = React.lazy(() => import("@/pages/ConnectDashboard"));
+const CompareEAutomate = React.lazy(() => import("@/pages/CompareEAutomate"));
+
 // Feature implementations - AI/ML powered features
 const PredictiveContractProfitability = React.lazy(() => import("@/pages/PredictiveContractProfitability"));
 const AIServiceIntelligence = React.lazy(() => import("@/pages/AIServiceIntelligence"));
@@ -404,6 +409,12 @@ function Router() {
           {/* Removed duplicate route - use /mobile-service-app as primary */}
           <Route path="/service-analytics" component={ServiceAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
+
+          {/* Competitive Differentiation Routes */}
+          <Route path="/autopilot" component={AutopilotDashboard} />
+          <Route path="/connect" component={ConnectDashboard} />
+          <Route path="/compare-eautomate" component={CompareEAutomate} />
+
           <Route
             path="/mobile-field-operations"
             component={MobileFieldOperations}
