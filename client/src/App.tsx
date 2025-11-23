@@ -53,6 +53,7 @@ const CompareEAutomate = React.lazy(() => import("@/pages/CompareEAutomate"));
 const AutoLeadRoutingDashboard = React.lazy(() => import("@/pages/AutoLeadRoutingDashboard"));
 const PredictiveServiceDispatchDashboard = React.lazy(() => import("@/pages/PredictiveServiceDispatchDashboard"));
 const WhiteLabelDashboard = React.lazy(() => import("@/pages/WhiteLabelDashboard"));
+const AutoSupplyReplenishmentDashboard = React.lazy(() => import("@/pages/AutoSupplyReplenishmentDashboard"));
 
 // Feature implementations - AI/ML powered features
 const PredictiveContractProfitability = React.lazy(() => import("@/pages/PredictiveContractProfitability"));
@@ -419,6 +420,8 @@ function Router() {
           <Route path="/predictive-service-dispatch" component={PredictiveServiceDispatchDashboard} />
           <Route path="/connect" component={ConnectDashboard} />
           <Route path="/white-label" component={WhiteLabelDashboard} />
+          <Route path="/auto-supply-replenishment" component={AutoSupplyReplenishmentDashboard} />
+          <Route path="/contract-renewal-autopilot" component={ContractRenewalDashboard} />
           <Route path="/compare-eautomate" component={CompareEAutomate} />
 
           <Route
