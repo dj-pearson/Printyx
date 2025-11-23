@@ -2,7 +2,6 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
-import { equipment, businessRecords } from '../shared/schema';
 
 const router = express.Router();
 
