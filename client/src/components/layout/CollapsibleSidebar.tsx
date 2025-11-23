@@ -55,7 +55,8 @@ import {
   MessageSquare,
   Search,
   Mic,
-  Video
+  Video,
+  Heart
 } from "lucide-react";
 import useCollapsibleNavigation, { NavigationSection } from "@/hooks/useCollapsibleNavigation";
 
@@ -81,6 +82,36 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     icon: LayoutDashboard,
     path: '/',
     matchPatterns: ['/dashboard*']
+  });
+
+  // Competitive Differentiation - Always visible
+  sections.push({
+    id: 'autopilot',
+    title: 'Autopilot',
+    icon: Zap,
+    path: '/autopilot',
+    matchPatterns: ['/autopilot*', '/workflow-automation*'],
+    badge: 'AI',
+    children: [
+      { title: 'Autopilot Dashboard', path: '/autopilot', icon: Zap },
+      { title: 'Workflow Automation', path: '/workflow-automation', icon: Wand2 },
+      { title: 'Compare E-Automate', path: '/compare-eautomate', icon: BarChart3 }
+    ]
+  });
+
+  sections.push({
+    id: 'connect',
+    title: 'Connect',
+    icon: Heart,
+    path: '/connect',
+    matchPatterns: ['/connect*', '/customer-success*', '/customer-portal*', '/customer-self-service-portal*'],
+    badge: 'New',
+    children: [
+      { title: 'Connect Dashboard', path: '/connect', icon: Heart },
+      { title: 'Customer Success', path: '/customer-success-management', icon: Users },
+      { title: 'Customer Portal', path: '/customer-self-service-portal', icon: Globe },
+      { title: 'Compare E-Automate', path: '/compare-eautomate', icon: BarChart3 }
+    ]
   });
 
   // Sales & CRM Hub - Role-aware
