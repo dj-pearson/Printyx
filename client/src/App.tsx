@@ -10,6 +10,7 @@ import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { CommandPalette } from "@/components/navigation/command-palette";
 import { useCommandPalette } from "@/hooks/useCommandPalette";
+import { PWAProvider } from "@/components/pwa/PWAProvider";
 
 console.log("📦 App.tsx: Module loaded");
 // Critical auth pages - keep eager for fast initial load
@@ -676,12 +677,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <ErrorBoundary>
-          <React.Suspense fallback={<div className="p-6">Loading…</div>}>
-            <Router />
-          </React.Suspense>
-        </ErrorBoundary>
+        <PWAProvider>
+          <Toaster />
+          <ErrorBoundary>
+            <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+              <Router />
+            </React.Suspense>
+          </ErrorBoundary>
+        </PWAProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
