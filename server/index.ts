@@ -227,5 +227,14 @@ app.use((req, res, next) => {
     } catch (error) {
       log('Warning: Failed to initialize cron jobs:', error);
     }
+
+    // Initialize email monitors for all enabled tenants
+    try {
+      const { startAllEmailMonitors } = await import('./services/email-monitor-service');
+      await startAllEmailMonitors();
+      log('Email monitors initialized successfully');
+    } catch (error) {
+      log('Warning: Failed to initialize email monitors:', error);
+    }
   });
 })();

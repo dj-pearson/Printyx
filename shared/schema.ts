@@ -90,6 +90,25 @@ export type {
   InsertPartsOrderItem,
 } from './service-analysis-schema';
 
+// Re-export email parser schemas
+export {
+  processedEmails,
+  parsingCorrections,
+  emailMonitorConfig,
+  emailAutoResponses,
+} from './email-parser-schema';
+
+export type {
+  ProcessedEmail,
+  NewProcessedEmail,
+  ParsingCorrection,
+  NewParsingCorrection,
+  EmailMonitorConfig,
+  NewEmailMonitorConfig,
+  EmailAutoResponse,
+  NewEmailAutoResponse,
+} from './email-parser-schema';
+
 // Re-export mobile service schemas
 export {
   mobileServiceSessions,
