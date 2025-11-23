@@ -8270,6 +8270,60 @@ export type {
   DocumentNotification,
 } from './document-automation-schema';
 
+// Re-export White Label schemas
+export {
+  whiteLabelConfig,
+  whiteLabelEmailTemplates,
+  whiteLabelPresets,
+  EMAIL_TEMPLATE_TYPES,
+  insertWhiteLabelConfigSchema,
+  updateWhiteLabelConfigSchema,
+  insertWhiteLabelEmailTemplateSchema,
+  updateWhiteLabelEmailTemplateSchema,
+  insertWhiteLabelPresetSchema,
+} from './white-label-schema';
+
+export type {
+  WhiteLabelConfig,
+  InsertWhiteLabelConfig,
+  UpdateWhiteLabelConfig,
+  WhiteLabelEmailTemplate,
+  InsertWhiteLabelEmailTemplate,
+  UpdateWhiteLabelEmailTemplate,
+  WhiteLabelPreset,
+  InsertWhiteLabelPreset,
+} from './white-label-schema';
+
+// Re-export Auto-Supply Replenishment schemas
+export {
+  supplyMonitoring,
+  autoSupplyOrders,
+  supplyUsageHistory,
+  supplyReplenishmentRules,
+  supplyReplenishmentAnalytics,
+  supplyReplenishmentStatusEnum,
+  supplyTypeEnum,
+  orderPriorityEnum,
+  supplyMonitoringRelations,
+  autoSupplyOrdersRelations,
+  supplyUsageHistoryRelations,
+} from './auto-supply-replenishment-schema';
+
+// Re-export Contract Renewal Autopilot schemas
+export {
+  contractRenewalTracking,
+  renewalProposals,
+  renewalAutomationRules,
+  renewalAnalytics,
+  renewalCommunicationLog,
+  contractStatusEnum,
+  renewalRiskEnum,
+  contractTypeEnum,
+  renewalActionEnum,
+  contractRenewalTrackingRelations,
+  renewalProposalsRelations,
+  renewalCommunicationLogRelations,
+} from './contract-renewal-schema';
 // ============================================================================
 // PLATFORM CRM SCHEMAS
 // ============================================================================

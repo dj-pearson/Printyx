@@ -1,3 +1,18 @@
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
+import { useLocation } from "wouter";
+import { useSeo } from "@/lib/useSeo";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
+import { useAuth } from "@/hooks/useAuth";
+import { CommandPalette } from "@/components/navigation/command-palette";
+import { useCommandPalette } from "@/hooks/useCommandPalette";
+import { PWAProvider } from "@/components/pwa/PWAProvider";
+
+console.log("📦 App.tsx: Module loaded");
 import { Switch, Route } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -55,6 +70,18 @@ const DynamicPricingAIBlog = React.lazy(
 const ROICalculator = React.lazy(() => import('@/pages/marketing/ROICalculator'));
 const CaseStudies = React.lazy(() => import('@/pages/marketing/CaseStudies'));
 const CompetitiveBattleCard = React.lazy(() => import('@/pages/marketing/CompetitiveBattleCard'));
+
+// Competitive Differentiation Pages
+const AutopilotDashboard = React.lazy(() => import("@/pages/AutopilotDashboard"));
+const ConnectDashboard = React.lazy(() => import("@/pages/ConnectDashboard"));
+const CompareEAutomate = React.lazy(() => import("@/pages/CompareEAutomate"));
+const IntegrationMarketplaceDashboard = React.lazy(() => import("@/pages/IntegrationMarketplaceDashboard"));
+const ScheduledReportsDashboard = React.lazy(() => import("@/pages/ScheduledReportsDashboard"));
+const MeetingToProposalDashboard = React.lazy(() => import("@/pages/MeetingToProposalDashboard"));
+const AutoLeadRoutingDashboard = React.lazy(() => import("@/pages/AutoLeadRoutingDashboard"));
+const PredictiveServiceDispatchDashboard = React.lazy(() => import("@/pages/PredictiveServiceDispatchDashboard"));
+const WhiteLabelDashboard = React.lazy(() => import("@/pages/WhiteLabelDashboard"));
+const AutoSupplyReplenishmentDashboard = React.lazy(() => import("@/pages/AutoSupplyReplenishmentDashboard"));
 
 // Feature implementations - AI/ML powered features
 const PredictiveContractProfitability = React.lazy(
@@ -427,6 +454,24 @@ function Router() {
           {/* Removed duplicate route - use /mobile-service-app as primary */}
           <Route path="/service-analytics" component={ServiceAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
+
+          {/* Competitive Differentiation Routes */}
+          <Route path="/autopilot" component={AutopilotDashboard} />
+          <Route path="/auto-lead-routing" component={AutoLeadRoutingDashboard} />
+          <Route path="/predictive-service-dispatch" component={PredictiveServiceDispatchDashboard} />
+          <Route path="/connect" component={ConnectDashboard} />
+          <Route path="/white-label" component={WhiteLabelDashboard} />
+          <Route path="/auto-supply-replenishment" component={AutoSupplyReplenishmentDashboard} />
+          <Route path="/contract-renewal-autopilot" component={ContractRenewalDashboard} />
+          <Route path="/compare-eautomate" component={CompareEAutomate} />
+          <Route path="/integration-marketplace" component={IntegrationMarketplaceDashboard} />
+          <Route path="/scheduled-reports" component={ScheduledReportsDashboard} />
+          <Route path="/meeting-to-proposal" component={MeetingToProposalDashboard} />
+
+          <Route
+            path="/mobile-field-operations"
+            component={MobileFieldOperations}
+          />
           <Route path="/mobile-field-operations" component={MobileFieldOperations} />
           <Route path="/leads/:slug" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
@@ -618,12 +663,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <ErrorBoundary>
-          <React.Suspense fallback={<div className="p-6">Loading…</div>}>
-            <Router />
-          </React.Suspense>
-        </ErrorBoundary>
+        <PWAProvider>
+          <Toaster />
+          <ErrorBoundary>
+            <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+              <Router />
+            </React.Suspense>
+          </ErrorBoundary>
+        </PWAProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
