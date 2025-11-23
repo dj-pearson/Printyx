@@ -1,386 +1,305 @@
-import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useState, useRef, useEffect } from 'react';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+  useMotionTemplate,
+} from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   ArrowRight,
-  CheckCircle,
-  TrendingUp,
-  FileText,
-  Users,
-  Calendar,
+  CheckCircle2,
   BarChart3,
-  Shield,
-  Printer,
-  Settings,
+  ShieldCheck,
+  Zap,
   Activity,
-  Zap
-} from "lucide-react";
+  Server,
+  Users,
+  TrendingUp,
+  AlertCircle,
+} from 'lucide-react';
 
 const Interactive3DHero = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [scrollY, setScrollY] = useState(0);
-  const heroRef = useRef<HTMLElement>(null);
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start start', 'end start'],
+  });
+
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const handleMouseMove = ({ clientX, clientY }: { clientX: number; clientY: number }) => {
+    const { innerWidth, innerHeight } = window;
+    const x = clientX / innerWidth - 0.5;
+    const y = clientY / innerHeight - 0.5;
+    mouseX.set(x);
+    mouseY.set(y);
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      if (heroRef.current) {
-        const rect = heroRef.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        
-        setMousePosition({
-          x: (e.clientX - centerX) / rect.width,
-          y: (e.clientY - centerY) / rect.height,
-        });
-      }
-    };
-
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('scroll', handleScroll);
-    
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // 3D Office Equipment Data
-  const officeEquipment = [
-    { id: 1, name: "Canon MF645Cx", status: "active", efficiency: 94, x: 20, y: 30, z: 0 },
-    { id: 2, name: "HP M855dn", status: "maintenance", efficiency: 78, x: 70, y: 45, z: -20 },
-    { id: 3, name: "Xerox VersaLink", status: "active", efficiency: 89, x: 45, y: 65, z: 10 },
-    { id: 4, name: "Ricoh IM C3000", status: "active", efficiency: 92, x: 85, y: 25, z: -10 },
-  ];
+  const springConfig = { damping: 25, stiffness: 150 };
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [15, -15]), springConfig);
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-15, 15]), springConfig);
 
-  const floatingMetrics = [
-    { icon: TrendingUp, label: "95% Billing Accuracy", value: "↑ 15%", color: "blue", delay: 0 },
-  ];
+  const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
   return (
-    <section 
-      ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-white pt-20 md:pt-0"
-      data-testid="section-hero"
+    <section
+      ref={ref}
+      className="relative min-h-[110vh] flex items-center justify-center overflow-hidden bg-slate-950 pt-20 md:pt-0"
+      style={{ perspective: '1200px' }}
     >
-      {/* Animated 3D Background Grid */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-        <div 
-          className="absolute inset-0 bg-grid-pattern"
-          style={{
-            transform: `perspective(1000px) rotateX(60deg) translateZ(-100px) translate(${mousePosition.x * 30}px, ${mousePosition.y * 20}px) translateY(${scrollY * 0.1}px)`,
-            backgroundImage: `
-              linear-gradient(to right, #2563eb 1px, transparent 1px),
-              linear-gradient(to bottom, #2563eb 1px, transparent 1px)
-            `,
-            backgroundSize: '40px 40px',
-            animation: 'gridFloat 20s ease-in-out infinite',
-          }}
-        />
-      </div>
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-slate-950 to-slate-950" />
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
 
-      {/* Floating 3D Office Environment */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* 3D Room Container */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            transform: `perspective(1500px) rotateX(${5 + mousePosition.y * 8}deg) rotateY(${mousePosition.x * 12}deg) translateY(${scrollY * 0.05}px)`,
-          }}
-        >
-          {/* Office Floor */}
-          <div 
-            className="absolute bottom-0 left-1/2 w-[800px] h-[600px] -translate-x-1/2"
-            style={{
-              background: `linear-gradient(135deg, 
-                rgba(37, 99, 235, 0.05) 0%, 
-                rgba(59, 130, 246, 0.08) 50%, 
-                rgba(37, 99, 235, 0.05) 100%)`,
-              transform: 'rotateX(90deg) translateZ(-300px)',
-              borderRadius: '20px',
-            }}
-          />
+      {/* Animated Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
 
-          {/* Copier Equipment with Real-time Data */}
-          {officeEquipment.map((equipment, index) => (
-            <div
-              key={equipment.id}
-              className={`absolute transition-all duration-1000 delay-${index * 200}`}
-              style={{
-                left: `${equipment.x}%`,
-                top: `${equipment.y}%`,
-                transform: `
-                  translateZ(${equipment.z}px) 
-                  translateX(${mousePosition.x * 20}px) 
-                  translateY(${mousePosition.y * 15}px)
-                  ${isVisible ? 'scale(1) opacity-1' : 'scale(0.8) opacity-0'}
-                `,
-              }}
+      {/* Floating Orbs */}
+      <motion.div
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.3, 0.5, 0.3],
+          x: [0, 100, 0],
+          y: [0, -50, 0],
+        }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute top-1/4 -left-20 w-96 h-96 bg-blue-600/30 rounded-full blur-[128px]"
+      />
+      <motion.div
+        animate={{
+          scale: [1, 1.1, 1],
+          opacity: [0.2, 0.4, 0.2],
+          x: [0, -50, 0],
+          y: [0, 100, 0],
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+        className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[128px]"
+      />
+
+      <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          {/* Text Content */}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            style={{ y, opacity }}
+            className="relative z-20"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
             >
-              {/* 3D Copier Unit */}
-              <div className="group relative cursor-pointer">
-                <div 
-                  className={`
-                    relative w-16 h-20 bg-gradient-to-b from-gray-200 to-gray-300 
-                    rounded-lg shadow-xl transform transition-all duration-300 
-                    hover:scale-110 hover:shadow-2xl
-                    ${equipment.status === 'maintenance' ? 'animate-pulse' : ''}
-                  `}
-                  style={{
-                    boxShadow: `
-                      0 20px 40px rgba(0,0,0,0.1),
-                      inset 0 1px 0 rgba(255,255,255,0.6),
-                      inset 0 -1px 0 rgba(0,0,0,0.1)
-                    `,
-                  }}
-                >
-                  <div className="absolute top-2 left-2 w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="absolute top-2 right-2 w-2 h-2 bg-green-400 rounded-full"></div>
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-gray-400 rounded"></div>
-                  
-                  {/* Status Indicator */}
-                  <div className={`
-                    absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full
-                    ${equipment.status === 'active' ? 'bg-green-400' : 'bg-yellow-400'}
-                    animate-ping
-                  `}></div>
-                </div>
+              <Badge
+                variant="outline"
+                className="mb-6 px-4 py-1.5 text-sm border-blue-500/30 bg-blue-500/10 text-blue-400 backdrop-blur-sm rounded-full"
+              >
+                <span className="relative flex h-2 w-2 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                Next-Gen Dealer Management
+              </Badge>
+            </motion.div>
 
-                {/* Floating Data Overlay */}
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-white/20">
-                    <div className="text-xs font-semibold text-gray-900">{equipment.name}</div>
-                    <div className="text-xs text-gray-600">Efficiency: {equipment.efficiency}%</div>
-                    <div className={`text-xs font-medium ${
-                      equipment.status === 'active' ? 'text-green-600' : 'text-yellow-600'
-                    }`}>
-                      {equipment.status === 'active' ? 'Online' : 'Maintenance'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Floating Metrics Cards - Hidden on mobile to prevent overlap */}
-        {floatingMetrics.map((metric, index) => (
-          <div
-            key={index}
-            className={`
-              absolute transition-all duration-1000 delay-${metric.delay} hidden md:block
-              ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}
-            `}
-            style={{
-              left: `${20 + (index % 2) * 60}%`,
-              top: `${20 + Math.floor(index / 2) * 45}%`,
-              transform: `
-                translateZ(${50 + index * 20}px) 
-                translateX(${mousePosition.x * -30}px) 
-                translateY(${mousePosition.y * -20}px)
-              `,
-            }}
-          >
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 group">
-              <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg bg-${metric.color}-500/20`}>
-                  <metric.icon className={`w-4 h-4 text-${metric.color}-600`} />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">{metric.value}</div>
-                  <div className="text-xs text-gray-600">{metric.label}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {/* Interactive Particle System */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-blue-400 rounded-full opacity-30"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animation: `particleFloat ${8 + Math.random() * 4}s ease-in-out infinite`,
-                animationDelay: `${Math.random() * 4}s`,
-                transform: `translateX(${mousePosition.x * 60}px) translateY(${mousePosition.y * 30}px) translateY(${scrollY * 0.08}px)`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left Content */}
-          <div
-            className={`transform transition-all duration-1000 ${
-              isVisible ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'
-            }`}
-          >
-            <Badge className="mb-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
-              AI-Powered Intelligence Platform
-            </Badge>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-              The Only
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {" "}Predictive{" "}
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.1]">
+              Command Your <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-gradient-x">
+                Entire Fleet
               </span>
-              Platform for Copier Dealers
             </h1>
 
-            <p className="text-lg sm:text-xl text-gray-700 mb-8 leading-relaxed">
-              Stop reacting. Start predicting. Modern cloud architecture with AI-powered intelligence that prevents equipment failures, optimizes contract pricing, and increases profitability by 15-25%. Built on technology 2-3 years ahead of legacy systems.
+            <p className="text-lg sm:text-xl text-slate-400 mb-10 leading-relaxed max-w-xl">
+              The first AI-native platform designed to predict failures, automate service workflows,
+              and maximize profitability for modern copier dealers.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row gap-5">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-6"
-                onClick={() => window.location.href = '/signup'}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-7 text-lg rounded-xl shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_0_60px_-15px_rgba(37,99,235,0.6)] transition-all duration-300 group"
               >
                 Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 py-6 border-gray-300 hover:bg-gray-50"
-                onClick={() => window.location.href = '/login'}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white px-8 py-7 text-lg rounded-xl backdrop-blur-sm"
               >
-                Watch Demo
+                Schedule Demo
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-start">
-                <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700"><strong>80% prediction accuracy</strong> for equipment failures</span>
-              </div>
-              <div className="flex items-start">
-                <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700"><strong>Modern cloud architecture</strong> beats legacy by 2-3 years</span>
-              </div>
-              <div className="flex items-start">
-                <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700"><strong>Integration marketplace</strong> with growing ecosystem</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right 3D Interactive Dashboard */}
-          <div
-            className={`transform transition-all duration-1000 delay-300 ${
-              isVisible ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0'
-            }`}
-          >
-            <div 
-              className="relative"
-              style={{
-                transform: `perspective(1000px) rotateY(${mousePosition.x * -10}deg) rotateX(${mousePosition.y * 5}deg)`,
-              }}
-            >
-              {/* Glowing Background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-2xl blur-3xl opacity-20 animate-pulse scale-105"></div>
-              
-              {/* Main Dashboard */}
-              <div className="relative bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 transform hover:scale-105 transition-transform duration-500">
-                <div className="space-y-6">
-                  {/* Header */}
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-semibold text-gray-900">
-                      Fleet Command Center
-                    </h3>
-                    <Badge className="bg-green-100 text-green-800 animate-pulse">
-                      Live 3D
-                    </Badge>
+            <div className="mt-12 grid grid-cols-2 gap-6 border-t border-slate-800/50 pt-8">
+              {[
+                {
+                  label: 'Prediction Accuracy',
+                  value: '94%',
+                  icon: TrendingUp,
+                  color: 'text-green-400',
+                },
+                { label: 'Service Uptime', value: '99.9%', icon: Server, color: 'text-blue-400' },
+              ].map((stat, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div
+                    className={`p-3 rounded-lg bg-slate-900/50 border border-slate-800 ${stat.color}`}
+                  >
+                    <stat.icon className="w-6 h-6" />
                   </div>
-
-                  {/* Real-time Metrics */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-blue-700 font-medium">Fleet Efficiency</p>
-                          <p className="text-3xl font-bold text-blue-900">89.3%</p>
-                        </div>
-                        <Activity className="h-10 w-10 text-blue-600" />
-                      </div>
-                      <div className="mt-2 h-2 bg-blue-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full w-[89%] animate-pulse"></div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-green-700 font-medium">Active Units</p>
-                          <p className="text-3xl font-bold text-green-900">247</p>
-                        </div>
-                        <Zap className="h-10 w-10 text-green-600" />
-                      </div>
-                      <p className="text-xs text-green-600 mt-1">↑ 12% from last month</p>
-                    </div>
-                  </div>
-
-                  {/* 3D Visualization Preview */}
-                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
-                    <p className="text-sm text-gray-700 font-medium mb-3">3D Equipment Overview</p>
-                    
-                    <div className="flex items-center justify-center space-x-4 py-4">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="relative">
-                          <div 
-                            className={`w-8 h-10 bg-gradient-to-b from-gray-300 to-gray-400 rounded transform hover:scale-110 transition-transform cursor-pointer`}
-                            style={{
-                              animation: `bounce ${1 + i * 0.2}s ease-in-out infinite`,
-                            }}
-                          />
-                          <div className={`absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-green-400 rounded-full animate-ping`}></div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <p className="text-xs text-gray-500 text-center">
-                      Interactive 3D fleet monitoring
-                    </p>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{stat.value}</div>
+                    <div className="text-sm text-slate-500">{stat.label}</div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
+          </motion.div>
+
+          {/* 3D Interactive Visual */}
+          <div className="relative h-[600px] w-full hidden lg:block perspective-1000">
+            <motion.div
+              style={{ rotateX, rotateY, z: 100 }}
+              className="relative w-full h-full preserve-3d"
+            >
+              {/* Main Dashboard Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 100, rotateX: 20 }}
+                animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                transition={{ duration: 1, delay: 0.2, type: 'spring' }}
+                className="absolute inset-x-0 top-10 z-20 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden"
+                style={{ transformStyle: 'preserve-3d', transform: 'translateZ(50px)' }}
+              >
+                {/* Window Controls */}
+                <div className="h-10 border-b border-slate-700/50 bg-slate-900/50 flex items-center px-4 gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+                </div>
+
+                {/* Dashboard Content */}
+                <div className="p-6 grid grid-cols-3 gap-6">
+                  {/* Sidebar */}
+                  <div className="col-span-1 space-y-4">
+                    <div className="h-20 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Activity className="w-4 h-4 text-blue-400" />
+                        <span className="text-xs font-medium text-blue-300">System Status</span>
+                      </div>
+                      <div className="text-lg font-bold text-white">Healthy</div>
+                    </div>
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="h-10 rounded-lg bg-slate-800/50 w-full animate-pulse"
+                          style={{ animationDelay: `${i * 0.2}s` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Main Chart Area */}
+                  <div className="col-span-2 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-medium text-slate-300">Revenue Forecast</h3>
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-500/10 text-green-400 border-0 text-[10px]"
+                      >
+                        +12.5%
+                      </Badge>
+                    </div>
+                    <div className="h-32 rounded-xl bg-gradient-to-t from-blue-500/5 to-transparent border-b border-blue-500/20 flex items-end justify-between px-2 pb-2 gap-2">
+                      {[40, 65, 45, 80, 55, 90, 75].map((h, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ height: 0 }}
+                          animate={{ height: `${h}%` }}
+                          transition={{ duration: 1, delay: 0.5 + i * 0.1 }}
+                          className="w-full bg-blue-500/40 rounded-t-sm hover:bg-blue-400/60 transition-colors"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Floating Elements (Parallax) */}
+              <motion.div
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 }}
+                className="absolute -right-12 top-1/4 z-30 bg-slate-800/90 backdrop-blur-md p-4 rounded-xl border border-slate-600 shadow-2xl w-64"
+                style={{ transform: 'translateZ(100px)' }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-red-500/20 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-white">Critical Alert</h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Toner low on Unit #442 (Finance Dept)
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-0 text-xs text-red-400 hover:text-red-300 mt-2"
+                    >
+                      Dispatch Tech →
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8 }}
+                className="absolute -left-8 bottom-1/4 z-30 bg-slate-800/90 backdrop-blur-md p-4 rounded-xl border border-slate-600 shadow-2xl w-56"
+                style={{ transform: 'translateZ(75px)' }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-green-500/20 rounded-lg">
+                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                  </div>
+                  <span className="text-sm font-semibold text-white">Optimization</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Efficiency</span>
+                    <span className="text-green-400">98%</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: '98%' }}
+                      transition={{ duration: 1.5, delay: 1 }}
+                      className="h-full bg-green-500 rounded-full"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Decorative Elements */}
+              <div className="absolute -z-10 inset-0 bg-blue-500/5 blur-3xl rounded-full transform rotate-12 scale-110" />
+            </motion.div>
           </div>
         </div>
       </div>
-
-      {/* Custom Animations */}
-      <style>{`
-        @keyframes gridFloat {
-          0%, 100% { transform: perspective(1000px) rotateX(60deg) translateZ(-100px) translateY(0px); }
-          50% { transform: perspective(1000px) rotateX(60deg) translateZ(-100px) translateY(-20px); }
-        }
-        
-        @keyframes particleFloat {
-          0%, 100% { transform: translateY(0px) scale(1); opacity: 0.4; }
-          50% { transform: translateY(-20px) scale(1.2); opacity: 0.8; }
-        }
-        
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-4px); }
-        }
-      `}</style>
     </section>
   );
 };
