@@ -5,6 +5,7 @@ import "./index.css";
 import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 import { queryClient } from "@/lib/queryClient";
+import { initializePWA } from "@/lib/pwa";
 
 // Error Boundary to catch React rendering errors
 class ErrorBoundary extends Component<
@@ -138,3 +139,11 @@ try {
 
 // Expose queryClient for lightweight prefetch from non-hook code (e.g., sidebar hover)
 (window as any).__queryClient = queryClient;
+
+// Initialize PWA (service worker, install prompt, etc.)
+console.log("🔧 Initializing PWA...");
+initializePWA().then(() => {
+  console.log("✅ PWA initialized successfully");
+}).catch((error) => {
+  console.error("❌ PWA initialization failed:", error);
+});
