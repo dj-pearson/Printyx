@@ -4,6 +4,7 @@ import { registerOnboardingRoutes } from './routes-onboarding';
 import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from './routes-export';
 import signupCrmRoutes from './routes-signup-crm';
 import universalSearchRoutes from './routes-universal-search';
+import knowledgeBaseRoutes from './routes-knowledge-base';
 import session from 'express-session';
 import csurf from 'csurf';
 import rateLimit from 'express-rate-limit';
@@ -640,6 +641,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Trial management routes
   app.use('/api/trial', trialRoutes);
+
+  // Knowledge base routes
+  app.use('/api/knowledge-base', knowledgeBaseRoutes);
 
   // Universal search routes
   app.use(universalSearchRoutes);
@@ -4486,24 +4490,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Records routes (client's customers/leads)
-  app.get('/api/customers', requireAuth, requireAuth, requireAuth, cacheControl(180), etag(), async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.get(
+    '/api/customers',
+    requireAuth,
+    requireAuth,
+    requireAuth,
+    cacheControl(180),
+    etag(),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        // Get business records where recordType = 'customer' (copier buyers)
+        const customers = await storage.getBusinessRecords(tenantId, 'customer');
+        // Transform database fields to frontend format
+        const transformedCustomers = customers.map((customer) =>
+          BusinessRecordsTransformer.toFrontend(customer),
+        );
+        res.json(transformedCustomers);
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+        res.status(500).json({ message: 'Failed to fetch customers' });
       }
-      // Get business records where recordType = 'customer' (copier buyers)
-      const customers = await storage.getBusinessRecords(tenantId, 'customer');
-      // Transform database fields to frontend format
-      const transformedCustomers = customers.map((customer) =>
-        BusinessRecordsTransformer.toFrontend(customer),
-      );
-      res.json(transformedCustomers);
-    } catch (error) {
-      console.error('Error fetching customers:', error);
-      res.status(500).json({ message: 'Failed to fetch customers' });
-    }
-  });
+    },
+  );
 
   // Get contacts for a specific business record
   app.get('/api/business-records/:id/contacts', requireAuth, async (req: any, res) => {
@@ -4530,35 +4542,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/customers/:id', requireAuth, requireAuth, requireAuth, cacheControl(300), etag(), async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      // Try to get by URL slug first, then by ID
-      let customer;
-      const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
+  app.get(
+    '/api/customers/:id',
+    requireAuth,
+    requireAuth,
+    requireAuth,
+    cacheControl(300),
+    etag(),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        // Try to get by URL slug first, then by ID
+        let customer;
+        const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
 
-      if (isSlug) {
-        customer = await storage.getBusinessRecordBySlug(id, tenantId);
-      } else {
-        customer = await storage.getBusinessRecord(id, tenantId);
-      }
+        if (isSlug) {
+          customer = await storage.getBusinessRecordBySlug(id, tenantId);
+        } else {
+          customer = await storage.getBusinessRecord(id, tenantId);
+        }
 
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
+        if (!customer) {
+          return res.status(404).json({ message: 'Customer not found' });
+        }
 
-      // Transform database fields to frontend format
-      const transformedCustomer = BusinessRecordsTransformer.toFrontend(customer);
-      res.json(transformedCustomer);
-    } catch (error) {
-      console.error('Error fetching customer:', error);
-      res.status(500).json({ message: 'Failed to fetch customer' });
-    }
-  });
+        // Transform database fields to frontend format
+        const transformedCustomer = BusinessRecordsTransformer.toFrontend(customer);
+        res.json(transformedCustomer);
+      } catch (error) {
+        console.error('Error fetching customer:', error);
+        res.status(500).json({ message: 'Failed to fetch customer' });
+      }
+    },
+  );
 
   app.post('/api/customers', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
     try {
@@ -8138,9 +8158,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             customerId: serviceContracts.customerId,
             customerName: businessRecords.companyName,
             endDate: serviceContracts.endDate,
-            daysUntilExpiration: sql`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`.as('days'),
+            daysUntilExpiration:
+              sql`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`.as('days'),
             monthlyValue: serviceContracts.monthlyBaseRate,
-            annualValue: sql`COALESCE(${serviceContracts.monthlyBaseRate}, 0) * 12`.as('annualValue'),
+            annualValue: sql`COALESCE(${serviceContracts.monthlyBaseRate}, 0) * 12`.as(
+              'annualValue',
+            ),
           })
           .from(serviceContracts)
           .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
@@ -8169,7 +8192,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             const annualValue = parseFloat(String(contract.annualValue)) || 0;
-            const valueMsg = annualValue > 0 ? ` ($${annualValue.toLocaleString()}/year at risk)` : '';
+            const valueMsg =
+              annualValue > 0 ? ` ($${annualValue.toLocaleString()}/year at risk)` : '';
 
             return {
               id: `contract_expiration_${contract.id}`,
@@ -14988,10 +15012,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/database-updater', updaterRoutes);
 
   // Register Platform CRM routes (root admin tenant management and lifecycle)
-  const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records')).default;
+  const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records'))
+    .default;
   const platformDealsRoutes = (await import('./routes-platform-deals')).default;
   const platformActivitiesRoutes = (await import('./routes-platform-activities')).default;
-  const platformCustomerSuccessRoutes = (await import('./routes-platform-customer-success')).default;
+  const platformCustomerSuccessRoutes = (await import('./routes-platform-customer-success'))
+    .default;
   const platformAnalyticsRoutes = (await import('./routes-platform-analytics')).default;
 
   app.use('/api/platform-crm', platformBusinessRecordsRoutes);
