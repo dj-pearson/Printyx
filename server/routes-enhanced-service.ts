@@ -17,6 +17,7 @@ import {
 import { serviceTickets, customers, businessRecords, autoInvoiceGeneration, insertAutoInvoiceGenerationSchema } from "@shared/schema";
 import { requireServiceAccess } from "./rbac-middleware";
 import { CustomerPortalService } from "./services/customer-portal-service";
+import { billingEngine } from "./services/billing-engine-service";
 import { updateServiceRequestStatusSchema } from "@shared/customer-portal-schema";
 
 const router = express.Router();
@@ -628,54 +629,24 @@ router.post("/service-tickets/:ticketId/complete", async (req, res) => {
       })
       .where(eq(serviceTickets.id, ticketId));
 
-    // Auto-invoice generation on completion
+    // Auto-invoice generation on completion using billing engine service
     if (!completionData.followUpRequired) {
       try {
         const [ticket] = await db
           .select({
             tenantId: serviceTickets.tenantId,
-            customerId: serviceTickets.customerId,
           })
           .from(serviceTickets)
           .where(eq(serviceTickets.id, ticketId))
           .limit(1);
 
         if (ticket) {
-          // Get session data for labor calculations
-          const [session] = await db
-            .select({
-              billableHours: technicianTicketSessions.billableHours,
-              partsUsedIds: technicianTicketSessions.partsUsedIds,
-            })
-            .from(technicianTicketSessions)
-            .where(eq(technicianTicketSessions.serviceTicketId, ticketId))
-            .limit(1);
-
-          const laborHours = session?.billableHours || 2; // Default 2 hours
-          const laborRate = 75; // Default rate, should come from company settings
-          const partsTotal = 0; // Calculate from parts used, placeholder for now
-          
-          const invoiceNumber = `SVC-${Date.now()}`;
-          const totalAmount = (Number(laborHours) * laborRate) + partsTotal;
-
-          // Create auto-invoice generation record
-          await db
-            .insert(autoInvoiceGeneration)
-            .values({
-              tenantId: ticket.tenantId,
-              sourceType: 'service_ticket',
-              sourceId: ticketId,
-              invoiceNumber,
-              generationStatus: 'processing',
-              laborHours: laborHours.toString(),
-              laborRate: laborRate.toString(),
-              partsTotal: partsTotal.toString(),
-              totalAmount: totalAmount.toString(),
-              triggeredAt: now,
-            });
+          // Use centralized billing engine service for auto-invoice generation
+          await billingEngine.autoGenerateFromServiceTicket(ticketId, ticket.tenantId);
         }
       } catch (invErr) {
         console.error('Auto-invoice generation failed:', invErr);
+        // Non-fatal error - ticket completion should succeed even if invoicing fails
       }
     }
 
