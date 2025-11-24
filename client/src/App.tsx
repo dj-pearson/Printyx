@@ -118,6 +118,9 @@ const MobileOptimization = React.lazy(() => import('@/pages/MobileOptimization')
 const PerformanceMonitoring = React.lazy(() => import('@/pages/PerformanceMonitoring'));
 const SystemIntegrations = React.lazy(() => import('@/pages/SystemIntegrations'));
 const DeploymentReadiness = React.lazy(() => import('@/pages/DeploymentReadiness'));
+// Unified Task Hub - consolidates all task management functionality
+const TaskHub = React.lazy(() => import('@/pages/TaskHub'));
+// Deprecated - kept for backward compatibility, redirect to TaskHub
 const TaskManagement = React.lazy(() => import('@/pages/TaskManagement'));
 const BasicTaskManagement = React.lazy(() => import('@/pages/BasicTaskManagement'));
 const DealsManagement = React.lazy(() => import('@/pages/DealsManagement'));
@@ -554,9 +557,14 @@ function Router() {
           <Route path="/performance-monitoring" component={PerformanceMonitoring} />
           <Route path="/system-integrations" component={SystemIntegrations} />
           <Route path="/deployment-readiness" component={DeploymentReadiness} />
-          <Route path="/task-management" component={TaskManagement} />
+          {/* Unified Task Hub - consolidates all task management */}
+          <Route path="/task-hub" component={TaskHub} />
+          <Route path="/tasks" component={TaskHub} />
+          {/* Legacy routes - redirect to Task Hub for backward compatibility */}
+          <Route path="/task-management" component={TaskHub} />
+          <Route path="/basic-tasks" component={TaskHub} />
+          <Route path="/my-tasks" component={TaskHub} />
           <Route path="/customer-success-management" component={CustomerSuccessManagement} />
-          <Route path="/basic-tasks" component={BasicTaskManagement} />
           <Route path="/pricing-management" component={PricingManagement} />
           <Route path="/tenant-setup" component={TenantSetup} />
           <Route path="/settings" component={Settings} />
@@ -662,7 +670,8 @@ function Router() {
           <Route path="/ai-employees" component={AIEmployeeDashboard} />
           <Route path="/calendar" component={CalendarPage} />
           <Route path="/meeting-transcription" component={MeetingTranscription} />
-          <Route path="/ai-task-scheduling" component={AITaskScheduling} />
+          {/* AI Task Scheduling now part of unified Task Hub */}
+          <Route path="/ai-task-scheduling" component={TaskHub} />
           <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
           <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />
 
