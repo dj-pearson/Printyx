@@ -9894,6 +9894,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const rootAdminRoutes = await import('./routes-root-admin');
   app.use('/api/root-admin', rootAdminRoutes.default);
 
+  // Admin Workflow Routes
+  const adminWorkflowRoutes = await import('./routes-admin-workflows');
+  app.use('/api/admin', adminWorkflowRoutes.default);
+
   // Subscription Routes
   const subscriptionRoutes = await import('./routes-subscriptions');
   const adminSubscriptionRoutes = await import('./routes-admin-subscriptions');
