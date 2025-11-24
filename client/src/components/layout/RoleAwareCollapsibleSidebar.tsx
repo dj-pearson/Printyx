@@ -147,7 +147,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Sales Hub',
       icon: Target,
       path: '/opportunities',
-      matchPatterns: ['/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*', '/data-enrichment*', '/document-builder*'],
+      matchPatterns: ['/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*', '/data-enrichment*', '/document-builder*', '/deal-desk*'],
       children: [
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
         { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
@@ -159,6 +159,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
         { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
         { title: 'Proposal Builder', path: '/proposal-builder', icon: FileText },
+        { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
         { title: 'Contracts', path: '/contracts', icon: FileSignature },
         { title: 'Document Builder', path: '/document-builder', icon: FileText },
         { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
