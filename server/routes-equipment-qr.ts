@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { db } from './db';
 import { equipment } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
-import QRCode from 'qrcode';
 
 const router = Router();
 
@@ -35,24 +34,11 @@ router.get('/:id/qr-code', async (req: any, res) => {
     const qrData = id;
 
     if (format === 'svg') {
-      // Generate SVG QR code
-      const svgString = await QRCode.toString(qrData, {
-        type: 'svg',
-        width: size,
-        margin: 2,
-        errorCorrectionLevel: 'M',
-      });
-
-      res.setHeader('Content-Type', 'image/svg+xml');
-      res.send(svgString);
+      // QR code generation temporarily disabled - feature coming soon
+      res.status(503).json({ message: 'QR code generation is temporarily unavailable' });
     } else {
-      // Generate PNG QR code
-      const buffer = await QRCode.toBuffer(qrData, {
-        width: size,
-        margin: 2,
-        errorCorrectionLevel: 'M',
-        color: {
-          dark: '#000000',
+      // QR code generation temporarily disabled - feature coming soon
+      res.status(503).json({ message: 'QR code generation is temporarily unavailable' });
           light: '#FFFFFF',
         },
       });
