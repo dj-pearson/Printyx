@@ -107,38 +107,75 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     matchPatterns: ['/dashboard*']
   });
 
-  // Platform Admin Hub - Only for platform roles
+  // Platform Admin Hub - Only for platform roles with hierarchical structure
   if (isPlatformRole) {
     sections.push({
-      id: 'platform-admin',
-      title: 'Platform Admin',
+      id: 'platform-admin-hub',
+      title: 'Platform Admin Hub',
       icon: Crown,
-      path: `${adminPrefix}/platform`,
-      matchPatterns: [`${adminPrefix}/platform*`, `${adminPrefix}/root-admin*`, `${adminPrefix}/system*`, `${adminPrefix}/tenant*`, '/root-admin*', '/social-media*', '/security-compliance-management*', '/system-monitoring*', '/platform-configuration*', '/gpt5*'],
+      path: '/admin-hub',
+      matchPatterns: ['/admin-hub*']
+    });
+
+    // Tenant & Organization Management
+    sections.push({
+      id: 'tenant-org-management',
+      title: 'Tenant & Organization',
+      icon: Building2,
+      path: `${adminPrefix}/tenant-management`,
+      matchPatterns: [`${adminPrefix}/tenant*`, '/root-admin-signups*', '/customer-self-service-portal*'],
       children: [
-        { title: 'Root Admin Dashboard', path: '/root-admin-dashboard', icon: Crown },
-        { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
-        { title: 'Root Admin Security', path: `${adminPrefix}/root-admin-security`, icon: Shield },
-        { title: 'System Security', path: `${adminPrefix}/system-security`, icon: Shield },
-        { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
-        { title: 'System Monitoring', path: '/system-monitoring', icon: Monitor },
-        { title: 'Database Management', path: '/database-management', icon: Database },
         { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
-        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
-        { title: 'Role Management', path: '/role-management', icon: Users },
-        { title: 'Tenant Setup', path: '/tenant-setup', icon: Settings },
-        { title: 'Platform Configuration', path: '/platform-configuration', icon: Settings },
-        { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
+        { title: 'Tenant Onboarding', path: '/tenant-setup', icon: Rocket },
+        { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
+        { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck }
+      ]
+    });
+
+    // User & Access Management
+    sections.push({
+      id: 'user-access-management',
+      title: 'User & Access',
+      icon: UserCheck,
+      path: `${adminPrefix}/user-management`,
+      matchPatterns: [`${adminPrefix}/user*`, `${adminPrefix}/root-admin-security*`, `${adminPrefix}/system-security*`, '/role-management*', '/security-compliance-management*'],
+      children: [
+        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: Users },
+        { title: 'Role Management', path: '/role-management', icon: Shield },
+        { title: 'Security & Permissions', path: `${adminPrefix}/root-admin-security`, icon: Shield },
+        { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText }
+      ]
+    });
+
+    // System Operations & Monitoring
+    sections.push({
+      id: 'system-operations',
+      title: 'System Operations',
+      icon: Monitor,
+      path: '/root-admin-dashboard',
+      matchPatterns: ['/root-admin-dashboard*', '/system-monitoring*', '/database-management*', `${adminPrefix}/platform*`, `${adminPrefix}/system*`, '/platform-configuration*', '/mobile-optimization*'],
+      children: [
+        { title: 'System Dashboard', path: '/root-admin-dashboard', icon: Activity },
+        { title: 'Database Management', path: '/database-management', icon: Database },
         { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 },
-        { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
-        { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
-        { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
-        { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
+        { title: 'System Configuration', path: '/platform-configuration', icon: Settings },
         { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone }
       ]
     });
 
-
+    // Platform Features & Tools
+    sections.push({
+      id: 'platform-features',
+      title: 'Platform Features',
+      icon: Zap,
+      path: '/root-admin/seo',
+      matchPatterns: ['/root-admin/seo*', '/social-media*', '/gpt5*'],
+      children: [
+        { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
+        { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
+        { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain }
+      ]
+    });
   }
 
   // Sales Hub
