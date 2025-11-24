@@ -13,12 +13,28 @@ interface EmailConfig {
   tlsOptions?: { rejectUnauthorized: boolean };
 }
 
+// Try to load IMAP and mailparser packages - they may not be installed
+let Imap: any = null;
+let simpleParser: any = null;
+let imapAvailable = false;
+
+try {
+  const imapModule = await import('imap');
+  Imap = imapModule.default;
+  const mailparserModule = await import('mailparser');
+  simpleParser = mailparserModule.simpleParser;
+  imapAvailable = true;
+  console.log('[EmailMonitor] IMAP and mailparser packages are available');
+} catch (error) {
+  console.log('[EmailMonitor] IMAP packages not installed - email monitoring will be unavailable');
+  console.log('[EmailMonitor] To enable: npm install --legacy-peer-deps imap mailparser');
+}
+
 /**
  * Email Monitor Service
  *
  * Monitors email inbox (IMAP) for new service request emails
  * and automatically creates tickets using AI parsing.
- * NOTE: IMAP functionality is disabled - feature coming soon
  */
 export class EmailMonitorService {
   private imap: any = null;
@@ -34,22 +50,166 @@ export class EmailMonitorService {
 
   /**
    * Connect to IMAP server
-   * Note: IMAP functionality is disabled - feature coming soon
    */
   async connect(): Promise<void> {
     if (this.isConnected) {
       return;
     }
-    console.log('[EmailMonitor] IMAP email monitoring is temporarily disabled');
-    this.isConnected = false;
+
+    if (!imapAvailable || !Imap) {
+      throw new Error('IMAP packages not installed');
+    }
+
+    return new Promise((resolve, reject) => {
+      this.imap = new Imap({
+        user: this.config.user,
+        password: this.config.password,
+        host: this.config.host,
+        port: this.config.port,
+        tls: this.config.tls,
+        tlsOptions: this.config.tlsOptions || { rejectUnauthorized: false },
+        authTimeout: 10000,
+        connTimeout: 10000,
+      });
+
+      this.imap.once('ready', () => {
+        this.isConnected = true;
+        console.log(`[EmailMonitor] Connected to ${this.config.host} as ${this.config.user}`);
+        resolve();
+      });
+
+      this.imap.once('error', (err: Error) => {
+        console.error('[EmailMonitor] Connection error:', err);
+        this.isConnected = false;
+        reject(err);
+      });
+
+      this.imap.once('end', () => {
+        console.log('[EmailMonitor] Connection ended');
+        this.isConnected = false;
+      });
+
+      this.imap.connect();
+    });
   }
 
   /**
    * Check inbox for new unread emails
-   * Note: IMAP functionality is disabled - feature coming soon
    */
   async checkForNewEmails(): Promise<void> {
-    console.log('[EmailMonitor] Email checking is temporarily disabled');
+    if (!imapAvailable) {
+      console.log('[EmailMonitor] IMAP packages not available - skipping email check');
+      return;
+    }
+
+    if (this.isProcessing) {
+      console.log('[EmailMonitor] Already processing, skipping this check');
+      return;
+    }
+
+    this.isProcessing = true;
+
+    try {
+      if (!this.isConnected) {
+        await this.connect();
+      }
+
+      if (!this.imap) {
+        throw new Error('IMAP connection not initialized');
+      }
+
+      await this.processInbox();
+    } catch (error) {
+      console.error('[EmailMonitor] Error checking emails:', error);
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  /**
+   * Process emails in inbox
+   */
+  private async processInbox(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.imap) {
+        reject(new Error('IMAP not connected'));
+        return;
+      }
+
+      this.imap.openBox('INBOX', false, async (err: any, box: any) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        // Search for unread emails
+        this.imap!.search(['UNSEEN'], async (err: any, results: number[]) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          if (results.length === 0) {
+            console.log('[EmailMonitor] No new emails');
+            resolve();
+            return;
+          }
+
+          console.log(`[EmailMonitor] Found ${results.length} new emails`);
+
+          try {
+            // Process emails one by one
+            for (const uid of results) {
+              await this.processEmail(uid);
+            }
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+    });
+  }
+
+  /**
+   * Process a single email by UID
+   */
+  private async processEmail(uid: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.imap) {
+        reject(new Error('IMAP not connected'));
+        return;
+      }
+
+      const fetch = this.imap.fetch(uid, {
+        bodies: '',
+        struct: true,
+      });
+
+      fetch.on('message', (msg: any) => {
+        msg.on('body', async (stream: any) => {
+          try {
+            const parsed = await simpleParser(stream);
+            await this.handleParsedEmail(parsed);
+
+            // Mark as read after successful processing
+            this.imap!.addFlags(uid, ['\\Seen'], (err: any) => {
+              if (err) {
+                console.error('[EmailMonitor] Error marking email as read:', err);
+              }
+            });
+
+            resolve();
+          } catch (error) {
+            console.error('[EmailMonitor] Error processing email:', error);
+            reject(error);
+          }
+        });
+      });
+
+      fetch.once('error', reject);
+    });
   }
 
   /**
