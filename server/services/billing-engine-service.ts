@@ -1140,17 +1140,56 @@ class BillingEngineService {
   }
 
   private async sendInvoice(invoiceId: string, tenantId: string): Promise<void> {
+    // Fetch invoice with customer details
+    const [invoice] = await db
+      .select({
+        id: invoices.id,
+        invoiceNumber: invoices.invoiceNumber,
+        customerId: invoices.customerId,
+        customerEmail: businessRecords.email,
+        customerName: businessRecords.companyName,
+        totalAmount: invoices.totalAmount,
+        dueDate: invoices.dueDate,
+        balance: invoices.balance,
+      })
+      .from(invoices)
+      .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .limit(1);
+
+    if (!invoice || !invoice.customerEmail) {
+      console.warn(`Cannot send invoice ${invoiceId}: no customer email`);
+      return;
+    }
+
+    // Import email service dynamically to avoid circular dependencies
+    const { emailService } = await import('./email-service');
+
+    // Send email notification
+    await emailService.send({
+      to: invoice.customerEmail,
+      subject: `Invoice ${invoice.invoiceNumber} from Printyx`,
+      html: `
+        <p>Hello ${invoice.customerName},</p>
+        <p>Your invoice ${invoice.invoiceNumber} is now available.</p>
+        <p><strong>Amount Due:</strong> $${parseFloat(invoice.balance || invoice.totalAmount || '0').toFixed(2)}</p>
+        <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
+        <p>Please log in to your account to view and pay this invoice.</p>
+        <p>Thank you for your business!</p>
+      `,
+      text: `Invoice ${invoice.invoiceNumber}\nAmount Due: $${parseFloat(invoice.balance || invoice.totalAmount || '0').toFixed(2)}\nDue Date: ${new Date(invoice.dueDate).toLocaleDateString()}`,
+    });
+
     // Update invoice status to 'sent'
     await db
       .update(invoices)
       .set({
         status: 'sent',
         invoiceStatus: 'sent',
+        issueDate: new Date(),
         updatedAt: new Date(),
       })
       .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
-
-    // TODO: Integrate with email service to actually send invoice
   }
 
   private async logInvoiceGeneration(
