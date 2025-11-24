@@ -34,21 +34,9 @@ router.get('/:id/qr-code', async (req: any, res) => {
     const qrData = id;
 
     if (format === 'svg') {
-      // QR code generation temporarily disabled - feature coming soon
       res.status(503).json({ message: 'QR code generation is temporarily unavailable' });
     } else {
-      // QR code generation temporarily disabled - feature coming soon
       res.status(503).json({ message: 'QR code generation is temporarily unavailable' });
-          light: '#FFFFFF',
-        },
-      });
-
-      res.setHeader('Content-Type', 'image/png');
-      res.setHeader(
-        'Content-Disposition',
-        `inline; filename="equipment-${equipmentItem.serialNumber || id}-qr.png"`
-      );
-      res.send(buffer);
     }
   } catch (error) {
     console.error('[QRCodeAPI] Error generating QR code:', error);
