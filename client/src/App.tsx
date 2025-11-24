@@ -193,6 +193,8 @@ const SocialMediaGenerator = React.lazy(() => import('@/pages/SocialMediaGenerat
 const SecurityManagement = React.lazy(() => import('@/pages/SecurityComplianceManagement'));
 const SystemMonitoring = React.lazy(() => import('@/pages/SystemMonitoring'));
 // const AccessControl = React.lazy(() => import("@/pages/AccessControl")); // File doesn't exist - using CustomerAccessManagement instead
+const AdminHub = React.lazy(() => import('@/pages/AdminHub'));
+const AdminCommandCenter = React.lazy(() => import('@/pages/AdminCommandCenter'));
 const RootAdminDashboard = React.lazy(() => import('@/pages/RootAdminDashboard'));
 const RootAdminSignupsCRM = React.lazy(() => import('@/pages/RootAdminSignupsCRM'));
 const RootAdminSEO = React.lazy(() => import('@/pages/RootAdminSEO'));
@@ -621,6 +623,8 @@ function Router() {
           <Route path="/access-control" component={RoleManagement} />
           <Route path="/role-management" component={RoleManagement} />
           <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
+          <Route path="/admin-hub" component={AdminHub} />
+          <Route path="/admin-command-center" component={AdminCommandCenter} />
           <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
           <Route path="/root-admin-signups-crm" component={RootAdminSignupsCRM} />
           <Route path="/root-admin/seo" component={RootAdminSEO} />
