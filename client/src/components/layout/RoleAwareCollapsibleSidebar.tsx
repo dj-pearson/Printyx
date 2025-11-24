@@ -631,7 +631,7 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
                                     "border-l-2 border-transparent hover:border-slate-300",
                                     isActive(child.path)
                                       ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500" 
-                                      : "hover:bg-slate-50 text-slate-600"
+                                      : "hover:bg-slate-50 text-slate-800"
                                   )}
                                   data-active={isActive(child.path)}
                                   data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
@@ -639,7 +639,7 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
                                   <Link href={child.path}>
                                     <child.icon className={cn(
                                       "h-4 w-4", 
-                                      isActive(child.path) ? "text-blue-600" : "text-slate-500"
+                                      isActive(child.path) ? "text-blue-600" : "text-slate-700"
                                     )} />
                                     <span>{child.title}</span>
                                     {isActive(child.path) && (
@@ -666,7 +666,7 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
                         "py-3 px-4 rounded-lg transition-all duration-200",
                         shouldShowAsActive
                           ? "bg-slate-800 hover:bg-slate-700 text-white" 
-                          : "hover:bg-slate-100 text-slate-700",
+                          : "hover:bg-slate-100 text-slate-900",
                         "font-semibold text-sm mb-1"
                       )}
                       data-active={shouldShowAsActive}
@@ -675,7 +675,7 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
                       <Link href={section.path}>
                         <section.icon className={cn(
                           "h-5 w-5", 
-                          shouldShowAsActive ? "text-white" : "text-slate-600"
+                          shouldShowAsActive ? "text-white" : "text-slate-800"
                         )} />
                         <span className="font-semibold">{section.title}</span>
                         {shouldShowAsActive && (
