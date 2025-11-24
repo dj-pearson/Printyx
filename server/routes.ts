@@ -79,6 +79,7 @@ import { registerTaskRoutes } from './routes-tasks';
 import { registerEnhancedTaskRoutes } from './routes-enhanced-tasks';
 import { registerDealsManagementRoutes } from './routes-deals-management';
 import { registerOpportunitiesRoutes } from './routes-opportunities';
+import { registerDealDeskRoutes } from './routes-deal-desk';
 import { registerTechnicianManagementRoutes } from './routes-technician-management';
 import { registerProductModelsRoutes } from './routes-product-models';
 import { registerProductPricingRoutes } from './routes-product-pricing';
@@ -15335,6 +15336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
+  registerDealDeskRoutes(app);
   registerTechnicianManagementRoutes(app);
   registerProductModelsRoutes(app);
   registerProductPricingRoutes(app);
