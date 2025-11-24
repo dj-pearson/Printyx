@@ -85,7 +85,8 @@ import { registerTechnicianManagementRoutes } from './routes-technician-manageme
 import { registerProductModelsRoutes } from './routes-product-models';
 import { registerProductPricingRoutes } from './routes-product-pricing';
 import { registerSoftwareProductsRoutes } from './routes-software-products';
-import { registerInvoicesRoutes } from './routes-invoices';
+// OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
+// import { registerInvoicesRoutes } from './routes-invoices';
 import { setupAuth } from './replitAuth';
 import { registerPurchaseOrderRoutes } from './routes-purchase-orders';
 import { registerWarehouseRoutes } from './routes-warehouse';
@@ -132,7 +133,9 @@ import salesForecastingRoutes from './routes-sales-forecasting';
 import reportsRoutes from './routes-reports';
 import reportingArchitectureRoutes from './routes-reporting-architecture';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
-import billingRoutes from './routes-billing';
+// OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
+// import billingRoutes from './routes-billing';
+import consolidatedBillingRoutes from './routes/billing';
 import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
 import {
@@ -8016,8 +8019,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(equipmentLifecycleStateMachineRoutes);
   app.use(equipmentDisposalRoutes);
 
-  // Register Billing routes
-  app.use('/api/billing', billingRoutes);
+  // Register Consolidated Billing routes
+  // OLD: app.use('/api/billing', billingRoutes);
+  app.use('/api/billing', consolidatedBillingRoutes);
 
   // Register Salesforce test routes (development only)
   if (process.env.NODE_ENV === 'development') {
@@ -15014,9 +15018,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const dodEnforcementRoutes = (await import('./routes-dod-enforcement')).default;
   app.use('/api', dodEnforcementRoutes);
 
-  // Register enhanced billing routes
-  const enhancedBillingRoutes = (await import('./routes-enhanced-billing')).default;
-  app.use('/api', enhancedBillingRoutes);
+  // OLD ENHANCED BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
+  // const enhancedBillingRoutes = (await import('./routes-enhanced-billing')).default;
+  // app.use('/api', enhancedBillingRoutes);
 
   // Register database updater routes
   const { default: updaterRoutes } = await import('./database-updater/api/updater-routes');
@@ -15353,7 +15357,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerProductModelsRoutes(app);
   registerProductPricingRoutes(app);
   registerSoftwareProductsRoutes(app);
-  registerInvoicesRoutes(app);
+  // OLD INVOICE ROUTES - CONSOLIDATED INTO ./routes/billing.ts
+  // registerInvoicesRoutes(app);
   registerPurchaseOrderRoutes(app);
   registerWarehouseRoutes(app);
   registerServiceAnalysisRoutes(app);
