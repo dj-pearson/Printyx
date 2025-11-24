@@ -334,21 +334,31 @@ div:has([class*='runtime-error']) {
   background-color: var(--sidebar-background) !important;
 }
 
-/* Ensure sidebar text color is always applied */
-[data-sidebar='sidebar'] {
-  color: hsl(var(--sidebar-foreground)) !important;
+/* Ensure sidebar text color is always applied - Desktop and Mobile */
+[data-sidebar='sidebar'],
+[data-sidebar='sidebar'] * {
+  color: hsl(230 35% 12%) !important;
 }
 
-[data-sidebar='sidebar'] button,
-[data-sidebar='sidebar'] a,
-[data-sidebar='sidebar'] span,
-[data-sidebar='sidebar'] div {
-  color: hsl(var(--sidebar-foreground)) !important;
+[data-sidebar='sidebar'][data-mobile='true'],
+[data-sidebar='sidebar'][data-mobile='true'] * {
+  color: hsl(0 0% 100%) !important;
+  background-color: hsl(230 35% 12%) !important;
 }
 
-[data-sidebar='sidebar'] button:hover,
-[data-sidebar='sidebar'] a:hover {
-  color: hsl(var(--sidebar-foreground)) !important;
+[data-sidebar='sidebar'][data-mobile='true'] button,
+[data-sidebar='sidebar'][data-mobile='true'] a,
+[data-sidebar='sidebar'][data-mobile='true'] span,
+[data-sidebar='sidebar'][data-mobile='true'] div,
+[data-sidebar='sidebar'][data-mobile='true'] p,
+[data-sidebar='sidebar'][data-mobile='true'] h1,
+[data-sidebar='sidebar'][data-mobile='true'] h2 {
+  color: hsl(0 0% 100%) !important;
+}
+
+/* Icons should also be white on mobile */
+[data-sidebar='sidebar'][data-mobile='true'] svg {
+  color: hsl(0 0% 100%) !important;
 }
 
 /* Ensure mobile sidebar overlay has proper background */
