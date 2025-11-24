@@ -1,18 +1,18 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import React from "react";
-import { useLocation } from "wouter";
-import { useSeo } from "@/lib/useSeo";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { SubscriptionBanner } from "@/components/SubscriptionBanner";
-import { useAuth } from "@/hooks/useAuth";
-import { CommandPalette } from "@/components/navigation/command-palette";
-import { useCommandPalette } from "@/hooks/useCommandPalette";
-import { PWAProvider } from "@/components/pwa/PWAProvider";
+import { Switch, Route } from 'wouter';
+import { queryClient } from './lib/queryClient';
+import { QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+import { useLocation } from 'wouter';
+import { useSeo } from '@/lib/useSeo';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { SubscriptionBanner } from '@/components/SubscriptionBanner';
+import { useAuth } from '@/hooks/useAuth';
+import { CommandPalette } from '@/components/navigation/command-palette';
+import { useCommandPalette } from '@/hooks/useCommandPalette';
+import { PWAProvider } from '@/components/pwa/PWAProvider';
 
-console.log("📦 App.tsx: Module loaded");
+console.log('📦 App.tsx: Module loaded');
 // Critical auth pages - keep eager for fast initial load
 import NotFound from '@/pages/not-found';
 import Login from '@/pages/Login';
@@ -58,16 +58,22 @@ const CaseStudies = React.lazy(() => import('@/pages/marketing/CaseStudies'));
 const CompetitiveBattleCard = React.lazy(() => import('@/pages/marketing/CompetitiveBattleCard'));
 
 // Competitive Differentiation Pages
-const AutopilotDashboard = React.lazy(() => import("@/pages/AutopilotDashboard"));
-const ConnectDashboard = React.lazy(() => import("@/pages/ConnectDashboard"));
-const CompareEAutomate = React.lazy(() => import("@/pages/CompareEAutomate"));
-const IntegrationMarketplaceDashboard = React.lazy(() => import("@/pages/IntegrationMarketplaceDashboard"));
-const ScheduledReportsDashboard = React.lazy(() => import("@/pages/ScheduledReportsDashboard"));
-const MeetingToProposalDashboard = React.lazy(() => import("@/pages/MeetingToProposalDashboard"));
-const AutoLeadRoutingDashboard = React.lazy(() => import("@/pages/AutoLeadRoutingDashboard"));
-const PredictiveServiceDispatchDashboard = React.lazy(() => import("@/pages/PredictiveServiceDispatchDashboard"));
-const WhiteLabelDashboard = React.lazy(() => import("@/pages/WhiteLabelDashboard"));
-const AutoSupplyReplenishmentDashboard = React.lazy(() => import("@/pages/AutoSupplyReplenishmentDashboard"));
+const AutopilotDashboard = React.lazy(() => import('@/pages/AutopilotDashboard'));
+const ConnectDashboard = React.lazy(() => import('@/pages/ConnectDashboard'));
+const CompareEAutomate = React.lazy(() => import('@/pages/CompareEAutomate'));
+const IntegrationMarketplaceDashboard = React.lazy(
+  () => import('@/pages/IntegrationMarketplaceDashboard'),
+);
+const ScheduledReportsDashboard = React.lazy(() => import('@/pages/ScheduledReportsDashboard'));
+const MeetingToProposalDashboard = React.lazy(() => import('@/pages/MeetingToProposalDashboard'));
+const AutoLeadRoutingDashboard = React.lazy(() => import('@/pages/AutoLeadRoutingDashboard'));
+const PredictiveServiceDispatchDashboard = React.lazy(
+  () => import('@/pages/PredictiveServiceDispatchDashboard'),
+);
+const WhiteLabelDashboard = React.lazy(() => import('@/pages/WhiteLabelDashboard'));
+const AutoSupplyReplenishmentDashboard = React.lazy(
+  () => import('@/pages/AutoSupplyReplenishmentDashboard'),
+);
 
 // Feature implementations - AI/ML powered features
 const PredictiveContractProfitability = React.lazy(
@@ -250,6 +256,8 @@ const LeaseForm = React.lazy(() => import('@/pages/LeaseForm'));
 // Knowledge Base Pages
 const KnowledgeBase = React.lazy(() => import('@/pages/KnowledgeBase'));
 const KnowledgeArticle = React.lazy(() => import('@/pages/KnowledgeArticle'));
+const KnowledgeBaseAdmin = React.lazy(() => import('@/pages/admin/KnowledgeBaseAdmin'));
+const ArticleEditor = React.lazy(() => import('@/pages/admin/ArticleEditor'));
 
 // Platform Admin Pages
 const RootAdminSecurity = React.lazy(() => import('@/pages/admin/RootAdminSecurity'));
@@ -444,7 +452,10 @@ function Router() {
           {/* Competitive Differentiation Routes */}
           <Route path="/autopilot" component={AutopilotDashboard} />
           <Route path="/auto-lead-routing" component={AutoLeadRoutingDashboard} />
-          <Route path="/predictive-service-dispatch" component={PredictiveServiceDispatchDashboard} />
+          <Route
+            path="/predictive-service-dispatch"
+            component={PredictiveServiceDispatchDashboard}
+          />
           <Route path="/connect" component={ConnectDashboard} />
           <Route path="/white-label" component={WhiteLabelDashboard} />
           <Route path="/auto-supply-replenishment" component={AutoSupplyReplenishmentDashboard} />
@@ -454,10 +465,7 @@ function Router() {
           <Route path="/scheduled-reports" component={ScheduledReportsDashboard} />
           <Route path="/meeting-to-proposal" component={MeetingToProposalDashboard} />
 
-          <Route
-            path="/mobile-field-operations"
-            component={MobileFieldOperations}
-          />
+          <Route path="/mobile-field-operations" component={MobileFieldOperations} />
           <Route path="/mobile-field-operations" component={MobileFieldOperations} />
           <Route path="/leads/:slug" component={LeadDetail} />
           <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
@@ -604,6 +612,9 @@ function Router() {
           <Route path="/admin/user-management" component={UserManagement} />
           <Route path="/admin/system-settings" component={Settings} />
           <Route path="/admin/platform-analytics" component={AdvancedAnalyticsDashboard} />
+          <Route path="/admin/knowledge-base" component={KnowledgeBaseAdmin} />
+          <Route path="/admin/knowledge-base/new" component={ArticleEditor} />
+          <Route path="/admin/knowledge-base/edit/:id" component={ArticleEditor} />
           <Route path="/platform-configuration" component={PlatformConfiguration} />
           <Route path="/database-management" component={DatabaseManagement} />
           <Route path="/erp-integration" component={ERPIntegration} />
