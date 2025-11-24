@@ -1,18 +1,31 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/MainLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
   Plus,
   Settings,
@@ -30,9 +43,9 @@ import {
   Zap,
   Mail,
   ListTodo,
-  Webhook
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+  Webhook,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface PipelineTemplate {
   id: string;
@@ -135,15 +148,15 @@ export default function PipelineConfiguration() {
       queryClient.invalidateQueries({ queryKey: ['/api/pipeline-config/templates'] });
       setShowCreateDialog(false);
       toast({
-        title: "Pipeline Created",
-        description: "Pipeline template created successfully",
+        title: 'Pipeline Created',
+        description: 'Pipeline template created successfully',
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to create pipeline template",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create pipeline template',
+        variant: 'destructive',
       });
     },
   });
@@ -159,8 +172,8 @@ export default function PipelineConfiguration() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pipeline-config/templates'] });
       toast({
-        title: "Updated",
-        description: "Pipeline template updated successfully",
+        title: 'Updated',
+        description: 'Pipeline template updated successfully',
       });
     },
   });
@@ -177,8 +190,8 @@ export default function PipelineConfiguration() {
       queryClient.invalidateQueries({ queryKey: ['/api/pipeline-config/templates'] });
       setShowCloneDialog(false);
       toast({
-        title: "Cloned",
-        description: "Pipeline template cloned successfully",
+        title: 'Cloned',
+        description: 'Pipeline template cloned successfully',
       });
     },
   });
@@ -196,14 +209,14 @@ export default function PipelineConfiguration() {
         setSelectedTemplate(null);
       }
       toast({
-        title: "Deleted",
-        description: "Pipeline template deleted successfully",
+        title: 'Deleted',
+        description: 'Pipeline template deleted successfully',
       });
     },
   });
 
   // Create/Update stage mutation
-  const saveStage Mutation = useMutation({
+  const saveStageMutation = useMutation({
     mutationFn: async (stage: PipelineStage) => {
       if (stage.id) {
         return apiRequest(`/api/pipeline-config/stages/${stage.id}`, {
@@ -218,12 +231,14 @@ export default function PipelineConfiguration() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/pipeline-config/templates/${selectedTemplate?.id}`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/pipeline-config/templates/${selectedTemplate?.id}`],
+      });
       setShowStageDialog(false);
       setEditingStage(null);
       toast({
-        title: "Saved",
-        description: "Stage saved successfully",
+        title: 'Saved',
+        description: 'Stage saved successfully',
       });
     },
   });
@@ -237,7 +252,9 @@ export default function PipelineConfiguration() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/pipeline-config/templates/${selectedTemplate?.id}`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/pipeline-config/templates/${selectedTemplate?.id}`],
+      });
     },
   });
 
@@ -249,10 +266,12 @@ export default function PipelineConfiguration() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/pipeline-config/templates/${selectedTemplate?.id}`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/pipeline-config/templates/${selectedTemplate?.id}`],
+      });
       toast({
-        title: "Deleted",
-        description: "Stage deleted successfully",
+        title: 'Deleted',
+        description: 'Stage deleted successfully',
       });
     },
   });
@@ -327,7 +346,7 @@ export default function PipelineConfiguration() {
     ];
 
     createTemplateMutation.mutate({
-      name: "New Sales Pipeline",
+      name: 'New Sales Pipeline',
       pipelineType: 'sales',
       isDefault: false,
       isActive: true,
@@ -437,9 +456,7 @@ export default function PipelineConfiguration() {
                     <Card
                       key={template.id}
                       className={`cursor-pointer transition-all hover:shadow-md ${
-                        selectedTemplate?.id === template.id
-                          ? 'ring-2 ring-blue-500'
-                          : ''
+                        selectedTemplate?.id === template.id ? 'ring-2 ring-blue-500' : ''
                       }`}
                       onClick={() => setSelectedTemplate(template)}
                     >
@@ -570,7 +587,8 @@ export default function PipelineConfiguration() {
                                         {stage.automationTriggers.length > 0 && (
                                           <span className="flex items-center gap-1">
                                             <Zap className="h-3 w-3" />
-                                            {stage.automationTriggers.length} automation{stage.automationTriggers.length !== 1 ? 's' : ''}
+                                            {stage.automationTriggers.length} automation
+                                            {stage.automationTriggers.length !== 1 ? 's' : ''}
                                           </span>
                                         )}
                                       </div>
@@ -586,7 +604,9 @@ export default function PipelineConfiguration() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => stage.id && deleteStageMutation.mutate(stage.id)}
+                                        onClick={() =>
+                                          stage.id && deleteStageMutation.mutate(stage.id)
+                                        }
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -633,9 +653,7 @@ export default function PipelineConfiguration() {
         <Dialog open={showStageDialog} onOpenChange={setShowStageDialog}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingStage?.id ? 'Edit Stage' : 'Add New Stage'}
-              </DialogTitle>
+              <DialogTitle>{editingStage?.id ? 'Edit Stage' : 'Add New Stage'}</DialogTitle>
               <DialogDescription>
                 Configure stage properties, automation triggers, and SLA settings
               </DialogDescription>
@@ -659,9 +677,7 @@ export default function PipelineConfiguration() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Clone Pipeline Template</DialogTitle>
-              <DialogDescription>
-                Create a copy of {selectedTemplate?.name}
-              </DialogDescription>
+              <DialogDescription>Create a copy of {selectedTemplate?.name}</DialogDescription>
             </DialogHeader>
             <form
               onSubmit={(e) => {
@@ -684,11 +700,7 @@ export default function PipelineConfiguration() {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowCloneDialog(false)}
-                  >
+                  <Button type="button" variant="outline" onClick={() => setShowCloneDialog(false)}>
                     Cancel
                   </Button>
                   <Button type="submit">Clone Pipeline</Button>
@@ -846,9 +858,7 @@ function StageForm({
               type="number"
               min="1"
               value={formData.slaDays || ''}
-              onChange={(e) =>
-                setFormData({ ...formData, slaDays: parseInt(e.target.value) })
-              }
+              onChange={(e) => setFormData({ ...formData, slaDays: parseInt(e.target.value) })}
             />
           </div>
         )}
