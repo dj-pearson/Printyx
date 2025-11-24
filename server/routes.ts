@@ -77,6 +77,7 @@ import {
 import { registerIntegrationRoutes } from './routes-integrations';
 import { registerTaskRoutes } from './routes-tasks';
 import { registerEnhancedTaskRoutes } from './routes-enhanced-tasks';
+import { registerTemplateRoutes } from './routes-templates';
 import { registerDealsManagementRoutes } from './routes-deals-management';
 import { registerOpportunitiesRoutes } from './routes-opportunities';
 import { registerDealDeskRoutes } from './routes-deal-desk';
@@ -7984,6 +7985,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register enhanced task management routes
   registerEnhancedTaskRoutes(app);
+
+  // Register template routes (NEW - Project Templates)
+  registerTemplateRoutes(app);
 
   // Register purchase order routes
   registerPurchaseOrderRoutes(app);
