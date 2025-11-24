@@ -1,18 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
-import {
-  DollarSign,
-  TrendingUp,
-  Clock,
-  AlertTriangle,
-  ArrowRight,
-  FileText,
-} from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
+import { DollarSign, TrendingUp, Clock, AlertTriangle, ArrowRight, FileText } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 
 interface MarginReportSummary {
   count: number;
@@ -59,14 +52,14 @@ export function PendingApprovalsWidget() {
     if (diffDays > 0) return `${diffDays}d ago`;
     if (diffHours > 0) return `${diffHours}h ago`;
     if (diffMins > 0) return `${diffMins}m ago`;
-    return "Just now";
+    return 'Just now';
   };
 
   const formatCurrency = (value: string | number) => {
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(num);
@@ -80,13 +73,9 @@ export function PendingApprovalsWidget() {
             <Clock className="h-5 w-5 text-orange-500" />
             <CardTitle>Pending Price Approvals</CardTitle>
           </div>
-          {approvals.length > 0 && (
-            <Badge variant="destructive">{approvals.length}</Badge>
-          )}
+          {approvals.length > 0 && <Badge variant="destructive">{approvals.length}</Badge>}
         </div>
-        <CardDescription>
-          Price change requests awaiting your approval
-        </CardDescription>
+        <CardDescription>Price change requests awaiting your approval</CardDescription>
       </CardHeader>
       <CardContent>
         {approvals.length === 0 ? (
@@ -157,29 +146,30 @@ export function MarginTrendsWidget() {
       quoteCount: acc.quoteCount + 1,
       margins: [...acc.margins, item.marginPercentage],
     }),
-    { totalRevenue: 0, totalMargin: 0, quoteCount: 0, margins: [] as number[] }
+    { totalRevenue: 0, totalMargin: 0, quoteCount: 0, margins: [] as number[] },
   ) || { totalRevenue: 0, totalMargin: 0, quoteCount: 0, margins: [] };
 
-  const avgMargin = summary.margins.length > 0
-    ? summary.margins.reduce((a, b) => a + b, 0) / summary.margins.length
-    : 0;
+  const avgMargin =
+    summary.margins.length > 0
+      ? summary.margins.reduce((a, b) => a + b, 0) / summary.margins.length
+      : 0;
 
-  const lowMarginQuotes = summary.margins.filter(m => m < 10).length;
+  const lowMarginQuotes = summary.margins.filter((m) => m < 10).length;
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
   };
 
   const getMarginColor = (percentage: number) => {
-    if (percentage >= 20) return "text-green-600";
-    if (percentage >= 10) return "text-blue-600";
-    if (percentage >= 5) return "text-orange-600";
-    return "text-red-600";
+    if (percentage >= 20) return 'text-green-600';
+    if (percentage >= 10) return 'text-blue-600';
+    if (percentage >= 5) return 'text-orange-600';
+    return 'text-red-600';
   };
 
   return (
@@ -189,9 +179,7 @@ export function MarginTrendsWidget() {
           <TrendingUp className="h-5 w-5 text-green-500" />
           <CardTitle>Margin Trends</CardTitle>
         </div>
-        <CardDescription>
-          Last {summary.quoteCount} quotes performance
-        </CardDescription>
+        <CardDescription>Last {summary.quoteCount} quotes performance</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -223,7 +211,7 @@ export function MarginTrendsWidget() {
                 <p className="text-xl font-bold">{lowMarginQuotes}</p>
                 {lowMarginQuotes > 0 && (
                   <Badge variant="destructive" className="text-xs">
-                    <10%
+                    {'<10%'}
                   </Badge>
                 )}
               </div>
@@ -284,7 +272,9 @@ export function QuickPricingStatsWidget() {
             <Clock className="h-4 w-4 text-orange-500" />
             <p className="text-2xl font-bold">{pendingCount}</p>
             {pendingCount > 0 && (
-              <Badge variant="destructive" className="ml-auto">Action Needed</Badge>
+              <Badge variant="destructive" className="ml-auto">
+                Action Needed
+              </Badge>
             )}
           </div>
         </CardContent>
