@@ -34,7 +34,7 @@ app.use(
     referrerPolicy: { policy: 'no-referrer' },
     crossOriginOpenerPolicy: { policy: 'same-origin' },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    frameguard: { action: 'sameorigin' },
+    frameguard: process.env.NODE_ENV === 'production' ? { action: 'sameorigin' } : false,
     hsts: { maxAge: 15552000, includeSubDomains: true, preload: true },
     hidePoweredBy: true,
   }),
