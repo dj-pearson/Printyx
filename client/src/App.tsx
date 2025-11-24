@@ -162,6 +162,7 @@ const ProposalBuilder = React.lazy(() => import('@/pages/ProposalBuilder'));
 const DealDeskDashboard = React.lazy(() => import('@/pages/DealDeskDashboard'));
 const ApprovalRequestDetail = React.lazy(() => import('@/pages/ApprovalRequestDetail'));
 const ApprovalRulesConfiguration = React.lazy(() => import('@/pages/ApprovalRulesConfiguration'));
+const PipelineConfiguration = React.lazy(() => import('@/pages/PipelineConfiguration'));
 const PreventiveMaintenanceScheduling = React.lazy(
   () => import('@/pages/PreventiveMaintenanceScheduling'),
 );
@@ -441,6 +442,8 @@ function Router() {
           <Route path="/deal-desk" component={DealDeskDashboard} />
           <Route path="/deal-desk/requests/:id" component={ApprovalRequestDetail} />
           <Route path="/deal-desk/rules" component={ApprovalRulesConfiguration} />
+          {/* Pipeline Configuration */}
+          <Route path="/pipeline-config" component={PipelineConfiguration} />
           {/* Use /preventive-maintenance as primary route */}
           <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
           <Route path="/incident-response-system" component={IncidentResponseSystem} />
