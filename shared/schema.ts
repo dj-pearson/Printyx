@@ -90,6 +90,65 @@ export type {
   InsertPartsOrderItem,
 } from './service-analysis-schema';
 
+// Re-export pipeline configuration schemas
+export {
+  pipelineTemplates,
+  pipelineStages,
+  stageTransitions,
+  dealStageHistory,
+  pipelineAutomationLogs,
+  pipelineTypeEnum,
+  insertPipelineTemplateSchema,
+  insertPipelineStageSchema,
+  insertStageTransitionSchema,
+  insertDealStageHistorySchema,
+  insertPipelineAutomationLogSchema,
+} from './pipeline-configuration-schema';
+
+export type {
+  PipelineTemplate,
+  InsertPipelineTemplate,
+  PipelineStage,
+  InsertPipelineStage,
+  StageTransition,
+  InsertStageTransition,
+  DealStageHistory,
+  InsertDealStageHistory,
+  PipelineAutomationLog,
+  InsertPipelineAutomationLog,
+} from './pipeline-configuration-schema';
+
+// Re-export deal desk schemas
+export {
+  approvalRules,
+  approvalRequests,
+  approvalComments,
+  discountAnalytics,
+  approvalDelegations,
+  approvalTypeEnum,
+  approvalStatusEnum,
+  approvalChainTypeEnum,
+  thresholdTypeEnum,
+  insertApprovalRuleSchema,
+  insertApprovalRequestSchema,
+  insertApprovalCommentSchema,
+  insertDiscountAnalyticsSchema,
+  insertApprovalDelegationSchema,
+} from './deal-desk-schema';
+
+export type {
+  ApprovalRule,
+  InsertApprovalRule,
+  ApprovalRequest,
+  InsertApprovalRequest,
+  ApprovalComment,
+  InsertApprovalComment,
+  DiscountAnalytics,
+  InsertDiscountAnalytics,
+  ApprovalDelegation,
+  InsertApprovalDelegation,
+} from './deal-desk-schema';
+
 // Re-export email parser schemas
 export {
   processedEmails,
