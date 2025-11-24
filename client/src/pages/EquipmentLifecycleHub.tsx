@@ -5,9 +5,10 @@ import {
   Plus, Package, Truck, Settings, CheckCircle, Clock, AlertTriangle,
   MapPin, Calendar, FileText, FileCheck, Wrench, Warehouse, ShoppingCart,
   Camera, Shield, BarChart3, Activity, Star, Target, Search,
-  ChevronDown, ChevronUp, Workflow, Eye, Filter
+  ChevronDown, ChevronUp, Workflow, Eye, Filter, History
 } from "lucide-react";
 import { EquipmentTransitionDialog } from '@/components/equipment/EquipmentTransitionDialog';
+import { EquipmentTransitionHistory } from '@/components/equipment/EquipmentTransitionHistory';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -229,6 +230,7 @@ export default function EquipmentLifecycleHub() {
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<{id: string, stage: string} | null>(null);
 
   const queryClient = useQueryClient();
@@ -1280,7 +1282,7 @@ export default function EquipmentLifecycleHub() {
                                 <p>Assigned: {stage.assigned_to_name}</p>
                               )}
                             </div>
-                            <div className="mt-3">
+                            <div className="mt-3 flex gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -1291,6 +1293,17 @@ export default function EquipmentLifecycleHub() {
                               >
                                 <Workflow className="h-4 w-4 mr-2" />
                                 Transition Stage
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedEquipment({id: stage.equipment_id, stage: stage.current_stage});
+                                  setHistoryDialogOpen(true);
+                                }}
+                              >
+                                <History className="h-4 w-4 mr-2" />
+                                History
                               </Button>
                             </div>
                           </div>
@@ -1635,6 +1648,21 @@ export default function EquipmentLifecycleHub() {
               queryClient.invalidateQueries({queryKey: ['/api/equipment-lifecycle/assets']});
             }}
           />
+        )}
+
+        {/* Equipment Transition History Dialog */}
+        {selectedEquipment && (
+          <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Equipment Transition History</DialogTitle>
+                <DialogDescription>
+                  Complete audit trail of lifecycle stage transitions
+                </DialogDescription>
+              </DialogHeader>
+              <EquipmentTransitionHistory equipmentId={selectedEquipment.id} />
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </MainLayout>
