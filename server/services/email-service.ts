@@ -232,3 +232,8 @@ export class EmailService {
 
 // Singleton instance
 export const emailService = new EmailService();
+
+// Export convenience function for direct usage
+export async function sendEmail(message: EmailMessage) {
+  return emailService.send(message);
+}
