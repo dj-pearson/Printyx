@@ -1,5 +1,3 @@
-import Imap from 'imap';
-import { simpleParser, ParsedMail } from 'mailparser';
 import { db } from '../db';
 import { processedEmails, emailMonitorConfig } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -20,9 +18,10 @@ interface EmailConfig {
  *
  * Monitors email inbox (IMAP) for new service request emails
  * and automatically creates tickets using AI parsing.
+ * NOTE: IMAP functionality is disabled - feature coming soon
  */
 export class EmailMonitorService {
-  private imap: Imap | null = null;
+  private imap: any = null;
   private config: EmailConfig;
   private tenantId: string;
   private isConnected = false;
@@ -35,43 +34,14 @@ export class EmailMonitorService {
 
   /**
    * Connect to IMAP server
+   * Note: IMAP functionality is disabled - feature coming soon
    */
   async connect(): Promise<void> {
     if (this.isConnected) {
       return;
     }
-
-    return new Promise((resolve, reject) => {
-      this.imap = new Imap({
-        user: this.config.user,
-        password: this.config.password,
-        host: this.config.host,
-        port: this.config.port,
-        tls: this.config.tls,
-        tlsOptions: this.config.tlsOptions || { rejectUnauthorized: false },
-        authTimeout: 10000,
-        connTimeout: 10000,
-      });
-
-      this.imap.once('ready', () => {
-        this.isConnected = true;
-        console.log(`[EmailMonitor] Connected to ${this.config.host} as ${this.config.user}`);
-        resolve();
-      });
-
-      this.imap.once('error', (err: Error) => {
-        console.error('[EmailMonitor] Connection error:', err);
-        this.isConnected = false;
-        reject(err);
-      });
-
-      this.imap.once('end', () => {
-        console.log('[EmailMonitor] Connection ended');
-        this.isConnected = false;
-      });
-
-      this.imap.connect();
-    });
+    console.log('[EmailMonitor] IMAP email monitoring is temporarily disabled');
+    this.isConnected = false;
   }
 
   /**
