@@ -1,12 +1,12 @@
-import { db } from "../db/index";
-import { eq, desc, and } from "drizzle-orm";
+import { db } from '../db';
+import { eq, desc, and } from 'drizzle-orm';
 import {
   equipmentLifecycle,
   equipmentLifecycleTransitions,
   lifecycleTransitionRules,
   type EquipmentLifecycle,
   type InsertEquipmentLifecycleTransition,
-} from "@shared/schema";
+} from '@shared/schema';
 
 // Valid lifecycle stages
 export const LIFECYCLE_STAGES = {
@@ -23,7 +23,7 @@ export const LIFECYCLE_STAGES = {
   TRADED_IN: 'traded_in',
 } as const;
 
-export type LifecycleStage = typeof LIFECYCLE_STAGES[keyof typeof LIFECYCLE_STAGES];
+export type LifecycleStage = (typeof LIFECYCLE_STAGES)[keyof typeof LIFECYCLE_STAGES];
 
 // Validation result interface
 export interface ValidationResult {
@@ -70,7 +70,6 @@ export interface TransitionHistoryItem {
  * - Rollback capabilities
  */
 export class EquipmentLifecycleStateMachine {
-
   /**
    * Define valid transitions between stages
    * This enforces business rules about which stage transitions are allowed
@@ -101,11 +100,7 @@ export class EquipmentLifecycleStateMachine {
       ],
     },
     [LIFECYCLE_STAGES.STAGED]: {
-      [LIFECYCLE_STAGES.IN_TRANSIT]: [
-        'delivery_scheduled',
-        'driver_assigned',
-        'customer_notified',
-      ],
+      [LIFECYCLE_STAGES.IN_TRANSIT]: ['delivery_scheduled', 'driver_assigned', 'customer_notified'],
     },
     [LIFECYCLE_STAGES.IN_TRANSIT]: {
       [LIFECYCLE_STAGES.DELIVERED]: [
@@ -162,7 +157,7 @@ export class EquipmentLifecycleStateMachine {
    */
   private static async runValidations(
     equipmentId: string,
-    requiredValidations: string[]
+    requiredValidations: string[],
   ): Promise<ValidationCheck[]> {
     // This would integrate with actual validation logic
     // For now, return mock validation results
@@ -192,7 +187,7 @@ export class EquipmentLifecycleStateMachine {
   static async validateTransition(
     equipmentId: string,
     fromStage: string,
-    toStage: string
+    toStage: string,
   ): Promise<ValidationResult> {
     const requiredValidations = this.VALIDATIONS[fromStage]?.[toStage] || [];
 
@@ -207,9 +202,9 @@ export class EquipmentLifecycleStateMachine {
     const validationResults = await this.runValidations(equipmentId, requiredValidations);
 
     return {
-      isValid: validationResults.every(v => v.passed),
-      passed: validationResults.filter(v => v.passed),
-      failed: validationResults.filter(v => !v.passed),
+      isValid: validationResults.every((v) => v.passed),
+      passed: validationResults.filter((v) => v.passed),
+      failed: validationResults.filter((v) => !v.passed),
     };
   }
 
@@ -229,7 +224,7 @@ export class EquipmentLifecycleStateMachine {
     userId: string,
     tenantId: string,
     reason?: string,
-    metadata?: any
+    metadata?: any,
   ): Promise<TransitionResult> {
     try {
       return await db.transaction(async (tx) => {
@@ -240,8 +235,8 @@ export class EquipmentLifecycleStateMachine {
           .where(
             and(
               eq(equipmentLifecycle.equipmentId, equipmentId),
-              eq(equipmentLifecycle.tenantId, tenantId)
-            )
+              eq(equipmentLifecycle.tenantId, tenantId),
+            ),
           );
 
         if (!equipment) {
@@ -254,7 +249,7 @@ export class EquipmentLifecycleStateMachine {
         if (!this.canTransition(fromStage, toStage)) {
           throw new Error(
             `Invalid transition: ${fromStage} → ${toStage}. ` +
-            `Valid transitions from ${fromStage}: ${this.VALID_TRANSITIONS[fromStage]?.join(', ') || 'none'}`
+              `Valid transitions from ${fromStage}: ${this.VALID_TRANSITIONS[fromStage]?.join(', ') || 'none'}`,
           );
         }
 
@@ -263,8 +258,8 @@ export class EquipmentLifecycleStateMachine {
 
         if (!validation.isValid) {
           throw new Error(
-            `Validation failed: ${validation.failed.map(f => f.name).join(', ')}. ` +
-            `Please complete required steps before transitioning.`
+            `Validation failed: ${validation.failed.map((f) => f.name).join(', ')}. ` +
+              `Please complete required steps before transitioning.`,
           );
         }
 
@@ -283,8 +278,8 @@ export class EquipmentLifecycleStateMachine {
           .where(
             and(
               eq(equipmentLifecycle.equipmentId, equipmentId),
-              eq(equipmentLifecycle.tenantId, tenantId)
-            )
+              eq(equipmentLifecycle.tenantId, tenantId),
+            ),
           );
 
         // 5. Record transition
@@ -307,13 +302,7 @@ export class EquipmentLifecycleStateMachine {
           .returning();
 
         // 6. Trigger post-transition actions
-        await this.triggerPostTransitionActions(
-          equipmentId,
-          fromStage,
-          toStage,
-          tenantId,
-          tx
-        );
+        await this.triggerPostTransitionActions(equipmentId, fromStage, toStage, tenantId, tx);
 
         return {
           success: true,
@@ -334,22 +323,19 @@ export class EquipmentLifecycleStateMachine {
   /**
    * Get transition history for equipment
    */
-  static async getHistory(
-    equipmentId: string,
-    tenantId: string
-  ): Promise<TransitionHistoryItem[]> {
+  static async getHistory(equipmentId: string, tenantId: string): Promise<TransitionHistoryItem[]> {
     const transitions = await db
       .select()
       .from(equipmentLifecycleTransitions)
       .where(
         and(
           eq(equipmentLifecycleTransitions.equipmentId, equipmentId),
-          eq(equipmentLifecycleTransitions.tenantId, tenantId)
-        )
+          eq(equipmentLifecycleTransitions.tenantId, tenantId),
+        ),
       )
       .orderBy(desc(equipmentLifecycleTransitions.triggeredAt));
 
-    return transitions.map(t => ({
+    return transitions.map((t) => ({
       id: t.id,
       fromStage: t.fromStage,
       toStage: t.toStage,
@@ -373,8 +359,8 @@ export class EquipmentLifecycleStateMachine {
       .where(
         and(
           eq(equipmentLifecycleTransitions.id, transitionId),
-          eq(equipmentLifecycleTransitions.tenantId, tenantId)
-        )
+          eq(equipmentLifecycleTransitions.tenantId, tenantId),
+        ),
       );
 
     if (!transition) return false;
@@ -399,7 +385,7 @@ export class EquipmentLifecycleStateMachine {
     transitionId: string,
     userId: string,
     tenantId: string,
-    reason: string
+    reason: string,
   ): Promise<TransitionResult> {
     try {
       return await db.transaction(async (tx) => {
@@ -410,8 +396,8 @@ export class EquipmentLifecycleStateMachine {
           .where(
             and(
               eq(equipmentLifecycleTransitions.id, transitionId),
-              eq(equipmentLifecycleTransitions.tenantId, tenantId)
-            )
+              eq(equipmentLifecycleTransitions.tenantId, tenantId),
+            ),
           );
 
         if (!originalTransition) {
@@ -429,7 +415,7 @@ export class EquipmentLifecycleStateMachine {
           userId,
           tenantId,
           `Rollback: ${reason}`,
-          { originalTransitionId: transitionId }
+          { originalTransitionId: transitionId },
         );
 
         if (result.success) {
@@ -464,7 +450,7 @@ export class EquipmentLifecycleStateMachine {
     fromStage: string,
     toStage: string,
     tenantId: string,
-    tx: any
+    tx: any,
   ): Promise<void> {
     // Define post-transition actions
     const actions: Record<string, Record<string, () => Promise<void>>> = {
@@ -482,7 +468,9 @@ export class EquipmentLifecycleStateMachine {
       },
       [LIFECYCLE_STAGES.INSTALLED]: {
         [LIFECYCLE_STAGES.ACTIVE]: async () => {
-          console.log(`[State Machine] Equipment ${equipmentId}: Activate monitoring & send welcome email`);
+          console.log(
+            `[State Machine] Equipment ${equipmentId}: Activate monitoring & send welcome email`,
+          );
           // TODO: Activate equipment monitoring
           // TODO: Register warranty
           // TODO: Send welcome email to customer
@@ -514,7 +502,10 @@ export class EquipmentLifecycleStateMachine {
       try {
         await action();
       } catch (error) {
-        console.error(`[State Machine] Post-transition action failed for ${fromStage} → ${toStage}:`, error);
+        console.error(
+          `[State Machine] Post-transition action failed for ${fromStage} → ${toStage}:`,
+          error,
+        );
         // Don't throw - transition should still succeed even if post-action fails
       }
     }
