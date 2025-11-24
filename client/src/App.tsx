@@ -124,6 +124,7 @@ const DealsManagement = React.lazy(() => import('@/pages/DealsManagement'));
 const ProductHub = React.lazy(() => import('@/pages/ProductHub'));
 const ProductHubUnified = React.lazy(() => import('@/pages/ProductHubUnified'));
 const EquipmentLifecycle = React.lazy(() => import('@/pages/EquipmentLifecycle'));
+const EquipmentLifecycleHub = React.lazy(() => import('@/pages/EquipmentLifecycleHub'));
 const PurchaseOrders = React.lazy(() => import('@/pages/PurchaseOrders'));
 const WarehouseOperations = React.lazy(() => import('@/pages/WarehouseOperations'));
 const CrmGoalsDashboard = React.lazy(() => import('@/pages/CrmGoalsDashboard'));
@@ -430,7 +431,10 @@ function Router() {
           <Route path="/product-hub" component={ProductHubUnified} />
           {/* Legacy Product Hub (keeping for reference during transition) */}
           <Route path="/product-hub-legacy" component={ProductHub} />
-          <Route path="/equipment-lifecycle" component={EquipmentLifecycle} />
+          {/* Unified Equipment Lifecycle Hub - consolidates EquipmentLifecycle and EquipmentLifecycleManagement */}
+          <Route path="/equipment-lifecycle" component={EquipmentLifecycleHub} />
+          {/* Legacy Equipment Lifecycle pages (keeping for reference during transition) */}
+          <Route path="/equipment-lifecycle-legacy" component={EquipmentLifecycle} />
           <Route path="/purchase-orders" component={PurchaseOrders} />
           <Route path="/warehouse-operations" component={WarehouseOperations} />
           <Route path="/crm-goals" component={CrmGoalsDashboard} />
@@ -457,8 +461,10 @@ function Router() {
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/advanced-billing" component={AdvancedBillingEngine} />
           <Route path="/financial-forecasting" component={FinancialForecasting} />
-          {/* Fixed duplicate route: removed /equipment-lifecycle pointing to Management (line 298 has correct hub route) */}
-          <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleManagement} />
+          {/* Equipment Lifecycle Management - now redirects to unified hub */}
+          <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
+          {/* Legacy Equipment Lifecycle Management (keeping for reference during transition) */}
+          <Route path="/equipment-lifecycle-management-legacy" component={EquipmentLifecycleManagement} />
           <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
