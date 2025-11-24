@@ -9942,10 +9942,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const aiSearchKnowledgeRoutes = await import('./routes/ai-search-knowledge-routes');
   app.use('/api', aiSearchKnowledgeRoutes.default);
 
-  // Knowledge Base Routes
-  const knowledgeBaseRoutes = await import('./routes/knowledge-base-routes');
-  app.use('/api/knowledge-base', knowledgeBaseRoutes.default);
-
   // AI Employee Routes
   const aiEmployeeRoutes = await import('./routes/ai-employee-routes');
   app.use('/api', aiEmployeeRoutes.default);
