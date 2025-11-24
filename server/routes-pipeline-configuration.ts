@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { db } from "../shared/db";
+import { db } from "./db";
 import {
   pipelineTemplates,
   pipelineStages,
