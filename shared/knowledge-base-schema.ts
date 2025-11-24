@@ -420,6 +420,55 @@ export const knowledgeSearchQueries = pgTable('knowledge_search_queries', {
   userSessionIdx: index('kb_search_user_session_idx').on(table.userId, table.sessionId),
 }));
 
+// Article Bookmarks
+export const articleBookmarks = pgTable('article_bookmarks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  articleId: uuid('article_id').notNull(),
+
+  // Bookmark details
+  notes: text('notes'), // User's personal notes about this article
+  tags: jsonb('tags').default([]).notNull(), // Personal tags
+  collectionName: varchar('collection_name', { length: 255 }), // Group bookmarks into collections
+
+  // Metadata
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  userArticleIdx: unique('bookmark_user_article_unique').on(table.userId, table.articleId),
+  userIdx: index('bookmark_user_idx').on(table.userId),
+  tenantUserIdx: index('bookmark_tenant_user_idx').on(table.tenantId, table.userId),
+}));
+
+// Reading History
+export const readingHistory = pgTable('reading_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  articleId: uuid('article_id').notNull(),
+
+  // Reading progress
+  scrollPosition: integer('scroll_position').default(0).notNull(), // Pixels scrolled
+  readingProgress: integer('reading_progress').default(0).notNull(), // Percentage 0-100
+  currentSectionId: varchar('current_section_id', { length: 255 }), // Last section viewed
+  completed: boolean('completed').default(false).notNull(), // Finished reading
+
+  // Time tracking
+  totalTimeSeconds: integer('total_time_seconds').default(0).notNull(), // Cumulative reading time
+  lastReadDuration: integer('last_read_duration').default(0).notNull(), // Seconds in last session
+
+  // Metadata
+  firstViewedAt: timestamp('first_viewed_at').default(sql`now()`).notNull(),
+  lastViewedAt: timestamp('last_viewed_at').default(sql`now()`).notNull(),
+  completedAt: timestamp('completed_at'),
+}, (table) => ({
+  userArticleIdx: unique('reading_history_user_article_unique').on(table.userId, table.articleId),
+  userIdx: index('reading_history_user_idx').on(table.userId),
+  lastViewedIdx: index('reading_history_last_viewed_idx').on(table.userId, table.lastViewedAt),
+  completedIdx: index('reading_history_completed_idx').on(table.userId, table.completed),
+}));
+
 // Zod Insert Schemas
 export const insertKnowledgeCategorySchema = createInsertSchema(knowledgeCategories, {
   name: z.string().min(1).max(255),
@@ -450,6 +499,14 @@ export const insertAiContentGenerationQueueSchema = createInsertSchema(aiContent
   prompt: z.string().min(1),
 });
 
+export const insertArticleBookmarkSchema = createInsertSchema(articleBookmarks, {
+  articleId: z.string().uuid(),
+});
+
+export const insertReadingHistorySchema = createInsertSchema(readingHistory, {
+  articleId: z.string().uuid(),
+});
+
 // TypeScript Types
 export type KnowledgeCategory = typeof knowledgeCategories.$inferSelect;
 export type InsertKnowledgeCategory = typeof knowledgeCategories.$inferInsert;
@@ -474,3 +531,9 @@ export type InsertArticleEmbedding = typeof articleEmbeddings.$inferInsert;
 
 export type KnowledgeSearchQuery = typeof knowledgeSearchQueries.$inferSelect;
 export type InsertKnowledgeSearchQuery = typeof knowledgeSearchQueries.$inferInsert;
+
+export type ArticleBookmark = typeof articleBookmarks.$inferSelect;
+export type InsertArticleBookmark = typeof articleBookmarks.$inferInsert;
+
+export type ReadingHistory = typeof readingHistory.$inferSelect;
+export type InsertReadingHistory = typeof readingHistory.$inferInsert;
