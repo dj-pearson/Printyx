@@ -171,6 +171,8 @@ const PreventiveMaintenanceScheduling = React.lazy(
 const PredictiveMaintenanceHub = React.lazy(() => import('@/pages/PredictiveMaintenanceHub'));
 const CustomerSelfServicePortal = React.lazy(() => import('@/pages/CustomerSelfServicePortal'));
 const AdvancedBillingEngine = React.lazy(() => import('@/pages/AdvancedBillingEngine'));
+const BillingRules = React.lazy(() => import('@/pages/BillingRules'));
+const BillingAnalytics = React.lazy(() => import('@/pages/BillingAnalytics'));
 const ProductCatalog = React.lazy(() => import('@/pages/ProductCatalog'));
 const VendorManagement = React.lazy(() => import('@/pages/VendorManagement'));
 const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSettings'));
@@ -536,6 +538,8 @@ function Router() {
           <Route path="/billing" component={MeterBilling} />
           <Route path="/meter-billing" component={MeterBilling} />
           <Route path="/advanced-billing-engine" component={AdvancedBillingEngine} />
+          <Route path="/billing-rules" component={BillingRules} />
+          <Route path="/billing-analytics" component={BillingAnalytics} />
           <Route path="/vendor-management" component={VendorManagement} />
           <Route path="/vendors" component={Vendors} />
           <Route path="/accounts-payable" component={AccountsPayable} />
