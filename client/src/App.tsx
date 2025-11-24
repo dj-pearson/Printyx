@@ -122,6 +122,7 @@ const TaskManagement = React.lazy(() => import('@/pages/TaskManagement'));
 const BasicTaskManagement = React.lazy(() => import('@/pages/BasicTaskManagement'));
 const DealsManagement = React.lazy(() => import('@/pages/DealsManagement'));
 const ProductHub = React.lazy(() => import('@/pages/ProductHub'));
+const ProductHubUnified = React.lazy(() => import('@/pages/ProductHubUnified'));
 const EquipmentLifecycle = React.lazy(() => import('@/pages/EquipmentLifecycle'));
 const PurchaseOrders = React.lazy(() => import('@/pages/PurchaseOrders'));
 const WarehouseOperations = React.lazy(() => import('@/pages/WarehouseOperations'));
@@ -425,7 +426,10 @@ function Router() {
           <Route path="/opportunities" component={DealsManagement} />
           <Route path="/deals-management" component={DealsManagement} />
           <Route path="/leads-management" component={LeadsManagement} />
-          <Route path="/product-hub" component={ProductHub} />
+          {/* Unified Product Hub - consolidates product-hub, product-catalog, and product-management-hub */}
+          <Route path="/product-hub" component={ProductHubUnified} />
+          {/* Legacy Product Hub (keeping for reference during transition) */}
+          <Route path="/product-hub-legacy" component={ProductHub} />
           <Route path="/equipment-lifecycle" component={EquipmentLifecycle} />
           <Route path="/purchase-orders" component={PurchaseOrders} />
           <Route path="/warehouse-operations" component={WarehouseOperations} />
@@ -502,14 +506,18 @@ function Router() {
           <Route path="/vehicle-management" component={VehicleManagement} />
           <Route path="/asset-management" component={AssetManagement} />
           <Route path="/mobile-field-service" component={MobileFieldService} />
-          <Route path="/product-catalog" component={ProductCatalog} />
+          {/* Product Catalog and Management Hub now redirect to unified hub */}
+          <Route path="/product-catalog" component={ProductHubUnified} />
+          <Route path="/product-management-hub" component={ProductHubUnified} />
+          {/* Legacy routes for backward compatibility */}
+          <Route path="/product-catalog-legacy" component={ProductCatalog} />
+          <Route path="/product-management-hub-legacy" component={ProductManagementHub} />
           <Route path="/inventory" component={Inventory} />
           <Route path="/product-models" component={ProductModels} />
           <Route path="/product-models-v2" component={EnhancedProductModels} />
           <Route path="/pricing/settings" component={PricingSettings} />
           <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
           <Route path="/pricing/approvals" component={PriceApprovals} />
-          <Route path="/product-management-hub" component={ProductManagementHub} />
           <Route path="/product-accessories" component={EnhancedProductAccessories} />
           {/* Legacy routes for backward compatibility */}
           <Route path="/enhanced-product-accessories" component={EnhancedProductAccessories} />
