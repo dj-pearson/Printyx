@@ -160,6 +160,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
         { title: 'Proposal Builder', path: '/proposal-builder', icon: FileText },
         { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
+        { title: 'Pipeline Configuration', path: '/pipeline-config', icon: Settings },
         { title: 'Contracts', path: '/contracts', icon: FileSignature },
         { title: 'Document Builder', path: '/document-builder', icon: FileText },
         { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
