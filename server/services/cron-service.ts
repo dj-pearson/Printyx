@@ -2,49 +2,56 @@
  * CRON SERVICE
  *
  * Handles scheduled tasks like trial email automation
+ * Note: Cron functionality is temporarily disabled until node-cron package is installed
  */
 
-import cron from 'node-cron';
 import { TrialManagementService } from './trial-management-service';
 
 export class CronService {
-  private static jobs: cron.ScheduledTask[] = [];
+  private static jobs: any[] = [];
+  private static intervals: NodeJS.Timeout[] = [];
 
   /**
    * Initialize all cron jobs
+   * Using native setInterval until node-cron is available
    */
   static initialize() {
-    console.log('[CRON] Initializing scheduled tasks...');
+    console.log('[CRON] Initializing scheduled tasks with native timers...');
 
-    // Run trial email processing daily at 9 AM
-    const trialEmailJob = cron.schedule('0 9 * * *', async () => {
-      console.log('[CRON] Running trial email processing...');
-      try {
-        const results = await TrialManagementService.processTrialEmails();
-        console.log(`[CRON] Trial emails processed: ${results.sent} sent, ${results.errors} errors`);
-      } catch (error) {
-        console.error('[CRON] Trial email processing failed:', error);
-      }
-    });
+    // Run trial email processing daily at 9 AM (using interval for now)
+    // In production, this should use a proper cron library
+    const HOUR_IN_MS = 60 * 60 * 1000;
+    const DAY_IN_MS = 24 * HOUR_IN_MS;
 
-    this.jobs.push(trialEmailJob);
-
-    // For development/testing: Run trial processing every hour
+    // For development: Run trial processing every 6 hours
     if (process.env.NODE_ENV === 'development') {
-      const hourlyTrialJob = cron.schedule('0 * * * *', async () => {
-        console.log('[CRON DEV] Running hourly trial check...');
+      const sixHourInterval = setInterval(async () => {
+        console.log('[CRON DEV] Running trial check...');
         try {
           const results = await TrialManagementService.processTrialEmails();
           console.log(`[CRON DEV] Trial emails: ${results.sent} sent`);
         } catch (error) {
           console.error('[CRON DEV] Error:', error);
         }
-      });
+      }, 6 * HOUR_IN_MS);
 
-      this.jobs.push(hourlyTrialJob);
+      this.intervals.push(sixHourInterval);
+    } else {
+      // Production: Run once per day
+      const dailyInterval = setInterval(async () => {
+        console.log('[CRON] Running trial email processing...');
+        try {
+          const results = await TrialManagementService.processTrialEmails();
+          console.log(`[CRON] Trial emails processed: ${results.sent} sent, ${results.errors} errors`);
+        } catch (error) {
+          console.error('[CRON] Trial email processing failed:', error);
+        }
+      }, DAY_IN_MS);
+
+      this.intervals.push(dailyInterval);
     }
 
-    console.log(`[CRON] Initialized ${this.jobs.length} scheduled tasks`);
+    console.log(`[CRON] Initialized ${this.intervals.length} scheduled tasks`);
   }
 
   /**
@@ -52,7 +59,8 @@ export class CronService {
    */
   static shutdown() {
     console.log('[CRON] Stopping all scheduled tasks...');
-    this.jobs.forEach(job => job.stop());
+    this.intervals.forEach(interval => clearInterval(interval));
+    this.intervals = [];
     this.jobs = [];
     console.log('[CRON] All tasks stopped');
   }
@@ -61,10 +69,9 @@ export class CronService {
    * Get status of all cron jobs
    */
   static getStatus(): { total: number; running: number } {
-    const running = this.jobs.filter(job => job.getStatus() === 'scheduled').length;
     return {
-      total: this.jobs.length,
-      running,
+      total: this.intervals.length,
+      running: this.intervals.length,
     };
   }
 }
