@@ -17,6 +17,7 @@ import {
   DollarSign,
   BarChart3,
   CheckSquare,
+  CheckCircle2,
   Settings,
   Plug,
   ChevronDown,
