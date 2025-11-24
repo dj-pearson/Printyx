@@ -90,6 +90,7 @@ import { setupAuth } from './replitAuth';
 import { registerPurchaseOrderRoutes } from './routes-purchase-orders';
 import { registerWarehouseRoutes } from './routes-warehouse';
 import { registerServiceAnalysisRoutes } from './routes-service-analysis';
+import equipmentLifecycleStateMachineRoutes from './routes-equipment-lifecycle-state-machine';
 import breachDetectionRoutes from './routes-breach-detection';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerBusinessRecordRoutes } from './routes-business-records';
@@ -8009,6 +8010,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Commission Management routes
   app.use(commissionRoutes);
+
+  // Register Equipment Lifecycle State Machine routes
+  app.use(equipmentLifecycleStateMachineRoutes);
 
   // Register Billing routes
   app.use('/api/billing', billingRoutes);
