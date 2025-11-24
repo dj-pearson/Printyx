@@ -7,6 +7,7 @@ import {
   Camera, Shield, BarChart3, Activity, Star, Target, Search,
   ChevronDown, ChevronUp, Workflow, Eye, Filter
 } from "lucide-react";
+import { EquipmentTransitionDialog } from '@/components/equipment/EquipmentTransitionDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -227,6 +228,8 @@ export default function EquipmentLifecycleHub() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
+  const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
+  const [selectedEquipment, setSelectedEquipment] = useState<{id: string, stage: string} | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -1035,7 +1038,7 @@ export default function EquipmentLifecycleHub() {
                         <h4 className="text-sm font-medium mb-2">Equipment in this stage:</h4>
                         {stageEquipment.map((equipment) => (
                           <div key={equipment.id} className="p-2 bg-muted rounded-lg text-sm">
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <p className="font-medium">
                                   {equipment.equipment_brand} {equipment.equipment_model}
@@ -1044,7 +1047,21 @@ export default function EquipmentLifecycleHub() {
                                   {equipment.customer_name} • {equipment.progress_percentage}% complete
                                 </p>
                               </div>
-                              {getStatusIcon(equipment.stage_status)}
+                              <div className="flex items-center gap-2">
+                                {getStatusIcon(equipment.stage_status)}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedEquipment({id: equipment.equipment_id, stage: equipment.current_stage});
+                                    setTransitionDialogOpen(true);
+                                  }}
+                                >
+                                  <Workflow className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1262,6 +1279,19 @@ export default function EquipmentLifecycleHub() {
                               {stage.assigned_to_name && (
                                 <p>Assigned: {stage.assigned_to_name}</p>
                               )}
+                            </div>
+                            <div className="mt-3">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedEquipment({id: stage.equipment_id, stage: stage.current_stage});
+                                  setTransitionDialogOpen(true);
+                                }}
+                              >
+                                <Workflow className="h-4 w-4 mr-2" />
+                                Transition Stage
+                              </Button>
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
@@ -1590,6 +1620,22 @@ export default function EquipmentLifecycleHub() {
           </TabsContent>
 
         </Tabs>
+
+        {/* Equipment Transition Dialog */}
+        {selectedEquipment && (
+          <EquipmentTransitionDialog
+            open={transitionDialogOpen}
+            onOpenChange={setTransitionDialogOpen}
+            equipmentId={selectedEquipment.id}
+            currentStage={selectedEquipment.stage}
+            onTransitionComplete={() => {
+              // Invalidate all relevant queries to refresh the UI
+              queryClient.invalidateQueries({queryKey: ['/api/equipment-lifecycle/stages']});
+              queryClient.invalidateQueries({queryKey: ['/api/equipment-lifecycle/metrics']});
+              queryClient.invalidateQueries({queryKey: ['/api/equipment-lifecycle/assets']});
+            }}
+          />
+        )}
       </div>
     </MainLayout>
   );
