@@ -10,21 +10,21 @@
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
   }
-  
+
   /* Hide scrollbar on webkit browsers for cleaner mobile tabs */
   .overflow-x-auto::-webkit-scrollbar {
     height: 4px;
   }
-  
+
   .overflow-x-auto::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .overflow-x-auto::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground));
     border-radius: 2px;
   }
-  
+
   .overflow-x-auto::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--foreground));
   }
@@ -36,12 +36,12 @@
       min-height: 44px;
       min-width: 44px;
     }
-    
+
     /* Better spacing for mobile cards */
     .mobile-card-spacing {
       margin-bottom: 1rem;
     }
-    
+
     /* Responsive text sizing */
     .mobile-text-responsive {
       font-size: 0.875rem;
@@ -52,9 +52,9 @@
 
 /* Hide browser extension error overlays (MetaMask, etc.) */
 .runtime-error-plugin,
-[class*="runtime-error-plugin"],
-[class*="plugin:runtime-error"],
-div[style*="position: fixed"][style*="z-index"][style*="rgba(0, 0, 0"] {
+[class*='runtime-error-plugin'],
+[class*='plugin:runtime-error'],
+div[style*='position: fixed'][style*='z-index'][style*='rgba(0, 0, 0'] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -62,13 +62,13 @@ div[style*="position: fixed"][style*="z-index"][style*="rgba(0, 0, 0"] {
 }
 
 /* Specific MetaMask runtime error overlay suppression */
-div[style*="position: fixed"][style*="top: 0"][style*="left: 0"][style*="width: 100%"][style*="height: 100%"][style*="background"] {
+div[style*='position: fixed'][style*='top: 0'][style*='left: 0'][style*='width: 100%'][style*='height: 100%'][style*='background'] {
   display: none !important;
 }
 
 /* Hide any overlay containing "Failed to connect to MetaMask" */
 div:has(.runtime-error-plugin),
-div:has([class*="runtime-error"]) {
+div:has([class*='runtime-error']) {
   display: none !important;
 }
 
@@ -77,15 +77,15 @@ div:has([class*="runtime-error"]) {
   .pb-safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
+
   .pt-safe-top {
     padding-top: env(safe-area-inset-top);
   }
-  
+
   .pl-safe-left {
     padding-left: env(safe-area-inset-left);
   }
-  
+
   .pr-safe-right {
     padding-right: env(safe-area-inset-right);
   }
@@ -97,26 +97,26 @@ div:has([class*="runtime-error"]) {
   * {
     -webkit-overflow-scrolling: touch;
   }
-  
+
   /* Prevent iOS zoom on form inputs */
-  input[type="text"],
-  input[type="email"],
-  input[type="tel"],
-  input[type="password"],
-  input[type="number"],
-  input[type="search"],
-  input[type="url"],
+  input[type='text'],
+  input[type='email'],
+  input[type='tel'],
+  input[type='password'],
+  input[type='number'],
+  input[type='search'],
+  input[type='url'],
   select,
   textarea {
     font-size: 16px !important;
   }
-  
+
   /* Better touch targets */
   button,
-  [role="button"],
-  input[type="button"],
-  input[type="submit"],
-  input[type="reset"] {
+  [role='button'],
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset'] {
     min-height: 44px;
     min-width: 44px;
     touch-action: manipulation;
@@ -125,181 +125,196 @@ div:has([class*="runtime-error"]) {
 
 /* Enhanced drag and drop mobile support */
 .touch-manipulation {
-    touch-action: manipulation;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-  
-  /* Mobile optimized dialogs */
-  [data-radix-dialog-content] {
-    max-height: 90vh;
-    max-width: 95vw;
-  }
-  
-  /* Better mobile form elements */
-  .mobile-form-input {
-    min-height: 48px;
-    padding: 12px 16px;
-    font-size: 16px;
-  }
-  
-  /* Touch-friendly button targets */
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 8px 16px;
-    touch-action: manipulation;
-    transition: transform 0.15s ease, background-color 0.15s ease;
-  }
-  
-  .touch-target:active {
-    transform: scale(0.98);
-  }
-  
-  /* Enhanced button touch areas */
-  .btn-touch {
-    min-height: 48px;
-    padding: 12px 24px;
-    font-size: 16px;
-    touch-action: manipulation;
-  }
-  
-  /* Mobile FAB animations */
-  .mobile-fab {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 50;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: scale(1);
-  }
-  
-  .mobile-fab:active {
-    transform: scale(0.95);
-  }
-  
-  /* Mobile kanban optimizations */
-  .mobile-kanban-column {
-    min-width: 280px;
-    touch-action: pan-y;
-  }
-  
-  .mobile-kanban-card {
-    touch-action: manipulation;
-    transition: transform 0.2s ease;
-  }
-  
-  .mobile-kanban-card:active {
-    transform: scale(0.98);
-  }
-  
-  /* Fix dialog content scrolling */
-  [data-radix-dialog-content] {
-    max-height: 90vh !important;
-    overflow-y: auto !important;
-  }
-  
-  /* Fix sheet content scrolling */
-  [data-radix-dialog-content][data-side="left"] {
-    height: 100vh !important;
-    max-height: 100vh !important;
-  }
-  
-  /* Ensure scroll areas work properly on mobile */
-  [data-radix-scroll-area-viewport] {
-    -webkit-overflow-scrolling: touch;
-  }
-  
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Mobile optimized dialogs */
+[data-radix-dialog-content] {
+  max-height: 90vh;
+  max-width: 95vw;
+}
+
+/* Better mobile form elements */
+.mobile-form-input {
+  min-height: 48px;
+  padding: 12px 16px;
+  font-size: 16px;
+}
+
+/* Touch-friendly button targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 16px;
+  touch-action: manipulation;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.touch-target:active {
+  transform: scale(0.98);
+}
+
+/* Enhanced button touch areas */
+.btn-touch {
+  min-height: 48px;
+  padding: 12px 24px;
+  font-size: 16px;
+  touch-action: manipulation;
+}
+
+/* Mobile FAB animations */
+.mobile-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 50;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1);
+}
+
+.mobile-fab:active {
+  transform: scale(0.95);
+}
+
+/* Mobile kanban optimizations */
+.mobile-kanban-column {
+  min-width: 280px;
+  touch-action: pan-y;
+}
+
+.mobile-kanban-card {
+  touch-action: manipulation;
+  transition: transform 0.2s ease;
+}
+
+.mobile-kanban-card:active {
+  transform: scale(0.98);
+}
+
+/* Fix dialog content scrolling */
+[data-radix-dialog-content] {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+/* Fix sheet content scrolling */
+[data-radix-dialog-content][data-side='left'] {
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+/* Ensure scroll areas work properly on mobile */
+[data-radix-scroll-area-viewport] {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Improve mobile focus styles */
 :focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
-/* Base layer customizations */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Executive Indigo - Light Mode */
+    --background: 230 30% 98%;
+    /* Pale Indigo White */
+    --foreground: 230 35% 12%;
+    /* Deep Midnight Blue */
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 230 35% 12%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 230 35% 12%;
+
+    --primary: 250 90% 60%;
+    /* Vivid Indigo */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 20% 90%;
+    /* Pale Lavender */
+    --secondary-foreground: 230 35% 12%;
+
+    --muted: 230 20% 90%;
+    --muted-foreground: 230 15% 50%;
+
+    --accent: 230 20% 90%;
+    --accent-foreground: 230 35% 12%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+
+    --border: 230 20% 85%;
+    --input: 230 20% 85%;
+    --ring: 250 90% 60%;
+
     --radius: 0.5rem;
+
+    /* Sidebar variables (matching light mode) */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 230 35% 12%;
+    --sidebar-primary: 250 90% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 230 20% 90%;
+    --sidebar-accent-foreground: 230 35% 12%;
+    --sidebar-border: 230 20% 85%;
+    --sidebar-ring: 250 90% 60%;
   }
-}
 
-:root {
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(20, 14.3%, 4.1%);
-  --muted: hsl(60, 4.8%, 95.9%);
-  --muted-foreground: hsl(25, 5.3%, 44.7%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(20, 14.3%, 4.1%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(20, 14.3%, 4.1%);
-  --border: hsl(20, 5.9%, 90%);
-  --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(207, 90%, 54%);
-  --primary-foreground: hsl(211, 100%, 99%);
-  --secondary: hsl(60, 4.8%, 95.9%);
-  --secondary-foreground: hsl(24, 9.8%, 10%);
-  --accent: hsl(60, 4.8%, 95.9%);
-  --accent-foreground: hsl(24, 9.8%, 10%);
-  --destructive: hsl(0, 84.2%, 60.2%);
-  --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
-  --sidebar-background: hsl(0, 0%, 100%);
-  --sidebar-foreground: hsl(20, 14.3%, 4.1%);
-  --sidebar-primary: hsl(207, 90%, 54%);
-  --sidebar-primary-foreground: hsl(211, 100%, 99%);
-  --sidebar-accent: hsl(60, 4.8%, 95.9%);
-  --sidebar-accent-foreground: hsl(24, 9.8%, 10%);
-  --sidebar-border: hsl(20, 5.9%, 90%);
-  --sidebar-ring: hsl(20, 14.3%, 4.1%);
-  --radius: 0.5rem;
-}
+  .dark {
+    /* Executive Indigo - Dark Mode */
+    --background: 230 35% 12%;
+    /* Deep Midnight Blue */
+    --foreground: 210 40% 98%;
+    /* Soft White */
 
+    --card: 230 35% 14%;
+    /* Slightly lighter than bg */
+    --card-foreground: 210 40% 98%;
 
+    --popover: 230 35% 14%;
+    --popover-foreground: 210 40% 98%;
 
-.dark {
-  --background: hsl(240, 10%, 3.9%);
-  --foreground: hsl(0, 0%, 98%);
-  --muted: hsl(240, 3.7%, 15.9%);
-  --muted-foreground: hsl(240, 5%, 64.9%);
-  --popover: hsl(240, 10%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --card: hsl(240, 10%, 3.9%);
-  --card-foreground: hsl(0, 0%, 98%);
-  --border: hsl(240, 3.7%, 15.9%);
-  --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(207, 90%, 54%);
-  --primary-foreground: hsl(211, 100%, 99%);
-  --secondary: hsl(240, 3.7%, 15.9%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --accent: hsl(240, 3.7%, 15.9%);
-  --accent-foreground: hsl(0, 0%, 98%);
-  --destructive: hsl(0, 62.8%, 30.6%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(240, 4.9%, 83.9%);
-  --radius: 0.5rem;
-}
+    --primary: 250 90% 65%;
+    /* Vivid Indigo */
+    --primary-foreground: 210 40% 98%;
 
-@layer base {
+    --secondary: 230 25% 20%;
+    /* Muted Midnight */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 230 25% 20%;
+    --muted-foreground: 230 20% 70%;
+
+    --accent: 250 80% 60%;
+    /* Slightly varied Indigo for accent */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 230 30% 20%;
+    /* Subtle Indigo Grey */
+    --input: 230 30% 20%;
+    --ring: 250 90% 65%;
+
+    /* Sidebar variables (matching dark mode) */
+    --sidebar-background: 230 35% 12%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 250 90% 65%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 230 25% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 230 30% 20%;
+    --sidebar-ring: 250 90% 65%;
+  }
+
   * {
     @apply border-border;
   }
@@ -309,26 +324,22 @@ div:has([class*="runtime-error"]) {
   }
 }
 
-/* Sidebar-specific styling to ensure solid background */
-[data-sidebar="sidebar"] {
-  background-color: var(--sidebar-background) !important;
-  border-right: 1px solid var(--sidebar-border) !important;
-}
-
-[data-sidebar="sidebar"] * {
+[data-sidebar='sidebar'] * {
   background-color: transparent;
 }
 
-[data-sidebar="sidebar"] [data-sidebar="header"],
-[data-sidebar="sidebar"] [data-sidebar="content"],
-[data-sidebar="sidebar"] [data-sidebar="footer"] {
+[data-sidebar='sidebar'] [data-sidebar='header'],
+[data-sidebar='sidebar'] [data-sidebar='content'],
+[data-sidebar='sidebar'] [data-sidebar='footer'] {
   background-color: var(--sidebar-background) !important;
 }
 
 /* Ensure mobile sidebar overlay has proper background */
 @media (max-width: 768px) {
-  [data-sidebar="sidebar"][data-mobile="true"] {
+  [data-sidebar='sidebar'][data-mobile='true'] {
     background-color: var(--sidebar-background) !important;
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 }
