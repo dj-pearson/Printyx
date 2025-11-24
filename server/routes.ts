@@ -121,6 +121,7 @@ import clientMetricsRoutes from './routes-client-metrics';
 import deviceMonitoringRoutes from './routes-device-monitoring';
 import { serviceDispatchRouter } from './routes-service-dispatch';
 import { proactiveMaintenanceRouter } from './routes-proactive-maintenance';
+import { predictiveMaintenanceHubRouter } from './routes-predictive-maintenance-hub';
 import commissionRoutes from './routes-commission';
 import enhancedServiceRoutes from './routes-enhanced-service';
 import { enhancedRBACRoutes } from './routes-enhanced-rbac';
@@ -14982,6 +14983,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Proactive Maintenance routes (predictive scheduling and equipment health)
   app.use(proactiveMaintenanceRouter);
+
+  // Register Unified Predictive Maintenance Hub (consolidates proactive maintenance + AI predictions)
+  app.use(predictiveMaintenanceHubRouter);
 
   // Register enhanced service routes
   app.use('/api', enhancedServiceRoutes);

@@ -166,6 +166,7 @@ const PipelineConfiguration = React.lazy(() => import('@/pages/PipelineConfigura
 const PreventiveMaintenanceScheduling = React.lazy(
   () => import('@/pages/PreventiveMaintenanceScheduling'),
 );
+const PredictiveMaintenanceHub = React.lazy(() => import('@/pages/PredictiveMaintenanceHub'));
 const CustomerSelfServicePortal = React.lazy(() => import('@/pages/CustomerSelfServicePortal'));
 const AdvancedBillingEngine = React.lazy(() => import('@/pages/AdvancedBillingEngine'));
 const ProductCatalog = React.lazy(() => import('@/pages/ProductCatalog'));
@@ -446,6 +447,8 @@ function Router() {
           <Route path="/pipeline-config" component={PipelineConfiguration} />
           {/* Use /preventive-maintenance as primary route */}
           <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
+          {/* Unified Predictive Maintenance Hub - consolidates proactive + AI predictions */}
+          <Route path="/predictive-maintenance-hub" component={PredictiveMaintenanceHub} />
           <Route path="/incident-response-system" component={IncidentResponseSystem} />
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/advanced-billing" component={AdvancedBillingEngine} />
