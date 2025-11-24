@@ -25,11 +25,15 @@ import {
   billingDisputes,
   creditMemos,
   insertInvoiceSchema,
+  insertBillingRuleSchema,
 } from '@shared/schema';
 import { eq, and, desc, sql, gte, lte, isNotNull, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { StripeService, stripe } from '../services/stripe-service';
 import { billingEngine } from '../services/billing-engine-service';
+import { pdfGenerationService } from '../services/pdf-generation-service';
+import { emailService } from '../services/email-service';
+import { billingAnalytics } from '../services/billing-analytics-service';
 
 const router = Router();
 
@@ -567,36 +571,163 @@ router.delete('/invoices/:id', isAuthenticated, requireTenantContext, async (req
 
 /**
  * PATCH /api/billing/invoices/:id/send
- * Mark invoice as sent
+ * POST /api/billing/invoices/:id/email
+ * Send invoice via email with PDF attachment
  */
 router.patch('/invoices/:id/send', isAuthenticated, requireTenantContext, async (req: any, res) => {
+  return handleInvoiceSend(req, res);
+});
+
+router.post('/invoices/:id/email', isAuthenticated, requireTenantContext, async (req: any, res) => {
+  return handleInvoiceSend(req, res);
+});
+
+async function handleInvoiceSend(req: any, res: any) {
   try {
     const tenantId = req.tenantId;
     const invoiceId = req.params.id;
+    const { recipientEmail, customMessage, includeAttachment = true } = req.body;
 
+    // Fetch invoice with customer details
+    const [invoice] = await db
+      .select({
+        id: invoices.id,
+        invoiceNumber: invoices.invoiceNumber,
+        customerId: invoices.customerId,
+        customerName: businessRecords.companyName,
+        customerEmail: businessRecords.email,
+        totalAmount: invoices.totalAmount,
+        total: invoices.total,
+        dueDate: invoices.dueDate,
+        balance: invoices.balance,
+        status: invoices.status,
+        invoiceStatus: invoices.invoiceStatus,
+      })
+      .from(invoices)
+      .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .limit(1);
+
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Determine recipient email
+    const toEmail = recipientEmail || invoice.customerEmail;
+    if (!toEmail) {
+      return res.status(400).json({
+        error: 'No recipient email available',
+        message: 'Please provide a recipient email or ensure customer has an email on file',
+      });
+    }
+
+    // Generate PDF if attachment requested
+    let pdfBuffer: Buffer | undefined;
+    if (includeAttachment) {
+      pdfBuffer = await pdfGenerationService.generateInvoicePDF(invoiceId, tenantId, {
+        watermark: invoice.invoiceStatus === 'draft' ? 'DRAFT' : undefined,
+      });
+    }
+
+    // Build email HTML
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #1F2937; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background-color: #f9fafb; }
+          .invoice-details { background-color: white; padding: 15px; margin: 20px 0; border-radius: 8px; }
+          .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+          .detail-label { font-weight: bold; }
+          .total { font-size: 1.2em; color: #1F2937; font-weight: bold; }
+          .button { display: inline-block; padding: 12px 24px; background-color: #3B82F6; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .footer { text-align: center; padding: 20px; color: #6B7280; font-size: 0.9em; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Invoice from Printyx</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${invoice.customerName || 'valued customer'},</p>
+            ${customMessage ? `<p>${customMessage}</p>` : `<p>Please find attached your invoice for recent services.</p>`}
+
+            <div class="invoice-details">
+              <div class="detail-row">
+                <span class="detail-label">Invoice Number:</span>
+                <span>${invoice.invoiceNumber}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Due Date:</span>
+                <span>${new Date(invoice.dueDate).toLocaleDateString()}</span>
+              </div>
+              <div class="detail-row total">
+                <span class="detail-label">Amount Due:</span>
+                <span>$${parseFloat(invoice.balance || invoice.totalAmount || invoice.total || '0').toFixed(2)}</span>
+              </div>
+            </div>
+
+            <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
+
+            <p>Thank you for your business!</p>
+
+            <p>Best regards,<br>The Printyx Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message. Please do not reply directly to this email.</p>
+            <p>&copy; ${new Date().getFullYear()} Printyx. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Send email
+    const emailResult = await emailService.send({
+      to: toEmail,
+      subject: `Invoice ${invoice.invoiceNumber} from Printyx`,
+      html: emailHtml,
+      text: `Invoice ${invoice.invoiceNumber}\n\nAmount Due: $${parseFloat(invoice.balance || invoice.totalAmount || '0').toFixed(2)}\nDue Date: ${new Date(invoice.dueDate).toLocaleDateString()}\n\nPlease see the attached PDF for full invoice details.`,
+      from: process.env.BILLING_FROM_EMAIL || 'billing@printyx.com',
+    });
+
+    if (!emailResult.success) {
+      return res.status(500).json({
+        error: 'Failed to send email',
+        message: emailResult.error || 'Email service error',
+      });
+    }
+
+    // Update invoice status to 'sent'
     const [updatedInvoice] = await db
       .update(invoices)
       .set({
         status: 'sent',
         invoiceStatus: 'sent',
-        issueDate: new Date(),
+        issueDate: invoice.issueDate || new Date(),
         updatedAt: new Date(),
       })
       .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
       .returning();
 
-    if (!updatedInvoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
-    }
-
-    // TODO: Integrate with email service to actually send invoice
-
-    res.json(updatedInvoice);
-  } catch (error) {
+    res.json({
+      message: 'Invoice sent successfully',
+      invoice: updatedInvoice,
+      sentTo: toEmail,
+      messageId: emailResult.messageId,
+    });
+  } catch (error: any) {
     console.error('Error sending invoice:', error);
-    res.status(500).json({ error: 'Failed to send invoice' });
+    res.status(500).json({
+      error: 'Failed to send invoice',
+      message: error.message,
+    });
   }
-});
+}
 
 /**
  * PATCH /api/billing/invoices/:id/paid
@@ -675,19 +806,37 @@ router.get('/invoices/:id/pdf', requireTenantContext, async (req: any, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // TODO: Implement PDF generation
-    res.status(501).json({
-      error: 'PDF download not yet implemented',
-      message: 'Invoice PDF generation will be added in a future update',
-      invoice: {
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        total: invoice.total,
-      },
-    });
-  } catch (error) {
+    // Determine watermark based on status
+    let watermark: string | undefined;
+    if (invoice.invoiceStatus === 'draft' || invoice.status === 'draft') {
+      watermark = 'DRAFT';
+    } else if (invoice.invoiceStatus === 'paid') {
+      watermark = 'PAID';
+    } else if (invoice.dueDate && new Date(invoice.dueDate) < new Date()) {
+      watermark = 'OVERDUE';
+    }
+
+    // Generate PDF
+    const pdfBuffer = await pdfGenerationService.generateInvoicePDF(
+      invoiceId,
+      tenantId,
+      { watermark }
+    );
+
+    // Set response headers
+    const filename = `Invoice-${invoice.invoiceNumber}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    // Send PDF
+    res.send(pdfBuffer);
+  } catch (error: any) {
     console.error('Failed to download invoice:', error);
-    res.status(500).json({ error: 'Failed to download invoice' });
+    res.status(500).json({
+      error: 'Failed to download invoice',
+      message: error.message,
+    });
   }
 });
 
@@ -1061,6 +1210,369 @@ router.post('/stripe/webhooks', async (req: any, res) => {
     console.error('Webhook error:', error);
     res.status(400).json({
       error: 'Webhook processing failed',
+      message: error.message,
+    });
+  }
+});
+
+// =============================================================================
+// BILLING RULES MANAGEMENT
+// =============================================================================
+
+/**
+ * GET /api/billing/rules
+ * List all billing rules for the tenant
+ */
+router.get('/rules', requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const {
+      status,
+      ruleType,
+      customerId,
+      contractId,
+      limit = 50,
+      offset = 0,
+    } = req.query;
+
+    // Build filter conditions
+    const conditions = [eq(billingRules.tenantId, tenantId)];
+
+    if (status) {
+      conditions.push(eq(billingRules.ruleStatus, status as string));
+    }
+
+    if (ruleType) {
+      conditions.push(eq(billingRules.ruleType, ruleType as string));
+    }
+
+    if (customerId) {
+      conditions.push(eq(billingRules.customerId, customerId as string));
+    }
+
+    if (contractId) {
+      conditions.push(eq(billingRules.contractId, contractId as string));
+    }
+
+    const rules = await db
+      .select()
+      .from(billingRules)
+      .where(and(...conditions))
+      .orderBy(desc(billingRules.priority), desc(billingRules.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+
+    // Get total count for pagination
+    const [{ count: totalCount }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(billingRules)
+      .where(and(...conditions));
+
+    res.json({
+      rules,
+      pagination: {
+        total: totalCount,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+        hasMore: parseInt(offset as string) + parseInt(limit as string) < totalCount,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching billing rules:', error);
+    res.status(500).json({ error: 'Failed to fetch billing rules' });
+  }
+});
+
+/**
+ * GET /api/billing/rules/:id
+ * Get single billing rule by ID
+ */
+router.get('/rules/:id', requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const ruleId = req.params.id;
+
+    const [rule] = await db
+      .select()
+      .from(billingRules)
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .limit(1);
+
+    if (!rule) {
+      return res.status(404).json({ error: 'Billing rule not found' });
+    }
+
+    res.json(rule);
+  } catch (error) {
+    console.error('Error fetching billing rule:', error);
+    res.status(500).json({ error: 'Failed to fetch billing rule' });
+  }
+});
+
+/**
+ * POST /api/billing/rules
+ * Create new billing rule
+ */
+router.post('/rules', isAuthenticated, requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const userId = req.user?.claims?.sub || req.session?.userId;
+
+    const ruleData = insertBillingRuleSchema.parse({
+      ...req.body,
+      tenantId,
+      createdBy: userId,
+    });
+
+    const [newRule] = await db
+      .insert(billingRules)
+      .values(ruleData)
+      .returning();
+
+    res.status(201).json(newRule);
+  } catch (error: any) {
+    console.error('Error creating billing rule:', error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
+        error: 'Invalid billing rule data',
+        details: error.errors,
+      });
+    }
+    res.status(500).json({
+      error: 'Failed to create billing rule',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * PUT /api/billing/rules/:id
+ * Update billing rule
+ */
+router.put('/rules/:id', isAuthenticated, requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const ruleId = req.params.id;
+
+    // Verify rule exists and belongs to tenant
+    const [existingRule] = await db
+      .select()
+      .from(billingRules)
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .limit(1);
+
+    if (!existingRule) {
+      return res.status(404).json({ error: 'Billing rule not found' });
+    }
+
+    const [updatedRule] = await db
+      .update(billingRules)
+      .set({
+        ...req.body,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .returning();
+
+    res.json(updatedRule);
+  } catch (error: any) {
+    console.error('Error updating billing rule:', error);
+    res.status(500).json({
+      error: 'Failed to update billing rule',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * DELETE /api/billing/rules/:id
+ * Delete billing rule (soft delete by setting status to inactive)
+ */
+router.delete('/rules/:id', isAuthenticated, requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const ruleId = req.params.id;
+
+    // Verify rule exists
+    const [existingRule] = await db
+      .select()
+      .from(billingRules)
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .limit(1);
+
+    if (!existingRule) {
+      return res.status(404).json({ error: 'Billing rule not found' });
+    }
+
+    // Soft delete by setting status to inactive
+    const [deletedRule] = await db
+      .update(billingRules)
+      .set({
+        ruleStatus: 'inactive',
+        updatedAt: new Date(),
+      })
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .returning();
+
+    res.json({
+      message: 'Billing rule deactivated successfully',
+      rule: deletedRule,
+    });
+  } catch (error) {
+    console.error('Error deleting billing rule:', error);
+    res.status(500).json({ error: 'Failed to delete billing rule' });
+  }
+});
+
+/**
+ * PATCH /api/billing/rules/:id/activate
+ * Activate a billing rule
+ */
+router.patch('/rules/:id/activate', isAuthenticated, requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const ruleId = req.params.id;
+
+    const [updatedRule] = await db
+      .update(billingRules)
+      .set({
+        ruleStatus: 'active',
+        updatedAt: new Date(),
+      })
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .returning();
+
+    if (!updatedRule) {
+      return res.status(404).json({ error: 'Billing rule not found' });
+    }
+
+    res.json(updatedRule);
+  } catch (error) {
+    console.error('Error activating billing rule:', error);
+    res.status(500).json({ error: 'Failed to activate billing rule' });
+  }
+});
+
+/**
+ * PATCH /api/billing/rules/:id/deactivate
+ * Deactivate a billing rule
+ */
+router.patch('/rules/:id/deactivate', isAuthenticated, requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const ruleId = req.params.id;
+
+    const [updatedRule] = await db
+      .update(billingRules)
+      .set({
+        ruleStatus: 'inactive',
+        updatedAt: new Date(),
+      })
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .returning();
+
+    if (!updatedRule) {
+      return res.status(404).json({ error: 'Billing rule not found' });
+    }
+
+    res.json(updatedRule);
+  } catch (error) {
+    console.error('Error deactivating billing rule:', error);
+    res.status(500).json({ error: 'Failed to deactivate billing rule' });
+  }
+});
+
+// =============================================================================
+// ADVANCED ANALYTICS
+// =============================================================================
+
+/**
+ * GET /api/billing/analytics/revenue-forecast
+ * Get revenue forecast for upcoming periods
+ */
+router.get('/analytics/revenue-forecast', requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const { periods = 3 } = req.query;
+
+    const forecast = await billingAnalytics.forecastRevenue(
+      tenantId,
+      parseInt(periods as string)
+    );
+
+    res.json({
+      forecast,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Error generating revenue forecast:', error);
+    res.status(500).json({
+      error: 'Failed to generate revenue forecast',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/billing/analytics/churn-prediction
+ * Get customer churn predictions
+ */
+router.get('/analytics/churn-prediction', requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+
+    const predictions = await billingAnalytics.predictChurn(tenantId);
+
+    res.json({
+      predictions,
+      summary: {
+        total: predictions.length,
+        critical: predictions.filter(p => p.riskLevel === 'critical').length,
+        high: predictions.filter(p => p.riskLevel === 'high').length,
+        medium: predictions.filter(p => p.riskLevel === 'medium').length,
+        low: predictions.filter(p => p.riskLevel === 'low').length,
+      },
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Error predicting churn:', error);
+    res.status(500).json({
+      error: 'Failed to predict churn',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/billing/analytics/lifetime-value
+ * Get customer lifetime value calculations
+ */
+router.get('/analytics/lifetime-value', requireTenantContext, async (req: any, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const { customerId } = req.query;
+
+    const lifetimeValues = await billingAnalytics.calculateLifetimeValue(
+      tenantId,
+      customerId as string | undefined
+    );
+
+    res.json({
+      customers: lifetimeValues,
+      summary: {
+        totalCustomers: lifetimeValues.length,
+        totalHistoricalValue: lifetimeValues.reduce((sum, c) => sum + c.historicalValue, 0),
+        totalPredictedValue: lifetimeValues.reduce((sum, c) => sum + c.predictedLifetimeValue, 0),
+        averageLifetimeValue: lifetimeValues.length > 0
+          ? lifetimeValues.reduce((sum, c) => sum + c.predictedLifetimeValue, 0) / lifetimeValues.length
+          : 0,
+      },
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Error calculating lifetime value:', error);
+    res.status(500).json({
+      error: 'Failed to calculate lifetime value',
       message: error.message,
     });
   }
