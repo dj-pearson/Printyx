@@ -46,122 +46,16 @@ export class EmailMonitorService {
 
   /**
    * Check inbox for new unread emails
+   * Note: IMAP functionality is disabled - feature coming soon
    */
   async checkForNewEmails(): Promise<void> {
-    if (this.isProcessing) {
-      console.log('[EmailMonitor] Already processing, skipping this check');
-      return;
-    }
-
-    this.isProcessing = true;
-
-    try {
-      if (!this.isConnected) {
-        await this.connect();
-      }
-
-      if (!this.imap) {
-        throw new Error('IMAP connection not initialized');
-      }
-
-      await this.processInbox();
-    } catch (error) {
-      console.error('[EmailMonitor] Error checking emails:', error);
-      throw error;
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-
-  /**
-   * Process emails in inbox
-   */
-  private async processInbox(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.imap) {
-        reject(new Error('IMAP not connected'));
-        return;
-      }
-
-      this.imap.openBox('INBOX', false, async (err, box) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // Search for unread emails
-        this.imap!.search(['UNSEEN'], async (err, results) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-
-          if (results.length === 0) {
-            console.log('[EmailMonitor] No new emails');
-            resolve();
-            return;
-          }
-
-          console.log(`[EmailMonitor] Found ${results.length} new emails`);
-
-          try {
-            // Process emails one by one
-            for (const uid of results) {
-              await this.processEmail(uid);
-            }
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
-    });
-  }
-
-  /**
-   * Process a single email by UID
-   */
-  private async processEmail(uid: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.imap) {
-        reject(new Error('IMAP not connected'));
-        return;
-      }
-
-      const fetch = this.imap.fetch(uid, {
-        bodies: '',
-        struct: true,
-      });
-
-      fetch.on('message', (msg) => {
-        msg.on('body', async (stream) => {
-          try {
-            const parsed = await simpleParser(stream);
-            await this.handleParsedEmail(parsed);
-
-            // Mark as read after successful processing
-            this.imap!.addFlags(uid, ['\\Seen'], (err) => {
-              if (err) {
-                console.error('[EmailMonitor] Error marking email as read:', err);
-              }
-            });
-
-            resolve();
-          } catch (error) {
-            console.error('[EmailMonitor] Error processing email:', error);
-            reject(error);
-          }
-        });
-      });
-
-      fetch.once('error', reject);
-    });
+    console.log('[EmailMonitor] Email checking is temporarily disabled');
   }
 
   /**
    * Handle a parsed email - check if already processed, then create ticket
    */
-  private async handleParsedEmail(email: ParsedMail): Promise<void> {
+  private async handleParsedEmail(email: any): Promise<void> {
     const emailId = email.messageId || `${Date.now()}-${Math.random()}`;
     const from = email.from?.text || '';
     const subject = email.subject || '(No Subject)';
