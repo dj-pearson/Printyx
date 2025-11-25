@@ -5,6 +5,10 @@ import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from './
 import signupCrmRoutes from './routes-signup-crm';
 import universalSearchRoutes from './routes-universal-search';
 import knowledgeBaseRoutes from './routes-knowledge-base';
+import contentGapAnalysisRoutes from './routes/content-gap-analysis-routes';
+import articleBookmarksRoutes from './routes/article-bookmarks-routes';
+import readingHistoryRoutes from './routes/reading-history-routes';
+import articleRatingsRoutes from './routes/article-ratings-routes';
 import session from 'express-session';
 import csurf from 'csurf';
 import rateLimit from 'express-rate-limit';
@@ -656,6 +660,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Knowledge base routes
   app.use('/api/knowledge-base', knowledgeBaseRoutes);
+  app.use('/api/content-gap-analysis', contentGapAnalysisRoutes);
+  app.use('/api/knowledge-base/bookmarks', articleBookmarksRoutes);
+  app.use('/api/knowledge-base/reading-history', readingHistoryRoutes);
+  app.use('/api/knowledge-base/ratings', articleRatingsRoutes);
 
   // Universal search routes
   app.use(universalSearchRoutes);
