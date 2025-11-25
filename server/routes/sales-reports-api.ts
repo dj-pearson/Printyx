@@ -310,6 +310,59 @@ router.get(
 );
 
 /**
+ * GET /api/sales-reports/team/pipeline-summary
+ * Get team pipeline summary (Report 7 - for Team Leads)
+ *
+ * Query params:
+ * - dateFrom: ISO date string
+ * - dateTo: ISO date string
+ */
+router.get(
+  '/team/pipeline-summary',
+  requirePermission(['sales.pipeline.view_team', 'sales.pipeline.view_location']),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const { dateFrom, dateTo } = req.query;
+
+      const dateRange = dateFrom && dateTo ? {
+        dateFrom: new Date(dateFrom as string),
+        dateTo: new Date(dateTo as string),
+      } : undefined;
+
+      const result = await SalesReportingService.getTeamPipelineSummary(
+        req.user,
+        dateRange
+      );
+
+      // Enrich with additional metrics
+      const metrics = {
+        teamSize: result.individualPipelines.length,
+        averageValuePerRep: result.individualPipelines.length > 0
+          ? result.summary.totalTeamValue / result.individualPipelines.length
+          : 0,
+        averageDealsPerRep: result.individualPipelines.length > 0
+          ? result.summary.totalTeamDeals / result.individualPipelines.length
+          : 0,
+        pipelineHealth: result.summary.teamConversionRate >= 20 ? 'healthy' :
+                        result.summary.teamConversionRate >= 10 ? 'fair' : 'needs_attention',
+      };
+
+      res.json({
+        ...result,
+        metrics,
+      });
+    } catch (error: any) {
+      console.error('Error fetching team pipeline summary:', error);
+      res.status(500).json({ error: 'Failed to fetch team pipeline summary', details: error.message });
+    }
+  }
+);
+
+/**
  * POST /api/sales-reports/cache/invalidate
  * Invalidate report caches (for managers)
  */
