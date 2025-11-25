@@ -561,6 +561,175 @@ export class SalesReportingService {
   }
 
   /**
+   * Report 7: Get team pipeline summary (for Team Leads)
+   */
+  static async getTeamPipelineSummary(
+    userContext: EnhancedUserContext,
+    dateRange?: Partial<DateRange>
+  ): Promise<{
+    teamPipeline: PipelineStage[];
+    individualPipelines: Array<{
+      userId: string;
+      userName: string;
+      pipeline: PipelineStage[];
+      totalValue: number;
+    }>;
+    summary: {
+      totalTeamValue: number;
+      totalTeamDeals: number;
+      averageDealSize: number;
+      teamConversionRate: number;
+      topPerformer: { userId: string; userName: string; value: number } | null;
+    };
+  }> {
+    const cacheKey = `team-pipeline:${userContext.id}:${JSON.stringify(dateRange)}`;
+    const cached = ReportCache.get<any>(cacheKey);
+    if (cached) return cached;
+
+    const queryBuilder = new HierarchicalQueryBuilder(userContext);
+    const accessibleUserIds = await queryBuilder.getAccessibleUserIds();
+
+    if (accessibleUserIds.length === 0) {
+      return {
+        teamPipeline: [],
+        individualPipelines: [],
+        summary: {
+          totalTeamValue: 0,
+          totalTeamDeals: 0,
+          averageDealSize: 0,
+          teamConversionRate: 0,
+          topPerformer: null,
+        },
+      };
+    }
+
+    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
+      ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+      : sql``;
+
+    // Get aggregated team pipeline
+    const teamPipelineResult = await db.execute(sql`
+      SELECT
+        o.stage,
+        COUNT(o.id)::int as count,
+        SUM(o.amount)::decimal as total_value,
+        SUM(o.weighted_amount)::decimal as weighted_value,
+        AVG(o.amount)::decimal as average_deal_size,
+        COUNT(CASE WHEN o.stage = 'Closed Won' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as conversion_rate
+      FROM opportunities o
+      WHERE o.owner_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map(id => `'${id}'`).join(',')}]`)})
+        AND o.tenant_id = ${userContext.tenantId}
+        AND o.stage NOT IN ('Closed Lost', 'Cancelled')
+        ${dateFilter}
+      GROUP BY o.stage
+      ORDER BY CASE o.stage
+        WHEN 'Lead' THEN 1
+        WHEN 'Qualified' THEN 2
+        WHEN 'Proposal' THEN 3
+        WHEN 'Negotiation' THEN 4
+        WHEN 'Closed Won' THEN 5
+        ELSE 6
+      END
+    `);
+
+    const teamPipeline: PipelineStage[] = teamPipelineResult.rows.map((row: any) => ({
+      stage: row.stage,
+      count: parseInt(row.count),
+      totalValue: parseFloat(row.total_value || 0),
+      weightedValue: parseFloat(row.weighted_value || 0),
+      averageDealSize: parseFloat(row.average_deal_size || 0),
+      conversionRate: parseFloat(row.conversion_rate || 0),
+    }));
+
+    // Get individual pipelines for each team member
+    const individualPipelines: Array<{
+      userId: string;
+      userName: string;
+      pipeline: PipelineStage[];
+      totalValue: number;
+    }> = [];
+
+    for (const userId of accessibleUserIds.slice(0, 20)) { // Limit to top 20 users for performance
+      const userResult = await db.execute(sql`
+        SELECT
+          u.id as user_id,
+          u.full_name as user_name,
+          o.stage,
+          COUNT(o.id)::int as count,
+          SUM(o.amount)::decimal as total_value
+        FROM users u
+        LEFT JOIN opportunities o ON o.owner_id = u.id
+          AND o.tenant_id = ${userContext.tenantId}
+          AND o.stage NOT IN ('Closed Lost', 'Cancelled')
+          ${dateFilter}
+        WHERE u.id = ${userId}
+        GROUP BY u.id, u.full_name, o.stage
+        ORDER BY CASE o.stage
+          WHEN 'Lead' THEN 1
+          WHEN 'Qualified' THEN 2
+          WHEN 'Proposal' THEN 3
+          WHEN 'Negotiation' THEN 4
+          WHEN 'Closed Won' THEN 5
+          ELSE 6
+        END
+      `);
+
+      if (userResult.rows.length > 0) {
+        const userName = userResult.rows[0].user_name;
+        const pipeline = userResult.rows.map((row: any) => ({
+          stage: row.stage,
+          count: parseInt(row.count || 0),
+          totalValue: parseFloat(row.total_value || 0),
+          weightedValue: 0,
+          averageDealSize: 0,
+          conversionRate: 0,
+        }));
+
+        const totalValue = pipeline.reduce((sum, stage) => sum + stage.totalValue, 0);
+
+        individualPipelines.push({
+          userId,
+          userName,
+          pipeline,
+          totalValue,
+        });
+      }
+    }
+
+    // Sort by total value
+    individualPipelines.sort((a, b) => b.totalValue - a.totalValue);
+
+    // Calculate summary
+    const totalTeamValue = teamPipeline.reduce((sum, stage) => sum + stage.totalValue, 0);
+    const totalTeamDeals = teamPipeline.reduce((sum, stage) => sum + stage.count, 0);
+    const averageDealSize = totalTeamDeals > 0 ? totalTeamValue / totalTeamDeals : 0;
+    const closedWonStage = teamPipeline.find(s => s.stage === 'Closed Won');
+    const teamConversionRate = closedWonStage ? closedWonStage.conversionRate : 0;
+    const topPerformer = individualPipelines.length > 0
+      ? {
+          userId: individualPipelines[0].userId,
+          userName: individualPipelines[0].userName,
+          value: individualPipelines[0].totalValue,
+        }
+      : null;
+
+    const result = {
+      teamPipeline,
+      individualPipelines,
+      summary: {
+        totalTeamValue,
+        totalTeamDeals,
+        averageDealSize,
+        teamConversionRate,
+        topPerformer,
+      },
+    };
+
+    ReportCache.set(cacheKey, result, 3 * 60 * 1000); // 3 minute cache
+    return result;
+  }
+
+  /**
    * Invalidate all caches for a user
    */
   static invalidateUserCache(userId: string): void {
