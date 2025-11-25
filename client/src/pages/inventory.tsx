@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type InventoryItem } from '@shared/schema';
+import WarehouseTeamStatsWidget from "@/components/stats/WarehouseTeamStatsWidget";
 
 export default function Inventory() {
   const { toast } = useToast();
@@ -264,6 +265,9 @@ export default function Inventory() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Warehouse Team Performance Stats */}
+        <WarehouseTeamStatsWidget variant="compact" />
 
         {/* View Controls */}
         <div className="flex justify-between items-center">
