@@ -89,15 +89,18 @@ export class HierarchicalQueryBuilder {
   /**
    * Apply hierarchical filtering to a query
    * This is the main method to use for automatically scoping data
+   *
+   * SECURITY: All user-provided values are parameterized to prevent SQL injection
    */
   applyHierarchicalFilter(options?: QueryFilterOptions): SQL | undefined {
     const scope = this.getEffectiveScope(options);
     const filters: SQL[] = [];
 
     // Always filter by tenant (except platform scope)
+    // Using parameterized query to prevent SQL injection
     if (scope !== 'platform') {
       const tenantField = this.getFieldName('tenantId', options);
-      filters.push(sql.raw(`${tenantField} = '${this.userContext.tenantId}'`));
+      filters.push(sql`${sql.identifier(tenantField)} = ${this.userContext.tenantId}`);
     }
 
     // Apply scope-specific filters
@@ -116,12 +119,12 @@ export class HierarchicalQueryBuilder {
         // Regional access - filter by region
         if (this.userContext.regionId) {
           const regionField = this.getFieldName('regionId', options);
-          filters.push(sql.raw(`${regionField} = '${this.userContext.regionId}'`));
+          filters.push(sql`${sql.identifier(regionField)} = ${this.userContext.regionId}`);
         } else {
           // If no region assigned, use location as fallback
           if (this.userContext.locationId) {
             const locationField = this.getFieldName('locationId', options);
-            filters.push(sql.raw(`${locationField} = '${this.userContext.locationId}'`));
+            filters.push(sql`${sql.identifier(locationField)} = ${this.userContext.locationId}`);
           }
         }
         break;
@@ -130,10 +133,10 @@ export class HierarchicalQueryBuilder {
         // Location access - filter by location
         if (this.userContext.locationId) {
           const locationField = this.getFieldName('locationId', options);
-          filters.push(sql.raw(`${locationField} = '${this.userContext.locationId}'`));
+          filters.push(sql`${sql.identifier(locationField)} = ${this.userContext.locationId}`);
         } else {
           // No location = no access (prevent data leak)
-          filters.push(sql.raw(`1 = 0`));
+          filters.push(sql`1 = 0`);
         }
         break;
 
@@ -141,24 +144,24 @@ export class HierarchicalQueryBuilder {
         // Team access - filter by team and location
         if (this.userContext.teamId) {
           const teamField = this.getFieldName('teamId', options);
-          filters.push(sql.raw(`${teamField} = '${this.userContext.teamId}'`));
+          filters.push(sql`${sql.identifier(teamField)} = ${this.userContext.teamId}`);
         } else if (this.userContext.managerId) {
           // If no explicit team, filter by manager's direct reports
           const userField = this.getFieldName('userId', options);
-          filters.push(sql.raw(`(${userField} IN (
-            SELECT id FROM users WHERE manager_id = '${this.userContext.id}'
-          ) OR ${userField} = '${this.userContext.id}')`));
+          filters.push(sql`(${sql.identifier(userField)} IN (
+            SELECT id FROM users WHERE manager_id = ${this.userContext.id}
+          ) OR ${sql.identifier(userField)} = ${this.userContext.id})`);
         } else {
           // No team or manager = own data only
           const userField = this.getFieldName('userId', options);
-          filters.push(sql.raw(`${userField} = '${this.userContext.id}'`));
+          filters.push(sql`${sql.identifier(userField)} = ${this.userContext.id}`);
         }
         break;
 
       case 'own':
         // Individual access - filter by user
         const userField = this.getFieldName('userId', options);
-        filters.push(sql.raw(`${userField} = '${this.userContext.id}'`));
+        filters.push(sql`${sql.identifier(userField)} = ${this.userContext.id}`);
         break;
     }
 
@@ -368,24 +371,41 @@ export class HierarchicalQueryBuilder {
   /**
    * Build a nested set query for organizational units
    * Used when querying hierarchical data
+   *
+   * SECURITY: All user-provided values are parameterized to prevent SQL injection
    */
   buildNestedSetFilter(parentUnitId: string, includeParent = true): SQL {
     // This would typically be used with a subquery
-    const operator = includeParent ? '>=' : '>';
-    const operator2 = includeParent ? '<=' : '<';
+    // Using parameterized queries to prevent SQL injection
+    const orgUnitField = this.getFieldName('organizationalUnitId');
 
-    return sql.raw(`
-      ${this.getFieldName('organizationalUnitId')} IN (
-        SELECT id FROM organizational_units child
-        WHERE EXISTS (
-          SELECT 1 FROM organizational_units parent
-          WHERE parent.id = '${parentUnitId}'
-            AND child.lft ${operator} parent.lft
-            AND child.rght ${operator2} parent.rght
-            AND child.tenant_id = parent.tenant_id
+    if (includeParent) {
+      return sql`
+        ${sql.identifier(orgUnitField)} IN (
+          SELECT id FROM organizational_units child
+          WHERE EXISTS (
+            SELECT 1 FROM organizational_units parent
+            WHERE parent.id = ${parentUnitId}
+              AND child.lft >= parent.lft
+              AND child.rght <= parent.rght
+              AND child.tenant_id = parent.tenant_id
+          )
         )
-      )
-    `);
+      `;
+    } else {
+      return sql`
+        ${sql.identifier(orgUnitField)} IN (
+          SELECT id FROM organizational_units child
+          WHERE EXISTS (
+            SELECT 1 FROM organizational_units parent
+            WHERE parent.id = ${parentUnitId}
+              AND child.lft > parent.lft
+              AND child.rght < parent.rght
+              AND child.tenant_id = parent.tenant_id
+          )
+        )
+      `;
+    }
   }
 
   /**
@@ -414,17 +434,20 @@ export class HierarchicalQueryBuilder {
   }
 
   /**
-   * Create a scope-aware WHERE clause for raw SQL queries
-   * Returns a SQL string fragment
+   * Create a scope-aware WHERE clause as a parameterized SQL object
+   * Returns a Drizzle SQL object for safe query construction
+   *
+   * SECURITY: All user-provided values are parameterized to prevent SQL injection
+   * NOTE: This method now returns a SQL object instead of a raw string for security
    */
-  getSQLWhereClause(options?: QueryFilterOptions): string {
+  getSQLWhereClause(options?: QueryFilterOptions): SQL {
     const scope = this.getEffectiveScope(options);
     const prefix = options?.tableAlias ? `${options.tableAlias}.` : '';
-    const clauses: string[] = [];
+    const filters: SQL[] = [];
 
     // Tenant filter (except platform)
     if (scope !== 'platform') {
-      clauses.push(`${prefix}tenant_id = '${this.userContext.tenantId}'`);
+      filters.push(sql`${sql.identifier(`${prefix}tenant_id`)} = ${this.userContext.tenantId}`);
     }
 
     // Scope-specific filters
@@ -439,36 +462,42 @@ export class HierarchicalQueryBuilder {
 
       case 'regional':
         if (this.userContext.regionId) {
-          clauses.push(`${prefix}region_id = '${this.userContext.regionId}'`);
+          filters.push(sql`${sql.identifier(`${prefix}region_id`)} = ${this.userContext.regionId}`);
         } else if (this.userContext.locationId) {
-          clauses.push(`${prefix}location_id = '${this.userContext.locationId}'`);
+          filters.push(sql`${sql.identifier(`${prefix}location_id`)} = ${this.userContext.locationId}`);
         }
         break;
 
       case 'location':
         if (this.userContext.locationId) {
-          clauses.push(`${prefix}location_id = '${this.userContext.locationId}'`);
+          filters.push(sql`${sql.identifier(`${prefix}location_id`)} = ${this.userContext.locationId}`);
         } else {
-          clauses.push('1 = 0'); // No access
+          filters.push(sql`1 = 0`); // No access
         }
         break;
 
       case 'team':
         if (this.userContext.teamId) {
-          clauses.push(`${prefix}team_id = '${this.userContext.teamId}'`);
+          filters.push(sql`${sql.identifier(`${prefix}team_id`)} = ${this.userContext.teamId}`);
         } else {
-          clauses.push(`(${prefix}user_id IN (
-            SELECT id FROM users WHERE manager_id = '${this.userContext.id}'
-          ) OR ${prefix}user_id = '${this.userContext.id}')`);
+          filters.push(sql`(${sql.identifier(`${prefix}user_id`)} IN (
+            SELECT id FROM users WHERE manager_id = ${this.userContext.id}
+          ) OR ${sql.identifier(`${prefix}user_id`)} = ${this.userContext.id})`);
         }
         break;
 
       case 'own':
-        clauses.push(`${prefix}user_id = '${this.userContext.id}'`);
+        filters.push(sql`${sql.identifier(`${prefix}user_id`)} = ${this.userContext.id}`);
         break;
     }
 
-    return clauses.length > 0 ? clauses.join(' AND ') : '1 = 1';
+    if (filters.length === 0) {
+      return sql`1 = 1`;
+    } else if (filters.length === 1) {
+      return filters[0];
+    } else {
+      return and(...filters)!;
+    }
   }
 }
 

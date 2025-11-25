@@ -2,12 +2,26 @@ import type { Express } from "express";
 import { insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, insertVendorSchema } from "@shared/schema";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerPurchaseOrderRoutes(app: Express) {
-  // Purchase Orders CRUD routes
-  app.get("/api/purchase-orders", isAuthenticated, async (req: any, res) => {
+  // Apply RBAC context to all purchase order routes
+  app.use("/api/purchase-orders", enhanceUserContext);
+  app.use("/api/vendors", enhanceUserContext);
+
+  // Purchase Orders CRUD routes - requires inventory PO view permission
+  app.get("/api/purchase-orders",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.claims.tenantId;
+      const tenantId = req.user?.tenantId || (req as any).user?.claims?.tenantId;
       const purchaseOrders = await storage.getPurchaseOrders(tenantId);
       res.json(purchaseOrders);
     } catch (error) {
@@ -16,7 +30,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.get("/api/purchase-orders/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/purchase-orders/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -36,7 +53,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.post("/api/purchase-orders", isAuthenticated, async (req: any, res) => {
+  app.post("/api/purchase-orders",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.CREATE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const userId = req.user.claims.sub;
@@ -77,7 +97,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.put("/api/purchase-orders/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/purchase-orders/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -94,7 +117,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/purchase-orders/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/purchase-orders/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.DELETE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -111,8 +137,11 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  // Update purchase order status
-  app.patch("/api/purchase-orders/:id/status", isAuthenticated, async (req: any, res) => {
+  // Update purchase order status - requires edit permission
+  app.patch("/api/purchase-orders/:id/status",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -137,8 +166,11 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
 
 
-  // Purchase Order Items routes
-  app.get("/api/purchase-orders/:id/items", isAuthenticated, async (req: any, res) => {
+  // Purchase Order Items routes - requires view permission
+  app.get("/api/purchase-orders/:id/items",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -151,7 +183,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.post("/api/purchase-orders/:id/items", isAuthenticated, async (req: any, res) => {
+  app.post("/api/purchase-orders/:id/items",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -174,7 +209,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.put("/api/purchase-order-items/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/purchase-order-items/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -191,7 +229,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/purchase-order-items/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/purchase-order-items/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -208,8 +249,11 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  // Vendors CRUD routes
-  app.get("/api/vendors", isAuthenticated, async (req: any, res) => {
+  // Vendors CRUD routes - requires purchase order view permission
+  app.get("/api/vendors",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const vendors = await storage.getVendors(tenantId);
@@ -220,7 +264,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.get("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/vendors/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -237,7 +284,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.post("/api/vendors", isAuthenticated, async (req: any, res) => {
+  app.post("/api/vendors",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       
@@ -258,7 +308,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.put("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/vendors/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -275,7 +328,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/vendors/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.DELETE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const { id } = req.params;
@@ -292,8 +348,11 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  // Purchase Order status updates
-  app.patch("/api/purchase-orders/:id/status", isAuthenticated, async (req: any, res) => {
+  // Purchase Order status updates - requires edit permission
+  app.patch("/api/purchase-orders/:id/status",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const userId = req.user.claims.sub;
@@ -320,8 +379,11 @@ export function registerPurchaseOrderRoutes(app: Express) {
     }
   });
 
-  // Purchase Order statistics
-  app.get("/api/purchase-orders/stats/summary", isAuthenticated, async (req: any, res) => {
+  // Purchase Order statistics - requires view permission
+  app.get("/api/purchase-orders/stats/summary",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.claims.tenantId;
       const purchaseOrders = await storage.getPurchaseOrders(tenantId);
