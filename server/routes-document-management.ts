@@ -2,8 +2,18 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = express.Router();
+
+// Apply RBAC context to all document management routes
+router.use(enhanceUserContext);
 
 // Document Management & Workflow Automation API Routes
 
