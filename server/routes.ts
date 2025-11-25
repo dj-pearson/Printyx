@@ -140,6 +140,7 @@ import reportsRoutes from './routes-reports';
 import reportingArchitectureRoutes from './routes-reporting-architecture';
 import salesReportsAPI from './routes/sales-reports-api';
 import serviceReportsAPI from './routes/service-reports-api';
+import salesSupervisorReportsAPI from './routes/sales-supervisor-reports-api';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
 // OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
 // import billingRoutes from './routes-billing';
@@ -15028,6 +15029,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register service reports API (RBAC-aware reporting for technicians)
   app.use('/api', serviceReportsAPI);
+
+  // Register sales supervisor reports API (RBAC-aware reporting for location supervisors)
+  app.use('/api/sales-supervisor-reports', salesSupervisorReportsAPI);
 
   // Register legacy reports routes
   app.use('/api', reportsRoutes);
