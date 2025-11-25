@@ -83,6 +83,7 @@ import {
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
+import WarehouseTeamStatsWidget from "@/components/stats/WarehouseTeamStatsWidget";
 
 // Warehouse operation schema
 const warehouseOperationSchema = z.object({
@@ -407,6 +408,9 @@ export default function WarehouseOperations() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Warehouse Team Performance Stats */}
+            <WarehouseTeamStatsWidget variant="full" showAutoRefresh={true} />
+
             {/* Statistics Dashboard */}
             {stats && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
