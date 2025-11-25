@@ -16,6 +16,7 @@ import {
 } from '@shared/schema';
 import { eq, and, or, desc, asc, sql, like, ilike, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { generateTableOfContents, addHeaderIdsToHTML } from './utils/article-table-of-contents';
 
 const router = Router();
 
@@ -358,7 +359,26 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
       })
       .catch((err) => console.error('Error tracking article view:', err));
 
-    res.json(article);
+    // Generate table of contents if content is structured
+    let tableOfContents = null;
+    try {
+      if (article.content && typeof article.content === 'object') {
+        tableOfContents = generateTableOfContents(article.content as any);
+
+        // Add IDs to HTML headers if HTML content exists
+        if (article.htmlContent && tableOfContents) {
+          article.htmlContent = addHeaderIdsToHTML(article.htmlContent, tableOfContents);
+        }
+      }
+    } catch (tocError) {
+      console.error('Error generating table of contents:', tocError);
+      // Continue without TOC if generation fails
+    }
+
+    res.json({
+      ...article,
+      tableOfContents,
+    });
   } catch (error) {
     console.error('Error fetching article:', error);
     res.status(500).json({ message: 'Failed to fetch article' });
