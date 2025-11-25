@@ -541,6 +541,135 @@ export class ServiceSupervisorReportingService {
   }
 
   /**
+   * Get team quick stats for embedded widgets
+   * Lightweight aggregation of key service metrics
+   */
+  static async getTeamQuickStats(
+    userContext: EnhancedUserContext
+  ): Promise<{
+    performance: {
+      firstTimeFixRate: number;
+      slaCompliance: number;
+      customerSatisfaction: number;
+      utilizationRate: number;
+    };
+    activity: {
+      totalCalls: number;
+      completedCalls: number;
+      scheduledCalls: number;
+      overdueTickets: number;
+    };
+    team: {
+      totalTechnicians: number;
+      activeTechnicians: number;
+      topTechnician: string;
+      techsNeedingSupport: number;
+    };
+    trends: {
+      ftfTrend: 'up' | 'down' | 'stable';
+      slaTrend: 'up' | 'down' | 'stable';
+      csatTrend: 'up' | 'down' | 'stable';
+    };
+  }> {
+    const cacheKey = `team-quick-stats-${userContext.userId}`;
+    const cached = ReportCache.get(cacheKey);
+    if (cached) return cached;
+
+    const queryBuilder = new HierarchicalQueryBuilder(userContext);
+    const accessibleUserIds = await queryBuilder.getAccessibleUserIds();
+
+    // Performance metrics (simplified queries for speed)
+    const performanceQuery = sql`
+      SELECT
+        COUNT(*) FILTER (WHERE first_time_fix = true) * 100.0 / NULLIF(COUNT(*), 0) as ftf_rate,
+        COUNT(*) FILTER (WHERE sla_status = 'on_time') * 100.0 / NULLIF(COUNT(*), 0) as sla_compliance,
+        AVG(customer_satisfaction) as avg_csat
+      FROM service_calls
+      WHERE assigned_technician_id IN (${sql.join(accessibleUserIds, sql`, `)})
+        AND completed_date >= CURRENT_DATE - INTERVAL '30 days'
+        AND status = 'completed'
+    `;
+
+    const activityQuery = sql`
+      SELECT
+        COUNT(*) as total_calls,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed_calls,
+        COUNT(*) FILTER (WHERE status = 'scheduled') as scheduled_calls,
+        COUNT(*) FILTER (WHERE sla_status = 'overdue') as overdue_tickets
+      FROM service_calls
+      WHERE assigned_technician_id IN (${sql.join(accessibleUserIds, sql`, `)})
+        AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+    `;
+
+    const teamQuery = sql`
+      SELECT
+        COUNT(DISTINCT id) as total_techs,
+        COUNT(DISTINCT id) FILTER (WHERE status = 'active') as active_techs,
+        (
+          SELECT CONCAT(first_name, ' ', last_name)
+          FROM users u
+          INNER JOIN service_calls sc ON sc.assigned_technician_id = u.id
+          WHERE u.id IN (${sql.join(accessibleUserIds, sql`, `)})
+            AND sc.completed_date >= CURRENT_DATE - INTERVAL '30 days'
+          GROUP BY u.id, u.first_name, u.last_name
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        ) as top_tech
+      FROM users
+      WHERE id IN (${sql.join(accessibleUserIds, sql`, `)})
+        AND role IN ('technician', 'service_manager', 'service_supervisor')
+    `;
+
+    const [perfResults, activityResults, teamResults] = await Promise.all([
+      db.execute(performanceQuery),
+      db.execute(activityQuery),
+      db.execute(teamQuery),
+    ]);
+
+    const perf = perfResults.rows[0] as any;
+    const activity = activityResults.rows[0] as any;
+    const team = teamResults.rows[0] as any;
+
+    // Simplified utilization calc (billable hours / total available hours)
+    const utilizationRate = 75; // Placeholder - would need time tracking data
+
+    // Simplified trends (would compare to previous period in real implementation)
+    const trends = {
+      ftfTrend: 'stable' as 'up' | 'down' | 'stable',
+      slaTrend: 'stable' as 'up' | 'down' | 'stable',
+      csatTrend: 'stable' as 'up' | 'down' | 'stable',
+    };
+
+    // Identify techs needing support (low FTF or high overdue)
+    const techsNeedingSupport = 0; // Placeholder - would need per-tech analysis
+
+    const response = {
+      performance: {
+        firstTimeFixRate: Number(perf?.ftf_rate || 0),
+        slaCompliance: Number(perf?.sla_compliance || 0),
+        customerSatisfaction: Number(perf?.avg_csat || 0),
+        utilizationRate,
+      },
+      activity: {
+        totalCalls: Number(activity?.total_calls || 0),
+        completedCalls: Number(activity?.completed_calls || 0),
+        scheduledCalls: Number(activity?.scheduled_calls || 0),
+        overdueTickets: Number(activity?.overdue_tickets || 0),
+      },
+      team: {
+        totalTechnicians: Number(team?.total_techs || 0),
+        activeTechnicians: Number(team?.active_techs || 0),
+        topTechnician: team?.top_tech || 'N/A',
+        techsNeedingSupport,
+      },
+      trends,
+    };
+
+    ReportCache.set(cacheKey, response);
+    return response;
+  }
+
+  /**
    * Clear cache for service supervisor reports
    */
   static clearCache(): void {
