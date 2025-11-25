@@ -200,7 +200,6 @@ export const userRoleAssignments = pgTable("user_role_assignments", {
   
   // Territory and scope limitations
   territoryRestrictions: jsonb("territory_restrictions").default('{}'),
-  scopeRestrictions: jsonb("scope_restrictions").default('{}'),
   
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
