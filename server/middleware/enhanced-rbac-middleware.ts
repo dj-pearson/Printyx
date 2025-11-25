@@ -679,6 +679,250 @@ export const hasAnyPermission = (req: AuthenticatedRequest, requiredPermissions:
 };
 
 // =====================================================================
+// MFA ENFORCEMENT MIDDLEWARE
+// =====================================================================
+
+/**
+ * Require MFA verification for sensitive operations
+ * Checks if the user has verified MFA within the session
+ */
+export const requireMFA = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (!req.user) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+
+  // Check if user has MFA enabled and verified in current session
+  const mfaVerified = req.session?.mfaVerified === true;
+  const mfaVerifiedAt = req.session?.mfaVerifiedAt;
+
+  // MFA verification expires after 30 minutes of inactivity
+  const MFA_TIMEOUT = 30 * 60 * 1000;
+  const mfaExpired = mfaVerifiedAt && (Date.now() - mfaVerifiedAt > MFA_TIMEOUT);
+
+  if (!mfaVerified || mfaExpired) {
+    // Log MFA requirement
+    logRBACEvent(req, 'MFA_REQUIRED', {
+      action: req.method,
+      resource: req.path,
+      mfaVerified,
+      mfaExpired,
+    });
+
+    res.status(403).json({
+      error: 'MFA verification required',
+      code: 'MFA_REQUIRED',
+      message: 'This action requires multi-factor authentication verification.',
+      redirectTo: '/auth/mfa/verify',
+    });
+    return;
+  }
+
+  next();
+};
+
+/**
+ * Middleware factory for permissions that require MFA
+ */
+export const requirePermissionWithMFA = (
+  permission: string | string[],
+  options: PermissionCheckOptions = {}
+): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // First check permission
+    const permissionCheck = requirePermission(permission, { ...options, auditLog: false });
+    permissionCheck(req, res, (err?: any) => {
+      if (err || res.headersSent) return;
+
+      // Then check MFA
+      requireMFA(req, res, next);
+    });
+  };
+};
+
+// =====================================================================
+// APPROVAL WORKFLOW MIDDLEWARE
+// =====================================================================
+
+/**
+ * Check if an action requires approval and whether it's been approved
+ */
+export const checkApprovalRequired = async (
+  permissionCode: string,
+  userId: string,
+  tenantId: string,
+  resourceId?: string
+): Promise<{ required: boolean; approved: boolean; pendingApprovalId?: string }> => {
+  // Get permission definition to check if approval is required
+  const [permission] = await db
+    .select()
+    .from(permissions)
+    .where(eq(permissions.code, permissionCode))
+    .limit(1);
+
+  if (!permission || !permission.requiresApproval) {
+    return { required: false, approved: true };
+  }
+
+  // Check for pending or approved override
+  const [override] = await db
+    .select()
+    .from(permissionOverrides)
+    .where(
+      and(
+        eq(permissionOverrides.userId, userId),
+        eq(permissionOverrides.permissionId, permission.id),
+        eq(permissionOverrides.isActive, true),
+        sql`${permissionOverrides.effectiveUntil} > NOW() OR ${permissionOverrides.effectiveUntil} IS NULL`
+      )
+    )
+    .limit(1);
+
+  if (override) {
+    if (override.approvalStatus === 'APPROVED') {
+      return { required: true, approved: true };
+    } else if (override.approvalStatus === 'PENDING') {
+      return { required: true, approved: false, pendingApprovalId: override.id };
+    }
+  }
+
+  return { required: true, approved: false };
+};
+
+/**
+ * Middleware that checks for approval on sensitive operations
+ */
+export const requireApproval = (
+  permissionCode: string
+): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    // Platform admins bypass approval requirements
+    if (req.user.hasAllPermissions) {
+      return next();
+    }
+
+    const resourceId = req.params.id || req.body?.resourceId;
+
+    try {
+      const approvalStatus = await checkApprovalRequired(
+        permissionCode,
+        req.user.id,
+        req.user.tenantId,
+        resourceId
+      );
+
+      if (approvalStatus.required && !approvalStatus.approved) {
+        logRBACEvent(req, 'APPROVAL_REQUIRED', {
+          permissionCode,
+          resourceId,
+          pendingApprovalId: approvalStatus.pendingApprovalId,
+        });
+
+        res.status(403).json({
+          error: 'Approval required',
+          code: 'APPROVAL_REQUIRED',
+          message: 'This action requires approval from a supervisor.',
+          permissionCode,
+          pendingApprovalId: approvalStatus.pendingApprovalId,
+          requestApprovalEndpoint: '/api/rbac/request-approval',
+        });
+        return;
+      }
+
+      next();
+    } catch (error) {
+      console.error('Approval check error:', error);
+      res.status(500).json({ error: 'Failed to check approval status' });
+    }
+  };
+};
+
+// =====================================================================
+// AUDIT LOGGING SERVICE
+// =====================================================================
+
+interface RBACLogEntry {
+  timestamp: string;
+  eventType: string;
+  userId?: string;
+  tenantId?: string;
+  roleCode?: string;
+  roleLevel?: number;
+  details: Record<string, any>;
+  route: string;
+  method: string;
+  ip?: string;
+  userAgent?: string;
+  sessionId?: string;
+  requestId?: string;
+}
+
+/**
+ * Log RBAC events for audit purposes
+ * Writes to both console and database for compliance
+ */
+async function logRBACEvent(
+  req: AuthenticatedRequest,
+  eventType: string,
+  details: Record<string, any>
+): Promise<void> {
+  const logEntry: RBACLogEntry = {
+    timestamp: new Date().toISOString(),
+    eventType,
+    userId: req.user?.id,
+    tenantId: req.user?.tenantId,
+    roleCode: req.user?.roleCode,
+    roleLevel: req.user?.roleLevel,
+    details,
+    route: req.path,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    sessionId: req.session?.id,
+    requestId: (req as any).requestId,
+  };
+
+  // Log to console for immediate visibility
+  const logLevel = ['PERMISSION_DENIED', 'MFA_REQUIRED', 'APPROVAL_REQUIRED'].includes(eventType)
+    ? 'warn'
+    : 'info';
+  console[logLevel](`[RBAC] ${eventType}:`, JSON.stringify(logEntry, null, 2));
+
+  // Write to database asynchronously (fire and forget for performance)
+  try {
+    await db.execute(sql`
+      INSERT INTO rbac_audit_log (
+        event_type, user_id, tenant_id, role_code, role_level,
+        details, route, method, ip_address, user_agent, session_id, request_id
+      ) VALUES (
+        ${eventType}, ${req.user?.id || null}, ${req.user?.tenantId || null},
+        ${req.user?.roleCode || null}, ${req.user?.roleLevel || null},
+        ${JSON.stringify(details)}, ${req.path}, ${req.method},
+        ${req.ip || null}, ${req.get('user-agent') || null},
+        ${req.session?.id || null}, ${(req as any).requestId || null}
+      )
+    `).catch(err => {
+      // Table might not exist yet - silently fail
+      if (!err.message?.includes('does not exist')) {
+        console.error('[RBAC] Audit log write error:', err);
+      }
+    });
+  } catch (error) {
+    // Non-critical - don't fail the request
+    console.error('[RBAC] Audit log error:', error);
+  }
+}
+
+// =====================================================================
 // UTILITY FUNCTIONS
 // =====================================================================
 
@@ -690,24 +934,11 @@ function logFailedPermissionCheck(
   requiredPermissions: string[],
   checkType: string
 ): void {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    userId: req.user?.id,
-    tenantId: req.user?.tenantId,
-    roleCode: req.user?.roleCode,
-    roleLevel: req.user?.roleLevel,
+  logRBACEvent(req, 'PERMISSION_DENIED', {
     checkType,
     requiredPermissions,
     userPermissions: req.user?.permissions ? Array.from(req.user.permissions) : [],
-    route: req.path,
-    method: req.method,
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-  };
-
-  console.warn('[RBAC] Failed permission check:', JSON.stringify(logEntry, null, 2));
-
-  // TODO: Write to audit log table or external logging service
+  });
 }
 
 /**

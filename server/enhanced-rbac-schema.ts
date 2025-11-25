@@ -329,6 +329,48 @@ export const userRoleAssignmentsRelations = relations(userRoleAssignments, ({ on
   }),
 }));
 
+// RBAC Audit Log - for compliance and security monitoring
+export const rbacAuditLog = pgTable("rbac_audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Event details
+  eventType: varchar("event_type", { length: 50 }).notNull(), // PERMISSION_GRANTED, PERMISSION_DENIED, MFA_REQUIRED, APPROVAL_REQUIRED, ROLE_ASSIGNED, etc.
+  userId: varchar("user_id"),
+  tenantId: varchar("tenant_id"),
+
+  // Role context at time of event
+  roleCode: varchar("role_code", { length: 100 }),
+  roleLevel: integer("role_level"),
+
+  // Event details (JSON for flexibility)
+  details: jsonb("details"),
+
+  // Request context
+  route: varchar("route", { length: 500 }),
+  method: varchar("method", { length: 10 }),
+  ipAddress: varchar("ip_address", { length: 50 }),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id", { length: 255 }),
+  requestId: varchar("request_id", { length: 255 }),
+
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  eventTypeIdx: index("rbac_audit_event_type_idx").on(table.eventType),
+  userIdIdx: index("rbac_audit_user_id_idx").on(table.userId),
+  tenantIdIdx: index("rbac_audit_tenant_id_idx").on(table.tenantId),
+  createdAtIdx: index("rbac_audit_created_at_idx").on(table.createdAt),
+}));
+
+// Approval Workflow Status Enum
+export const approvalStatusEnum = pgEnum('approval_status', [
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
+  'EXPIRED',
+  'CANCELLED'
+]);
+
 // Zod schemas for validation
 export const insertOrganizationalUnitSchema = createInsertSchema(organizationalUnits);
 export const insertEnhancedRoleSchema = createInsertSchema(enhancedRoles);
@@ -336,6 +378,7 @@ export const insertPermissionSchema = createInsertSchema(permissions);
 export const insertRolePermissionSchema = createInsertSchema(rolePermissions);
 export const insertUserRoleAssignmentSchema = createInsertSchema(userRoleAssignments);
 export const insertPermissionOverrideSchema = createInsertSchema(permissionOverrides);
+export const insertRbacAuditLogSchema = createInsertSchema(rbacAuditLog);
 
 // TypeScript types
 export type OrganizationalUnit = typeof organizationalUnits.$inferSelect;
@@ -350,3 +393,5 @@ export type UserRoleAssignment = typeof userRoleAssignments.$inferSelect;
 export type InsertUserRoleAssignment = z.infer<typeof insertUserRoleAssignmentSchema>;
 export type PermissionOverride = typeof permissionOverrides.$inferSelect;
 export type InsertPermissionOverride = z.infer<typeof insertPermissionOverrideSchema>;
+export type RbacAuditLog = typeof rbacAuditLog.$inferSelect;
+export type InsertRbacAuditLog = z.infer<typeof insertRbacAuditLogSchema>;
