@@ -285,15 +285,114 @@ npm run seed:reports
 | **Platform Admin** | 4 | Level 8 |
 | **Cross-Department** | 3 | Levels 3-4 |
 
+## KPI Definitions Seeder (`kpi-seeder.ts`)
+
+Seeds 43 comprehensive Key Performance Indicator (KPI) definitions across all departments and hierarchy levels.
+
+**What it seeds:**
+- **11 Sales KPIs**: Personal quota attainment, win rate, pipeline metrics, deal size, sales cycle
+- **8 Service KPIs**: First-time fix rate, CSAT, utilization, SLA compliance, service revenue/margin
+- **6 Operations KPIs**: Inventory accuracy/turns, fill rate, FPY, on-time delivery, warehouse productivity
+- **7 Finance KPIs**: Revenue growth, gross/operating/EBITDA margins, DSO, current/quick ratios
+- **6 Executive KPIs**: CAC, CLV, CLV:CAC ratio, NPS, employee engagement, customer retention
+- **5 Platform Admin KPIs**: Uptime, API response time, error rate, MRR, tenant churn
+
+**Each KPI includes:**
+- SQL calculation queries with parameterization
+- Target values and thresholds
+- Display formatting (currency, percentage, decimal, number)
+- Color schemes with performance ranges (red/yellow/green/blue)
+- Alert configurations with critical/warning thresholds
+- Refresh and cache frequencies
+- RBAC permission requirements
+- Organizational scope mapping (individual → platform)
+- High priority flags for critical metrics
+
+### Usage
+
+```bash
+# Run the KPI definitions seeder
+npm run seed:kpis
+```
+
+**Prerequisites:**
+- RBAC seeder must be run first: `npm run seed:rbac`
+- Database schema must include KPI tables (from `shared/reporting-schema.ts`)
+
+**Output:**
+```
+🌱 Starting KPI Definitions Seeder...
+
+📊 Seeding 43 KPI definitions...
+
+  ✅ SALES_PERSONAL_QUOTA_ATTAINMENT          - Personal Quota Attainment
+  ✅ SALES_PERSONAL_WIN_RATE                  - Personal Win Rate
+  ...
+  ✅ PLATFORM_TENANT_CHURN_RATE               - Tenant Churn Rate
+
+════════════════════════════════════════════════════════════════
+📈 SEEDING SUMMARY
+
+  Total KPIs Processed: 43
+  ✅ Successfully Seeded:  43
+  ❌ Errors:               0
+
+════════════════════════════════════════════════════════════════
+✅ KPI Definitions Seeder Completed!
+```
+
+**KPI Categories:**
+
+| Category | Count | Access Levels | Examples |
+|----------|-------|---------------|----------|
+| **Sales** | 11 | Levels 1-7 | Quota attainment, win rate, pipeline value/coverage, deal size, sales cycle |
+| **Service** | 8 | Levels 1-6 | FTF rate, CSAT, utilization, SLA compliance, service revenue/margin |
+| **Operations** | 6 | Levels 3-4 | Inventory accuracy/turns, fill rate, FPY, on-time delivery, productivity |
+| **Finance** | 7 | Levels 6-7 | Revenue growth, margins (gross/operating/EBITDA), DSO, liquidity ratios |
+| **Executive** | 6 | Level 7 | CAC, CLV, CLV:CAC ratio, NPS, employee engagement, retention |
+| **Platform Admin** | 5 | Level 8 | Uptime, API performance, error rate, MRR, tenant churn |
+
+**Display Formats:**
+- **Currency**: `$1,234,567` (prefix: $, decimalPlaces: 0)
+- **Percentage**: `85.5%` (suffix: %, decimalPlaces: 1)
+- **Decimal**: `3.2x` (suffix: x, decimalPlaces: 1)
+- **Number**: `45 days` (suffix: days, decimalPlaces: 0)
+
+**Color Schemes:**
+KPIs use performance-based color coding:
+- 🔴 **Red** (#ff4d4f): Below target / Poor performance
+- 🟡 **Yellow** (#faad14): Near target / Fair performance
+- 🟢 **Green** (#52c41a): On target / Good performance
+- 🔵 **Blue** (#1890ff): Exceeds target / Excellent performance
+
+Some KPIs use inverted color schemes (lower is better):
+- Sales Cycle Days: Lower days = Blue (excellent)
+- DSO: Lower days = Blue (excellent)
+- API Response Time: Lower ms = Blue (excellent)
+- Error Rate: Lower % = Blue (excellent)
+
+**Alert Configuration:**
+High-priority KPIs have automated alerts:
+- **Critical threshold**: Immediate notification (e.g., Quota < 70%)
+- **Warning threshold**: Proactive notification (e.g., Quota < 85%)
+- **Alert message**: Custom message describing the issue
+
+Examples of high-priority KPIs with alerts:
+- Personal Quota Attainment (critical: 70%, warning: 85%)
+- Pipeline Coverage (critical: 2.0x, warning: 2.5x)
+- First-Time Fix Rate (critical: 70%, warning: 80%)
+- SLA Compliance (critical: 90%, warning: 93%)
+- Platform Uptime (critical: 99.0%, warning: 99.5%)
+
 ### Next Steps
 
-After seeding RBAC and Reports:
+After seeding RBAC, Reports, and KPIs:
 
-1. **Seed KPI Definitions**: `npm run seed:kpis` (coming soon)
-2. **Create organizational units** for your company/regions/locations
-3. **Assign roles to users** via admin UI or API
-4. **Test permission enforcement** across all routes
-5. **Access reports** through the reporting UI at `/reports`
+1. **Create organizational units** for your company/regions/locations
+2. **Assign roles to users** via admin UI or API
+3. **Test permission enforcement** across all routes
+4. **Access reports** through the reporting UI at `/reports`
+5. **Monitor KPIs** through executive dashboards and real-time widgets
 
 ### Related Documentation
 
