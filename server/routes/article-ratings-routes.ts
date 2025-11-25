@@ -132,7 +132,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
  * POST /api/knowledge-base/ratings
  * Submit a rating for an article
  */
-router.post('/', requireAuth, async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -233,7 +233,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
  * GET /api/knowledge-base/ratings/user/:articleId
  * Get user's rating for a specific article
  */
-router.get('/user/:articleId', requireAuth, async (req: Request, res: Response) => {
+router.get('/user/:articleId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { articleId } = req.params;
@@ -270,7 +270,7 @@ router.get('/user/:articleId', requireAuth, async (req: Request, res: Response) 
  * POST /api/knowledge-base/votes
  * Submit a vote for an article
  */
-router.post('/votes', requireAuth, async (req: Request, res: Response) => {
+router.post('/votes', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -353,7 +353,7 @@ router.post('/votes', requireAuth, async (req: Request, res: Response) => {
  * GET /api/knowledge-base/votes/user/:articleId
  * Get user's vote for a specific article
  */
-router.get('/votes/user/:articleId', requireAuth, async (req: Request, res: Response) => {
+router.get('/votes/user/:articleId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { articleId } = req.params;
@@ -388,7 +388,7 @@ router.get('/votes/user/:articleId', requireAuth, async (req: Request, res: Resp
  * DELETE /api/knowledge-base/ratings/:ratingId
  * Delete a rating
  */
-router.delete('/:ratingId', requireAuth, async (req: Request, res: Response) => {
+router.delete('/:ratingId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { ratingId } = req.params;
@@ -434,7 +434,7 @@ router.delete('/:ratingId', requireAuth, async (req: Request, res: Response) => 
  * DELETE /api/knowledge-base/votes/:voteId
  * Delete a vote
  */
-router.delete('/votes/:voteId', requireAuth, async (req: Request, res: Response) => {
+router.delete('/votes/:voteId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { voteId } = req.params;
