@@ -5,7 +5,8 @@
 
 import { SQL, sql, eq, and, or, inArray, gte, lte } from 'drizzle-orm';
 import { db } from '../db';
-import { organizationalUnits, users } from '../enhanced-rbac-schema';
+import { organizationalUnits } from '../enhanced-rbac-schema';
+import { users } from '@shared/schema';
 import type { EnhancedUserContext } from './enhanced-rbac-middleware';
 
 // =====================================================================
