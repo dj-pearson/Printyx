@@ -86,7 +86,7 @@ const customPromptSchema = z.object({
  * POST /api/ai/gpt5/analyze-lead
  * Analyze customer lead for qualification and insights
  */
-router.post('/analyze-lead', requireAuth, async (req, res) => {
+router.post('/analyze-lead', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -127,7 +127,7 @@ router.post('/analyze-lead', requireAuth, async (req, res) => {
  * POST /api/ai/gpt5/generate-proposal
  * Generate professional proposal content
  */
-router.post('/generate-proposal', requireAuth, async (req, res) => {
+router.post('/generate-proposal', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -172,7 +172,7 @@ router.post('/generate-proposal', requireAuth, async (req, res) => {
  * POST /api/ai/gpt5/analyze-service
  * Analyze service ticket for predictive maintenance insights
  */
-router.post('/analyze-service', requireAuth, async (req, res) => {
+router.post('/analyze-service', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -213,7 +213,7 @@ router.post('/analyze-service', requireAuth, async (req, res) => {
  * POST /api/ai/gpt5/support-response
  * Generate customer support response
  */
-router.post('/support-response', requireAuth, async (req, res) => {
+router.post('/support-response', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -254,7 +254,7 @@ router.post('/support-response', requireAuth, async (req, res) => {
  * POST /api/ai/gpt5/business-analytics
  * Perform business analytics and forecasting
  */
-router.post('/business-analytics', requireAuth, async (req, res) => {
+router.post('/business-analytics', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -295,7 +295,7 @@ router.post('/business-analytics', requireAuth, async (req, res) => {
  * POST /api/ai/gpt5/classify-inquiry
  * Classify and categorize customer inquiries
  */
-router.post('/classify-inquiry', requireAuth, async (req, res) => {
+router.post('/classify-inquiry', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -336,7 +336,7 @@ router.post('/classify-inquiry', requireAuth, async (req, res) => {
  * POST /api/ai/gpt5/generate-code
  * Generate automation code
  */
-router.post('/generate-code', requireAuth, async (req, res) => {
+router.post('/generate-code', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -377,7 +377,7 @@ router.post('/generate-code', requireAuth, async (req, res) => {
  * POST /api/ai/gpt5/custom-prompt
  * Execute custom prompt with specified configuration
  */
-router.post('/custom-prompt', requireAuth, async (req, res) => {
+router.post('/custom-prompt', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
@@ -420,7 +420,7 @@ router.post('/custom-prompt', requireAuth, async (req, res) => {
  * GET /api/ai/gpt5/configs
  * Get available GPT-5 configurations
  */
-router.get('/configs', requireAuth, async (req, res) => {
+router.get('/configs', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;

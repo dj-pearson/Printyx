@@ -423,7 +423,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 
 // Get all calculator leads (admin)
-router.get('/api/calculator/leads', requireAuth, async (req: any, res) => {
+router.get('/api/calculator/leads', async (req: any, res) => {
   try {
     const {
       role,
@@ -458,7 +458,7 @@ router.get('/api/calculator/leads', requireAuth, async (req: any, res) => {
 });
 
 // Get lead details with sessions
-router.get('/api/calculator/leads/:leadId', requireAuth, async (req: any, res) => {
+router.get('/api/calculator/leads/:leadId', async (req: any, res) => {
   try {
     const { leadId } = req.params;
 
@@ -498,7 +498,7 @@ router.get('/api/calculator/leads/:leadId', requireAuth, async (req: any, res) =
 });
 
 // Update lead status
-router.patch('/api/calculator/leads/:leadId', requireAuth, async (req: any, res) => {
+router.patch('/api/calculator/leads/:leadId', async (req: any, res) => {
   try {
     const { leadId } = req.params;
 
@@ -539,7 +539,7 @@ router.patch('/api/calculator/leads/:leadId', requireAuth, async (req: any, res)
 });
 
 // Get calculator analytics/stats
-router.get('/api/calculator/analytics/stats', requireAuth, async (req: any, res) => {
+router.get('/api/calculator/analytics/stats', async (req: any, res) => {
   try {
     const { startDate, endDate } = req.query;
 

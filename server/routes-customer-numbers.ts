@@ -177,7 +177,7 @@ class CustomerNumberService {
 }
 
 // Get customer number configuration
-router.get("/config", requireAuth, async (req: any, res) => {
+router.get("/config", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
 
@@ -195,7 +195,7 @@ router.get("/config", requireAuth, async (req: any, res) => {
 });
 
 // Create or update customer number configuration
-router.post("/config", requireAuth, async (req: any, res) => {
+router.post("/config", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
     const userId = req.session?.userId || req.user?.id;
@@ -225,7 +225,7 @@ router.post("/config", requireAuth, async (req: any, res) => {
 });
 
 // Update customer number configuration
-router.put("/config/:id", requireAuth, async (req: any, res) => {
+router.put("/config/:id", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
     const { id } = req.params;
@@ -276,7 +276,7 @@ router.put("/config/:id", requireAuth, async (req: any, res) => {
 });
 
 // Generate a new customer number (without assigning)
-router.post("/generate", requireAuth, async (req: any, res) => {
+router.post("/generate", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
     const userId = req.session?.userId || req.user?.id;
@@ -294,7 +294,7 @@ router.post("/generate", requireAuth, async (req: any, res) => {
 });
 
 // Assign customer number to existing customer
-router.post("/assign", requireAuth, async (req: any, res) => {
+router.post("/assign", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
     const userId = req.session?.userId || req.user?.id;
@@ -340,7 +340,7 @@ router.post("/assign", requireAuth, async (req: any, res) => {
 });
 
 // Convert lead to customer with automatic customer number generation
-router.post("/convert-lead/:leadId", requireAuth, async (req: any, res) => {
+router.post("/convert-lead/:leadId", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
     const userId = req.session?.userId || req.user?.id;
@@ -360,7 +360,7 @@ router.post("/convert-lead/:leadId", requireAuth, async (req: any, res) => {
 });
 
 // Get customer number history
-router.get("/history", requireAuth, async (req: any, res) => {
+router.get("/history", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
 

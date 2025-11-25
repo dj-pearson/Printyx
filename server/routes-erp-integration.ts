@@ -15,7 +15,7 @@ const router = express.Router();
 // Enterprise Resource Planning (ERP) Integration Hub API Routes
 
 // Get ERP integration dashboard
-router.get('/api/erp-integration/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/erp-integration/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -504,7 +504,7 @@ router.get('/api/erp-integration/dashboard', requireAuth, async (req: any, res) 
 });
 
 // Get specific integration details
-router.get('/api/erp-integration/systems/:systemId', requireAuth, async (req: any, res) => {
+router.get('/api/erp-integration/systems/:systemId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { systemId } = req.params;
@@ -538,7 +538,7 @@ router.get('/api/erp-integration/systems/:systemId', requireAuth, async (req: an
 });
 
 // Create new integration
-router.post('/api/erp-integration/systems', requireAuth, async (req: any, res) => {
+router.post('/api/erp-integration/systems', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { name, type, connectionConfig } = req.body;

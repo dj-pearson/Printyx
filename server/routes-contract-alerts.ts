@@ -26,7 +26,7 @@ router.use(enhanceUserContext);
 
 // Get contract expiration alerts for the alert bell and renewal management - requires customer view permission
 router.get('/api/alerts/contract-expirations',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: AuthenticatedRequest, res) => {
   try {
@@ -163,7 +163,7 @@ router.get('/api/alerts/contract-expirations',
 });
 
 // Get detailed renewal opportunity for a specific contract
-router.get('/api/alerts/contract-expirations/:contractId', requireAuth, async (req: any, res) => {
+router.get('/api/alerts/contract-expirations/:contractId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { contractId } = req.params;
@@ -266,7 +266,7 @@ router.get('/api/alerts/contract-expirations/:contractId', requireAuth, async (r
 });
 
 // Create a renewal opportunity from an expiring contract alert
-router.post('/api/alerts/contract-expirations/:contractId/create-renewal', requireAuth, async (req: any, res) => {
+router.post('/api/alerts/contract-expirations/:contractId/create-renewal', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { contractId } = req.params;
@@ -376,7 +376,7 @@ router.post('/api/alerts/contract-expirations/:contractId/create-renewal', requi
  * RENEWAL WORKFLOW AUTOMATION
  * Trigger automated renewal workflows at contract milestones
  */
-router.post('/api/alerts/renewal-workflow/process', requireAuth, async (req: any, res) => {
+router.post('/api/alerts/renewal-workflow/process', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 
@@ -415,7 +415,7 @@ router.post('/api/alerts/renewal-workflow/process', requireAuth, async (req: any
  * Get renewal workflow summary
  * Shows contracts at each milestone
  */
-router.get('/api/alerts/renewal-workflow/summary', requireAuth, async (req: any, res) => {
+router.get('/api/alerts/renewal-workflow/summary', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 
