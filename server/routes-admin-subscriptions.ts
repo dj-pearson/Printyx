@@ -12,15 +12,47 @@ import {
   NewDiscount,
 } from '@shared/schema';
 import { eq, and, desc, sql, like, gte, lte } from 'drizzle-orm';
+import { requireRootAdmin } from './routes-root-admin';
 
 /**
  * ADMIN SUBSCRIPTION ROUTES
  *
  * Root admin endpoints for managing subscriptions, discounts, and billing.
- * These routes should be protected by root admin authorization.
+ * SECURITY: All routes in this file require root admin authorization (Level 7+).
  */
 
 const router = Router();
+
+// ============================================================================
+// SECURITY MIDDLEWARE - PROTECT ALL ROUTES
+// ============================================================================
+// Middleware to check authentication
+const requireAuth = (req: any, res: any, next: any) => {
+  const isAuthenticated =
+    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+
+  if (!req.user) {
+    req.user = {
+      id: req.session.userId,
+      tenantId: req.session.tenantId || req.user?.tenantId,
+    };
+  } else if (!req.user.tenantId && !req.user.id) {
+    req.user = {
+      id: req.user.claims?.sub || req.user.id,
+      tenantId: req.user.tenantId || req.session?.tenantId,
+    };
+  }
+
+  next();
+};
+
+// Apply authentication and root admin authorization to ALL routes
+router.use(requireAuth);
+router.use(requireRootAdmin);
 
 // ============================================================================
 // SUBSCRIPTION MANAGEMENT
