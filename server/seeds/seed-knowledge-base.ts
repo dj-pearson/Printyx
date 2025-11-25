@@ -9,13 +9,16 @@
 
 import { db } from '../db';
 import {
-  knowledgeBaseCategories,
-  knowledgeBaseArticles,
+  knowledgeCategories,
+  knowledgeArticles,
   articleVersions,
 } from '../../shared/knowledge-base-schema';
 import { knowledgeBaseCategories as categorySeedData } from './knowledge-base-categories';
 import { gettingStartedArticles } from './articles/getting-started';
 import { crmSalesArticles } from './articles/crm-sales';
+import { serviceManagementArticles } from './articles/service-management';
+import { meterBillingArticles } from './articles/meter-billing';
+import { troubleshootingArticles } from './articles/troubleshooting';
 
 async function seedCategories() {
   console.log('🌱 Seeding knowledge base categories...');
@@ -25,16 +28,16 @@ async function seedCategories() {
   for (const category of categorySeedData) {
     try {
       const [inserted] = await db
-        .insert(knowledgeBaseCategories)
+        .insert(knowledgeCategories)
         .values({
           name: category.name,
           slug: category.slug,
           description: category.description,
           icon: category.icon,
-          displayOrder: category.displayOrder,
-          isVisible: category.isVisible,
-          articleCategory: category.articleCategory,
-          metadata: category.metadata,
+          categoryOrder: category.displayOrder || 0,
+          isActive: category.isVisible !== false,
+          tenantId: '00000000-0000-0000-0000-000000000000', // Default tenant for seed data
+          createdBy: '00000000-0000-0000-0000-000000000000', // System user
         })
         .returning();
 
@@ -59,7 +62,13 @@ async function seedCategories() {
 async function seedArticles(categoryMap: Map<string, string>) {
   console.log('📝 Seeding knowledge base articles...');
 
-  const allArticles = [...gettingStartedArticles, ...crmSalesArticles];
+  const allArticles = [
+    ...gettingStartedArticles,
+    ...crmSalesArticles,
+    ...serviceManagementArticles,
+    ...meterBillingArticles,
+    ...troubleshootingArticles
+  ];
 
   let insertedCount = 0;
   let skippedCount = 0;
@@ -76,40 +85,51 @@ async function seedArticles(categoryMap: Map<string, string>) {
       }
 
       // Create the article
+      const plainText = typeof article.content === 'object'
+        ? JSON.stringify(article.content)
+        : String(article.content);
+      const wordCount = plainText.split(/\s+/).length;
+
       const [inserted] = await db
-        .insert(knowledgeBaseArticles)
+        .insert(knowledgeArticles)
         .values({
+          tenantId: '00000000-0000-0000-0000-000000000000', // Default tenant
           title: article.title,
           slug: article.slug,
           excerpt: article.excerpt,
-          content: article.content,
+          content: article.content as any,
+          plainTextContent: plainText,
           htmlContent: article.htmlContent,
           categoryId: categoryId,
-          contentType: article.contentType,
-          difficultyLevel: article.difficultyLevel,
+          contentType: article.contentType as any,
+          difficultyLevel: article.difficultyLevel as any,
           estimatedReadingTime: article.estimatedReadingTime,
-          keywords: article.keywords,
-          tags: article.tags,
-          relatedArticleSlugs: article.relatedArticleSlugs || [],
+          wordCount: wordCount,
+          keywords: (article.keywords || []) as any,
+          tags: (article.tags || []) as any,
+          relatedArticles: (article.relatedArticleSlugs || []) as any,
           featured: article.featured || false,
-          isPublic: article.isPublic !== false, // Default to true
-          allowFeedback: article.allowFeedback !== false, // Default to true
+          isPublic: article.isPublic !== false,
+          allowFeedback: article.allowFeedback !== false,
           metaTitle: article.metaTitle || article.title,
           metaDescription: article.metaDescription || article.excerpt,
-          status: article.status || 'published',
+          status: (article.status || 'published') as any,
           publishedAt: article.status === 'published' ? new Date() : null,
+          createdBy: '00000000-0000-0000-0000-000000000000', // System user
         })
         .returning();
 
       // Create initial version
       await db.insert(articleVersions).values({
+        tenantId: '00000000-0000-0000-0000-000000000000',
         articleId: inserted.id,
+        version: 1,
         title: article.title,
-        content: article.content,
-        htmlContent: article.htmlContent,
-        excerpt: article.excerpt,
+        content: article.content as any,
+        plainTextContent: plainText,
         changeDescription: 'Initial version',
-        versionNumber: 1,
+        changeType: 'major',
+        createdBy: '00000000-0000-0000-0000-000000000000',
       });
 
       insertedCount++;
@@ -141,7 +161,7 @@ async function main() {
 
     // Create a map of category slug to ID for article seeding
     const categoryMap = new Map<string, string>();
-    const existingCategories = await db.select().from(knowledgeBaseCategories);
+    const existingCategories = await db.select().from(knowledgeCategories);
     existingCategories.forEach((cat) => {
       categoryMap.set(cat.slug, cat.id);
     });
