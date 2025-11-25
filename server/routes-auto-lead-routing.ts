@@ -3,8 +3,17 @@ import { db } from './db';
 import { autoLeadRoutingService } from './services/auto-lead-routing-service';
 import { platformLeadAssignmentHistory as leadAssignmentHistory, platformLeadScoreCalculations as leadScoreCalculations, platformRepCapacity as repCapacity, businessRecords } from '@shared/schema';
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 export function registerAutoLeadRoutingRoutes(app: Express) {
+  // Apply RBAC context to all auto-lead-routing routes
+  app.use('/api/auto-lead-routing', enhanceUserContext);
   /**
    * Manually trigger auto-routing for a specific lead
    */

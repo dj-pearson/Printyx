@@ -17,8 +17,18 @@ import {
   insertContentCitationSchema,
 } from '@shared/schema';
 import { z } from 'zod';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = express.Router();
+
+// Apply RBAC context to all content marketing routes
+router.use(enhanceUserContext);
 
 // Auth middleware - make content public for unauthenticated users, but track tenantId for authenticated
 const optionalAuth = (req: any, res: any, next: any) => {
