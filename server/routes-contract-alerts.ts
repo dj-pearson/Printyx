@@ -4,6 +4,13 @@ import { db } from './db';
 import { contracts, serviceContracts, businessRecords } from '../shared/schema';
 import { renewalOpportunities, churnPredictions } from '../shared/customer-success-schema';
 import { contractRenewalWorkflow } from './services/contract-renewal-workflow';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
@@ -14,8 +21,14 @@ const requireAuth = (req: any, res: any, next: any) => {
 
 const router = express.Router();
 
-// Get contract expiration alerts for the alert bell and renewal management
-router.get('/api/alerts/contract-expirations', requireAuth, async (req: any, res) => {
+// Apply RBAC context to all contract alert routes
+router.use(enhanceUserContext);
+
+// Get contract expiration alerts for the alert bell and renewal management - requires customer view permission
+router.get('/api/alerts/contract-expirations',
+  requireAuth,
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { daysAhead = 180 } = req.query; // Default to 180 days ahead
