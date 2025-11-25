@@ -2,9 +2,9 @@
 import type { Express } from "express";
 import { z } from "zod";
 import { db } from "./db";
-import { 
-  enrichedContacts, 
-  enrichedCompanies, 
+import {
+  enrichedContacts,
+  enrichedCompanies,
   enrichedIntentData,
   enrichedOrgHierarchy,
   enrichmentActivities,
@@ -20,11 +20,18 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, asc, sql, like, ilike, gt, lt, gte, lte } from "drizzle-orm";
 import { isAuthenticated } from "./replitAuth";
-import { 
-  DATA_ENRICHMENT_MAPPINGS, 
-  DataEnrichmentTransformer, 
-  ProspectingQueryBuilder 
+import {
+  DATA_ENRICHMENT_MAPPINGS,
+  DataEnrichmentTransformer,
+  ProspectingQueryBuilder
 } from "./data-enrichment-mapping";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 // Request validation schemas
 const enrichContactSearchSchema = z.object({
