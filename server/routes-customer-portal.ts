@@ -43,6 +43,13 @@ import {
 } from '../shared/customer-portal-schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { CustomerPortalService } from './services/customer-portal-service';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 // Enhanced auth middleware with customer portal validation
 const requireAuth = (req: any, res: any, next: any) => {
@@ -118,8 +125,14 @@ const requireCustomerPortalAuth = async (req: any, res: any, next: any) => {
 const router = Router();
 const customerPortalService = new CustomerPortalService();
 
-// Customer Portal Dashboard - Get portal statistics
-router.get('/dashboard/stats', requireAuth, async (req, res) => {
+// Apply RBAC context to all customer portal routes
+router.use(enhanceUserContext);
+
+// Customer Portal Dashboard - Get portal statistics - requires customer view permission
+router.get('/dashboard/stats',
+  requireAuth,
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
