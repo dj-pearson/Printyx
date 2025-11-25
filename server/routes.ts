@@ -138,6 +138,14 @@ import gpt5Routes from './routes-ai-gpt5';
 import salesForecastingRoutes from './routes-sales-forecasting';
 import reportsRoutes from './routes-reports';
 import reportingArchitectureRoutes from './routes-reporting-architecture';
+import salesReportsAPI from './routes/sales-reports-api';
+import serviceReportsAPI from './routes/service-reports-api';
+import salesSupervisorReportsAPI from './routes/sales-supervisor-reports-api';
+import serviceSupervisorReportsAPI from './routes/service-supervisor-reports-api';
+import salesManagerReportsAPI from './routes/sales-manager-reports-api';
+import serviceManagerReportsAPI from './routes/service-manager-reports-api';
+import directorReportsAPI from './routes/director-reports-api';
+import executiveReportsAPI from './routes/executive-reports-api';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
 // OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
 // import billingRoutes from './routes-billing';
@@ -15020,6 +15028,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register new reporting architecture routes FIRST (takes precedence)
   app.use('/api', reportingArchitectureRoutes);
+
+  // Register sales reports API (RBAC-aware reporting)
+  app.use('/api', salesReportsAPI);
+
+  // Register service reports API (RBAC-aware reporting for technicians)
+  app.use('/api', serviceReportsAPI);
+
+  // Register sales supervisor reports API (RBAC-aware reporting for location supervisors)
+  app.use('/api/sales-supervisor-reports', salesSupervisorReportsAPI);
+
+  // Register service supervisor reports API (RBAC-aware reporting for service location supervisors)
+  app.use('/api/service-supervisor-reports', serviceSupervisorReportsAPI);
+
+  // Register sales manager reports API (RBAC-aware reporting for regional/company managers)
+  app.use('/api/sales-manager-reports', salesManagerReportsAPI);
+
+  // Register service manager reports API (RBAC-aware reporting for regional/company service managers)
+  app.use('/api/service-manager-reports', serviceManagerReportsAPI);
+
+  // Register director reports API (Level 5 & 6: Regional Directors, VPs)
+  app.use('/api/director-reports', directorReportsAPI);
+
+  // Register executive reports API (Level 7 & 8: Executives, Platform Admins)
+  app.use('/api/executive-reports', executiveReportsAPI);
 
   // Register legacy reports routes
   app.use('/api', reportsRoutes);
