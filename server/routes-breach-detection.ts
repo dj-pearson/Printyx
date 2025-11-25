@@ -3,16 +3,26 @@ import { db } from './db';
 import { sql, and, eq, gte, lt, count, desc } from 'drizzle-orm';
 // Temporary removal of auth middleware to fix loading
 // import { requireAuth } from './auth';
-import { 
-  businessRecords, 
-  proposals, 
-  purchaseOrders, 
-  serviceTickets, 
+import {
+  businessRecords,
+  proposals,
+  purchaseOrders,
+  serviceTickets,
   invoices,
-  meterReadings 
+  meterReadings
 } from '../shared/schema';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = Router();
+
+// Apply RBAC context to all breach detection routes
+router.use(enhanceUserContext);
 
 // Breach detection endpoint
 router.get('/reports/breaches', async (req: any, res) => {
