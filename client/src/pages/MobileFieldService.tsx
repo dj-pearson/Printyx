@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { OptimizedImage } from "@/components/ui/optimized-image";
+import ServiceTeamStatsWidget from "@/components/stats/ServiceTeamStatsWidget";
 import type { UploadResult } from "@uppy/core";
 
 interface GeolocationCoordinates {
@@ -269,6 +270,9 @@ export default function MobileFieldService() {
           {activeSession ? "On Site" : "Available"}
         </Badge>
       </div>
+
+      {/* Service Team Quick Stats - Compact for mobile */}
+      <ServiceTeamStatsWidget variant="compact" />
 
       {/* Location Status Card */}
       <Card>
