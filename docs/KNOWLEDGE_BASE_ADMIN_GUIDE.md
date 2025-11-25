@@ -29,11 +29,65 @@ The Knowledge Base admin system provides comprehensive tools for managing conten
 
 ## Admin API Routes
 
-All admin routes are prefixed with `/api/admin/knowledge-base` and require authentication with admin privileges.
+All admin routes are prefixed with `/api/admin/knowledge-base` and require authentication with proper role-based access control (RBAC).
+
+### RBAC Requirements
+
+The system uses an 8-level role hierarchy with the following access levels for Knowledge Base admin:
+
+| Role Level | Role Name | KB Admin Access |
+|-----------|-----------|-----------------|
+| **Level 7+** | **Root/Platform Admin** | Full access including destructive operations |
+| **Level 5-6** | **System Admin** | Dashboard, feedback, AI queue, bulk updates, analytics |
+| **Level 3-4** | **Manager/Director** | Read-only analytics access |
+| **Level 1-2** | **Standard User** | No admin access |
+
+### Access Control by Endpoint
+
+**Root Admin Only (Level 7+):**
+- `DELETE /articles/bulk-delete` - Destructive operation
+- `POST /import` - Can modify multiple articles
+- `GET /export` - Contains sensitive data
+
+**System Admin (Level 5+):**
+- `GET /dashboard` - Dashboard statistics
+- `POST /articles/bulk-update` - Bulk operations
+- `GET /feedback/pending` - View feedback
+- `PUT /feedback/:id/resolve` - Resolve feedback
+- `GET /ai-queue` - View AI queue
+- `POST /ai-queue/:id/retry` - Retry AI generation
+- `GET /articles/:id/versions` - Version history
+- `POST /articles/:id/restore-version` - Restore versions
+- `POST /categories/reorder` - Category management
+
+**Manager (Level 3+):**
+- `GET /analytics/detailed` - Read-only analytics
+
+### Security & Authorization
+
+**Authentication Required:**
+All endpoints require a valid session with authentication.
+
+**Authorization Errors:**
+```json
+{
+  "message": "Access denied - Requires level 5 or higher"
+}
+```
+
+**Audit Logging:**
+All admin operations are logged to the audit log at `server/audit.log` including:
+- User ID and role level
+- Action performed
+- Timestamp
+- Tenant ID
+- IP address (if available)
 
 ### Dashboard Statistics
 
 **GET** `/api/admin/knowledge-base/dashboard`
+
+**RBAC:** System Admin (Level 5+)
 
 Get comprehensive dashboard statistics including article counts, views, feedback, and AI queue status.
 

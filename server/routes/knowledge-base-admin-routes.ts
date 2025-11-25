@@ -1,6 +1,11 @@
 /**
  * Knowledge Base Admin API Routes
  * Advanced admin operations for knowledge base management
+ *
+ * RBAC Requirements:
+ * - Root Admin (Level 7+): Full access including bulk delete, import/export
+ * - System Admin (Level 5+): Dashboard, feedback, AI queue, analytics
+ * - Manager (Level 3+): View-only analytics
  */
 
 import { Router, Request, Response } from 'express';
@@ -18,14 +23,32 @@ import {
   articleVotes,
 } from '@shared/schema';
 import { z } from 'zod';
+import { requireRootAdmin } from '../routes-root-admin';
+import { requireRole } from '../rbac-middleware';
 
 const router = Router();
+
+// Middleware: Require System Admin (Level 5+) for most admin operations
+const requireSystemAdmin = requireRole(5);
+
+// Middleware: Require Manager (Level 3+) for read-only operations
+const requireManager = requireRole(3);
+
+// Authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  next();
+};
 
 /**
  * GET /api/admin/knowledge-base/dashboard
  * Get admin dashboard statistics
+ * RBAC: System Admin (Level 5+)
  */
-router.get('/dashboard', async (req: Request, res: Response) => {
+router.get('/dashboard', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { days = 30 } = req.query;
@@ -119,8 +142,9 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 /**
  * POST /api/admin/knowledge-base/articles/bulk-update
  * Bulk update article status, categories, tags, etc.
+ * RBAC: System Admin (Level 5+)
  */
-router.post('/articles/bulk-update', async (req: Request, res: Response) => {
+router.post('/articles/bulk-update', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -179,8 +203,9 @@ router.post('/articles/bulk-update', async (req: Request, res: Response) => {
 /**
  * DELETE /api/admin/knowledge-base/articles/bulk-delete
  * Bulk delete articles
+ * RBAC: Root Admin (Level 7+) - Destructive operation
  */
-router.delete('/articles/bulk-delete', async (req: Request, res: Response) => {
+router.delete('/articles/bulk-delete', requireAuth, requireRootAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
 
@@ -247,8 +272,9 @@ router.delete('/articles/bulk-delete', async (req: Request, res: Response) => {
 /**
  * GET /api/admin/knowledge-base/feedback/pending
  * Get pending feedback that needs review
+ * RBAC: System Admin (Level 5+)
  */
-router.get('/feedback/pending', async (req: Request, res: Response) => {
+router.get('/feedback/pending', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { limit = 50, offset = 0 } = req.query;
@@ -297,8 +323,9 @@ router.get('/feedback/pending', async (req: Request, res: Response) => {
 /**
  * PUT /api/admin/knowledge-base/feedback/:id/resolve
  * Resolve article feedback
+ * RBAC: System Admin (Level 5+)
  */
-router.put('/feedback/:id/resolve', async (req: Request, res: Response) => {
+router.put('/feedback/:id/resolve', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -342,8 +369,9 @@ router.put('/feedback/:id/resolve', async (req: Request, res: Response) => {
 /**
  * GET /api/admin/knowledge-base/ai-queue
  * Get AI content generation queue
+ * RBAC: System Admin (Level 5+)
  */
-router.get('/ai-queue', async (req: Request, res: Response) => {
+router.get('/ai-queue', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { status, limit = 50 } = req.query;
@@ -376,8 +404,9 @@ router.get('/ai-queue', async (req: Request, res: Response) => {
 /**
  * POST /api/admin/knowledge-base/ai-queue/:id/retry
  * Retry failed AI generation
+ * RBAC: System Admin (Level 5+)
  */
-router.post('/ai-queue/:id/retry', async (req: Request, res: Response) => {
+router.post('/ai-queue/:id/retry', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { id } = req.params;
@@ -412,8 +441,9 @@ router.post('/ai-queue/:id/retry', async (req: Request, res: Response) => {
 /**
  * GET /api/admin/knowledge-base/articles/:id/versions
  * Get version history for an article
+ * RBAC: System Admin (Level 5+)
  */
-router.get('/articles/:id/versions', async (req: Request, res: Response) => {
+router.get('/articles/:id/versions', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { id } = req.params;
@@ -442,8 +472,9 @@ router.get('/articles/:id/versions', async (req: Request, res: Response) => {
 /**
  * POST /api/admin/knowledge-base/articles/:id/restore-version
  * Restore a previous version of an article
+ * RBAC: System Admin (Level 5+)
  */
-router.post('/articles/:id/restore-version', async (req: Request, res: Response) => {
+router.post('/articles/:id/restore-version', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -499,8 +530,9 @@ router.post('/articles/:id/restore-version', async (req: Request, res: Response)
 /**
  * POST /api/admin/knowledge-base/import
  * Import articles from JSON/CSV
+ * RBAC: Root Admin (Level 7+) - Can modify multiple articles
  */
-router.post('/import', async (req: Request, res: Response) => {
+router.post('/import', requireAuth, requireRootAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -571,8 +603,9 @@ router.post('/import', async (req: Request, res: Response) => {
 /**
  * GET /api/admin/knowledge-base/export
  * Export articles to JSON/CSV
+ * RBAC: Root Admin (Level 7+) - Contains sensitive data
  */
-router.get('/export', async (req: Request, res: Response) => {
+router.get('/export', requireAuth, requireRootAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { format = 'json', categoryId, status } = req.query;
@@ -631,8 +664,9 @@ router.get('/export', async (req: Request, res: Response) => {
 /**
  * GET /api/admin/knowledge-base/analytics/detailed
  * Get detailed analytics
+ * RBAC: Manager (Level 3+) - Read-only analytics access
  */
-router.get('/analytics/detailed', async (req: Request, res: Response) => {
+router.get('/analytics/detailed', requireAuth, requireManager, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { startDate, endDate, groupBy = 'day' } = req.query;
@@ -702,8 +736,9 @@ router.get('/analytics/detailed', async (req: Request, res: Response) => {
 /**
  * POST /api/admin/knowledge-base/categories/reorder
  * Reorder categories
+ * RBAC: System Admin (Level 5+)
  */
-router.post('/categories/reorder', async (req: Request, res: Response) => {
+router.post('/categories/reorder', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
 
