@@ -2,6 +2,14 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  hasPermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 // Warehouse operation schemas for validation
 const warehouseOperationSchema = z.object({
@@ -66,10 +74,19 @@ const deliveryScheduleSchema = z.object({
 });
 
 export function registerWarehouseRoutes(app: Express) {
-  // Warehouse Operations CRUD
-  app.get("/api/warehouse-operations", isAuthenticated, async (req: any, res) => {
+  // Apply RBAC context to all warehouse routes
+  app.use("/api/warehouse-operations", enhanceUserContext);
+  app.use("/api/serial-numbers", enhanceUserContext);
+  app.use("/api/build-processes", enhanceUserContext);
+  app.use("/api/delivery-schedules", enhanceUserContext);
+
+  // Warehouse Operations CRUD - requires inventory view permission
+  app.get("/api/warehouse-operations",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.WAREHOUSE.VIEW, PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.claims.tenantId;
+      const tenantId = req.user?.tenantId || (req as any).user?.claims?.tenantId;
       const operations = await storage.getWarehouseOperations(tenantId);
       res.json(operations);
     } catch (error) {

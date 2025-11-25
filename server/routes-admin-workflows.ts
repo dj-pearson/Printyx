@@ -3,8 +3,18 @@ import { db } from "./db";
 import { requireRootAdmin } from "./routes-root-admin";
 import { activityReports } from "../shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requireLevel,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = Router();
+
+// Apply RBAC context to all admin workflow routes
+router.use(enhanceUserContext);
 
 // Middleware to check authentication
 const requireAuth = (req: any, res: any, next: any) => {
