@@ -20,7 +20,7 @@ router.use(enhanceUserContext);
 
 // Get customer health scores - requires customer view permission
 router.get('/api/customer-success/health-scores',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: AuthenticatedRequest, res) => {
   try {
@@ -272,7 +272,7 @@ router.get('/api/customer-success/health-scores',
 
 // Get usage analytics for customers - requires customer view permission
 router.get('/api/customer-success/usage-analytics',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: AuthenticatedRequest, res) => {
   try {
@@ -501,7 +501,7 @@ router.get('/api/customer-success/usage-analytics',
 
 // Get satisfaction surveys and feedback - requires customer view permission
 router.get('/api/customer-success/satisfaction',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: AuthenticatedRequest, res) => {
   try {
@@ -662,7 +662,7 @@ router.get('/api/customer-success/satisfaction',
 
 // Create or trigger customer health score calculation - requires customer edit permission
 router.post('/api/customer-success/calculate-health',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.CUSTOMER.EDIT]),
   async (req: AuthenticatedRequest, res) => {
   try {

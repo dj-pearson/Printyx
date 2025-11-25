@@ -99,7 +99,7 @@ router.get('/summary', requireAdmin, async (req: Request, res: Response) => {
  */
 router.get(
   '/category/:categorySlug',
-  requireAuth,
+  
   requireAdmin,
   async (req: Request, res: Response) => {
     try {

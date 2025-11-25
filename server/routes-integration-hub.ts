@@ -16,7 +16,7 @@ const router = express.Router();
 // Advanced Integration Hub API Routes
 
 // Get integration hub dashboard
-router.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/integration-hub/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -36,7 +36,7 @@ router.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) 
 });
 
 // Legacy mock data endpoint (kept for backward compatibility during transition)
-router.get('/api/integration-hub/dashboard-mock', requireAuth, async (req: any, res) => {
+router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -630,7 +630,7 @@ router.get('/api/integration-hub/dashboard-mock', requireAuth, async (req: any, 
 });
 
 // Get available APIs for marketplace
-router.get('/api/integration-hub/marketplace', requireAuth, async (req: any, res) => {
+router.get('/api/integration-hub/marketplace', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { category, search } = req.query;
@@ -654,7 +654,7 @@ router.get('/api/integration-hub/marketplace', requireAuth, async (req: any, res
 });
 
 // Configure new integration
-router.post('/api/integration-hub/integrations', requireAuth, async (req: any, res) => {
+router.post('/api/integration-hub/integrations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { apiId, configuration } = req.body;

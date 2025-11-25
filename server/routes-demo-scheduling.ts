@@ -72,7 +72,7 @@ router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest
 });
 
 // Get available customers for demo scheduling
-router.get('/api/demos/customers', requireAuth, async (req: any, res) => {
+router.get('/api/demos/customers', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -108,7 +108,7 @@ router.get('/api/demos/customers', requireAuth, async (req: any, res) => {
 });
 
 // Create new demo schedule (Phase 2: Enhanced validations)
-router.post('/api/demos', requireAuth, async (req: any, res) => {
+router.post('/api/demos', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
@@ -199,7 +199,7 @@ router.post('/api/demos', requireAuth, async (req: any, res) => {
 });
 
 // Update demo status
-router.put('/api/demos/:id/status', requireAuth, async (req: any, res) => {
+router.put('/api/demos/:id/status', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { status, confirmationStatus } = req.body;
@@ -220,7 +220,7 @@ router.put('/api/demos/:id/status', requireAuth, async (req: any, res) => {
 });
 
 // Get demo preparation checklist
-router.get('/api/demos/:id/checklist', requireAuth, async (req: any, res) => {
+router.get('/api/demos/:id/checklist', async (req: any, res) => {
   try {
     const { id } = req.params;
     
@@ -274,7 +274,7 @@ router.get('/api/demos/:id/checklist', requireAuth, async (req: any, res) => {
 });
 
 // Update preparation checklist item
-router.put('/api/demos/:demoId/checklist/:itemId', requireAuth, async (req: any, res) => {
+router.put('/api/demos/:demoId/checklist/:itemId', async (req: any, res) => {
   try {
     const { demoId, itemId } = req.params;
     const { isCompleted } = req.body;
@@ -296,7 +296,7 @@ router.put('/api/demos/:demoId/checklist/:itemId', requireAuth, async (req: any,
 });
 
 // Get equipment availability
-router.get('/api/demos/equipment-availability', requireAuth, async (req: any, res) => {
+router.get('/api/demos/equipment-availability', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
