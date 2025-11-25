@@ -140,6 +140,7 @@ import reportsRoutes from './routes-reports';
 import reportingArchitectureRoutes from './routes-reporting-architecture';
 import salesReportsAPI from './routes/sales-reports-api';
 import serviceReportsAPI from './routes/service-reports-api';
+import warehouseReportsAPI from './routes/warehouse-reports-api';
 import salesSupervisorReportsAPI from './routes/sales-supervisor-reports-api';
 import serviceSupervisorReportsAPI from './routes/service-supervisor-reports-api';
 import teamReportsAPI from './routes/team-reports-api';
@@ -15035,6 +15036,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register service reports API (RBAC-aware reporting for technicians)
   app.use('/api', serviceReportsAPI);
+
+  // Register warehouse reports API (RBAC-aware reporting for warehouse teams)
+  app.use('/api', warehouseReportsAPI);
 
   // Register sales supervisor reports API (RBAC-aware reporting for location supervisors)
   app.use('/api/sales-supervisor-reports', salesSupervisorReportsAPI);
