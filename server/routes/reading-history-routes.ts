@@ -35,7 +35,7 @@ const getUserId = (req: Request): string => {
  * GET /api/knowledge-base/reading-history
  * Get reading history for the current user
  */
-router.get('/', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -105,7 +105,7 @@ router.get('/', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (r
  * POST /api/knowledge-base/reading-history
  * Update or create reading progress for an article
  */
-router.post('/', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -199,7 +199,7 @@ router.post('/', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (
  * GET /api/knowledge-base/reading-history/recent
  * Get recently read articles (last 7 days)
  */
-router.get('/recent', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: Request, res: Response) => {
+router.get('/recent', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -254,7 +254,7 @@ router.get('/recent', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), as
  * GET /api/knowledge-base/reading-history/stats
  * Get reading statistics for the current user
  */
-router.get('/stats', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: Request, res: Response) => {
+router.get('/stats', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -364,7 +364,7 @@ router.get('/stats', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), asy
  * GET /api/knowledge-base/reading-history/:articleId
  * Get reading progress for a specific article
  */
-router.get('/:articleId', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: Request, res: Response) => {
+router.get('/:articleId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { articleId } = req.params;
@@ -399,7 +399,7 @@ router.get('/:articleId', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW])
  * DELETE /api/knowledge-base/reading-history/:articleId
  * Clear reading history for a specific article
  */
-router.delete('/:articleId', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: Request, res: Response) => {
+router.delete('/:articleId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { articleId } = req.params;

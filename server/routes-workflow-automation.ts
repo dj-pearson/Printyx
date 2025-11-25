@@ -15,7 +15,7 @@ const router = express.Router();
 // Advanced Workflow Automation API Routes
 
 // Get workflow automation dashboard
-router.get('/api/workflow-automation/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/workflow-automation/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -578,7 +578,7 @@ router.get('/api/workflow-automation/dashboard', requireAuth, async (req: any, r
 });
 
 // Get workflow execution history
-router.get('/api/workflow-automation/workflows/:workflowId/executions', requireAuth, async (req: any, res) => {
+router.get('/api/workflow-automation/workflows/:workflowId/executions', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;
@@ -623,7 +623,7 @@ router.get('/api/workflow-automation/workflows/:workflowId/executions', requireA
 });
 
 // Execute workflow manually
-router.post('/api/workflow-automation/workflows/:workflowId/execute', requireAuth, async (req: any, res) => {
+router.post('/api/workflow-automation/workflows/:workflowId/execute', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;

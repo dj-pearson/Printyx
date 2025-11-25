@@ -183,7 +183,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
 });
 
 // Create blog post (admin only)
-router.post('/api/content/blog', requireAuth, async (req: any, res) => {
+router.post('/api/content/blog', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
     const userId = req.user?.id;
@@ -210,7 +210,7 @@ router.post('/api/content/blog', requireAuth, async (req: any, res) => {
 });
 
 // Update blog post (admin only)
-router.put('/api/content/blog/:id', requireAuth, async (req: any, res) => {
+router.put('/api/content/blog/:id', async (req: any, res) => {
   try {
     const [post] = await db
       .update(blogPosts)
@@ -226,7 +226,7 @@ router.put('/api/content/blog/:id', requireAuth, async (req: any, res) => {
 });
 
 // Delete blog post (admin only)
-router.delete('/api/content/blog/:id', requireAuth, async (req: any, res) => {
+router.delete('/api/content/blog/:id', async (req: any, res) => {
   try {
     await db
       .delete(blogPosts)
@@ -351,7 +351,7 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
 });
 
 // Create guide (admin only)
-router.post('/api/content/guides', requireAuth, async (req: any, res) => {
+router.post('/api/content/guides', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
     const userId = req.user?.id;
@@ -449,7 +449,7 @@ router.get('/api/content/case-studies/:slug', optionalAuth, async (req: any, res
 });
 
 // Create case study (admin only)
-router.post('/api/content/case-studies', requireAuth, async (req: any, res) => {
+router.post('/api/content/case-studies', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
 
@@ -505,7 +505,7 @@ router.get('/api/content/landing/:slug', optionalAuth, async (req: any, res) => 
 });
 
 // Create landing page (admin only)
-router.post('/api/content/landing', requireAuth, async (req: any, res) => {
+router.post('/api/content/landing', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
 
@@ -530,7 +530,7 @@ router.post('/api/content/landing', requireAuth, async (req: any, res) => {
 });
 
 // Update landing page (admin only)
-router.put('/api/content/landing/:id', requireAuth, async (req: any, res) => {
+router.put('/api/content/landing/:id', async (req: any, res) => {
   try {
     const [page] = await db
       .update(landingPages)
@@ -548,7 +548,7 @@ router.put('/api/content/landing/:id', requireAuth, async (req: any, res) => {
 // ============= FAQs =============
 
 // Add FAQ to content
-router.post('/api/content/:contentType/:contentId/faq', requireAuth, async (req: any, res) => {
+router.post('/api/content/:contentType/:contentId/faq', async (req: any, res) => {
   try {
     const { contentType, contentId } = req.params;
     const validatedData = insertContentFaqSchema.parse({
@@ -575,7 +575,7 @@ router.post('/api/content/:contentType/:contentId/faq', requireAuth, async (req:
 // ============= CITATIONS =============
 
 // Add citation to content
-router.post('/api/content/:contentType/:contentId/citation', requireAuth, async (req: any, res) => {
+router.post('/api/content/:contentType/:contentId/citation', async (req: any, res) => {
   try {
     const { contentType, contentId } = req.params;
     const validatedData = insertContentCitationSchema.parse({
@@ -642,7 +642,7 @@ router.post('/api/content/analytics/view', optionalAuth, async (req: any, res) =
 });
 
 // Get content analytics summary
-router.get('/api/content/analytics/:contentType/:contentId', requireAuth, async (req: any, res) => {
+router.get('/api/content/analytics/:contentType/:contentId', async (req: any, res) => {
   try {
     const { contentType, contentId } = req.params;
 

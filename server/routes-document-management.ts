@@ -18,7 +18,7 @@ router.use(enhanceUserContext);
 // Document Management & Workflow Automation API Routes
 
 // Get document library overview
-router.get('/api/document-management/library', requireAuth, async (req: any, res) => {
+router.get('/api/document-management/library', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { category, status, dateRange } = req.query;
@@ -252,7 +252,7 @@ router.get('/api/document-management/library', requireAuth, async (req: any, res
 });
 
 // Get workflow templates and automation rules
-router.get('/api/document-management/workflows', requireAuth, async (req: any, res) => {
+router.get('/api/document-management/workflows', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -549,7 +549,7 @@ router.get('/api/document-management/workflows', requireAuth, async (req: any, r
 });
 
 // Get document search and OCR results
-router.get('/api/document-management/search', requireAuth, async (req: any, res) => {
+router.get('/api/document-management/search', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { query, category, dateRange, fileType } = req.query;
@@ -717,7 +717,7 @@ router.get('/api/document-management/search', requireAuth, async (req: any, res)
 });
 
 // Create or update workflow automation rule
-router.post('/api/document-management/automation-rules', requireAuth, async (req: any, res) => {
+router.post('/api/document-management/automation-rules', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { ruleName, trigger, condition, action, targetRole, templateId } = req.body;
@@ -755,7 +755,7 @@ router.post('/api/document-management/automation-rules', requireAuth, async (req
 });
 
 // Upload document with OCR processing
-router.post('/api/document-management/upload', requireAuth, async (req: any, res) => {
+router.post('/api/document-management/upload', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { fileName, fileSize, fileType, category, tags } = req.body;

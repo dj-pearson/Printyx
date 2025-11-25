@@ -30,7 +30,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 
 // Generate display ID and URL slug for a specific business record
-router.post("/generate/:recordId", requireAuth, async (req: any, res) => {
+router.post("/generate/:recordId", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
     const { recordId } = req.params;
@@ -79,7 +79,7 @@ router.post("/generate/:recordId", requireAuth, async (req: any, res) => {
 });
 
 // Backfill existing records without display IDs
-router.post("/backfill", requireAuth, async (req: any, res) => {
+router.post("/backfill", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
     const { limit = 50 } = req.body;
@@ -102,7 +102,7 @@ router.post("/backfill", requireAuth, async (req: any, res) => {
 });
 
 // Get records without display IDs (for admin purposes)
-router.get("/missing-ids", requireAuth, async (req: any, res) => {
+router.get("/missing-ids", async (req: any, res) => {
   try {
     const tenantId = req.session?.tenantId || req.user?.tenantId;
 
