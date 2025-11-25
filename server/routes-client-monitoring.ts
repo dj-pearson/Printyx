@@ -25,6 +25,13 @@ import {
   insertDeviceMetricSchema,
   clientMetricSubmissionSchema,
 } from '@shared/schema';
+// RBAC Integration (for admin routes)
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 // Middleware to authenticate monitoring clients via API key
 async function authenticateClient(req: any, res: any, next: any) {
