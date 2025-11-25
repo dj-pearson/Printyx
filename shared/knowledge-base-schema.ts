@@ -469,6 +469,58 @@ export const readingHistory = pgTable('reading_history', {
   completedIdx: index('reading_history_completed_idx').on(table.userId, table.completed),
 }));
 
+// Article Ratings and Voting
+export const articleRatings = pgTable('article_ratings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  articleId: uuid('article_id').notNull(),
+
+  // Rating details
+  rating: integer('rating').notNull(), // 1-5 stars
+  ratingType: varchar('rating_type', { length: 50 }).default('overall').notNull(), // 'overall', 'helpful', 'accuracy', 'clarity'
+
+  // Optional feedback
+  comment: text('comment'),
+  helpfulCount: integer('helpful_count').default(0).notNull(), // How many found this review helpful
+
+  // Verified reader (completed reading)
+  verifiedReader: boolean('verified_reader').default(false).notNull(),
+
+  // Metadata
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  userArticleTypeIdx: unique('rating_user_article_type_unique').on(table.userId, table.articleId, table.ratingType),
+  articleRatingIdx: index('rating_article_idx').on(table.articleId, table.rating),
+  userIdx: index('rating_user_idx').on(table.userId),
+  tenantArticleIdx: index('rating_tenant_article_idx').on(table.tenantId, table.articleId),
+  createdIdx: index('rating_created_idx').on(table.createdAt),
+}));
+
+// Article Votes (helpful/not helpful)
+export const articleVotes = pgTable('article_votes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  articleId: uuid('article_id').notNull(),
+
+  // Vote type
+  voteType: varchar('vote_type', { length: 20 }).notNull(), // 'helpful', 'not_helpful', 'outdated', 'inaccurate'
+
+  // Optional context
+  comment: text('comment'),
+
+  // Metadata
+  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
+  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+}, (table) => ({
+  userArticleIdx: unique('vote_user_article_unique').on(table.userId, table.articleId),
+  articleVoteIdx: index('vote_article_idx').on(table.articleId, table.voteType),
+  userIdx: index('vote_user_idx').on(table.userId),
+  tenantArticleIdx: index('vote_tenant_article_idx').on(table.tenantId, table.articleId),
+}));
+
 // Zod Insert Schemas
 export const insertKnowledgeCategorySchema = createInsertSchema(knowledgeCategories, {
   name: z.string().min(1).max(255),
@@ -507,6 +559,17 @@ export const insertReadingHistorySchema = createInsertSchema(readingHistory, {
   articleId: z.string().uuid(),
 });
 
+export const insertArticleRatingSchema = createInsertSchema(articleRatings, {
+  articleId: z.string().uuid(),
+  rating: z.number().int().min(1).max(5),
+  ratingType: z.string().optional(),
+});
+
+export const insertArticleVoteSchema = createInsertSchema(articleVotes, {
+  articleId: z.string().uuid(),
+  voteType: z.enum(['helpful', 'not_helpful', 'outdated', 'inaccurate']),
+});
+
 // TypeScript Types
 export type KnowledgeCategory = typeof knowledgeCategories.$inferSelect;
 export type InsertKnowledgeCategory = typeof knowledgeCategories.$inferInsert;
@@ -537,3 +600,9 @@ export type InsertArticleBookmark = typeof articleBookmarks.$inferInsert;
 
 export type ReadingHistory = typeof readingHistory.$inferSelect;
 export type InsertReadingHistory = typeof readingHistory.$inferInsert;
+
+export type ArticleRating = typeof articleRatings.$inferSelect;
+export type InsertArticleRating = typeof articleRatings.$inferInsert;
+
+export type ArticleVote = typeof articleVotes.$inferSelect;
+export type InsertArticleVote = typeof articleVotes.$inferInsert;
