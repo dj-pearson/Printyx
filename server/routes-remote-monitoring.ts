@@ -8,7 +8,7 @@ const router = express.Router();
 // Remote Monitoring & IoT Integration API Routes
 
 // Get real-time equipment status
-router.get('/api/remote-monitoring/equipment-status', requireAuth, async (req: any, res) => {
+router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -286,7 +286,7 @@ router.get('/api/remote-monitoring/equipment-status', requireAuth, async (req: a
 });
 
 // Get IoT sensor data and environmental metrics
-router.get('/api/remote-monitoring/sensor-data', requireAuth, async (req: any, res) => {
+router.get('/api/remote-monitoring/sensor-data', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { equipmentId, timeRange = '24h' } = req.query;
@@ -411,7 +411,7 @@ router.get('/api/remote-monitoring/sensor-data', requireAuth, async (req: any, r
 });
 
 // Get fleet overview and analytics
-router.get('/api/remote-monitoring/fleet-overview', requireAuth, async (req: any, res) => {
+router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -553,7 +553,7 @@ router.get('/api/remote-monitoring/fleet-overview', requireAuth, async (req: any
 });
 
 // Create or update monitoring alerts
-router.post('/api/remote-monitoring/alerts', requireAuth, async (req: any, res) => {
+router.post('/api/remote-monitoring/alerts', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { equipmentId, alertType, threshold, enabled } = req.body;
@@ -587,7 +587,7 @@ router.post('/api/remote-monitoring/alerts', requireAuth, async (req: any, res) 
 });
 
 // Acknowledge alerts
-router.post('/api/remote-monitoring/acknowledge-alert', requireAuth, async (req: any, res) => {
+router.post('/api/remote-monitoring/acknowledge-alert', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { alertId, acknowledgmentNote } = req.body;

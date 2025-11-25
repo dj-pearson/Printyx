@@ -53,7 +53,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * GET /api/rbac/status
  * Get RBAC system initialization status
  */
-router.get('/status', requireAuth, async (req, res) => {
+router.get('/status', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -207,7 +207,7 @@ router.get('/permissions/effective', async (req, res) => {
  *
  * SECURITY: All user inputs are parameterized to prevent SQL injection
  */
-router.get('/roles', requireAuth, async (req, res) => {
+router.get('/roles', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -293,7 +293,7 @@ router.get('/roles', requireAuth, async (req, res) => {
  * SECURITY: All user inputs are parameterized to prevent SQL injection
  * SCHEMA: Uses correct table and column names from enhanced-rbac-schema.ts
  */
-router.get('/roles/:id', requireAuth, async (req, res) => {
+router.get('/roles/:id', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const roleId = req.params.id;
@@ -484,7 +484,7 @@ router.put('/roles/:id/customize', async (req, res) => {
  *
  * SCHEMA: Uses correct table name 'permissions' (not 'system_permissions')
  */
-router.get('/permissions', requireAuth, async (req, res) => {
+router.get('/permissions', async (req, res) => {
   try {
     const { module, resourceType, scopeLevel, search } = req.query;
 
@@ -659,7 +659,7 @@ router.post('/permission-overrides', async (req, res) => {
  * GET /api/rbac/organizational-units
  * Get organizational units hierarchy
  */
-router.get('/organizational-units', requireAuth, async (req, res) => {
+router.get('/organizational-units', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -696,7 +696,7 @@ router.get('/organizational-units', requireAuth, async (req, res) => {
  * POST /api/rbac/seed
  * Initialize RBAC system with default roles and permissions
  */
-router.post('/seed', requireAuth, async (req, res) => {
+router.post('/seed', async (req, res) => {
   try {
     const { dealerType = 'standard' } = req.body;
     const userId = req.user?.id;

@@ -24,7 +24,7 @@ const requireTenant = (req: any, res: any, next: any) => {
 };
 
 // Get all documents for tenant
-router.get('/', requireAuth, requireTenant, async (req: any, res) => {
+router.get('/', requireTenant, async (req: any, res) => {
   try {
     const docs = await db
       .select()
@@ -40,7 +40,7 @@ router.get('/', requireAuth, requireTenant, async (req: any, res) => {
 });
 
 // Create a new document
-router.post('/', requireAuth, requireTenant, async (req: any, res) => {
+router.post('/', requireTenant, async (req: any, res) => {
   try {
     const session = req.session as any;
     const userId = session.userId;
@@ -64,7 +64,7 @@ router.post('/', requireAuth, requireTenant, async (req: any, res) => {
 });
 
 // Get a specific document
-router.get('/:id', requireAuth, requireTenant, async (req: any, res) => {
+router.get('/:id', requireTenant, async (req: any, res) => {
   try {
     const [document] = await db
       .select()
@@ -83,7 +83,7 @@ router.get('/:id', requireAuth, requireTenant, async (req: any, res) => {
 });
 
 // Generate PDF for a document
-router.post('/:id/pdf', requireAuth, requireTenant, async (req: any, res) => {
+router.post('/:id/pdf', requireTenant, async (req: any, res) => {
   try {
     const [document] = await db
       .select()

@@ -44,7 +44,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * GET /api/admin/pending-tasks
  * Get pending administrative tasks requiring attention
  */
-router.get("/pending-tasks", requireAuth, requireRootAdmin, async (req, res) => {
+router.get("/pending-tasks", requireRootAdmin, async (req, res) => {
   try {
     // Query for pending tasks across different categories
     const pendingTasks = [];
@@ -137,7 +137,7 @@ router.get("/pending-tasks", requireAuth, requireRootAdmin, async (req, res) => 
  * POST /api/admin/execute-action
  * Execute an administrative action or workflow
  */
-router.post("/execute-action", requireAuth, requireRootAdmin, async (req, res) => {
+router.post("/execute-action", requireRootAdmin, async (req, res) => {
   try {
     const { actionId, parameters } = req.body;
 
@@ -238,7 +238,7 @@ router.post("/execute-action", requireAuth, requireRootAdmin, async (req, res) =
  */
 router.post(
   "/workflows/tenant-provisioning",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -284,7 +284,7 @@ router.post(
  */
 router.post(
   "/workflows/bulk-user-import",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -327,7 +327,7 @@ router.post(
  */
 router.get(
   "/workflows/:workflowId/status",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -357,7 +357,7 @@ router.get(
  */
 router.post(
   "/bulk-operations/users",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -400,7 +400,7 @@ router.post(
  */
 router.post(
   "/diagnostics/health-check",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {

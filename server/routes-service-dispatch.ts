@@ -253,7 +253,7 @@ router.get('/api/dispatch/recommendations',
 });
 
 // Get technician availability (converted to use real database data)
-router.get('/api/dispatch/technicians/availability', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), cacheControl(120), etag(), async (req: any, res) => {
+router.get('/api/dispatch/technicians/availability', cacheControl(120), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -337,7 +337,7 @@ router.get('/api/dispatch/technicians/availability', requirePermission([PERMISSI
 });
 
 // Get dispatch analytics (converted to use real database data)
-router.get('/api/dispatch/analytics', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), cacheControl(180), etag(), async (req: any, res) => {
+router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -522,7 +522,7 @@ router.post('/api/dispatch/auto-assign', requirePermission([PERMISSIONS.SERVICE.
 });
 
 // Get real-time technician tracking (converted to use real database data)
-router.get('/api/dispatch/tracking', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), cacheControl(60), etag(), async (req: any, res) => {
+router.get('/api/dispatch/tracking', cacheControl(60), etag(), async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -572,7 +572,7 @@ router.get('/api/dispatch/tracking', requirePermission([PERMISSIONS.SERVICE.DISP
  * PARTS AVAILABILITY CHECK
  * Verify parts availability before dispatch to prevent delays
  */
-router.post('/api/dispatch/check-parts', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: any, res) => {
+router.post('/api/dispatch/check-parts', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { ticketId, requiredParts } = req.body;
@@ -660,7 +660,7 @@ router.post('/api/dispatch/check-parts', requirePermission([PERMISSIONS.SERVICE.
  * BATCH PARTS CHECK FOR MULTIPLE TICKETS
  * Check parts availability for multiple tickets at once
  */
-router.post('/api/dispatch/batch-check-parts', requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW]), async (req: any, res) => {
+router.post('/api/dispatch/batch-check-parts', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { ticketIds } = req.body;
