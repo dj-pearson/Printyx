@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import { db } from "./db";
-import { 
-  salesGoals, 
-  salesTeams, 
-  salesTeamMembers, 
+import {
+  salesGoals,
+  salesTeams,
+  salesTeamMembers,
   activityReports,
   goalProgress,
   salesMetrics,
@@ -28,10 +28,32 @@ import {
 } from "@shared/schema";
 import { eq, and, gte, lte, desc, asc, sql, count } from "drizzle-orm";
 import { isAuthenticated } from "./replitAuth";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireLevel,
+  hasPermission,
+  getQueryBuilder,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerCrmGoalRoutes(app: Express) {
-  // Sales Goals CRUD
-  app.get("/api/crm/goals", isAuthenticated, async (req: any, res) => {
+  // Apply RBAC context to all CRM goals routes
+  app.use("/api/crm", enhanceUserContext);
+
+  // Sales Goals CRUD - requires sales report view permission
+  app.get("/api/crm/goals",
+    isAuthenticated,
+    requirePermission([
+      PERMISSIONS.SALES.REPORT.VIEW_OWN,
+      PERMISSIONS.SALES.REPORT.VIEW_TEAM,
+      PERMISSIONS.SALES.REPORT.VIEW_LOCATION,
+      PERMISSIONS.SALES.REPORT.VIEW_COMPANY
+    ]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const goals = await db
         .select({
@@ -53,7 +75,7 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(salesGoals)
         .leftJoin(users, eq(salesGoals.assignedToUserId, users.id))
         .leftJoin(salesTeams, eq(salesGoals.assignedToTeamId, salesTeams.id))
-        .where(eq(salesGoals.tenantId, req.user.tenantId))
+        .where(eq(salesGoals.tenantId, req.user!.tenantId))
         .orderBy(desc(salesGoals.createdAt));
 
       res.json(goals);
