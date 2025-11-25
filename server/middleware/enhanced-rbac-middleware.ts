@@ -465,9 +465,23 @@ export const enhanceUserContext = async (
       };
     } else {
       // Compute permissions
-      const computed = await PermissionComputationService.computeUserPermissions(userId, tenantId);
-      permissions = computed.permissions;
-      userContext = computed.userContext;
+      try {
+        const computed = await PermissionComputationService.computeUserPermissions(userId, tenantId);
+        permissions = computed.permissions;
+        userContext = computed.userContext;
+      } catch (permError) {
+        // If permission computation fails, create a basic context for the user
+        console.warn('Permission computation failed, using basic context:', permError);
+        permissions = new Set(['basic.view']);
+        userContext = {
+          roleId: 'basic_user',
+          roleCode: 'basic_user',
+          roleLevel: 1,
+          roleTier: 'location',
+          department: 'general',
+          hasAllPermissions: false,
+        };
+      }
     }
 
     // Build enhanced user context
