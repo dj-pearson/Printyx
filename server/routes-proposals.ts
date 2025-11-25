@@ -30,8 +30,18 @@ import {
   insertProposalAnalyticsSchema,
   insertProposalApprovalSchema,
 } from '../shared/schema.js';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = Router();
+
+// Apply RBAC context to all proposal routes
+router.use(enhanceUserContext);
 
 // ============= PROPOSAL TEMPLATES =============
 
@@ -62,8 +72,11 @@ const requireAuth = (req: any, res: any, next: any) => {
   next();
 };
 
-// Get all proposal templates
-router.get('/proposal-templates', requireAuth, async (req: any, res) => {
+// Get all proposal templates - requires quote view permission
+router.get('/proposal-templates',
+  requireAuth,
+  requirePermission([PERMISSIONS.SALES.QUOTE.VIEW]),
+  async (req: any, res) => {
   try {
     // For now, return empty array since tables don't exist yet
     // Once we run db:push, this will use the actual table
@@ -75,8 +88,11 @@ router.get('/proposal-templates', requireAuth, async (req: any, res) => {
   }
 });
 
-// Create proposal template
-router.post('/proposal-templates', requireAuth, async (req: any, res) => {
+// Create proposal template - requires quote create permission
+router.post('/proposal-templates',
+  requireAuth,
+  requirePermission([PERMISSIONS.SALES.QUOTE.CREATE]),
+  async (req: any, res) => {
   try {
     const validatedData = insertProposalTemplateSchema.parse({
       ...req.body,
@@ -156,8 +172,11 @@ router.post('/equipment-packages', requireAuth, async (req: any, res) => {
 
 // ============= PROPOSALS =============
 
-// Get all proposals
-router.get('/', requireAuth, async (req: any, res) => {
+// Get all proposals - requires quote view permission
+router.get('/',
+  requireAuth,
+  requirePermission([PERMISSIONS.SALES.QUOTE.VIEW]),
+  async (req: any, res) => {
   try {
     const { status, businessRecordId, filter, days } = req.query as Record<string, string>;
 
@@ -291,8 +310,11 @@ router.get('/:id', requireAuth, async (req: any, res) => {
   }
 });
 
-// Create new proposal
-router.post('/', requireAuth, async (req: any, res) => {
+// Create new proposal - requires quote create permission
+router.post('/',
+  requireAuth,
+  requirePermission([PERMISSIONS.SALES.QUOTE.CREATE]),
+  async (req: any, res) => {
   console.log('🚀 POST /api/proposals endpoint hit!');
   try {
     console.log('=== PROPOSAL CREATION DEBUG ===');
