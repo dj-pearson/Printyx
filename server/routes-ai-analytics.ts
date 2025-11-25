@@ -25,7 +25,7 @@ router.use(enhanceUserContext);
 // AI-Powered Analytics & Predictive Intelligence API Routes
 
 // Get AI analytics dashboard
-router.get('/api/ai-analytics/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -519,7 +519,7 @@ router.get('/api/ai-analytics/dashboard', requireAuth, async (req: any, res) => 
 });
 
 // Get model training status
-router.get('/api/ai-analytics/models/training-status', requireAuth, async (req: any, res) => {
+router.get('/api/ai-analytics/models/training-status', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -568,7 +568,7 @@ router.get('/api/ai-analytics/models/training-status', requireAuth, async (req: 
 });
 
 // Execute AI recommendation
-router.post('/api/ai-analytics/recommendations/execute', requireAuth, async (req: any, res) => {
+router.post('/api/ai-analytics/recommendations/execute', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { recommendationId, customerId, action } = req.body;

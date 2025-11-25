@@ -74,7 +74,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 
 // Get all proposal templates - requires quote view permission
 router.get('/proposal-templates',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.QUOTE.VIEW]),
   async (req: any, res) => {
   try {
@@ -90,7 +90,7 @@ router.get('/proposal-templates',
 
 // Create proposal template - requires quote create permission
 router.post('/proposal-templates',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.QUOTE.CREATE]),
   async (req: any, res) => {
   try {
@@ -110,7 +110,7 @@ router.post('/proposal-templates',
 });
 
 // Update proposal template
-router.put('/proposal-templates/:id', requireAuth, async (req: any, res) => {
+router.put('/proposal-templates/:id', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { updatedAt, ...restData } = req.body;
@@ -138,7 +138,7 @@ router.put('/proposal-templates/:id', requireAuth, async (req: any, res) => {
 // ============= EQUIPMENT PACKAGES =============
 
 // Get all equipment packages
-router.get('/equipment-packages', requireAuth, async (req: any, res) => {
+router.get('/equipment-packages', async (req: any, res) => {
   try {
     const packages = await db
       .select()
@@ -154,7 +154,7 @@ router.get('/equipment-packages', requireAuth, async (req: any, res) => {
 });
 
 // Create equipment package
-router.post('/equipment-packages', requireAuth, async (req: any, res) => {
+router.post('/equipment-packages', async (req: any, res) => {
   try {
     const validatedData = insertEquipmentPackageSchema.parse({
       ...req.body,
@@ -174,7 +174,7 @@ router.post('/equipment-packages', requireAuth, async (req: any, res) => {
 
 // Get all proposals - requires quote view permission
 router.get('/',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.QUOTE.VIEW]),
   async (req: any, res) => {
   try {
@@ -234,7 +234,7 @@ router.get('/',
 });
 
 // Get new proposal template
-router.get('/new', requireAuth, async (req: any, res) => {
+router.get('/new', async (req: any, res) => {
   try {
     // Return a new proposal template
     const newProposal = {
@@ -271,7 +271,7 @@ router.get('/new', requireAuth, async (req: any, res) => {
 });
 
 // Get proposal by ID with line items
-router.get('/:id', requireAuth, async (req: any, res) => {
+router.get('/:id', async (req: any, res) => {
   try {
     const { id } = req.params;
 
@@ -312,7 +312,7 @@ router.get('/:id', requireAuth, async (req: any, res) => {
 
 // Create new proposal - requires quote create permission
 router.post('/',
-  requireAuth,
+  
   requirePermission([PERMISSIONS.SALES.QUOTE.CREATE]),
   async (req: any, res) => {
   console.log('🚀 POST /api/proposals endpoint hit!');
@@ -382,7 +382,7 @@ router.post('/',
 });
 
 // Update proposal
-router.put('/:id', requireAuth, async (req: any, res) => {
+router.put('/:id', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { lineItems: lineItemsToUpdate, updatedAt, ...restData } = req.body;
@@ -442,7 +442,7 @@ router.put('/:id', requireAuth, async (req: any, res) => {
 });
 
 // Update proposal (PATCH) - handles partial updates including line items
-router.patch('/:id', requireAuth, async (req: any, res) => {
+router.patch('/:id', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { lineItems: lineItemsToUpdate, ...restData } = req.body;
@@ -540,7 +540,7 @@ router.patch('/:id', requireAuth, async (req: any, res) => {
 });
 
 // Update proposal status (sent, viewed, accepted, rejected)
-router.patch('/:id/status', requireAuth, async (req: any, res) => {
+router.patch('/:id/status', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -611,7 +611,7 @@ router.patch('/:id/status', requireAuth, async (req: any, res) => {
 // ============= PROPOSAL LINE ITEMS =============
 
 // Add line item to proposal
-router.post('/:proposalId/line-items', requireAuth, async (req: any, res) => {
+router.post('/:proposalId/line-items', async (req: any, res) => {
   try {
     const { proposalId } = req.params;
 
@@ -648,7 +648,7 @@ router.post('/:proposalId/line-items', requireAuth, async (req: any, res) => {
 });
 
 // Update line item
-router.put('/:proposalId/line-items/:lineItemId', requireAuth, async (req: any, res) => {
+router.put('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
   try {
     const { proposalId, lineItemId } = req.params;
     const updateData = { ...req.body, updatedAt: new Date() };
@@ -680,7 +680,7 @@ router.put('/:proposalId/line-items/:lineItemId', requireAuth, async (req: any, 
 });
 
 // Delete line item
-router.delete('/:proposalId/line-items/:lineItemId', requireAuth, async (req: any, res) => {
+router.delete('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
   try {
     const { proposalId, lineItemId } = req.params;
 
@@ -711,7 +711,7 @@ router.delete('/:proposalId/line-items/:lineItemId', requireAuth, async (req: an
 // ============= PROPOSAL COMMENTS =============
 
 // Add comment to proposal
-router.post('/:proposalId/comments', requireAuth, async (req: any, res) => {
+router.post('/:proposalId/comments', async (req: any, res) => {
   try {
     const { proposalId } = req.params;
 
@@ -1333,7 +1333,7 @@ function generateQuoteHTML(
 }
 
 // Export PDF endpoint
-router.get('/:id/export/pdf', requireAuth, async (req: any, res: any) => {
+router.get('/:id/export/pdf', async (req: any, res: any) => {
   let browser = null;
   try {
     const { id } = req.params;
@@ -1541,7 +1541,7 @@ router.get('/:id/export/pdf', requireAuth, async (req: any, res: any) => {
 });
 
 // Manager PDF Export endpoint (with cost information)
-router.get('/:id/export/manager-pdf', requireAuth, async (req: any, res: any) => {
+router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
   let browser = null;
   try {
     const { id } = req.params;

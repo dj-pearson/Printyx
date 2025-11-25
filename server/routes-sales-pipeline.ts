@@ -44,7 +44,7 @@ const PIPELINE_STAGES = [
 export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: any) {
   
   // Get all pipeline opportunities
-  app.get('/api/sales-pipeline/opportunities', requireAuth, async (req: TenantRequest, res: Response) => {
+  app.get('/api/sales-pipeline/opportunities', async (req: TenantRequest, res: Response) => {
     try {
       const { stage, rep } = req.query;
       const tenantId = req.user?.tenantId;
@@ -130,7 +130,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   });
 
   // Update opportunity stage
-  app.patch('/api/sales-pipeline/opportunities/:id/stage', requireAuth, async (req: TenantRequest, res: Response) => {
+  app.patch('/api/sales-pipeline/opportunities/:id/stage', async (req: TenantRequest, res: Response) => {
     try {
       const { id } = req.params;
       const { stage, notes } = stageUpdateSchema.parse(req.body);
@@ -184,7 +184,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   });
 
   // Log activity for opportunity
-  app.post('/api/sales-pipeline/opportunities/:id/activity', requireAuth, async (req: TenantRequest, res: Response) => {
+  app.post('/api/sales-pipeline/opportunities/:id/activity', async (req: TenantRequest, res: Response) => {
     try {
       const { id } = req.params;
       const { activity_type, notes } = activityLogSchema.parse(req.body);
@@ -234,7 +234,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   });
 
   // Get sales rep metrics
-  app.get('/api/sales-pipeline/rep-metrics', requireAuth, async (req: TenantRequest, res: Response) => {
+  app.get('/api/sales-pipeline/rep-metrics', async (req: TenantRequest, res: Response) => {
     try {
       const tenantId = req.user?.tenantId;
 
@@ -345,7 +345,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   });
 
   // Get pipeline summary
-  app.get('/api/sales-pipeline/summary', requireAuth, async (req: TenantRequest, res: Response) => {
+  app.get('/api/sales-pipeline/summary', async (req: TenantRequest, res: Response) => {
     try {
       const tenantId = req.user?.tenantId;
 
@@ -442,7 +442,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   });
 
   // Create new opportunity
-  app.post('/api/sales-pipeline/opportunities', requireAuth, async (req: TenantRequest, res: Response) => {
+  app.post('/api/sales-pipeline/opportunities', async (req: TenantRequest, res: Response) => {
     try {
       const data = pipelineOpportunitySchema.parse(req.body);
       const tenantId = req.user?.tenantId;

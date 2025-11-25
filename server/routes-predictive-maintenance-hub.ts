@@ -23,7 +23,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * GET /api/predictive-maintenance/dashboard
  * Unified dashboard with all predictive maintenance metrics
  */
-router.get('/api/predictive-maintenance/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 
@@ -235,7 +235,7 @@ router.get('/api/predictive-maintenance/dashboard', requireAuth, async (req: any
  * POST /api/predictive-maintenance/:equipmentId/schedule
  * Schedule proactive service for equipment
  */
-router.post('/api/predictive-maintenance/:equipmentId/schedule', requireAuth, async (req: any, res) => {
+router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { equipmentId } = req.params;
@@ -315,7 +315,7 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', requireAuth, as
  * POST /api/predictive-maintenance/analyze/:serialNumber
  * Analyze single device with AI and auto-dispatch if needed
  */
-router.post('/api/predictive-maintenance/analyze/:serialNumber', requireAuth, async (req: any, res) => {
+router.post('/api/predictive-maintenance/analyze/:serialNumber', async (req: any, res) => {
   try {
     const { serialNumber } = req.params;
     const tenantId = req.user?.tenantId;
@@ -353,7 +353,7 @@ router.post('/api/predictive-maintenance/analyze/:serialNumber', requireAuth, as
  * POST /api/predictive-maintenance/analyze-batch
  * Batch analyze multiple devices
  */
-router.post('/api/predictive-maintenance/analyze-batch', requireAuth, async (req: any, res) => {
+router.post('/api/predictive-maintenance/analyze-batch', async (req: any, res) => {
   try {
     const { serialNumbers } = req.body;
     const tenantId = req.user?.tenantId;
@@ -404,7 +404,7 @@ router.post('/api/predictive-maintenance/analyze-batch', requireAuth, async (req
  * POST /api/predictive-maintenance/analyze-fleet
  * Analyze all monitored devices in fleet
  */
-router.post('/api/predictive-maintenance/analyze-fleet', requireAuth, async (req: any, res) => {
+router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 
@@ -480,7 +480,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', requireAuth, async (req
  * GET /api/predictive-maintenance/parts-forecast
  * Forecast parts needed based on equipment health
  */
-router.get('/api/predictive-maintenance/parts-forecast', requireAuth, async (req: any, res) => {
+router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 

@@ -378,7 +378,7 @@ router.get('/api/analytics/dashboard',
 });
 
 // Get detailed report data
-router.get('/api/analytics/reports/:reportType', requireAuth, async (req: any, res) => {
+router.get('/api/analytics/reports/:reportType', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { reportType } = req.params;
@@ -542,7 +542,7 @@ router.get('/api/analytics/reports/:reportType', requireAuth, async (req: any, r
 });
 
 // Generate custom analytics query
-router.post('/api/analytics/custom-query', requireAuth, async (req: any, res) => {
+router.post('/api/analytics/custom-query', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { dimensions, metrics, filters, dateRange } = req.body;

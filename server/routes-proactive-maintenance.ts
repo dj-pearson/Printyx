@@ -17,7 +17,7 @@ const router = Router();
  * Predictive maintenance and equipment health monitoring
  */
 
-router.get('/api/service/proactive-maintenance', requireAuth, async (req: any, res) => {
+router.get('/api/service/proactive-maintenance', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 
@@ -174,7 +174,7 @@ router.get('/api/service/proactive-maintenance', requireAuth, async (req: any, r
 /**
  * Schedule proactive service for equipment
  */
-router.post('/api/service/proactive-maintenance/:equipmentId/schedule', requireAuth, async (req: any, res) => {
+router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { equipmentId } = req.params;
