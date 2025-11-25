@@ -138,6 +138,7 @@ import gpt5Routes from './routes-ai-gpt5';
 import salesForecastingRoutes from './routes-sales-forecasting';
 import reportsRoutes from './routes-reports';
 import reportingArchitectureRoutes from './routes-reporting-architecture';
+import salesReportsAPI from './routes/sales-reports-api';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
 // OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
 // import billingRoutes from './routes-billing';
@@ -15020,6 +15021,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register new reporting architecture routes FIRST (takes precedence)
   app.use('/api', reportingArchitectureRoutes);
+
+  // Register sales reports API (RBAC-aware reporting)
+  app.use('/api', salesReportsAPI);
 
   // Register legacy reports routes
   app.use('/api', reportsRoutes);
