@@ -110,9 +110,9 @@ export class EnhancedRBACService {
     const permissions = await this.computeEffectivePermissions(userId, orgContext);
     const computeTime = Date.now() - computeStart;
 
-    // Cache the results
-    await this.cachePermissions(cacheKey, permissions, computeTime, orgContext.tenantId);
-    
+    // Cache the results (pass userId for proper cache storage)
+    await this.cachePermissions(cacheKey, permissions, computeTime, orgContext.tenantId, userId);
+
     return permissions;
   }
 
@@ -448,7 +448,8 @@ export class EnhancedRBACService {
     cacheKey: string,
     permissions: EffectivePermission[],
     computeTime: number,
-    tenantId: string
+    tenantId: string,
+    userId: string
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + this.CACHE_TTL_SECONDS * 1000);
 
@@ -458,9 +459,9 @@ export class EnhancedRBACService {
       expiresAt: expiresAt.getTime()
     });
 
-    // Store in L2 cache (database)
+    // Store in L2 cache (database) - using actual userId for proper cache identification
     await db.insert(permissionCache).values({
-      userId: permissions[0]?.permissionCode || '', // This should be improved
+      userId: userId, // Fixed: use actual userId instead of permission code
       organizationalContext: cacheKey,
       effectivePermissions: permissions,
       permissionHash: cacheKey,

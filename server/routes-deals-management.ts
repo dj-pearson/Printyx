@@ -17,13 +17,47 @@ import {
   type DealActivity
 } from "@shared/schema";
 import { cacheControl, etag } from "./middleware/cache-middleware";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  hasPermission,
+  getQueryBuilder,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerDealsManagementRoutes(app: Express) {
-  // Get all deals for tenant
-  app.get("/api/deals-management/deals", isAuthenticated, cacheControl(180), etag(), async (req: any, res) => {
+  // Apply RBAC context enhancement to all deals routes
+  app.use("/api/deals-management", enhanceUserContext);
+
+  // Get all deals for tenant - requires sales.deal.view permission
+  // RBAC will automatically scope data based on user's role level
+  app.get("/api/deals-management/deals",
+    isAuthenticated,
+    requirePermission([
+      PERMISSIONS.SALES.DEAL.VIEW_OWN,
+      PERMISSIONS.SALES.DEAL.VIEW_TEAM,
+      PERMISSIONS.SALES.DEAL.VIEW_LOCATION
+    ]),
+    cacheControl(180),
+    etag(),
+    async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user!.tenantId;
+
+      // Use hierarchical query builder to automatically scope data
+      const queryBuilder = getQueryBuilder(req);
+      const scopeFilter = queryBuilder?.applyHierarchicalFilter({
+        fieldNames: { userId: 'assigned_to_id' }
+      });
       
+      // Build query with RBAC scope filter
+      // This automatically limits data based on user's role level
+      const whereConditions = scopeFilter
+        ? and(eq(deals.tenantId, tenantId), scopeFilter)
+        : eq(deals.tenantId, tenantId);
+
       const dealsData = await db
         .select({
           id: deals.id,
@@ -45,7 +79,7 @@ export function registerDealsManagementRoutes(app: Express) {
         .from(deals)
         .leftJoin(businessRecords, eq(deals.customerId, businessRecords.id))
         .leftJoin(users, eq(deals.assignedToId, users.id))
-        .where(eq(deals.tenantId, tenantId))
+        .where(whereConditions)
         .orderBy(desc(deals.createdAt));
 
       res.json(dealsData);
