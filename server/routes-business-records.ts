@@ -13,19 +13,38 @@ import {
   updateBusinessRecordWithIdentifiers
 } from "./utils/company-id-generator";
 import { cacheControl, etag, varyByTenant } from "./middleware/cache-middleware";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  hasPermission,
+  getQueryBuilder,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerBusinessRecordRoutes(app: Express) {
+  // Apply RBAC context to all business records routes
+  app.use("/api/business-records", enhanceUserContext);
+
   // Unified Business Records API - supports entire lead-to-customer lifecycle
 
-  // Get all business records with filtering
+  // Get all business records with filtering - requires lead/customer view permission
   app.get(
     "/api/business-records",
     resolveTenant,
     requireTenant,
+    requirePermission([
+      PERMISSIONS.SALES.LEAD.VIEW_OWN,
+      PERMISSIONS.SALES.LEAD.VIEW_TEAM,
+      PERMISSIONS.SALES.LEAD.VIEW_LOCATION,
+      PERMISSIONS.SALES.CUSTOMER.VIEW_OWN,
+      PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM
+    ]),
     varyByTenant(),
     cacheControl(180), // Cache for 3 minutes
     etag(),
-    async (req: TenantRequest, res) => {
+    async (req: AuthenticatedRequest & TenantRequest, res) => {
       try {
         const tenantId = req.tenantId!;
         const { recordType, status, search, limit } = req.query;

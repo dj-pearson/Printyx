@@ -1,18 +1,25 @@
 import { Router } from 'express';
-// Use the same auth pattern as main routes file
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Authentication required" });
-  }
-  next();
-};
 import { db } from './db';
 import { serviceTickets, technicians, inventoryItems } from '../shared/schema';
 import { eq, and, inArray, sql, desc, count } from 'drizzle-orm';
 import { cacheControl, etag } from './middleware/cache-middleware';
 import { customerNotificationService } from './services/customer-notification-service';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireLevel,
+  hasPermission,
+  getQueryBuilder,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = Router();
+
+// Apply RBAC context to all service dispatch routes
+router.use(enhanceUserContext);
 
 // AUTO-ASSIGNMENT CONFIGURATION
 const AUTO_ASSIGN_THRESHOLD = 90; // Auto-assign if AI confidence >= 90%
@@ -40,7 +47,11 @@ function calculateAIScore(ticket: any, technician: any, assignedCount: number): 
 }
 
 // Get dispatch recommendations with AI optimization and AUTO-ASSIGNMENT
-router.get('/api/dispatch/recommendations', requireAuth, cacheControl(120), etag(), async (req: any, res) => {
+router.get('/api/dispatch/recommendations',
+  requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW, PERMISSIONS.SERVICE.DISPATCH.SCHEDULE]),
+  cacheControl(120),
+  etag(),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const autoAssign = req.query.autoAssign !== 'false'; // Allow override via query param

@@ -13,12 +13,22 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, sql, like, gte, lte } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requireLevel,
+  requirePermission,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 /**
  * ADMIN SUBSCRIPTION ROUTES
  *
  * Root admin endpoints for managing subscriptions, discounts, and billing.
  * SECURITY: All routes in this file require root admin authorization (Level 7+).
+ * RBAC: Routes also check for specific platform-level permissions.
  */
 
 const router = Router();
@@ -26,32 +36,14 @@ const router = Router();
 // ============================================================================
 // SECURITY MIDDLEWARE - PROTECT ALL ROUTES
 // ============================================================================
-// Middleware to check authentication
-const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated =
-    req.session?.userId || req.user?.id || req.user?.claims?.sub;
 
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
-  }
+// Apply RBAC context enhancement first
+router.use(enhanceUserContext);
 
-  if (!req.user) {
-    req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId,
-    };
-  } else if (!req.user.tenantId && !req.user.id) {
-    req.user = {
-      id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId,
-    };
-  }
+// Require executive level (Level 7+) for all admin subscription routes
+router.use(requireLevel(ROLE_LEVELS.EXECUTIVE));
 
-  next();
-};
-
-// Apply authentication and root admin authorization to ALL routes
-router.use(requireAuth);
+// Also keep the existing root admin check for backward compatibility
 router.use(requireRootAdmin);
 
 // ============================================================================

@@ -1,6 +1,13 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -11,6 +18,9 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 
 const router = express.Router();
+
+// Apply RBAC context to all business process optimization routes
+router.use(enhanceUserContext);
 
 // Business Process Optimization API Routes
 
