@@ -18,7 +18,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * POST /api/teams
  * Create a new team
  */
-router.post('/teams', requireAuth, async (req, res) => {
+router.post('/teams', async (req, res) => {
   try {
     const teamData = {
       ...req.body,
@@ -38,7 +38,7 @@ router.post('/teams', requireAuth, async (req, res) => {
  * GET /api/teams
  * Get teams for current tenant
  */
-router.get('/teams', requireAuth, async (req, res) => {
+router.get('/teams', async (req, res) => {
   try {
     // Mock teams data
     const teams = [
@@ -124,7 +124,7 @@ router.get('/teams', requireAuth, async (req, res) => {
  * GET /api/teams/:teamId
  * Get team details
  */
-router.get('/teams/:teamId', requireAuth, async (req, res) => {
+router.get('/teams/:teamId', async (req, res) => {
   try {
     const { teamId } = req.params;
     
@@ -213,7 +213,7 @@ router.get('/teams/:teamId', requireAuth, async (req, res) => {
  * POST /api/teams/:teamId/members
  * Add member to team
  */
-router.post('/teams/:teamId/members', requireAuth, async (req, res) => {
+router.post('/teams/:teamId/members', async (req, res) => {
   try {
     const { teamId } = req.params;
     const memberData = req.body;
@@ -230,7 +230,7 @@ router.post('/teams/:teamId/members', requireAuth, async (req, res) => {
  * GET /api/teams/:teamId/capacity
  * Analyze team capacity and workload
  */
-router.get('/teams/:teamId/capacity', requireAuth, async (req, res) => {
+router.get('/teams/:teamId/capacity', async (req, res) => {
   try {
     const { teamId } = req.params;
     
@@ -246,7 +246,7 @@ router.get('/teams/:teamId/capacity', requireAuth, async (req, res) => {
  * GET /api/teams/:teamId/insights
  * Get AI-powered collaboration insights
  */
-router.get('/teams/:teamId/insights', requireAuth, async (req, res) => {
+router.get('/teams/:teamId/insights', async (req, res) => {
   try {
     const { teamId } = req.params;
     
@@ -262,7 +262,7 @@ router.get('/teams/:teamId/insights', requireAuth, async (req, res) => {
  * POST /api/projects
  * Create a new project
  */
-router.post('/projects', requireAuth, async (req, res) => {
+router.post('/projects', async (req, res) => {
   try {
     const projectData = {
       ...req.body,
@@ -282,7 +282,7 @@ router.post('/projects', requireAuth, async (req, res) => {
  * GET /api/projects
  * Get projects for current tenant
  */
-router.get('/projects', requireAuth, async (req, res) => {
+router.get('/projects', async (req, res) => {
   try {
     const { status, teamId, priority } = req.query;
     
@@ -403,7 +403,7 @@ router.get('/projects', requireAuth, async (req, res) => {
  * GET /api/projects/:projectId
  * Get project details
  */
-router.get('/projects/:projectId', requireAuth, async (req, res) => {
+router.get('/projects/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
     
@@ -574,7 +574,7 @@ router.get('/projects/:projectId', requireAuth, async (req, res) => {
  * POST /api/projects/:projectId/assignments/optimize
  * Optimize task assignments for a project
  */
-router.post('/projects/:projectId/assignments/optimize', requireAuth, async (req, res) => {
+router.post('/projects/:projectId/assignments/optimize', async (req, res) => {
   try {
     const { projectId } = req.params;
     const { tasks, teamId } = req.body;
@@ -595,7 +595,7 @@ router.post('/projects/:projectId/assignments/optimize', requireAuth, async (req
  * GET /api/projects/:projectId/dependencies
  * Get cross-team dependencies for a project
  */
-router.get('/projects/:projectId/dependencies', requireAuth, async (req, res) => {
+router.get('/projects/:projectId/dependencies', async (req, res) => {
   try {
     const { projectId } = req.params;
     
@@ -611,7 +611,7 @@ router.get('/projects/:projectId/dependencies', requireAuth, async (req, res) =>
  * GET /api/collaboration/templates
  * Get project templates
  */
-router.get('/collaboration/templates', requireAuth, async (req, res) => {
+router.get('/collaboration/templates', async (req, res) => {
   try {
     const { category } = req.query;
     
@@ -703,7 +703,7 @@ router.get('/collaboration/templates', requireAuth, async (req, res) => {
  * GET /api/collaboration/analytics
  * Get collaboration analytics and insights
  */
-router.get('/collaboration/analytics', requireAuth, async (req, res) => {
+router.get('/collaboration/analytics', async (req, res) => {
   try {
     const { timeRange = 'month' } = req.query;
     

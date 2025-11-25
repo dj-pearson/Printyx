@@ -35,7 +35,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * POST /api/meetings/:meetingId/recordings/upload
  * Upload a meeting recording
  */
-router.post('/meetings/:meetingId/recordings/upload', requireAuth, upload.single('recording'), async (req, res) => {
+router.post('/meetings/:meetingId/recordings/upload', upload.single('recording'), async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { autoTranscribe = true, autoGenerateNotes = true, recordingSource = 'manual_upload' } = req.body;
@@ -71,7 +71,7 @@ router.post('/meetings/:meetingId/recordings/upload', requireAuth, upload.single
  * GET /api/meetings/:meetingId/recordings
  * Get recordings for a meeting
  */
-router.get('/meetings/:meetingId/recordings', requireAuth, async (req, res) => {
+router.get('/meetings/:meetingId/recordings', async (req, res) => {
   try {
     const { meetingId } = req.params;
     
@@ -158,7 +158,7 @@ router.get('/meetings/:meetingId/recordings', requireAuth, async (req, res) => {
  * GET /api/recordings/:recordingId/transcription
  * Get transcription for a recording
  */
-router.get('/recordings/:recordingId/transcription', requireAuth, async (req, res) => {
+router.get('/recordings/:recordingId/transcription', async (req, res) => {
   try {
     const { recordingId } = req.params;
     const { includeSegments = true, includeTimestamps = true } = req.query;
@@ -294,7 +294,7 @@ John Smith: Excellent insights everyone. Let me summarize our key decisions and 
  * GET /api/meetings/:meetingId/notes
  * Get AI-generated notes for a meeting
  */
-router.get('/meetings/:meetingId/notes', requireAuth, async (req, res) => {
+router.get('/meetings/:meetingId/notes', async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { version = 'latest' } = req.query;
@@ -543,7 +543,7 @@ Significant discussion around resource allocation to support growth objectives w
  * GET /api/meetings/:meetingId/highlights
  * Get meeting highlights and key moments
  */
-router.get('/meetings/:meetingId/highlights', requireAuth, async (req, res) => {
+router.get('/meetings/:meetingId/highlights', async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { type, importance_min = 0.5 } = req.query;
@@ -717,7 +717,7 @@ router.get('/meetings/:meetingId/highlights', requireAuth, async (req, res) => {
  * POST /api/meetings/content/search
  * Search meeting content across transcriptions and notes
  */
-router.post('/content/search', requireAuth, async (req, res) => {
+router.post('/content/search', async (req, res) => {
   try {
     const { 
       query, 
@@ -763,7 +763,7 @@ router.post('/content/search', requireAuth, async (req, res) => {
  * GET /api/meetings/analytics/content
  * Get meeting content analytics
  */
-router.get('/analytics/content', requireAuth, async (req, res) => {
+router.get('/analytics/content', async (req, res) => {
   try {
     const { 
       start_date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -789,7 +789,7 @@ router.get('/analytics/content', requireAuth, async (req, res) => {
  * POST /api/meetings/speakers/profile
  * Generate speaker voice profile
  */
-router.post('/speakers/profile', requireAuth, async (req, res) => {
+router.post('/speakers/profile', async (req, res) => {
   try {
     const { voiceSamples = [] } = req.body;
 
@@ -814,7 +814,7 @@ router.post('/speakers/profile', requireAuth, async (req, res) => {
  * POST /api/recordings/:recordingId/process
  * Manually trigger recording processing
  */
-router.post('/recordings/:recordingId/process', requireAuth, async (req, res) => {
+router.post('/recordings/:recordingId/process', async (req, res) => {
   try {
     const { recordingId } = req.params;
     const { 

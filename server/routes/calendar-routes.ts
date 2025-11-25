@@ -18,7 +18,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * GET /api/calendar/connections
  * Get user's calendar connections
  */
-router.get('/connections', requireAuth, async (req, res) => {
+router.get('/connections', async (req, res) => {
   try {
     const { tenantId } = req.user;
     const userId = req.user.id;
@@ -45,7 +45,7 @@ router.get('/connections', requireAuth, async (req, res) => {
  * POST /api/calendar/connections
  * Add a new calendar connection
  */
-router.post('/connections', requireAuth, async (req, res) => {
+router.post('/connections', async (req, res) => {
   try {
     const { provider, accessToken, refreshToken, calendarId } = req.body;
     const { tenantId } = req.user;
@@ -75,7 +75,7 @@ router.post('/connections', requireAuth, async (req, res) => {
  * POST /api/calendar/sync/:connectionId
  * Sync events from external calendar
  */
-router.post('/sync/:connectionId', requireAuth, async (req, res) => {
+router.post('/sync/:connectionId', async (req, res) => {
   try {
     const { connectionId } = req.params;
 
@@ -101,7 +101,7 @@ router.post('/sync/:connectionId', requireAuth, async (req, res) => {
  * GET /api/calendar/events
  * Get calendar events for a date range
  */
-router.get('/events', requireAuth, async (req, res) => {
+router.get('/events', async (req, res) => {
   try {
     const { start, end, calendarIds } = req.query;
     const { tenantId } = req.user;
@@ -163,7 +163,7 @@ router.get('/events', requireAuth, async (req, res) => {
  * POST /api/calendar/events
  * Create a new calendar event
  */
-router.post('/events', requireAuth, async (req, res) => {
+router.post('/events', async (req, res) => {
   try {
     const eventData = req.body;
     const { tenantId } = req.user;
@@ -195,7 +195,7 @@ router.post('/events', requireAuth, async (req, res) => {
  * PUT /api/calendar/events/:eventId
  * Update a calendar event
  */
-router.put('/events/:eventId', requireAuth, async (req, res) => {
+router.put('/events/:eventId', async (req, res) => {
   try {
     const { eventId } = req.params;
     const eventData = req.body;
@@ -218,7 +218,7 @@ router.put('/events/:eventId', requireAuth, async (req, res) => {
  * DELETE /api/calendar/events/:eventId
  * Delete a calendar event
  */
-router.delete('/events/:eventId', requireAuth, async (req, res) => {
+router.delete('/events/:eventId', async (req, res) => {
   try {
     const { eventId } = req.params;
 
@@ -234,7 +234,7 @@ router.delete('/events/:eventId', requireAuth, async (req, res) => {
  * GET /api/calendar/availability/:userId
  * Get user availability for scheduling
  */
-router.get('/availability/:userId', requireAuth, async (req, res) => {
+router.get('/availability/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { start, end } = req.query;
@@ -262,7 +262,7 @@ router.get('/availability/:userId', requireAuth, async (req, res) => {
  * POST /api/calendar/find-meeting-time
  * Find optimal meeting time for multiple attendees
  */
-router.post('/find-meeting-time', requireAuth, async (req, res) => {
+router.post('/find-meeting-time', async (req, res) => {
   try {
     const { attendeeIds, duration, preferredStart, preferredEnd } = req.body;
     const { tenantId } = req.user;
