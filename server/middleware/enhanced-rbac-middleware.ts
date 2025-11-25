@@ -596,6 +596,45 @@ export const requireAllPermissions = (
 };
 
 /**
+ * Require ANY of the specified permissions
+ */
+export const requireAnyPermission = (
+  requiredPermissions: string[],
+  options: PermissionCheckOptions = {}
+): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    // Platform admins bypass all permission checks
+    if (req.user.hasAllPermissions) {
+      return next();
+    }
+
+    const userPermissions = req.user.permissions;
+    const hasAny = requiredPermissions.some(perm => userPermissions.has(perm));
+
+    if (!hasAny) {
+      // Log failed permission check
+      if (options.auditLog !== false) {
+        logFailedPermissionCheck(req, requiredPermissions, 'requireAnyPermission');
+      }
+
+      res.status(403).json({
+        error: 'Insufficient permissions',
+        required: requiredPermissions,
+        message: `Access denied. Requires at least one of: ${requiredPermissions.join(', ')}`,
+      });
+      return;
+    }
+
+    next();
+  };
+};
+
+/**
  * Require minimum role level
  */
 export const requireLevel = (
