@@ -6,9 +6,19 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 const requireAuth = (req: any, res: any, next: any) => { if (!req.user) return res.status(401).json({ error: 'Unauthorized' }); next(); };
 
 const router = express.Router();
+
+// Apply RBAC context to all device monitoring routes
+router.use(enhanceUserContext);
 
 /**
  * Get latest metrics for all devices
