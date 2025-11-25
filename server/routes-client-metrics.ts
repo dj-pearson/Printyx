@@ -13,10 +13,20 @@ import {
 } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 const requireAuth = (req: any, res: any, next: any) => { if (!req.user) return res.status(401).json({ error: 'Unauthorized' }); next(); };
 import crypto from 'crypto';
 
 const router = express.Router();
+
+// Apply RBAC context to all client metrics routes
+router.use(enhanceUserContext);
 
 // Types for API requests/responses
 interface DeviceMetricsPayload {
