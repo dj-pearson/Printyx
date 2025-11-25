@@ -22,6 +22,7 @@ import { format, addMinutes, isAfter, isBefore } from "date-fns";
 import { MobileFAB } from "@/components/ui/mobile-fab";
 import ContextualHelp from "@/components/contextual/ContextualHelp";
 import PageAlerts from "@/components/contextual/PageAlerts";
+import ServiceTeamStatsWidget from "@/components/stats/ServiceTeamStatsWidget";
 
 // Types
 interface DispatchMetrics {
@@ -355,7 +356,7 @@ export default function ServiceDispatchOptimization() {
         <ContextualHelp page="service-dispatch-optimization" />
 
         {/* Page Alerts */}
-        <PageAlerts 
+        <PageAlerts
           alerts={mockAlerts.filter(alert => alert.actionRequired).map(alert => ({
             id: alert.id,
             type: alert.severity === 'critical' || alert.severity === 'high' ? 'error' : 'warning',
@@ -367,6 +368,9 @@ export default function ServiceDispatchOptimization() {
             } : undefined
           }))}
         />
+
+        {/* Service Team Performance Stats */}
+        <ServiceTeamStatsWidget variant="full" showAutoRefresh={true} />
 
         {/* Key Metrics Dashboard */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

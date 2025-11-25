@@ -10,6 +10,7 @@ import {
   type AuthenticatedRequest,
 } from '../middleware/enhanced-rbac-middleware';
 import { ServiceReportingService } from '../services/service-reporting-service';
+import { ServiceSupervisorReportingService } from '../services/service-supervisor-reporting-service';
 
 const router = Router();
 
@@ -290,6 +291,43 @@ router.post(
     } catch (error) {
       console.error('Error invalidating cache:', error);
       res.status(500).json({ message: 'Failed to invalidate cache' });
+    }
+  }
+);
+
+// =====================================================================
+// TEAM QUICK STATS (FOR EMBEDDED WIDGETS)
+// =====================================================================
+
+/**
+ * GET /api/service-reports/team/quick-stats
+ * Get quick stats for service team (for embedded widgets)
+ * Lightweight endpoint optimized for in-module display
+ *
+ * Permission: service.performance.view_team or higher
+ */
+router.get(
+  '/service-reports/team/quick-stats',
+  requirePermission([
+    'service.performance.view_team',
+    'service.performance.view_location',
+    'service.performance.view_regional',
+    'service.performance.view_company',
+    'service.performance.view_platform',
+  ]),
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const stats = await ServiceSupervisorReportingService.getTeamQuickStats(
+        req.user!
+      );
+
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching service team quick stats:', error);
+      res.status(500).json({
+        message: 'Failed to fetch service team stats',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 );
