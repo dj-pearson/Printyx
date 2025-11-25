@@ -3,6 +3,13 @@ import { db } from './db';
 import { eq, and, desc } from "drizzle-orm";
 import { contractRenewalTracking, renewalProposals } from "@shared/schema";
 import * as renewalService from "./services/contract-renewal-service";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = Router();
 
@@ -23,12 +30,16 @@ function requireTenant(req: Request, res: Response, next: NextFunction) {
 }
 
 router.use(requireTenant);
+// Apply RBAC context to all contract renewal routes
+router.use(enhanceUserContext);
 
 /**
  * GET /api/contract-renewal/dashboard
- * Get dashboard metrics and overview
+ * Get dashboard metrics and overview - requires customer view permission
  */
-router.get("/dashboard", async (req: Request, res: Response) => {
+router.get("/dashboard",
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const metrics = await renewalService.getDashboardMetrics(tenantId);
