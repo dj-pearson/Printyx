@@ -36,6 +36,7 @@ import {
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
+import TeamStatsWidget from "@/components/stats/TeamStatsWidget";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Form schemas
@@ -184,6 +185,9 @@ export default function CrmGoalsDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Team Performance Stats */}
+        <TeamStatsWidget variant="full" showAutoRefresh={true} />
 
         {/* Filters */}
         <Card>
