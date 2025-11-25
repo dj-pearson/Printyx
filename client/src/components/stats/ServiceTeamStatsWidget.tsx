@@ -29,9 +29,19 @@ import {
   RefreshCw,
   AlertTriangle,
   Target,
+  Download,
+  FileText,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ServiceTeamQuickStats {
   performance: {
@@ -71,6 +81,7 @@ export default function ServiceTeamStatsWidget({
   className,
 }: ServiceTeamStatsWidgetProps) {
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const { toast } = useToast();
 
   const {
     data: stats,
@@ -100,6 +111,118 @@ export default function ServiceTeamStatsWidget({
       return failureCount < 3;
     },
   });
+
+  // Export handler
+  const handleExport = (format: 'csv' | 'json') => {
+    if (!stats) {
+      toast({
+        title: 'No data to export',
+        description: 'Please wait for data to load before exporting.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Prepare export data
+    const exportData = [
+      {
+        metric: 'First-Time Fix Rate',
+        value: `${stats.performance.firstTimeFixRate.toFixed(1)}%`,
+        trend: stats.trends.ftfTrend,
+        category: 'Performance',
+      },
+      {
+        metric: 'SLA Compliance',
+        value: `${stats.performance.slaCompliance.toFixed(1)}%`,
+        trend: stats.trends.slaTrend,
+        category: 'Performance',
+      },
+      {
+        metric: 'Customer Satisfaction',
+        value: `${stats.performance.customerSatisfaction.toFixed(2)} / 5.0`,
+        trend: stats.trends.csatTrend,
+        category: 'Performance',
+      },
+      {
+        metric: 'Utilization Rate',
+        value: `${stats.performance.utilizationRate.toFixed(0)}%`,
+        trend: '-',
+        category: 'Performance',
+      },
+      {
+        metric: 'Total Calls',
+        value: stats.activity.totalCalls.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'Completed Calls',
+        value: stats.activity.completedCalls.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'Scheduled Calls',
+        value: stats.activity.scheduledCalls.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'Overdue Tickets',
+        value: stats.activity.overdueTickets.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'Total Technicians',
+        value: stats.team.totalTechnicians.toString(),
+        trend: '-',
+        category: 'Team',
+      },
+      {
+        metric: 'Active Technicians',
+        value: stats.team.activeTechnicians.toString(),
+        trend: '-',
+        category: 'Team',
+      },
+      {
+        metric: 'Top Technician',
+        value: stats.team.topTechnician,
+        trend: '-',
+        category: 'Team',
+      },
+      {
+        metric: 'Technicians Needing Support',
+        value: stats.team.techsNeedingSupport.toString(),
+        trend: '-',
+        category: 'Team',
+      },
+    ];
+
+    const columns = [
+      createExportColumn<typeof exportData[0]>('category', 'Category'),
+      createExportColumn<typeof exportData[0]>('metric', 'Metric'),
+      createExportColumn<typeof exportData[0]>('value', 'Value'),
+      createExportColumn<typeof exportData[0]>('trend', 'Trend'),
+    ];
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `service-team-stats-${timestamp}`;
+
+    if (format === 'csv') {
+      exportToCSV(exportData, columns, { filename });
+      toast({
+        title: 'Export successful',
+        description: 'Service team stats exported to CSV.',
+      });
+    } else {
+      exportToJSON(exportData, columns, { filename });
+      toast({
+        title: 'Export successful',
+        description: 'Service team stats exported to JSON.',
+      });
+    }
+  };
 
   if (error) {
     return (
