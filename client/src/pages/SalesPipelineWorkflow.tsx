@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
+import TeamStatsWidget from "@/components/stats/TeamStatsWidget";
 import {
   Users,
   TrendingUp,
@@ -392,6 +393,9 @@ export default function SalesPipelineWorkflow() {
 
           {/* Pipeline Flow View */}
           <TabsContent value="pipeline" className="space-y-6">
+            {/* Team Quick Stats - Compact View */}
+            <TeamStatsWidget variant="compact" showAutoRefresh={false} />
+
             {/* Filters */}
             <div className="flex items-center gap-4">
               <Select value={selectedStage} onValueChange={setSelectedStage}>
@@ -614,6 +618,9 @@ export default function SalesPipelineWorkflow() {
 
           {/* Team Management View */}
           <TabsContent value="team" className="space-y-6">
+            {/* Team Stats Widget - Comprehensive Overview */}
+            <TeamStatsWidget variant="full" showAutoRefresh={true} />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Team Performance Overview */}
               <Card>
