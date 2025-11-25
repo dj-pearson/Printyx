@@ -35,7 +35,7 @@ const getUserId = (req: Request): string => {
  * GET /api/knowledge-base/bookmarks
  * Get all bookmarks for the current user
  */
-router.get('/', requireAuth, async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -119,7 +119,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
  * POST /api/knowledge-base/bookmarks
  * Create a new bookmark
  */
-router.post('/', requireAuth, async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -184,7 +184,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
  * PUT /api/knowledge-base/bookmarks/:id
  * Update bookmark notes, tags, or collection
  */
-router.put('/:id', requireAuth, async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { id } = req.params;
@@ -240,7 +240,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
  * DELETE /api/knowledge-base/bookmarks/:id
  * Remove a bookmark
  */
-router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { id } = req.params;
@@ -287,7 +287,7 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
  * GET /api/knowledge-base/bookmarks/collections
  * Get all bookmark collections for the current user
  */
-router.get('/collections', requireAuth, async (req: Request, res: Response) => {
+router.get('/collections', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -330,7 +330,7 @@ router.get('/collections', requireAuth, async (req: Request, res: Response) => {
  * GET /api/knowledge-base/bookmarks/check/:articleId
  * Check if an article is bookmarked
  */
-router.get('/check/:articleId', requireAuth, async (req: Request, res: Response) => {
+router.get('/check/:articleId', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { articleId } = req.params;
