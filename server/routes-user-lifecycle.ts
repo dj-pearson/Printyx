@@ -11,15 +11,80 @@ import {
   userImpersonationSessions,
 } from '@shared/schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { requireRootAdmin } from './routes-root-admin';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * USER LIFECYCLE MANAGEMENT ROUTES
  *
  * Admin endpoints for user provisioning, onboarding, offboarding, and access reviews.
  * Provides automation for the entire user lifecycle.
+ * SECURITY: All routes in this file require root admin authorization (Level 7+).
+ *
+ * CRITICAL SECURITY NOTE: User impersonation is an extremely sensitive operation
+ * that requires the highest level of security and audit logging.
  */
 
 const router = Router();
+
+// ============================================================================
+// SECURITY MIDDLEWARE - PROTECT ALL ROUTES
+// ============================================================================
+// Middleware to check authentication
+const requireAuth = (req: any, res: any, next: any) => {
+  const isAuthenticated =
+    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+
+  if (!req.user) {
+    req.user = {
+      id: req.session.userId,
+      tenantId: req.session.tenantId || req.user?.tenantId,
+    };
+  } else if (!req.user.tenantId && !req.user.id) {
+    req.user = {
+      id: req.user.claims?.sub || req.user.id,
+      tenantId: req.user.tenantId || req.session?.tenantId,
+    };
+  }
+
+  next();
+};
+
+// Audit logging middleware for sensitive operations
+const auditLog = (action: string) => {
+  return (req: any, res: any, next: any) => {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      action,
+      userId: req.user?.id || req.session?.userId,
+      userEmail: req.user?.email,
+      targetUserId: req.params.userId || req.body.userId,
+      ip: req.ip || req.connection.remoteAddress,
+      userAgent: req.headers['user-agent'],
+      requestBody: action.includes('IMPERSONATION') ? { ...req.body, password: '[REDACTED]' } : req.body,
+    };
+
+    // Log to file for audit trail
+    const logPath = path.join(__dirname, 'audit.log');
+    fs.appendFile(logPath, JSON.stringify(logEntry) + '\n', (err) => {
+      if (err) console.error('Failed to write audit log:', err);
+    });
+
+    // Log to console
+    console.warn(`[AUDIT] ${action}:`, logEntry);
+
+    next();
+  };
+};
+
+// Apply authentication and root admin authorization to ALL routes
+router.use(requireAuth);
+router.use(requireRootAdmin);
 
 // ============================================================================
 // PROVISIONING TEMPLATES
@@ -435,8 +500,9 @@ router.get('/access-review/:id', async (req, res) => {
 /**
  * POST /api/users/:userId/impersonate
  * Start user impersonation session for support
+ * CRITICAL: Extra audit logging applied - all impersonation attempts logged
  */
-router.post('/:userId/impersonate', async (req, res) => {
+router.post('/:userId/impersonate', auditLog('USER_IMPERSONATION_START'), async (req, res) => {
   try {
     const { adminId, tenantId, reason, ticketNumber } = req.body;
 
@@ -476,8 +542,9 @@ router.post('/:userId/impersonate', async (req, res) => {
 /**
  * POST /api/users/impersonate/:sessionId/end
  * End impersonation session
+ * CRITICAL: Extra audit logging applied
  */
-router.post('/impersonate/:sessionId/end', async (req, res) => {
+router.post('/impersonate/:sessionId/end', auditLog('USER_IMPERSONATION_END'), async (req, res) => {
   try {
     await UserLifecycleService.endImpersonation(req.params.sessionId);
 
