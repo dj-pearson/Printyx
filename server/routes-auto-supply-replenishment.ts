@@ -3,6 +3,13 @@ import { db } from './db';
 import { eq, and, desc } from "drizzle-orm";
 import { supplyMonitoring, autoSupplyOrders } from "@shared/schema";
 import * as supplyService from "./services/auto-supply-replenishment-service";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = Router();
 
@@ -23,6 +30,8 @@ function requireTenant(req: Request, res: Response, next: NextFunction) {
 }
 
 router.use(requireTenant);
+// Apply RBAC context to all auto-supply-replenishment routes
+router.use(enhanceUserContext);
 
 /**
  * GET /api/auto-supply-replenishment/dashboard
