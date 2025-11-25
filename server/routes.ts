@@ -141,6 +141,9 @@ import reportingArchitectureRoutes from './routes-reporting-architecture';
 import salesReportsAPI from './routes/sales-reports-api';
 import serviceReportsAPI from './routes/service-reports-api';
 import salesSupervisorReportsAPI from './routes/sales-supervisor-reports-api';
+import serviceSupervisorReportsAPI from './routes/service-supervisor-reports-api';
+import salesManagerReportsAPI from './routes/sales-manager-reports-api';
+import serviceManagerReportsAPI from './routes/service-manager-reports-api';
 import warehouseFpyRoutes from './routes-warehouse-fpy';
 // OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
 // import billingRoutes from './routes-billing';
@@ -15032,6 +15035,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register sales supervisor reports API (RBAC-aware reporting for location supervisors)
   app.use('/api/sales-supervisor-reports', salesSupervisorReportsAPI);
+
+  // Register service supervisor reports API (RBAC-aware reporting for service location supervisors)
+  app.use('/api/service-supervisor-reports', serviceSupervisorReportsAPI);
+
+  // Register sales manager reports API (RBAC-aware reporting for regional/company managers)
+  app.use('/api/sales-manager-reports', salesManagerReportsAPI);
+
+  // Register service manager reports API (RBAC-aware reporting for regional/company service managers)
+  app.use('/api/service-manager-reports', serviceManagerReportsAPI);
 
   // Register legacy reports routes
   app.use('/api', reportsRoutes);
