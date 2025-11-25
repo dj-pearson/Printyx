@@ -911,6 +911,310 @@ try {
 - Configure per-endpoint as needed
 - Different limits for authenticated vs unauthenticated users
 
+### Enhanced RBAC System
+
+**Overview**:
+Printyx uses a comprehensive Role-Based Access Control (RBAC) system with database-driven permissions, hierarchical organization, and granular access control.
+
+**Architecture**:
+- **8-Level Role Hierarchy**: Individual Contributors (1) → Platform Administrators (8)
+- **4 Organizational Tiers**: Platform → Company → Regional → Location
+- **6 Scope Levels**: own → team → location → regional → company → platform
+- **150+ Granular Permissions**: Format `module.resource.action_scope`
+- **24 Role Templates**: Covering all departments and hierarchy levels
+
+**Core Files**:
+- `server/enhanced-rbac-schema.ts` - Database schema
+- `server/middleware/enhanced-rbac-middleware.ts` - Permission checking
+- `server/middleware/hierarchical-query-builder.ts` - Data scoping
+- `server/database-updater/seeders/rbac-seeder.ts` - Role/permission seeding
+
+**Permission Format**:
+```typescript
+// Format: <module>.<resource>.<action>_<scope>
+'sales.lead.view_own'         // View own leads
+'sales.lead.view_team'        // View team's leads
+'sales.lead.view_location'    // View location's leads
+'sales.quote.approve_standard' // Approve standard quotes
+'finance.payment.process'     // Process payments
+```
+
+**Using RBAC Middleware**:
+```typescript
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireAllPermissions,
+  requireLevel,
+  requireScope,
+  hasPermission,
+} from './middleware/enhanced-rbac-middleware';
+
+// Apply user context to all routes (must be first)
+app.use(enhanceUserContext);
+
+// Require specific permission (ANY)
+app.get('/leads',
+  requirePermission(['sales.lead.view_own', 'sales.lead.view_team']),
+  async (req, res) => { /* ... */ }
+);
+
+// Require ALL permissions
+app.post('/quotes/approve',
+  requireAllPermissions(['sales.quote.view', 'sales.quote.approve_standard']),
+  async (req, res) => { /* ... */ }
+);
+
+// Require minimum role level (1-8)
+app.get('/reports/executive',
+  requireLevel(6), // Director level or higher
+  async (req, res) => { /* ... */ }
+);
+
+// Require minimum organizational scope
+app.get('/analytics/company',
+  requireScope('company'), // Company-wide access
+  async (req, res) => { /* ... */ }
+);
+
+// Check permissions in route logic
+app.get('/data', enhanceUserContext, async (req, res) => {
+  if (hasPermission(req, 'sales.lead.delete')) {
+    // User can delete leads
+  }
+});
+```
+
+**Permission Caching**:
+- **L1 Cache**: In-memory (15-minute TTL)
+- **L2 Cache**: Database table (`permission_cache`)
+- Automatic cleanup every 30 minutes
+- Cache invalidation on role changes
+
+**Role Hierarchy Levels**:
+1. **Level 1** (Individual Contributors): Sales Rep, Field Technician, Warehouse Associate
+2. **Level 2** (Team Leads): Senior Sales Rep, Senior Technician
+3. **Level 3** (Supervisors): Sales Supervisor, Service Supervisor, Warehouse Supervisor
+4. **Level 4** (Managers): Sales Manager, Service Manager, Operations Manager, Branch Manager
+5. **Level 5** (Regional Directors): Regional Sales Director, Regional Service Manager
+6. **Level 6** (Company Directors): VP Sales, VP Service, Director Operations, Controller
+7. **Level 7** (Executives): CEO, CFO, COO
+8. **Level 8** (Platform Admins): Platform Administrator (Printyx staff only)
+
+**Organizational Scopes**:
+- `own`: User's own data only
+- `team`: User + direct reports
+- `location`: All data at user's location
+- `regional`: All data in user's region
+- `company`: All company data (all locations/regions)
+- `platform`: Cross-tenant data (Printyx staff only)
+
+### Hierarchical Query Building
+
+**Overview**:
+Automatic data scoping based on user's organizational position using nested set model.
+
+**Using the Query Builder**:
+```typescript
+import { HierarchicalQueryBuilder, applyUserScope } from './middleware/hierarchical-query-builder';
+
+// Method 1: Using the query builder class
+const queryBuilder = new HierarchicalQueryBuilder(req.user);
+const filter = queryBuilder.applyHierarchicalFilter();
+
+const data = await db
+  .select()
+  .from(opportunities)
+  .where(filter);
+
+// Method 2: Quick helper function
+const filter = applyUserScope(req.user);
+
+// Method 3: Get accessible IDs for IN queries
+const locationIds = await queryBuilder.getAccessibleLocationIds();
+const regionIds = await queryBuilder.getAccessibleRegionIds();
+const userIds = await queryBuilder.getAccessibleUserIds();
+
+const data = await db
+  .select()
+  .from(opportunities)
+  .where(inArray(opportunities.locationId, locationIds));
+
+// Method 4: Override scope for specific queries
+const filter = queryBuilder.applyHierarchicalFilter({
+  overrideScope: 'location', // Show location data even if user has higher access
+});
+
+// Method 5: Custom field names and table aliases
+const filter = queryBuilder.applyHierarchicalFilter({
+  tableAlias: 'o',
+  fieldNames: {
+    userId: 'owner_id',
+    locationId: 'branch_id',
+  },
+});
+
+// Method 6: Raw SQL queries
+const whereClause = queryBuilder.getSQLWhereClause({ tableAlias: 'o' });
+const sqlQuery = `
+  SELECT * FROM opportunities o
+  WHERE ${whereClause}
+  ORDER BY o.created_at DESC
+`;
+```
+
+**Nested Set Model**:
+The organizational hierarchy uses a nested set model for efficient queries:
+- `lft` (left): Left boundary
+- `rght` (right): Right boundary
+- `depth`: Level in hierarchy
+
+```typescript
+// Find all descendants of a unit
+SELECT * FROM organizational_units child
+WHERE child.lft > parent.lft
+  AND child.rght < parent.rght
+  AND child.tenant_id = parent.tenant_id;
+
+// Find all ancestors of a unit
+SELECT * FROM organizational_units parent
+WHERE parent.lft < child.lft
+  AND parent.rght > child.rght
+  AND parent.tenant_id = child.tenant_id;
+```
+
+### Reporting Infrastructure
+
+**Overview**:
+Comprehensive reporting system with 75+ pre-built reports, KPI tracking, export capabilities, and scheduling.
+
+**Core Components**:
+- `shared/reporting-schema.ts` - Report/KPI definitions schema
+- `server/routes/reporting-api.ts` - Report engine API
+- `server/database-updater/seeders/report-seeder.ts` - 75 report definitions
+- `server/database-updater/seeders/kpi-seeder.ts` - 43 KPI definitions
+
+**Report Categories** (75 total):
+- **Sales** (24 reports): Personal pipeline → board-level analytics
+- **Service** (19 reports): Technician productivity → executive dashboards
+- **Operations** (11 reports): Warehouse productivity → supply chain
+- **Finance** (10 reports): AR/AP aging → profitability analysis
+- **Executive** (4 reports): CEO dashboards, board reports
+- **Platform Admin** (4 reports): System metrics, tenant usage, billing
+- **Cross-Department** (3 reports): Customer 360, employee/location performance
+
+**KPI Categories** (43 total):
+- **Sales** (11 KPIs): Quota attainment, win rate, pipeline metrics
+- **Service** (8 KPIs): FTF rate, CSAT, utilization, SLA compliance
+- **Operations** (6 KPIs): Inventory accuracy/turns, FPY, on-time delivery
+- **Finance** (7 KPIs): Revenue growth, margins, DSO, liquidity ratios
+- **Executive** (6 KPIs): CAC, CLV, NPS, employee engagement, retention
+- **Platform** (5 KPIs): Uptime, API performance, error rate, MRR, churn
+
+**Report Engine API**:
+```typescript
+// List available reports (filtered by user permissions)
+GET /api/reports
+GET /api/reports?category=sales&scope=individual&search=pipeline
+
+// Get report definition
+GET /api/reports/:code
+
+// Execute report
+POST /api/reports/:code/execute
+{
+  "filters": {
+    "dateRange": { "start": "2025-01-01", "end": "2025-01-31" },
+    "stage": ["Discovery", "Proposal"]
+  },
+  "parameters": {
+    "userId": "user-123",
+    "productCategory": "Copiers"
+  },
+  "sort": { "field": "value", "direction": "desc" },
+  "pagination": { "page": 1, "limit": 50 },
+  "overrideScope": "team" // Optional scope override
+}
+
+// Export report (CSV, Excel, PDF)
+POST /api/reports/:code/export
+{
+  "format": "xlsx", // 'csv' | 'xlsx' | 'pdf'
+  "filters": { /* ... */ },
+  "parameters": { /* ... */ }
+}
+
+// Schedule report
+POST /api/reports/:code/schedule
+{
+  "name": "Weekly Sales Report",
+  "cronExpression": "0 9 * * 1", // Every Monday at 9 AM
+  "timezone": "America/New_York",
+  "recipients": ["manager@company.com"],
+  "deliveryMethod": "email",
+  "exportFormat": "pdf",
+  "emailSubject": "Weekly Sales Performance",
+  "emailBody": "Please find attached this week's sales report."
+}
+
+// Get scheduled reports
+GET /api/reports/scheduled/list
+
+// Delete scheduled report
+DELETE /api/reports/scheduled/:id
+
+// Get recent executions
+GET /api/reports/executions/recent?limit=20
+```
+
+**Report Execution Flow**:
+1. **Permission Check**: Validates user has required permissions
+2. **Cache Check**: Returns cached results if available (configurable TTL)
+3. **Parameter Substitution**: Replaces `:userId`, `:tenantId`, etc.
+4. **Hierarchical Filtering**: Injects scope-based WHERE clause
+5. **SQL Execution**: Runs query with timeout and row limits
+6. **Result Caching**: Caches results for subsequent requests
+7. **Audit Trail**: Records execution metrics in `report_executions`
+
+**Report Features**:
+- **Caching**: Configurable cache duration (default: 5 minutes)
+- **Real-time**: Opt-in for reports that bypass cache
+- **Drill-down**: Support for interactive drilling into details
+- **Export**: CSV, Excel (with styling), PDF (with formatting)
+- **Scheduling**: Cron-based with email delivery
+- **Performance**: Query timeout (30s), max rows (10K)
+- **Audit**: Full execution history with performance metrics
+
+**Seeding Reports and KPIs**:
+```bash
+# Seed RBAC permissions and roles (prerequisite)
+npm run seed:rbac
+
+# Seed report definitions (75 reports)
+npm run seed:reports
+
+# Seed KPI definitions (43 KPIs)
+npm run seed:kpis
+```
+
+**KPI Display Formats**:
+- **Currency**: `$1,234,567`
+- **Percentage**: `85.5%`
+- **Decimal**: `3.2x`
+- **Number**: `45 days`
+
+**Color-Coded Performance**:
+- 🔴 Red: Below target / Poor
+- 🟡 Yellow: Near target / Fair
+- 🟢 Green: On target / Good
+- 🔵 Blue: Exceeds target / Excellent
+
+**Alert Configuration**:
+High-priority KPIs have automated alerts:
+- **Critical threshold**: Immediate notification
+- **Warning threshold**: Proactive notification
+- **Custom messages**: Contextual alert descriptions
+
 ### Security Best Practices
 
 **Authentication & Authorization**:
