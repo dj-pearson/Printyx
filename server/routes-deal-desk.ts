@@ -24,12 +24,26 @@ import {
 } from "@shared/schema";
 import { ApprovalWorkflowService } from "./services/approval-workflow-service";
 import { cacheControl, etag } from "./middleware/cache-middleware";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireLevel,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerDealDeskRoutes(app: Express) {
+  // Apply RBAC context to all deal desk routes
+  app.use("/api/deal-desk", enhanceUserContext);
   // ==================== Approval Rules Management ====================
 
-  // Get all approval rules for tenant
-  app.get("/api/deal-desk/rules", isAuthenticated, async (req: any, res) => {
+  // Get all approval rules for tenant - requires deal view permission
+  app.get("/api/deal-desk/rules",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SALES.DEAL.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -46,8 +60,11 @@ export function registerDealDeskRoutes(app: Express) {
     }
   });
 
-  // Create approval rule
-  app.post("/api/deal-desk/rules", isAuthenticated, async (req: any, res) => {
+  // Create approval rule - requires manager level
+  app.post("/api/deal-desk/rules",
+    isAuthenticated,
+    requireLevel(ROLE_LEVELS.MANAGER),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.claims.sub;
