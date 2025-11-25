@@ -41,7 +41,7 @@ const getTenantId = (req: Request): string => {
  * GET /api/content-gap-analysis
  * Generate comprehensive content gap analysis report
  */
-router.get('/', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.get('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 
@@ -67,7 +67,7 @@ router.get('/', requireAuth, requireAdmin, async (req: Request, res: Response) =
  * GET /api/content-gap-analysis/summary
  * Get quick summary of content gaps
  */
-router.get('/summary', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.get('/summary', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 
@@ -140,7 +140,7 @@ router.get(
  * GET /api/content-gap-analysis/priorities
  * Get gaps organized by priority level
  */
-router.get('/priorities', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.get('/priorities', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 
@@ -176,7 +176,7 @@ router.get('/priorities', requireAuth, requireAdmin, async (req: Request, res: R
  * POST /api/content-gap-analysis/refresh
  * Manually trigger a fresh analysis (cache-busting)
  */
-router.post('/refresh', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.post('/refresh', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 

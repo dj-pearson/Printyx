@@ -48,7 +48,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * Get admin dashboard statistics
  * RBAC: System Admin (Level 5+)
  */
-router.get('/dashboard', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { days = 30 } = req.query;
@@ -144,7 +144,7 @@ router.get('/dashboard', requireAuth, requireSystemAdmin, async (req: Request, r
  * Bulk update article status, categories, tags, etc.
  * RBAC: System Admin (Level 5+)
  */
-router.post('/articles/bulk-update', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.post('/articles/bulk-update', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -205,7 +205,7 @@ router.post('/articles/bulk-update', requireAuth, requireSystemAdmin, async (req
  * Bulk delete articles
  * RBAC: Root Admin (Level 7+) - Destructive operation
  */
-router.delete('/articles/bulk-delete', requireAuth, requireRootAdmin, async (req: Request, res: Response) => {
+router.delete('/articles/bulk-delete', requireRootAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
 
@@ -274,7 +274,7 @@ router.delete('/articles/bulk-delete', requireAuth, requireRootAdmin, async (req
  * Get pending feedback that needs review
  * RBAC: System Admin (Level 5+)
  */
-router.get('/feedback/pending', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.get('/feedback/pending', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { limit = 50, offset = 0 } = req.query;
@@ -325,7 +325,7 @@ router.get('/feedback/pending', requireAuth, requireSystemAdmin, async (req: Req
  * Resolve article feedback
  * RBAC: System Admin (Level 5+)
  */
-router.put('/feedback/:id/resolve', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.put('/feedback/:id/resolve', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -371,7 +371,7 @@ router.put('/feedback/:id/resolve', requireAuth, requireSystemAdmin, async (req:
  * Get AI content generation queue
  * RBAC: System Admin (Level 5+)
  */
-router.get('/ai-queue', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.get('/ai-queue', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { status, limit = 50 } = req.query;
@@ -406,7 +406,7 @@ router.get('/ai-queue', requireAuth, requireSystemAdmin, async (req: Request, re
  * Retry failed AI generation
  * RBAC: System Admin (Level 5+)
  */
-router.post('/ai-queue/:id/retry', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.post('/ai-queue/:id/retry', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { id } = req.params;
@@ -443,7 +443,7 @@ router.post('/ai-queue/:id/retry', requireAuth, requireSystemAdmin, async (req: 
  * Get version history for an article
  * RBAC: System Admin (Level 5+)
  */
-router.get('/articles/:id/versions', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.get('/articles/:id/versions', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { id } = req.params;
@@ -474,7 +474,7 @@ router.get('/articles/:id/versions', requireAuth, requireSystemAdmin, async (req
  * Restore a previous version of an article
  * RBAC: System Admin (Level 5+)
  */
-router.post('/articles/:id/restore-version', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.post('/articles/:id/restore-version', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -532,7 +532,7 @@ router.post('/articles/:id/restore-version', requireAuth, requireSystemAdmin, as
  * Import articles from JSON/CSV
  * RBAC: Root Admin (Level 7+) - Can modify multiple articles
  */
-router.post('/import', requireAuth, requireRootAdmin, async (req: Request, res: Response) => {
+router.post('/import', requireRootAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
@@ -605,7 +605,7 @@ router.post('/import', requireAuth, requireRootAdmin, async (req: Request, res: 
  * Export articles to JSON/CSV
  * RBAC: Root Admin (Level 7+) - Contains sensitive data
  */
-router.get('/export', requireAuth, requireRootAdmin, async (req: Request, res: Response) => {
+router.get('/export', requireRootAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { format = 'json', categoryId, status } = req.query;
@@ -666,7 +666,7 @@ router.get('/export', requireAuth, requireRootAdmin, async (req: Request, res: R
  * Get detailed analytics
  * RBAC: Manager (Level 3+) - Read-only analytics access
  */
-router.get('/analytics/detailed', requireAuth, requireManager, async (req: Request, res: Response) => {
+router.get('/analytics/detailed', requireManager, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { startDate, endDate, groupBy = 'day' } = req.query;
@@ -738,7 +738,7 @@ router.get('/analytics/detailed', requireAuth, requireManager, async (req: Reque
  * Reorder categories
  * RBAC: System Admin (Level 5+)
  */
-router.post('/categories/reorder', requireAuth, requireSystemAdmin, async (req: Request, res: Response) => {
+router.post('/categories/reorder', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId || 'demo-tenant';
 

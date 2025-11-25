@@ -18,7 +18,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * POST /api/meetings/schedule-request
  * Create an intelligent scheduling request
  */
-router.post('/schedule-request', requireAuth, async (req, res) => {
+router.post('/schedule-request', async (req, res) => {
   try {
     const requestData = {
       ...req.body,
@@ -38,7 +38,7 @@ router.post('/schedule-request', requireAuth, async (req, res) => {
  * POST /api/meetings/schedule/:requestId
  * Schedule a meeting from a scheduling request
  */
-router.post('/schedule/:requestId', requireAuth, async (req, res) => {
+router.post('/schedule/:requestId', async (req, res) => {
   try {
     const { requestId } = req.params;
     const { selectedSuggestion, roomId } = req.body;
@@ -64,7 +64,7 @@ router.post('/schedule/:requestId', requireAuth, async (req, res) => {
  * GET /api/meetings
  * Get meetings for current tenant
  */
-router.get('/meetings', requireAuth, async (req, res) => {
+router.get('/meetings', async (req, res) => {
   try {
     const { 
       start, 
@@ -369,7 +369,7 @@ router.get('/meetings', requireAuth, async (req, res) => {
  * GET /api/meetings/:meetingId
  * Get meeting details
  */
-router.get('/meetings/:meetingId', requireAuth, async (req, res) => {
+router.get('/meetings/:meetingId', async (req, res) => {
   try {
     const { meetingId } = req.params;
     
@@ -609,7 +609,7 @@ router.get('/meetings/:meetingId', requireAuth, async (req, res) => {
  * GET /api/meetings/types
  * Get available meeting types
  */
-router.get('/types', requireAuth, async (req, res) => {
+router.get('/types', async (req, res) => {
   try {
     // Mock meeting types
     const meetingTypes = [
@@ -716,7 +716,7 @@ router.get('/types', requireAuth, async (req, res) => {
  * GET /api/meetings/rooms
  * Get available meeting rooms
  */
-router.get('/rooms', requireAuth, async (req, res) => {
+router.get('/rooms', async (req, res) => {
   try {
     const { capacity, equipment, features, available_at } = req.query;
     
@@ -875,7 +875,7 @@ router.get('/rooms', requireAuth, async (req, res) => {
  * GET /api/meetings/analytics
  * Get meeting analytics and insights
  */
-router.get('/analytics', requireAuth, async (req, res) => {
+router.get('/analytics', async (req, res) => {
   try {
     const { timeRange = 'month' } = req.query;
     
@@ -898,7 +898,7 @@ router.get('/analytics', requireAuth, async (req, res) => {
  * POST /api/meetings/optimize-schedule
  * Optimize existing meeting schedule
  */
-router.post('/optimize-schedule', requireAuth, async (req, res) => {
+router.post('/optimize-schedule', async (req, res) => {
   try {
     const { 
       timeRange = { 
