@@ -8,6 +8,15 @@ import { db } from "./db";
 import { businessRecords, enhancedContacts, opportunities, enhancedProducts } from "@shared/schema";
 import { SalesforceDataTransformer, SALESFORCE_FIELD_MAPPINGS } from "./salesforce-mapping";
 import { eq, and } from "drizzle-orm";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireLevel,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 // Request validation schemas
 const salesforceImportSchema = z.object({
@@ -23,11 +32,17 @@ const salesforceSyncStatusSchema = z.object({
 });
 
 export function registerSalesforceRoutes(app: Express) {
-  
-  // Import Salesforce data batch
-  app.post("/api/salesforce/import", isAuthenticated, async (req: any, res) => {
+  // Apply RBAC context to all Salesforce integration routes
+  app.use("/api/salesforce", enhanceUserContext);
+
+  // Import Salesforce data batch - requires admin settings integration permission
+  app.post("/api/salesforce/import",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
+    requireLevel(ROLE_LEVELS.MANAGER),
+    async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id || (req as any).user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -107,8 +122,11 @@ export function registerSalesforceRoutes(app: Express) {
     }
   });
 
-  // Get Salesforce sync status
-  app.get("/api/salesforce/sync-status", isAuthenticated, async (req, res) => {
+  // Get Salesforce sync status - requires admin integration permission
+  app.get("/api/salesforce/sync-status",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const syncStatus = await db.execute(`
         SELECT 
@@ -155,8 +173,11 @@ export function registerSalesforceRoutes(app: Express) {
     }
   });
 
-  // Get field mappings for a Salesforce object
-  app.get("/api/salesforce/field-mappings/:objectType", isAuthenticated, async (req, res) => {
+  // Get field mappings for a Salesforce object - requires admin integration permission
+  app.get("/api/salesforce/field-mappings/:objectType",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const { objectType } = req.params;
       
@@ -177,8 +198,11 @@ export function registerSalesforceRoutes(app: Express) {
     }
   });
 
-  // Get all available Salesforce object mappings
-  app.get("/api/salesforce/mappings", isAuthenticated, async (req, res) => {
+  // Get all available Salesforce object mappings - requires admin integration permission
+  app.get("/api/salesforce/mappings",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const mappings = SALESFORCE_FIELD_MAPPINGS.map(mapping => ({
         salesforceObject: mapping.salesforceObject,
@@ -194,8 +218,11 @@ export function registerSalesforceRoutes(app: Express) {
     }
   });
 
-  // Preview Salesforce data transformation
-  app.post("/api/salesforce/preview-transform", isAuthenticated, async (req, res) => {
+  // Preview Salesforce data transformation - requires admin integration permission
+  app.post("/api/salesforce/preview-transform",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const { objectType, sampleRecord } = req.body;
       
@@ -222,8 +249,12 @@ export function registerSalesforceRoutes(app: Express) {
     }
   });
 
-  // Delete Salesforce imported data (for testing/cleanup)
-  app.delete("/api/salesforce/cleanup/:objectType", isAuthenticated, async (req, res) => {
+  // Delete Salesforce imported data (for testing/cleanup) - requires admin integration permission with manager level
+  app.delete("/api/salesforce/cleanup/:objectType",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
+    requireLevel(ROLE_LEVELS.MANAGER),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const { objectType } = req.params;
       
