@@ -19,7 +19,13 @@
     "updater:start": "tsx server/database-updater/cli/updater-cli.ts start",
     "updater:status": "tsx server/database-updater/cli/updater-cli.ts status",
     "updater:test": "tsx server/database-updater/cli/updater-cli.ts test",
-    "example": "tsx server/database-updater/examples/basic-usage.ts"
+    "example": "tsx server/database-updater/examples/basic-usage.ts",
+    "kb": "tsx server/cli/kb-cli.ts",
+    "kb:list": "tsx server/cli/kb-cli.ts list",
+    "kb:stats": "tsx server/cli/kb-cli.ts stats",
+    "kb:create": "tsx server/cli/kb-cli.ts create",
+    "kb:import": "tsx server/cli/kb-cli.ts import",
+    "kb:export": "tsx server/cli/kb-cli.ts export"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
