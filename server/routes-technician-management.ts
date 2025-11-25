@@ -9,12 +9,27 @@ import {
   insertTechnicianSchema,
   type Technician
 } from "@shared/schema";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireLevel,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerTechnicianManagementRoutes(app: Express) {
-  // Get all technicians
-  app.get("/api/technician-management/technicians", isAuthenticated, async (req: any, res) => {
+  // Apply RBAC context to all technician management routes
+  app.use("/api/technician-management", enhanceUserContext);
+
+  // Get all technicians - requires service technician view permission
+  app.get("/api/technician-management/technicians",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW, PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user!.tenantId;
       
       const techniciansData = await db
         .select({
@@ -82,8 +97,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
     }
   });
 
-  // Get technician by ID
-  app.get("/api/technician-management/technicians/:id", isAuthenticated, async (req: any, res) => {
+  // Get technician by ID - requires service technician view permission
+  app.get("/api/technician-management/technicians/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const technicianId = req.params.id;
@@ -125,8 +143,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
     }
   });
 
-  // Create new technician
-  app.post("/api/technician-management/technicians", isAuthenticated, async (req: any, res) => {
+  // Create new technician - requires service technician manage permission
+  app.post("/api/technician-management/technicians",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -150,8 +171,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
     }
   });
 
-  // Update technician
-  app.put("/api/technician-management/technicians/:id", isAuthenticated, async (req: any, res) => {
+  // Update technician - requires service technician manage permission
+  app.put("/api/technician-management/technicians/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const technicianId = req.params.id;
@@ -176,8 +200,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
     }
   });
 
-  // Delete technician
-  app.delete("/api/technician-management/technicians/:id", isAuthenticated, async (req: any, res) => {
+  // Delete technician - requires service technician manage permission
+  app.delete("/api/technician-management/technicians/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const technicianId = req.params.id;
@@ -216,8 +243,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
     }
   });
 
-  // Get technician availability
-  app.get("/api/technician-management/availability", isAuthenticated, async (req: any, res) => {
+  // Get technician availability - requires service technician view permission
+  app.get("/api/technician-management/availability",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { date } = req.query;
@@ -272,8 +302,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
     }
   });
 
-  // Get technician performance metrics
-  app.get("/api/technician-management/performance", isAuthenticated, async (req: any, res) => {
+  // Get technician performance metrics - requires service technician view permission
+  app.get("/api/technician-management/performance",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { period = '30' } = req.query;
@@ -312,8 +345,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
     }
   });
 
-  // Get technician dashboard statistics
-  app.get("/api/technician-management/dashboard", isAuthenticated, async (req: any, res) => {
+  // Get technician dashboard statistics - requires service technician view permission
+  app.get("/api/technician-management/dashboard",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
