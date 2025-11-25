@@ -25,7 +25,9 @@
     "kb:stats": "tsx server/cli/kb-cli.ts stats",
     "kb:create": "tsx server/cli/kb-cli.ts create",
     "kb:import": "tsx server/cli/kb-cli.ts import",
-    "kb:export": "tsx server/cli/kb-cli.ts export"
+    "kb:export": "tsx server/cli/kb-cli.ts export",
+    "seed:rbac": "tsx server/database-updater/seeders/rbac-seeder.ts",
+    "seed:reports": "tsx server/database-updater/seeders/report-seeder.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
