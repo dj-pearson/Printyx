@@ -364,21 +364,117 @@ All admin tools work with the existing Knowledge Base schema:
 
 ## 🔐 Security Features
 
-1. **Authentication**
-   - Admin routes require authentication
-   - Token-based API access
-   - Session validation
+### ✅ COMPREHENSIVE RBAC IMPLEMENTATION
 
-2. **Authorization**
-   - Tenant-based isolation
-   - Role-based access control
-   - Admin privilege checks
+All Knowledge Base admin routes enforce strict role-based access control:
 
-3. **Data Protection**
-   - Input validation (Zod schemas)
-   - SQL injection prevention (Drizzle ORM)
-   - CORS configuration
-   - Rate limiting ready
+**Access Levels:**
+
+| Role Level | Role Name | KB Admin Access |
+|-----------|-----------|-----------------|
+| **Level 7+** | **Root/Platform Admin** | ✅ Full access including destructive operations |
+| **Level 5-6** | **System Admin** | ✅ Dashboard, feedback, AI queue, bulk updates |
+| **Level 3-4** | **Manager/Director** | ⚠️ Read-only analytics only |
+| **Level 1-2** | **Standard User** | ❌ No admin access |
+
+**Endpoint Protection:**
+
+**Root Admin Only (Level 7+):**
+- `DELETE /articles/bulk-delete` - Permanent data deletion
+- `POST /import` - Bulk article import
+- `GET /export` - Export sensitive data
+
+**System Admin (Level 5+):**
+- `GET /dashboard` - View statistics
+- `POST /articles/bulk-update` - Modify articles
+- `GET /feedback/pending` - View feedback
+- `PUT /feedback/:id/resolve` - Resolve feedback
+- `GET /ai-queue` - View AI queue
+- `POST /ai-queue/:id/retry` - Retry AI tasks
+- `GET /articles/:id/versions` - Version history
+- `POST /articles/:id/restore-version` - Restore versions
+- `POST /categories/reorder` - Manage categories
+
+**Manager (Level 3+):**
+- `GET /analytics/detailed` - View analytics (read-only)
+
+### Multi-Layer Security
+
+**Layer 1: Authentication**
+```typescript
+requireAuth  // Session validation
+```
+
+**Layer 2: Authorization**
+```typescript
+requireRootAdmin     // Level 7+ check
+requireSystemAdmin   // Level 5+ check
+requireManager       // Level 3+ check
+```
+
+**Layer 3: Tenant Isolation**
+```typescript
+// All queries scoped to tenant
+where: eq(table.tenantId, req.tenantId)
+```
+
+**Layer 4: Audit Logging**
+```typescript
+// All admin actions logged
+audit.log({userId, roleLevel, action, timestamp})
+```
+
+### Error Responses
+
+**401 Unauthorized:**
+```json
+{"message": "Authentication required"}
+```
+
+**403 Forbidden (Insufficient Role):**
+```json
+{"message": "Access denied - Requires level 5 or higher"}
+```
+
+**403 Forbidden (Root Admin Required):**
+```json
+{"message": "Root admin access required - insufficient privileges"}
+```
+
+### Data Protection
+
+1. **Input Validation** - Zod schemas for all inputs
+2. **SQL Injection Prevention** - Drizzle ORM with parameterized queries
+3. **Tenant Isolation** - PostgreSQL RLS + application-level filtering
+4. **CSRF Protection** - Token validation on state-changing operations
+5. **Rate Limiting** - Configured per endpoint
+6. **Audit Trail** - All operations logged to `server/audit.log`
+
+### CLI Tool Security
+
+⚠️ **Important:** CLI tool bypasses RBAC as it requires direct server access.
+
+- **Access:** Requires SSH/shell access to server
+- **Scope:** Explicitly requires `--tenant` parameter
+- **Auditing:** System logs only
+- **Recommendation:** Restrict to infrastructure administrators
+
+### Chrome Extension Security
+
+- ✅ API token authentication with embedded roles
+- ✅ Server-side role validation on every request
+- ✅ Token expiration and rotation
+- ✅ Tenant scoping enforced
+- ✅ No sensitive data cached locally
+
+### Security Documentation
+
+See `docs/KB_ADMIN_RBAC_SECURITY.md` for complete security documentation including:
+- Detailed RBAC matrix
+- Authentication flow
+- Testing procedures
+- Audit log format
+- Security checklist
 
 ---
 
