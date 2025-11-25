@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import BreachTiles from '@/components/dashboard/BreachTiles';
+import TeamLeaderboard from '@/components/stats/TeamLeaderboard';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -310,6 +311,19 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
           <div className="grid gap-4">
             {managementModules.map(renderMetricCard)}
           </div>
+        </div>
+      )}
+
+      {/* Team Performance - For supervisors and managers */}
+      {(userRole === 'sales_supervisor' || userRole === 'sales_manager' ||
+        userRole === 'service_supervisor' || userRole === 'service_manager' ||
+        userRole === 'team_lead' || userRole === 'senior_sales_rep') && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Team Performance
+          </h3>
+          <TeamLeaderboard />
         </div>
       )}
 
