@@ -29,9 +29,19 @@ import {
   RefreshCw,
   AlertTriangle,
   Gauge,
+  Download,
+  FileText,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface WarehouseTeamQuickStats {
   performance: {
@@ -71,6 +81,7 @@ export default function WarehouseTeamStatsWidget({
   className,
 }: WarehouseTeamStatsWidgetProps) {
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const { toast } = useToast();
 
   const {
     data: stats,
@@ -100,6 +111,118 @@ export default function WarehouseTeamStatsWidget({
       return failureCount < 3;
     },
   });
+
+  // Export handler
+  const handleExport = (format: 'csv' | 'json') => {
+    if (!stats) {
+      toast({
+        title: 'No data to export',
+        description: 'Please wait for data to load before exporting.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Prepare export data
+    const exportData = [
+      {
+        metric: 'First Pass Yield',
+        value: `${stats.performance.firstPassYield.toFixed(1)}%`,
+        trend: stats.trends.fpyTrend,
+        category: 'Performance',
+      },
+      {
+        metric: 'Accuracy Rate',
+        value: `${stats.performance.accuracyRate.toFixed(1)}%`,
+        trend: stats.trends.accuracyTrend,
+        category: 'Performance',
+      },
+      {
+        metric: 'Productivity',
+        value: `${stats.performance.productivity.toFixed(1)} kits/hr`,
+        trend: stats.trends.productivityTrend,
+        category: 'Performance',
+      },
+      {
+        metric: 'Quality Score',
+        value: `${stats.performance.qualityScore.toFixed(2)} / 5.0`,
+        trend: '-',
+        category: 'Performance',
+      },
+      {
+        metric: 'Total Kits',
+        value: stats.activity.totalKits.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'Completed Kits',
+        value: stats.activity.completedKits.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'In Progress Kits',
+        value: stats.activity.inProgressKits.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'Rework Required',
+        value: stats.activity.reworkRequired.toString(),
+        trend: '-',
+        category: 'Activity',
+      },
+      {
+        metric: 'Total Technicians',
+        value: stats.team.totalTechnicians.toString(),
+        trend: '-',
+        category: 'Team',
+      },
+      {
+        metric: 'Active Technicians',
+        value: stats.team.activeTechnicians.toString(),
+        trend: '-',
+        category: 'Team',
+      },
+      {
+        metric: 'Top Technician',
+        value: stats.team.topTechnician,
+        trend: '-',
+        category: 'Team',
+      },
+      {
+        metric: 'Technicians Needing Support',
+        value: stats.team.techsNeedingSupport.toString(),
+        trend: '-',
+        category: 'Team',
+      },
+    ];
+
+    const columns = [
+      createExportColumn<typeof exportData[0]>('category', 'Category'),
+      createExportColumn<typeof exportData[0]>('metric', 'Metric'),
+      createExportColumn<typeof exportData[0]>('value', 'Value'),
+      createExportColumn<typeof exportData[0]>('trend', 'Trend'),
+    ];
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `warehouse-team-stats-${timestamp}`;
+
+    if (format === 'csv') {
+      exportToCSV(exportData, columns, { filename });
+      toast({
+        title: 'Export successful',
+        description: 'Warehouse team stats exported to CSV.',
+      });
+    } else {
+      exportToJSON(exportData, columns, { filename });
+      toast({
+        title: 'Export successful',
+        description: 'Warehouse team stats exported to JSON.',
+      });
+    }
+  };
 
   if (error) {
     return (
@@ -165,14 +288,39 @@ export default function WarehouseTeamStatsWidget({
               <Package className="h-4 w-4" />
               Warehouse Team
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => refetch()}
-              className="h-7 w-7 p-0"
-            >
-              <RefreshCw className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refetch()}
+                className="h-7 w-7 p-0"
+                title="Refresh data"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    title="Export data"
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('csv')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('json')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -230,6 +378,24 @@ export default function WarehouseTeamStatsWidget({
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileText className="h-4 w-4 mr-2" />
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                <FileText className="h-4 w-4 mr-2" />
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
