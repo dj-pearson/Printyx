@@ -4,37 +4,6 @@ import { CheckCircle, TrendingUp, DollarSign, AlertCircle, Target } from "lucide
 
 const DynamicPricingAIBlogPost = () => {
   return (
-    <>
-      {/* Schema.org Article Markup */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Article",
-          "headline": "How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI (2025 Guide)",
-          "description": "Discover how AI-powered dynamic pricing helps copier dealers optimize contract pricing, identify underpriced accounts, and automatically maximize margins without losing customers.",
-          "author": {
-            "@type": "Organization",
-            "name": "Printyx Revenue Team"
-          },
-          "publisher": {
-            "@type": "Organization",
-            "name": "Printyx",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://printyx.com/logo.png"
-            }
-          },
-          "datePublished": "2025-01-10",
-          "dateModified": "2025-01-10",
-          "mainEntityOfPage": {
-            "@type": "WebPage",
-            "@id": "https://printyx.com/blog/dynamic-pricing-ai-copier-dealers"
-          },
-          "articleSection": "Revenue Optimization",
-          "keywords": ["dynamic pricing", "AI pricing", "copier dealer profitability", "contract pricing", "margin optimization", "revenue management"],
-          "wordCount": 3100
-        })}
-      </script>
       <BlogPostLayout
         title="How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI (2025 Guide)"
         description="Discover how AI-powered dynamic pricing helps copier dealers optimize contract pricing, identify underpriced accounts, and automatically maximize margins without losing customers."
@@ -42,6 +11,10 @@ const DynamicPricingAIBlogPost = () => {
         date="January 10, 2025"
         readTime="14 min read"
         category="Revenue Optimization"
+        slug="dynamic-pricing-ai-copier-dealers"
+        publishedDate="2025-01-10"
+        modifiedDate="2025-01-10"
+        keywords={["dynamic pricing", "AI pricing", "copier dealer profitability", "contract pricing", "margin optimization", "revenue management"]}
       >
       <div className="space-y-8">
         {/* Introduction */}
@@ -603,7 +576,6 @@ const DynamicPricingAIBlogPost = () => {
         </section>
       </div>
       </BlogPostLayout>
-    </>
   );
 };
 
