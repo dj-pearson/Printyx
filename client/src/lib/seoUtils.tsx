@@ -54,6 +54,10 @@ export function usePageSeo(params: {
     setProperty('og:description', params.description);
     setProperty('og:type', params.ogType || 'website');
 
+    if (params.canonicalUrl) {
+      setProperty('og:url', params.canonicalUrl);
+    }
+
     if (params.ogImage) {
       setProperty('og:image', params.ogImage);
     }

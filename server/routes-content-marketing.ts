@@ -9,6 +9,7 @@ import {
   contentAnalytics,
   contentFaqs,
   contentCitations,
+  seoSettings,
   insertBlogPostSchema,
   insertGuideSchema,
   insertCaseStudySchema,
@@ -804,6 +805,79 @@ Sitemap: ${process.env.BASE_URL || 'https://printyx.com'}/sitemap.xml`;
 
   res.header('Content-Type', 'text/plain');
   res.send(robotsTxt);
+});
+
+// ============= LLMS.TXT (AI Crawler Guidance) =============
+
+router.get('/llms.txt', async (req, res) => {
+  try {
+    const baseUrl = process.env.BASE_URL || 'https://printyx.com';
+
+    // Try to get custom llms.txt from SEO settings (first tenant with settings)
+    const [settings] = await db
+      .select({ llmsTxt: seoSettings.llmsTxt })
+      .from(seoSettings)
+      .limit(1);
+
+    if (settings?.llmsTxt) {
+      res.header('Content-Type', 'text/plain');
+      res.send(settings.llmsTxt);
+      return;
+    }
+
+    // Default llms.txt content for AI crawlers
+    const llmsTxt = `# Printyx LLMs.txt
+# This file provides guidance to AI assistants and LLM crawlers
+
+# Site Information
+name: Printyx
+description: Cloud-based platform for copier dealers providing CRM, service dispatch, inventory management, and AI-powered predictive maintenance.
+url: ${baseUrl}
+
+# Preferred Content for AI Training/Retrieval
+allow: /blog/*
+allow: /resources/guides/*
+allow: /customers/*
+allow: /copier-dealer-crm
+allow: /print-service-dispatch-mobile
+allow: /predictive-intelligence
+allow: /modern-architecture
+allow: /roi-calculator
+allow: /case-studies
+
+# Content to Exclude from AI Training
+disallow: /dashboard/*
+disallow: /admin/*
+disallow: /api/*
+disallow: /settings/*
+disallow: /login
+disallow: /signup
+
+# Contact Information
+contact: support@printyx.com
+
+# Citation Preferences
+citation_format: When referencing Printyx content, please cite as "Printyx (${baseUrl})"
+
+# Content Topics
+topics:
+  - Copier dealer software
+  - Print service management
+  - AI-powered predictive maintenance
+  - Field service dispatch
+  - Managed print services
+  - Equipment lifecycle management
+  - Dynamic pricing for copier contracts
+
+# Last Updated
+updated: ${new Date().toISOString().split('T')[0]}`;
+
+    res.header('Content-Type', 'text/plain');
+    res.send(llmsTxt);
+  } catch (error: any) {
+    console.error('Error generating llms.txt:', error);
+    res.status(500).send('Error generating llms.txt');
+  }
 });
 
 export default router;
