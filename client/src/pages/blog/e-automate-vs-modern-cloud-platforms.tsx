@@ -4,37 +4,6 @@ import { CheckCircle, XCircle, Code, Database, Cloud, Zap } from "lucide-react";
 
 const EAutomateVsModernPlatformsBlogPost = () => {
   return (
-    <>
-      {/* Schema.org Article Markup */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Article",
-          "headline": "E-Automate vs Modern Cloud Platforms: Technical Architecture Comparison (2025)",
-          "description": "A comprehensive technical breakdown of why legacy dealer management systems like e-automate can't compete with modern cloud-native platforms—and what it means for your dealership.",
-          "author": {
-            "@type": "Organization",
-            "name": "Printyx Engineering Team"
-          },
-          "publisher": {
-            "@type": "Organization",
-            "name": "Printyx",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://printyx.com/logo.png"
-            }
-          },
-          "datePublished": "2025-01-12",
-          "dateModified": "2025-01-12",
-          "mainEntityOfPage": {
-            "@type": "WebPage",
-            "@id": "https://printyx.com/blog/e-automate-vs-modern-cloud-platforms"
-          },
-          "articleSection": "Platform Comparison",
-          "keywords": ["e-automate", "dealer management system", "cloud platform", "legacy software", "copier dealer software", "modern architecture"],
-          "wordCount": 3200
-        })}
-      </script>
       <BlogPostLayout
         title="E-Automate vs Modern Cloud Platforms: Technical Architecture Comparison (2025)"
         description="A comprehensive technical breakdown of why legacy dealer management systems like e-automate can't compete with modern cloud-native platforms—and what it means for your dealership."
@@ -42,6 +11,10 @@ const EAutomateVsModernPlatformsBlogPost = () => {
         date="January 12, 2025"
         readTime="15 min read"
         category="Platform Comparison"
+        slug="e-automate-vs-modern-cloud-platforms"
+        publishedDate="2025-01-12"
+        modifiedDate="2025-01-12"
+        keywords={["e-automate", "dealer management system", "cloud platform", "legacy software", "copier dealer software", "modern architecture"]}
       >
       <div className="space-y-8">
         {/* Introduction */}
@@ -544,7 +517,6 @@ const EAutomateVsModernPlatformsBlogPost = () => {
         </section>
       </div>
       </BlogPostLayout>
-    </>
   );
 };
 
