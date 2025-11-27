@@ -4,37 +4,6 @@ import { CheckCircle, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
 
 const AIPredictiveMaintenanceBlogPost = () => {
   return (
-    <>
-      {/* Schema.org Article Markup */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Article",
-          "headline": "Why AI-Powered Predictive Maintenance Beats Reactive Service (2025 Guide)",
-          "description": "Discover how modern AI-powered predictive maintenance systems are revolutionizing copier dealer operations, reducing emergency calls by 30-40%, and dramatically improving customer satisfaction.",
-          "author": {
-            "@type": "Organization",
-            "name": "Printyx Team"
-          },
-          "publisher": {
-            "@type": "Organization",
-            "name": "Printyx",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://printyx.com/logo.png"
-            }
-          },
-          "datePublished": "2025-01-15",
-          "dateModified": "2025-01-15",
-          "mainEntityOfPage": {
-            "@type": "WebPage",
-            "@id": "https://printyx.com/blog/ai-predictive-maintenance-vs-reactive-service"
-          },
-          "articleSection": "AI & Technology",
-          "keywords": ["AI predictive maintenance", "reactive service", "copier dealer", "equipment failure prediction", "service optimization"],
-          "wordCount": 2800
-        })}
-      </script>
       <BlogPostLayout
         title="Why AI-Powered Predictive Maintenance Beats Reactive Service (2025 Guide)"
         description="Discover how modern AI-powered predictive maintenance systems are revolutionizing copier dealer operations, reducing emergency calls by 30-40%, and dramatically improving customer satisfaction."
@@ -42,6 +11,10 @@ const AIPredictiveMaintenanceBlogPost = () => {
         date="January 15, 2025"
         readTime="12 min read"
         category="AI & Technology"
+        slug="ai-predictive-maintenance-vs-reactive-service"
+        publishedDate="2025-01-15"
+        modifiedDate="2025-01-15"
+        keywords={["AI predictive maintenance", "reactive service", "copier dealer", "equipment failure prediction", "service optimization"]}
       >
       <div className="space-y-8">
         {/* Introduction */}
@@ -457,7 +430,6 @@ const AIPredictiveMaintenanceBlogPost = () => {
         </section>
       </div>
       </BlogPostLayout>
-    </>
   );
 };
 
