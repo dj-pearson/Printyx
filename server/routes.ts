@@ -592,7 +592,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     throw new Error('SESSION_SECRET environment variable must be set in production');
   }
 
-  const sessionSecret = process.env.SESSION_SECRET || 'demo-secret-key-change-in-production';
+  // Use environment variable or generate a random secret for development
+  // WARNING: Random dev secret means sessions won't persist across server restarts in dev mode
+  let sessionSecret: string;
+  if (process.env.SESSION_SECRET) {
+    sessionSecret = process.env.SESSION_SECRET;
+  } else {
+    // Generate a cryptographically secure random secret for development
+    sessionSecret = require('crypto').randomBytes(32).toString('hex');
+    console.warn('[SECURITY WARNING] Using randomly generated session secret for development. Set SESSION_SECRET env var for persistent sessions.');
+  }
 
   const pgStore = connectPg(session);
   app.use(
