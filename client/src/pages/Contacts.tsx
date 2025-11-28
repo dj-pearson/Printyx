@@ -35,6 +35,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableSkeleton } from "@/components/ui/skeletons";
+import { EmptyState } from "@/components/ui/empty-state";
+import { BulkOperationsToolbar, useBulkSelection, type BulkAction } from "@/components/ui/bulk-operations-toolbar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,7 +140,6 @@ export default function Contacts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     contactOwner: "",
     createDate: "",
@@ -388,11 +389,6 @@ export default function Contacts() {
         return true;
       });
 
-      console.log(
-        "[CONTACTS DEBUG] Filtered contacts:",
-        filteredContacts.length
-      );
-
       const startIndex = (currentPage - 1) * pageSize;
       const endIndex = startIndex + pageSize;
       const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
@@ -425,26 +421,75 @@ export default function Contacts() {
     },
   });
 
-  const handleBulkDelete = async () => {
-    if (selectedContacts.length === 0) return;
-    if (
-      !confirm(
-        `Delete ${selectedContacts.length} selected contact(s)? This cannot be undone.`
-      )
-    )
-      return;
-    await Promise.all(
-      selectedContacts.map((id) =>
-        deleteContactMutation.mutateAsync(id).catch(() => null)
-      )
-    );
-    setSelectedContacts([]);
-    queryClient.invalidateQueries({ queryKey: ["/api/company-contacts"] });
-  };
-
   const contacts = contactsData?.contacts || [];
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
+
+  // Use the bulk selection hook
+  const {
+    selectedIds: selectedContacts,
+    selectedCount,
+    toggleSelection,
+    toggleAll,
+    selectAll,
+    clearSelection,
+    isSelected,
+    isAllSelected,
+  } = useBulkSelection(contacts);
+
+  // Define bulk actions for the toolbar
+  const bulkActions: BulkAction[] = [
+    {
+      id: "email",
+      label: "Send Email",
+      icon: Mail,
+      onClick: (ids) => {
+        toast({
+          title: "Email",
+          description: `Preparing email for ${ids.length} contact(s)`,
+        });
+      },
+    },
+    {
+      id: "edit",
+      label: "Edit Properties",
+      icon: Edit,
+      onClick: (ids) => {
+        toast({
+          title: "Edit",
+          description: `Editing ${ids.length} contact(s)`,
+        });
+      },
+    },
+    {
+      id: "assign",
+      label: "Assign Owner",
+      icon: User,
+      onClick: (ids) => {
+        toast({
+          title: "Assign",
+          description: `Assigning owner to ${ids.length} contact(s)`,
+        });
+      },
+    },
+    {
+      id: "delete",
+      label: "Delete",
+      icon: Trash2,
+      onClick: async (ids) => {
+        await Promise.all(
+          ids.map((id) =>
+            deleteContactMutation.mutateAsync(id).catch(() => null)
+          )
+        );
+        queryClient.invalidateQueries({ queryKey: ["/api/company-contacts"] });
+      },
+      variant: "destructive",
+      requiresConfirmation: true,
+      confirmationTitle: "Delete Contacts",
+      confirmationDescription: `Are you sure you want to delete ${selectedCount} contact(s)? This action cannot be undone.`,
+    },
+  ];
 
   // Get unique values for filters
   const uniqueOwners = [
@@ -473,22 +518,6 @@ export default function Contacts() {
         return "bg-purple-100 text-purple-800";
       default:
         return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const handleSelectContact = (contactId: string) => {
-    setSelectedContacts((prev) =>
-      prev.includes(contactId)
-        ? prev.filter((id) => id !== contactId)
-        : [...prev, contactId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedContacts.length === contacts.length) {
-      setSelectedContacts([]);
-    } else {
-      setSelectedContacts(contacts.map((c: Contact) => c.id));
     }
   };
 
@@ -1246,42 +1275,15 @@ export default function Contacts() {
           </div>
         </div>
 
-        {/* Bulk Actions */}
-        {selectedContacts.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                <span className="font-medium text-blue-900">
-                  {selectedContacts.length} contact
-                  {selectedContacts.length !== 1 ? "s" : ""} selected
-                </span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
-                  <Mail className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Send email</span>
-                </Button>
-                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
-                  <Edit className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Edit properties</span>
-                </Button>
-                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
-                  <User className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Assign owner</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700 min-h-[44px] touch-manipulation active:scale-[0.98]"
-                  onClick={handleBulkDelete}
-                >
-                  <Trash2 className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Delete</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Bulk Operations Toolbar */}
+        <BulkOperationsToolbar
+          selectedCount={selectedCount}
+          totalCount={totalContacts}
+          onClearSelection={clearSelection}
+          onSelectAll={selectAll}
+          actions={bulkActions}
+          selectedIds={selectedContacts}
+        />
 
         {/* Error Display */}
         {error && (
@@ -1307,27 +1309,48 @@ export default function Contacts() {
         <Card>
           <CardContent className="p-0">
             {contacts.length === 0 && !isLoading && !error ? (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No contacts found
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  {searchQuery ||
-                  Object.values(filters).some((f) => f && f !== "all")
+              <EmptyState
+                icon={Users}
+                title="No contacts found"
+                description={
+                  searchQuery || Object.values(filters).some((f) => f && f !== "all")
                     ? "No contacts match your current search and filters."
-                    : "You haven't added any contacts yet. Create your first contact to get started."}
-                </p>
-                <Button
-                  className="bg-orange-500 hover:bg-orange-600"
-                  onClick={() =>
-                    setDialogs((prev) => ({ ...prev, createContact: true }))
-                  }
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create your first contact
-                </Button>
-              </div>
+                    : "You haven't added any contacts yet. Create your first contact to get started."
+                }
+                type={searchQuery || Object.values(filters).some((f) => f && f !== "all") ? "search" : "default"}
+                action={{
+                  label: searchQuery || Object.values(filters).some((f) => f && f !== "all")
+                    ? "Clear filters"
+                    : "Create your first contact",
+                  onClick: () => {
+                    if (searchQuery || Object.values(filters).some((f) => f && f !== "all")) {
+                      clearFilters();
+                    } else {
+                      setDialogs((prev) => ({ ...prev, createContact: true }));
+                    }
+                  },
+                  icon: searchQuery || Object.values(filters).some((f) => f && f !== "all") ? Filter : Plus,
+                }}
+                secondaryAction={
+                  searchQuery || Object.values(filters).some((f) => f && f !== "all")
+                    ? {
+                        label: "Create contact",
+                        onClick: () => setDialogs((prev) => ({ ...prev, createContact: true })),
+                        variant: "outline",
+                        icon: Plus,
+                      }
+                    : undefined
+                }
+                suggestions={
+                  searchQuery || Object.values(filters).some((f) => f && f !== "all")
+                    ? [
+                        "Check for typos in your search",
+                        "Try broader search terms",
+                        "Remove some filters",
+                      ]
+                    : undefined
+                }
+              />
             ) : (
               <>
                 {/* Desktop Table */}
@@ -1337,11 +1360,8 @@ export default function Contacts() {
                       <tr className="border-b bg-gray-50">
                         <th className="text-left p-4 w-12">
                           <Checkbox
-                            checked={
-                              selectedContacts.length === contacts.length &&
-                              contacts.length > 0
-                            }
-                            onCheckedChange={handleSelectAll}
+                            checked={isAllSelected}
+                            onCheckedChange={toggleAll}
                           />
                         </th>
                         <th className="text-left p-4 font-medium text-gray-700">
@@ -1376,10 +1396,8 @@ export default function Contacts() {
                         >
                           <td className="p-4">
                             <Checkbox
-                              checked={selectedContacts.includes(contact.id)}
-                              onCheckedChange={() =>
-                                handleSelectContact(contact.id)
-                              }
+                              checked={isSelected(contact.id)}
+                              onCheckedChange={() => toggleSelection(contact.id)}
                             />
                           </td>
                           <td className="p-4">
@@ -1510,10 +1528,8 @@ export default function Contacts() {
                       <div className="flex items-start justify-between mb-4 gap-3">
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                           <Checkbox
-                            checked={selectedContacts.includes(contact.id)}
-                            onCheckedChange={() =>
-                              handleSelectContact(contact.id)
-                            }
+                            checked={isSelected(contact.id)}
+                            onCheckedChange={() => toggleSelection(contact.id)}
                             className="min-w-[24px] min-h-[24px] touch-manipulation"
                           />
                           <Avatar className="h-12 w-12 flex-shrink-0">
