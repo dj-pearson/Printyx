@@ -37,7 +37,9 @@ import {
   Trash2,
   LayoutGrid,
   List as ListIcon,
+  Upload,
 } from "lucide-react";
+import { CsvImportWizard } from "@/components/import";
 import {
   Table,
   TableBody,
@@ -55,6 +57,7 @@ export default function Inventory() {
 
   // View mode
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Filter state management
   const filterState = useFilterState({
@@ -301,6 +304,14 @@ export default function Inventory() {
             >
               <ListIcon className="h-4 w-4" />
             </Button>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => setIsImportDialogOpen(true)}
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Import</span>
+            </Button>
             <Button className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Item</span>
@@ -490,6 +501,20 @@ export default function Inventory() {
             </CardContent>
           </Card>
         )}
+
+        {/* CSV Import Wizard */}
+        <CsvImportWizard
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          defaultEntityType="inventory"
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+            toast({
+              title: "Import Complete",
+              description: "Inventory items have been imported successfully.",
+            });
+          }}
+        />
       </div>
     </MainLayout>
   );
