@@ -453,6 +453,14 @@ const features: NewSubscriptionFeature[] = [
     isCore: false,
     displayOrder: 102,
   },
+  {
+    name: 'AI CSV Import',
+    slug: 'ai_csv_import',
+    description: 'AI-powered CSV import with automatic column mapping and data cleaning',
+    category: 'Data',
+    isCore: false,
+    displayOrder: 103,
+  },
 ];
 
 // Define subscription plans
@@ -562,6 +570,8 @@ const plans: NewSubscriptionPlan[] = [
       'gps_tracking',
       'mobile_photo_capture',
       'digital_signatures',
+      // AI Features
+      'ai_csv_import',
     ],
     displayOrder: 2,
     isPopular: true,
@@ -641,6 +651,8 @@ const plans: NewSubscriptionPlan[] = [
       'custom_integrations',
       'advanced_forecasting',
       'sla_guarantee',
+      // AI Features
+      'ai_csv_import',
     ],
     displayOrder: 3,
     isPopular: false,
