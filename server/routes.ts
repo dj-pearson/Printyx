@@ -102,6 +102,7 @@ import equipmentDisposalRoutes from './routes-equipment-disposal';
 import breachDetectionRoutes from './routes-breach-detection';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerBusinessRecordRoutes } from './routes-business-records';
+import { registerCsvImportRoutes } from './routes-csv-import';
 import { registerSalesforceRoutes } from './routes-salesforce-integration';
 import { registerSalesforceTestRoutes } from './test-salesforce-integration';
 import { registerDataEnrichmentRoutes } from './routes-data-enrichment';
@@ -8031,6 +8032,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register unified business records routes
   registerBusinessRecordRoutes(app);
 
+  // Register CSV import routes
+  registerCsvImportRoutes(app);
+
   // Register Salesforce integration routes
   registerSalesforceRoutes(app);
 
@@ -15396,6 +15400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register all route modules
   registerOnboardingRoutes(app);
   registerBusinessRecordRoutes(app);
+  registerCsvImportRoutes(app);
   registerIntegrationRoutes(app);
   registerTaskRoutes(app);
   registerEnhancedTaskRoutes(app);
