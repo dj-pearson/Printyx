@@ -5,18 +5,29 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import { createModuleLogger } from "./lib/logger";
 
 const viteLogger = createLogger();
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
+// Create module-specific logger for server operations
+const serverLog = createModuleLogger("server");
 
-  console.log(`${formattedTime} [${source}] ${message}`);
+/**
+ * Backward-compatible log function
+ * Uses structured logging internally while maintaining the same API
+ */
+export function log(message: string, source = "express") {
+  // Use structured logging
+  const moduleLog = createModuleLogger(source);
+
+  // Parse message for error detection
+  if (message.toLowerCase().includes("error") || message.toLowerCase().includes("fail")) {
+    moduleLog.error(message);
+  } else if (message.toLowerCase().includes("warn")) {
+    moduleLog.warn(message);
+  } else {
+    moduleLog.info(message);
+  }
 }
 
 export async function setupVite(app: Express, server: Server) {
