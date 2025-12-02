@@ -22,6 +22,8 @@ import {
   PERMISSIONS,
   type AuthenticatedRequest
 } from "./middleware/rbac-route-helper";
+// Lead Intelligence - Auto-scoring and enrichment
+import { leadIntelligenceService } from "./services/lead-intelligence-service";
 
 export function registerBusinessRecordRoutes(app: Express) {
   // Apply RBAC context to all business records routes
@@ -170,6 +172,18 @@ export function registerBusinessRecordRoutes(app: Express) {
         );
 
         const newRecord = await storage.createBusinessRecord(recordData);
+
+        // Auto-process lead for scoring and enrichment (non-blocking)
+        if (recordType === 'lead') {
+          leadIntelligenceService.processNewLead(newRecord.id, tenantId, userId)
+            .then(result => {
+              console.log(`[Lead Intelligence] Auto-processed lead ${newRecord.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`);
+            })
+            .catch(error => {
+              console.error(`[Lead Intelligence] Failed to auto-process lead ${newRecord.id}:`, error);
+            });
+        }
+
         // Transform response back to frontend format
         const transformedNewRecord =
           BusinessRecordsTransformer.toFrontend(newRecord);
@@ -389,6 +403,16 @@ export function registerBusinessRecordRoutes(app: Express) {
       };
 
       const newLead = await storage.createLead(leadData);
+
+      // Auto-process lead for scoring and enrichment (non-blocking)
+      leadIntelligenceService.processNewLead(newLead.id, tenantId, userId)
+        .then(result => {
+          console.log(`[Lead Intelligence] Auto-processed lead ${newLead.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`);
+        })
+        .catch(error => {
+          console.error(`[Lead Intelligence] Failed to auto-process lead ${newLead.id}:`, error);
+        });
+
       res.status(201).json(newLead);
     } catch (error) {
       console.error("Error creating lead:", error);
