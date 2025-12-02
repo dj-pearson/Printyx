@@ -7,8 +7,21 @@ import { seedDashboardWidgets } from './seed-dashboard-widgets';
 import { randomUUID, createHash } from 'crypto';
 import fs from 'fs';
 import { setupVite, serveStatic, log } from './vite';
+import {
+  initMonitoring,
+  setupMonitoringMiddleware,
+  setupMonitoringErrorHandlers,
+  shutdownMonitoring,
+  createModuleLogger,
+  getAPM,
+  getMonitoringHealth,
+  getQueryStats,
+} from './lib/monitoring';
 
 const app = express();
+
+// Create module logger for server
+const serverLog = createModuleLogger('server');
 
 // Trust reverse proxy (needed for secure cookies and rate limits behind proxies)
 app.set('trust proxy', 1);
@@ -49,13 +62,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Assign a request ID and expose it to clients
-app.use((req: any, res, next) => {
-  const incoming = req.header('x-request-id');
-  const requestId = incoming || randomUUID();
-  req.requestId = requestId;
-  res.setHeader('X-Request-Id', requestId);
-  next();
+// Setup monitoring middleware (includes request ID, context injection, HTTP logging)
+// This replaces the manual request ID assignment with comprehensive monitoring
+setupMonitoringMiddleware(app, {
+  loggingOptions: {
+    logRequestBody: false,
+    logResponseBody: false,
+    excludePaths: ['/health', '/healthz', '/ready', '/live', '/_health', '/favicon.ico'],
+    auditPaths: ['/api/root-admin', '/api/security', '/api/platform', '/api/seo'],
+  },
 });
 
 // CORS configuration
@@ -105,6 +120,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Audit log for root-admin actions and sensitive endpoints
+// Note: This is now primarily handled by the structured logging middleware,
+// but we keep file-based audit logging for compliance/backup purposes
 app.use((req: any, res, next) => {
   const startAt = Date.now();
   const shouldAudit =
@@ -151,6 +168,9 @@ app.use((req: any, res, next) => {
   next();
 });
 
+// Legacy request logging middleware - kept for backward compatibility
+// Primary logging is now handled by setupMonitoringMiddleware above
+// This can be removed once all teams have migrated to structured logging
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -164,7 +184,8 @@ app.use((req, res, next) => {
 
   res.on('finish', () => {
     const duration = Date.now() - start;
-    if (path.startsWith('/api')) {
+    // Only log in development mode for legacy format
+    if (path.startsWith('/api') && process.env.NODE_ENV === 'development' && process.env.LEGACY_LOGGING === 'true') {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
@@ -182,8 +203,24 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize monitoring systems (APM, structured logging, log aggregation)
+  await initMonitoring();
+
   const server = await registerRoutes(app);
 
+  // Add monitoring health and stats endpoints
+  app.get('/api/monitoring/health', (_req, res) => {
+    res.json(getMonitoringHealth());
+  });
+
+  app.get('/api/monitoring/db-stats', (_req, res) => {
+    res.json(getQueryStats());
+  });
+
+  // Setup monitoring error handlers (must be after routes, before other error handlers)
+  setupMonitoringErrorHandlers(app);
+
+  // Final error handler with APM integration
   app.use((err: any, req: Request & { requestId?: string }, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || 'Internal Server Error';
@@ -191,9 +228,26 @@ app.use((req, res, next) => {
     const details = err.details || undefined;
     const requestId = req.requestId;
 
+    // Capture exception in APM for server errors
+    if (status >= 500) {
+      getAPM().captureException(err, {
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: status,
+      });
+    }
+
     res.status(status).json({ message, code, details, requestId });
-    // Log server-side
-    log(`error ${status} ${req.method} ${req.path} reqId=${requestId} :: ${message}`);
+
+    // Log using structured logging
+    serverLog.error({
+      err,
+      requestId,
+      method: req.method,
+      path: req.path,
+      statusCode: status,
+    }, `Error ${status}: ${message}`);
   });
 
   // importantly only setup vite in development and after
@@ -217,24 +271,47 @@ app.use((req, res, next) => {
   };
 
   server.listen(listenOptions, async () => {
-    log(`serving on port ${port}`);
+    serverLog.info({ port }, `Server listening on port ${port}`);
 
     // Initialize cron jobs for automated tasks
     try {
       const { cronService } = await import('./services/cron-service');
       cronService.initialize();
-      log('Cron jobs initialized successfully');
+      serverLog.info('Cron jobs initialized successfully');
     } catch (error) {
-      log('Warning: Failed to initialize cron jobs:', error);
+      serverLog.warn({ err: error as Error }, 'Failed to initialize cron jobs');
     }
 
     // Initialize email monitors for all enabled tenants
     try {
       const { startAllEmailMonitors } = await import('./services/email-monitor-service');
       await startAllEmailMonitors();
-      log('Email monitors initialized successfully');
+      serverLog.info('Email monitors initialized successfully');
     } catch (error) {
-      log('Warning: Failed to initialize email monitors:', error);
+      serverLog.warn({ err: error as Error }, 'Failed to initialize email monitors');
     }
   });
+
+  // Graceful shutdown handling
+  const gracefulShutdown = async (signal: string) => {
+    serverLog.info({ signal }, 'Received shutdown signal, initiating graceful shutdown...');
+
+    // Shutdown monitoring systems (flush logs, close APM)
+    await shutdownMonitoring();
+
+    // Close server
+    server.close(() => {
+      serverLog.info('Server closed');
+      process.exit(0);
+    });
+
+    // Force exit after timeout
+    setTimeout(() => {
+      serverLog.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 30000);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 })();
