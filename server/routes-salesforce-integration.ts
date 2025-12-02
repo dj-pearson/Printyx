@@ -81,10 +81,14 @@ export function registerSalesforceRoutes(app: Express) {
             }
 
             // Transform Salesforce record to Printyx format
+            const tenantId = (req as AuthenticatedRequest).user?.tenantId || (req as any).session?.user?.tenantId;
+            if (!tenantId) {
+              return res.status(403).json({ error: "No tenant context found" });
+            }
             const transformedRecord = SalesforceDataTransformer.transformRecord(
-              record, 
-              mapping, 
-              'default-tenant' // TODO: Get from user context
+              record,
+              mapping,
+              tenantId
             );
 
             // Check for duplicates if enabled
