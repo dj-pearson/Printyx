@@ -10032,6 +10032,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const leadScoringRoutes = await import('./routes/lead-scoring-routes');
   app.use('/api/lead-scoring', leadScoringRoutes.default);
 
+  // Lead Intelligence Routes (unified scoring, enrichment, and sync)
+  const leadIntelligenceRoutes = await import('./routes/lead-intelligence-routes');
+  app.use('/api/lead-intelligence', leadIntelligenceRoutes.default);
+
   // Manufacturer Order Submission Routes
   const manufacturerOrderRoutes = await import('./routes/manufacturer-order-routes');
   app.use('/api/manufacturer-orders', manufacturerOrderRoutes.default);
