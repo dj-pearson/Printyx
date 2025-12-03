@@ -1,0 +1,57 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: printyx
+
+resources:
+  - ../../base
+
+commonLabels:
+  environment: production
+
+# Production-specific patches
+patches:
+  # Increase replicas for production
+  - target:
+      kind: Deployment
+      name: printyx
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: add
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "250m"
+      - op: add
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "512Mi"
+      - op: add
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "2000m"
+      - op: add
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "2Gi"
+  # Increase HPA for production
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: printyx
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+
+# Use specific version tag in production
+images:
+  - name: ghcr.io/dj-pearson/printyx
+    newTag: latest
+
+# Production-specific ConfigMap values
+configMapGenerator:
+  - name: printyx-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=info
+      - NODE_ENV=production
