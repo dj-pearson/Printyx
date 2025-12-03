@@ -8098,6 +8098,12 @@ export type {
 export * from './apollo-schema';
 export * from './client-monitor-schema';
 
+// Export mileage tracking schema
+export * from './mileage-tracking-schema';
+
+// Export geofence alerts schema
+export * from './geofence-alerts-schema';
+
 // Re-export Subscription schemas
 export {
   subscriptionPlans,
