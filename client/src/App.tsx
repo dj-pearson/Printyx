@@ -95,6 +95,9 @@ const ServiceDispatchOptimization = React.lazy(() => import('@/pages/ServiceDisp
 const Inventory = React.lazy(() => import('@/pages/inventory'));
 const Billing = React.lazy(() => import('@/pages/Billing'));
 const Reports = React.lazy(() => import('@/pages/EnhancedReportsHub'));
+const CustomReportBuilder = React.lazy(() => import('@/pages/CustomReportBuilder'));
+const CustomDashboard = React.lazy(() => import('@/pages/CustomDashboard'));
+const CSVImportWizard = React.lazy(() => import('@/pages/CSVImportWizard'));
 const MeterReadings = React.lazy(() => import('@/pages/MeterReadings'));
 const ProductModels = React.lazy(() => import('@/pages/ProductModels'));
 const EnhancedProductModels = React.lazy(() => import('@/pages/EnhancedProductModels'));
@@ -552,6 +555,9 @@ function Router() {
           <Route path="/chart-of-accounts" component={ChartOfAccounts} />
           <Route path="/journal-entries" component={JournalEntries} />
           <Route path="/reports" component={Reports} />
+          <Route path="/reports/custom/new" component={CustomReportBuilder} />
+          <Route path="/custom-dashboard" component={CustomDashboard} />
+          <Route path="/import" component={CSVImportWizard} />
           <Route path="/advanced-reporting" component={AdvancedReporting} />
           <Route path="/advanced-analytics" component={AdvancedAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
