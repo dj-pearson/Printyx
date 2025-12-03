@@ -155,6 +155,7 @@ import warehouseFpyRoutes from './routes-warehouse-fpy';
 import consolidatedBillingRoutes from './routes/billing';
 import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
+import { registerHealthRoutes } from './routes/health-routes';
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -568,6 +569,11 @@ function validateSoftwareProductData(row: any): any {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register health endpoints first (before all middleware)
+  // These must be accessible without authentication or rate limiting
+  // for Kubernetes probes and load balancer health checks
+  registerHealthRoutes(app);
+
   // Basic API rate limiting (per-IP)
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
