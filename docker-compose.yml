@@ -1,0 +1,152 @@
+# Printyx Docker Compose Configuration
+# Local development and testing environment
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Application Service
+  # =============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        NODE_ENV: production
+    image: printyx:latest
+    container_name: printyx-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://printyx:printyx_password@postgres:5432/printyx
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      # Add other environment variables as needed
+      # STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - printyx-network
+    volumes:
+      - app-logs:/app/logs
+
+  # =============================================================================
+  # PostgreSQL Database
+  # =============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: printyx-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: printyx
+      POSTGRES_PASSWORD: printyx_password
+      POSTGRES_DB: printyx
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U printyx -d printyx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - printyx-network
+
+  # =============================================================================
+  # Redis Cache (optional - for session storage and caching)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: printyx-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - printyx-network
+
+# =============================================================================
+# Development Services (use with --profile dev)
+# =============================================================================
+
+  # Development app with hot reload
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: printyx-app-dev
+    profiles: ["dev"]
+    ports:
+      - "5000:5000"
+      - "5173:5173"  # Vite HMR
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://printyx:printyx_password@postgres:5432/printyx
+      SESSION_SECRET: dev-session-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - printyx-network
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: printyx-pgadmin
+    profiles: ["dev"]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@printyx.net
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - printyx-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  printyx-network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  app-logs:
+    driver: local
