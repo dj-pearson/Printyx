@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: printyx
+  namespace: printyx
+  labels:
+    app.kubernetes.io/name: printyx
+    app.kubernetes.io/component: app
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: printyx
+    app.kubernetes.io/component: app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  # Session affinity for WebSocket connections
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hours
