@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: printyx
+  namespace: printyx
+  labels:
+    app.kubernetes.io/name: printyx
+    app.kubernetes.io/component: pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: printyx
+      app.kubernetes.io/component: app
