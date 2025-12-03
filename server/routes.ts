@@ -15472,6 +15472,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const validateRoutes = await import('./routes-validate');
   app.use('/api', validateRoutes.default);
 
+  // Register Route Optimization routes
+  const routeOptimizationRoutes = await import('./routes/route-optimization-routes');
+  app.use('/api/route-optimization', routeOptimizationRoutes.default);
+
+  // Register Mileage Tracking routes
+  const mileageRoutes = await import('./routes/mileage-routes');
+  app.use('/api/mileage', mileageRoutes.default);
+
+  // Register Geofence Alerts routes
+  const geofenceAlertsRoutes = await import('./routes/geofence-alerts-routes');
+  app.use('/api/geofence-alerts', geofenceAlertsRoutes.default);
+
+  // Register Automated Billing routes
+  const automatedBillingRoutes = await import('./routes/automated-billing-routes');
+  app.use('/api/automated-billing', automatedBillingRoutes.default);
+
   // Phase 3: Register analytics routes
   import('./analytics-routes')
     .then(({ analyticsRouter }) => {
