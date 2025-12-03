@@ -1,0 +1,59 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: printyx-staging
+
+resources:
+  - ../../base
+
+namePrefix: staging-
+
+commonLabels:
+  environment: staging
+
+# Staging-specific patches
+patches:
+  # Reduce replicas for staging
+  - target:
+      kind: Deployment
+      name: printyx
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # Reduce HPA for staging
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: printyx
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3
+  # Update ingress host for staging
+  - target:
+      kind: Ingress
+      name: printyx
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.printyx.net
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - staging.printyx.net
+
+# Use staging image tag
+images:
+  - name: ghcr.io/dj-pearson/printyx
+    newTag: develop
+
+# Staging-specific ConfigMap values
+configMapGenerator:
+  - name: printyx-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=debug
+      - NODE_ENV=staging
