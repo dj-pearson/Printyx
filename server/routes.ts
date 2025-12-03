@@ -103,6 +103,8 @@ import breachDetectionRoutes from './routes-breach-detection';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerBusinessRecordRoutes } from './routes-business-records';
 import { registerCsvImportRoutes } from './routes-csv-import';
+import { registerCustomReportsRoutes } from './routes-custom-reports';
+import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
 import { registerSalesforceRoutes } from './routes-salesforce-integration';
 import { registerSalesforceTestRoutes } from './test-salesforce-integration';
 import { registerDataEnrichmentRoutes } from './routes-data-enrichment';
@@ -8041,6 +8043,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register CSV import routes
   registerCsvImportRoutes(app);
 
+  // Register custom reports and dashboard layouts
+  registerCustomReportsRoutes(app);
+  registerDashboardLayoutsRoutes(app);
+
   // Register Salesforce integration routes
   registerSalesforceRoutes(app);
 
@@ -15411,6 +15417,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerOnboardingRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
+  registerCustomReportsRoutes(app);
+  registerDashboardLayoutsRoutes(app);
   registerIntegrationRoutes(app);
   registerTaskRoutes(app);
   registerEnhancedTaskRoutes(app);
