@@ -578,4 +578,276 @@ router.get("/admin/audit-logs", async (req: Request, res: Response) => {
   }
 });
 
+// ==================== SMS/Email OTP Routes ====================
+
+import {
+  sendEmailOtp,
+  sendSmsOtp,
+  verifyOtp,
+  getAvailableMfaMethods,
+  isValidPhoneNumber,
+  maskPhoneNumber,
+  maskEmail,
+} from '../services/mfa-otp-service';
+
+// POST /api/mfa/otp/email/send - Send OTP via email
+const sendEmailOtpSchema = z.object({
+  email: z.string().email().optional(), // Uses user's email if not provided
+});
+
+router.post("/otp/email/send", async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    const { email: customEmail } = sendEmailOtpSchema.parse(req.body);
+    const userEmail = customEmail || user.email;
+
+    if (!userEmail) {
+      return res.status(400).json({ error: "No email address available" });
+    }
+
+    const result = await sendEmailOtp(
+      user.id,
+      userEmail,
+      user.tenantId || null,
+      user.firstName || user.email
+    );
+
+    if (!result.success) {
+      return res.status(429).json({ error: result.message });
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      destination: maskEmail(userEmail),
+      expiresAt: result.expiresAt,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+    }
+    console.error('Send email OTP error:', error);
+    res.status(500).json({ error: "Failed to send verification code" });
+  }
+});
+
+// POST /api/mfa/otp/sms/send - Send OTP via SMS
+const sendSmsOtpSchema = z.object({
+  phoneNumber: z.string(),
+});
+
+router.post("/otp/sms/send", async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    const { phoneNumber } = sendSmsOtpSchema.parse(req.body);
+
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({
+        error: "Invalid phone number format",
+        message: "Please provide a phone number in E.164 format (e.g., +1234567890)",
+      });
+    }
+
+    const result = await sendSmsOtp(user.id, phoneNumber, user.tenantId || null);
+
+    if (!result.success) {
+      return res.status(429).json({ error: result.message });
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      destination: maskPhoneNumber(phoneNumber),
+      expiresAt: result.expiresAt,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+    }
+    console.error('Send SMS OTP error:', error);
+    res.status(500).json({ error: "Failed to send verification code" });
+  }
+});
+
+// POST /api/mfa/otp/verify - Verify OTP code (email or SMS)
+const verifyOtpSchema = z.object({
+  code: z.string().length(6),
+  method: z.enum(['email', 'sms']),
+});
+
+router.post("/otp/verify", async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    const { code, method } = verifyOtpSchema.parse(req.body);
+
+    const result = await verifyOtp(user.id, code, method);
+
+    if (!result.success) {
+      // Log failed verification
+      await storage.createMfaAuditLog({
+        userId: user.id,
+        tenantId: user.tenantId || null,
+        eventType: 'otp_verification_failure',
+        success: false,
+        failureReason: 'invalid_code',
+        eventDetails: { method },
+        ...getRequestMetadata(req),
+      });
+
+      return res.status(400).json({ error: result.message });
+    }
+
+    // Log successful verification
+    await storage.createMfaAuditLog({
+      userId: user.id,
+      tenantId: user.tenantId || null,
+      eventType: 'otp_verification_success',
+      success: true,
+      eventDetails: { method },
+      ...getRequestMetadata(req),
+    });
+
+    // Mark MFA as verified in session
+    if (req.session) {
+      (req.session as any).mfaVerified = true;
+      (req.session as any).mfaVerifiedAt = Date.now();
+      (req.session as any).mfaMethod = method;
+    }
+
+    res.json({
+      success: true,
+      message: "Verification successful",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+    }
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: "Failed to verify code" });
+  }
+});
+
+// GET /api/mfa/methods - Get available MFA methods for current user
+router.get("/methods", async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    // Get TOTP status
+    const mfaStatus = await storage.getUserMfaStatus(user.id);
+
+    // Get OTP methods
+    const otpMethods = await getAvailableMfaMethods(user.id);
+
+    res.json({
+      totp: {
+        available: true,
+        enabled: mfaStatus?.enabled || false,
+        description: "Time-based One-Time Password (Authenticator App)",
+      },
+      sms: {
+        available: otpMethods.sms.available,
+        enabled: otpMethods.sms.enabled,
+        destination: otpMethods.sms.destination ? maskPhoneNumber(otpMethods.sms.destination) : undefined,
+        description: "SMS Text Message",
+      },
+      email: {
+        available: otpMethods.email.available,
+        enabled: otpMethods.email.enabled,
+        destination: user.email ? maskEmail(user.email) : undefined,
+        description: "Email Verification Code",
+      },
+      backupCodes: {
+        available: mfaStatus?.enabled || false,
+        enabled: mfaStatus?.hasBackupCodes || false,
+        description: "Pre-generated Backup Codes",
+      },
+    });
+  } catch (error) {
+    console.error('Get MFA methods error:', error);
+    res.status(500).json({ error: "Failed to get MFA methods" });
+  }
+});
+
+// POST /api/mfa/challenge - Request MFA challenge (for re-verification)
+const challengeSchema = z.object({
+  method: z.enum(['totp', 'sms', 'email']).default('totp'),
+  phoneNumber: z.string().optional(), // Required for SMS
+});
+
+router.post("/challenge", async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  try {
+    const { method, phoneNumber } = challengeSchema.parse(req.body);
+
+    switch (method) {
+      case 'email':
+        const emailResult = await sendEmailOtp(
+          user.id,
+          user.email,
+          user.tenantId || null,
+          user.firstName
+        );
+        return res.json({
+          success: emailResult.success,
+          method: 'email',
+          message: emailResult.message,
+          destination: user.email ? maskEmail(user.email) : undefined,
+        });
+
+      case 'sms':
+        if (!phoneNumber) {
+          return res.status(400).json({ error: "Phone number required for SMS challenge" });
+        }
+        const smsResult = await sendSmsOtp(user.id, phoneNumber, user.tenantId || null);
+        return res.json({
+          success: smsResult.success,
+          method: 'sms',
+          message: smsResult.message,
+          destination: maskPhoneNumber(phoneNumber),
+        });
+
+      case 'totp':
+      default:
+        // TOTP doesn't require sending - just verify user has it enabled
+        const mfaStatus = await storage.getUserMfaStatus(user.id);
+        if (!mfaStatus?.enabled) {
+          return res.status(400).json({
+            error: "TOTP not enabled",
+            message: "Please set up an authenticator app first",
+          });
+        }
+        return res.json({
+          success: true,
+          method: 'totp',
+          message: "Enter the code from your authenticator app",
+        });
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+    }
+    console.error('MFA challenge error:', error);
+    res.status(500).json({ error: "Failed to initiate MFA challenge" });
+  }
+});
+
 export default router;
