@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: printyx
+  labels:
+    app.kubernetes.io/name: printyx
+    app.kubernetes.io/part-of: printyx-platform

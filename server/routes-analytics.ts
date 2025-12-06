@@ -1,24 +1,35 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
-
-// Using inline auth middleware since requireAuth is not available
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  next();
-};
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireLevel,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = express.Router();
 
+// Apply RBAC context to all analytics routes
+router.use(enhanceUserContext);
+
 // Advanced Analytics Dashboard API Routes
 
-// Get comprehensive analytics dashboard data
-router.get('/api/analytics/dashboard', requireAuth, async (req: any, res) => {
+// Get comprehensive analytics dashboard data - requires report view permission
+router.get('/api/analytics/dashboard',
+  requirePermission([
+    PERMISSIONS.SALES.REPORT.VIEW_OWN,
+    PERMISSIONS.SALES.REPORT.VIEW_TEAM,
+    PERMISSIONS.SALES.REPORT.VIEW_LOCATION,
+    PERMISSIONS.SALES.REPORT.VIEW_COMPANY
+  ]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
@@ -367,7 +378,7 @@ router.get('/api/analytics/dashboard', requireAuth, async (req: any, res) => {
 });
 
 // Get detailed report data
-router.get('/api/analytics/reports/:reportType', requireAuth, async (req: any, res) => {
+router.get('/api/analytics/reports/:reportType', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { reportType } = req.params;
@@ -531,7 +542,7 @@ router.get('/api/analytics/reports/:reportType', requireAuth, async (req: any, r
 });
 
 // Generate custom analytics query
-router.post('/api/analytics/custom-query', requireAuth, async (req: any, res) => {
+router.post('/api/analytics/custom-query', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { dimensions, metrics, filters, dateRange } = req.body;

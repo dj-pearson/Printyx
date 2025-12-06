@@ -8,7 +8,7 @@ const router = express.Router();
 // Preventive Maintenance Automation API Routes
 
 // Get all maintenance schedules
-router.get('/api/maintenance/schedules', requireAuth, async (req: any, res) => {
+router.get('/api/maintenance/schedules', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -227,7 +227,7 @@ router.get('/api/maintenance/schedules', requireAuth, async (req: any, res) => {
 });
 
 // Get maintenance analytics and insights
-router.get('/api/maintenance/analytics', requireAuth, async (req: any, res) => {
+router.get('/api/maintenance/analytics', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -356,7 +356,7 @@ router.get('/api/maintenance/analytics', requireAuth, async (req: any, res) => {
 });
 
 // Get maintenance templates
-router.get('/api/maintenance/templates', requireAuth, async (req: any, res) => {
+router.get('/api/maintenance/templates', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -471,7 +471,7 @@ router.get('/api/maintenance/templates', requireAuth, async (req: any, res) => {
 });
 
 // Auto-generate maintenance schedules
-router.post('/api/maintenance/auto-generate', requireAuth, async (req: any, res) => {
+router.post('/api/maintenance/auto-generate', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { equipmentIds, templateId, startDate, frequency } = req.body;
@@ -507,7 +507,7 @@ router.post('/api/maintenance/auto-generate', requireAuth, async (req: any, res)
 });
 
 // Update maintenance schedule
-router.put('/api/maintenance/schedules/:id', requireAuth, async (req: any, res) => {
+router.put('/api/maintenance/schedules/:id', async (req: any, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -527,7 +527,7 @@ router.put('/api/maintenance/schedules/:id', requireAuth, async (req: any, res) 
 });
 
 // Get predictive maintenance recommendations
-router.get('/api/maintenance/predictions', requireAuth, async (req: any, res) => {
+router.get('/api/maintenance/predictions', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {

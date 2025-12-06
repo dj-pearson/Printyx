@@ -20,7 +20,7 @@ const router = express.Router();
 // Mobile Service App API Routes
 
 // Get mobile dashboard data for technicians
-router.get('/api/mobile/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/mobile/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const technicianId = req.user?.id;
@@ -228,7 +228,7 @@ router.get('/api/mobile/dashboard', requireAuth, async (req: any, res) => {
 });
 
 // Get detailed job information for mobile view
-router.get('/api/mobile/jobs/:jobId', requireAuth, async (req: any, res) => {
+router.get('/api/mobile/jobs/:jobId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { jobId } = req.params;
@@ -375,7 +375,7 @@ router.get('/api/mobile/jobs/:jobId', requireAuth, async (req: any, res) => {
 });
 
 // Update job status from mobile app
-router.post('/api/mobile/jobs/:jobId/status', requireAuth, async (req: any, res) => {
+router.post('/api/mobile/jobs/:jobId/status', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { jobId } = req.params;
@@ -456,7 +456,7 @@ router.post('/api/mobile/jobs/:jobId/status', requireAuth, async (req: any, res)
 });
 
 // Get technician location and route optimization
-router.get('/api/mobile/route-optimization', requireAuth, async (req: any, res) => {
+router.get('/api/mobile/route-optimization', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const technicianId = req.user?.id;
@@ -554,7 +554,7 @@ router.get('/api/mobile/route-optimization', requireAuth, async (req: any, res) 
 });
 
 // Submit service report with photos and signature
-router.post('/api/mobile/service-report', requireAuth, async (req: any, res) => {
+router.post('/api/mobile/service-report', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { 
@@ -652,7 +652,7 @@ router.post('/api/mobile/service-report', requireAuth, async (req: any, res) => 
 });
 
 // Generate and download PDF service report
-router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: any, res) => {
+router.get('/api/mobile/service-report/:reportId/pdf', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { reportId } = req.params;
@@ -762,7 +762,7 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
  */
 
 // Get all available checklist templates
-router.get('/api/mobile/checklist-templates', requireAuth, (req: any, res) => {
+router.get('/api/mobile/checklist-templates', (req: any, res) => {
   try {
     res.json({
       success: true,
@@ -785,7 +785,7 @@ router.get('/api/mobile/checklist-templates', requireAuth, (req: any, res) => {
 });
 
 // Get specific checklist template with full details
-router.get('/api/mobile/checklist-templates/:templateId', requireAuth, (req: any, res) => {
+router.get('/api/mobile/checklist-templates/:templateId', (req: any, res) => {
   try {
     const { templateId } = req.params;
     const template = getTemplateById(templateId);
@@ -811,7 +811,7 @@ router.get('/api/mobile/checklist-templates/:templateId', requireAuth, (req: any
 });
 
 // Get checklist templates by service type
-router.get('/api/mobile/checklist-templates/by-type/:serviceType', requireAuth, (req: any, res) => {
+router.get('/api/mobile/checklist-templates/by-type/:serviceType', (req: any, res) => {
   try {
     const { serviceType } = req.params;
     const templates = getTemplatesByServiceType(serviceType);

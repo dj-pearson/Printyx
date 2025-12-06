@@ -18,7 +18,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * POST /api/search/semantic
  * Perform semantic search using vector similarity
  */
-router.post('/search/semantic', requireAuth, async (req, res) => {
+router.post('/search/semantic', async (req, res) => {
   try {
     const {
       query,
@@ -66,7 +66,7 @@ router.post('/search/semantic', requireAuth, async (req, res) => {
  * GET /api/search/suggestions
  * Get search query suggestions based on popular searches and user history
  */
-router.get('/search/suggestions', requireAuth, async (req, res) => {
+router.get('/search/suggestions', async (req, res) => {
   try {
     const { query, limit = 8 } = req.query;
 
@@ -110,7 +110,7 @@ router.get('/search/suggestions', requireAuth, async (req, res) => {
  * POST /api/search/feedback
  * Submit feedback on search results and AI answers
  */
-router.post('/search/feedback', requireAuth, async (req, res) => {
+router.post('/search/feedback', async (req, res) => {
   try {
     const {
       queryId,
@@ -157,7 +157,7 @@ router.post('/search/feedback', requireAuth, async (req, res) => {
  * POST /api/knowledge/entities
  * Create or update knowledge entities
  */
-router.post('/knowledge/entities', requireAuth, async (req, res) => {
+router.post('/knowledge/entities', async (req, res) => {
   try {
     const {
       name,
@@ -197,7 +197,7 @@ router.post('/knowledge/entities', requireAuth, async (req, res) => {
  * GET /api/knowledge/entities
  * Get knowledge entities with filtering and search
  */
-router.get('/knowledge/entities', requireAuth, async (req, res) => {
+router.get('/knowledge/entities', async (req, res) => {
   try {
     const {
       type,
@@ -422,7 +422,7 @@ router.get('/knowledge/entities', requireAuth, async (req, res) => {
  * GET /api/knowledge/entities/:entityId
  * Get detailed information about a specific knowledge entity
  */
-router.get('/knowledge/entities/:entityId', requireAuth, async (req, res) => {
+router.get('/knowledge/entities/:entityId', async (req, res) => {
   try {
     const { entityId } = req.params;
     const { includeRelated = true, includeContent = true } = req.query;
@@ -550,7 +550,7 @@ router.get('/knowledge/entities/:entityId', requireAuth, async (req, res) => {
  * POST /api/search/embeddings
  * Create vector embeddings for content
  */
-router.post('/search/embeddings', requireAuth, async (req, res) => {
+router.post('/search/embeddings', async (req, res) => {
   try {
     const {
       contentId,
@@ -602,7 +602,7 @@ router.post('/search/embeddings', requireAuth, async (req, res) => {
  * GET /api/search/analytics
  * Get search analytics and performance insights
  */
-router.get('/search/analytics', requireAuth, async (req, res) => {
+router.get('/search/analytics', async (req, res) => {
   try {
     const {
       start_date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -628,7 +628,7 @@ router.get('/search/analytics', requireAuth, async (req, res) => {
  * GET /api/knowledge/graph
  * Get knowledge graph visualization data
  */
-router.get('/knowledge/graph', requireAuth, async (req, res) => {
+router.get('/knowledge/graph', async (req, res) => {
   try {
     const { 
       centerEntity, 
