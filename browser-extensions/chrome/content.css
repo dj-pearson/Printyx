@@ -1,0 +1,25 @@
+/**
+ * Content styles for Printyx Knowledge Capture
+ */
+
+/* Highlight styles for captured content */
+.printyx-highlight {
+  background-color: #fff3cd !important;
+  outline: 2px solid #ffc107 !important;
+  transition: all 0.3s ease !important;
+}
+
+.printyx-highlight-fade {
+  animation: printyx-fade-out 2s ease !important;
+}
+
+@keyframes printyx-fade-out {
+  from {
+    background-color: #fff3cd;
+    outline-color: #ffc107;
+  }
+  to {
+    background-color: transparent;
+    outline-color: transparent;
+  }
+}

@@ -9,12 +9,31 @@ import {
   users,
   type BusinessRecord
 } from "@shared/schema";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  hasPermission,
+  getQueryBuilder,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerOpportunitiesRoutes(app: Express) {
-  // Get all opportunities (leads with high potential)
-  app.get("/api/opportunities", isAuthenticated, async (req: any, res) => {
+  // Apply RBAC context to all opportunities routes
+  app.use("/api/opportunities", enhanceUserContext);
+
+  // Get all opportunities (leads with high potential) - requires opportunity view permission
+  app.get("/api/opportunities",
+    isAuthenticated,
+    requirePermission([
+      PERMISSIONS.SALES.OPPORTUNITY.VIEW_OWN,
+      PERMISSIONS.SALES.OPPORTUNITY.VIEW_TEAM,
+      PERMISSIONS.SALES.OPPORTUNITY.VIEW_LOCATION
+    ]),
+    async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user!.tenantId;
       
       // Get high-value leads and prospects
       const opportunities = await db

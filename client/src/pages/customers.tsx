@@ -48,7 +48,9 @@ import {
   UserCheck,
   TrendingUp,
   DollarSign,
+  Upload,
 } from "lucide-react";
+import { CsvImportWizard } from "@/components/import";
 import {
   Dialog,
   DialogContent,
@@ -102,6 +104,7 @@ export default function Customers() {
     return "cards";
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   const form = useForm({
@@ -634,6 +637,15 @@ export default function Customers() {
                   title="Table view"
                 >
                   <Rows className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="flex items-center gap-2"
+                  onClick={() => setIsImportDialogOpen(true)}
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="hidden sm:inline">Import</span>
                 </Button>
                 <Button
                   size="default"
@@ -1212,6 +1224,20 @@ export default function Customers() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* CSV Import Wizard */}
+        <CsvImportWizard
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          defaultEntityType="business_records"
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+            toast({
+              title: "Import Complete",
+              description: "Customers have been imported successfully.",
+            });
+          }}
+        />
       </div>
     </MainLayout>
   );

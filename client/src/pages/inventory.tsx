@@ -37,7 +37,9 @@ import {
   Trash2,
   LayoutGrid,
   List as ListIcon,
+  Upload,
 } from "lucide-react";
+import { CsvImportWizard } from "@/components/import";
 import {
   Table,
   TableBody,
@@ -47,6 +49,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type InventoryItem } from '@shared/schema';
+import WarehouseTeamStatsWidget from "@/components/stats/WarehouseTeamStatsWidget";
 
 export default function Inventory() {
   const { toast } = useToast();
@@ -54,6 +57,7 @@ export default function Inventory() {
 
   // View mode
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Filter state management
   const filterState = useFilterState({
@@ -265,6 +269,9 @@ export default function Inventory() {
           </CardContent>
         </Card>
 
+        {/* Warehouse Team Performance Stats */}
+        <WarehouseTeamStatsWidget variant="compact" />
+
         {/* View Controls */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -296,6 +303,14 @@ export default function Inventory() {
               title="Table view"
             >
               <ListIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => setIsImportDialogOpen(true)}
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Import</span>
             </Button>
             <Button className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -486,6 +501,20 @@ export default function Inventory() {
             </CardContent>
           </Card>
         )}
+
+        {/* CSV Import Wizard */}
+        <CsvImportWizard
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          defaultEntityType="inventory"
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+            toast({
+              title: "Import Complete",
+              description: "Inventory items have been imported successfully.",
+            });
+          }}
+        />
       </div>
     </MainLayout>
   );

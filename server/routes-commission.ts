@@ -2,26 +2,21 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 
-// Authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
-  }
-  
-  if (!req.user) {
-    req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId
-    };
-  }
-  
-  next();
-};
-import { 
-  businessRecords, 
-  users, 
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireLevel,
+  hasPermission,
+  getQueryBuilder,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
+
+import {
+  businessRecords,
+  users,
   contracts,
   commissionPlans,
   commissionPlanTiers,
@@ -38,10 +33,15 @@ import {
 
 const router = express.Router();
 
+// Apply RBAC context to all commission routes
+router.use(enhanceUserContext);
+
 // Commission Management API Routes
 
-// Get commission plans
-router.get('/api/commission/plans', requireAuth, async (req: any, res) => {
+// Get commission plans - requires finance view permission or manager+ level
+router.get('/api/commission/plans',
+  requirePermission([PERMISSIONS.FINANCE.BILLING.VIEW, 'sales.commission.view']),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -218,7 +218,7 @@ router.get('/api/commission/plans', requireAuth, async (req: any, res) => {
 });
 
 // Get commission calculations for a specific period
-router.get('/api/commission/calculations', requireAuth, async (req: any, res) => {
+router.get('/api/commission/calculations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { startDate, endDate, employeeId } = req.query;
@@ -409,7 +409,7 @@ router.get('/api/commission/calculations', requireAuth, async (req: any, res) =>
 });
 
 // Get commission analytics and reporting
-router.get('/api/commission/analytics', requireAuth, async (req: any, res) => {
+router.get('/api/commission/analytics', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { period = 'quarter' } = req.query;
@@ -534,7 +534,7 @@ router.get('/api/commission/analytics', requireAuth, async (req: any, res) => {
 });
 
 // Process commission calculations for a period
-router.post('/api/commission/calculate', requireAuth, async (req: any, res) => {
+router.post('/api/commission/calculate', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { startDate, endDate, employeeIds, planId } = req.body;
@@ -569,7 +569,7 @@ router.post('/api/commission/calculate', requireAuth, async (req: any, res) => {
 });
 
 // Get commission disputes
-router.get('/api/commission/disputes', requireAuth, async (req: any, res) => {
+router.get('/api/commission/disputes', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -688,7 +688,7 @@ router.get('/api/commission/disputes', requireAuth, async (req: any, res) => {
 });
 
 // Update commission dispute
-router.put('/api/commission/disputes/:id', requireAuth, async (req: any, res) => {
+router.put('/api/commission/disputes/:id', async (req: any, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;

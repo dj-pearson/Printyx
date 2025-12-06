@@ -48,7 +48,7 @@ export default function Invoices() {
   const queryClient = useQueryClient();
 
   const { data: invoices, isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices"],
+    queryKey: ["/api/billing/invoices"],
   });
 
   const { data: contracts } = useQuery<Contract[]>({
@@ -64,9 +64,9 @@ export default function Invoices() {
       contractId: string;
       billingPeriodStart: string;
       billingPeriodEnd: string;
-    }) => apiRequest("/api/invoices/generate", "POST", data),
+    }) => apiRequest("/api/billing/invoices/generate-from-contract", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
       setIsGenerateDialogOpen(false);
       setSelectedContractId("");
       setBillingPeriodStart("");
@@ -76,9 +76,9 @@ export default function Invoices() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) =>
-      apiRequest(`/api/invoices/${id}`, "PATCH", { status }),
+      apiRequest(`/api/billing/invoices/${id}`, "PATCH", { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
     },
   });
 
@@ -89,14 +89,13 @@ export default function Invoices() {
       paymentDate: string;
       paymentMethod: string;
     }) =>
-      apiRequest(`/api/invoices/${id}/payment`, "POST", {
-        amount,
+      apiRequest(`/api/billing/invoices/${id}/pay`, "POST", {
+        amount: parseFloat(amount),
         paymentDate,
         paymentMethod,
-        status: "paid"
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
       setIsPaymentDialogOpen(false);
       setPaymentAmount("");
       setPaymentDate("");

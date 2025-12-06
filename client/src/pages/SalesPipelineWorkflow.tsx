@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
+import TeamStatsWidget from "@/components/stats/TeamStatsWidget";
 import {
   Users,
   TrendingUp,
@@ -40,81 +41,40 @@ import {
   MousePointer
 } from "lucide-react";
 
-// Pipeline Stage Configuration
-const PIPELINE_STAGES = [
-  { 
-    id: 'lead', 
-    name: 'New Lead', 
-    color: '#3B82F6', 
-    icon: Users,
-    description: 'Initial lead capture and qualification',
-    actionRequired: 'Contact within 24 hours'
-  },
-  { 
-    id: 'contacted', 
-    name: 'First Contact', 
-    color: '#8B5CF6', 
-    icon: Phone,
-    description: 'Initial contact made, building rapport',
-    actionRequired: 'Schedule discovery call'
-  },
-  { 
-    id: 'demo_scheduled', 
-    name: 'Demo Scheduled', 
-    color: '#06B6D4', 
-    icon: Calendar,
-    description: 'Product demonstration scheduled',
-    actionRequired: 'Prepare demo materials'
-  },
-  { 
-    id: 'demo_completed', 
-    name: 'Demo Completed', 
-    color: '#10B981', 
-    icon: CheckCircle,
-    description: 'Demo delivered, gathering feedback',
-    actionRequired: 'Send follow-up within 2 hours'
-  },
-  { 
-    id: 'proposal_prep', 
-    name: 'Proposal Prep', 
-    color: '#F59E0B', 
-    icon: FileText,
-    description: 'Preparing customized proposal',
-    actionRequired: 'Create proposal within 48 hours'
-  },
-  { 
-    id: 'proposal_sent', 
-    name: 'Proposal Sent', 
-    color: '#EF4444', 
-    icon: Mail,
-    description: 'Proposal delivered, awaiting response',
-    actionRequired: 'Follow up within 3 business days'
-  },
-  { 
-    id: 'negotiation', 
-    name: 'Negotiation', 
-    color: '#F97316', 
-    icon: Handshake,
-    description: 'Terms negotiation in progress',
-    actionRequired: 'Schedule decision maker meeting'
-  },
-  { 
-    id: 'closed_won', 
-    name: 'Closed Won', 
-    color: '#22C55E', 
-    icon: Award,
-    description: 'Deal successfully closed',
-    actionRequired: 'Convert to customer'
-  },
-  { 
-    id: 'closed_lost', 
-    name: 'Closed Lost', 
-    color: '#6B7280', 
-    icon: AlertCircle,
-    description: 'Deal lost, capture learnings',
-    actionRequired: 'Document loss reason'
-  }
-];
+// Icon mapping for dynamic stages
+const ICON_MAP: Record<string, any> = {
+  Users,
+  Phone,
+  Calendar,
+  CheckCircle,
+  FileText,
+  Mail,
+  Handshake,
+  Award,
+  AlertCircle,
+  Target,
+  TrendingUp,
+  Briefcase,
+  Clock,
+  DollarSign,
+  Activity
+};
+
+// Dynamic Pipeline Stage Interface
+interface PipelineStage {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  order: number;
+  color: string;
+  icon?: string;
+  stageType: 'open' | 'won' | 'lost' | 'inactive';
+  isFinalStage: boolean;
+  defaultProbability: number;
+  slaEnabled: boolean;
+  slaDays?: number;
+}
 
 // Sales Rep Performance Metrics
 interface SalesRepMetrics {
@@ -167,6 +127,24 @@ export default function SalesPipelineWorkflow() {
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Fetch default pipeline template with stages
+  const { data: defaultPipeline, isLoading: pipelineLoading } = useQuery({
+    queryKey: ['/api/pipeline-config/templates'],
+    queryFn: async () => {
+      const templates = await apiRequest('/api/pipeline-config/templates');
+      // Get the default sales pipeline
+      const defaultTemplate = templates.find((t: any) => t.isDefault && t.pipelineType === 'sales');
+      if (defaultTemplate) {
+        // Fetch template with stages
+        return apiRequest(`/api/pipeline-config/templates/${defaultTemplate.id}`);
+      }
+      return null;
+    }
+  });
+
+  // Extract stages from pipeline template
+  const pipelineStages: PipelineStage[] = defaultPipeline?.stages || [];
 
   // Fetch pipeline opportunities
   const { data: opportunities = [], isLoading: opportunitiesLoading } = useQuery<PipelineOpportunity[]>({
@@ -282,7 +260,7 @@ export default function SalesPipelineWorkflow() {
     return { status: 'Critical', color: 'text-red-600', bgColor: 'bg-red-100' };
   };
 
-  if (opportunitiesLoading || metricsLoading) {
+  if (pipelineLoading || opportunitiesLoading || metricsLoading) {
     return (
       <MainLayout>
         <div className="container mx-auto p-6">
@@ -415,6 +393,9 @@ export default function SalesPipelineWorkflow() {
 
           {/* Pipeline Flow View */}
           <TabsContent value="pipeline" className="space-y-6">
+            {/* Team Quick Stats - Compact View */}
+            <TeamStatsWidget variant="compact" showAutoRefresh={false} />
+
             {/* Filters */}
             <div className="flex items-center gap-4">
               <Select value={selectedStage} onValueChange={setSelectedStage}>
@@ -423,9 +404,9 @@ export default function SalesPipelineWorkflow() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Stages</SelectItem>
-                  {PIPELINE_STAGES.map(stage => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      {stage.name}
+                  {pipelineStages.map(stage => (
+                    <SelectItem key={stage.id} value={stage.name}>
+                      {stage.displayName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -448,10 +429,11 @@ export default function SalesPipelineWorkflow() {
 
             {/* Pipeline Stages Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {PIPELINE_STAGES.map(stage => {
-                const stageOpportunities = opportunities.filter(opp => opp.stage === stage.id);
+              {pipelineStages.sort((a, b) => a.order - b.order).map(stage => {
+                const stageOpportunities = opportunities.filter(opp => opp.stage === stage.name);
                 const stageValue = stageOpportunities.reduce((sum, opp) => sum + (opp.estimated_value || 0), 0);
-                const StageIcon = stage.icon;
+                // Get icon from icon name, default to Target if not found
+                const StageIcon = stage.icon ? ICON_MAP[stage.icon] || Target : Target;
 
                 return (
                   <Card key={stage.id} className="h-fit">
@@ -465,7 +447,7 @@ export default function SalesPipelineWorkflow() {
                             <StageIcon className="h-4 w-4" />
                           </div>
                           <div>
-                            <CardTitle className="text-sm font-medium">{stage.name}</CardTitle>
+                            <CardTitle className="text-sm font-medium">{stage.displayName}</CardTitle>
                             <CardDescription className="text-xs">{stageOpportunities.length} opportunities</CardDescription>
                           </div>
                         </div>
@@ -636,6 +618,9 @@ export default function SalesPipelineWorkflow() {
 
           {/* Team Management View */}
           <TabsContent value="team" className="space-y-6">
+            {/* Team Stats Widget - Comprehensive Overview */}
+            <TeamStatsWidget variant="full" showAutoRefresh={true} />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Team Performance Overview */}
               <Card>

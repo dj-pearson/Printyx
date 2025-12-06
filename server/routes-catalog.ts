@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { db } from './db';
-import { 
-  masterProductModels, 
-  masterProductAccessories, 
+import {
+  masterProductModels,
+  masterProductAccessories,
   tenantEnabledProducts,
   insertMasterProductModelSchema,
   insertTenantEnabledProductSchema,
@@ -10,8 +10,18 @@ import {
   TenantEnabledProduct
 } from '@shared/schema';
 import { eq, and, like, or, desc, asc, inArray } from 'drizzle-orm';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const catalogRouter = Router();
+
+// Apply RBAC context to all catalog routes
+catalogRouter.use(enhanceUserContext);
 
 // Platform (Root Admin) Routes for Master Catalog Management
 
