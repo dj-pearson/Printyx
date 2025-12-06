@@ -7,3 +7,5 @@ vite.config.ts.*
 testing/test-results/
 testing/debug-*.js
 testing/test-*.js
+neondb_backup.sql
+database-exports/
