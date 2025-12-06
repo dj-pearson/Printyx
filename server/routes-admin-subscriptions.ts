@@ -12,15 +12,39 @@ import {
   NewDiscount,
 } from '@shared/schema';
 import { eq, and, desc, sql, like, gte, lte } from 'drizzle-orm';
+import { requireRootAdmin } from './routes-root-admin';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requireLevel,
+  requirePermission,
+  PERMISSIONS,
+  ROLE_LEVELS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 /**
  * ADMIN SUBSCRIPTION ROUTES
  *
  * Root admin endpoints for managing subscriptions, discounts, and billing.
- * These routes should be protected by root admin authorization.
+ * SECURITY: All routes in this file require root admin authorization (Level 7+).
+ * RBAC: Routes also check for specific platform-level permissions.
  */
 
 const router = Router();
+
+// ============================================================================
+// SECURITY MIDDLEWARE - PROTECT ALL ROUTES
+// ============================================================================
+
+// Apply RBAC context enhancement first
+router.use(enhanceUserContext);
+
+// Require executive level (Level 7+) for all admin subscription routes
+router.use(requireLevel(ROLE_LEVELS.EXECUTIVE));
+
+// Also keep the existing root admin check for backward compatibility
+router.use(requireRootAdmin);
 
 // ============================================================================
 // SUBSCRIPTION MANAGEMENT

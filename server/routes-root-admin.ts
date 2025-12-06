@@ -89,7 +89,7 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
 };
 
 // System Overview
-router.get("/overview", requireAuth, requireRootAdmin, async (req, res) => {
+router.get("/overview", requireRootAdmin, async (req, res) => {
   try {
     // Get total tenants
     const totalTenants = await db.select({ count: count() }).from(tenants);
@@ -148,7 +148,7 @@ router.get("/overview", requireAuth, requireRootAdmin, async (req, res) => {
 });
 
 // Tenant Management
-router.get("/tenants", requireAuth, requireRootAdmin, async (req, res) => {
+router.get("/tenants", requireRootAdmin, async (req, res) => {
   try {
     const tenantMetrics = await db
       .select({
@@ -177,7 +177,7 @@ router.get("/tenants", requireAuth, requireRootAdmin, async (req, res) => {
 // Security Alerts
 router.get(
   "/security-alerts",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -237,7 +237,7 @@ router.get(
 // System Resources
 router.get(
   "/system-resources",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -312,7 +312,7 @@ router.get(
 );
 
 // User Management
-router.get("/users", requireAuth, requireRootAdmin, async (req, res) => {
+router.get("/users", requireRootAdmin, async (req, res) => {
   try {
     const { role, status, search } = req.query;
 
@@ -391,7 +391,7 @@ router.get("/users", requireAuth, requireRootAdmin, async (req, res) => {
 });
 
 // Role Management
-router.get("/roles", requireAuth, requireRootAdmin, async (req, res) => {
+router.get("/roles", requireRootAdmin, async (req, res) => {
   try {
     const rolesList = await db
       .select({
@@ -417,7 +417,7 @@ router.get("/roles", requireAuth, requireRootAdmin, async (req, res) => {
 });
 
 // Audit Logs
-router.get("/audit-logs", requireAuth, requireRootAdmin, async (req, res) => {
+router.get("/audit-logs", requireRootAdmin, async (req, res) => {
   try {
     const logs = await db
       .select({
@@ -463,7 +463,7 @@ router.get("/audit-logs", requireAuth, requireRootAdmin, async (req, res) => {
 // Database Tables Information
 router.get(
   "/database-tables",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -492,7 +492,7 @@ router.get(
 // Execute SQL Query (with safety restrictions)
 router.post(
   "/execute-query",
-  requireAuth,
+  
   requireRootAdmin,
   async (req, res) => {
     try {

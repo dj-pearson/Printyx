@@ -49,13 +49,15 @@ export default function KnowledgeBase() {
     queryKey: ["/api/knowledge-base/categories"],
   });
 
-  const { data: articles, isLoading: articlesLoading } = useQuery<Article[]>({
+  const { data: articlesResponse, isLoading: articlesLoading } = useQuery<{ articles: Article[] } | Article[]>({
     queryKey: ["/api/knowledge-base/articles"],
   });
 
-  const featuredArticles = articles?.filter(a => a.featured) || [];
-  const recentArticles = articles?.slice(0, 5) || [];
-  const popularArticles = articles?.sort((a, b) => b.viewCount - a.viewCount).slice(0, 5) || [];
+  // Handle both array and object responses
+  const articlesArray = Array.isArray(articlesResponse) ? articlesResponse : (articlesResponse?.articles || []);
+  const featuredArticles = articlesArray.filter(a => a.featured) || [];
+  const recentArticles = articlesArray.slice(0, 5) || [];
+  const popularArticles = [...articlesArray].sort((a, b) => b.viewCount - a.viewCount).slice(0, 5) || [];
 
   const getIconForCategory = (iconName: string) => {
     const icons: Record<string, React.ReactNode> = {

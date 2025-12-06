@@ -28,7 +28,25 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - `npm run example` - Run basic usage example
 
 ### Testing
+- `npm run test` - Run Vitest unit tests
+- `npm run test:watch` - Run Vitest in watch mode
+- `npm run test:unit` - Run unit tests only
+- `npm run test:integration` - Run integration tests only
+- `npm run test:coverage` - Run tests with coverage report
 - `npm run test:e2e` - Run Playwright end-to-end tests
+- `npm run test:e2e:chromium` - E2E tests on Chromium only
+- `npm run test:e2e:firefox` - E2E tests on Firefox only
+- `npm run test:e2e:webkit` - E2E tests on WebKit only
+- `npm run test:e2e:mobile` - E2E tests on mobile browsers
+- `npm run test:all` - Run all tests (unit + E2E)
+
+### Knowledge Base CLI
+- `npm run kb` - Knowledge Base CLI interface
+- `npm run kb:list` - List all KB articles
+- `npm run kb:stats` - Show KB statistics
+- `npm run kb:create` - Create new KB article
+- `npm run kb:import` - Import KB articles
+- `npm run kb:export` - Export KB articles
 
 ## Project Architecture
 
@@ -83,8 +101,9 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - **@dnd-kit**: Drag and drop functionality
 
 **Development & Testing**
+- **Vitest**: Unit and integration testing framework
 - **Puppeteer 24.16**: Browser automation
-- **@playwright/test 1.56**: E2E testing
+- **@playwright/test 1.56**: E2E testing (multi-browser: Chromium, Firefox, WebKit, Mobile)
 - **Storybook 8.2**: Component development
 - **Husky 9.0**: Git hooks
 - **Prettier 3.3**: Code formatting
@@ -95,8 +114,8 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 /home/user/Printyx/
 ├── client/                    # React frontend application
 │   └── src/
-│       ├── components/        # 185+ React components
-│       │   ├── ui/           # 40+ shadcn/ui base components
+│       ├── components/        # 234 React components
+│       │   ├── ui/           # 65 shadcn/ui base components
 │       │   ├── dashboards/   # Dashboard widgets
 │       │   ├── forms/        # Form components
 │       │   ├── mobile/       # Mobile-optimized components
@@ -107,28 +126,40 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 │       │   ├── calculator/   # Cost calculator UI
 │       │   ├── quotes/       # Quote builder UI
 │       │   └── [29+ other domain-specific directories]
-│       ├── pages/            # 181 route components (lazy loaded)
-│       ├── hooks/            # 14 custom React hooks
-│       │   ├── useAuth.ts
-│       │   ├── usePaginatedQuery.ts
-│       │   ├── useOptimisticMutations.ts
-│       │   ├── useRealTimeData.ts
-│       │   ├── useWebSocket.ts
-│       │   ├── use-toast.ts
-│       │   ├── use-media-query.ts
+│       ├── pages/            # 196 route components (lazy loaded)
+│       ├── hooks/            # 18 custom React hooks
+│       │   ├── useAuth.ts              # Authentication hook
+│       │   ├── usePaginatedQuery.ts    # Server-side pagination
+│       │   ├── useOptimisticMutations.ts # Optimistic UI updates
+│       │   ├── useRealTimeData.ts      # WebSocket real-time data
+│       │   ├── useWebSocket.ts         # WebSocket connection
+│       │   ├── useSubscription.ts      # Stripe subscription management
+│       │   ├── useValidatedForm.ts     # Form validation with Zod
+│       │   ├── usePWA.ts               # Progressive Web App features
+│       │   ├── useCollapsibleNavigation.ts # Sidebar state
+│       │   ├── useCommandPalette.ts    # Keyboard shortcuts (Cmd+K)
+│       │   ├── use-toast.ts            # Toast notifications
+│       │   ├── use-media-query.ts      # Responsive breakpoints
+│       │   ├── use-mobile.tsx          # Mobile detection
 │       │   └── ...
-│       ├── lib/              # 14 utility libraries
+│       ├── lib/              # 16 utility libraries
 │       │   ├── queryClient.ts         # TanStack Query config
 │       │   ├── rbacQueryClient.ts     # RBAC-aware queries
 │       │   ├── queryOptimizations.ts  # Query performance
 │       │   ├── export-utils.ts        # CSV/Excel/PDF export
+│       │   ├── rbac.tsx               # RBAC context and helpers
+│       │   ├── seoUtils.tsx           # SEO meta tag utilities
+│       │   ├── schemaMarkup.ts        # JSON-LD structured data
+│       │   ├── pwa.ts                 # Service worker registration
+│       │   ├── brandTheme.ts          # White-label theming
+│       │   ├── validation.ts          # Zod validation schemas
 │       │   └── ...
 │       └── data/             # Static data/constants
 │
 ├── server/                    # Express.js backend
 │   ├── index.ts              # Server entry point (231 lines)
 │   ├── routes.ts             # Main routes file (519KB monolithic)
-│   ├── routes-*.ts           # 24+ modular route files
+│   ├── routes-*.ts           # 109 modular route files
 │   │   ├── routes-business-records.ts
 │   │   ├── routes-crm-goals.ts
 │   │   ├── routes-deals-management.ts
@@ -136,25 +167,36 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 │   │   ├── routes-enhanced-billing.ts
 │   │   ├── routes-warehouse-fpy.ts
 │   │   └── ...
-│   ├── routes/               # Additional route modules
+│   ├── routes/               # 42 additional route modules
 │   │   ├── salesforce-integration.ts
 │   │   ├── quickbooks-integration.ts
 │   │   ├── sales-forecasting-routes.ts
 │   │   ├── ai-analytics.ts
+│   │   ├── ai-employee-routes.ts      # AI assistant endpoints
+│   │   ├── ai-documentation-routes.ts # AI doc generation
+│   │   ├── ai-search-knowledge-routes.ts # AI-powered search
 │   │   └── ...
-│   ├── middleware/           # 5 middleware modules
+│   ├── middleware/           # 8 middleware modules
 │   │   ├── tenancy.ts              # Tenant resolution
 │   │   ├── requireTenant.ts        # Tenant enforcement
 │   │   ├── subscription.ts         # Subscription checks
 │   │   ├── cache-middleware.ts     # Response caching
-│   │   ├── rbac-middleware.ts      # RBAC enforcement
+│   │   ├── enhanced-rbac-middleware.ts # RBAC enforcement (30KB)
+│   │   ├── hierarchical-query-builder.ts # Data scoping (17KB)
+│   │   ├── rbac-route-helper.ts    # RBAC route utilities (15KB)
+│   │   ├── registration-lock.ts    # Registration throttling
 │   │   └── ...
-│   ├── services/             # 38 business logic services
+│   ├── services/             # 70 business logic services
 │   │   ├── subscription-service.ts
 │   │   ├── stripe-service.ts
 │   │   ├── email-service.ts
 │   │   ├── claude-ai-service.ts
 │   │   ├── customer-portal-service.ts (68KB)
+│   │   ├── ai-employee-service.ts      # AI assistant (31KB)
+│   │   ├── ai-search-knowledge-service.ts # AI search (31KB)
+│   │   ├── ai-documentation-service.ts # AI docs (25KB)
+│   │   ├── knowledge-base-service.ts   # KB management (26KB)
+│   │   ├── seo-service.ts              # SEO management (29KB)
 │   │   └── ...
 │   ├── integrations/         # 8 third-party integrations
 │   │   ├── integration-service.ts
@@ -169,12 +211,14 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 │   │   ├── cli/              # CLI interface
 │   │   ├── api/              # API routes
 │   │   └── examples/         # Usage examples
-│   ├── tests/                # Server-side tests
+│   ├── cli/                  # CLI tools
+│   │   └── kb-cli.ts         # Knowledge Base CLI (18KB)
+│   ├── tests/                # Server-side tests (unit + integration)
 │   ├── utils/                # Server utilities
 │   ├── websocket-service.ts  # WebSocket server
 │   └── audit.log             # Root admin audit log
 │
-├── shared/                    # Shared TypeScript schemas (31 files)
+├── shared/                    # Shared TypeScript schemas (43 files)
 │   ├── schema.ts             # Main schema (293KB)
 │   ├── advanced-billing-schema.ts
 │   ├── customer-portal-schema.ts (51KB)
@@ -187,7 +231,14 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 │   ├── lead-scoring-schema.ts
 │   ├── security-schema.ts
 │   ├── reporting-schema.ts
-│   └── [20+ other specialized schemas]
+│   ├── white-label-schema.ts        # Multi-tenant branding
+│   ├── pipeline-configuration-schema.ts # Custom pipelines
+│   ├── document-automation-schema.ts # Document templates
+│   ├── deal-desk-schema.ts          # Deal approval workflows
+│   ├── auto-supply-replenishment-schema.ts # Supply automation
+│   ├── team-alerts-schema.ts        # Team notifications
+│   ├── client-monitor-schema.ts     # Device monitoring
+│   └── [25+ other specialized schemas]
 │
 ├── printyx-client/           # Standalone monitoring client
 │   └── src/
@@ -368,7 +419,49 @@ Client-Side Caching:
   - Device status and error conditions
   - Model information and serial numbers
 
-**9. UX Enhancement Pattern (Phase 3)**
+**9. AI Services Architecture**
+
+**AI Employee Service** (server/services/ai-employee-service.ts):
+- Internal AI assistant for platform users
+- Context-aware responses based on user role and tenant
+- Integration with knowledge base for accurate answers
+- Action suggestions and workflow automation
+
+**AI Search & Knowledge Service** (server/services/ai-search-knowledge-service.ts):
+- Semantic search across knowledge base articles
+- Natural language query understanding
+- Relevance ranking with AI scoring
+- Cross-module search integration
+
+**AI Documentation Service** (server/services/ai-documentation-service.ts):
+- Automated documentation generation
+- Code analysis and explanation
+- API documentation from schemas
+- Changelog generation from commits
+
+**10. SEO & Discovery System**
+
+**llms.txt Endpoint**:
+- Located at: `/.well-known/llms.txt`
+- AI agent discovery file for LLM-powered tools
+- Describes platform capabilities and API endpoints
+- Follows emerging llms.txt specification
+
+**SEO Infrastructure**:
+- Service: server/services/seo-service.ts (29KB)
+- Schema: shared/seo-schema.ts (44KB)
+- Client utilities: client/src/lib/seoUtils.tsx
+- Schema markup: client/src/lib/schemaMarkup.ts
+
+**Features**:
+- Dynamic meta tags per page
+- JSON-LD structured data (Organization, Product, Article, FAQ)
+- OpenGraph and Twitter Card support
+- Dynamic sitemap generation
+- Canonical URL management
+- Content gap analysis for SEO opportunities
+
+**11. UX Enhancement Pattern (Phase 3)**
 
 Based on recent commits and WORKFLOW_IMPLEMENTATION_SUMMARY.md, a systematic UX enhancement pattern is being applied across the application:
 
@@ -409,7 +502,7 @@ Based on recent commits and WORKFLOW_IMPLEMENTATION_SUMMARY.md, a systematic UX 
 - Warehouse operations and FPY (First Pass Yield) metrics
 - Manufacturer integrations
 
-**Specialized Schemas** (31 files total)
+**Specialized Schemas** (43 files total)
 
 Business Operations:
 - `advanced-billing-schema.ts`: Usage-based billing, tiered pricing, meter billing
@@ -449,6 +542,18 @@ Platform Features:
 Integrations:
 - `quickbooks-schema.ts`: QuickBooks integration field mapping
 - `print-cost-calculator-schema.ts`: TCO (Total Cost of Ownership) calculator
+- `printyx-client-schema.ts`: Device monitoring client
+- `client-monitor-schema.ts`: Remote monitoring data
+
+Enterprise Features:
+- `white-label-schema.ts`: Multi-tenant branding and theming
+- `pipeline-configuration-schema.ts`: Custom sales pipeline stages
+- `deal-desk-schema.ts`: Deal approval and pricing workflows
+- `document-automation-schema.ts`: Document templates and generation
+- `auto-supply-replenishment-schema.ts`: Automated supply ordering
+- `team-alerts-schema.ts`: Team-based notification rules
+- `email-parser-schema.ts`: Email parsing and routing
+- `sales-handoff-schema.ts`: Lead-to-customer handoff workflows
 
 User Management:
 - `auth-schema.ts`: Authentication schemas
@@ -478,7 +583,7 @@ Configured in tsconfig.json and vite.config.ts:
 
 Router implementation: client/src/App.tsx
 
-**Route Categories** (181 total pages):
+**Route Categories** (196 total pages):
 
 1. **Authentication** (eager loaded):
    - /login, /signup, /forgot-password, /reset-password, /verify-email
@@ -583,7 +688,7 @@ Global UI State:
 
 Main routes file: server/routes.ts (519KB monolithic)
 
-Modularized route files (70+ files):
+Modularized route files (151 total: 109 routes-*.ts + 42 routes/*.ts):
 
 **Core Business**:
 - routes-business-records.ts: Unified lead/customer management
@@ -621,8 +726,18 @@ Modularized route files (70+ files):
 - lead-scoring-routes.ts: AI-powered lead qualification
 - ai-gpt5.ts: GPT-5 integration
 - ai-analytics.ts: AI-powered insights
+- ai-employee-routes.ts: AI assistant for internal users
+- ai-documentation-routes.ts: AI-powered documentation generation
+- ai-search-knowledge-routes.ts: AI-powered search across KB
 - content-marketing-routes.ts: Blog and SEO
 - print-cost-calculator-routes.ts: TCO calculator
+
+**SEO & Discovery**:
+- llms.txt endpoint: AI agent discovery file (/.well-known/llms.txt)
+- Dynamic meta tags: Page-level SEO optimization
+- Schema markup: JSON-LD structured data
+- Sitemap generation: Dynamic XML sitemaps
+- Content gap analysis: SEO opportunity detection
 
 **Enterprise Features**:
 - routes-enhanced-rbac.ts: Role-based access control
@@ -911,6 +1026,310 @@ try {
 - Configure per-endpoint as needed
 - Different limits for authenticated vs unauthenticated users
 
+### Enhanced RBAC System
+
+**Overview**:
+Printyx uses a comprehensive Role-Based Access Control (RBAC) system with database-driven permissions, hierarchical organization, and granular access control.
+
+**Architecture**:
+- **8-Level Role Hierarchy**: Individual Contributors (1) → Platform Administrators (8)
+- **4 Organizational Tiers**: Platform → Company → Regional → Location
+- **6 Scope Levels**: own → team → location → regional → company → platform
+- **150+ Granular Permissions**: Format `module.resource.action_scope`
+- **24 Role Templates**: Covering all departments and hierarchy levels
+
+**Core Files**:
+- `server/enhanced-rbac-schema.ts` - Database schema
+- `server/middleware/enhanced-rbac-middleware.ts` - Permission checking
+- `server/middleware/hierarchical-query-builder.ts` - Data scoping
+- `server/database-updater/seeders/rbac-seeder.ts` - Role/permission seeding
+
+**Permission Format**:
+```typescript
+// Format: <module>.<resource>.<action>_<scope>
+'sales.lead.view_own'         // View own leads
+'sales.lead.view_team'        // View team's leads
+'sales.lead.view_location'    // View location's leads
+'sales.quote.approve_standard' // Approve standard quotes
+'finance.payment.process'     // Process payments
+```
+
+**Using RBAC Middleware**:
+```typescript
+import {
+  enhanceUserContext,
+  requirePermission,
+  requireAllPermissions,
+  requireLevel,
+  requireScope,
+  hasPermission,
+} from './middleware/enhanced-rbac-middleware';
+
+// Apply user context to all routes (must be first)
+app.use(enhanceUserContext);
+
+// Require specific permission (ANY)
+app.get('/leads',
+  requirePermission(['sales.lead.view_own', 'sales.lead.view_team']),
+  async (req, res) => { /* ... */ }
+);
+
+// Require ALL permissions
+app.post('/quotes/approve',
+  requireAllPermissions(['sales.quote.view', 'sales.quote.approve_standard']),
+  async (req, res) => { /* ... */ }
+);
+
+// Require minimum role level (1-8)
+app.get('/reports/executive',
+  requireLevel(6), // Director level or higher
+  async (req, res) => { /* ... */ }
+);
+
+// Require minimum organizational scope
+app.get('/analytics/company',
+  requireScope('company'), // Company-wide access
+  async (req, res) => { /* ... */ }
+);
+
+// Check permissions in route logic
+app.get('/data', enhanceUserContext, async (req, res) => {
+  if (hasPermission(req, 'sales.lead.delete')) {
+    // User can delete leads
+  }
+});
+```
+
+**Permission Caching**:
+- **L1 Cache**: In-memory (15-minute TTL)
+- **L2 Cache**: Database table (`permission_cache`)
+- Automatic cleanup every 30 minutes
+- Cache invalidation on role changes
+
+**Role Hierarchy Levels**:
+1. **Level 1** (Individual Contributors): Sales Rep, Field Technician, Warehouse Associate
+2. **Level 2** (Team Leads): Senior Sales Rep, Senior Technician
+3. **Level 3** (Supervisors): Sales Supervisor, Service Supervisor, Warehouse Supervisor
+4. **Level 4** (Managers): Sales Manager, Service Manager, Operations Manager, Branch Manager
+5. **Level 5** (Regional Directors): Regional Sales Director, Regional Service Manager
+6. **Level 6** (Company Directors): VP Sales, VP Service, Director Operations, Controller
+7. **Level 7** (Executives): CEO, CFO, COO
+8. **Level 8** (Platform Admins): Platform Administrator (Printyx staff only)
+
+**Organizational Scopes**:
+- `own`: User's own data only
+- `team`: User + direct reports
+- `location`: All data at user's location
+- `regional`: All data in user's region
+- `company`: All company data (all locations/regions)
+- `platform`: Cross-tenant data (Printyx staff only)
+
+### Hierarchical Query Building
+
+**Overview**:
+Automatic data scoping based on user's organizational position using nested set model.
+
+**Using the Query Builder**:
+```typescript
+import { HierarchicalQueryBuilder, applyUserScope } from './middleware/hierarchical-query-builder';
+
+// Method 1: Using the query builder class
+const queryBuilder = new HierarchicalQueryBuilder(req.user);
+const filter = queryBuilder.applyHierarchicalFilter();
+
+const data = await db
+  .select()
+  .from(opportunities)
+  .where(filter);
+
+// Method 2: Quick helper function
+const filter = applyUserScope(req.user);
+
+// Method 3: Get accessible IDs for IN queries
+const locationIds = await queryBuilder.getAccessibleLocationIds();
+const regionIds = await queryBuilder.getAccessibleRegionIds();
+const userIds = await queryBuilder.getAccessibleUserIds();
+
+const data = await db
+  .select()
+  .from(opportunities)
+  .where(inArray(opportunities.locationId, locationIds));
+
+// Method 4: Override scope for specific queries
+const filter = queryBuilder.applyHierarchicalFilter({
+  overrideScope: 'location', // Show location data even if user has higher access
+});
+
+// Method 5: Custom field names and table aliases
+const filter = queryBuilder.applyHierarchicalFilter({
+  tableAlias: 'o',
+  fieldNames: {
+    userId: 'owner_id',
+    locationId: 'branch_id',
+  },
+});
+
+// Method 6: Raw SQL queries
+const whereClause = queryBuilder.getSQLWhereClause({ tableAlias: 'o' });
+const sqlQuery = `
+  SELECT * FROM opportunities o
+  WHERE ${whereClause}
+  ORDER BY o.created_at DESC
+`;
+```
+
+**Nested Set Model**:
+The organizational hierarchy uses a nested set model for efficient queries:
+- `lft` (left): Left boundary
+- `rght` (right): Right boundary
+- `depth`: Level in hierarchy
+
+```typescript
+// Find all descendants of a unit
+SELECT * FROM organizational_units child
+WHERE child.lft > parent.lft
+  AND child.rght < parent.rght
+  AND child.tenant_id = parent.tenant_id;
+
+// Find all ancestors of a unit
+SELECT * FROM organizational_units parent
+WHERE parent.lft < child.lft
+  AND parent.rght > child.rght
+  AND parent.tenant_id = child.tenant_id;
+```
+
+### Reporting Infrastructure
+
+**Overview**:
+Comprehensive reporting system with 75+ pre-built reports, KPI tracking, export capabilities, and scheduling.
+
+**Core Components**:
+- `shared/reporting-schema.ts` - Report/KPI definitions schema
+- `server/routes/reporting-api.ts` - Report engine API
+- `server/database-updater/seeders/report-seeder.ts` - 75 report definitions
+- `server/database-updater/seeders/kpi-seeder.ts` - 43 KPI definitions
+
+**Report Categories** (75 total):
+- **Sales** (24 reports): Personal pipeline → board-level analytics
+- **Service** (19 reports): Technician productivity → executive dashboards
+- **Operations** (11 reports): Warehouse productivity → supply chain
+- **Finance** (10 reports): AR/AP aging → profitability analysis
+- **Executive** (4 reports): CEO dashboards, board reports
+- **Platform Admin** (4 reports): System metrics, tenant usage, billing
+- **Cross-Department** (3 reports): Customer 360, employee/location performance
+
+**KPI Categories** (43 total):
+- **Sales** (11 KPIs): Quota attainment, win rate, pipeline metrics
+- **Service** (8 KPIs): FTF rate, CSAT, utilization, SLA compliance
+- **Operations** (6 KPIs): Inventory accuracy/turns, FPY, on-time delivery
+- **Finance** (7 KPIs): Revenue growth, margins, DSO, liquidity ratios
+- **Executive** (6 KPIs): CAC, CLV, NPS, employee engagement, retention
+- **Platform** (5 KPIs): Uptime, API performance, error rate, MRR, churn
+
+**Report Engine API**:
+```typescript
+// List available reports (filtered by user permissions)
+GET /api/reports
+GET /api/reports?category=sales&scope=individual&search=pipeline
+
+// Get report definition
+GET /api/reports/:code
+
+// Execute report
+POST /api/reports/:code/execute
+{
+  "filters": {
+    "dateRange": { "start": "2025-01-01", "end": "2025-01-31" },
+    "stage": ["Discovery", "Proposal"]
+  },
+  "parameters": {
+    "userId": "user-123",
+    "productCategory": "Copiers"
+  },
+  "sort": { "field": "value", "direction": "desc" },
+  "pagination": { "page": 1, "limit": 50 },
+  "overrideScope": "team" // Optional scope override
+}
+
+// Export report (CSV, Excel, PDF)
+POST /api/reports/:code/export
+{
+  "format": "xlsx", // 'csv' | 'xlsx' | 'pdf'
+  "filters": { /* ... */ },
+  "parameters": { /* ... */ }
+}
+
+// Schedule report
+POST /api/reports/:code/schedule
+{
+  "name": "Weekly Sales Report",
+  "cronExpression": "0 9 * * 1", // Every Monday at 9 AM
+  "timezone": "America/New_York",
+  "recipients": ["manager@company.com"],
+  "deliveryMethod": "email",
+  "exportFormat": "pdf",
+  "emailSubject": "Weekly Sales Performance",
+  "emailBody": "Please find attached this week's sales report."
+}
+
+// Get scheduled reports
+GET /api/reports/scheduled/list
+
+// Delete scheduled report
+DELETE /api/reports/scheduled/:id
+
+// Get recent executions
+GET /api/reports/executions/recent?limit=20
+```
+
+**Report Execution Flow**:
+1. **Permission Check**: Validates user has required permissions
+2. **Cache Check**: Returns cached results if available (configurable TTL)
+3. **Parameter Substitution**: Replaces `:userId`, `:tenantId`, etc.
+4. **Hierarchical Filtering**: Injects scope-based WHERE clause
+5. **SQL Execution**: Runs query with timeout and row limits
+6. **Result Caching**: Caches results for subsequent requests
+7. **Audit Trail**: Records execution metrics in `report_executions`
+
+**Report Features**:
+- **Caching**: Configurable cache duration (default: 5 minutes)
+- **Real-time**: Opt-in for reports that bypass cache
+- **Drill-down**: Support for interactive drilling into details
+- **Export**: CSV, Excel (with styling), PDF (with formatting)
+- **Scheduling**: Cron-based with email delivery
+- **Performance**: Query timeout (30s), max rows (10K)
+- **Audit**: Full execution history with performance metrics
+
+**Seeding Reports and KPIs**:
+```bash
+# Seed RBAC permissions and roles (prerequisite)
+npm run seed:rbac
+
+# Seed report definitions (75 reports)
+npm run seed:reports
+
+# Seed KPI definitions (43 KPIs)
+npm run seed:kpis
+```
+
+**KPI Display Formats**:
+- **Currency**: `$1,234,567`
+- **Percentage**: `85.5%`
+- **Decimal**: `3.2x`
+- **Number**: `45 days`
+
+**Color-Coded Performance**:
+- 🔴 Red: Below target / Poor
+- 🟡 Yellow: Near target / Fair
+- 🟢 Green: On target / Good
+- 🔵 Blue: Exceeds target / Excellent
+
+**Alert Configuration**:
+High-priority KPIs have automated alerts:
+- **Critical threshold**: Immediate notification
+- **Warning threshold**: Proactive notification
+- **Custom messages**: Contextual alert descriptions
+
 ### Security Best Practices
 
 **Authentication & Authorization**:
@@ -944,13 +1363,20 @@ try {
 
 ### Testing Guidelines
 
+**Unit & Integration Testing (Vitest)**:
+- Unit tests: server/tests/unit/
+- Integration tests: server/tests/integration/
+- Run with `npm run test` or `npm run test:watch`
+- Coverage reports: `npm run test:coverage`
+
 **E2E Testing (Playwright)**:
 - Write tests in tests/ directory
 - Test critical user flows
 - Run with `npm run test:e2e`
+- Multi-browser support: Chromium, Firefox, WebKit, Mobile
 - Use Page Object Model for maintainability
 
-**Integration Testing (Puppeteer)**:
+**Legacy Testing (Puppeteer)**:
 - Test components in isolation (testing/components/)
 - Test workflows (testing/crm-workflow-system.js)
 - Run with testing/run-tests.js
@@ -1034,7 +1460,16 @@ npm run format       # Check formatting
 npm run db:push      # Push schema changes
 
 # Testing
-npm run test:e2e     # Run E2E tests
+npm run test         # Run unit tests (Vitest)
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage
+npm run test:e2e     # Run E2E tests (Playwright)
+npm run test:all     # Run all tests
+
+# Knowledge Base
+npm run kb           # KB CLI interface
+npm run kb:list      # List KB articles
+npm run kb:stats     # Show KB statistics
 
 # Production
 npm run build        # Build for production

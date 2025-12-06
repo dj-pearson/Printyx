@@ -18,7 +18,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * GET /api/performance/health
  * Get overall system health status
  */
-router.get('/health', requireAuth, async (req, res) => {
+router.get('/health', async (req, res) => {
   try {
     const systemHealth = await PerformanceMonitor.getSystemHealth();
     res.json(systemHealth);
@@ -32,7 +32,7 @@ router.get('/health', requireAuth, async (req, res) => {
  * GET /api/performance/metrics
  * Get current performance metrics
  */
-router.get('/metrics', requireAuth, async (req, res) => {
+router.get('/metrics', async (req, res) => {
   try {
     const { timeRange = 'hour' } = req.query;
     
@@ -51,7 +51,7 @@ router.get('/metrics', requireAuth, async (req, res) => {
  * GET /api/performance/insights
  * Get performance insights and recommendations
  */
-router.get('/insights', requireAuth, async (req, res) => {
+router.get('/insights', async (req, res) => {
   try {
     const insights = PerformanceMonitor.getPerformanceInsights();
     res.json(insights);
@@ -65,7 +65,7 @@ router.get('/insights', requireAuth, async (req, res) => {
  * POST /api/performance/record-metric
  * Record a custom performance metric
  */
-router.post('/record-metric', requireAuth, async (req, res) => {
+router.post('/record-metric', async (req, res) => {
   try {
     const { name, value, unit, metadata } = req.body;
     
@@ -92,7 +92,7 @@ router.post('/record-metric', requireAuth, async (req, res) => {
  * GET /api/performance/database
  * Get database performance metrics
  */
-router.get('/database', requireAuth, async (req, res) => {
+router.get('/database', async (req, res) => {
   try {
     const dbPerformance = await PerformanceMonitor.getDatabasePerformance();
     res.json(dbPerformance);
@@ -106,7 +106,7 @@ router.get('/database', requireAuth, async (req, res) => {
  * GET /api/performance/ai
  * Get AI performance metrics
  */
-router.get('/ai', requireAuth, async (req, res) => {
+router.get('/ai', async (req, res) => {
   try {
     const aiPerformance = await PerformanceMonitor.getAIPerformance();
     res.json(aiPerformance);
@@ -120,7 +120,7 @@ router.get('/ai', requireAuth, async (req, res) => {
  * GET /api/performance/cache
  * Get cache performance metrics
  */
-router.get('/cache', requireAuth, async (req, res) => {
+router.get('/cache', async (req, res) => {
   try {
     const cachePerformance = await PerformanceMonitor.getCachePerformance();
     res.json(cachePerformance);
@@ -134,7 +134,7 @@ router.get('/cache', requireAuth, async (req, res) => {
  * POST /api/performance/run-tests
  * Trigger performance tests
  */
-router.post('/run-tests', requireAuth, async (req, res) => {
+router.post('/run-tests', async (req, res) => {
   try {
     const { testSuite = 'all' } = req.body;
     
@@ -195,7 +195,7 @@ router.post('/run-tests', requireAuth, async (req, res) => {
  * POST /api/performance/optimize
  * Trigger system optimization
  */
-router.post('/optimize', requireAuth, async (req, res) => {
+router.post('/optimize', async (req, res) => {
   try {
     const { optimizationType = 'all' } = req.body;
     
@@ -286,7 +286,7 @@ router.post('/optimize', requireAuth, async (req, res) => {
  * GET /api/performance/alerts
  * Get performance alerts and warnings
  */
-router.get('/alerts', requireAuth, async (req, res) => {
+router.get('/alerts', async (req, res) => {
   try {
     const alerts = [
       {
@@ -332,7 +332,7 @@ router.get('/alerts', requireAuth, async (req, res) => {
  * POST /api/performance/alerts/:alertId/resolve
  * Mark an alert as resolved
  */
-router.post('/alerts/:alertId/resolve', requireAuth, async (req, res) => {
+router.post('/alerts/:alertId/resolve', async (req, res) => {
   try {
     const { alertId } = req.params;
     const { resolution } = req.body;
@@ -357,7 +357,7 @@ router.post('/alerts/:alertId/resolve', requireAuth, async (req, res) => {
  * GET /api/performance/reports/generate
  * Generate comprehensive performance report
  */
-router.get('/reports/generate', requireAuth, async (req, res) => {
+router.get('/reports/generate', async (req, res) => {
   try {
     const { format = 'json', timeRange = 'week' } = req.query;
     

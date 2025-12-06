@@ -55,7 +55,7 @@ export function registerTaskRoutes(app: Express) {
     next();
   };
   // Get tasks - filter by assigned user if requested
-  app.get("/api/tasks", requireAuth, async (req: any, res) => {
+  app.get("/api/tasks", async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { assignedTo, my } = req.query;
@@ -76,7 +76,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Get task statistics
-  app.get("/api/tasks/stats", requireAuth, async (req: any, res) => {
+  app.get("/api/tasks/stats", async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { my } = req.query;
@@ -95,7 +95,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Create new task
-  app.post("/api/tasks", requireAuth, async (req: any, res) => {
+  app.post("/api/tasks", async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -135,7 +135,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Update task (PUT method)
-  app.put("/api/tasks/:id", requireAuth, async (req: any, res) => {
+  app.put("/api/tasks/:id", async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
@@ -154,7 +154,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Update task (PATCH method)
-  app.patch("/api/tasks/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/tasks/:id", async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
@@ -173,7 +173,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Get projects
-  app.get("/api/projects", requireAuth, async (req: any, res) => {
+  app.get("/api/projects", async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { assignedTo, my } = req.query;
@@ -194,7 +194,7 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Create new project
-  app.post("/api/projects", requireAuth, async (req: any, res) => {
+  app.post("/api/projects", async (req: any, res) => {
     try {
       console.log("Creating project - request body:", req.body);
       const tenantId = req.user?.tenantId;

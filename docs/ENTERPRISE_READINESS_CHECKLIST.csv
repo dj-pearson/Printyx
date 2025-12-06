@@ -1,0 +1,151 @@
+Priority,Section,Category,Item,Description,Status,File/Location,Effort,Impact
+P0,Infrastructure,Monitoring,APM Integration,"Integrate DataDog, New Relic, or Sentry for application performance monitoring",Not Started,,High,Critical - Cannot troubleshoot production issues
+P0,Infrastructure,Monitoring,Structured Logging,"Replace console.log with Pino/Winston, add log levels and correlation IDs",Not Started,server/,Medium,Critical - Logs lost on restart
+P0,Infrastructure,Monitoring,Log Aggregation,"Set up CloudWatch, Splunk, or ELK stack for centralized logging",Not Started,,High,Critical - No log retention
+P0,Infrastructure,Monitoring,Health Endpoints,"Add /health, /ready, /live endpoints for orchestration",Not Started,server/index.ts,Low,Critical - No container orchestration support
+P0,Infrastructure,Deployment,CI/CD Pipeline,"GitHub Actions or GitLab CI for automated testing and deployment",Not Started,.github/workflows/,High,Critical - Manual deployment risk
+P0,Infrastructure,Deployment,Containerization,"Create Dockerfile and docker-compose.yml for portable deployments",Not Started,,High,Critical - Locked to Replit
+P0,Infrastructure,Deployment,Kubernetes Manifests,"Create K8s deployment, service, ingress, and HPA configs",Not Started,k8s/,High,Critical - Cannot scale horizontally
+P0,Core Auth,Security,Email Parser Password Encryption,"Encrypt email credentials before storing - TODO in code",Not Started,server/routes-email-parser.ts:8,Low,Critical - Plaintext passwords
+P0,Core Auth,Security,Secrets Management,"Integrate HashiCorp Vault or AWS Secrets Manager",Not Started,,Medium,Critical - Secrets in env files
+P0,Database,Performance,Connection Retry Logic,"Add exponential backoff and circuit breaker for DB connections",Not Started,server/,Medium,Critical - No resilience
+P1,Core Auth,Authentication,SSO/SAML Integration,"Add Azure AD, Okta, Google Workspace SSO support",Not Started,server/auth-routes.ts,High,High - Enterprise requirement
+P1,Core Auth,Authentication,API Key Management,"Generate and validate API keys for service-to-service auth",Not Started,server/middleware/,Medium,High - Integration requirement
+P1,Core Auth,Authentication,Enforce MFA for Admins,"Require MFA for admin and sensitive roles, not optional",Partial,server/routes-mfa.ts,Low,High - Security compliance
+P1,Core Auth,Authentication,SMS/Email MFA Options,"Add SMS and email-based MFA beyond TOTP",Not Started,server/routes-mfa.ts,Medium,Medium - User convenience
+P1,Core Auth,Authorization,Session Timeout Enforcement,"Auto-terminate sessions after timeout, not just warning",Partial,server/services/security-compliance.ts,Low,High - Security compliance
+P1,Core Auth,Authorization,IP Whitelist Option,"Allow enterprise customers to restrict access by IP",Not Started,server/middleware/,Medium,Medium - Enterprise requirement
+P1,Core Auth,Authorization,OAuth Token Refresh,"Implement silent token refresh for calendar integrations",Not Started,client/src/components/calendar/CalendarProvider.tsx,Medium,Medium - Session expiry issues
+P1,API,Design,API Versioning,"Add /api/v1/ prefix to all endpoints for backward compatibility",Not Started,server/routes.ts,High,High - Breaking changes risk
+P1,API,Documentation,OpenAPI/Swagger Specs,"Auto-generate API documentation from route definitions",Not Started,server/,High,High - Developer experience
+P1,API,Validation,Zod Schema Validation,"Add Zod validation to all 350+ API endpoints",Partial,server/routes.ts,Very High,High - Input validation gaps
+P1,API,Performance,Rate Limiting Per User,"Add per-user rate limits beyond IP-based",Partial,server/middleware/,Medium,Medium - Abuse prevention
+P1,API,Performance,Consistent Pagination,"Ensure all list endpoints support pagination consistently",Partial,server/routes.ts,Medium,Medium - Performance at scale
+P1,Database,Performance,Eliminate SELECT * Queries,"Replace SELECT * with specific column selections",Not Started,server/routes.ts,High,High - Performance degradation
+P1,Database,Performance,Query Optimization Indexes,"Add database indexes for frequently queried columns",Partial,migrations/,Medium,High - Query performance
+P1,Database,Performance,Distributed Cache,"Add Redis/Memcached for distributed caching layer",Not Started,,High,Medium - Performance at scale
+P1,Database,Operations,Automated Backups,"Set up automated daily backups with retention policy",Not Started,,Medium,High - Data loss risk
+P1,Database,Operations,Backup Restore Testing,"Regular DR drills to verify backup integrity",Not Started,docs/,Medium,High - Recovery assurance
+P1,Infrastructure,Security,CSP Hardening,"Remove 'unsafe-inline' from Content Security Policy",Not Started,server/index.ts,Medium,Medium - XSS mitigation
+P1,Infrastructure,Alerting,Error Alerting,"Configure PagerDuty/OpsGenie for critical error alerts",Not Started,,Medium,High - Incident response
+P1,Infrastructure,Alerting,Performance Alerts,"Alert on response time degradation and error rate spikes",Not Started,,Medium,High - Proactive monitoring
+P2,Compliance,GDPR,Right to Erasure,"Implement automated data deletion for GDPR requests",Partial,server/services/security-compliance.ts,High,High - Legal compliance
+P2,Compliance,GDPR,Data Export,"Allow users to export all their personal data",Not Started,,Medium,High - Legal compliance
+P2,Compliance,GDPR,Consent Management,"Track and manage user consent for data processing",Not Started,shared/,High,High - Legal compliance
+P2,Compliance,GDPR,Data Processing Agreements,"Track DPA status for enterprise customers",Not Started,shared/,Medium,Medium - Legal compliance
+P2,Compliance,HIPAA,PHI Encryption,"Encrypt Protected Health Information at rest and in transit",Not Started,,High,High - Healthcare compliance
+P2,Compliance,HIPAA,Audit Trail for Healthcare,"Complete audit trail for healthcare data access",Not Started,server/,High,High - Healthcare compliance
+P2,Compliance,SOC2,Change Management Process,"Document and enforce change management procedures",Not Started,docs/,Medium,High - Audit requirement
+P2,Compliance,SOC2,Incident Response Plan,"Create and document incident response procedures",Not Started,docs/,Medium,High - Audit requirement
+P2,Compliance,PCI,Payment Audit Trail,"Track all payment-related actions for compliance",Partial,server/,Medium,Medium - Payment compliance
+P2,Compliance,Data Retention,Automated Data Purging,"Implement configurable data retention policies",Not Started,shared/,High,Medium - Storage management
+P2,Compliance,Data Retention,Audit Log Archival,"Archive and manage audit log retention",Not Started,server/,Medium,Medium - Compliance
+P2,Testing,Unit Tests,Route Handler Tests,"Add unit tests for all 150+ route handlers",Partial,server/tests/,Very High,High - Code quality
+P2,Testing,Unit Tests,Service Layer Tests,"Test all 70 business logic services",Partial,server/tests/,Very High,High - Code quality
+P2,Testing,Integration Tests,API Integration Tests,"End-to-end API tests for critical flows",Partial,server/tests/integration/,High,High - Regression prevention
+P2,Testing,E2E Tests,Critical User Flow Tests,"Playwright tests for customer journey, sales, service",Partial,tests/,High,High - User experience
+P2,Testing,E2E Tests,Mobile Browser Tests,"E2E tests on mobile viewports",Partial,tests/,Medium,Medium - Mobile users
+P2,Testing,Performance Tests,Load Testing Suite,"k6 or Locust tests for capacity planning",Not Started,tests/load/,High,High - Capacity planning
+P2,Testing,Security Tests,OWASP Scan Integration,"Automated security scanning in CI/CD",Not Started,.github/workflows/,Medium,High - Security assurance
+P2,Testing,Security Tests,Penetration Testing,"Annual third-party penetration testing",Not Started,docs/,High,High - Security assurance
+P2,CRM,Core Features,Business Records Search,"Advanced search with filters and saved searches",Implemented,server/routes-business-records.ts,Done,Done
+P2,CRM,Core Features,Lead Scoring,"AI-powered lead qualification scoring",Implemented,server/routes/lead-scoring-routes.ts,Done,Done
+P2,CRM,Integrations,Salesforce Sync,"Bi-directional Salesforce synchronization",Implemented,server/routes/salesforce-integration.ts,Done,Done
+P2,CRM,Integrations,Apollo.io Enrichment,"Lead enrichment from Apollo.io",Implemented,server/routes/apollo-routes.ts,Done,Done
+P2,CRM,Missing,Contact Deduplication,"Automated detection and merge of duplicate contacts",Not Started,server/,Medium,Medium - Data quality
+P2,CRM,Missing,Territory Management,"Sales territory assignment and management",Not Started,shared/,High,Medium - Sales operations
+P2,GPS,Core Features,Real-time Tracking,"Live GPS tracking for field technicians",Implemented,server/routes/gps-tracking-routes.ts,Done,Done
+P2,GPS,Core Features,Route Optimization,"Optimize technician routes for efficiency",Implemented,server/routes/gps-tracking-routes.ts,Done,Done
+P2,GPS,Missing,Geofencing Alerts,"Alerts when technicians enter/exit zones",Not Started,server/,Medium,Medium - Field management
+P2,GPS,Missing,Mileage Reporting,"Automated mileage tracking and reporting",Not Started,server/,Medium,Low - Expense management
+P2,Billing,Core Features,Stripe Integration,"Payment processing and subscription billing",Implemented,server/services/stripe-service.ts,Done,Done
+P2,Billing,Core Features,Meter Billing,"Usage-based billing from device meters",Implemented,server/routes-meter-billing.ts,Done,Done
+P2,Billing,Core Features,Invoice Generation,"Automated invoice creation and sending",Implemented,server/routes-invoices.ts,Done,Done
+P2,Billing,Missing,Journal Entries API,"General ledger journal entry management - returns 501",Not Started,server/routes.ts:6258,Medium,Medium - Accounting
+P2,Billing,Missing,Credit Card Tokenization,"Store cards securely with tokenization",Partial,server/services/stripe-service.ts,Low,Medium - Payment security
+P2,Billing,Missing,Dunning Management,"Automated failed payment retry and notifications",Not Started,server/,Medium,Medium - Revenue recovery
+P2,Templates,Core Features,Email Templates,"Customizable email templates for notifications",Implemented,server/services/email-service.ts,Done,Done
+P2,Templates,Core Features,Document Templates,"Quote and proposal document templates",Implemented,server/services/document-generation-service.ts,Done,Done
+P2,Templates,Missing,Template Versioning,"Version control for templates with rollback",Not Started,shared/,Medium,Low - Template management
+P2,Templates,Missing,Template Testing,"Preview and test templates before sending",Not Started,client/src/,Medium,Low - Quality assurance
+P2,Storage,Core Features,GCS Integration,"Google Cloud Storage for file uploads",Implemented,server/,Done,Done
+P2,Storage,Missing,File Virus Scanning,"Scan uploaded files for malware",Not Started,server/,Medium,High - Security
+P2,Storage,Missing,File Size Limits,"Configurable per-tenant file size limits",Partial,server/index.ts,Low,Medium - Resource management
+P2,Storage,Missing,Storage Quotas,"Per-tenant storage quota management",Not Started,server/,Medium,Medium - Resource management
+P2,Documents,Core Features,PDF Generation,"Generate PDFs for quotes, invoices, reports",Implemented,server/services/document-generation-service.ts,Done,Done
+P2,Documents,Missing,DOCX Generation,"Word document generation - returns placeholder",Not Started,server/services/document-generation-service.ts,Medium,Medium - Document variety
+P2,Documents,Missing,OCR Document Parsing,"Extract text from uploaded documents - placeholder",Not Started,server/services/document-ocr-ai-service.ts,High,Medium - Automation
+P2,Documents,Missing,E-Signature Integration,"DocuSign/Adobe Sign webhooks - not implemented",Not Started,server/routes/signature-routes.ts,High,High - Contract workflow
+P2,Documents,Missing,Document Search,"Full-text search across stored documents",Not Started,server/,High,Medium - Document retrieval
+P2,AI,Core Features,Claude Integration,"AI assistant for platform users",Implemented,server/services/claude-ai-service.ts,Done,Done
+P2,AI,Core Features,AI Search,"Semantic search across knowledge base",Implemented,server/services/ai-search-knowledge-service.ts,Done,Done
+P2,AI,Core Features,AI Documentation,"Automated documentation generation",Implemented,server/services/ai-documentation-service.ts,Done,Done
+P2,AI,Missing,AI Model Selection,"Allow choosing between Claude/GPT models",Not Started,server/services/,Medium,Low - Flexibility
+P2,AI,Missing,AI Usage Tracking,"Track and limit AI API usage per tenant",Not Started,server/,Medium,Medium - Cost management
+P2,AI,Missing,AI Response Caching,"Cache common AI responses for performance",Not Started,server/services/,Medium,Medium - Cost reduction
+P2,Blog,Core Features,Blog Posts,"Create and publish blog content",Implemented,server/routes/content-marketing-routes.ts,Done,Done
+P2,Blog,Core Features,Blog Categories,"Organize posts by category and tags",Implemented,shared/content-marketing-schema.ts,Done,Done
+P2,Blog,Missing,Blog Comments,"User comments on blog posts",Not Started,shared/,Medium,Low - Engagement
+P2,Blog,Missing,Blog RSS Feed,"RSS feed for blog syndication",Not Started,server/,Low,Low - Distribution
+P2,Blog,Missing,Blog Scheduling,"Schedule posts for future publication",Not Started,server/,Low,Low - Content workflow
+P2,SEO,Core Features,Meta Tags,"Dynamic meta tags per page",Implemented,client/src/lib/seoUtils.tsx,Done,Done
+P2,SEO,Core Features,JSON-LD Schema,"Structured data for rich snippets",Implemented,client/src/lib/schemaMarkup.ts,Done,Done
+P2,SEO,Core Features,Sitemap Generation,"Dynamic XML sitemap",Implemented,server/services/seo-service.ts,Done,Done
+P2,SEO,Core Features,llms.txt,"AI agent discovery file",Implemented,server/,Done,Done
+P2,SEO,Missing,Canonical URL Validation,"Verify canonical URLs are correctly set",Partial,server/services/seo-service.ts,Low,Medium - Duplicate content
+P2,SEO,Missing,Core Web Vitals Monitoring,"Track LCP, FID, CLS metrics",Not Started,client/src/,Medium,Medium - Search ranking
+P2,Automation,Core Features,Workflow Automation,"Automated business workflows",Implemented,shared/workflow-automation-schema.ts,Done,Done
+P2,Automation,Core Features,Alert System,"Intelligent alerting on events",Implemented,shared/intelligent-alerts-schema.ts,Done,Done
+P2,Automation,Missing,Workflow Visual Builder,"Drag-and-drop workflow designer",Not Started,client/src/,Very High,Medium - User experience
+P2,Automation,Missing,Workflow Templates,"Pre-built workflow templates library",Not Started,server/,Medium,Low - Quick start
+P2,Automation,Missing,Automation Audit Trail,"Log all automated actions for compliance",Partial,server/,Medium,Medium - Compliance
+P3,Media,Core Features,Image Upload,"Upload and manage images",Implemented,server/,Done,Done
+P3,Media,Missing,Image Optimization,"Automatic image resizing and compression",Not Started,server/,Medium,Medium - Performance
+P3,Media,Missing,CDN Integration,"Serve media via CloudFront or similar CDN",Not Started,,High,Medium - Performance
+P3,Media,Missing,Video Support,"Video upload and streaming",Not Started,server/,High,Low - Feature expansion
+P3,Operations,Runbooks,Incident Response Runbook,"Documented procedures for outages and incidents",Not Started,docs/,Medium,High - Operational readiness
+P3,Operations,Runbooks,Database Recovery Runbook,"Step-by-step DB restoration procedures",Not Started,docs/,Medium,High - Disaster recovery
+P3,Operations,Runbooks,Scaling Guidelines,"Capacity planning and horizontal scaling docs",Not Started,docs/,Medium,Medium - Growth readiness
+P3,Operations,Runbooks,On-Call Procedures,"On-call rotation and escalation procedures",Not Started,docs/,Low,Medium - Operational readiness
+P3,Infrastructure,Configuration,Environment Validation,"Validate required env vars on startup",Not Started,server/index.ts,Low,Medium - Deployment reliability
+P3,Infrastructure,Configuration,Feature Flags,"LaunchDarkly or similar for feature management",Not Started,,High,Medium - Release management
+P3,Infrastructure,Configuration,Config as Code,"Infrastructure as Code with Terraform/Pulumi",Not Started,infrastructure/,Very High,Medium - Infrastructure management
+P3,Core Auth,Security,Password Policy Customization,"Per-tenant password policy configuration",Partial,shared/security-schema.ts,Medium,Low - Enterprise customization
+P3,Core Auth,Security,Login Notification,"Email notification on login from new device/location",Not Started,server/,Medium,Medium - Security awareness
+P3,Core Auth,Security,Brute Force Detection,"Advanced detection beyond rate limiting",Partial,server/auth-routes.ts,Medium,Medium - Security
+P3,API,Error Handling,Standardized Error Responses,"Consistent error format across all endpoints",Partial,server/,Medium,Medium - Developer experience
+P3,API,Error Handling,Error Code Documentation,"Document all error codes and meanings",Not Started,docs/,Low,Low - Developer experience
+P3,Database,Performance,Query Performance Monitoring,"Track slow queries and optimization opportunities",Not Started,server/,Medium,Medium - Performance
+P3,Database,Performance,Read Replicas,"Set up read replicas for reporting queries",Not Started,,High,Low - Scale optimization
+P3,Equipment,Core Features,Equipment Lifecycle,"Track equipment from delivery to disposal",Implemented,server/services/equipment-lifecycle-state-machine.ts,Done,Done
+P3,Equipment,Missing,QR Code Generation,"Generate QR codes for equipment - TODO in code",Not Started,server/services/equipment-lifecycle-state-machine.ts,Low,Low - Convenience
+P3,Equipment,Missing,Warranty Registration,"Auto-register warranties - TODO in code",Not Started,server/services/equipment-lifecycle-state-machine.ts,Medium,Low - Automation
+P3,Equipment,Missing,Disposal Notifications,"Notify on equipment disposal - TODO in code",Not Started,server/services/equipment-lifecycle-state-machine.ts,Low,Low - Compliance
+P3,Service,Core Features,Service Dispatch,"Field service scheduling and dispatch",Implemented,server/routes-service-dispatch.ts,Done,Done
+P3,Service,Core Features,Mobile Field Service,"Mobile app for field technicians",Implemented,client/src/pages/mobile-field-service.tsx,Done,Done
+P3,Service,Missing,Offline Mode,"Work offline and sync when connected",Not Started,client/src/,Very High,Medium - Field reliability
+P3,Customer Portal,Core Features,Self-Service Portal,"Customer-facing portal for tickets and info",Implemented,server/services/customer-portal-service.ts,Done,Done
+P3,Customer Portal,Missing,Portal Customization,"White-label portal per tenant",Partial,server/services/white-label-service.ts,Medium,Medium - Branding
+P3,Customer Portal,Missing,DNS Verification,"Verify custom domains - TODO in code",Not Started,server/services/white-label-service.ts,Medium,Medium - White-label
+P3,Integrations,QuickBooks,QuickBooks Sync,"Bi-directional accounting sync",Implemented,server/routes/quickbooks-integration.ts,Done,Done
+P3,Integrations,Calendar,Google Calendar,"Calendar integration for scheduling",Implemented,server/routes/calendar-routes.ts,Done,Done
+P3,Integrations,Calendar,Microsoft 365,"Microsoft calendar integration",Implemented,server/routes/calendar-routes.ts,Done,Done
+P3,Integrations,Calendar,Calendar OAuth Flow,"OAuth implementation for calendars - TODO",Not Started,client/src/components/calendar/CalendarProvider.tsx,Medium,Medium - Authentication
+P3,Integrations,Missing,Webhook Management,"Inbound webhook configuration UI",Partial,server/integrations/webhook-service.ts,Medium,Medium - Integration flexibility
+P3,Integrations,Missing,Integration Health Dashboard,"Monitor integration status and errors",Not Started,client/src/,Medium,Medium - Reliability
+P3,Printyx Client,Core Features,SNMP Monitoring,"Collect device data via SNMP",Implemented,printyx-client/src/collectors/,Done,Done
+P3,Printyx Client,Core Features,Device Discovery,"Automatic network printer discovery",Implemented,printyx-client/src/discovery/,Done,Done
+P3,Printyx Client,Missing,Client Auto-Update,"Automatic client software updates",Not Started,printyx-client/,High,Medium - Maintenance
+P3,Printyx Client,Missing,Client Health Reporting,"Report client health status to platform",Partial,printyx-client/,Medium,Medium - Monitoring
+P3,Reports,Core Features,Report Engine,"75+ pre-built reports with RBAC",Implemented,server/routes/reporting-api.ts,Done,Done
+P3,Reports,Core Features,Report Scheduling,"Schedule and email reports",Implemented,server/routes/reporting-api.ts,Done,Done
+P3,Reports,Core Features,Export Formats,"CSV, Excel, PDF export",Implemented,client/src/lib/export-utils.ts,Done,Done
+P3,Reports,Missing,Custom Report Builder,"User-created custom reports",Partial,client/src/,High,Medium - Flexibility
+P3,Reports,Missing,Dashboard Customization,"User-customizable dashboard widgets",Partial,client/src/,High,Medium - User experience
+P3,Knowledge Base,Core Features,KB Articles,"Create and manage support articles",Implemented,server/services/knowledge-base-service.ts,Done,Done
+P3,Knowledge Base,Core Features,KB CLI,"Command-line KB management",Implemented,server/cli/kb-cli.ts,Done,Done
+P3,Knowledge Base,Missing,KB Article Versioning,"Track article revisions and history",Not Started,shared/,Medium,Low - Content management
+P3,Knowledge Base,Missing,KB Analytics,"Track article views and helpfulness",Partial,server/,Medium,Low - Content optimization
+P3,CSV Import,Core Features,CSV Import Wizard,"AI-assisted CSV import",Implemented,server/routes-csv-import.ts,Done,Done
+P3,CSV Import,Missing,Service Products Import,"CSV import for service products - not implemented",Not Started,server/routes.ts:7213,Medium,Low - Data migration
+P3,CSV Import,Missing,Import Validation Preview,"Preview validation errors before import",Partial,client/src/,Medium,Low - Data quality

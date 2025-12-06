@@ -9,6 +9,7 @@ import {
   contentAnalytics,
   contentFaqs,
   contentCitations,
+  seoSettings,
   insertBlogPostSchema,
   insertGuideSchema,
   insertCaseStudySchema,
@@ -17,8 +18,18 @@ import {
   insertContentCitationSchema,
 } from '@shared/schema';
 import { z } from 'zod';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = express.Router();
+
+// Apply RBAC context to all content marketing routes
+router.use(enhanceUserContext);
 
 // Auth middleware - make content public for unauthenticated users, but track tenantId for authenticated
 const optionalAuth = (req: any, res: any, next: any) => {
@@ -173,7 +184,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
 });
 
 // Create blog post (admin only)
-router.post('/api/content/blog', requireAuth, async (req: any, res) => {
+router.post('/api/content/blog', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
     const userId = req.user?.id;
@@ -200,7 +211,7 @@ router.post('/api/content/blog', requireAuth, async (req: any, res) => {
 });
 
 // Update blog post (admin only)
-router.put('/api/content/blog/:id', requireAuth, async (req: any, res) => {
+router.put('/api/content/blog/:id', async (req: any, res) => {
   try {
     const [post] = await db
       .update(blogPosts)
@@ -216,7 +227,7 @@ router.put('/api/content/blog/:id', requireAuth, async (req: any, res) => {
 });
 
 // Delete blog post (admin only)
-router.delete('/api/content/blog/:id', requireAuth, async (req: any, res) => {
+router.delete('/api/content/blog/:id', async (req: any, res) => {
   try {
     await db
       .delete(blogPosts)
@@ -341,7 +352,7 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
 });
 
 // Create guide (admin only)
-router.post('/api/content/guides', requireAuth, async (req: any, res) => {
+router.post('/api/content/guides', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
     const userId = req.user?.id;
@@ -439,7 +450,7 @@ router.get('/api/content/case-studies/:slug', optionalAuth, async (req: any, res
 });
 
 // Create case study (admin only)
-router.post('/api/content/case-studies', requireAuth, async (req: any, res) => {
+router.post('/api/content/case-studies', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
 
@@ -495,7 +506,7 @@ router.get('/api/content/landing/:slug', optionalAuth, async (req: any, res) => 
 });
 
 // Create landing page (admin only)
-router.post('/api/content/landing', requireAuth, async (req: any, res) => {
+router.post('/api/content/landing', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId || null;
 
@@ -520,7 +531,7 @@ router.post('/api/content/landing', requireAuth, async (req: any, res) => {
 });
 
 // Update landing page (admin only)
-router.put('/api/content/landing/:id', requireAuth, async (req: any, res) => {
+router.put('/api/content/landing/:id', async (req: any, res) => {
   try {
     const [page] = await db
       .update(landingPages)
@@ -538,7 +549,7 @@ router.put('/api/content/landing/:id', requireAuth, async (req: any, res) => {
 // ============= FAQs =============
 
 // Add FAQ to content
-router.post('/api/content/:contentType/:contentId/faq', requireAuth, async (req: any, res) => {
+router.post('/api/content/:contentType/:contentId/faq', async (req: any, res) => {
   try {
     const { contentType, contentId } = req.params;
     const validatedData = insertContentFaqSchema.parse({
@@ -565,7 +576,7 @@ router.post('/api/content/:contentType/:contentId/faq', requireAuth, async (req:
 // ============= CITATIONS =============
 
 // Add citation to content
-router.post('/api/content/:contentType/:contentId/citation', requireAuth, async (req: any, res) => {
+router.post('/api/content/:contentType/:contentId/citation', async (req: any, res) => {
   try {
     const { contentType, contentId } = req.params;
     const validatedData = insertContentCitationSchema.parse({
@@ -632,7 +643,7 @@ router.post('/api/content/analytics/view', optionalAuth, async (req: any, res) =
 });
 
 // Get content analytics summary
-router.get('/api/content/analytics/:contentType/:contentId', requireAuth, async (req: any, res) => {
+router.get('/api/content/analytics/:contentType/:contentId', async (req: any, res) => {
   try {
     const { contentType, contentId } = req.params;
 
@@ -794,6 +805,79 @@ Sitemap: ${process.env.BASE_URL || 'https://printyx.com'}/sitemap.xml`;
 
   res.header('Content-Type', 'text/plain');
   res.send(robotsTxt);
+});
+
+// ============= LLMS.TXT (AI Crawler Guidance) =============
+
+router.get('/llms.txt', async (req, res) => {
+  try {
+    const baseUrl = process.env.BASE_URL || 'https://printyx.com';
+
+    // Try to get custom llms.txt from SEO settings (first tenant with settings)
+    const [settings] = await db
+      .select({ llmsTxt: seoSettings.llmsTxt })
+      .from(seoSettings)
+      .limit(1);
+
+    if (settings?.llmsTxt) {
+      res.header('Content-Type', 'text/plain');
+      res.send(settings.llmsTxt);
+      return;
+    }
+
+    // Default llms.txt content for AI crawlers
+    const llmsTxt = `# Printyx LLMs.txt
+# This file provides guidance to AI assistants and LLM crawlers
+
+# Site Information
+name: Printyx
+description: Cloud-based platform for copier dealers providing CRM, service dispatch, inventory management, and AI-powered predictive maintenance.
+url: ${baseUrl}
+
+# Preferred Content for AI Training/Retrieval
+allow: /blog/*
+allow: /resources/guides/*
+allow: /customers/*
+allow: /copier-dealer-crm
+allow: /print-service-dispatch-mobile
+allow: /predictive-intelligence
+allow: /modern-architecture
+allow: /roi-calculator
+allow: /case-studies
+
+# Content to Exclude from AI Training
+disallow: /dashboard/*
+disallow: /admin/*
+disallow: /api/*
+disallow: /settings/*
+disallow: /login
+disallow: /signup
+
+# Contact Information
+contact: support@printyx.com
+
+# Citation Preferences
+citation_format: When referencing Printyx content, please cite as "Printyx (${baseUrl})"
+
+# Content Topics
+topics:
+  - Copier dealer software
+  - Print service management
+  - AI-powered predictive maintenance
+  - Field service dispatch
+  - Managed print services
+  - Equipment lifecycle management
+  - Dynamic pricing for copier contracts
+
+# Last Updated
+updated: ${new Date().toISOString().split('T')[0]}`;
+
+    res.header('Content-Type', 'text/plain');
+    res.send(llmsTxt);
+  } catch (error: any) {
+    console.error('Error generating llms.txt:', error);
+    res.status(500).send('Error generating llms.txt');
+  }
 });
 
 export default router;
