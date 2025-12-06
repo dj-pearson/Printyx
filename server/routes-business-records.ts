@@ -13,19 +13,40 @@ import {
   updateBusinessRecordWithIdentifiers
 } from "./utils/company-id-generator";
 import { cacheControl, etag, varyByTenant } from "./middleware/cache-middleware";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  hasPermission,
+  getQueryBuilder,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
+// Lead Intelligence - Auto-scoring and enrichment
+import { leadIntelligenceService } from "./services/lead-intelligence-service";
 
 export function registerBusinessRecordRoutes(app: Express) {
+  // Apply RBAC context to all business records routes
+  app.use("/api/business-records", enhanceUserContext);
+
   // Unified Business Records API - supports entire lead-to-customer lifecycle
 
-  // Get all business records with filtering
+  // Get all business records with filtering - requires lead/customer view permission
   app.get(
     "/api/business-records",
     resolveTenant,
     requireTenant,
+    requirePermission([
+      PERMISSIONS.SALES.LEAD.VIEW_OWN,
+      PERMISSIONS.SALES.LEAD.VIEW_TEAM,
+      PERMISSIONS.SALES.LEAD.VIEW_LOCATION,
+      PERMISSIONS.SALES.CUSTOMER.VIEW_OWN,
+      PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM
+    ]),
     varyByTenant(),
     cacheControl(180), // Cache for 3 minutes
     etag(),
-    async (req: TenantRequest, res) => {
+    async (req: AuthenticatedRequest & TenantRequest, res) => {
       try {
         const tenantId = req.tenantId!;
         const { recordType, status, search, limit } = req.query;
@@ -151,6 +172,18 @@ export function registerBusinessRecordRoutes(app: Express) {
         );
 
         const newRecord = await storage.createBusinessRecord(recordData);
+
+        // Auto-process lead for scoring and enrichment (non-blocking)
+        if (recordType === 'lead') {
+          leadIntelligenceService.processNewLead(newRecord.id, tenantId, userId)
+            .then(result => {
+              console.log(`[Lead Intelligence] Auto-processed lead ${newRecord.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`);
+            })
+            .catch(error => {
+              console.error(`[Lead Intelligence] Failed to auto-process lead ${newRecord.id}:`, error);
+            });
+        }
+
         // Transform response back to frontend format
         const transformedNewRecord =
           BusinessRecordsTransformer.toFrontend(newRecord);
@@ -370,6 +403,16 @@ export function registerBusinessRecordRoutes(app: Express) {
       };
 
       const newLead = await storage.createLead(leadData);
+
+      // Auto-process lead for scoring and enrichment (non-blocking)
+      leadIntelligenceService.processNewLead(newLead.id, tenantId, userId)
+        .then(result => {
+          console.log(`[Lead Intelligence] Auto-processed lead ${newLead.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`);
+        })
+        .catch(error => {
+          console.error(`[Lead Intelligence] Failed to auto-process lead ${newLead.id}:`, error);
+        });
+
       res.status(201).json(newLead);
     } catch (error) {
       console.error("Error creating lead:", error);

@@ -15,7 +15,7 @@ const router = express.Router();
 // Security Incident Response System API Routes
 
 // Get incident response dashboard
-router.get('/api/incident-response/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/incident-response/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -436,7 +436,7 @@ router.get('/api/incident-response/dashboard', requireAuth, async (req: any, res
 });
 
 // Get detailed incident information
-router.get('/api/incident-response/incidents/:incidentId', requireAuth, async (req: any, res) => {
+router.get('/api/incident-response/incidents/:incidentId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { incidentId } = req.params;
@@ -601,7 +601,7 @@ router.get('/api/incident-response/incidents/:incidentId', requireAuth, async (r
 });
 
 // Execute incident response playbook
-router.post('/api/incident-response/playbooks/:playbookId/execute', requireAuth, async (req: any, res) => {
+router.post('/api/incident-response/playbooks/:playbookId/execute', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { playbookId } = req.params;

@@ -1,6 +1,7 @@
 import express from "express";
 import { eq, and, desc, sql, gte, lte, count, avg } from "drizzle-orm";
 import { db } from "./db";
+import { billingEngine } from "./services/billing-engine-service";
 import { 
   warehouseKittingOperations,
   fpyMetrics,
@@ -261,71 +262,31 @@ router.get("/fpy-metrics", async (req, res) => {
   }
 });
 
-// Trigger auto-invoice generation
+// Trigger auto-invoice generation using billing engine service
+// NOTE: This endpoint now delegates to the centralized billing engine
 router.post("/auto-invoice/:sourceType/:sourceId", async (req, res) => {
   try {
     const { sourceType, sourceId } = req.params;
     const tenantId = req.headers["x-tenant-id"] as string;
-    const { laborHours, laborRate, partsTotal } = req.body;
 
-    // Check if auto-invoice already exists for this source
-    const [existingInvoice] = await db
-      .select()
-      .from(autoInvoiceGeneration)
-      .where(
-        and(
-          eq(autoInvoiceGeneration.tenantId, tenantId),
-          eq(autoInvoiceGeneration.sourceType, sourceType),
-          eq(autoInvoiceGeneration.sourceId, sourceId)
-        )
-      )
-      .limit(1);
+    // Use centralized billing engine service for auto-invoice generation
+    let invoice;
 
-    if (existingInvoice) {
-      return res.status(400).json({ error: "Auto-invoice already exists for this source" });
+    if (sourceType === 'service_ticket') {
+      invoice = await billingEngine.autoGenerateFromServiceTicket(sourceId, tenantId);
+    } else if (sourceType === 'warehouse_operation') {
+      invoice = await billingEngine.autoGenerateFromWarehouseOperation(sourceId, tenantId);
+    } else {
+      return res.status(400).json({ error: 'Invalid sourceType. Must be service_ticket or warehouse_operation' });
     }
 
-    const totalAmount = (laborHours * laborRate) + (partsTotal || 0);
-    const invoiceNumber = `INV-${Date.now()}`;
-
-    const [autoInvoice] = await db
-      .insert(autoInvoiceGeneration)
-      .values({
-        tenantId,
-        sourceType,
-        sourceId,
-        invoiceNumber,
-        generationStatus: 'processing',
-        laborHours,
-        laborRate,
-        partsTotal: partsTotal || 0,
-        totalAmount,
-        triggeredAt: new Date(),
-      })
-      .returning();
-
-    // In a real implementation, this would trigger actual invoice generation
-    // For now, we'll simulate a successful generation
-    setTimeout(async () => {
-      try {
-        await db
-          .update(autoInvoiceGeneration)
-          .set({
-            generationStatus: 'completed',
-            completedAt: new Date(),
-            issuanceDelayHours: 0.1, // 6 minutes simulation
-            invoiceId: `inv_${autoInvoice.id}`,
-          })
-          .where(eq(autoInvoiceGeneration.id, autoInvoice.id));
-      } catch (error) {
-        console.error("Error updating auto-invoice status:", error);
-      }
-    }, 2000); // 2 second delay to simulate processing
-
-    res.json(autoInvoice);
-  } catch (error) {
+    res.status(201).json(invoice);
+  } catch (error: any) {
     console.error("Error creating auto-invoice:", error);
-    res.status(500).json({ error: "Failed to create auto-invoice" });
+    res.status(500).json({
+      error: "Failed to create auto-invoice",
+      message: error.message
+    });
   }
 });
 

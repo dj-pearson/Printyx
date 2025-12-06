@@ -20,7 +20,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * POST /api/advanced-scheduling/optimize
  * Advanced constraint-based task scheduling
  */
-router.post('/optimize', requireAuth, async (req, res) => {
+router.post('/optimize', async (req, res) => {
   try {
     const { 
       tasks, 
@@ -99,7 +99,7 @@ router.post('/optimize', requireAuth, async (req, res) => {
  * POST /api/advanced-scheduling/reschedule
  * Trigger dynamic rescheduling based on an event
  */
-router.post('/reschedule', requireAuth, async (req, res) => {
+router.post('/reschedule', async (req, res) => {
   try {
     const { event } = req.body;
 
@@ -131,7 +131,7 @@ router.post('/reschedule', requireAuth, async (req, res) => {
  * GET /api/advanced-scheduling/constraints
  * Get available constraint types and templates
  */
-router.get('/constraints', requireAuth, async (req, res) => {
+router.get('/constraints', async (req, res) => {
   try {
     const constraintTypes = {
       hard: [
@@ -211,7 +211,7 @@ router.get('/constraints', requireAuth, async (req, res) => {
  * POST /api/advanced-scheduling/constraints/validate
  * Validate a set of constraints for feasibility
  */
-router.post('/constraints/validate', requireAuth, async (req, res) => {
+router.post('/constraints/validate', async (req, res) => {
   try {
     const { tasks, resources, constraints } = req.body;
 
@@ -257,7 +257,7 @@ router.post('/constraints/validate', requireAuth, async (req, res) => {
  * GET /api/advanced-scheduling/patterns/:userId
  * Get learned patterns for a specific user
  */
-router.get('/patterns/:userId', requireAuth, async (req, res) => {
+router.get('/patterns/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -305,7 +305,7 @@ router.get('/patterns/:userId', requireAuth, async (req, res) => {
  * POST /api/advanced-scheduling/patterns/:userId/update
  * Update user patterns based on feedback
  */
-router.post('/patterns/:userId/update', requireAuth, async (req, res) => {
+router.post('/patterns/:userId/update', async (req, res) => {
   try {
     const { userId } = req.params;
     const { feedback } = req.body;
@@ -336,7 +336,7 @@ router.post('/patterns/:userId/update', requireAuth, async (req, res) => {
  * GET /api/advanced-scheduling/strategies
  * Get available rescheduling strategies
  */
-router.get('/strategies', requireAuth, async (req, res) => {
+router.get('/strategies', async (req, res) => {
   try {
     const statistics = DynamicReschedulingService.getStatistics();
     
@@ -398,7 +398,7 @@ router.get('/strategies', requireAuth, async (req, res) => {
  * POST /api/advanced-scheduling/strategies
  * Add a custom rescheduling strategy
  */
-router.post('/strategies', requireAuth, async (req, res) => {
+router.post('/strategies', async (req, res) => {
   try {
     const { strategy } = req.body;
 
@@ -436,7 +436,7 @@ router.post('/strategies', requireAuth, async (req, res) => {
  * GET /api/advanced-scheduling/analytics
  * Get advanced scheduling analytics and insights
  */
-router.get('/analytics', requireAuth, async (req, res) => {
+router.get('/analytics', async (req, res) => {
   try {
     const { timeRange = 'week' } = req.query;
     

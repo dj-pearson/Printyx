@@ -90,6 +90,65 @@ export type {
   InsertPartsOrderItem,
 } from './service-analysis-schema';
 
+// Re-export pipeline configuration schemas
+export {
+  pipelineTemplates,
+  pipelineStages,
+  stageTransitions,
+  dealStageHistory,
+  pipelineAutomationLogs,
+  pipelineTypeEnum,
+  insertPipelineTemplateSchema,
+  insertPipelineStageSchema,
+  insertStageTransitionSchema,
+  insertDealStageHistorySchema,
+  insertPipelineAutomationLogSchema,
+} from './pipeline-configuration-schema';
+
+export type {
+  PipelineTemplate,
+  InsertPipelineTemplate,
+  PipelineStage,
+  InsertPipelineStage,
+  StageTransition,
+  InsertStageTransition,
+  DealStageHistory,
+  InsertDealStageHistory,
+  PipelineAutomationLog,
+  InsertPipelineAutomationLog,
+} from './pipeline-configuration-schema';
+
+// Re-export deal desk schemas
+export {
+  approvalRules,
+  approvalRequests,
+  approvalComments,
+  discountAnalytics,
+  approvalDelegations,
+  approvalTypeEnum,
+  approvalStatusEnum,
+  approvalChainTypeEnum,
+  thresholdTypeEnum,
+  insertApprovalRuleSchema,
+  insertApprovalRequestSchema,
+  insertApprovalCommentSchema,
+  insertDiscountAnalyticsSchema,
+  insertApprovalDelegationSchema,
+} from './deal-desk-schema';
+
+export type {
+  ApprovalRule,
+  InsertApprovalRule,
+  ApprovalRequest,
+  InsertApprovalRequest,
+  ApprovalComment,
+  InsertApprovalComment,
+  DiscountAnalytics,
+  InsertDiscountAnalytics,
+  ApprovalDelegation,
+  InsertApprovalDelegation,
+} from './deal-desk-schema';
+
 // Re-export email parser schemas
 export {
   processedEmails,
@@ -1105,153 +1164,157 @@ export const companyContacts = pgTable('company_contacts', {
 
 // Unified Business Records - Single table for entire business relationship lifecycle
 // Enhanced with dual-platform compatibility: E-Automate (90% dealers) + Salesforce integration
-export const businessRecords = pgTable('business_records', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const businessRecords = pgTable(
+  'business_records',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Multi-Platform External System Integration
-  externalCustomerId: varchar('external_customer_id'), // E-Automate CustomerKey / Salesforce Account.Id
-  externalSystemId: varchar('external_system_id'), // Track source system (e-automate, salesforce, quickbooks, etc)
-  externalSalesforceId: varchar('external_salesforce_id'), // Salesforce Account.Id for dual mapping
-  externalLeadId: varchar('external_lead_id'), // Salesforce Lead.Id for lead conversion tracking
-  migrationStatus: varchar('migration_status'), // pending, in_progress, completed, failed
-  lastSyncDate: timestamp('last_sync_date'), // For incremental syncing
-  externalData: jsonb('external_data'), // Store additional platform-specific fields as JSON
+    // Multi-Platform External System Integration
+    externalCustomerId: varchar('external_customer_id'), // E-Automate CustomerKey / Salesforce Account.Id
+    externalSystemId: varchar('external_system_id'), // Track source system (e-automate, salesforce, quickbooks, etc)
+    externalSalesforceId: varchar('external_salesforce_id'), // Salesforce Account.Id for dual mapping
+    externalLeadId: varchar('external_lead_id'), // Salesforce Lead.Id for lead conversion tracking
+    migrationStatus: varchar('migration_status'), // pending, in_progress, completed, failed
+    lastSyncDate: timestamp('last_sync_date'), // For incremental syncing
+    externalData: jsonb('external_data'), // Store additional platform-specific fields as JSON
 
-  // Record Type & Status - Controls entire business relationship lifecycle
-  recordType: varchar('record_type').notNull().default('lead'), // lead, customer, former_customer
-  status: varchar('status').notNull().default('new'),
-  // Lead statuses: new, contacted, qualified, proposal, negotiation, closed_won, closed_lost
-  // Customer statuses: active, inactive, on_hold, churned, competitor_switch, non_payment, expired
+    // Record Type & Status - Controls entire business relationship lifecycle
+    recordType: varchar('record_type').notNull().default('lead'), // lead, customer, former_customer
+    status: varchar('status').notNull().default('new'),
+    // Lead statuses: new, contacted, qualified, proposal, negotiation, closed_won, closed_lost
+    // Customer statuses: active, inactive, on_hold, churned, competitor_switch, non_payment, expired
 
-  // Company Information (E-Automate + Salesforce compatible)
-  companyName: varchar('company_name').notNull(), // E-Automate CustomerName / Salesforce Account.Name
-  accountNumber: varchar('account_number'), // Salesforce Account.AccountNumber
-  accountType: varchar('account_type'), // E-Automate CustomerType / Salesforce Account.Type (Customer, Prospect, Partner)
-  website: varchar('website'), // Salesforce Account.Website
-  industry: varchar('industry'), // Salesforce Account.Industry
-  companySize: varchar('company_size'),
-  employeeCount: integer('employee_count'), // Salesforce Account.NumberOfEmployees
-  annualRevenue: decimal('annual_revenue', { precision: 15, scale: 2 }), // Salesforce Account.AnnualRevenue
+    // Company Information (E-Automate + Salesforce compatible)
+    companyName: varchar('company_name').notNull(), // E-Automate CustomerName / Salesforce Account.Name
+    accountNumber: varchar('account_number'), // Salesforce Account.AccountNumber
+    accountType: varchar('account_type'), // E-Automate CustomerType / Salesforce Account.Type (Customer, Prospect, Partner)
+    website: varchar('website'), // Salesforce Account.Website
+    industry: varchar('industry'), // Salesforce Account.Industry
+    companySize: varchar('company_size'),
+    employeeCount: integer('employee_count'), // Salesforce Account.NumberOfEmployees
+    annualRevenue: decimal('annual_revenue', { precision: 15, scale: 2 }), // Salesforce Account.AnnualRevenue
 
-  // Salesforce-specific Company Fields
-  customerRating: varchar('customer_rating'), // Salesforce Account.Rating (Hot, Warm, Cold)
-  parentAccountId: varchar('parent_account_id'), // Salesforce Account.ParentId
-  customerPriority: varchar('customer_priority'), // Salesforce Account.CustomerPriority__c (High, Medium, Low)
-  slaLevel: varchar('sla_level'), // Salesforce Account.SLA__c
-  isActive: boolean('is_active').default(true), // Salesforce Account.Active__c
-  upsellOpportunity: varchar('upsell_opportunity'), // Salesforce Account.UpsellOpportunity__c
-  accountNotes: text('account_notes'), // Salesforce Account.Description
+    // Salesforce-specific Company Fields
+    customerRating: varchar('customer_rating'), // Salesforce Account.Rating (Hot, Warm, Cold)
+    parentAccountId: varchar('parent_account_id'), // Salesforce Account.ParentId
+    customerPriority: varchar('customer_priority'), // Salesforce Account.CustomerPriority__c (High, Medium, Low)
+    slaLevel: varchar('sla_level'), // Salesforce Account.SLA__c
+    isActive: boolean('is_active').default(true), // Salesforce Account.Active__c
+    upsellOpportunity: varchar('upsell_opportunity'), // Salesforce Account.UpsellOpportunity__c
+    accountNotes: text('account_notes'), // Salesforce Account.Description
 
-  // Primary Contact Information
-  primaryContactName: varchar('primary_contact_name'), // E-Automate ContactName
-  primaryContactEmail: varchar('primary_contact_email'),
-  primaryContactPhone: varchar('primary_contact_phone'),
-  primaryContactTitle: varchar('primary_contact_title'),
+    // Primary Contact Information
+    primaryContactName: varchar('primary_contact_name'), // E-Automate ContactName
+    primaryContactEmail: varchar('primary_contact_email'),
+    primaryContactPhone: varchar('primary_contact_phone'),
+    primaryContactTitle: varchar('primary_contact_title'),
 
-  // Billing Contact Information (E-Automate compatible)
-  billingContactName: varchar('billing_contact_name'), // E-Automate BillingContact
-  billingContactEmail: varchar('billing_contact_email'),
-  billingContactPhone: varchar('billing_contact_phone'),
+    // Billing Contact Information (E-Automate compatible)
+    billingContactName: varchar('billing_contact_name'), // E-Automate BillingContact
+    billingContactEmail: varchar('billing_contact_email'),
+    billingContactPhone: varchar('billing_contact_phone'),
 
-  // Address Information (E-Automate + Salesforce compatible)
-  addressLine1: varchar('address_line1'), // E-Automate Address1 / Salesforce BillingStreet
-  addressLine2: varchar('address_line2'), // E-Automate Address2
-  city: varchar('city'), // Salesforce BillingCity
-  state: varchar('state'), // Salesforce BillingState
-  postalCode: varchar('postal_code'), // E-Automate ZipCode / Salesforce BillingPostalCode
-  country: varchar('country').default('US'), // Salesforce BillingCountry
+    // Address Information (E-Automate + Salesforce compatible)
+    addressLine1: varchar('address_line1'), // E-Automate Address1 / Salesforce BillingStreet
+    addressLine2: varchar('address_line2'), // E-Automate Address2
+    city: varchar('city'), // Salesforce BillingCity
+    state: varchar('state'), // Salesforce BillingState
+    postalCode: varchar('postal_code'), // E-Automate ZipCode / Salesforce BillingPostalCode
+    country: varchar('country').default('US'), // Salesforce BillingCountry
 
-  // Billing Address (E-Automate + Salesforce compatible)
-  billingAddressLine1: varchar('billing_address_1'), // E-Automate BillingAddress1 / Salesforce BillingStreet
-  billingAddressLine2: varchar('billing_address_2'), // E-Automate BillingAddress2
-  billingCity: varchar('billing_city'), // E-Automate BillingCity / Salesforce BillingCity
-  billingState: varchar('billing_state'), // E-Automate BillingState / Salesforce BillingState
-  billingPostalCode: varchar('billing_zip_code'), // E-Automate BillingZip / Salesforce BillingPostalCode
+    // Billing Address (E-Automate + Salesforce compatible)
+    billingAddressLine1: varchar('billing_address_1'), // E-Automate BillingAddress1 / Salesforce BillingStreet
+    billingAddressLine2: varchar('billing_address_2'), // E-Automate BillingAddress2
+    billingCity: varchar('billing_city'), // E-Automate BillingCity / Salesforce BillingCity
+    billingState: varchar('billing_state'), // E-Automate BillingState / Salesforce BillingState
+    billingPostalCode: varchar('billing_zip_code'), // E-Automate BillingZip / Salesforce BillingPostalCode
 
-  // Communication Details (E-Automate + Salesforce compatible)
-  phone: varchar('phone'), // E-Automate Phone / Salesforce Phone
-  fax: varchar('fax'), // E-Automate Fax / Salesforce Fax
+    // Communication Details (E-Automate + Salesforce compatible)
+    phone: varchar('phone'), // E-Automate Phone / Salesforce Phone
+    fax: varchar('fax'), // E-Automate Fax / Salesforce Fax
 
-  // Salesforce-specific Contact Preferences
-  preferredContactMethod: varchar('preferred_contact_method'), // Salesforce Account.PreferredContactMethod__c
+    // Salesforce-specific Contact Preferences
+    preferredContactMethod: varchar('preferred_contact_method'), // Salesforce Account.PreferredContactMethod__c
 
-  // Lead Pipeline Information
-  leadSource: varchar('source').notNull().default('website'), // website, referral, cold_call, trade_show, etc.
-  estimatedAmount: decimal('estimated_deal_value', { precision: 10, scale: 2 }),
-  probability: integer('probability').default(50), // 0-100%
-  closeDate: timestamp('close_date'), // Date converted to customer or lost
-  salesStage: varchar('sales_stage'), // E-Automate pipeline stage
-  interestLevel: varchar('interest_level'), // hot, warm, cold
+    // Lead Pipeline Information
+    leadSource: varchar('source').notNull().default('website'), // website, referral, cold_call, trade_show, etc.
+    estimatedAmount: decimal('estimated_deal_value', { precision: 10, scale: 2 }),
+    probability: integer('probability').default(50), // 0-100%
+    closeDate: timestamp('close_date'), // Date converted to customer or lost
+    salesStage: varchar('sales_stage'), // E-Automate pipeline stage
+    interestLevel: varchar('interest_level'), // hot, warm, cold
 
-  // Assignment & Ownership (E-Automate compatible)
-  ownerId: varchar('owner_id'), // User who owns this record
-  assignedSalesRep: varchar('assigned_sales_rep'), // E-Automate SalesRep
-  territory: varchar('territory'), // E-Automate Territory
-  accountManagerId: varchar('account_manager_id'),
-  leadScore: integer('lead_score').default(0), // 0-100 scoring system
-  priority: varchar('priority').default('medium'), // high, medium, low
+    // Assignment & Ownership (E-Automate compatible)
+    ownerId: varchar('owner_id'), // User who owns this record
+    assignedSalesRep: varchar('assigned_sales_rep'), // E-Automate SalesRep
+    territory: varchar('territory'), // E-Automate Territory
+    accountManagerId: varchar('account_manager_id'),
+    leadScore: integer('lead_score').default(0), // 0-100 scoring system
+    priority: varchar('priority').default('medium'), // high, medium, low
 
-  // Customer-Specific Fields (E-Automate compatible)
-  customerNumber: varchar('customer_number').unique(), // Generated when converted to customer
-  companyDisplayId: varchar('company_display_id').unique(), // Easy-to-read company ID (e.g., "43443425")
-  urlSlug: varchar('url_slug').unique(), // URL-friendly slug (e.g., "customer-new-customer-company-43443425")
-  customerSince: timestamp('customer_since'), // Date of conversion to customer
-  customerUntil: timestamp('customer_until'), // Date when customer relationship ended (for former customers)
-  churnReason: varchar('deactivation_reason'), // competitor_switch, pricing, service_issues, business_closure, etc.
-  reactivationDate: timestamp('reactivation_date'),
-  churnedDate: timestamp('churned_date'),
-  competitorName: varchar('competitor_name'),
+    // Customer-Specific Fields (E-Automate compatible)
+    customerNumber: varchar('customer_number').unique(), // Generated when converted to customer
+    companyDisplayId: varchar('company_display_id').unique(), // Easy-to-read company ID (e.g., "43443425")
+    urlSlug: varchar('url_slug').unique(), // URL-friendly slug (e.g., "customer-new-customer-company-43443425")
+    customerSince: timestamp('customer_since'), // Date of conversion to customer
+    customerUntil: timestamp('customer_until'), // Date when customer relationship ended (for former customers)
+    churnReason: varchar('deactivation_reason'), // competitor_switch, pricing, service_issues, business_closure, etc.
+    reactivationDate: timestamp('reactivation_date'),
+    churnedDate: timestamp('churned_date'),
+    competitorName: varchar('competitor_name'),
 
-  // Financial Information (E-Automate compatible)
-  creditLimit: decimal('credit_limit', { precision: 10, scale: 2 }), // E-Automate CreditLimit
-  paymentTerms: varchar('payment_terms'), // E-Automate PaymentTerms
-  billingTerms: varchar('billing_terms'),
-  taxExempt: boolean('tax_exempt').default(false), // E-Automate TaxExempt
-  taxId: varchar('tax_id'), // E-Automate TaxID
-  customerTier: varchar('customer_tier'), // Gold, Silver, Bronze, etc.
+    // Financial Information (E-Automate compatible)
+    creditLimit: decimal('credit_limit', { precision: 10, scale: 2 }), // E-Automate CreditLimit
+    paymentTerms: varchar('payment_terms'), // E-Automate PaymentTerms
+    billingTerms: varchar('billing_terms'),
+    taxExempt: boolean('tax_exempt').default(false), // E-Automate TaxExempt
+    taxId: varchar('tax_id'), // E-Automate TaxID
+    customerTier: varchar('customer_tier'), // Gold, Silver, Bronze, etc.
 
-  // Service & Support Information (customer only)
-  preferredTechnician: varchar('preferred_technician'),
-  lastServiceDate: timestamp('last_service_date'),
-  nextScheduledService: timestamp('next_scheduled_service'),
+    // Service & Support Information (customer only)
+    preferredTechnician: varchar('preferred_technician'),
+    lastServiceDate: timestamp('last_service_date'),
+    nextScheduledService: timestamp('next_scheduled_service'),
 
-  // Billing Information (customer only)
-  lastInvoiceDate: timestamp('last_invoice_date'),
-  lastPaymentDate: timestamp('last_payment_date'),
-  currentBalance: decimal('current_balance', {
-    precision: 10,
-    scale: 2,
-  }).default('0'),
+    // Billing Information (customer only)
+    lastInvoiceDate: timestamp('last_invoice_date'),
+    lastPaymentDate: timestamp('last_payment_date'),
+    currentBalance: decimal('current_balance', {
+      precision: 10,
+      scale: 2,
+    }).default('0'),
 
-  // Meter Reading Information (customer only)
-  lastMeterReadingDate: timestamp('last_meter_reading_date'),
-  nextMeterReadingDate: timestamp('next_meter_reading_date'),
+    // Meter Reading Information (customer only)
+    lastMeterReadingDate: timestamp('last_meter_reading_date'),
+    nextMeterReadingDate: timestamp('next_meter_reading_date'),
 
-  // Activity Tracking
-  lastContactDate: timestamp('last_contact_date'),
-  nextFollowUpDate: timestamp('next_follow_up_date'),
+    // Activity Tracking
+    lastContactDate: timestamp('last_contact_date'),
+    nextFollowUpDate: timestamp('next_follow_up_date'),
 
-  // System Tracking
-  notes: text('notes'),
-  createdBy: varchar('created_by').notNull(),
-  convertedBy: varchar('converted_by'), // Who converted from lead to customer
-  deactivatedBy: varchar('deactivated_by'), // Who deactivated the customer
+    // System Tracking
+    notes: text('notes'),
+    createdBy: varchar('created_by').notNull(),
+    convertedBy: varchar('converted_by'), // Who converted from lead to customer
+    deactivatedBy: varchar('deactivated_by'), // Who deactivated the customer
 
-  // Timestamps (E-Automate + Salesforce compatible)
-  createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated / Salesforce CreatedDate
-  updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified / Salesforce LastModifiedDate
-}, (table) => ({
-  // Performance indexes for frequently queried columns
-  tenantTypeIdx: index('business_records_tenant_type_idx').on(table.tenantId, table.recordType),
-  tenantStatusIdx: index('business_records_tenant_status_idx').on(table.tenantId, table.status),
-  urlSlugIdx: index('business_records_url_slug_idx').on(table.urlSlug),
-  displayIdIdx: index('business_records_display_id_idx').on(table.companyDisplayId),
-  customerNumberIdx: index('business_records_customer_number_idx').on(table.customerNumber),
-  createdAtIdx: index('business_records_created_at_idx').on(table.createdAt),
-}));
+    // Timestamps (E-Automate + Salesforce compatible)
+    createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated / Salesforce CreatedDate
+    updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified / Salesforce LastModifiedDate
+  },
+  (table) => ({
+    // Performance indexes for frequently queried columns
+    tenantTypeIdx: index('business_records_tenant_type_idx').on(table.tenantId, table.recordType),
+    tenantStatusIdx: index('business_records_tenant_status_idx').on(table.tenantId, table.status),
+    urlSlugIdx: index('business_records_url_slug_idx').on(table.urlSlug),
+    displayIdIdx: index('business_records_display_id_idx').on(table.companyDisplayId),
+    customerNumberIdx: index('business_records_customer_number_idx').on(table.customerNumber),
+    createdAtIdx: index('business_records_created_at_idx').on(table.createdAt),
+  }),
+);
 
 // For backward compatibility during migration
 export const leads = businessRecords; // Alias for existing code
@@ -1732,7 +1795,7 @@ export const inventoryItems = pgTable('inventory_items', {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   tenantId: varchar('tenant_id').notNull(),
-  
+
   // Basic Identification (legacy fields from simplified schema)
   name: varchar('name').notNull(), // Item name (legacy, keep for compatibility)
   category: varchar('category').notNull(), // Category (legacy, keep for compatibility)
@@ -2185,67 +2248,71 @@ export const dealStages = pgTable('deal_stages', {
 });
 
 // Deals - Sales opportunities with pipeline tracking
-export const deals = pgTable('deals', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const deals = pgTable(
+  'deals',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Deal Basics
-  title: varchar('title', { length: 200 }).notNull(),
-  description: text('description'),
-  amount: decimal('amount', { precision: 12, scale: 2 }),
+    // Deal Basics
+    title: varchar('title', { length: 200 }).notNull(),
+    description: text('description'),
+    amount: decimal('amount', { precision: 12, scale: 2 }),
 
-  // Deal Assignment
-  ownerId: varchar('owner_id').notNull(), // sales rep responsible
-  customerId: varchar('customer_id'), // references customers.id
-  companyName: varchar('company_name'), // for quick reference if no customer record
+    // Deal Assignment
+    ownerId: varchar('owner_id').notNull(), // sales rep responsible
+    customerId: varchar('customer_id'), // references customers.id
+    companyName: varchar('company_name'), // for quick reference if no customer record
 
-  // Pipeline Information
-  stageId: varchar('stage_id').notNull(), // references dealStages.id
-  probability: integer('probability').default(0), // 0-100 percentage
-  expectedCloseDate: timestamp('expected_close_date'),
-  actualCloseDate: timestamp('actual_close_date'),
+    // Pipeline Information
+    stageId: varchar('stage_id').notNull(), // references dealStages.id
+    probability: integer('probability').default(0), // 0-100 percentage
+    expectedCloseDate: timestamp('expected_close_date'),
+    actualCloseDate: timestamp('actual_close_date'),
 
-  // Deal Source and Type
-  source: varchar('source'), // e.g., "Website", "Referral", "Cold Call"
-  dealType: varchar('deal_type'), // e.g., "New Business", "Upsell", "Renewal"
-  priority: varchar('priority').default('medium'), // low, medium, high
+    // Deal Source and Type
+    source: varchar('source'), // e.g., "Website", "Referral", "Cold Call"
+    dealType: varchar('deal_type'), // e.g., "New Business", "Upsell", "Renewal"
+    priority: varchar('priority').default('medium'), // low, medium, high
 
-  // Contact Information
-  primaryContactName: varchar('primary_contact_name'),
-  primaryContactEmail: varchar('primary_contact_email'),
-  primaryContactPhone: varchar('primary_contact_phone'),
+    // Contact Information
+    primaryContactName: varchar('primary_contact_name'),
+    primaryContactEmail: varchar('primary_contact_email'),
+    primaryContactPhone: varchar('primary_contact_phone'),
 
-  // Products and Services
-  productsInterested: text('products_interested'),
-  estimatedMonthlyValue: decimal('estimated_monthly_value', {
-    precision: 10,
-    scale: 2,
+    // Products and Services
+    productsInterested: text('products_interested'),
+    estimatedMonthlyValue: decimal('estimated_monthly_value', {
+      precision: 10,
+      scale: 2,
+    }),
+
+    // Deal Status
+    status: varchar('status').notNull().default('open'), // open, won, lost, on_hold
+    lostReason: varchar('lost_reason'), // reason if status is "lost"
+
+    // Tracking
+    lastActivityDate: timestamp('last_activity_date'),
+    nextFollowUpDate: timestamp('next_follow_up_date'),
+    createdById: varchar('created_by_id').notNull(),
+
+    // Notes and History
+    notes: text('notes'),
+
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // Performance indexes for frequently queried columns
+    customerIdIdx: index('deals_customer_id_idx').on(table.customerId),
+    ownerIdIdx: index('deals_owner_id_idx').on(table.ownerId),
+    tenantStatusIdx: index('deals_tenant_status_idx').on(table.tenantId, table.status),
+    tenantStageIdx: index('deals_tenant_stage_idx').on(table.tenantId, table.stageId),
+    expectedCloseDateIdx: index('deals_expected_close_date_idx').on(table.expectedCloseDate),
   }),
-
-  // Deal Status
-  status: varchar('status').notNull().default('open'), // open, won, lost, on_hold
-  lostReason: varchar('lost_reason'), // reason if status is "lost"
-
-  // Tracking
-  lastActivityDate: timestamp('last_activity_date'),
-  nextFollowUpDate: timestamp('next_follow_up_date'),
-  createdById: varchar('created_by_id').notNull(),
-
-  // Notes and History
-  notes: text('notes'),
-
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  // Performance indexes for frequently queried columns
-  customerIdIdx: index('deals_customer_id_idx').on(table.customerId),
-  ownerIdIdx: index('deals_owner_id_idx').on(table.ownerId),
-  tenantStatusIdx: index('deals_tenant_status_idx').on(table.tenantId, table.status),
-  tenantStageIdx: index('deals_tenant_stage_idx').on(table.tenantId, table.stageId),
-  expectedCloseDateIdx: index('deals_expected_close_date_idx').on(table.expectedCloseDate),
-}));
+);
 
 // Deal Activities - Track all interactions and updates
 export const dealActivities = pgTable('deal_activities', {
@@ -2774,7 +2841,10 @@ export const productAccessories = pgTable('product_accessories', {
   // Standard Tier
   standardCost: decimal('standard_cost', { precision: 10, scale: 2 }), // Legacy - being replaced by standardDealerCost
   standardDealerCost: decimal('standard_dealer_cost', { precision: 10, scale: 2 }), // Tier 1: Hard cost to dealer
-  standardRepMarkupPercentage: decimal('standard_rep_markup_percentage', { precision: 5, scale: 2 }), // Markup % for rep cost
+  standardRepMarkupPercentage: decimal('standard_rep_markup_percentage', {
+    precision: 5,
+    scale: 2,
+  }), // Markup % for rep cost
   standardRepCost: decimal('standard_rep_cost', { precision: 10, scale: 2 }), // Tier 2: Cost to sales rep
   standardRepPrice: decimal('standard_rep_price', { precision: 10, scale: 2 }), // Legacy field
   standardSuggestedRetail: decimal('standard_suggested_retail', { precision: 10, scale: 2 }), // Tier 3: MSRP
@@ -2847,42 +2917,49 @@ export const cpcRates = pgTable('cpc_rates', {
 });
 
 // Service tickets table
-export const serviceTickets = pgTable('service_tickets', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  customerId: varchar('customer_id').notNull(),
-  equipmentId: varchar('equipment_id'),
-  ticketNumber: varchar('ticket_number').notNull(),
-  title: varchar('title').notNull(),
-  description: text('description'),
-  priority: varchar('priority').notNull().default('medium'), // low, medium, high, urgent
-  status: varchar('status').notNull().default('open'), // open, assigned, in-progress, completed, cancelled
-  assignedTechnicianId: varchar('assigned_technician_id'),
-  scheduledDate: timestamp('scheduled_date'),
-  estimatedDuration: integer('estimated_duration'), // minutes
-  customerAddress: text('customer_address'),
-  customerPhone: varchar('customer_phone'),
-  requiredSkills: text('required_skills').array(),
-  requiredParts: text('required_parts').array(),
-  workOrderNotes: text('work_order_notes'),
-  resolutionNotes: text('resolution_notes'),
-  customerSignature: text('customer_signature'),
-  partsUsed: text('parts_used').array(),
-  laborHours: decimal('labor_hours', { precision: 4, scale: 2 }),
-  createdBy: varchar('created_by').notNull(),
-  resolvedAt: timestamp('resolved_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  // Performance indexes for frequently queried columns
-  customerIdIdx: index('service_tickets_customer_id_idx').on(table.customerId),
-  technicianIdIdx: index('service_tickets_technician_id_idx').on(table.assignedTechnicianId),
-  tenantStatusIdx: index('service_tickets_tenant_status_idx').on(table.tenantId, table.status),
-  tenantCreatedIdx: index('service_tickets_tenant_created_idx').on(table.tenantId, table.createdAt),
-  scheduledDateIdx: index('service_tickets_scheduled_date_idx').on(table.scheduledDate),
-}));
+export const serviceTickets = pgTable(
+  'service_tickets',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    customerId: varchar('customer_id').notNull(),
+    equipmentId: varchar('equipment_id'),
+    ticketNumber: varchar('ticket_number').notNull(),
+    title: varchar('title').notNull(),
+    description: text('description'),
+    priority: varchar('priority').notNull().default('medium'), // low, medium, high, urgent
+    status: varchar('status').notNull().default('open'), // open, assigned, in-progress, completed, cancelled
+    assignedTechnicianId: varchar('assigned_technician_id'),
+    scheduledDate: timestamp('scheduled_date'),
+    estimatedDuration: integer('estimated_duration'), // minutes
+    customerAddress: text('customer_address'),
+    customerPhone: varchar('customer_phone'),
+    requiredSkills: text('required_skills').array(),
+    requiredParts: text('required_parts').array(),
+    workOrderNotes: text('work_order_notes'),
+    resolutionNotes: text('resolution_notes'),
+    customerSignature: text('customer_signature'),
+    partsUsed: text('parts_used').array(),
+    laborHours: decimal('labor_hours', { precision: 4, scale: 2 }),
+    createdBy: varchar('created_by').notNull(),
+    resolvedAt: timestamp('resolved_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // Performance indexes for frequently queried columns
+    customerIdIdx: index('service_tickets_customer_id_idx').on(table.customerId),
+    technicianIdIdx: index('service_tickets_technician_id_idx').on(table.assignedTechnicianId),
+    tenantStatusIdx: index('service_tickets_tenant_status_idx').on(table.tenantId, table.status),
+    tenantCreatedIdx: index('service_tickets_tenant_created_idx').on(
+      table.tenantId,
+      table.createdAt,
+    ),
+    scheduledDateIdx: index('service_tickets_scheduled_date_idx').on(table.scheduledDate),
+  }),
+);
 
 // Service ticket updates/timeline table
 export const serviceTicketUpdates = pgTable('service_ticket_updates', {
@@ -3539,7 +3616,9 @@ export const onboardingTasks = pgTable('onboarding_tasks', {
 });
 
 // Zod schemas for equipment onboarding system
-export const insertEquipmentOnboardingChecklistSchema = createInsertSchema(equipmentOnboardingChecklists);
+export const insertEquipmentOnboardingChecklistSchema = createInsertSchema(
+  equipmentOnboardingChecklists,
+);
 
 export const insertOnboardingEquipmentSchema = createInsertSchema(onboardingEquipment);
 
@@ -3553,7 +3632,9 @@ export const insertOnboardingTaskSchema = createInsertSchema(onboardingTasks);
 
 // Types for equipment onboarding system
 export type EquipmentOnboardingChecklist = typeof equipmentOnboardingChecklists.$inferSelect;
-export type InsertEquipmentOnboardingChecklist = z.infer<typeof insertEquipmentOnboardingChecklistSchema>;
+export type InsertEquipmentOnboardingChecklist = z.infer<
+  typeof insertEquipmentOnboardingChecklistSchema
+>;
 
 export type OnboardingEquipment = typeof onboardingEquipment.$inferSelect;
 export type InsertOnboardingEquipment = z.infer<typeof insertOnboardingEquipmentSchema>;
@@ -8017,6 +8098,12 @@ export type {
 export * from './apollo-schema';
 export * from './client-monitor-schema';
 
+// Export mileage tracking schema
+export * from './mileage-tracking-schema';
+
+// Export geofence alerts schema
+export * from './geofence-alerts-schema';
+
 // Re-export Subscription schemas
 export {
   subscriptionPlans,
@@ -8418,3 +8505,12 @@ export type {
   PlatformCohortAnalysis,
   NewPlatformCohortAnalysis,
 } from './platform-crm-schema';
+
+// Re-export advanced billing schemas
+export {
+  billingRules,
+  meterAnomalies,
+  insertBillingRuleSchema,
+  type BillingRule,
+  type MeterAnomaly,
+} from './advanced-billing-schema';

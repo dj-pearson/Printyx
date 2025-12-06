@@ -3,13 +3,26 @@ import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
 import { businessRecords, users, contracts, serviceTickets } from '../shared/schema';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = express.Router();
 
+// Apply RBAC context to all customer success routes
+router.use(enhanceUserContext);
+
 // Customer Success & Retention API Routes
 
-// Get customer health scores
-router.get('/api/customer-success/health-scores', requireAuth, async (req: any, res) => {
+// Get customer health scores - requires customer view permission
+router.get('/api/customer-success/health-scores',
+  
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -257,8 +270,11 @@ router.get('/api/customer-success/health-scores', requireAuth, async (req: any, 
   }
 });
 
-// Get usage analytics for customers
-router.get('/api/customer-success/usage-analytics', requireAuth, async (req: any, res) => {
+// Get usage analytics for customers - requires customer view permission
+router.get('/api/customer-success/usage-analytics',
+  
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { customerId, period = 'month' } = req.query;
@@ -483,8 +499,11 @@ router.get('/api/customer-success/usage-analytics', requireAuth, async (req: any
   }
 });
 
-// Get satisfaction surveys and feedback
-router.get('/api/customer-success/satisfaction', requireAuth, async (req: any, res) => {
+// Get satisfaction surveys and feedback - requires customer view permission
+router.get('/api/customer-success/satisfaction',
+  
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -641,8 +660,11 @@ router.get('/api/customer-success/satisfaction', requireAuth, async (req: any, r
   }
 });
 
-// Create or trigger customer health score calculation
-router.post('/api/customer-success/calculate-health', requireAuth, async (req: any, res) => {
+// Create or trigger customer health score calculation - requires customer edit permission
+router.post('/api/customer-success/calculate-health',
+  
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.EDIT]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { customerIds, recalculateAll = false } = req.body;

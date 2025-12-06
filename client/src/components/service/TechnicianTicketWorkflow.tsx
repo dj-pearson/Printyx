@@ -48,6 +48,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   type ServiceTicket, 
   type ServiceSession, 
@@ -347,6 +348,56 @@ export default function TechnicianTicketWorkflow({
       laborHours: 1,
       totalEstimatedCost: 0,
       customerCommunication: "",
+    },
+  });
+
+  // Approval form
+  const approvalForm = useForm({
+    resolver: zodResolver(approvalSchema),
+    defaultValues: {
+      customerApproval: true,
+      approvedBy: "",
+      approvalNotes: "",
+      modifications: "",
+    },
+  });
+
+  // Work execution form
+  const workExecutionForm = useForm({
+    resolver: zodResolver(workExecutionSchema),
+    defaultValues: {
+      workStartTime: new Date().toISOString().slice(0, 16),
+      workDescription: "",
+      partsUsed: [],
+      actualLaborHours: 1,
+      complications: "",
+      photosUploaded: false,
+    },
+  });
+
+  // Testing form
+  const testingForm = useForm({
+    resolver: zodResolver(testingSchema),
+    defaultValues: {
+      functionalityVerified: true,
+      testResults: "",
+      customerDemo: false,
+      issuesFound: "",
+      additionalWorkNeeded: false,
+    },
+  });
+
+  // Completion form
+  const completionForm = useForm({
+    resolver: zodResolver(completionSchema),
+    defaultValues: {
+      workCompleted: true,
+      customerSatisfaction: "satisfied" as const,
+      customerSignature: "",
+      followUpRequired: false,
+      followUpReason: "",
+      notes: "",
+      endTime: new Date().toISOString().slice(0, 16),
     },
   });
 

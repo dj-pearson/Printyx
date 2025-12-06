@@ -13,10 +13,20 @@ import {
 } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 const requireAuth = (req: any, res: any, next: any) => { if (!req.user) return res.status(401).json({ error: 'Unauthorized' }); next(); };
 import crypto from 'crypto';
 
 const router = express.Router();
+
+// Apply RBAC context to all client metrics routes
+router.use(enhanceUserContext);
 
 // Types for API requests/responses
 interface DeviceMetricsPayload {
@@ -422,7 +432,7 @@ router.get('/config', async (req, res) => {
  * POST /api/client-metrics/clients
  * Requires: Admin authentication
  */
-router.post('/clients', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { clientName, location } = req.body;
     const tenantId = req.tenantId!;
@@ -482,7 +492,7 @@ router.post('/clients', requireAuth, resolveTenant, requireTenant, async (req: T
  * List all clients for tenant
  * GET /api/client-metrics/clients
  */
-router.get('/clients', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.get('/clients', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const tenantId = req.tenantId!;
 
@@ -506,7 +516,7 @@ router.get('/clients', requireAuth, resolveTenant, requireTenant, async (req: Te
  * Get client details with recent activity
  * GET /api/client-metrics/clients/:clientId
  */
-router.get('/clients/:clientId', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { clientId } = req.params;
     const tenantId = req.tenantId!;
@@ -574,7 +584,7 @@ router.get('/clients/:clientId', requireAuth, resolveTenant, requireTenant, asyn
  * Regenerate API key for client
  * POST /api/client-metrics/clients/:clientId/regenerate-key
  */
-router.post('/clients/:clientId/regenerate-key', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.post('/clients/:clientId/regenerate-key', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { clientId } = req.params;
     const tenantId = req.tenantId!;

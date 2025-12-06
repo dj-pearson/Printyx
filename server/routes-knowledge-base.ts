@@ -16,6 +16,7 @@ import {
 } from '@shared/schema';
 import { eq, and, or, desc, asc, sql, like, ilike, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { generateTableOfContents, addHeaderIdsToHTML } from './utils/article-table-of-contents';
 
 const router = Router();
 
@@ -112,7 +113,7 @@ router.get('/categories/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/knowledge-base/categories - Create category (admin only)
-router.post('/categories', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.post('/categories', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = req.session!.userId!;
@@ -138,7 +139,7 @@ router.post('/categories', requireAuth, requireAdmin, async (req: Request, res: 
 });
 
 // PUT /api/knowledge-base/categories/:id - Update category (admin only)
-router.put('/categories/:id', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.put('/categories/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const { id } = req.params;
@@ -165,7 +166,7 @@ router.put('/categories/:id', requireAuth, requireAdmin, async (req: Request, re
 });
 
 // DELETE /api/knowledge-base/categories/:id - Soft delete category (admin only)
-router.delete('/categories/:id', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.delete('/categories/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const { id } = req.params;
@@ -358,7 +359,26 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
       })
       .catch((err) => console.error('Error tracking article view:', err));
 
-    res.json(article);
+    // Generate table of contents if content is structured
+    let tableOfContents = null;
+    try {
+      if (article.content && typeof article.content === 'object') {
+        tableOfContents = generateTableOfContents(article.content as any);
+
+        // Add IDs to HTML headers if HTML content exists
+        if (article.htmlContent && tableOfContents) {
+          article.htmlContent = addHeaderIdsToHTML(article.htmlContent, tableOfContents);
+        }
+      }
+    } catch (tocError) {
+      console.error('Error generating table of contents:', tocError);
+      // Continue without TOC if generation fails
+    }
+
+    res.json({
+      ...article,
+      tableOfContents,
+    });
   } catch (error) {
     console.error('Error fetching article:', error);
     res.status(500).json({ message: 'Failed to fetch article' });
@@ -366,7 +386,7 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
 });
 
 // POST /api/knowledge-base/articles - Create article (admin only)
-router.post('/articles', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.post('/articles', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = req.session!.userId!;
@@ -418,7 +438,7 @@ router.post('/articles', requireAuth, requireAdmin, async (req: Request, res: Re
 });
 
 // PUT /api/knowledge-base/articles/:id - Update article (admin only)
-router.put('/articles/:id', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.put('/articles/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = req.session!.userId!;
@@ -489,7 +509,7 @@ router.put('/articles/:id', requireAuth, requireAdmin, async (req: Request, res:
 // PATCH /api/knowledge-base/articles/:id/publish - Publish article (admin only)
 router.patch(
   '/articles/:id/publish',
-  requireAuth,
+  
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
@@ -522,7 +542,7 @@ router.patch(
 // PATCH /api/knowledge-base/articles/:id/archive - Archive article (admin only)
 router.patch(
   '/articles/:id/archive',
-  requireAuth,
+  
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
@@ -552,7 +572,7 @@ router.patch(
 );
 
 // DELETE /api/knowledge-base/articles/:id - Delete article (admin only)
-router.delete('/articles/:id', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.delete('/articles/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const { id } = req.params;
@@ -712,7 +732,7 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
 // GET /api/knowledge-base/articles/:id/feedback - Get article feedback (admin only)
 router.get(
   '/articles/:id/feedback',
-  requireAuth,
+  
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
@@ -738,7 +758,7 @@ router.get(
 // ================================
 
 // GET /api/knowledge-base/analytics - Get knowledge base analytics (admin only)
-router.get('/analytics', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.get('/analytics', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 

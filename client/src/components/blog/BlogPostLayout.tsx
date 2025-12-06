@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { usePageSeo, BreadcrumbSchemaScript } from "@/lib/seoUtils";
 
 interface BlogPostLayoutProps {
   title: string;
@@ -11,6 +12,12 @@ interface BlogPostLayoutProps {
   readTime: string;
   category: string;
   children: ReactNode;
+  // SEO-specific props
+  slug: string;
+  featuredImage?: string;
+  keywords?: string[];
+  publishedDate?: string; // ISO date string (e.g., "2025-01-10")
+  modifiedDate?: string;  // ISO date string
 }
 
 const BlogPostLayout = ({
@@ -21,9 +28,70 @@ const BlogPostLayout = ({
   readTime,
   category,
   children,
+  slug,
+  featuredImage,
+  keywords,
+  publishedDate,
+  modifiedDate,
 }: BlogPostLayoutProps) => {
+  const baseUrl = "https://printyx.com";
+  const canonicalUrl = `${baseUrl}/blog/${slug}`;
+
+  // Build Article schema for structured data
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: title,
+    description: description,
+    author: {
+      "@type": "Organization",
+      name: author,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Printyx",
+      logo: {
+        "@type": "ImageObject",
+        url: `${baseUrl}/logo.png`,
+      },
+    },
+    datePublished: publishedDate,
+    dateModified: modifiedDate || publishedDate,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": canonicalUrl,
+    },
+    articleSection: category,
+    ...(featuredImage && {
+      image: {
+        "@type": "ImageObject",
+        url: featuredImage.startsWith("http") ? featuredImage : `${baseUrl}${featuredImage}`,
+      },
+    }),
+    ...(keywords && { keywords: keywords.join(", ") }),
+  };
+
+  // Apply SEO meta tags
+  usePageSeo({
+    title: `${title} | Printyx Blog`,
+    description,
+    keywords,
+    ogImage: featuredImage,
+    ogType: "article",
+    canonicalUrl,
+    schema: articleSchema,
+  });
+
+  // Breadcrumb data for structured navigation
+  const breadcrumbs = [
+    { name: "Home", url: baseUrl },
+    { name: "Blog", url: `${baseUrl}/blog` },
+    { name: title },
+  ];
+
   return (
     <div className="min-h-screen bg-white">
+      <BreadcrumbSchemaScript breadcrumbs={breadcrumbs} />
       {/* Header */}
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
