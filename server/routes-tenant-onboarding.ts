@@ -10,15 +10,51 @@ import {
   tenantCloneOperations,
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
+import { requireRootAdmin } from './routes-root-admin';
 
 /**
  * TENANT ONBOARDING ROUTES
  *
  * Streamlined tenant setup with industry templates, 8-step wizard,
  * integration automation, and health validation.
+ * SECURITY: All routes in this file require root admin authorization (Level 7+).
+ *
+ * CRITICAL SECURITY NOTE: Tenant provisioning is a platform-level operation
+ * that must only be performed by authorized Printyx staff.
  */
 
 const router = Router();
+
+// ============================================================================
+// SECURITY MIDDLEWARE - PROTECT ALL ROUTES
+// ============================================================================
+// Middleware to check authentication
+const requireAuth = (req: any, res: any, next: any) => {
+  const isAuthenticated =
+    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+
+  if (!req.user) {
+    req.user = {
+      id: req.session.userId,
+      tenantId: req.session.tenantId || req.user?.tenantId,
+    };
+  } else if (!req.user.tenantId && !req.user.id) {
+    req.user = {
+      id: req.user.claims?.sub || req.user.id,
+      tenantId: req.user.tenantId || req.session?.tenantId,
+    };
+  }
+
+  next();
+};
+
+// Apply authentication and root admin authorization to ALL routes
+router.use(requireAuth);
+router.use(requireRootAdmin);
 
 // ============================================================================
 // ONBOARDING TEMPLATES

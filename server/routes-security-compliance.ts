@@ -27,6 +27,12 @@ import {
 } from './security-compliance';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { requireRole } from './rbac-middleware';
+// Enhanced RBAC Integration
+import {
+  enhanceUserContext,
+  requireLevel,
+  ROLE_LEVELS
+} from './middleware/rbac-route-helper';
 
 const router = Router();
 
@@ -34,6 +40,8 @@ const router = Router();
 router.use(resolveTenant);
 router.use(requireTenant);
 router.use(sessionTimeoutMiddleware());
+// Apply enhanced RBAC context
+router.use(enhanceUserContext);
 
 // ============= AUDIT LOGS ENDPOINTS =============
 

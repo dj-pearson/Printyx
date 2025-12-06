@@ -24,7 +24,7 @@ function requireAuth(req: any, res: any, next: any) {
 export function registerServiceAnalysisRoutes(app: Express) {
   
   // Get service call analysis for a ticket
-  app.get('/api/service-tickets/:ticketId/analysis', requireAuth, async (req: any, res) => {
+  app.get('/api/service-tickets/:ticketId/analysis', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { ticketId } = req.params;
@@ -48,7 +48,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Create service call analysis
-  app.post('/api/service-tickets/:ticketId/analysis', requireAuth, async (req: any, res) => {
+  app.post('/api/service-tickets/:ticketId/analysis', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { ticketId } = req.params;
@@ -94,7 +94,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Update service call analysis
-  app.put('/api/service-analysis/:id', requireAuth, async (req: any, res) => {
+  app.put('/api/service-analysis/:id', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { id } = req.params;
@@ -123,7 +123,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Get parts used in analysis
-  app.get('/api/service-analysis/:analysisId/parts-used', requireAuth, async (req: any, res) => {
+  app.get('/api/service-analysis/:analysisId/parts-used', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { analysisId } = req.params;
@@ -146,7 +146,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Add parts used
-  app.post('/api/service-analysis/:analysisId/parts-used', requireAuth, async (req: any, res) => {
+  app.post('/api/service-analysis/:analysisId/parts-used', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { analysisId } = req.params;
@@ -169,7 +169,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Create parts order
-  app.post('/api/service-analysis/:analysisId/parts-order', requireAuth, async (req: any, res) => {
+  app.post('/api/service-analysis/:analysisId/parts-order', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { analysisId } = req.params;
@@ -211,7 +211,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Get parts orders for analysis
-  app.get('/api/service-analysis/:analysisId/parts-orders', requireAuth, async (req: any, res) => {
+  app.get('/api/service-analysis/:analysisId/parts-orders', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { analysisId } = req.params;
@@ -235,7 +235,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Update parts order status
-  app.patch('/api/parts-orders/:orderId', requireAuth, async (req: any, res) => {
+  app.patch('/api/parts-orders/:orderId', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { orderId } = req.params;
@@ -269,7 +269,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Add parts order items
-  app.post('/api/parts-orders/:orderId/items', requireAuth, async (req: any, res) => {
+  app.post('/api/parts-orders/:orderId/items', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { orderId } = req.params;
@@ -296,7 +296,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Get parts order items
-  app.get('/api/parts-orders/:orderId/items', requireAuth, async (req: any, res) => {
+  app.get('/api/parts-orders/:orderId/items', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const { orderId } = req.params;
@@ -319,7 +319,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Service Analysis Dashboard Stats
-  app.get('/api/service-analysis/stats', requireAuth, async (req: any, res) => {
+  app.get('/api/service-analysis/stats', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
 
@@ -355,7 +355,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
   });
 
   // Get recent service analyses with ticket details
-  app.get('/api/service-analysis/recent', requireAuth, async (req: any, res) => {
+  app.get('/api/service-analysis/recent', async (req: any, res) => {
     try {
       const tenantId = req.session.tenantId;
       const limit = parseInt(req.query.limit as string) || 10;

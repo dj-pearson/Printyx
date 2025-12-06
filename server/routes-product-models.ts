@@ -8,12 +8,25 @@ import {
   insertProductModelSchema,
   type ProductModel
 } from "@shared/schema";
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from "./middleware/rbac-route-helper";
 
 export function registerProductModelsRoutes(app: Express) {
-  // Get all product models
-  app.get("/api/product-models", isAuthenticated, async (req: any, res) => {
+  // Apply RBAC context to all product model routes
+  app.use("/api/product-models", enhanceUserContext);
+
+  // Get all product models - requires inventory item view permission
+  app.get("/api/product-models",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user!.tenantId;
       const { search, category, manufacturer, status } = req.query;
       
       let query = db
@@ -66,8 +79,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Get product model by ID
-  app.get("/api/product-models/:id", isAuthenticated, async (req: any, res) => {
+  // Get product model by ID - requires inventory item view permission
+  app.get("/api/product-models/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const modelId = req.params.id;
@@ -88,8 +104,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Create new product model
-  app.post("/api/product-models", isAuthenticated, async (req: any, res) => {
+  // Create new product model - requires inventory item create permission
+  app.post("/api/product-models",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -111,8 +130,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Update product model
-  app.put("/api/product-models/:id", isAuthenticated, async (req: any, res) => {
+  // Update product model - requires inventory item edit permission
+  app.put("/api/product-models/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const modelId = req.params.id;
@@ -137,8 +159,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Delete product model
-  app.delete("/api/product-models/:id", isAuthenticated, async (req: any, res) => {
+  // Delete product model - requires inventory item delete permission
+  app.delete("/api/product-models/:id",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const modelId = req.params.id;
@@ -159,8 +184,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Get product categories
-  app.get("/api/product-models/categories", isAuthenticated, async (req: any, res) => {
+  // Get product categories - requires inventory item view permission
+  app.get("/api/product-models/categories",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -176,8 +204,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Get manufacturers
-  app.get("/api/product-models/manufacturers", isAuthenticated, async (req: any, res) => {
+  // Get manufacturers - requires inventory item view permission
+  app.get("/api/product-models/manufacturers",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -193,8 +224,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Get low stock models
-  app.get("/api/product-models/low-stock", isAuthenticated, async (req: any, res) => {
+  // Get low stock models - requires inventory item view permission
+  app.get("/api/product-models/low-stock",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -216,8 +250,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Get product models dashboard stats
-  app.get("/api/product-models/dashboard", isAuthenticated, async (req: any, res) => {
+  // Get product models dashboard stats - requires inventory item view permission
+  app.get("/api/product-models/dashboard",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -266,8 +303,11 @@ export function registerProductModelsRoutes(app: Express) {
     }
   });
 
-  // Bulk update stock quantities
-  app.patch("/api/product-models/bulk-stock-update", isAuthenticated, async (req: any, res) => {
+  // Bulk update stock quantities - requires inventory item edit permission
+  app.patch("/api/product-models/bulk-stock-update",
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.EDIT]),
+    async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { updates } = req.body; // Array of { id, stockQuantity }

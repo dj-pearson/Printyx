@@ -10,7 +10,7 @@ const router = express.Router();
 // Note: Database tables will be created after schema update
 
 // Get all signature requests
-router.get('/api/signature-requests', requireAuth, async (req: any, res) => {
+router.get('/api/signature-requests', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -117,7 +117,7 @@ router.get('/api/signature-requests', requireAuth, async (req: any, res) => {
 });
 
 // Get signature templates
-router.get('/api/signature-templates', requireAuth, async (req: any, res) => {
+router.get('/api/signature-templates', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -185,7 +185,7 @@ router.get('/api/signature-templates', requireAuth, async (req: any, res) => {
 });
 
 // Create new signature request
-router.post('/api/signature-requests', requireAuth, async (req: any, res) => {
+router.post('/api/signature-requests', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
@@ -267,7 +267,7 @@ router.post('/api/signature-requests', requireAuth, async (req: any, res) => {
 });
 
 // Update signature request status
-router.put('/api/signature-requests/:id/status', requireAuth, async (req: any, res) => {
+router.put('/api/signature-requests/:id/status', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { status, signedDate, signatureUrl } = req.body;
@@ -289,7 +289,7 @@ router.put('/api/signature-requests/:id/status', requireAuth, async (req: any, r
 });
 
 // Send reminder for pending signature
-router.post('/api/signature-requests/:id/remind', requireAuth, async (req: any, res) => {
+router.post('/api/signature-requests/:id/remind', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { customMessage } = req.body;
@@ -310,7 +310,7 @@ router.post('/api/signature-requests/:id/remind', requireAuth, async (req: any, 
 });
 
 // Get signature analytics
-router.get('/api/signature-analytics', requireAuth, async (req: any, res) => {
+router.get('/api/signature-analytics', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { period = 'monthly' } = req.query;
@@ -361,7 +361,7 @@ router.get('/api/signature-analytics', requireAuth, async (req: any, res) => {
 });
 
 // Bulk send signature requests
-router.post('/api/signature-requests/bulk-send', requireAuth, async (req: any, res) => {
+router.post('/api/signature-requests/bulk-send', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
@@ -396,7 +396,7 @@ router.post('/api/signature-requests/bulk-send', requireAuth, async (req: any, r
 });
 
 // Get audit trail for signature request
-router.get('/api/signature-requests/:id/audit-trail', requireAuth, async (req: any, res) => {
+router.get('/api/signature-requests/:id/audit-trail', async (req: any, res) => {
   try {
     const { id } = req.params;
     

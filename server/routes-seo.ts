@@ -48,7 +48,7 @@ const router = express.Router();
 // ============= SETTINGS =============
 
 // Get SEO settings
-router.get('/api/seo/settings', requireAuth, async (req: any, res) => {
+router.get('/api/seo/settings', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -69,7 +69,7 @@ router.get('/api/seo/settings', requireAuth, async (req: any, res) => {
 });
 
 // Update SEO settings
-router.post('/api/seo/settings', requireAuth, async (req: any, res) => {
+router.post('/api/seo/settings', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -125,7 +125,7 @@ router.post('/api/seo/settings', requireAuth, async (req: any, res) => {
 // ============= AUDIT =============
 
 // Run SEO audit
-router.post('/api/seo/audit', requireAuth, async (req: any, res) => {
+router.post('/api/seo/audit', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
@@ -173,7 +173,7 @@ router.post('/api/seo/audit', requireAuth, async (req: any, res) => {
 });
 
 // Get audit history
-router.get('/api/seo/audit/history', requireAuth, async (req: any, res) => {
+router.get('/api/seo/audit/history', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -199,7 +199,7 @@ router.get('/api/seo/audit/history', requireAuth, async (req: any, res) => {
 });
 
 // Get specific audit
-router.get('/api/seo/audit/:id', requireAuth, async (req: any, res) => {
+router.get('/api/seo/audit/:id', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -227,7 +227,7 @@ router.get('/api/seo/audit/:id', requireAuth, async (req: any, res) => {
 });
 
 // Apply SEO fixes
-router.post('/api/seo/audit/:id/apply-fixes', requireAuth, async (req: any, res) => {
+router.post('/api/seo/audit/:id/apply-fixes', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
@@ -267,7 +267,7 @@ router.post('/api/seo/audit/:id/apply-fixes', requireAuth, async (req: any, res)
 // ============= KEYWORDS =============
 
 // Get keywords
-router.get('/api/seo/keywords', requireAuth, async (req: any, res) => {
+router.get('/api/seo/keywords', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -288,7 +288,7 @@ router.get('/api/seo/keywords', requireAuth, async (req: any, res) => {
 });
 
 // Add keyword
-router.post('/api/seo/keywords', requireAuth, async (req: any, res) => {
+router.post('/api/seo/keywords', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -308,7 +308,7 @@ router.post('/api/seo/keywords', requireAuth, async (req: any, res) => {
 });
 
 // Update keyword
-router.put('/api/seo/keywords/:id', requireAuth, async (req: any, res) => {
+router.put('/api/seo/keywords/:id', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -332,7 +332,7 @@ router.put('/api/seo/keywords/:id', requireAuth, async (req: any, res) => {
 });
 
 // Delete keyword
-router.delete('/api/seo/keywords/:id', requireAuth, async (req: any, res) => {
+router.delete('/api/seo/keywords/:id', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -354,7 +354,7 @@ router.delete('/api/seo/keywords/:id', requireAuth, async (req: any, res) => {
 });
 
 // Get keyword history
-router.get('/api/seo/keywords/:id/history', requireAuth, async (req: any, res) => {
+router.get('/api/seo/keywords/:id/history', async (req: any, res) => {
   try {
     const history = await db
       .select()
@@ -371,7 +371,7 @@ router.get('/api/seo/keywords/:id/history', requireAuth, async (req: any, res) =
 });
 
 // Check keyword positions
-router.post('/api/seo/keywords/check-positions', requireAuth, async (req: any, res) => {
+router.post('/api/seo/keywords/check-positions', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -426,7 +426,7 @@ router.post('/api/seo/keywords/check-positions', requireAuth, async (req: any, r
 // ============= SITE CRAWLER =============
 
 // Start crawl
-router.post('/api/seo/crawl', requireAuth, async (req: any, res) => {
+router.post('/api/seo/crawl', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -468,7 +468,7 @@ router.post('/api/seo/crawl', requireAuth, async (req: any, res) => {
 });
 
 // Get crawl results
-router.get('/api/seo/crawl/:crawlId', requireAuth, async (req: any, res) => {
+router.get('/api/seo/crawl/:crawlId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -494,7 +494,7 @@ router.get('/api/seo/crawl/:crawlId', requireAuth, async (req: any, res) => {
 // ============= CORE WEB VITALS =============
 
 // Check Core Web Vitals
-router.post('/api/seo/core-web-vitals', requireAuth, async (req: any, res) => {
+router.post('/api/seo/core-web-vitals', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -530,7 +530,7 @@ router.post('/api/seo/core-web-vitals', requireAuth, async (req: any, res) => {
 });
 
 // Get Core Web Vitals history
-router.get('/api/seo/core-web-vitals', requireAuth, async (req: any, res) => {
+router.get('/api/seo/core-web-vitals', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -562,7 +562,7 @@ router.get('/api/seo/core-web-vitals', requireAuth, async (req: any, res) => {
 // ============= PAGE ANALYSIS =============
 
 // Analyze page
-router.post('/api/seo/analyze/page', requireAuth, async (req: any, res) => {
+router.post('/api/seo/analyze/page', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -595,7 +595,7 @@ router.post('/api/seo/analyze/page', requireAuth, async (req: any, res) => {
 });
 
 // Get page scores
-router.get('/api/seo/page-scores', requireAuth, async (req: any, res) => {
+router.get('/api/seo/page-scores', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -619,7 +619,7 @@ router.get('/api/seo/page-scores', requireAuth, async (req: any, res) => {
 // ============= IMAGE ANALYSIS =============
 
 // Analyze images
-router.post('/api/seo/analyze/images', requireAuth, async (req: any, res) => {
+router.post('/api/seo/analyze/images', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -657,7 +657,7 @@ router.post('/api/seo/analyze/images', requireAuth, async (req: any, res) => {
 });
 
 // Get image analysis
-router.get('/api/seo/images', requireAuth, async (req: any, res) => {
+router.get('/api/seo/images', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -688,7 +688,7 @@ router.get('/api/seo/images', requireAuth, async (req: any, res) => {
 // ============= BROKEN LINKS =============
 
 // Check broken links
-router.post('/api/seo/check/broken-links', requireAuth, async (req: any, res) => {
+router.post('/api/seo/check/broken-links', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -726,7 +726,7 @@ router.post('/api/seo/check/broken-links', requireAuth, async (req: any, res) =>
 });
 
 // Get broken links
-router.get('/api/seo/broken-links', requireAuth, async (req: any, res) => {
+router.get('/api/seo/broken-links', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -753,7 +753,7 @@ router.get('/api/seo/broken-links', requireAuth, async (req: any, res) => {
 // ============= SECURITY ANALYSIS =============
 
 // Check security headers
-router.post('/api/seo/check/security', requireAuth, async (req: any, res) => {
+router.post('/api/seo/check/security', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -788,7 +788,7 @@ router.post('/api/seo/check/security', requireAuth, async (req: any, res) => {
 // ============= MOBILE ANALYSIS =============
 
 // Check mobile friendliness
-router.post('/api/seo/check/mobile', requireAuth, async (req: any, res) => {
+router.post('/api/seo/check/mobile', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -823,7 +823,7 @@ router.post('/api/seo/check/mobile', requireAuth, async (req: any, res) => {
 // ============= STRUCTURED DATA =============
 
 // Validate structured data
-router.post('/api/seo/validate/structured-data', requireAuth, async (req: any, res) => {
+router.post('/api/seo/validate/structured-data', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -863,7 +863,7 @@ router.post('/api/seo/validate/structured-data', requireAuth, async (req: any, r
 // ============= REDIRECT ANALYSIS =============
 
 // Detect redirect chains
-router.post('/api/seo/detect/redirect-chains', requireAuth, async (req: any, res) => {
+router.post('/api/seo/detect/redirect-chains', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -898,7 +898,7 @@ router.post('/api/seo/detect/redirect-chains', requireAuth, async (req: any, res
 // ============= DUPLICATE CONTENT =============
 
 // Detect duplicate content
-router.post('/api/seo/detect/duplicate-content', requireAuth, async (req: any, res) => {
+router.post('/api/seo/detect/duplicate-content', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -934,7 +934,7 @@ router.post('/api/seo/detect/duplicate-content', requireAuth, async (req: any, r
 // ============= CONTENT OPTIMIZATION =============
 
 // Optimize content
-router.post('/api/seo/optimize/content', requireAuth, async (req: any, res) => {
+router.post('/api/seo/optimize/content', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -965,7 +965,7 @@ router.post('/api/seo/optimize/content', requireAuth, async (req: any, res) => {
 });
 
 // Get content optimizations
-router.get('/api/seo/content-optimizations', requireAuth, async (req: any, res) => {
+router.get('/api/seo/content-optimizations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -989,7 +989,7 @@ router.get('/api/seo/content-optimizations', requireAuth, async (req: any, res) 
 // ============= SEMANTIC ANALYSIS =============
 
 // Analyze semantic keywords
-router.post('/api/seo/analyze/semantic', requireAuth, async (req: any, res) => {
+router.post('/api/seo/analyze/semantic', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -1024,7 +1024,7 @@ router.post('/api/seo/analyze/semantic', requireAuth, async (req: any, res) => {
 // ============= ALERTS & NOTIFICATIONS =============
 
 // Get alerts
-router.get('/api/seo/alerts', requireAuth, async (req: any, res) => {
+router.get('/api/seo/alerts', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -1053,7 +1053,7 @@ router.get('/api/seo/alerts', requireAuth, async (req: any, res) => {
 });
 
 // Acknowledge alert
-router.post('/api/seo/alerts/:id/acknowledge', requireAuth, async (req: any, res) => {
+router.post('/api/seo/alerts/:id/acknowledge', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
@@ -1082,7 +1082,7 @@ router.post('/api/seo/alerts/:id/acknowledge', requireAuth, async (req: any, res
 });
 
 // Resolve alert
-router.post('/api/seo/alerts/:id/resolve', requireAuth, async (req: any, res) => {
+router.post('/api/seo/alerts/:id/resolve', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
@@ -1116,7 +1116,7 @@ router.post('/api/seo/alerts/:id/resolve', requireAuth, async (req: any, res) =>
 // ============= MONITORING =============
 
 // Get monitoring log
-router.get('/api/seo/monitoring/log', requireAuth, async (req: any, res) => {
+router.get('/api/seo/monitoring/log', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -1154,7 +1154,7 @@ router.get('/api/seo/monitoring/log', requireAuth, async (req: any, res) => {
 // ============= COMPETITOR ANALYSIS =============
 
 // Analyze competitor
-router.post('/api/seo/analyze/competitor', requireAuth, async (req: any, res) => {
+router.post('/api/seo/analyze/competitor', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -1188,7 +1188,7 @@ router.post('/api/seo/analyze/competitor', requireAuth, async (req: any, res) =>
 });
 
 // Get competitor analyses
-router.get('/api/seo/competitors', requireAuth, async (req: any, res) => {
+router.get('/api/seo/competitors', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {

@@ -4,6 +4,13 @@ import { db } from './db';
 import { contracts, serviceContracts, businessRecords } from '../shared/schema';
 import { renewalOpportunities, churnPredictions } from '../shared/customer-success-schema';
 import { contractRenewalWorkflow } from './services/contract-renewal-workflow';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
@@ -14,8 +21,14 @@ const requireAuth = (req: any, res: any, next: any) => {
 
 const router = express.Router();
 
-// Get contract expiration alerts for the alert bell and renewal management
-router.get('/api/alerts/contract-expirations', requireAuth, async (req: any, res) => {
+// Apply RBAC context to all contract alert routes
+router.use(enhanceUserContext);
+
+// Get contract expiration alerts for the alert bell and renewal management - requires customer view permission
+router.get('/api/alerts/contract-expirations',
+  
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { daysAhead = 180 } = req.query; // Default to 180 days ahead
@@ -150,7 +163,7 @@ router.get('/api/alerts/contract-expirations', requireAuth, async (req: any, res
 });
 
 // Get detailed renewal opportunity for a specific contract
-router.get('/api/alerts/contract-expirations/:contractId', requireAuth, async (req: any, res) => {
+router.get('/api/alerts/contract-expirations/:contractId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { contractId } = req.params;
@@ -253,7 +266,7 @@ router.get('/api/alerts/contract-expirations/:contractId', requireAuth, async (r
 });
 
 // Create a renewal opportunity from an expiring contract alert
-router.post('/api/alerts/contract-expirations/:contractId/create-renewal', requireAuth, async (req: any, res) => {
+router.post('/api/alerts/contract-expirations/:contractId/create-renewal', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { contractId } = req.params;
@@ -363,7 +376,7 @@ router.post('/api/alerts/contract-expirations/:contractId/create-renewal', requi
  * RENEWAL WORKFLOW AUTOMATION
  * Trigger automated renewal workflows at contract milestones
  */
-router.post('/api/alerts/renewal-workflow/process', requireAuth, async (req: any, res) => {
+router.post('/api/alerts/renewal-workflow/process', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 
@@ -402,7 +415,7 @@ router.post('/api/alerts/renewal-workflow/process', requireAuth, async (req: any
  * Get renewal workflow summary
  * Shows contracts at each milestone
  */
-router.get('/api/alerts/renewal-workflow/summary', requireAuth, async (req: any, res) => {
+router.get('/api/alerts/renewal-workflow/summary', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 

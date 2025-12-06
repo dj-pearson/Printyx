@@ -43,6 +43,13 @@ import {
 } from '../shared/customer-portal-schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { CustomerPortalService } from './services/customer-portal-service';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 // Enhanced auth middleware with customer portal validation
 const requireAuth = (req: any, res: any, next: any) => {
@@ -118,8 +125,14 @@ const requireCustomerPortalAuth = async (req: any, res: any, next: any) => {
 const router = Router();
 const customerPortalService = new CustomerPortalService();
 
-// Customer Portal Dashboard - Get portal statistics
-router.get('/dashboard/stats', requireAuth, async (req, res) => {
+// Apply RBAC context to all customer portal routes
+router.use(enhanceUserContext);
+
+// Customer Portal Dashboard - Get portal statistics - requires customer view permission
+router.get('/dashboard/stats',
+  
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
+  async (req: AuthenticatedRequest, res) => {
   try {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -167,7 +180,7 @@ router.get('/dashboard/stats', requireAuth, async (req, res) => {
 });
 
 // Get all portal users for a tenant
-router.get('/users', requireAuth, async (req, res) => {
+router.get('/users', async (req, res) => {
   try {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -192,7 +205,7 @@ router.get('/users', requireAuth, async (req, res) => {
 });
 
 // Get recent service requests
-router.get('/service-requests/recent', requireAuth, async (req, res) => {
+router.get('/service-requests/recent', async (req, res) => {
   try {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -220,7 +233,7 @@ router.get('/service-requests/recent', requireAuth, async (req, res) => {
 });
 
 // Get recent meter submissions
-router.get('/meter-submissions/recent', requireAuth, async (req, res) => {
+router.get('/meter-submissions/recent', async (req, res) => {
   try {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -248,7 +261,7 @@ router.get('/meter-submissions/recent', requireAuth, async (req, res) => {
 });
 
 // Test database connectivity
-router.get('/test', requireAuth, async (req, res) => {
+router.get('/test', async (req, res) => {
   try {
     const tenantId = req.user.tenantId;
     

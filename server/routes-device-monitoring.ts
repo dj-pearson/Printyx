@@ -6,15 +6,25 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 const requireAuth = (req: any, res: any, next: any) => { if (!req.user) return res.status(401).json({ error: 'Unauthorized' }); next(); };
 
 const router = express.Router();
+
+// Apply RBAC context to all device monitoring routes
+router.use(enhanceUserContext);
 
 /**
  * Get latest metrics for all devices
  * Returns the most recent metric for each unique device
  */
-router.get('/latest-metrics', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.get('/latest-metrics', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const tenantId = req.tenantId!;
 
@@ -35,7 +45,7 @@ router.get('/latest-metrics', requireAuth, resolveTenant, requireTenant, async (
 /**
  * Get metrics history for a specific device
  */
-router.get('/device/:serialNumber/history', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.get('/device/:serialNumber/history', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { serialNumber } = req.params;
     const tenantId = req.tenantId!;
@@ -60,7 +70,7 @@ router.get('/device/:serialNumber/history', requireAuth, resolveTenant, requireT
 /**
  * Get active alerts for all devices
  */
-router.get('/active-alerts', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.get('/active-alerts', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const tenantId = req.tenantId!;
 
@@ -82,7 +92,7 @@ router.get('/active-alerts', requireAuth, resolveTenant, requireTenant, async (r
 /**
  * Get alerts for a specific device
  */
-router.get('/device/:serialNumber/alerts', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.get('/device/:serialNumber/alerts', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { serialNumber } = req.params;
     const tenantId = req.tenantId!;
@@ -114,7 +124,7 @@ router.get('/device/:serialNumber/alerts', requireAuth, resolveTenant, requireTe
 /**
  * Acknowledge an alert
  */
-router.post('/alerts/:alertId/acknowledge', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.post('/alerts/:alertId/acknowledge', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { alertId } = req.params;
     const tenantId = req.tenantId!;
@@ -152,7 +162,7 @@ router.post('/alerts/:alertId/acknowledge', requireAuth, resolveTenant, requireT
 /**
  * Mark alert as resolved
  */
-router.post('/alerts/:alertId/resolve', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.post('/alerts/:alertId/resolve', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { alertId } = req.params;
     const tenantId = req.tenantId!;
@@ -188,7 +198,7 @@ router.post('/alerts/:alertId/resolve', requireAuth, resolveTenant, requireTenan
 /**
  * Get device statistics
  */
-router.get('/statistics', requireAuth, resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+router.get('/statistics', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const tenantId = req.tenantId!;
 

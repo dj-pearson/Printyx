@@ -980,7 +980,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
   // Enhanced API endpoints for auto-population
   app.get("/api/business-records", searchBusinessRecords);
-  app.get("/api/quotes", requireAuth, searchQuotes);
-  app.get("/api/quotes/:quoteId/line-items", requireAuth, getQuoteLineItems);
-  app.get("/api/companies/:businessRecordId/contacts", requireAuth, getCompanyContacts);
+  app.get("/api/quotes", searchQuotes);
+  app.get("/api/quotes/:quoteId/line-items", getQuoteLineItems);
+  app.get("/api/companies/:businessRecordId/contacts", getCompanyContacts);
 }

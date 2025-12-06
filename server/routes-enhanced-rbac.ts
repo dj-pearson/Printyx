@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { eq, and, or, desc, asc, ilike, inArray, sql } from 'drizzle-orm';
+import { eq, and, or, desc, asc, ilike, inArray, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import { rbacService } from './enhanced-rbac-service';
 import { rbacSeeder } from './enhanced-rbac-seeder';
@@ -53,7 +53,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * GET /api/rbac/status
  * Get RBAC system initialization status
  */
-router.get('/status', requireAuth, async (req, res) => {
+router.get('/status', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -204,53 +204,58 @@ router.get('/permissions/effective', async (req, res) => {
 /**
  * GET /api/rbac/roles
  * Get all roles for current tenant with optional filtering
+ *
+ * SECURITY: All user inputs are parameterized to prevent SQL injection
  */
-router.get('/roles', requireAuth, async (req, res) => {
+router.get('/roles', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const { 
-      hierarchyLevel, 
-      department, 
-      organizationalTier, 
+    const {
+      hierarchyLevel,
+      department,
+      organizationalTier,
       search,
       page = '1',
       limit = '50'
     } = req.query;
 
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50)); // Cap at 100
     const offset = (pageNum - 1) * limitNum;
 
-    // Build WHERE conditions dynamically
-    const whereClauses = [`tenant_id = '${tenantId}'`];
-    
-    if (hierarchyLevel) {
-      whereClauses.push(`hierarchy_level = '${hierarchyLevel}'`);
+    // Build WHERE conditions using parameterized queries (SQL injection safe)
+    const conditions: SQL[] = [sql`r.tenant_id = ${tenantId}`];
+
+    if (hierarchyLevel && typeof hierarchyLevel === 'string') {
+      conditions.push(sql`r.hierarchy_level = ${hierarchyLevel}`);
     }
-    if (department) {
-      whereClauses.push(`department = '${department}'`);
+    if (department && typeof department === 'string') {
+      conditions.push(sql`r.department = ${department}`);
     }
-    if (organizationalTier) {
-      whereClauses.push(`organizational_tier = '${organizationalTier}'`);
+    if (organizationalTier && typeof organizationalTier === 'string') {
+      conditions.push(sql`r.organizational_tier = ${organizationalTier}`);
     }
-    if (search) {
-      whereClauses.push(`(name ILIKE '%${search}%' OR code ILIKE '%${search}%' OR description ILIKE '%${search}%')`);
+    if (search && typeof search === 'string') {
+      const searchPattern = `%${search}%`;
+      conditions.push(sql`(r.name ILIKE ${searchPattern} OR r.code ILIKE ${searchPattern} OR r.description ILIKE ${searchPattern})`);
     }
 
-    // Execute query with raw SQL for better compatibility
+    const whereClause = and(...conditions);
+
+    // Execute query with parameterized values
     const rolesResult = await db.execute(sql`
-      SELECT 
+      SELECT
         r.*,
         ou.name as org_unit_name,
-        ou.tier as org_unit_tier,
+        ou.unit_type as org_unit_tier,
         (SELECT COUNT(*) FROM role_permissions rp WHERE rp.role_id = r.id) as permission_count
       FROM enhanced_roles r
       LEFT JOIN organizational_units ou ON r.organizational_unit_id = ou.id
-      WHERE ${sql.join(whereClauses.map(clause => sql.raw(clause)), sql` AND `)}
+      WHERE ${whereClause}
       ORDER BY r.created_at DESC
       LIMIT ${limitNum}
       OFFSET ${offset}
@@ -258,11 +263,11 @@ router.get('/roles', requireAuth, async (req, res) => {
 
     // Get total count
     const countResult = await db.execute(sql`
-      SELECT COUNT(*) as total 
+      SELECT COUNT(*) as total
       FROM enhanced_roles r
-      WHERE ${sql.join(whereClauses.map(clause => sql.raw(clause)), sql` AND `)}
+      WHERE ${whereClause}
     `);
-    
+
     const roles = rolesResult.rows;
     const totalCount = parseInt(countResult.rows[0]?.total || '0');
 
@@ -284,6 +289,9 @@ router.get('/roles', requireAuth, async (req, res) => {
 /**
  * GET /api/rbac/roles/:id
  * Get specific role with permissions
+ *
+ * SECURITY: All user inputs are parameterized to prevent SQL injection
+ * SCHEMA: Uses correct table and column names from enhanced-rbac-schema.ts
  */
 router.get('/roles/:id', async (req, res) => {
   try {
@@ -294,31 +302,36 @@ router.get('/roles/:id', async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    // Fetch role with org unit info using correct schema column names
     const roleResult = await db.execute(sql`
-      SELECT 
+      SELECT
         r.*,
         ou.name as org_unit_name,
-        ou.tier as org_unit_tier
+        ou.unit_type as org_unit_tier
       FROM enhanced_roles r
       LEFT JOIN organizational_units ou ON r.organizational_unit_id = ou.id
       WHERE r.id = ${roleId} AND r.tenant_id = ${tenantId}
       LIMIT 1
     `);
-    
+
     const role = roleResult.rows[0];
 
     if (!role) {
       return res.status(404).json({ error: 'Role not found' });
     }
 
-    // Get role permissions using raw SQL
+    // Get role permissions using correct table name (permissions, not system_permissions)
+    // and correct column names from role_permissions table
     const permissionsResult = await db.execute(sql`
-      SELECT 
+      SELECT
         p.*,
         rp.effect,
-        rp.granted_at
+        rp.created_at as assigned_at,
+        rp.is_customized,
+        rp.customized_by,
+        rp.customization_reason
       FROM role_permissions rp
-      INNER JOIN system_permissions p ON rp.permission_id = p.id
+      INNER JOIN permissions p ON rp.permission_id = p.id
       WHERE rp.role_id = ${roleId}
       ORDER BY p.module, p.resource_type, p.action
     `);
@@ -468,29 +481,37 @@ router.put('/roles/:id/customize', async (req, res) => {
 /**
  * GET /api/rbac/permissions
  * Get all available permissions with filtering
+ *
+ * SCHEMA: Uses correct table name 'permissions' (not 'system_permissions')
  */
-router.get('/permissions', requireAuth, async (req, res) => {
+router.get('/permissions', async (req, res) => {
   try {
     const { module, resourceType, scopeLevel, search } = req.query;
 
-    const conditions = [];
-    
-    if (module) conditions.push(eq(permissions.module, module as string));
-    if (resourceType) conditions.push(eq(permissions.resourceType, resourceType as string));
-    if (scopeLevel) conditions.push(eq(permissions.scopeLevel, scopeLevel as string));
-    if (search) {
+    // Build conditions using parameterized queries (SQL injection safe)
+    const conditions: SQL[] = [];
+
+    if (module && typeof module === 'string') {
+      conditions.push(sql`module = ${module}`);
+    }
+    if (resourceType && typeof resourceType === 'string') {
+      conditions.push(sql`resource_type = ${resourceType}`);
+    }
+    if (scopeLevel && typeof scopeLevel === 'string') {
+      conditions.push(sql`scope_level = ${scopeLevel}`);
+    }
+    if (search && typeof search === 'string') {
+      const searchPattern = `%${search}%`;
       conditions.push(
-        or(
-          ilike(permissions.name, `%${search}%`),
-          ilike(permissions.code, `%${search}%`),
-          ilike(permissions.description, `%${search}%`)
-        )
+        sql`(name ILIKE ${searchPattern} OR code ILIKE ${searchPattern} OR description ILIKE ${searchPattern})`
       );
     }
 
+    // Use correct table name 'permissions'
+    const whereClause = conditions.length > 0 ? and(...conditions) : sql`1=1`;
     const permissionsList = await db.execute(sql`
-      SELECT * FROM system_permissions 
-      ${conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``}
+      SELECT * FROM permissions
+      WHERE ${whereClause}
       ORDER BY module, resource_type, action
     `);
 
@@ -638,7 +659,7 @@ router.post('/permission-overrides', async (req, res) => {
  * GET /api/rbac/organizational-units
  * Get organizational units hierarchy
  */
-router.get('/organizational-units', requireAuth, async (req, res) => {
+router.get('/organizational-units', async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
@@ -675,7 +696,7 @@ router.get('/organizational-units', requireAuth, async (req, res) => {
  * POST /api/rbac/seed
  * Initialize RBAC system with default roles and permissions
  */
-router.post('/seed', requireAuth, async (req, res) => {
+router.post('/seed', async (req, res) => {
   try {
     const { dealerType = 'standard' } = req.body;
     const userId = req.user?.id;
@@ -694,10 +715,10 @@ router.post('/seed', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'RBAC system already initialized for this tenant' });
     }
 
-    // Create basic organizational unit
+    // Create basic organizational unit (using correct column name 'unit_type')
     const companyUnitId = `company-${tenantId}`;
     await db.execute(sql`
-      INSERT INTO organizational_units (id, tenant_id, name, code, tier, description)
+      INSERT INTO organizational_units (id, tenant_id, name, code, unit_type, description)
       VALUES (${companyUnitId}, ${tenantId}, 'Company', 'COMPANY', 'COMPANY', 'Main company unit')
     `);
 

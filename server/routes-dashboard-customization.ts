@@ -7,8 +7,18 @@ import { Router } from 'express';
 import { db } from './db';
 import { eq, and, or } from 'drizzle-orm';
 import { dashboardLayouts, userDashboardPreferences, dashboardWidgets, dashboardSnapshots } from '@shared/schema-dashboard';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 const router = Router();
+
+// Apply RBAC context to all dashboard customization routes
+router.use(enhanceUserContext);
 
 /**
  * GET /api/dashboard/widgets

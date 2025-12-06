@@ -19,7 +19,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * GET /api/tasks
  * Get user's tasks with filtering and pagination
  */
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { status, priority, category, limit = 50, offset = 0 } = req.query;
     const { tenantId } = req.user;
@@ -118,7 +118,7 @@ router.get('/', requireAuth, async (req, res) => {
  * POST /api/tasks
  * Create a new task
  */
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const taskData = req.body;
     const { tenantId } = req.user;
@@ -186,7 +186,7 @@ Return JSON with:
  * PUT /api/tasks/:taskId
  * Update an existing task
  */
-router.put('/:taskId', requireAuth, async (req, res) => {
+router.put('/:taskId', async (req, res) => {
   try {
     const { taskId } = req.params;
     const updateData = req.body;
@@ -209,7 +209,7 @@ router.put('/:taskId', requireAuth, async (req, res) => {
  * DELETE /api/tasks/:taskId
  * Delete a task
  */
-router.delete('/:taskId', requireAuth, async (req, res) => {
+router.delete('/:taskId', async (req, res) => {
   try {
     const { taskId } = req.params;
 
@@ -225,7 +225,7 @@ router.delete('/:taskId', requireAuth, async (req, res) => {
  * POST /api/tasks/schedule
  * AI-powered task scheduling
  */
-router.post('/schedule', requireAuth, async (req, res) => {
+router.post('/schedule', async (req, res) => {
   try {
     const { 
       taskIds, 
@@ -312,7 +312,7 @@ router.post('/schedule', requireAuth, async (req, res) => {
  * GET /api/tasks/categories
  * Get task categories
  */
-router.get('/categories', requireAuth, async (req, res) => {
+router.get('/categories', async (req, res) => {
   try {
     // Mock categories
     const categories = [
@@ -335,7 +335,7 @@ router.get('/categories', requireAuth, async (req, res) => {
  * POST /api/tasks/:taskId/time-entry
  * Start/stop time tracking for a task
  */
-router.post('/:taskId/time-entry', requireAuth, async (req, res) => {
+router.post('/:taskId/time-entry', async (req, res) => {
   try {
     const { taskId } = req.params;
     const { action, description } = req.body; // action: 'start' or 'stop'
@@ -366,7 +366,7 @@ router.post('/:taskId/time-entry', requireAuth, async (req, res) => {
  * GET /api/tasks/suggestions
  * Get AI-generated task suggestions
  */
-router.get('/suggestions', requireAuth, async (req, res) => {
+router.get('/suggestions', async (req, res) => {
   try {
     const { tenantId } = req.user;
     const userId = req.user.id;
@@ -418,7 +418,7 @@ router.get('/suggestions', requireAuth, async (req, res) => {
  * POST /api/tasks/suggestions/:suggestionId/accept
  * Accept an AI task suggestion
  */
-router.post('/suggestions/:suggestionId/accept', requireAuth, async (req, res) => {
+router.post('/suggestions/:suggestionId/accept', async (req, res) => {
   try {
     const { suggestionId } = req.params;
     const { tenantId } = req.user;

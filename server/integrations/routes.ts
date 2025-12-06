@@ -20,7 +20,7 @@ const router = express.Router();
 /**
  * Get available integrations marketplace
  */
-router.get('/api/integrations/marketplace', requireAuth, async (req: any, res) => {
+router.get('/api/integrations/marketplace', async (req: any, res) => {
   try {
     const { valid, errors } = validateOAuthConfig();
     
@@ -50,7 +50,7 @@ router.get('/api/integrations/marketplace', requireAuth, async (req: any, res) =
 /**
  * Get user's active integrations
  */
-router.get('/api/integrations', requireAuth, async (req: any, res) => {
+router.get('/api/integrations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -100,7 +100,7 @@ router.get('/api/integrations', requireAuth, async (req: any, res) => {
 /**
  * Initialize OAuth flow
  */
-router.post('/api/integrations/oauth/init', requireAuth, async (req: any, res) => {
+router.post('/api/integrations/oauth/init', async (req: any, res) => {
   try {
     const { providerId } = req.body;
     const tenantId = req.user?.tenantId;
@@ -167,7 +167,7 @@ router.get('/api/integrations/:provider/callback', async (req: any, res) => {
 /**
  * Get calendar events from an integration
  */
-router.get('/api/integrations/:integrationId/calendar/events', requireAuth, async (req: any, res) => {
+router.get('/api/integrations/:integrationId/calendar/events', async (req: any, res) => {
   try {
     const { integrationId } = req.params;
     const { startDate, endDate } = req.query;
@@ -207,7 +207,7 @@ router.get('/api/integrations/:integrationId/calendar/events', requireAuth, asyn
 /**
  * Delete an integration
  */
-router.delete('/api/integrations/:integrationId', requireAuth, async (req: any, res) => {
+router.delete('/api/integrations/:integrationId', async (req: any, res) => {
   try {
     const { integrationId } = req.params;
     const tenantId = req.user?.tenantId;
@@ -228,7 +228,7 @@ router.delete('/api/integrations/:integrationId', requireAuth, async (req: any, 
 /**
  * Test an integration connection
  */
-router.post('/api/integrations/:integrationId/test', requireAuth, async (req: any, res) => {
+router.post('/api/integrations/:integrationId/test', async (req: any, res) => {
   try {
     const { integrationId } = req.params;
     const tenantId = req.user?.tenantId;

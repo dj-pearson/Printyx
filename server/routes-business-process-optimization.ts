@@ -1,6 +1,13 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+// RBAC Integration
+import {
+  enhanceUserContext,
+  requirePermission,
+  PERMISSIONS,
+  type AuthenticatedRequest
+} from './middleware/rbac-route-helper';
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -12,10 +19,13 @@ const requireAuth = (req: any, res: any, next: any) => {
 
 const router = express.Router();
 
+// Apply RBAC context to all business process optimization routes
+router.use(enhanceUserContext);
+
 // Business Process Optimization API Routes
 
 // Get process optimization dashboard
-router.get('/api/business-process/dashboard', requireAuth, async (req: any, res) => {
+router.get('/api/business-process/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     
@@ -428,7 +438,7 @@ router.get('/api/business-process/dashboard', requireAuth, async (req: any, res)
 });
 
 // Get workflow template details
-router.get('/api/business-process/workflows/:workflowId', requireAuth, async (req: any, res) => {
+router.get('/api/business-process/workflows/:workflowId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;
@@ -560,7 +570,7 @@ router.get('/api/business-process/workflows/:workflowId', requireAuth, async (re
 });
 
 // Create new workflow template
-router.post('/api/business-process/workflows', requireAuth, async (req: any, res) => {
+router.post('/api/business-process/workflows', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const workflowData = req.body;
@@ -590,7 +600,7 @@ router.post('/api/business-process/workflows', requireAuth, async (req: any, res
 });
 
 // Update workflow template
-router.put('/api/business-process/workflows/:workflowId', requireAuth, async (req: any, res) => {
+router.put('/api/business-process/workflows/:workflowId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;
@@ -617,7 +627,7 @@ router.put('/api/business-process/workflows/:workflowId', requireAuth, async (re
 });
 
 // Execute workflow
-router.post('/api/business-process/workflows/:workflowId/execute', requireAuth, async (req: any, res) => {
+router.post('/api/business-process/workflows/:workflowId/execute', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;
@@ -650,7 +660,7 @@ router.post('/api/business-process/workflows/:workflowId/execute', requireAuth, 
 });
 
 // Get process improvement recommendations
-router.get('/api/business-process/recommendations', requireAuth, async (req: any, res) => {
+router.get('/api/business-process/recommendations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     

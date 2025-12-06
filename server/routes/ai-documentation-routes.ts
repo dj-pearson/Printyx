@@ -18,7 +18,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  * POST /api/documents
  * Create a new AI-powered document
  */
-router.post('/documents', requireAuth, async (req, res) => {
+router.post('/documents', async (req, res) => {
   try {
     const {
       title,
@@ -59,7 +59,7 @@ router.post('/documents', requireAuth, async (req, res) => {
  * GET /api/documents
  * Get documents with filtering and pagination
  */
-router.get('/documents', requireAuth, async (req, res) => {
+router.get('/documents', async (req, res) => {
   try {
     const {
       status,
@@ -212,7 +212,7 @@ router.get('/documents', requireAuth, async (req, res) => {
  * GET /api/documents/:documentId
  * Get a specific document with full content
  */
-router.get('/documents/:documentId', requireAuth, async (req, res) => {
+router.get('/documents/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
     const { includeHistory = false, includeSuggestions = false } = req.query;
@@ -428,7 +428,7 @@ router.get('/documents/:documentId', requireAuth, async (req, res) => {
  * POST /api/documents/from-meeting
  * Generate document from meeting transcription
  */
-router.post('/documents/from-meeting', requireAuth, async (req, res) => {
+router.post('/documents/from-meeting', async (req, res) => {
   try {
     const { meetingId, transcriptionData, documentType = 'meeting_minutes' } = req.body;
 
@@ -455,7 +455,7 @@ router.post('/documents/from-meeting', requireAuth, async (req, res) => {
  * POST /api/documents/:documentId/sections/generate
  * Generate AI content for a document section
  */
-router.post('/documents/:documentId/sections/generate', requireAuth, async (req, res) => {
+router.post('/documents/:documentId/sections/generate', async (req, res) => {
   try {
     const { documentId } = req.params;
     const { sectionType, prompt, context = {} } = req.body;
@@ -482,7 +482,7 @@ router.post('/documents/:documentId/sections/generate', requireAuth, async (req,
  * POST /api/documents/:documentId/improve
  * AI-powered content improvement
  */
-router.post('/documents/:documentId/improve', requireAuth, async (req, res) => {
+router.post('/documents/:documentId/improve', async (req, res) => {
   try {
     const { documentId } = req.params;
     const { content, improvementType = 'grammar', context = {} } = req.body;
@@ -509,7 +509,7 @@ router.post('/documents/:documentId/improve', requireAuth, async (req, res) => {
  * POST /api/knowledge/articles
  * Create knowledge base article with AI enhancement
  */
-router.post('/knowledge/articles', requireAuth, async (req, res) => {
+router.post('/knowledge/articles', async (req, res) => {
   try {
     const { title, category, subcategory, content, tags, targetAudience } = req.body;
 
@@ -534,7 +534,7 @@ router.post('/knowledge/articles', requireAuth, async (req, res) => {
  * GET /api/knowledge/articles
  * Get knowledge base articles with filtering
  */
-router.get('/knowledge/articles', requireAuth, async (req, res) => {
+router.get('/knowledge/articles', async (req, res) => {
   try {
     const { category, subcategory, difficulty, featured, search, page = 1, limit = 20 } = req.query;
 
@@ -667,7 +667,7 @@ router.get('/knowledge/articles', requireAuth, async (req, res) => {
  * POST /api/documents/search
  * Search documents with AI-powered relevance ranking
  */
-router.post('/documents/search', requireAuth, async (req, res) => {
+router.post('/documents/search', async (req, res) => {
   try {
     const { query, filters = {}, options = {} } = req.body;
 
@@ -693,7 +693,7 @@ router.post('/documents/search', requireAuth, async (req, res) => {
  * GET /api/documents/analytics/writing
  * Get AI writing analytics and insights
  */
-router.get('/analytics/writing', requireAuth, async (req, res) => {
+router.get('/analytics/writing', async (req, res) => {
   try {
     const {
       start_date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -719,7 +719,7 @@ router.get('/analytics/writing', requireAuth, async (req, res) => {
  * GET /api/documents/types
  * Get available document types and templates
  */
-router.get('/document-types', requireAuth, async (req, res) => {
+router.get('/document-types', async (req, res) => {
   try {
     const { category, active_only = 'true' } = req.query;
 
