@@ -8510,7 +8510,13 @@ export type {
 export {
   billingRules,
   meterAnomalies,
+  billingSchedules,
+  invoiceGenerationLogs,
   insertBillingRuleSchema,
+  insertBillingScheduleSchema,
+  insertInvoiceGenerationLogSchema,
   type BillingRule,
   type MeterAnomaly,
+  type BillingSchedule,
+  type InvoiceGenerationLog,
 } from './advanced-billing-schema';

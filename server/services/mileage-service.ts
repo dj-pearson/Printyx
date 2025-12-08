@@ -52,7 +52,7 @@ export class MileageService {
   async getApplicableRate(
     tenantId: string,
     technicianId: string,
-    date: Date
+    date: Date,
   ): Promise<MileageReimbursementRate | null> {
     try {
       const rates = await db
@@ -62,8 +62,8 @@ export class MileageService {
           and(
             eq(mileageReimbursementRates.tenantId, tenantId),
             eq(mileageReimbursementRates.isActive, true),
-            lte(mileageReimbursementRates.effectiveStartDate, date)
-          )
+            lte(mileageReimbursementRates.effectiveStartDate, date),
+          ),
         )
         .orderBy(desc(mileageReimbursementRates.effectiveStartDate));
 
@@ -98,7 +98,7 @@ export class MileageService {
   async calculateMileageFromGPS(
     tenantId: string,
     technicianId: string,
-    date: Date
+    date: Date,
   ): Promise<{ totalMiles: number; trips: number; stops: number }> {
     try {
       // Get location history for the day
@@ -107,7 +107,7 @@ export class MileageService {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      const history = await storage.getLocationHistory(technicianId, tenantId, {
+      const history = await storage.getGpsLocationHistory(technicianId, tenantId, {
         startDate: startOfDay,
         endDate: endOfDay,
       });
@@ -153,7 +153,7 @@ export class MileageService {
   async recordDailyMileage(
     tenantId: string,
     technicianId: string,
-    data: Partial<InsertTechnicianMileage>
+    data: Partial<InsertTechnicianMileage>,
   ): Promise<TechnicianMileage> {
     const date = data.date || new Date();
     const dateOnly = new Date(date);
@@ -182,8 +182,8 @@ export class MileageService {
         and(
           eq(technicianMileage.tenantId, tenantId),
           eq(technicianMileage.technicianId, technicianId),
-          eq(technicianMileage.date, dateOnly)
-        )
+          eq(technicianMileage.date, dateOnly),
+        ),
       )
       .limit(1);
 
@@ -226,10 +226,7 @@ export class MileageService {
         .returning();
       return updated;
     } else {
-      const [created] = await db
-        .insert(technicianMileage)
-        .values(mileageData)
-        .returning();
+      const [created] = await db.insert(technicianMileage).values(mileageData).returning();
       return created;
     }
   }
@@ -241,7 +238,7 @@ export class MileageService {
     tenantId: string,
     technicianId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<TechnicianMileage[]> {
     return await db
       .select()
@@ -251,8 +248,8 @@ export class MileageService {
           eq(technicianMileage.tenantId, tenantId),
           eq(technicianMileage.technicianId, technicianId),
           gte(technicianMileage.date, startDate),
-          lte(technicianMileage.date, endDate)
-        )
+          lte(technicianMileage.date, endDate),
+        ),
       )
       .orderBy(technicianMileage.date);
   }
@@ -264,7 +261,7 @@ export class MileageService {
     tenantId: string,
     technicianId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<MileageSummary> {
     const records = await this.getTechnicianMileage(tenantId, technicianId, startDate, endDate);
 
@@ -293,11 +290,14 @@ export class MileageService {
       }
     }
 
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays =
+      Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const workingDays = daysWithMileage.size;
-    const averageRate = records.length > 0
-      ? records.reduce((sum, r) => sum + parseFloat(r.reimbursementRate || '0'), 0) / records.length
-      : IRS_STANDARD_RATE_2024;
+    const averageRate =
+      records.length > 0
+        ? records.reduce((sum, r) => sum + parseFloat(r.reimbursementRate || '0'), 0) /
+          records.length
+        : IRS_STANDARD_RATE_2024;
 
     return {
       technicianId,
@@ -313,9 +313,10 @@ export class MileageService {
       daysWithMileage: workingDays,
       fuelCost: totalFuelCost > 0 ? Math.round(totalFuelCost * 100) / 100 : undefined,
       fuelGallons: totalFuelGallons > 0 ? Math.round(totalFuelGallons * 1000) / 1000 : undefined,
-      costPerMile: totalMiles > 0 && totalFuelCost > 0
-        ? Math.round((totalFuelCost / totalMiles) * 100) / 100
-        : undefined,
+      costPerMile:
+        totalMiles > 0 && totalFuelCost > 0
+          ? Math.round((totalFuelCost / totalMiles) * 100) / 100
+          : undefined,
     };
   }
 
@@ -328,13 +329,13 @@ export class MileageService {
     reportType: 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'custom',
     startDate: Date,
     endDate: Date,
-    createdBy: string
+    createdBy: string,
   ): Promise<MileageReport> {
     const summary = await this.getMileageSummary(tenantId, technicianId, startDate, endDate);
     const records = await this.getTechnicianMileage(tenantId, technicianId, startDate, endDate);
 
     // Generate daily breakdown
-    const dailyBreakdown: DailyMileage[] = records.map(record => ({
+    const dailyBreakdown: DailyMileage[] = records.map((record) => ({
       date: record.date,
       totalMiles: parseFloat(record.totalMiles || '0'),
       businessMiles: parseFloat(record.businessMiles || '0'),
@@ -363,25 +364,24 @@ export class MileageService {
       averageRatePerMile: String(summary.reimbursementRate),
       totalTrips: summary.totalTrips,
       totalServiceCalls: records.reduce((sum, r) => sum + (r.numberOfStops || 0), 0),
-      averageMilesPerTrip: summary.totalTrips > 0
-        ? String(Math.round((summary.totalMiles / summary.totalTrips) * 100) / 100)
-        : null,
+      averageMilesPerTrip:
+        summary.totalTrips > 0
+          ? String(Math.round((summary.totalMiles / summary.totalTrips) * 100) / 100)
+          : null,
       averageMilesPerDay: String(summary.averageMilesPerDay),
       totalFuelGallons: summary.fuelGallons ? String(summary.fuelGallons) : null,
       totalFuelCost: summary.fuelCost ? String(summary.fuelCost) : null,
-      averageMpg: summary.fuelGallons && summary.totalMiles > 0
-        ? String(Math.round((summary.totalMiles / summary.fuelGallons) * 100) / 100)
-        : null,
+      averageMpg:
+        summary.fuelGallons && summary.totalMiles > 0
+          ? String(Math.round((summary.totalMiles / summary.fuelGallons) * 100) / 100)
+          : null,
       costPerMile: summary.costPerMile ? String(summary.costPerMile) : null,
       dailyBreakdown,
       reportStatus: 'draft',
       createdBy,
     };
 
-    const [report] = await db
-      .insert(mileageReports)
-      .values(reportData)
-      .returning();
+    const [report] = await db.insert(mileageReports).values(reportData).returning();
 
     return report;
   }
@@ -389,7 +389,11 @@ export class MileageService {
   /**
    * Submit a mileage report for approval
    */
-  async submitReport(reportId: string, tenantId: string, submittedBy: string): Promise<MileageReport | null> {
+  async submitReport(
+    reportId: string,
+    tenantId: string,
+    submittedBy: string,
+  ): Promise<MileageReport | null> {
     const [updated] = await db
       .update(mileageReports)
       .set({
@@ -398,12 +402,7 @@ export class MileageService {
         submittedBy,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(mileageReports.id, reportId),
-          eq(mileageReports.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -412,7 +411,11 @@ export class MileageService {
   /**
    * Approve a mileage report
    */
-  async approveReport(reportId: string, tenantId: string, approvedBy: string): Promise<MileageReport | null> {
+  async approveReport(
+    reportId: string,
+    tenantId: string,
+    approvedBy: string,
+  ): Promise<MileageReport | null> {
     const [updated] = await db
       .update(mileageReports)
       .set({
@@ -421,12 +424,7 @@ export class MileageService {
         approvedBy,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(mileageReports.id, reportId),
-          eq(mileageReports.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenantId, tenantId)))
       .returning();
 
     // Update related mileage records
@@ -445,8 +443,8 @@ export class MileageService {
             eq(technicianMileage.tenantId, tenantId),
             eq(technicianMileage.technicianId, updated.technicianId!),
             gte(technicianMileage.date, updated.periodStart),
-            lte(technicianMileage.date, updated.periodEnd)
-          )
+            lte(technicianMileage.date, updated.periodEnd),
+          ),
         );
     }
 
@@ -460,7 +458,7 @@ export class MileageService {
     reportId: string,
     tenantId: string,
     rejectedBy: string,
-    reason: string
+    reason: string,
   ): Promise<MileageReport | null> {
     const [updated] = await db
       .update(mileageReports)
@@ -469,12 +467,7 @@ export class MileageService {
         rejectionReason: reason,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(mileageReports.id, reportId),
-          eq(mileageReports.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -486,7 +479,7 @@ export class MileageService {
   async createIrsLogEntry(
     tenantId: string,
     technicianId: string,
-    data: Omit<InsertIrsMileageLog, 'tenantId' | 'technicianId'>
+    data: Omit<InsertIrsMileageLog, 'tenantId' | 'technicianId'>,
   ): Promise<IrsMileageLog> {
     const [entry] = await db
       .insert(irsMileageLogs)
@@ -507,7 +500,7 @@ export class MileageService {
   async getIrsMileageLog(
     tenantId: string,
     technicianId: string,
-    taxYear: number
+    taxYear: number,
   ): Promise<IrsMileageLog[]> {
     return await db
       .select()
@@ -516,8 +509,8 @@ export class MileageService {
         and(
           eq(irsMileageLogs.tenantId, tenantId),
           eq(irsMileageLogs.technicianId, technicianId),
-          eq(irsMileageLogs.taxYear, taxYear)
-        )
+          eq(irsMileageLogs.taxYear, taxYear),
+        ),
       )
       .orderBy(irsMileageLogs.tripDate);
   }
@@ -528,7 +521,7 @@ export class MileageService {
   async exportIrsMileageLog(
     tenantId: string,
     technicianId: string,
-    taxYear: number
+    taxYear: number,
   ): Promise<string> {
     const logs = await this.getIrsMileageLog(tenantId, technicianId, taxYear);
 
@@ -546,19 +539,21 @@ export class MileageService {
       'Customer',
     ].join(',');
 
-    const rows = logs.map(log => [
-      new Date(log.tripDate).toISOString().split('T')[0],
-      `"${(log.startLocation || '').replace(/"/g, '""')}"`,
-      `"${(log.endLocation || '').replace(/"/g, '""')}"`,
-      `"${(log.businessPurpose || '').replace(/"/g, '""')}"`,
-      log.milesdriven || '',
-      log.odometerStart || '',
-      log.odometerEnd || '',
-      log.vehicleUsed || '',
-      log.tolls || '',
-      log.parking || '',
-      `"${(log.customerName || '').replace(/"/g, '""')}"`,
-    ].join(','));
+    const rows = logs.map((log) =>
+      [
+        new Date(log.tripDate).toISOString().split('T')[0],
+        `"${(log.startLocation || '').replace(/"/g, '""')}"`,
+        `"${(log.endLocation || '').replace(/"/g, '""')}"`,
+        `"${(log.businessPurpose || '').replace(/"/g, '""')}"`,
+        log.milesdriven || '',
+        log.odometerStart || '',
+        log.odometerEnd || '',
+        log.vehicleUsed || '',
+        log.tolls || '',
+        log.parking || '',
+        `"${(log.customerName || '').replace(/"/g, '""')}"`,
+      ].join(','),
+    );
 
     // Add summary row
     const totalMiles = logs.reduce((sum, log) => sum + parseFloat(log.milesdriven || '0'), 0);
@@ -566,7 +561,9 @@ export class MileageService {
     const totalParking = logs.reduce((sum, log) => sum + parseFloat(log.parking || '0'), 0);
 
     rows.push('');
-    rows.push(`Total,,,,${totalMiles.toFixed(2)},,,,${totalTolls.toFixed(2)},${totalParking.toFixed(2)},`);
+    rows.push(
+      `Total,,,,${totalMiles.toFixed(2)},,,,${totalTolls.toFixed(2)},${totalParking.toFixed(2)},`,
+    );
     rows.push(`IRS Standard Rate: $${IRS_STANDARD_RATE_2024}/mile`);
     rows.push(`Deductible Amount: $${(totalMiles * IRS_STANDARD_RATE_2024).toFixed(2)}`);
 
@@ -580,7 +577,7 @@ export class MileageService {
     try {
       // Get all active technician locations for the tenant
       const technicians = await storage.getActiveTechnicianLocations(tenantId);
-      const uniqueTechnicians = new Set(technicians.map(t => t.technicianId));
+      const uniqueTechnicians = new Set(technicians.map((t) => t.technicianId));
 
       let recordsCreated = 0;
 
@@ -615,7 +612,7 @@ export class MileageService {
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 }
 

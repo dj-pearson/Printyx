@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
 import { automatedBillingService } from '../services/automated-billing-service';
-import { billingEngineService } from '../services/billing-engine-service';
+import { billingEngine } from '../services/billing-engine-service';
 import { db } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { billingSchedules, invoiceGenerationLogs } from '@shared/schema';
@@ -13,7 +13,9 @@ function isAdminOrManager(user: any): boolean {
   if (!user?.role) return false;
   const role = user.role || '';
   const roleLower = role.toLowerCase();
-  return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
+  return (
+    roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive')
+  );
 }
 
 // ==================== Billing Schedules ====================
@@ -102,7 +104,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
     const schedule = await automatedBillingService.createBillingSchedule(
       user.tenantId,
       data,
-      user.id
+      user.id,
     );
 
     res.status(201).json(schedule);
@@ -131,10 +133,7 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
       .select()
       .from(billingSchedules)
       .where(
-        and(
-          eq(billingSchedules.id, req.params.id),
-          eq(billingSchedules.tenantId, user.tenantId)
-        )
+        and(eq(billingSchedules.id, req.params.id), eq(billingSchedules.tenantId, user.tenantId)),
       )
       .limit(1);
 
@@ -191,10 +190,7 @@ router.delete('/schedules/:id', async (req: Request, res: Response) => {
       .select()
       .from(billingSchedules)
       .where(
-        and(
-          eq(billingSchedules.id, req.params.id),
-          eq(billingSchedules.tenantId, user.tenantId)
-        )
+        and(eq(billingSchedules.id, req.params.id), eq(billingSchedules.tenantId, user.tenantId)),
       )
       .limit(1);
 
@@ -228,7 +224,7 @@ router.post('/schedules/:id/execute', async (req: Request, res: Response) => {
     const result = await automatedBillingService.executeScheduledRun(
       req.params.id,
       user.tenantId,
-      user.id
+      user.id,
     );
 
     res.json(result);
@@ -257,7 +253,7 @@ router.post('/execute-all-due', async (req: Request, res: Response) => {
       const result = await automatedBillingService.executeScheduledRun(
         schedule.scheduleId,
         user.tenantId,
-        user.id
+        user.id,
       );
       results.push({
         scheduleId: schedule.scheduleId,
@@ -292,7 +288,7 @@ router.post('/process-pending-meters', async (req: Request, res: Response) => {
   try {
     const result = await automatedBillingService.processPendingMeterReadings(
       user.tenantId,
-      user.id
+      user.id,
     );
 
     res.json(result);
@@ -394,7 +390,7 @@ router.post('/generate-invoice', async (req: Request, res: Response) => {
 
     const data = generateSchema.parse(req.body);
 
-    const invoice = await billingEngineService.generateInvoiceFromContract(
+    const invoice = await billingEngine.generateInvoiceFromContract(
       data.contractId,
       user.tenantId,
       {
@@ -402,7 +398,7 @@ router.post('/generate-invoice', async (req: Request, res: Response) => {
         billingPeriodEnd: data.billingPeriodEnd,
         autoSend: data.autoSend,
         applyLateFees: data.applyLateFees,
-      }
+      },
     );
 
     res.status(201).json(invoice);
@@ -436,15 +432,11 @@ router.post('/bulk-generate', async (req: Request, res: Response) => {
 
     const data = bulkSchema.parse(req.body);
 
-    const result = await billingEngineService.generateBulkInvoices(
-      data.contractIds,
-      user.tenantId,
-      {
-        billingPeriodStart: data.billingPeriodStart,
-        billingPeriodEnd: data.billingPeriodEnd,
-        autoSend: data.autoSend,
-      }
-    );
+    const result = await billingEngine.generateBulkInvoices(data.contractIds, user.tenantId, {
+      billingPeriodStart: data.billingPeriodStart,
+      billingPeriodEnd: data.billingPeriodEnd,
+      autoSend: data.autoSend,
+    });
 
     res.json(result);
   } catch (error) {
