@@ -1,0 +1,50 @@
+# Dockerignore for Edge Functions build
+
+# Node modules (not needed for Deno)
+node_modules/
+npm-debug.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docs and configs not needed in container
+*.md
+!supabase/functions/**/*.md
+.env
+.env.*
+
+# Build artifacts from main app
+dist/
+build/
+client/dist/
+
+# Tests
+tests/
+testing/
+*.test.ts
+*.spec.ts
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep only supabase functions
+Dockerfile
+Dockerfile.dev
+docker-compose.yml
+

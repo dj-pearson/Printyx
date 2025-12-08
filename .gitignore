@@ -10,3 +10,6 @@ testing/debug-*.js
 testing/test-*.js
 neondb_backup.sql
 database-exports/
+Pgress.md
+fix-postgres-password.sh
+supabase/env.example
