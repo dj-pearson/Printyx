@@ -19,13 +19,18 @@ RUN deno cache --reload functions/**/*.ts
 # Expose port for Edge Functions
 EXPOSE 8000
 
-# Create start script
+# Create start script with process info
 RUN echo '#!/bin/sh\n\
+set -e\n\
+echo "======================================"\n\
+echo "Container ID: $(hostname)"\n\
+echo "Process ID: $$"\n\
 echo "Starting Supabase Edge Functions Server..."\n\
 echo "Available functions:"\n\
 ls -la /app/functions/\n\
 echo ""\n\
 echo "Starting Deno server on port 8000..."\n\
+echo "======================================"\n\
 exec deno run --allow-all /app/server.ts\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
