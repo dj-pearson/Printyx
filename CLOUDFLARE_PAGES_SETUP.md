@@ -1,5 +1,38 @@
 # Cloudflare Pages Deployment Guide
 
+## Custom Domain Configuration
+
+Your Supabase services are accessed through custom domains:
+- **REST API / Auth / Database**: `https://api.printyx.net` (Kong Gateway)
+- **Edge Functions**: `https://functions.printyx.net` (Supabase Edge Functions)
+
+## Environment Variables for Cloudflare Pages
+
+Set these in: **Cloudflare Pages Dashboard → Settings → Environment Variables**
+
+### Production Variables
+
+```bash
+VITE_SUPABASE_URL=https://api.printyx.net
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_API_BASE_URL=https://functions.printyx.net
+```
+
+### What Each Variable Does
+
+- **VITE_SUPABASE_URL**: Points to your Supabase REST API through `api.printyx.net`
+  - Used for: Database queries, Authentication, Realtime subscriptions
+  
+- **VITE_API_BASE_URL**: Points to your Edge Functions through `functions.printyx.net`
+  - Used for: Custom backend logic, API endpoints
+  
+- **VITE_SUPABASE_ANON_KEY**: Your public anon key
+  - Safe to expose in frontend (protected by RLS policies)
+
+---
+
+# Original Cloudflare Pages Deployment Guide
+
 ## Overview
 This guide explains how to deploy the Printyx frontend to Cloudflare Pages while connecting to your Supabase backend.
 
