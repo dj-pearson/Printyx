@@ -32,6 +32,9 @@ export function getApiUrl(path: string): string {
     return `/${cleanPath}`;
   }
 
-  // Otherwise, construct full URL
-  return `${config.apiBaseUrl}/${cleanPath}`;
+  // Otherwise, construct full URL (remove trailing slash from base if present)
+  const baseUrl = config.apiBaseUrl.endsWith('/')
+    ? config.apiBaseUrl.slice(0, -1)
+    : config.apiBaseUrl;
+  return `${baseUrl}/${cleanPath}`;
 }
