@@ -26,7 +26,7 @@ echo "Available functions:"\n\
 ls -la /app/functions/\n\
 echo ""\n\
 echo "Starting Deno server on port 8000..."\n\
-exec deno run --allow-all --watch /app/server.ts\n\
+exec deno run --allow-all /app/server.ts\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Create a simple server that routes to functions
