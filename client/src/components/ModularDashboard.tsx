@@ -29,18 +29,18 @@ import {
   FileText,
   Calendar,
   UserPlus,
-  BarChart2
+  BarChart2,
 } from 'lucide-react';
 
 const IconMap = {
   DollarSign,
-  Target, 
+  Target,
   TrendingUp,
   Users,
   Wrench,
   Clock,
   CheckCircle,
-  BarChart3
+  BarChart3,
 };
 
 interface DashboardModule {
@@ -64,13 +64,12 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
   const [enabledCards, setEnabledCards] = useState<string[]>([]);
   const [showCardManager, setShowCardManager] = useState(false);
 
-  const { data: dashboardData, isLoading, refetch } = useQuery({
+  const {
+    data: dashboardData,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['/api/dashboard/modules', enabledCards.join(',')],
-    queryFn: async () => {
-      const params = enabledCards.length > 0 ? `?enabled=${enabledCards.join(',')}` : '';
-      const response = await fetch(`/api/dashboard/modules${params}`);
-      return response.json();
-    },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -94,9 +93,9 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
 
   const toggleCard = (cardId: string) => {
     const newEnabled = enabledCards.includes(cardId)
-      ? enabledCards.filter(id => id !== cardId)
+      ? enabledCards.filter((id) => id !== cardId)
       : [...enabledCards, cardId];
-    
+
     setEnabledCards(newEnabled);
     localStorage.setItem('dashboard-enabled-cards', JSON.stringify(newEnabled));
     setTimeout(() => refetch(), 100); // Refetch data with new cards
@@ -123,7 +122,11 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
     );
   }
 
-  const { modules = [], userRole, roleConfig } = dashboardData || { modules: [], userRole: 'user', roleConfig: {} };
+  const {
+    modules = [],
+    userRole,
+    roleConfig,
+  } = dashboardData || { modules: [], userRole: 'user', roleConfig: {} };
 
   const salesModules = modules.filter((m: DashboardModule) => m.category === 'sales');
   const serviceModules = modules.filter((m: DashboardModule) => m.category === 'service');
@@ -132,7 +135,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
 
   const renderMetricCard = (module: DashboardModule) => {
     const IconComponent = IconMap[module.icon] || BarChart3;
-    
+
     if (module.category === 'management' && module.data) {
       return (
         <Card key={module.id} className="col-span-full">
@@ -154,7 +157,9 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Monthly Revenue</p>
-                <p className="text-xl sm:text-2xl font-bold">${module.data.monthlyRevenue.toLocaleString()}</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  ${module.data.monthlyRevenue.toLocaleString()}
+                </p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Pending Tickets</p>
@@ -174,7 +179,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
         </CardHeader>
         <CardContent>
           <div className="text-xl sm:text-2xl font-bold">{module.value}</div>
-          
+
           {module.change && (
             <div className="flex items-center text-xs text-muted-foreground mt-1">
               {module.trend === 'up' && <TrendingUp className="h-3 w-3 mr-1 text-green-500" />}
@@ -185,17 +190,15 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
               {module.subtitle && <span className="ml-1">{module.subtitle}</span>}
             </div>
           )}
-          
+
           {module.progress !== undefined && (
             <div className="mt-3">
               <Progress value={module.progress} className="h-2" />
             </div>
           )}
-          
+
           {module.subtitle && !module.change && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {module.subtitle}
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{module.subtitle}</p>
           )}
         </CardContent>
       </Card>
@@ -209,9 +212,11 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
         <div className="min-w-0 flex-1">
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-sm sm:text-base text-muted-foreground">
-            {userRole === 'sales' || userRole === 'sales_rep' ? 'Your sales performance metrics' :
-             userRole === 'technician' || userRole === 'service_manager' ? 'Your service metrics' :
-             'Business overview and key metrics'}
+            {userRole === 'sales' || userRole === 'sales_rep'
+              ? 'Your sales performance metrics'
+              : userRole === 'technician' || userRole === 'service_manager'
+                ? 'Your service metrics'
+                : 'Business overview and key metrics'}
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -248,7 +253,10 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {cardConfig.availableCards.map((cardId: string) => (
-                <div key={cardId} className="flex items-center justify-between p-3 border rounded-lg">
+                <div
+                  key={cardId}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
                   <div className="flex items-center gap-3">
                     {enabledCards.includes(cardId) ? (
                       <Eye className="h-4 w-4 text-green-600" />
@@ -256,12 +264,8 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
                     )}
                     <div>
-                      <Label className="capitalize font-medium">
-                        {cardId.replace(/_/g, ' ')}
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {getCardDescription(cardId)}
-                      </p>
+                      <Label className="capitalize font-medium">{cardId.replace(/_/g, ' ')}</Label>
+                      <p className="text-xs text-muted-foreground">{getCardDescription(cardId)}</p>
                     </div>
                   </div>
                   <Switch
@@ -308,16 +312,17 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             <BarChart3 className="h-5 w-5" />
             Business Overview
           </h3>
-          <div className="grid gap-4">
-            {managementModules.map(renderMetricCard)}
-          </div>
+          <div className="grid gap-4">{managementModules.map(renderMetricCard)}</div>
         </div>
       )}
 
       {/* Team Performance - For supervisors and managers */}
-      {(userRole === 'sales_supervisor' || userRole === 'sales_manager' ||
-        userRole === 'service_supervisor' || userRole === 'service_manager' ||
-        userRole === 'team_lead' || userRole === 'senior_sales_rep') && (
+      {(userRole === 'sales_supervisor' ||
+        userRole === 'sales_manager' ||
+        userRole === 'service_supervisor' ||
+        userRole === 'service_manager' ||
+        userRole === 'team_lead' ||
+        userRole === 'senior_sales_rep') && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -354,14 +359,14 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
               onClick={() => (window.location.href = action.path)}
             >
               <CardContent className="p-4 flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${action.bgColor} group-hover:scale-110 transition-transform`}>
+                <div
+                  className={`p-2 rounded-lg ${action.bgColor} group-hover:scale-110 transition-transform`}
+                >
                   <action.icon className={`h-5 w-5 ${action.iconColor}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{action.label}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {action.description}
-                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{action.description}</p>
                 </div>
               </CardContent>
             </Card>
@@ -385,7 +390,14 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             </CardHeader>
             <CardContent className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">Drill-through to flagged POs</p>
-              <Button size="sm" onClick={() => (window.location.href = '/admin/purchase-orders?filter=variance_gt_2x')}>View</Button>
+              <Button
+                size="sm"
+                onClick={() =>
+                  (window.location.href = '/admin/purchase-orders?filter=variance_gt_2x')
+                }
+              >
+                View
+              </Button>
             </CardContent>
           </Card>
           <Card>
@@ -394,7 +406,12 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             </CardHeader>
             <CardContent className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">Devices missing N cycles</p>
-              <Button size="sm" onClick={() => (window.location.href = '/meter-readings?filter=missed_cycles&n=2')}>View</Button>
+              <Button
+                size="sm"
+                onClick={() => (window.location.href = '/meter-readings?filter=missed_cycles&n=2')}
+              >
+                View
+              </Button>
             </CardContent>
           </Card>
           <Card>
@@ -403,7 +420,14 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             </CardHeader>
             <CardContent className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">Oldest open service tickets</p>
-              <Button size="sm" onClick={() => (window.location.href = '/service-hub?tab=active-tickets&filter=aging_gt_5')}>View</Button>
+              <Button
+                size="sm"
+                onClick={() =>
+                  (window.location.href = '/service-hub?tab=active-tickets&filter=aging_gt_5')
+                }
+              >
+                View
+              </Button>
             </CardContent>
           </Card>
           <Card>
@@ -412,7 +436,12 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             </CardHeader>
             <CardContent className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">Old proposals needing action</p>
-              <Button size="sm" onClick={() => (window.location.href = '/proposal-builder?filter=aging&days=7')}>View</Button>
+              <Button
+                size="sm"
+                onClick={() => (window.location.href = '/proposal-builder?filter=aging&days=7')}
+              >
+                View
+              </Button>
             </CardContent>
           </Card>
           <Card>
@@ -421,7 +450,14 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
             </CardHeader>
             <CardContent className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">Invoices not issued in time</p>
-              <Button size="sm" onClick={() => (window.location.href = '/advanced-billing?filter=issuance_delay_gt_24h')}>View</Button>
+              <Button
+                size="sm"
+                onClick={() =>
+                  (window.location.href = '/advanced-billing?filter=issuance_delay_gt_24h')
+                }
+              >
+                View
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -432,7 +468,10 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
         <div className="mt-8 p-4 bg-muted rounded-lg text-sm">
           <strong>Debug Info:</strong>
           <div>Total modules: {modules.length}</div>
-          <div>Sales: {salesModules.length}, Service: {serviceModules.length}, Management: {managementModules.length}, Operations: {operationsModules.length}</div>
+          <div>
+            Sales: {salesModules.length}, Service: {serviceModules.length}, Management:{' '}
+            {managementModules.length}, Operations: {operationsModules.length}
+          </div>
           <div>Enabled cards: {enabledCards.join(', ') || 'none'}</div>
           <div>User role: {userRole}</div>
         </div>
@@ -475,7 +514,7 @@ function getQuickActions(userRole: string): QuickAction[] {
       path: '/service-dispatch?action=create',
       bgColor: 'bg-orange-100',
       iconColor: 'text-orange-600',
-      description: 'Create service call'
+      description: 'Create service call',
     },
     {
       id: 'add-customer',
@@ -484,8 +523,8 @@ function getQuickActions(userRole: string): QuickAction[] {
       path: '/customers?action=create',
       bgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
-      description: 'New customer record'
-    }
+      description: 'New customer record',
+    },
   ];
 
   // Sales-specific actions
@@ -499,7 +538,7 @@ function getQuickActions(userRole: string): QuickAction[] {
         path: '/deals?action=create',
         bgColor: 'bg-green-100',
         iconColor: 'text-green-600',
-        description: 'New sales opportunity'
+        description: 'New sales opportunity',
       },
       {
         id: 'new-quote',
@@ -508,8 +547,8 @@ function getQuickActions(userRole: string): QuickAction[] {
         path: '/quotes?action=create',
         bgColor: 'bg-purple-100',
         iconColor: 'text-purple-600',
-        description: 'Generate quote'
-      }
+        description: 'Generate quote',
+      },
     ];
   }
 
@@ -524,7 +563,7 @@ function getQuickActions(userRole: string): QuickAction[] {
         path: '/service-dispatch?action=schedule',
         bgColor: 'bg-yellow-100',
         iconColor: 'text-yellow-600',
-        description: 'Plan maintenance'
+        description: 'Plan maintenance',
       },
       {
         id: 'view-tickets',
@@ -533,8 +572,8 @@ function getQuickActions(userRole: string): QuickAction[] {
         path: '/service-dispatch?filter=assigned_to_me',
         bgColor: 'bg-indigo-100',
         iconColor: 'text-indigo-600',
-        description: 'View assigned work'
-      }
+        description: 'View assigned work',
+      },
     ];
   }
 
@@ -549,7 +588,7 @@ function getQuickActions(userRole: string): QuickAction[] {
         path: '/settings/users?action=create',
         bgColor: 'bg-teal-100',
         iconColor: 'text-teal-600',
-        description: 'Invite team member'
+        description: 'Invite team member',
       },
       {
         id: 'generate-report',
@@ -558,8 +597,8 @@ function getQuickActions(userRole: string): QuickAction[] {
         path: '/reports?action=create',
         bgColor: 'bg-pink-100',
         iconColor: 'text-pink-600',
-        description: 'Create custom report'
-      }
+        description: 'Create custom report',
+      },
     ];
   }
 
@@ -570,16 +609,16 @@ function getQuickActions(userRole: string): QuickAction[] {
 // Helper function to get card descriptions
 function getCardDescription(cardId: string): string {
   const descriptions: Record<string, string> = {
-    'team_revenue': 'View your team\'s total revenue performance',
-    'company_customers': 'See total customer count across the company',
-    'inventory_alerts': 'Monitor low stock items that need reordering',
-    'service_overview': 'View service department performance metrics',
-    'revenue_overview': 'See company-wide revenue trends',
-    'team_tickets': 'Monitor service tickets for your team',
-    'company_revenue': 'View total company revenue metrics',
-    'technician_performance': 'Track team performance metrics'
+    team_revenue: "View your team's total revenue performance",
+    company_customers: 'See total customer count across the company',
+    inventory_alerts: 'Monitor low stock items that need reordering',
+    service_overview: 'View service department performance metrics',
+    revenue_overview: 'See company-wide revenue trends',
+    team_tickets: 'Monitor service tickets for your team',
+    company_revenue: 'View total company revenue metrics',
+    technician_performance: 'Track team performance metrics',
   };
-  
+
   return descriptions[cardId] || 'Additional business insight card';
 }
 
