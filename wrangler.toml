@@ -3,7 +3,7 @@ name = "printyx"
 compatibility_date = "2025-12-08"
 
 # Pages configuration
-pages_build_output_dir = "dist/public"
+pages_build_output_dir = "dist"
 
 # Observability settings
 [observability]
