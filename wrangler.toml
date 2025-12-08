@@ -2,6 +2,10 @@
 name = "printyx"
 compatibility_date = "2025-12-08"
 
+# Build configuration
+[build]
+command = "npm run build"
+
 # Pages configuration
 pages_build_output_dir = "dist"
 
