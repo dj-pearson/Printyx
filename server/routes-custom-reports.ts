@@ -31,7 +31,7 @@ import {
   dashboardLayouts,
   userReportPreferences,
 } from "@shared/reporting-schema";
-import { businessRecords, opportunities, equipment, contacts, invoices } from "@shared/schema";
+import { businessRecords, opportunities, equipment, contracts, invoices } from "@shared/schema";
 
 // Table mappings for data sources
 const DATA_SOURCE_TABLES: Record<string, any> = {
