@@ -1,0 +1,120 @@
+# Supabase Edge Functions Dockerfile
+# Runs Deno runtime for Supabase Edge Functions
+
+FROM denoland/deno:1.38.5
+
+WORKDIR /app
+
+# Copy edge functions
+COPY supabase/functions ./functions
+
+# Set environment variables (will be overridden by Coolify)
+ENV SUPABASE_URL=""
+ENV SUPABASE_ANON_KEY=""
+ENV SUPABASE_SERVICE_ROLE_KEY=""
+
+# Cache dependencies
+RUN deno cache --reload functions/**/*.ts
+
+# Expose port for Edge Functions
+EXPOSE 8000
+
+# Create start script
+RUN echo '#!/bin/sh\n\
+echo "Starting Supabase Edge Functions Server..."\n\
+echo "Available functions:"\n\
+ls -la /app/functions/\n\
+echo ""\n\
+echo "Starting Deno server on port 8000..."\n\
+exec deno run --allow-all --watch /app/server.ts\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Create a simple server that routes to functions
+RUN echo 'import { serve } from "https://deno.land/std@0.168.0/http/server.ts";\n\
+\n\
+const port = 8000;\n\
+\n\
+// Load all function handlers\n\
+const functions: Record<string, any> = {};\n\
+\n\
+// Dynamically load functions\n\
+for await (const dirEntry of Deno.readDir("/app/functions")) {\n\
+  if (dirEntry.isDirectory && !dirEntry.name.startsWith("_")) {\n\
+    try {\n\
+      const handler = await import(`/app/functions/${dirEntry.name}/index.ts`);\n\
+      functions[dirEntry.name] = handler;\n\
+      console.log(`✅ Loaded function: ${dirEntry.name}`);\n\
+    } catch (e) {\n\
+      console.error(`❌ Failed to load ${dirEntry.name}:`, e.message);\n\
+    }\n\
+  }\n\
+}\n\
+\n\
+console.log(`\n🚀 Edge Functions server listening on http://0.0.0.0:${port}`);\n\
+console.log(`Available functions: ${Object.keys(functions).join(", ")}\n`);\n\
+\n\
+// Main request handler\n\
+await serve(async (req: Request) => {\n\
+  const url = new URL(req.url);\n\
+  const pathParts = url.pathname.split("/").filter(Boolean);\n\
+  \n\
+  // Health check\n\
+  if (url.pathname === "/health" || url.pathname === "/") {\n\
+    return new Response(\n\
+      JSON.stringify({ \n\
+        status: "healthy", \n\
+        functions: Object.keys(functions),\n\
+        timestamp: new Date().toISOString()\n\
+      }),\n\
+      { \n\
+        status: 200,\n\
+        headers: { "Content-Type": "application/json" }\n\
+      }\n\
+    );\n\
+  }\n\
+  \n\
+  // Route to function\n\
+  const functionName = pathParts[0];\n\
+  \n\
+  if (!functionName || !functions[functionName]) {\n\
+    return new Response(\n\
+      JSON.stringify({ \n\
+        error: "Function not found",\n\
+        available: Object.keys(functions)\n\
+      }),\n\
+      { \n\
+        status: 404,\n\
+        headers: { "Content-Type": "application/json" }\n\
+      }\n\
+    );\n\
+  }\n\
+  \n\
+  console.log(`Executing function: ${functionName}`);\n\
+  \n\
+  try {\n\
+    // Create a new request with the function path removed\n\
+    const newUrl = new URL(req.url);\n\
+    newUrl.pathname = "/" + pathParts.slice(1).join("/");\n\
+    const newReq = new Request(newUrl, req);\n\
+    \n\
+    // Call the function\n\
+    return await functions[functionName].default(newReq);\n\
+  } catch (error) {\n\
+    console.error(`Error executing ${functionName}:`, error);\n\
+    return new Response(\n\
+      JSON.stringify({ error: error.message }),\n\
+      { \n\
+        status: 500,\n\
+        headers: { "Content-Type": "application/json" }\n\
+      }\n\
+    );\n\
+  }\n\
+}, { port });' > /app/server.ts
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD deno eval "fetch('http://localhost:8000/health').then(r => r.ok ? Deno.exit(0) : Deno.exit(1))"
+
+# Run the start script
+CMD ["/app/start.sh"]
+
