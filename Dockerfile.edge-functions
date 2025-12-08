@@ -16,8 +16,8 @@ ENV SUPABASE_SERVICE_ROLE_KEY=""
 # Cache dependencies
 RUN deno cache --reload functions/**/*.ts
 
-# Expose port for Edge Functions
-EXPOSE 8000
+# Expose port for Edge Functions (configurable via PORT env var, defaults to 3001)
+EXPOSE 3001
 
 # Create start script with process info
 RUN echo '#!/bin/sh\n\
@@ -25,11 +25,12 @@ set -e\n\
 echo "======================================"\n\
 echo "Container ID: $(hostname)"\n\
 echo "Process ID: $$"\n\
+echo "Port: ${PORT:-3001}"\n\
 echo "Starting Supabase Edge Functions Server..."\n\
 echo "Available functions:"\n\
 ls -la /app/functions/\n\
 echo ""\n\
-echo "Starting Deno server on port 8000..."\n\
+echo "Starting Deno server on port ${PORT:-3001}..."\n\
 echo "======================================"\n\
 exec deno run --allow-all /app/server.ts\n\
 ' > /app/start.sh && chmod +x /app/start.sh
@@ -37,7 +38,7 @@ exec deno run --allow-all /app/server.ts\n\
 # Create a simple server that routes to functions
 RUN echo 'import { serve } from "https://deno.land/std@0.168.0/http/server.ts";\n\
 \n\
-const port = 8000;\n\
+const port = parseInt(Deno.env.get("PORT") || "3001");\n\
 \n\
 // Load all function handlers\n\
 const functions: Record<string, any> = {};\n\
