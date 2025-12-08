@@ -3,20 +3,25 @@
  *
  * Handles scheduled invoice generation, billing automation,
  * and batch processing for meter-based billing.
+ * 
+ * NOTE: This service is currently disabled as billingSchedules and 
+ * invoiceGenerationLogs tables need to be added to the schema.
  */
 
 import { db } from '../db';
 import { eq, and, lte, gte, isNull, sql, desc } from 'drizzle-orm';
 import {
-  billingSchedules,
   invoices,
   invoiceLineItems,
-  invoiceGenerationLogs,
   contracts,
   meterReadings,
   businessRecords,
 } from '@shared/schema';
 import { billingEngineService } from './billing-engine-service';
+
+// Placeholder exports until schema tables are added
+const billingSchedules = null as any;
+const invoiceGenerationLogs = null as any;
 
 export interface ScheduledBillingRun {
   scheduleId: string;
