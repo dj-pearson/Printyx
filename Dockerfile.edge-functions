@@ -111,10 +111,6 @@ await serve(async (req: Request) => {\n\
   }\n\
 }, { port });' > /app/server.ts
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD deno eval "fetch('http://localhost:8000/health').then(r => r.ok ? Deno.exit(0) : Deno.exit(1))"
-
 # Run the start script
 CMD ["/app/start.sh"]
 
