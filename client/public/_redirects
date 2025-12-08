@@ -1,0 +1,9 @@
+# Cloudflare Pages SPA redirects
+
+# API proxy to Supabase (optional - if using proxy instead of direct calls)
+# Uncomment and configure if you want to proxy API calls through Cloudflare
+# /api/* https://your-project.supabase.co/functions/v1/:splat 200
+
+# All other routes should be handled by React Router (wouter)
+/* /index.html 200
+
