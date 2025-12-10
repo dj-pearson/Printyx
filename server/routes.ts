@@ -15540,6 +15540,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   console.log('⚠️ Database Updater system is temporarily disabled to stop continuous execution');
 
+  // Register GDPR Core Features routes (Data Export, Consent Management, DPA, Contact Deduplication)
+  import('./routes-gdpr-core')
+    .then(({ default: gdprCoreRoutes }) => {
+      app.use('/api/gdpr', gdprCoreRoutes);
+      console.log('✅ GDPR Core Features routes registered');
+    })
+    .catch((err) => console.error('Failed to load GDPR core routes:', err));
+
+  // Register Territory Management routes
+  import('./routes-territory-management')
+    .then(({ default: territoryRoutes }) => {
+      app.use('/api/territories', territoryRoutes);
+      console.log('✅ Territory Management routes registered');
+    })
+    .catch((err) => console.error('Failed to load territory management routes:', err));
+
   // DISABLED: Automatic seeding causes database connection exhaustion and authentication timeouts
   // Seed master catalog on startup (development only)
   if (false && process.env.NODE_ENV === 'development') {
