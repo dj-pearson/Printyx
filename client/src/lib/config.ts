@@ -19,6 +19,9 @@ const getOriginUrl = () => {
   return '';
 };
 
+// Determine auth mode - default to supabase in production
+const resolvedAuthMode: AuthMode = (import.meta.env.VITE_AUTH_MODE as AuthMode) || 'supabase';
+
 export const config = {
   // API Base URL - defaults to relative for dev, can be overridden for production
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
@@ -39,7 +42,7 @@ export const config = {
   useSupabaseProxy: useProxy,
 
   // Auth Mode: 'legacy' (Express sessions), 'hybrid' (both), 'supabase' (GoTrue only)
-  authMode: (import.meta.env.VITE_AUTH_MODE || 'supabase') as AuthMode,
+  authMode: resolvedAuthMode,
 
   // Feature Flags
   isDevelopment: import.meta.env.DEV,
@@ -49,6 +52,17 @@ export const config = {
   appName: 'Printyx',
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
 } as const;
+
+// Debug logging for auth configuration (remove after debugging)
+if (typeof window !== 'undefined') {
+  console.log('🔐 Auth Config:', {
+    authMode: config.authMode,
+    useProxy: config.useSupabaseProxy,
+    supabaseUrl: config.supabase.url,
+    isProduction: config.isProduction,
+    envAuthMode: import.meta.env.VITE_AUTH_MODE,
+  });
+}
 
 // Helper to construct full API URLs
 export function getApiUrl(path: string): string {
