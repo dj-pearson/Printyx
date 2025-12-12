@@ -3,6 +3,10 @@
  * This script helps you create a test user account for login testing
  */
 
+// Load environment variables FIRST
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
+
 import { Pool } from '@neondatabase/serverless';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
