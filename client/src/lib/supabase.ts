@@ -1,6 +1,6 @@
 /**
  * Supabase Client Configuration
- * Uses custom domains for production deployment
+ * Uses custom domains for production deployment with PKCE auth flow
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -12,12 +12,24 @@ export const supabase = createClient(
   config.supabase.anonKey,
   {
     auth: {
-      // Use custom domain for auth endpoints
+      // PKCE flow for secure authentication
+      flowType: 'pkce',
+      // Auto-refresh tokens before expiry
       autoRefreshToken: true,
+      // Persist session in localStorage
       persistSession: true,
+      // Detect OAuth callbacks in URL
       detectSessionInUrl: true,
+      // Storage key for session
+      storageKey: 'printyx-auth',
     },
-    // Optional: Configure realtime if needed
+    // Global headers for all requests
+    global: {
+      headers: {
+        'x-client-info': 'printyx-web',
+      },
+    },
+    // Realtime configuration
     realtime: {
       params: {
         eventsPerSecond: 10,
@@ -40,6 +52,24 @@ export async function getCurrentUser() {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
+}
+
+// Helper to get access token for API calls
+export async function getAccessToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
+// Helper to refresh session
+export async function refreshSession() {
+  const { data, error } = await supabase.auth.refreshSession();
+  if (error) {
+    console.error('Failed to refresh session:', error);
+    return null;
+  }
+  return data.session;
 }
 
 // Export types for convenience
