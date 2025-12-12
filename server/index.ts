@@ -1,3 +1,7 @@
+// Load environment variables FIRST before anything else
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig(); // Load .env file
+
 import express, { type Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -73,10 +77,13 @@ setupMonitoringMiddleware(app, {
   },
 });
 
-// CORS configuration
-const isDevelopment = process.env.NODE_ENV !== 'production';
-const allowedOriginsProd = [/^https?:\/\/([a-z0-9-]+\.)?printyx\.net$/i, 'https://printyx.net']; // subdomains + apex
-// SECURITY FIX: Whitelist specific origins even in development for better security
+// CORS configuration - ALWAYS allow production origins
+const allowedOriginsProd = [
+  /^https?:\/\/([a-z0-9-]+\.)?printyx\.net$/i,
+  'https://printyx.net',
+  'https://api.printyx.net', // Allow API subdomain for server-to-server
+];
+
 const allowedOriginsDev = [
   'http://localhost:5000',
   'http://localhost:3000',
@@ -86,29 +93,52 @@ const allowedOriginsDev = [
   /^https:\/\/.*\.replit\.dev$/, // Replit development environments
 ];
 
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, Postman, etc.)
-      if (!origin) return callback(null, true);
+      console.log('[CORS] Request from origin:', origin, '| NODE_ENV:', process.env.NODE_ENV);
 
-      // Check production origins
-      if (!isDevelopment) {
-        if (allowedOriginsProd.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))) {
-          return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
-      }
-
-      // SECURITY FIX: In development, whitelist specific origins instead of allowing all
-      if (allowedOriginsDev.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))) {
+      // Allow requests with no origin (mobile apps, Postman, server-to-server)
+      if (!origin) {
+        console.log('[CORS] ✅ Allowed: No origin (server-to-server)');
         return callback(null, true);
       }
 
-      console.warn(`[CORS] Blocked origin in development: ${origin}`);
-      return callback(new Error('Not allowed by CORS - add to allowedOriginsDev if needed'));
+      // ALWAYS check production origins (even in dev mode)
+      const isProdOrigin = allowedOriginsProd.some((o) =>
+        o instanceof RegExp ? o.test(origin) : o === origin,
+      );
+
+      if (isProdOrigin) {
+        console.log('[CORS] ✅ Allowed: Production origin');
+        return callback(null, true);
+      }
+
+      // In development, also allow dev origins
+      if (isDevelopment) {
+        const isDevOrigin = allowedOriginsDev.some((o) =>
+          o instanceof RegExp ? o.test(origin) : o === origin,
+        );
+
+        if (isDevOrigin) {
+          console.log('[CORS] ✅ Allowed: Development origin');
+          return callback(null, true);
+        }
+      }
+
+      // Block everything else
+      console.error('[CORS] ❌ BLOCKED origin:', origin);
+      return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With'],
+    exposedHeaders: ['X-CSRF-Token'],
+    maxAge: 86400, // 24 hours - cache preflight requests
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   }),
 );
 
@@ -185,7 +215,11 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const duration = Date.now() - start;
     // Only log in development mode for legacy format
-    if (path.startsWith('/api') && process.env.NODE_ENV === 'development' && process.env.LEGACY_LOGGING === 'true') {
+    if (
+      path.startsWith('/api') &&
+      process.env.NODE_ENV === 'development' &&
+      process.env.LEGACY_LOGGING === 'true'
+    ) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
@@ -241,13 +275,16 @@ app.use((req, res, next) => {
     res.status(status).json({ message, code, details, requestId });
 
     // Log using structured logging
-    serverLog.error({
-      err,
-      requestId,
-      method: req.method,
-      path: req.path,
-      statusCode: status,
-    }, `Error ${status}: ${message}`);
+    serverLog.error(
+      {
+        err,
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: status,
+      },
+      `Error ${status}: ${message}`,
+    );
   });
 
   // importantly only setup vite in development and after

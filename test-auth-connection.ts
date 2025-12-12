@@ -3,6 +3,10 @@
  * This script tests the authentication setup after database switch
  */
 
+// Load environment variables FIRST
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
+
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { users } from './shared/schema.js';
