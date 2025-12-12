@@ -76,3 +76,4 @@ Write-Host "  2. If origin is '*', configure Kong CORS plugin" -ForegroundColor 
 Write-Host "  3. If origin is correct, try logging in again" -ForegroundColor Gray
 Write-Host ""
 
+

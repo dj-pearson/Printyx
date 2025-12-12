@@ -1,7 +1,8 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle, NeonDatabase } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
-import * as schema from "@shared/schema";
+import 'dotenv/config';
+import pg from 'pg';
+const { Pool } = pg;
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from '@shared/schema';
 import { drizzleLogger } from './lib/db-logger';
 import {
   CircuitBreaker,
@@ -11,13 +12,32 @@ import {
   isRetryableError,
 } from './lib/connection-resilience';
 
-neonConfig.webSocketConstructor = ws;
+// Build DATABASE_URL from individual components if not provided
+function buildDatabaseUrl(): string {
+  // If DATABASE_URL is already a proper postgres:// URL, use it
+  if (process.env.DATABASE_URL?.startsWith('postgres')) {
+    return process.env.DATABASE_URL;
+  }
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  // Otherwise, build from individual components
+  const host = process.env.DB_HOST;
+  const port = process.env.DB_PORT || '5432';
+  const user = process.env.DB_USER;
+  const password = process.env.DB_PASSWORD;
+  const database = process.env.DB_NAME || 'postgres';
+
+  if (!host || !user || !password) {
+    throw new Error(
+      'Database configuration incomplete. Provide either DATABASE_URL or DB_HOST, DB_USER, DB_PASSWORD',
+    );
+  }
+
+  return `postgresql://${user}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
 }
+
+// Build the database URL from environment variables
+const databaseUrl = buildDatabaseUrl();
+console.log('[Database] Connecting to PostgreSQL...');
 
 // Database connection configuration
 interface DatabaseConfig {
@@ -31,7 +51,7 @@ interface DatabaseConfig {
 
 // Build pool configuration with resilience settings
 const poolConfig: DatabaseConfig = {
-  connectionString: process.env.DATABASE_URL,
+  connectionString: databaseUrl,
   // Connection timeout (default: 10 seconds)
   connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '10000', 10),
   // Idle timeout (default: 30 seconds)
@@ -41,9 +61,13 @@ const poolConfig: DatabaseConfig = {
   min: parseInt(process.env.DB_POOL_MIN || '2', 10),
 };
 
-// Neon automatically uses SSL/TLS, but we ensure it's enforced in production
-if (process.env.NODE_ENV === 'production') {
-  poolConfig.ssl = true;
+// SSL configuration for self-hosted Supabase
+// Use ssl: false for local/self-hosted instances, or configure properly for production
+if (process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') {
+  // For self-signed certs, use rejectUnauthorized: false
+  // For proper SSL, remove rejectUnauthorized or set to true
+  (poolConfig as any).ssl =
+    process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? { rejectUnauthorized: false } : true;
 }
 
 // Circuit breaker for database connections
@@ -94,7 +118,7 @@ export const db = drizzle({
  */
 export async function withDbResilience<T>(
   queryFn: () => Promise<T>,
-  operationName = 'database query'
+  operationName = 'database query',
 ): Promise<T> {
   return dbRetryHandler.execute(queryFn, { operationName });
 }
@@ -111,14 +135,14 @@ export async function withDbResilience<T>(
  */
 export async function withDbTransaction<T>(
   txFn: (tx: typeof db) => Promise<T>,
-  operationName = 'database transaction'
+  operationName = 'database transaction',
 ): Promise<T> {
   return dbRetryHandler.execute(
     async () => {
       // @ts-ignore - Drizzle transaction API
       return db.transaction(txFn);
     },
-    { operationName }
+    { operationName },
   );
 }
 
@@ -208,7 +232,6 @@ export async function reconnectDb(): Promise<void> {
   dbCircuitBreaker.reset();
 
   // Note: The pool will recreate connections on next query
-  // For Neon serverless, this is handled automatically
   console.log('[Database] Reconnection initiated, pool will recreate connections on next query');
 }
 
@@ -240,10 +263,7 @@ export async function performDbHealthCheck(): Promise<DbHealthCheck> {
 
   if (!connectionTest.connected) {
     status = 'unhealthy';
-  } else if (
-    health.circuitState === 'HALF_OPEN' ||
-    connectionTest.latencyMs > 5000
-  ) {
+  } else if (health.circuitState === 'HALF_OPEN' || connectionTest.latencyMs > 5000) {
     status = 'degraded';
   } else {
     status = 'healthy';
