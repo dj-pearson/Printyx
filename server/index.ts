@@ -95,48 +95,95 @@ const allowedOriginsDev = [
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+// Helper to check if origin is allowed and return the actual origin string
+function getAllowedOrigin(origin: string | undefined): string | false {
+  // No origin = server-to-server request, allow but don't set CORS headers
+  if (!origin) {
+    return false;
+  }
+
+  // Check production origins
+  const isProdOrigin = allowedOriginsProd.some((o) =>
+    o instanceof RegExp ? o.test(origin) : o === origin,
+  );
+  if (isProdOrigin) {
+    return origin; // Return the actual origin string, not true
+  }
+
+  // In development, also allow dev origins
+  if (isDevelopment) {
+    const isDevOrigin = allowedOriginsDev.some((o) =>
+      o instanceof RegExp ? o.test(origin) : o === origin,
+    );
+    if (isDevOrigin) {
+      return origin; // Return the actual origin string
+    }
+  }
+
+  return false;
+}
+
+// Manual CORS middleware to ensure headers are set correctly
+// This prevents proxies from overriding with Access-Control-Allow-Origin: *
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigin = getAllowedOrigin(origin);
+
+  if (allowedOrigin) {
+    // Set CORS headers explicitly with the specific origin (never *)
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, X-CSRF-Token, X-Requested-With, x-tenant-id, X-Demo-Auth',
+    );
+    res.setHeader('Access-Control-Expose-Headers', 'X-CSRF-Token');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+
+    // Log CORS decision
+    console.log('[CORS] ✅ Allowed origin:', allowedOrigin);
+  } else if (origin) {
+    console.error('[CORS] ❌ BLOCKED origin:', origin);
+  }
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    if (allowedOrigin) {
+      res.setHeader('Vary', 'Origin');
+      return res.status(204).end();
+    } else {
+      return res.status(403).json({ error: 'CORS not allowed for this origin' });
+    }
+  }
+
+  next();
+});
+
+// Also use cors package as backup (it will respect already-set headers)
 app.use(
   cors({
     origin: (origin, callback) => {
-      console.log('[CORS] Request from origin:', origin, '| NODE_ENV:', process.env.NODE_ENV);
-
-      // Allow requests with no origin (mobile apps, Postman, server-to-server)
-      if (!origin) {
-        console.log('[CORS] ✅ Allowed: No origin (server-to-server)');
-        return callback(null, true);
+      const allowed = getAllowedOrigin(origin);
+      if (allowed || !origin) {
+        // Return the actual origin string, not true
+        callback(null, allowed || true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
       }
-
-      // ALWAYS check production origins (even in dev mode)
-      const isProdOrigin = allowedOriginsProd.some((o) =>
-        o instanceof RegExp ? o.test(origin) : o === origin,
-      );
-
-      if (isProdOrigin) {
-        console.log('[CORS] ✅ Allowed: Production origin');
-        return callback(null, true);
-      }
-
-      // In development, also allow dev origins
-      if (isDevelopment) {
-        const isDevOrigin = allowedOriginsDev.some((o) =>
-          o instanceof RegExp ? o.test(origin) : o === origin,
-        );
-
-        if (isDevOrigin) {
-          console.log('[CORS] ✅ Allowed: Development origin');
-          return callback(null, true);
-        }
-      }
-
-      // Block everything else
-      console.error('[CORS] ❌ BLOCKED origin:', origin);
-      return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-CSRF-Token',
+      'X-Requested-With',
+      'x-tenant-id',
+      'X-Demo-Auth',
+    ],
     exposedHeaders: ['X-CSRF-Token'],
-    maxAge: 86400, // 24 hours - cache preflight requests
+    maxAge: 86400,
     preflightContinue: false,
     optionsSuccessStatus: 204,
   }),
