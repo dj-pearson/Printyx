@@ -1,23 +1,45 @@
 /**
  * Application Configuration
  * Handles environment-specific settings for API endpoints
+ *
+ * In production, Supabase requests are proxied through Cloudflare Pages Functions
+ * to handle CORS properly. Set VITE_USE_SUPABASE_PROXY=true to enable.
  */
 
 export type AuthMode = 'legacy' | 'hybrid' | 'supabase';
+
+// Determine if we should use the proxy (same-origin requests through Cloudflare Pages Functions)
+const useProxy = import.meta.env.VITE_USE_SUPABASE_PROXY === 'true' || import.meta.env.PROD;
+
+// Get the base URL for the current origin (for proxied requests)
+const getOriginUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+};
 
 export const config = {
   // API Base URL - defaults to relative for dev, can be overridden for production
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
 
   // Supabase Configuration
+  // In production, use same-origin proxy to avoid CORS issues
   supabase: {
-    url: import.meta.env.VITE_SUPABASE_URL || '',
+    // Use proxy in production: /api/* routes to Supabase API
+    url: useProxy ? getOriginUrl() : import.meta.env.VITE_SUPABASE_URL || '',
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-    functionsUrl: import.meta.env.VITE_FUNCTIONS_URL || '',
+    // Use proxy in production: /functions/* routes to Supabase Edge Functions
+    functionsUrl: useProxy
+      ? `${getOriginUrl()}/functions`
+      : import.meta.env.VITE_FUNCTIONS_URL || '',
   },
 
+  // Whether Supabase requests are proxied through Cloudflare Pages Functions
+  useSupabaseProxy: useProxy,
+
   // Auth Mode: 'legacy' (Express sessions), 'hybrid' (both), 'supabase' (GoTrue only)
-  authMode: (import.meta.env.VITE_AUTH_MODE || 'legacy') as AuthMode,
+  authMode: (import.meta.env.VITE_AUTH_MODE || 'supabase') as AuthMode,
 
   // Feature Flags
   isDevelopment: import.meta.env.DEV,

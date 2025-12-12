@@ -9,3 +9,10 @@ command = "npm run build"
 # Pages configuration
 pages_build_output_dir = "dist"
 
+# Environment variables for Pages Functions (set in Cloudflare Dashboard)
+# SUPABASE_URL = "https://api.printyx.net"
+# SUPABASE_ANON_KEY = "your-anon-key"
+#
+# Client-side environment variables (set as VITE_* in Cloudflare Dashboard)
+# VITE_SUPABASE_ANON_KEY = "your-anon-key"
+# VITE_AUTH_MODE = "supabase"
