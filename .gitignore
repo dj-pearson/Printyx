@@ -36,3 +36,10 @@ FIX_CORS_CREDENTIALS_ERROR.md
 fix-env-file.md
 QUICK_FIX_NOW.md
 SUPABASE_ENV_VARS_GUIDE.md
+SUPABASE_MIGRATION_CHECKLIST.md
+
+# Local test/utility scripts
+test-db-connection.ts
+test-supabase-api.ts
+start-db-tunnel.ps1
+nul
