@@ -1,17 +1,11 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -19,54 +13,57 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Printer } from "lucide-react";
+} from '@/components/ui/form';
+import { useToast } from '@/hooks/use-toast';
+import { useAuthContext } from '@/providers/AuthProvider';
+import { Printer } from 'lucide-react';
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const { toast } = useToast();
+  const { login } = useAuthContext();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
     },
   });
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginForm) => {
-      return await apiRequest("/api/auth/login", "POST", data);
+      await login(data.email, data.password);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
-        title: "Login successful",
-        description: `Welcome back, ${data.user.firstName || data.user.email}!`,
+        title: 'Login successful',
+        description: 'Welcome back!',
       });
-      // Invalidate auth query to fetch fresh user data
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      // Invalidate auth queries to fetch fresh user data
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['supabase-auth-user'] });
 
       // Restore last visited route or go to dashboard
-      const lastRoute = localStorage.getItem("printyx_last_route");
-      const redirectTo = lastRoute && lastRoute !== "/login" ? lastRoute : "/";
+      const lastRoute = localStorage.getItem('printyx_last_route');
+      const redirectTo = lastRoute && lastRoute !== '/login' ? lastRoute : '/';
 
       // Use location.replace for smooth transition without back button issue
       window.location.replace(redirectTo);
     },
     onError: (error: any) => {
       toast({
-        title: "Login failed",
-        description: error.message || "Invalid email or password",
-        variant: "destructive",
+        title: 'Login failed',
+        description: error.message || 'Invalid email or password',
+        variant: 'destructive',
       });
     },
   });
@@ -99,10 +96,7 @@ export default function Login() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="email"
@@ -123,19 +117,12 @@ export default function Login() {
                     <FormItem>
                       <div className="flex items-center justify-between">
                         <FormLabel>Password</FormLabel>
-                        <a
-                          href="/forgot-password"
-                          className="text-sm text-primary hover:underline"
-                        >
+                        <a href="/forgot-password" className="text-sm text-primary hover:underline">
                           Forgot password?
                         </a>
                       </div>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Enter your password"
-                          {...field}
-                        />
+                        <Input type="password" placeholder="Enter your password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -146,13 +133,11 @@ export default function Login() {
                   className="w-full"
                   disabled={isLoading || loginMutation.isPending}
                 >
-                  {isLoading || loginMutation.isPending
-                    ? "Signing in..."
-                    : "Sign In"}
+                  {isLoading || loginMutation.isPending ? 'Signing in...' : 'Sign In'}
                 </Button>
 
                 <div className="text-center text-sm text-muted-foreground border-t pt-4 mt-4">
-                  Don't have an account?{" "}
+                  Don't have an account?{' '}
                   <a href="/signup" className="text-primary hover:underline font-medium">
                     Sign up for free
                   </a>

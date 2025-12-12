@@ -1,6 +1,7 @@
 import { QueryClient, QueryFunction } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { getApiUrl } from '@/lib/config';
+import { config, getApiUrl } from '@/lib/config';
+import { getAccessToken } from '@/lib/supabase';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -8,8 +9,43 @@ async function throwIfResNotOk(res: Response) {
     throw new Error(`${res.status}: ${text}`);
   }
 }
-// In-memory CSRF token cache
+
+// In-memory CSRF token cache (for legacy auth)
 let __csrfToken: string | undefined;
+
+// CSRF token: fetch on first use and cache in-memory (legacy auth only)
+async function getCsrfToken(): Promise<string | undefined> {
+  if (__csrfToken) return __csrfToken;
+  try {
+    const res = await fetch(getApiUrl('api/csrf-token'), { credentials: 'include' });
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    __csrfToken = data?.csrfToken || data?.token || data?.csrf;
+    return __csrfToken;
+  } catch {
+    return undefined;
+  }
+}
+
+// Determine the base URL based on auth mode
+function getRequestUrl(url: string): string {
+  const authMode = config.authMode;
+  const functionsUrl = config.supabase.functionsUrl;
+
+  // For Supabase/hybrid mode with Edge Functions configured
+  if (
+    (authMode === 'supabase' || authMode === 'hybrid') &&
+    functionsUrl &&
+    url.startsWith('/api/')
+  ) {
+    // Route to Edge Functions (remove /api prefix as Edge Functions handle routing differently)
+    const cleanPath = url.replace(/^\/api\//, '');
+    return `${functionsUrl}/${cleanPath}`;
+  }
+
+  // Default: use legacy API URL
+  return getApiUrl(url);
+}
 
 export async function apiRequest(
   url: string,
@@ -21,6 +57,17 @@ export async function apiRequest(
     'Content-Type': 'application/json',
     ...headers,
   };
+
+  const authMode = config.authMode;
+  const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
+
+  // Add Bearer token for Supabase auth modes
+  if (isSupabaseMode) {
+    const accessToken = await getAccessToken();
+    if (accessToken) {
+      requestHeaders['Authorization'] = `Bearer ${accessToken}`;
+    }
+  }
 
   // Add demo auth header if localStorage flag is set
   if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
@@ -36,42 +83,32 @@ export async function apiRequest(
     }
   }
 
-  // CSRF token: fetch on first use and cache in-memory
-  async function getCsrfToken(): Promise<string | undefined> {
-    if (__csrfToken) return __csrfToken;
-    try {
-      const res = await fetch(getApiUrl('api/csrf-token'), { credentials: 'include' });
-      if (!res.ok) return undefined;
-      const data = await res.json();
-      __csrfToken = data?.csrfToken || data?.token || data?.csrf;
-      return __csrfToken;
-    } catch {
-      return undefined;
-    }
-  }
-
-  // Attach CSRF only for state-changing methods
+  // CSRF token only needed for legacy auth (session-based)
   const safeMethod = method || 'GET';
   const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(safeMethod.toUpperCase());
-  if (isMutating && !('x-csrf-token' in requestHeaders)) {
+
+  if (authMode === 'legacy' && isMutating && !('x-csrf-token' in requestHeaders)) {
     const token = await getCsrfToken();
     if (token) (requestHeaders as any)['x-csrf-token'] = token;
   }
 
-  let res = await fetch(getApiUrl(url), {
+  const requestUrl = getRequestUrl(url);
+
+  let res = await fetch(requestUrl, {
     method: safeMethod,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include',
+    // Only include credentials for legacy auth (cookies)
+    credentials: authMode === 'legacy' ? 'include' : 'omit',
   });
 
-  // If forbidden, try refreshing CSRF token once and retry
-  if (res.status === 403 && isMutating) {
+  // If forbidden in legacy mode, try refreshing CSRF token once and retry
+  if (res.status === 403 && isMutating && authMode === 'legacy') {
     __csrfToken = undefined;
     const token = await getCsrfToken();
     if (token) {
       (requestHeaders as any)['x-csrf-token'] = token;
-      res = await fetch(getApiUrl(url), {
+      res = await fetch(requestUrl, {
         method: safeMethod,
         headers: requestHeaders,
         body: body ? JSON.stringify(body) : undefined,
@@ -87,11 +124,18 @@ export async function apiRequest(
       variant: 'destructive',
     });
   }
+
+  // Handle 401 for Supabase mode - may need token refresh
+  if (res.status === 401 && isSupabaseMode) {
+    // Token may have expired, the auth provider will handle refresh
+    throw new Error('401: Session expired. Please log in again.');
+  }
+
   await throwIfResNotOk(res);
   return await res.json();
 }
 
-// Form-data aware request that preserves multipart encoding and still injects CSRF/tenant/demo headers
+// Form-data aware request that preserves multipart encoding and still injects auth headers
 export async function apiFormRequest(
   url: string,
   method: string = 'POST',
@@ -101,6 +145,17 @@ export async function apiFormRequest(
   const requestHeaders: HeadersInit = {
     ...extraHeaders,
   };
+
+  const authMode = config.authMode;
+  const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
+
+  // Add Bearer token for Supabase auth modes
+  if (isSupabaseMode) {
+    const accessToken = await getAccessToken();
+    if (accessToken) {
+      requestHeaders['Authorization'] = `Bearer ${accessToken}`;
+    }
+  }
 
   // Demo auth
   if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
@@ -114,23 +169,27 @@ export async function apiFormRequest(
     if (tenantId) requestHeaders['x-tenant-id'] = tenantId;
   }
 
-  // CSRF token (reuse the same getCsrfToken function from above)
-  const token = await getCsrfToken();
-  if (token) (requestHeaders as any)['x-csrf-token'] = token;
+  // CSRF token only for legacy auth
+  if (authMode === 'legacy') {
+    const token = await getCsrfToken();
+    if (token) (requestHeaders as any)['x-csrf-token'] = token;
+  }
 
-  let res = await fetch(getApiUrl(url), {
+  const requestUrl = getRequestUrl(url);
+
+  let res = await fetch(requestUrl, {
     method,
     headers: requestHeaders,
     body: formData,
-    credentials: 'include',
+    credentials: authMode === 'legacy' ? 'include' : 'omit',
   });
 
-  if (res.status === 403) {
+  if (res.status === 403 && authMode === 'legacy') {
     __csrfToken = undefined;
     const newToken = await getCsrfToken();
     if (newToken) {
       (requestHeaders as any)['x-csrf-token'] = newToken;
-      res = await fetch(getApiUrl(url), {
+      res = await fetch(requestUrl, {
         method,
         headers: requestHeaders,
         body: formData,
@@ -156,6 +215,17 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
   async ({ queryKey }) => {
     const headers: HeadersInit = {};
 
+    const authMode = config.authMode;
+    const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
+
+    // Add Bearer token for Supabase auth modes
+    if (isSupabaseMode) {
+      const accessToken = await getAccessToken();
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+    }
+
     // Add demo auth header if localStorage flag is set
     if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
       headers['X-Demo-Auth'] = 'true';
@@ -170,9 +240,12 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
       }
     }
 
-    const res = await fetch(getApiUrl(queryKey.join('/') as string), {
+    const url = queryKey.join('/') as string;
+    const requestUrl = getRequestUrl(url.startsWith('/') ? url : `/${url}`);
+
+    const res = await fetch(requestUrl, {
       headers,
-      credentials: 'include',
+      credentials: authMode === 'legacy' ? 'include' : 'omit',
     });
 
     if (unauthorizedBehavior === 'returnNull' && res.status === 401) {

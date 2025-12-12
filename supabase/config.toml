@@ -15,3 +15,7 @@ verify_jwt = true
 # Sample function configuration
 verify_jwt = false  # Set to true if you want JWT verification
 
+[functions.signup]
+# Signup function - no JWT required (creates new users)
+verify_jwt = false
+

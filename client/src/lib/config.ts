@@ -3,15 +3,21 @@
  * Handles environment-specific settings for API endpoints
  */
 
+export type AuthMode = 'legacy' | 'hybrid' | 'supabase';
+
 export const config = {
   // API Base URL - defaults to relative for dev, can be overridden for production
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
 
-  // Supabase Configuration (if using Supabase client directly)
+  // Supabase Configuration
   supabase: {
     url: import.meta.env.VITE_SUPABASE_URL || '',
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+    functionsUrl: import.meta.env.VITE_FUNCTIONS_URL || '',
   },
+
+  // Auth Mode: 'legacy' (Express sessions), 'hybrid' (both), 'supabase' (GoTrue only)
+  authMode: (import.meta.env.VITE_AUTH_MODE || 'legacy') as AuthMode,
 
   // Feature Flags
   isDevelopment: import.meta.env.DEV,

@@ -7,7 +7,7 @@ import { useSeo } from '@/lib/useSeo';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
-import { useAuth } from '@/hooks/useAuth';
+import { AuthProvider, useAuthContext } from '@/providers/AuthProvider';
 import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
@@ -287,7 +287,7 @@ const LAST_ROUTE_KEY = 'printyx_last_route';
 
 function Router() {
   console.log('🎯 Router: Component rendering');
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuthContext();
   const [pathname, setLocation] = useLocation();
   const { open, setOpen } = useCommandPalette();
   console.log('🎯 Router state:', { isAuthenticated, isLoading, pathname });
@@ -474,7 +474,10 @@ function Router() {
           {/* Equipment Lifecycle Management - now redirects to unified hub */}
           <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
           {/* Legacy Equipment Lifecycle Management (keeping for reference during transition) */}
-          <Route path="/equipment-lifecycle-management-legacy" component={EquipmentLifecycleManagement} />
+          <Route
+            path="/equipment-lifecycle-management-legacy"
+            component={EquipmentLifecycleManagement}
+          />
           <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
@@ -709,16 +712,18 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <PWAProvider>
-          <Toaster />
-          <ErrorBoundary>
-            <React.Suspense fallback={<div className="p-6">Loading…</div>}>
-              <Router />
-            </React.Suspense>
-          </ErrorBoundary>
-        </PWAProvider>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <PWAProvider>
+            <Toaster />
+            <ErrorBoundary>
+              <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+                <Router />
+              </React.Suspense>
+            </ErrorBoundary>
+          </PWAProvider>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
