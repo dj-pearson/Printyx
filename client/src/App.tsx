@@ -20,6 +20,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Signup from '@/pages/Signup';
 import VerifyEmail from '@/pages/VerifyEmail';
+import AuthCallback from '@/pages/AuthCallback';
 import EndUserLicenseAgreement from '@/pages/legal/EndUserLicenseAgreement';
 import PrivacyPolicy from '@/pages/legal/PrivacyPolicy';
 import TermsAndConditions from '@/pages/legal/TermsAndConditions';
@@ -363,6 +364,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/eula" component={EndUserLicenseAgreement} />
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsAndConditions} />

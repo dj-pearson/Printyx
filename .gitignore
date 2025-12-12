@@ -43,3 +43,15 @@ test-db-connection.ts
 test-supabase-api.ts
 start-db-tunnel.ps1
 nul
+DEPLOY_BACKEND_COOLIFY.md
+DEPLOY_EDGE_FUNCTIONS_GUIDE.md
+deploy-edge-functions.ps1
+deploy-edge-functions.sh
+FIX_KONG_CORS_NOW.md
+SUPABASE_EDGE_FUNCTIONS_SELFHOSTED.md
+docs/SUPABASE_AUTH_MIGRATION.md
+docs/SUPABASE_AUTH_MIGRATION.md
+DEPLOYMENT_SUMMARY.md
+EDGE_FUNCTIONS_QUICK_START.md
+docs/SUPABASE_AUTH_MIGRATION.md
+START_HERE_DEPLOYMENT.md
