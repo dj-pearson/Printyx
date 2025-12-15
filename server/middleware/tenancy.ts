@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
+import type { SupabaseUser } from './supabase-auth';
 
 export interface TenantRequest extends Request {
   tenant?: {
@@ -11,29 +12,40 @@ export interface TenantRequest extends Request {
   };
   tenantId?: string;
   user?: any;
+  supabaseUser?: SupabaseUser;
 }
 
 // Configuration for tenant routing
 const TENANT_CONFIG = {
-  enableSubdomainRouting: true,    // Primary method: xyz-company.printyx.net
-  enablePathRouting: false,        // Secondary method: printyx.net/xyz-company (disabled by default)
-  isDevelopment: process.env.NODE_ENV === 'development'
+  enableSubdomainRouting: true, // Primary method: xyz-company.printyx.net
+  enablePathRouting: false, // Secondary method: printyx.net/xyz-company (disabled by default)
+  isDevelopment: process.env.NODE_ENV === 'development',
 };
 
 /**
- * Middleware to resolve tenant primarily from subdomain
- * Primary: xyz-company.printyx.net (subdomain)
- * Fallback: printyx.net/xyz-company/... (path-based, if enabled)
+ * Middleware to resolve tenant from multiple sources
+ * Priority order:
+ * 1. Supabase JWT app_metadata.tenantId (highest priority)
+ * 2. Subdomain: xyz-company.printyx.net
+ * 3. Path prefix: printyx.net/xyz-company/... (if enabled)
+ * 4. Session/default fallback (development)
  */
 export const resolveTenant = async (req: TenantRequest, res: Response, next: NextFunction) => {
   try {
+    // Priority 1: Supabase JWT tenant (from supabase-auth middleware)
+    if (req.supabaseUser?.tenantId) {
+      req.tenantId = req.supabaseUser.tenantId;
+      // console.log(`[TENANT DEBUG] Using Supabase JWT tenant: ${req.tenantId}`);
+      return next();
+    }
+
     let tenantSlug: string | null = null;
     const host = req.get('host') || '';
     const path = req.path;
 
     // console.log(`[TENANT DEBUG] Host: ${host}, Path: ${path}`);
 
-    // Method 1: Subdomain detection (Primary - only for production domains)
+    // Priority 2: Subdomain detection (only for production domains)
     if (TENANT_CONFIG.enableSubdomainRouting && host.includes('.printyx.')) {
       const subdomain = host.split('.')[0];
       if (subdomain !== 'www' && subdomain !== 'api' && subdomain.length > 0) {
@@ -42,9 +54,9 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       }
     }
 
-    // Method 2: Path prefix detection (Secondary - only if enabled)
+    // Priority 3: Path prefix detection (only if enabled)
     if (!tenantSlug && TENANT_CONFIG.enablePathRouting) {
-      const pathSegments = path.split('/').filter(segment => segment.length > 0);
+      const pathSegments = path.split('/').filter((segment) => segment.length > 0);
       if (pathSegments.length > 0 && !pathSegments[0].startsWith('api')) {
         const potentialSlug = pathSegments[0];
         if (potentialSlug !== 'login' && potentialSlug !== 'signup' && potentialSlug !== 'auth') {
@@ -54,10 +66,15 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       }
     }
 
-    // For development (localhost/replit.dev/kirk.replit.dev), skip tenant slug resolution and use defaults
-    if (!tenantSlug && (host.includes('localhost') || host.includes('replit.dev') || host.includes('kirk.replit.dev'))) {
+    // Priority 4: Development fallback (localhost/replit.dev)
+    if (
+      !tenantSlug &&
+      (host.includes('localhost') ||
+        host.includes('replit.dev') ||
+        host.includes('kirk.replit.dev'))
+    ) {
       // console.log(`[TENANT DEBUG] Development environment detected, using user tenant or default`);
-      
+
       if (req.user?.tenantId) {
         req.tenantId = req.user.tenantId;
         // console.log(`[TENANT DEBUG] Using user tenant: ${req.tenantId}`);
@@ -69,7 +86,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         req.tenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
         // console.log(`[TENANT DEBUG] Using default demo tenant: ${req.tenantId}`);
       }
-      
+
       return next(); // Skip database lookup for development
     }
 
@@ -80,7 +97,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         req.tenant = tenant;
         req.tenantId = tenant.id;
         // console.log(`[TENANT DEBUG] Found tenant in DB: ${tenant.id}`);
-        
+
         // Store tenant context in session if available
         if (req.session) {
           (req.session as any).tenantId = tenant.id;
@@ -88,9 +105,9 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         }
       } else {
         // console.log(`[TENANT DEBUG] Tenant slug '${tenantSlug}' not found or inactive`);
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: 'Tenant not found',
-          message: `The organization "${tenantSlug}" was not found or is inactive.`
+          message: `The organization "${tenantSlug}" was not found or is inactive.`,
         });
       }
     }
@@ -107,9 +124,10 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
  */
 export const requireTenant = (req: TenantRequest, res: Response, next: NextFunction) => {
   if (!req.tenant && !req.tenantId) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Tenant required',
-      message: 'This endpoint requires a valid tenant context. Please access via subdomain or tenant path.'
+      message:
+        'This endpoint requires a valid tenant context. Please access via subdomain or tenant path.',
     });
   }
   next();
@@ -124,13 +142,13 @@ export const generateTenantUrls = (tenantSlug: string, baseDomain: string = 'pri
     // For development
     primaryDev: `https://${tenantSlug}.replit.dev`,
   };
-  
+
   // Only include path-based if enabled
   if (TENANT_CONFIG.enablePathRouting) {
     urls.secondary = `https://${baseDomain}/${tenantSlug}`;
     urls.secondaryDev = `https://replit.dev/${tenantSlug}`;
   }
-  
+
   return urls;
 };
 

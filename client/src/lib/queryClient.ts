@@ -27,23 +27,11 @@ async function getCsrfToken(): Promise<string | undefined> {
   }
 }
 
-// Determine the base URL based on auth mode
+// Determine the base URL for API requests
+// Note: All API requests go to the Express server, Edge Functions are called directly when needed
 function getRequestUrl(url: string): string {
-  const authMode = config.authMode;
-  const functionsUrl = config.supabase.functionsUrl;
-
-  // For Supabase/hybrid mode with Edge Functions configured
-  if (
-    (authMode === 'supabase' || authMode === 'hybrid') &&
-    functionsUrl &&
-    url.startsWith('/api/')
-  ) {
-    // Route to Edge Functions (remove /api prefix as Edge Functions handle routing differently)
-    const cleanPath = url.replace(/^\/api\//, '');
-    return `${functionsUrl}/${cleanPath}`;
-  }
-
-  // Default: use legacy API URL
+  // Always use the configured API URL for /api/* routes
+  // Edge Functions (signup, etc.) are called directly via fetch, not through this function
   return getApiUrl(url);
 }
 
