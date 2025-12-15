@@ -9,7 +9,11 @@
 export type AuthMode = 'legacy' | 'hybrid' | 'supabase';
 
 // Determine if we should use the proxy (same-origin requests through Cloudflare Pages Functions)
-const useProxy = import.meta.env.VITE_USE_SUPABASE_PROXY === 'true' || import.meta.env.PROD;
+// Explicitly check for 'false' to allow disabling in production
+const useProxy =
+  import.meta.env.VITE_USE_SUPABASE_PROXY === 'false'
+    ? false
+    : import.meta.env.VITE_USE_SUPABASE_PROXY === 'true' || import.meta.env.PROD;
 
 // Get the base URL for the current origin (for proxied requests)
 const getOriginUrl = () => {
