@@ -647,7 +647,6 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const tenantId = user.tenantId;
-      const userId = user.id;
 
       console.log('[DEBUG] Raw request body:', JSON.stringify(req.body, null, 2));
 
@@ -686,7 +685,6 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const tenantId = user.tenantId;
-      const userId = user.id;
 
       const updateData = {
         ...req.body,
