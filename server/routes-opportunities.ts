@@ -163,7 +163,7 @@ export function registerOpportunitiesRoutes(app: Express) {
     try {
       const tenantId = req.user.tenantId;
       const opportunityId = req.params.id;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       // Get the opportunity
       const [opportunity] = await db

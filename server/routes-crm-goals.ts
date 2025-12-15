@@ -93,7 +93,7 @@ export function registerCrmGoalRoutes(app: Express) {
       const goalData = insertSalesGoalSchema.parse({
         ...req.body,
         tenantId: req.user.tenantId,
-        assignedBy: req.user.claims.sub,
+        assignedBy: req.user?.id || req.user?.claims?.sub,
       });
 
       const [goal] = await db.insert(salesGoals).values(goalData).returning();
@@ -555,7 +555,7 @@ export function registerCrmGoalRoutes(app: Express) {
   app.post('/api/crm/manager-insights/generate', isAuthenticated, async (req: any, res) => {
     try {
       const { userId, teamId, goalId } = req.body;
-      const managerId = req.user.claims.sub;
+      const managerId = req.user?.id || req.user?.claims?.sub;
 
       // Get current metrics for the user/team
       const currentMetrics = await db

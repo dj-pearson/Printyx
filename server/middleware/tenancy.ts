@@ -26,9 +26,12 @@ const TENANT_CONFIG = {
  * Middleware to resolve tenant from multiple sources
  * Priority order:
  * 1. Supabase JWT app_metadata.tenantId (highest priority)
- * 2. Subdomain: xyz-company.printyx.net
- * 3. Path prefix: printyx.net/xyz-company/... (if enabled)
- * 4. Session/default fallback (development)
+ * 2. x-tenant-id header (for self-hosted/API scenarios)
+ * 3. req.user.tenantId (set by isAuthenticated after DB lookup)
+ * 4. Already set req.tenantId (by isAuthenticated or other middleware)
+ * 5. Subdomain: xyz-company.printyx.net
+ * 6. Path prefix: printyx.net/xyz-company/... (if enabled)
+ * 7. Session/default fallback (development)
  */
 export const resolveTenant = async (req: TenantRequest, res: Response, next: NextFunction) => {
   try {
@@ -39,13 +42,34 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       return next();
     }
 
+    // Priority 2: x-tenant-id header (for self-hosted and API scenarios)
+    const headerTenantId = req.get('x-tenant-id');
+    if (headerTenantId && headerTenantId.length > 0) {
+      req.tenantId = headerTenantId;
+      // console.log(`[TENANT DEBUG] Using x-tenant-id header: ${req.tenantId}`);
+      return next();
+    }
+
+    // Priority 3: User's tenantId (set by isAuthenticated after DB lookup)
+    if (req.user?.tenantId) {
+      req.tenantId = req.user.tenantId;
+      // console.log(`[TENANT DEBUG] Using user tenantId from isAuthenticated: ${req.tenantId}`);
+      return next();
+    }
+
+    // Priority 4: Already set on request (by isAuthenticated or other middleware)
+    if ((req as any).tenantId) {
+      // console.log(`[TENANT DEBUG] Using existing req.tenantId: ${(req as any).tenantId}`);
+      return next();
+    }
+
     let tenantSlug: string | null = null;
     const host = req.get('host') || '';
     const path = req.path;
 
     // console.log(`[TENANT DEBUG] Host: ${host}, Path: ${path}`);
 
-    // Priority 2: Subdomain detection (only for production domains)
+    // Priority 5: Subdomain detection (only for production domains)
     if (TENANT_CONFIG.enableSubdomainRouting && host.includes('.printyx.')) {
       const subdomain = host.split('.')[0];
       if (subdomain !== 'www' && subdomain !== 'api' && subdomain.length > 0) {
@@ -54,7 +78,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       }
     }
 
-    // Priority 3: Path prefix detection (only if enabled)
+    // Priority 6: Path prefix detection (only if enabled)
     if (!tenantSlug && TENANT_CONFIG.enablePathRouting) {
       const pathSegments = path.split('/').filter((segment) => segment.length > 0);
       if (pathSegments.length > 0 && !pathSegments[0].startsWith('api')) {
@@ -66,7 +90,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       }
     }
 
-    // Priority 4: Development fallback (localhost/replit.dev)
+    // Priority 7: Development fallback (localhost/replit.dev)
     if (
       !tenantSlug &&
       (host.includes('localhost') ||

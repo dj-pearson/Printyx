@@ -71,7 +71,7 @@ export function registerDealDeskRoutes(app: Express) {
     async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user.tenantId;
-        const userId = req.user.claims.sub;
+        const userId = req.user?.id || req.user?.claims?.sub;
 
         const ruleData = insertApprovalRuleSchema.parse({
           ...req.body,
@@ -161,7 +161,7 @@ export function registerDealDeskRoutes(app: Express) {
   app.post('/api/deal-desk/requests', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const userName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
 
       // Check if approval is required
@@ -235,7 +235,7 @@ export function registerDealDeskRoutes(app: Express) {
   app.get('/api/deal-desk/my-approvals', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       const pendingApprovals = await ApprovalWorkflowService.getPendingApprovalsForUser(
         tenantId,
@@ -300,7 +300,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Process approval decision
   app.post('/api/deal-desk/requests/:id/decision', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { id } = req.params;
       const { decision, comments } = req.body;
 
@@ -326,7 +326,7 @@ export function registerDealDeskRoutes(app: Express) {
   app.post('/api/deal-desk/requests/:id/comments', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const userName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
       const { id } = req.params;
       const { commentText, isInternal } = req.body;
@@ -362,7 +362,7 @@ export function registerDealDeskRoutes(app: Express) {
     async (req: any, res) => {
       try {
         const tenantId = req.user.tenantId;
-        const userId = req.user.claims.sub;
+        const userId = req.user?.id || req.user?.claims?.sub;
 
         // My pending approvals count
         const myPendingApprovals = await ApprovalWorkflowService.getPendingApprovalsForUser(
@@ -504,7 +504,7 @@ export function registerDealDeskRoutes(app: Express) {
   app.get('/api/deal-desk/delegations', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       const delegations = await db
         .select()
@@ -531,7 +531,7 @@ export function registerDealDeskRoutes(app: Express) {
   app.post('/api/deal-desk/delegations', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       const delegationData = insertApprovalDelegationSchema.parse({
         ...req.body,
@@ -556,7 +556,7 @@ export function registerDealDeskRoutes(app: Express) {
   app.patch('/api/deal-desk/delegations/:id/deactivate', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
       const { id } = req.params;
 
       const [delegation] = await db

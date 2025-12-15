@@ -143,7 +143,7 @@ export function registerDealsManagementRoutes(app: Express) {
   app.post('/api/deals-management/deals', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       const dealData = insertDealSchema.parse({
         ...req.body,
@@ -309,7 +309,7 @@ export function registerDealsManagementRoutes(app: Express) {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
-      const userId = req.user.claims.sub;
+      const userId = req.user?.id || req.user?.claims?.sub;
 
       const activityData = insertDealActivitySchema.parse({
         ...req.body,

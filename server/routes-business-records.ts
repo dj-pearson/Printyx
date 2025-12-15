@@ -115,9 +115,9 @@ export function registerBusinessRecordRoutes(app: Express) {
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        // Check for session-based auth (current approach)
-        const session = req.session as any;
-        const userId = session?.userId;
+        // Get userId from authenticated user (supports both Supabase JWT and session auth)
+        const userId =
+          (req as any).user?.id || (req as any).user?.claims?.sub || (req as any).session?.userId;
         const tenantId = req.tenantId!;
 
         if (!userId) {
@@ -196,9 +196,9 @@ export function registerBusinessRecordRoutes(app: Express) {
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        // Check for session-based auth (current approach)
-        const session = req.session as any;
-        const userId = session?.userId;
+        // Get userId from authenticated user (supports both Supabase JWT and session auth)
+        const userId =
+          (req as any).user?.id || (req as any).user?.claims?.sub || (req as any).session?.userId;
         const tenantId = req.tenantId!;
         const { id } = req.params;
 
@@ -572,8 +572,9 @@ export function registerBusinessRecordRoutes(app: Express) {
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        const session = req.session as any;
-        const userId = session?.userId;
+        // Get userId from authenticated user (supports both Supabase JWT and session auth)
+        const userId =
+          (req as any).user?.id || (req as any).user?.claims?.sub || (req as any).session?.userId;
         const tenantId = req.tenantId!;
         const { id } = req.params;
 
