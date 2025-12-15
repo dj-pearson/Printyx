@@ -20,9 +20,15 @@ import { generateTableOfContents, addHeaderIdsToHTML } from './utils/article-tab
 
 const router = Router();
 
+// Helper to get user ID from request (supports Supabase JWT and session)
+const getUserId = (req: Request): string | undefined => {
+  return (req as any).user?.id || (req as any).user?.claims?.sub || (req as any).session?.userId;
+};
+
 // Middleware to require authentication
 const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.userId) {
+  const userId = getUserId(req);
+  if (!userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
@@ -30,7 +36,8 @@ const requireAuth = (req: Request, res: Response, next: Function) => {
 
 // Middleware to require admin role
 const requireAdmin = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.userId) {
+  const userId = getUserId(req);
+  if (!userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   // Check if user has admin role (platform_admin, super_admin, or admin)
@@ -116,7 +123,7 @@ router.get('/categories/:id', async (req: Request, res: Response) => {
 router.post('/categories', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
-    const userId = req.session!.userId!;
+    const userId = getUserId(req);
 
     const data = insertKnowledgeCategorySchema.parse(req.body);
 
@@ -337,7 +344,7 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
 
     // Track article view (async, don't wait)
     const sessionId = req.sessionID || `guest-${Date.now()}`;
-    const userId = req.session?.userId || null;
+    const userId = getUserId(req) || null;
 
     db.insert(articleViews)
       .values({
@@ -389,7 +396,7 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
 router.post('/articles', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
-    const userId = req.session!.userId!;
+    const userId = getUserId(req);
 
     const data = insertKnowledgeArticleSchema.parse(req.body);
 
@@ -441,7 +448,7 @@ router.post('/articles', requireAdmin, async (req: Request, res: Response) => {
 router.put('/articles/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
-    const userId = req.session!.userId!;
+    const userId = getUserId(req);
     const { id } = req.params;
     const { changeDescription, changeType, ...data } = req.body;
 
@@ -509,7 +516,7 @@ router.put('/articles/:id', requireAdmin, async (req: Request, res: Response) =>
 // PATCH /api/knowledge-base/articles/:id/publish - Publish article (admin only)
 router.patch(
   '/articles/:id/publish',
-  
+
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
@@ -542,7 +549,7 @@ router.patch(
 // PATCH /api/knowledge-base/articles/:id/archive - Archive article (admin only)
 router.patch(
   '/articles/:id/archive',
-  
+
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
@@ -655,7 +662,7 @@ router.get('/search', async (req: Request, res: Response) => {
 
     // Track search query
     const sessionId = req.sessionID || `guest-${Date.now()}`;
-    const userId = req.session?.userId || null;
+    const userId = getUserId(req) || null;
 
     db.insert(knowledgeSearchQueries)
       .values({
@@ -689,7 +696,7 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const { id } = req.params;
-    const userId = req.session?.userId || null;
+    const userId = getUserId(req) || null;
 
     const data = insertArticleFeedbackSchema.parse(req.body);
 
@@ -732,7 +739,7 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
 // GET /api/knowledge-base/articles/:id/feedback - Get article feedback (admin only)
 router.get(
   '/articles/:id/feedback',
-  
+
   requireAdmin,
   async (req: Request, res: Response) => {
     try {

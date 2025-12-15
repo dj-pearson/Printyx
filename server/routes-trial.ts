@@ -2,10 +2,16 @@
  * TRIAL MANAGEMENT API ROUTES
  */
 
-import express from 'express';
+import express, { Request } from 'express';
 import { TrialManagementService } from './services/trial-management-service';
 
 const router = express.Router();
+
+// Helper to get user ID from request (supports Supabase JWT and session)
+const getUserId = (req: Request): string | undefined => {
+  const reqAny = req as any;
+  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.userId;
+};
 
 /**
  * GET /api/trial/status
@@ -13,11 +19,12 @@ const router = express.Router();
  */
 router.get('/status', async (req, res) => {
   try {
-    if (!req.session.userId) {
+    const userId = getUserId(req);
+    if (!userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    const trialStatus = await TrialManagementService.getTrialStatus(req.session.userId);
+    const trialStatus = await TrialManagementService.getTrialStatus(userId);
 
     if (!trialStatus) {
       return res.status(404).json({ message: 'Trial status not found' });
@@ -37,7 +44,8 @@ router.get('/status', async (req, res) => {
  */
 router.post('/process-emails', async (req, res) => {
   try {
-    if (!req.session.userId) {
+    const userId = getUserId(req);
+    if (!userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
@@ -65,7 +73,8 @@ router.post('/process-emails', async (req, res) => {
  */
 router.get('/users', async (req, res) => {
   try {
-    if (!req.session.userId) {
+    const userId = getUserId(req);
+    if (!userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 

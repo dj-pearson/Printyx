@@ -1,17 +1,16 @@
-import { Router } from 'express';
+import { Router, Request } from 'express';
 import { db } from './db';
-import {
-  emailMonitorConfig,
-  processedEmails,
-  parsingCorrections,
-} from '@shared/schema';
+import { emailMonitorConfig, processedEmails, parsingCorrections } from '@shared/schema';
 import { eq, and, desc, gte, lte } from 'drizzle-orm';
-import {
-  startEmailMonitor,
-  stopEmailMonitor,
-} from './services/email-monitor-service';
+import { startEmailMonitor, stopEmailMonitor } from './services/email-monitor-service';
 
 const router = Router();
+
+// Helper to get user ID from request (supports Supabase JWT and session)
+const getUserId = (req: Request): string | undefined => {
+  const reqAny = req as any;
+  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.userId;
+};
 
 /**
  * GET /api/email-parser/config
@@ -98,10 +97,8 @@ router.post('/config', async (req: any, res) => {
           tls: tls !== undefined ? tls : true,
           enabled: enabled !== undefined ? enabled : true,
           pollInterval: pollInterval ? parseInt(pollInterval) : 60,
-          autoAssignTechnician:
-            autoAssignTechnician !== undefined ? autoAssignTechnician : true,
-          sendConfirmationEmail:
-            sendConfirmationEmail !== undefined ? sendConfirmationEmail : true,
+          autoAssignTechnician: autoAssignTechnician !== undefined ? autoAssignTechnician : true,
+          sendConfirmationEmail: sendConfirmationEmail !== undefined ? sendConfirmationEmail : true,
           updatedAt: new Date(),
         })
         .where(eq(emailMonitorConfig.tenantId, tenantId))
@@ -121,10 +118,8 @@ router.post('/config', async (req: any, res) => {
           tls: tls !== undefined ? tls : true,
           enabled: enabled !== undefined ? enabled : true,
           pollInterval: pollInterval ? parseInt(pollInterval) : 60,
-          autoAssignTechnician:
-            autoAssignTechnician !== undefined ? autoAssignTechnician : true,
-          sendConfirmationEmail:
-            sendConfirmationEmail !== undefined ? sendConfirmationEmail : true,
+          autoAssignTechnician: autoAssignTechnician !== undefined ? autoAssignTechnician : true,
+          sendConfirmationEmail: sendConfirmationEmail !== undefined ? sendConfirmationEmail : true,
         })
         .returning();
     }
@@ -193,10 +188,7 @@ router.get('/processed-emails', async (req: any, res) => {
     let whereConditions: any = eq(processedEmails.tenantId, tenantId);
 
     if (status) {
-      whereConditions = and(
-        whereConditions,
-        eq(processedEmails.processingStatus, status)
-      );
+      whereConditions = and(whereConditions, eq(processedEmails.processingStatus, status));
     }
 
     const [emails, total] = await Promise.all([
@@ -263,8 +255,8 @@ router.get('/stats', async (req: any, res) => {
       .where(
         and(
           eq(processedEmails.tenantId, tenantId),
-          gte(processedEmails.processedAt, thirtyDaysAgo)
-        )
+          gte(processedEmails.processedAt, thirtyDaysAgo),
+        ),
       )
       .groupBy(processedEmails.processingStatus);
 
@@ -273,17 +265,15 @@ router.get('/stats', async (req: any, res) => {
         acc[stat.status] = Number(stat.count);
         return acc;
       },
-      { success: 0, failed: 0, skipped: 0 }
+      { success: 0, failed: 0, skipped: 0 },
     );
 
     const totalProcessed = Object.values(statsByStatus).reduce(
       (sum: number, count: any) => sum + count,
-      0
+      0,
     );
     const successRate =
-      totalProcessed > 0
-        ? ((statsByStatus.success / totalProcessed) * 100).toFixed(1)
-        : 0;
+      totalProcessed > 0 ? ((statsByStatus.success / totalProcessed) * 100).toFixed(1) : 0;
 
     res.json({
       enabled: config.enabled,
@@ -314,7 +304,7 @@ router.get('/stats', async (req: any, res) => {
 router.post('/corrections', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const userId = req.session.userId;
+    const userId = getUserId(req);
     const { emailId, aiParsedData, correctedData, correctionReason } = req.body;
 
     if (!emailId || !aiParsedData || !correctedData) {
