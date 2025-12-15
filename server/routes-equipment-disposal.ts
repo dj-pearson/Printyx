@@ -16,6 +16,17 @@ import { eq, and, desc } from 'drizzle-orm';
 
 const router = Router();
 
+// Helper to get user ID from request (supports Supabase JWT and session)
+const getUserId = (req: Request): string | undefined => {
+  const reqAny = req as any;
+  return (
+    reqAny.user?.id ||
+    reqAny.user?.claims?.sub ||
+    reqAny.session?.userId ||
+    reqAny.session?.user?.id
+  );
+};
+
 // Request type with tenant context
 interface TenantRequest extends Request {
   tenantId?: string;
@@ -53,7 +64,7 @@ type CreateDisposalInput = z.infer<typeof createDisposalSchema>;
  */
 router.post('/api/equipment-disposal', async (req: TenantRequest, res: Response) => {
   try {
-    const userId = req.session?.userId || req.session?.user?.id;
+    const userId = getUserId(req);
     const tenantId = req.tenantId;
 
     if (!userId) {
