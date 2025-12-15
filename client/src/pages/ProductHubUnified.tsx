@@ -1,35 +1,29 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
-import MainLayout from "@/components/layout/main-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'wouter';
+import { useAuth } from '@/hooks/useAuth';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -37,7 +31,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Monitor,
   Wrench,
@@ -60,13 +54,10 @@ import {
   Filter,
   TrendingUp,
   Eye,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, apiFormRequest } from "@/lib/queryClient";
-import {
-  type MasterProductModel,
-  type EnabledProduct,
-} from "@shared/schema";
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, apiFormRequest } from '@/lib/queryClient';
+import { type MasterProductModel, type EnabledProduct } from '@shared/schema';
 
 // Product module definitions
 interface ProductModule {
@@ -77,89 +68,89 @@ interface ProductModule {
   path: string;
   category: string;
   itemCount?: number;
-  status: "active" | "setup" | "coming-soon";
+  status: 'active' | 'setup' | 'coming-soon';
 }
 
 const productModules: ProductModule[] = [
   {
-    id: "product-models",
-    title: "Product Models",
-    description: "Manage copier equipment with CPC rates and manufacturer specifications",
+    id: 'product-models',
+    title: 'Product Models',
+    description: 'Manage copier equipment with CPC rates and manufacturer specifications',
     icon: Monitor,
-    path: "/product-models",
-    category: "Hardware",
+    path: '/product-models',
+    category: 'Hardware',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "product-accessories",
-    title: "Product Accessories",
-    description: "Hardware add-ons with model compatibility tracking",
+    id: 'product-accessories',
+    title: 'Product Accessories',
+    description: 'Hardware add-ons with model compatibility tracking',
     icon: Wrench,
-    path: "/product-accessories",
-    category: "Hardware",
+    path: '/product-accessories',
+    category: 'Hardware',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "professional-services",
-    title: "Professional Services",
-    description: "Consulting, installation, and training service offerings",
+    id: 'professional-services',
+    title: 'Professional Services',
+    description: 'Consulting, installation, and training service offerings',
     icon: Users,
-    path: "/professional-services",
-    category: "Services",
+    path: '/professional-services',
+    category: 'Services',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "service-products",
-    title: "Service Products",
-    description: "Ongoing service offerings with subscription models",
+    id: 'service-products',
+    title: 'Service Products',
+    description: 'Ongoing service offerings with subscription models',
     icon: Cog,
-    path: "/service-products",
-    category: "Services",
+    path: '/service-products',
+    category: 'Services',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "supplies",
-    title: "Supplies",
-    description: "Consumables, toner, paper, and maintenance kits with inventory tracking",
+    id: 'supplies',
+    title: 'Supplies',
+    description: 'Consumables, toner, paper, and maintenance kits with inventory tracking',
     icon: Package,
-    path: "/supplies",
-    category: "Consumables",
+    path: '/supplies',
+    category: 'Consumables',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "inventory",
-    title: "Inventory",
-    description: "Stock levels, adjustments, reorders, and receiving",
+    id: 'inventory',
+    title: 'Inventory',
+    description: 'Stock levels, adjustments, reorders, and receiving',
     icon: Package,
-    path: "/inventory",
-    category: "Operations",
+    path: '/inventory',
+    category: 'Operations',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "it-services",
-    title: "IT & Managed Services",
-    description: "Network management, cloud services, security, and IT support",
+    id: 'it-services',
+    title: 'IT & Managed Services',
+    description: 'Network management, cloud services, security, and IT support',
     icon: Server,
-    path: "/managed-services",
-    category: "Technology",
+    path: '/managed-services',
+    category: 'Technology',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "software-products",
-    title: "Software Products",
-    description: "Licenses and software offerings with pricing and bundles",
+    id: 'software-products',
+    title: 'Software Products',
+    description: 'Licenses and software offerings with pricing and bundles',
     icon: Layers,
-    path: "/software-products",
-    category: "Technology",
+    path: '/software-products',
+    category: 'Technology',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
 ];
 
@@ -182,96 +173,103 @@ export default function ProductHubUnified() {
   const queryClient = useQueryClient();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Overview tab state
-  const [overviewSearchTerm, setOverviewSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [overviewSearchTerm, setOverviewSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   // Browse Catalog tab state
-  const [catalogSearchTerm, setCatalogSearchTerm] = useState("");
-  const [selectedManufacturer, setSelectedManufacturer] = useState("all");
-  const [catalogCategory, setCatalogCategory] = useState("all");
-  const [selectedItemType, setSelectedItemType] = useState("all");
+  const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
+  const [selectedManufacturer, setSelectedManufacturer] = useState('all');
+  const [catalogCategory, setCatalogCategory] = useState('all');
+  const [selectedItemType, setSelectedItemType] = useState('all');
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [masterCsvFile, setMasterCsvFile] = useState<File | null>(null);
   const [enableForm, setEnableForm] = useState({
-    dealerCost: "",
-    companyPrice: "",
-    markupRuleId: "",
+    dealerCost: '',
+    companyPrice: '',
+    markupRuleId: '',
   });
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
-    displayName: "",
-    dealerCost: "",
-    marginPercentage: "",
-    msrp: "",
-    category: "",
-    productType: "",
-    status: "",
+    displayName: '',
+    dealerCost: '',
+    marginPercentage: '',
+    msrp: '',
+    category: '',
+    productType: '',
+    status: '',
   });
   const [showImportResults, setShowImportResults] = useState(false);
   const [importResults, setImportResults] = useState<any>(null);
 
   // Pricing Management tab state
-  const [pricingSearchTerm, setPricingSearchTerm] = useState("");
-  const [pricingCategory, setPricingCategory] = useState("all");
+  const [pricingSearchTerm, setPricingSearchTerm] = useState('');
+  const [pricingCategory, setPricingCategory] = useState('all');
   const [isPricingDialogOpen, setIsPricingDialogOpen] = useState(false);
   const [currentEditProduct, setCurrentEditProduct] = useState<ProductWithPricing | null>(null);
   const [pricingForm, setPricingForm] = useState({
-    productId: "",
-    productType: "",
-    dealerCost: "",
-    companyMarkupPercentage: "",
-    minimumSalePrice: "",
-    suggestedRetailPrice: "",
+    productId: '',
+    productType: '',
+    dealerCost: '',
+    companyMarkupPercentage: '',
+    minimumSalePrice: '',
+    suggestedRetailPrice: '',
   });
 
   // Settings tab state
-  const [defaultMarkup, setDefaultMarkup] = useState("");
+  const [defaultMarkup, setDefaultMarkup] = useState('');
 
   // Check permissions
   const isCompanyAdmin = user?.role?.code === 'COMPANY_ADMIN' || user?.role?.canAccessAllTenants;
-  const isPlatformAdmin = user?.role?.includes('platform');
+  const isPlatformAdmin =
+    user?.role?.canAccessAllTenants === true ||
+    user?.role?.name?.toLowerCase()?.includes('platform');
 
   // Queries
   const { data: masterProducts = [], isLoading: isLoadingMaster } = useQuery<MasterProductModel[]>({
-    queryKey: ["/api/catalog/models", { manufacturer: selectedManufacturer, search: catalogSearchTerm, category: catalogCategory }],
+    queryKey: [
+      '/api/catalog/models',
+      { manufacturer: selectedManufacturer, search: catalogSearchTerm, category: catalogCategory },
+    ],
   });
 
   const { data: enabledProducts = [], isLoading: isLoadingEnabled } = useQuery<EnabledProduct[]>({
-    queryKey: ["/api/enabled-products"],
+    queryKey: ['/api/enabled-products'],
   });
 
   const { data: manufacturers = [] } = useQuery({
-    queryKey: ["/api/catalog/manufacturers"],
+    queryKey: ['/api/catalog/manufacturers'],
   });
 
-  const { data: productsWithPricing = [], isLoading: isLoadingPricing } = useQuery<ProductWithPricing[]>({
-    queryKey: ["/api/products/with-pricing"],
+  const { data: productsWithPricing = [], isLoading: isLoadingPricing } = useQuery<
+    ProductWithPricing[]
+  >({
+    queryKey: ['/api/products/with-pricing'],
   });
 
   const { data: companySettings } = useQuery({
-    queryKey: ["/api/pricing/company-settings"],
+    queryKey: ['/api/pricing/company-settings'],
   });
 
   // Mutations
   const enableProductMutation = useMutation({
     mutationFn: (data: { productId: string; overrides: any }) =>
-      apiRequest(`/api/catalog/models/${data.productId}/enable`, "POST", data.overrides),
+      apiRequest(`/api/catalog/models/${data.productId}/enable`, 'POST', data.overrides),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
-      toast({ title: "Product enabled successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
+      toast({ title: 'Product enabled successfully' });
     },
   });
 
   const bulkEnableMutation = useMutation({
     mutationFn: (data: { masterProductIds: string[]; defaultOverrides: any }) =>
-      apiRequest("/api/catalog/models/bulk-enable", "POST", data),
+      apiRequest('/api/catalog/models/bulk-enable', 'POST', data),
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
       toast({
-        title: "Products enabled",
+        title: 'Products enabled',
         description: `${data.enabled} products enabled, ${data.skipped} already enabled`,
       });
       setSelectedProducts(new Set());
@@ -281,14 +279,14 @@ export default function ProductHubUnified() {
   const enhancedImportMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append("file", file);
-      return apiFormRequest("/api/catalog/import-enhanced", "POST", formData);
+      formData.append('file', file);
+      return apiFormRequest('/api/catalog/import-enhanced', 'POST', formData);
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/catalog/models"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/catalog/models'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
       toast({
-        title: "CSV Import Complete",
+        title: 'CSV Import Complete',
         description: `Created: ${data.summary.created}, Updated: ${data.summary.updated}, Skipped: ${data.summary.skipped}`,
       });
       setImportResults(data);
@@ -298,12 +296,11 @@ export default function ProductHubUnified() {
   });
 
   const updateMasterProductMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest(`/api/catalog/models/${data.id}`, "PATCH", data),
+    mutationFn: (data: any) => apiRequest(`/api/catalog/models/${data.id}`, 'PATCH', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/catalog/models"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/enabled-products"] });
-      toast({ title: "Product updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/catalog/models'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/enabled-products'] });
+      toast({ title: 'Product updated successfully' });
       setEditingProduct(null);
     },
   });
@@ -312,16 +309,16 @@ export default function ProductHubUnified() {
     mutationFn: async (data: any) => {
       const companyPrice = calculateCompanyPrice(
         parseFloat(data.dealerCost),
-        parseFloat(data.companyMarkupPercentage)
+        parseFloat(data.companyMarkupPercentage),
       );
-      return apiRequest("/api/pricing/products", "POST", {
+      return apiRequest('/api/pricing/products', 'POST', {
         ...data,
         companyPrice: companyPrice.toString(),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products/with-pricing"] });
-      toast({ title: "Product pricing updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/products/with-pricing'] });
+      toast({ title: 'Product pricing updated successfully' });
       setIsPricingDialogOpen(false);
       setCurrentEditProduct(null);
     },
@@ -329,10 +326,10 @@ export default function ProductHubUnified() {
 
   const bulkUpdatePricingMutation = useMutation({
     mutationFn: (updates: { productId: string; markupPercentage: string }[]) =>
-      apiRequest("/api/pricing/products/bulk-update", "POST", { updates }),
+      apiRequest('/api/pricing/products/bulk-update', 'POST', { updates }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products/with-pricing"] });
-      toast({ title: "Bulk pricing updates applied successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/products/with-pricing'] });
+      toast({ title: 'Bulk pricing updates applied successfully' });
     },
   });
 
@@ -342,7 +339,7 @@ export default function ProductHubUnified() {
   };
 
   const formatCurrency = (value: string | number | undefined): string => {
-    if (!value) return "$0.00";
+    if (!value) return '$0.00';
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -366,7 +363,7 @@ export default function ProductHubUnified() {
 
   const handleBulkEnable = () => {
     if (selectedProducts.size === 0) {
-      toast({ title: "No products selected", variant: "destructive" });
+      toast({ title: 'No products selected', variant: 'destructive' });
       return;
     }
 
@@ -384,12 +381,12 @@ export default function ProductHubUnified() {
     setEditingProduct(product.id);
     setEditForm({
       displayName: product.displayName,
-      dealerCost: product.dealerCost?.toString() || "",
-      marginPercentage: product.marginPercentage?.toString() || "",
-      msrp: product.msrp?.toString() || "",
-      category: product.category || "",
-      productType: product.productType || "",
-      status: product.status || "active",
+      dealerCost: product.dealerCost?.toString() || '',
+      marginPercentage: product.marginPercentage?.toString() || '',
+      msrp: product.msrp?.toString() || '',
+      category: product.category || '',
+      productType: product.productType || '',
+      status: product.status || 'active',
     });
   };
 
@@ -399,7 +396,9 @@ export default function ProductHubUnified() {
       id: editingProduct,
       displayName: editForm.displayName,
       dealerCost: editForm.dealerCost ? parseFloat(editForm.dealerCost) : undefined,
-      marginPercentage: editForm.marginPercentage ? parseFloat(editForm.marginPercentage) : undefined,
+      marginPercentage: editForm.marginPercentage
+        ? parseFloat(editForm.marginPercentage)
+        : undefined,
       msrp: editForm.msrp ? parseFloat(editForm.msrp) : undefined,
       category: editForm.category || undefined,
       productType: editForm.productType || undefined,
@@ -412,10 +411,11 @@ export default function ProductHubUnified() {
     setPricingForm({
       productId: product.id,
       productType: product.category,
-      dealerCost: product.dealerCost || "",
-      companyMarkupPercentage: product.companyMarkupPercentage || companySettings?.defaultMarkupPercentage || "20",
-      minimumSalePrice: product.minimumSalePrice || "",
-      suggestedRetailPrice: product.suggestedRetailPrice || "",
+      dealerCost: product.dealerCost || '',
+      companyMarkupPercentage:
+        product.companyMarkupPercentage || companySettings?.defaultMarkupPercentage || '20',
+      minimumSalePrice: product.minimumSalePrice || '',
+      suggestedRetailPrice: product.suggestedRetailPrice || '',
     });
     setIsPricingDialogOpen(true);
   };
@@ -425,10 +425,10 @@ export default function ProductHubUnified() {
   };
 
   const applyDefaultMarkupToAll = () => {
-    const productsWithoutPricing = productsWithPricing.filter(p => !p.hasCustomPricing);
-    const updates = productsWithoutPricing.map(p => ({
+    const productsWithoutPricing = productsWithPricing.filter((p) => !p.hasCustomPricing);
+    const updates = productsWithoutPricing.map((p) => ({
       productId: p.id,
-      markupPercentage: companySettings?.defaultMarkupPercentage || "20"
+      markupPercentage: companySettings?.defaultMarkupPercentage || '20',
     }));
     bulkUpdatePricingMutation.mutate(updates);
   };
@@ -438,23 +438,26 @@ export default function ProductHubUnified() {
     const matchesSearch =
       module.title.toLowerCase().includes(overviewSearchTerm.toLowerCase()) ||
       module.description.toLowerCase().includes(overviewSearchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || module.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || module.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   // Filter master catalog products
   const filteredCatalogProducts = masterProducts.filter((product: MasterProductModel) => {
-    if (catalogSearchTerm && !product.displayName.toLowerCase().includes(catalogSearchTerm.toLowerCase()) &&
-        !product.modelCode.toLowerCase().includes(catalogSearchTerm.toLowerCase())) {
+    if (
+      catalogSearchTerm &&
+      !product.displayName.toLowerCase().includes(catalogSearchTerm.toLowerCase()) &&
+      !product.modelCode.toLowerCase().includes(catalogSearchTerm.toLowerCase())
+    ) {
       return false;
     }
-    if (selectedManufacturer !== "all" && product.manufacturer !== selectedManufacturer) {
+    if (selectedManufacturer !== 'all' && product.manufacturer !== selectedManufacturer) {
       return false;
     }
-    if (catalogCategory !== "all" && product.category !== catalogCategory) {
+    if (catalogCategory !== 'all' && product.category !== catalogCategory) {
       return false;
     }
-    if (selectedItemType !== "all" && product.itemType !== selectedItemType) {
+    if (selectedItemType !== 'all' && product.itemType !== selectedItemType) {
       return false;
     }
     return true;
@@ -462,15 +465,20 @@ export default function ProductHubUnified() {
 
   // Filter pricing products
   const filteredPricingProducts = productsWithPricing.filter((product: ProductWithPricing) => {
-    const matchesSearch = product.name?.toLowerCase().includes(pricingSearchTerm.toLowerCase()) ||
-                         product.modelNumber?.toLowerCase().includes(pricingSearchTerm.toLowerCase());
-    const matchesCategory = pricingCategory === "all" || product.category === pricingCategory;
+    const matchesSearch =
+      product.name?.toLowerCase().includes(pricingSearchTerm.toLowerCase()) ||
+      product.modelNumber?.toLowerCase().includes(pricingSearchTerm.toLowerCase());
+    const matchesCategory = pricingCategory === 'all' || product.category === pricingCategory;
     return matchesSearch && matchesCategory;
   });
 
   const categories = Array.from(new Set(productModules.map((m) => m.category)));
-  const catalogCategories = Array.from(new Set(masterProducts.map((p: MasterProductModel) => p.category).filter(Boolean)));
-  const pricingCategories = Array.from(new Set(productsWithPricing.map(p => p.category).filter(Boolean)));
+  const catalogCategories = Array.from(
+    new Set(masterProducts.map((p: MasterProductModel) => p.category).filter(Boolean)),
+  );
+  const pricingCategories = Array.from(
+    new Set(productsWithPricing.map((p) => p.category).filter(Boolean)),
+  );
 
   return (
     <MainLayout
@@ -655,7 +663,7 @@ export default function ProductHubUnified() {
                           }
                         }}
                       >
-                        {enhancedImportMutation.isPending ? "Processing..." : "Smart Import"}
+                        {enhancedImportMutation.isPending ? 'Processing...' : 'Smart Import'}
                       </Button>
                     </div>
                   )}
@@ -747,7 +755,9 @@ export default function ProductHubUnified() {
                             step="0.01"
                             placeholder="0.00"
                             value={enableForm.dealerCost}
-                            onChange={(e) => setEnableForm(prev => ({ ...prev, dealerCost: e.target.value }))}
+                            onChange={(e) =>
+                              setEnableForm((prev) => ({ ...prev, dealerCost: e.target.value }))
+                            }
                           />
                         </div>
                         <div>
@@ -757,12 +767,19 @@ export default function ProductHubUnified() {
                             step="0.01"
                             placeholder="0.00"
                             value={enableForm.companyPrice}
-                            onChange={(e) => setEnableForm(prev => ({ ...prev, companyPrice: e.target.value }))}
+                            onChange={(e) =>
+                              setEnableForm((prev) => ({ ...prev, companyPrice: e.target.value }))
+                            }
                           />
                         </div>
                         <div>
                           <Label>Markup Rule</Label>
-                          <Select value={enableForm.markupRuleId} onValueChange={(value) => setEnableForm(prev => ({ ...prev, markupRuleId: value }))}>
+                          <Select
+                            value={enableForm.markupRuleId}
+                            onValueChange={(value) =>
+                              setEnableForm((prev) => ({ ...prev, markupRuleId: value }))
+                            }
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select markup rule" />
                             </SelectTrigger>
@@ -780,103 +797,114 @@ export default function ProductHubUnified() {
 
                 {/* Products Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {isLoadingMaster ? (
-                    Array.from({ length: 8 }).map((_, i) => (
-                      <Card key={i} className="animate-pulse">
-                        <CardHeader>
-                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <div className="h-3 bg-gray-200 rounded"></div>
-                            <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : (
-                    filteredCatalogProducts.map((product: MasterProductModel) => {
-                      const isEnabled = isProductEnabled(product.id);
-                      const isSelected = selectedProducts.has(product.id);
-                      return (
-                        <Card
-                          key={product.id}
-                          className={`transition-all hover:shadow-md ${
-                            isSelected ? "ring-2 ring-blue-500" : ""
-                          } ${isEnabled ? "bg-green-50 border-green-200" : ""}`}
-                        >
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-start gap-2">
-                                <Checkbox
-                                  checked={isSelected}
-                                  onCheckedChange={() => handleSelectProduct(product.id)}
-                                  disabled={isEnabled}
-                                />
-                                <div className="flex-1">
-                                  <CardTitle className="text-sm">{product.displayName}</CardTitle>
-                                  <CardDescription className="text-xs">
-                                    {product.modelCode}
-                                  </CardDescription>
-                                </div>
-                              </div>
-                              {isEnabled && (
-                                <Badge variant="default" className="text-xs">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Enabled
-                                </Badge>
-                              )}
-                            </div>
+                  {isLoadingMaster
+                    ? Array.from({ length: 8 }).map((_, i) => (
+                        <Card key={i} className="animate-pulse">
+                          <CardHeader>
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                           </CardHeader>
-                          <CardContent className="pt-0 space-y-2">
-                            <div className="flex justify-between text-xs">
-                              <span className="text-muted-foreground">Manufacturer:</span>
-                              <span className="font-medium">{product.manufacturer}</span>
+                          <CardContent>
+                            <div className="space-y-2">
+                              <div className="h-3 bg-gray-200 rounded"></div>
+                              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                             </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-muted-foreground">MSRP:</span>
-                              <span className="font-medium">{formatCurrency(product.msrp)}</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-muted-foreground">Dealer Cost:</span>
-                              <span className="font-medium">{formatCurrency(product.dealerCost)}</span>
-                            </div>
-                            {isPlatformAdmin && editingProduct === product.id ? (
-                              <div className="flex gap-1 pt-2">
-                                <Button size="sm" variant="default" onClick={handleSaveEdit}>
-                                  <Save className="h-3 w-3" />
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditingProduct(null)}>
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex gap-1 pt-2">
-                                {!isEnabled && (
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    className="flex-1"
-                                    onClick={() =>
-                                      enableProductMutation.mutate({ productId: product.id, overrides: {} })
-                                    }
-                                  >
-                                    Enable
-                                  </Button>
-                                )}
-                                {isPlatformAdmin && (
-                                  <Button size="sm" variant="outline" onClick={() => handleEditProduct(product)}>
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
-                      );
-                    })
-                  )}
+                      ))
+                    : filteredCatalogProducts.map((product: MasterProductModel) => {
+                        const isEnabled = isProductEnabled(product.id);
+                        const isSelected = selectedProducts.has(product.id);
+                        return (
+                          <Card
+                            key={product.id}
+                            className={`transition-all hover:shadow-md ${
+                              isSelected ? 'ring-2 ring-blue-500' : ''
+                            } ${isEnabled ? 'bg-green-50 border-green-200' : ''}`}
+                          >
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => handleSelectProduct(product.id)}
+                                    disabled={isEnabled}
+                                  />
+                                  <div className="flex-1">
+                                    <CardTitle className="text-sm">{product.displayName}</CardTitle>
+                                    <CardDescription className="text-xs">
+                                      {product.modelCode}
+                                    </CardDescription>
+                                  </div>
+                                </div>
+                                {isEnabled && (
+                                  <Badge variant="default" className="text-xs">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Enabled
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0 space-y-2">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Manufacturer:</span>
+                                <span className="font-medium">{product.manufacturer}</span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">MSRP:</span>
+                                <span className="font-medium">{formatCurrency(product.msrp)}</span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Dealer Cost:</span>
+                                <span className="font-medium">
+                                  {formatCurrency(product.dealerCost)}
+                                </span>
+                              </div>
+                              {isPlatformAdmin && editingProduct === product.id ? (
+                                <div className="flex gap-1 pt-2">
+                                  <Button size="sm" variant="default" onClick={handleSaveEdit}>
+                                    <Save className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingProduct(null)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1 pt-2">
+                                  {!isEnabled && (
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      className="flex-1"
+                                      onClick={() =>
+                                        enableProductMutation.mutate({
+                                          productId: product.id,
+                                          overrides: {},
+                                        })
+                                      }
+                                    >
+                                      Enable
+                                    </Button>
+                                  )}
+                                  {isPlatformAdmin && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditProduct(product)}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                 </div>
               </CardContent>
             </Card>
@@ -887,9 +915,7 @@ export default function ProductHubUnified() {
             <Card>
               <CardHeader>
                 <CardTitle>My Enabled Products</CardTitle>
-                <CardDescription>
-                  Products you've enabled from the master catalog
-                </CardDescription>
+                <CardDescription>Products you've enabled from the master catalog</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoadingEnabled ? (
@@ -901,7 +927,7 @@ export default function ProductHubUnified() {
                     <p className="text-muted-foreground mb-4">
                       Start by browsing the catalog and enabling products for your organization
                     </p>
-                    <Button onClick={() => setActiveTab("catalog")}>
+                    <Button onClick={() => setActiveTab('catalog')}>
                       <Search className="h-4 w-4 mr-2" />
                       Browse Catalog
                     </Button>
@@ -912,26 +938,28 @@ export default function ProductHubUnified() {
                       <Card key={product.id}>
                         <CardHeader>
                           <CardTitle className="text-sm">
-                            {product.customName || "Product"}
+                            {product.customName || 'Product'}
                           </CardTitle>
-                          <CardDescription className="text-xs">
-                            {product.customSku}
-                          </CardDescription>
+                          <CardDescription className="text-xs">{product.customSku}</CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-2 text-xs">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Dealer Cost:</span>
-                              <span className="font-medium">{formatCurrency(product.dealerCost)}</span>
+                              <span className="font-medium">
+                                {formatCurrency(product.dealerCost)}
+                              </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Company Price:</span>
-                              <span className="font-medium">{formatCurrency(product.companyPrice)}</span>
+                              <span className="font-medium">
+                                {formatCurrency(product.companyPrice)}
+                              </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Status:</span>
-                              <Badge variant={product.isActive ? "default" : "secondary"}>
-                                {product.isActive ? "Active" : "Inactive"}
+                              <Badge variant={product.isActive ? 'default' : 'secondary'}>
+                                {product.isActive ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
                           </div>
@@ -953,8 +981,8 @@ export default function ProductHubUnified() {
                     <CardTitle>Pricing Management</CardTitle>
                     <CardDescription>
                       {isCompanyAdmin
-                        ? "Configure individual product markup percentages and pricing rules"
-                        : "View product information and current pricing"}
+                        ? 'Configure individual product markup percentages and pricing rules'
+                        : 'View product information and current pricing'}
                     </CardDescription>
                   </div>
                   {isCompanyAdmin && (
@@ -1013,7 +1041,7 @@ export default function ProductHubUnified() {
                       {filteredPricingProducts.map((product) => (
                         <TableRow key={product.id}>
                           <TableCell className="font-medium">{product.name}</TableCell>
-                          <TableCell>{product.modelNumber || "N/A"}</TableCell>
+                          <TableCell>{product.modelNumber || 'N/A'}</TableCell>
                           <TableCell>
                             <Badge variant="secondary">{product.category}</Badge>
                           </TableCell>
@@ -1029,14 +1057,16 @@ export default function ProductHubUnified() {
                           </TableCell>
                           <TableCell>
                             {product.companyPrice ? (
-                              <span className="font-medium">{formatCurrency(product.companyPrice)}</span>
+                              <span className="font-medium">
+                                {formatCurrency(product.companyPrice)}
+                              </span>
                             ) : (
                               <span className="text-gray-400">Not calculated</span>
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={product.hasCustomPricing ? "default" : "outline"}>
-                              {product.hasCustomPricing ? "Custom Pricing" : "Default Pricing"}
+                            <Badge variant={product.hasCustomPricing ? 'default' : 'outline'}>
+                              {product.hasCustomPricing ? 'Custom Pricing' : 'Default Pricing'}
                             </Badge>
                           </TableCell>
                           {isCompanyAdmin && (
@@ -1067,7 +1097,8 @@ export default function ProductHubUnified() {
             <DialogHeader>
               <DialogTitle>Configure Product Markup</DialogTitle>
               <DialogDescription>
-                Set dealer cost, company markup percentage, and pricing rules for {currentEditProduct?.name}
+                Set dealer cost, company markup percentage, and pricing rules for{' '}
+                {currentEditProduct?.name}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -1079,7 +1110,9 @@ export default function ProductHubUnified() {
                     step="0.01"
                     placeholder="150.00"
                     value={pricingForm.dealerCost}
-                    onChange={(e) => setPricingForm(prev => ({ ...prev, dealerCost: e.target.value }))}
+                    onChange={(e) =>
+                      setPricingForm((prev) => ({ ...prev, dealerCost: e.target.value }))
+                    }
                   />
                 </div>
                 <div>
@@ -1089,7 +1122,12 @@ export default function ProductHubUnified() {
                     step="0.01"
                     placeholder="20.00"
                     value={pricingForm.companyMarkupPercentage}
-                    onChange={(e) => setPricingForm(prev => ({ ...prev, companyMarkupPercentage: e.target.value }))}
+                    onChange={(e) =>
+                      setPricingForm((prev) => ({
+                        ...prev,
+                        companyMarkupPercentage: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div>
@@ -1099,7 +1137,9 @@ export default function ProductHubUnified() {
                     step="0.01"
                     placeholder="160.00"
                     value={pricingForm.minimumSalePrice}
-                    onChange={(e) => setPricingForm(prev => ({ ...prev, minimumSalePrice: e.target.value }))}
+                    onChange={(e) =>
+                      setPricingForm((prev) => ({ ...prev, minimumSalePrice: e.target.value }))
+                    }
                   />
                 </div>
                 <div>
@@ -1109,7 +1149,9 @@ export default function ProductHubUnified() {
                     step="0.01"
                     placeholder="200.00"
                     value={pricingForm.suggestedRetailPrice}
-                    onChange={(e) => setPricingForm(prev => ({ ...prev, suggestedRetailPrice: e.target.value }))}
+                    onChange={(e) =>
+                      setPricingForm((prev) => ({ ...prev, suggestedRetailPrice: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1128,9 +1170,9 @@ export default function ProductHubUnified() {
                       <div className="font-medium text-green-600">
                         {formatCurrency(
                           calculateCompanyPrice(
-                            parseFloat(pricingForm.dealerCost || "0"),
-                            parseFloat(pricingForm.companyMarkupPercentage || "0")
-                          )
+                            parseFloat(pricingForm.dealerCost || '0'),
+                            parseFloat(pricingForm.companyMarkupPercentage || '0'),
+                          ),
                         )}
                       </div>
                     </div>
@@ -1139,9 +1181,9 @@ export default function ProductHubUnified() {
                       <div className="font-medium text-blue-600">
                         {formatCurrency(
                           calculateCompanyPrice(
-                            parseFloat(pricingForm.dealerCost || "0"),
-                            parseFloat(pricingForm.companyMarkupPercentage || "0")
-                          ) - parseFloat(pricingForm.dealerCost || "0")
+                            parseFloat(pricingForm.dealerCost || '0'),
+                            parseFloat(pricingForm.companyMarkupPercentage || '0'),
+                          ) - parseFloat(pricingForm.dealerCost || '0'),
                         )}
                       </div>
                     </div>
@@ -1153,7 +1195,10 @@ export default function ProductHubUnified() {
                 <Button variant="outline" onClick={() => setIsPricingDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handlePricingSave} disabled={updateProductPricingMutation.isPending}>
+                <Button
+                  onClick={handlePricingSave}
+                  disabled={updateProductPricingMutation.isPending}
+                >
                   <Save className="h-4 w-4 mr-2" />
                   Save Markup
                 </Button>
