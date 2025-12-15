@@ -428,6 +428,14 @@ function Router() {
     );
   }
 
+  // Redirect component for auth pages when already authenticated
+  const RedirectToDashboard = () => {
+    React.useEffect(() => {
+      window.location.replace('/');
+    }, []);
+    return null;
+  };
+
   // Authenticated routes
   console.log('✅ Router: Rendering authenticated routes');
   return (
@@ -448,6 +456,11 @@ function Router() {
         {console.log('🔄 Inside Suspense, rendering Switch...')}
         <Switch>
           {console.log('📍 Rendering routes, pathname:', pathname)}
+          {/* Redirect auth pages to dashboard for authenticated users */}
+          <Route path="/login" component={RedirectToDashboard} />
+          <Route path="/signup" component={RedirectToDashboard} />
+          <Route path="/forgot-password" component={RedirectToDashboard} />
+          <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/" component={Dashboard} />
           <Route path="/today" component={TodayDashboard} />
           <Route path="/dashboard/today" component={TodayDashboard} />
