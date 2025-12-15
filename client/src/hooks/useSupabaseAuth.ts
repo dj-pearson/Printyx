@@ -89,44 +89,114 @@ export function useSupabaseAuth() {
       const authUser = transformUser(session.user);
       if (!authUser) return null;
 
-      // Optionally fetch extended profile from users table
-      // This gets role and team details
+      // Fetch user profile and role data separately (avoids PostgREST join issues)
       try {
+        // Get user profile
         const { data: profile, error: profileError } = await supabase
           .from('users')
-          .select(
-            `
-            *,
-            role:roles(id, name, level),
-            team:teams(id, name)
-          `,
-          )
+          .select('*')
           .eq('id', session.user.id)
           .single();
 
         if (profileError) {
-          // If no profile exists yet, use auth user data
-          console.warn('No extended profile found, using auth metadata');
-          return authUser;
+          console.warn('No user profile found, using auth metadata');
+        }
+
+        // Get role data if we have a role_id
+        const roleId = profile?.role_id || authUser.roleId;
+        let roleData = null;
+
+        if (roleId) {
+          const { data: role, error: roleError } = await supabase
+            .from('roles')
+            .select('id, name, level, permissions, can_access_all_tenants')
+            .eq('id', roleId)
+            .single();
+
+          if (!roleError && role) {
+            roleData = {
+              id: role.id,
+              name: role.name,
+              level: role.level || 1,
+              permissions: role.permissions || {},
+              canAccessAllTenants: role.can_access_all_tenants || false,
+            };
+          } else {
+            console.warn('Could not fetch role data:', roleError?.message);
+          }
+        }
+
+        // Get team data if we have a team_id
+        const teamId = profile?.team_id || authUser.teamId;
+        let teamData = null;
+
+        if (teamId) {
+          const { data: team, error: teamError } = await supabase
+            .from('teams')
+            .select('id, name')
+            .eq('id', teamId)
+            .single();
+
+          if (!teamError && team) {
+            teamData = {
+              id: team.id,
+              name: team.name,
+            };
+          }
+        }
+
+        // If no role found in DB, provide a default role for navigation
+        if (!roleData) {
+          console.warn('No role found, using default user role');
+          roleData = {
+            id: 'default',
+            name: 'User',
+            level: 1,
+            permissions: {
+              sales: true,
+              service: true,
+              products: true,
+              inventory: true,
+              billing: true,
+              reports: true,
+            },
+            canAccessAllTenants: false,
+          };
         }
 
         // Merge profile data with auth user
         return {
           ...authUser,
-          firstName: profile.first_name || authUser.firstName,
-          lastName: profile.last_name || authUser.lastName,
-          tenantId: profile.tenant_id || authUser.tenantId,
-          roleId: profile.role_id || authUser.roleId,
-          teamId: profile.team_id || authUser.teamId,
-          accessScope: profile.access_scope || authUser.accessScope,
-          isPlatformUser: profile.is_platform_user || authUser.isPlatformUser,
-          role: profile.role,
-          team: profile.team,
+          firstName: profile?.first_name || authUser.firstName,
+          lastName: profile?.last_name || authUser.lastName,
+          tenantId: profile?.tenant_id || authUser.tenantId,
+          roleId: profile?.role_id || authUser.roleId,
+          teamId: profile?.team_id || authUser.teamId,
+          accessScope: profile?.access_scope || authUser.accessScope,
+          isPlatformUser: profile?.is_platform_user || authUser.isPlatformUser,
+          role: roleData,
+          team: teamData,
         };
       } catch (err) {
-        // Fallback to auth user if profile fetch fails
+        // Fallback to auth user with default role if fetch fails
         console.warn('Profile fetch error, using auth metadata:', err);
-        return authUser;
+        return {
+          ...authUser,
+          role: {
+            id: 'default',
+            name: 'User',
+            level: 1,
+            permissions: {
+              sales: true,
+              service: true,
+              products: true,
+              inventory: true,
+              billing: true,
+              reports: true,
+            },
+            canAccessAllTenants: false,
+          },
+        };
       }
     },
     enabled: !!session?.user?.id && isInitialized,
