@@ -1,15 +1,10 @@
 import type { Express, Request, Response } from 'express';
 import { z } from 'zod';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
-// Helper to get user ID from request (supports Supabase JWT and session)
-const getUserId = (req: any): string | undefined => {
-  return req.user?.id || req.user?.claims?.sub || req.session?.userId;
-};
-
-// Helper to get tenant ID from request
-const getRequestTenantId = (req: any): string | undefined => {
-  return req.tenantId || req.user?.tenantId || req.user?.claims?.tenantId || req.session?.tenantId;
-};
+// Alias for backward compatibility
+const getRequestTenantId = getTenantId;
 
 import {
   insertOnboardingChecklistSchema,
@@ -36,15 +31,15 @@ import puppeteer from 'puppeteer';
 // Authentication middleware
 const requireAuth = async (req: any, res: any, next: any) => {
   try {
-    const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+    const userId = getUserId(req);
 
-    if (!isAuthenticated) {
+    if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // If we have session userId, get user details from storage
-    if (req.session?.userId && !req.user) {
-      const user = await storage.getUser(req.session.userId);
+    // If we have userId but no req.user, get user details from storage
+    if (userId && !req.user) {
+      const user = await storage.getUser(userId);
       if (user) {
         req.user = {
           id: user.id,
@@ -57,8 +52,9 @@ const requireAuth = async (req: any, res: any, next: any) => {
     }
 
     // Ensure tenantId is available
-    if (!req.user?.tenantId && req.session?.tenantId) {
-      req.user = { ...req.user, tenantId: req.session.tenantId };
+    const tenantId = getTenantId(req);
+    if (!req.user?.tenantId && tenantId) {
+      req.user = { ...req.user, tenantId };
     }
 
     if (!req.user?.tenantId) {
@@ -707,12 +703,13 @@ export function registerOnboardingRoutes(app: Express): void {
   app.delete('/api/onboarding/checklists/:id', async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = getUserId(req);
 
-      if (!req.session.userId) {
+      if (!userId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }
@@ -731,12 +728,13 @@ export function registerOnboardingRoutes(app: Express): void {
   app.post('/api/onboarding/checklists/:id/generate-pdf', async (req: any, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = getUserId(req);
 
-      if (!req.session.userId) {
+      if (!userId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }
@@ -755,12 +753,13 @@ export function registerOnboardingRoutes(app: Express): void {
   app.post('/api/onboarding/checklists/:checklistId/equipment', async (req: any, res: Response) => {
     try {
       const { checklistId } = req.params;
+      const userId = getUserId(req);
 
-      if (!req.session.userId) {
+      if (!userId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }
@@ -788,12 +787,13 @@ export function registerOnboardingRoutes(app: Express): void {
   app.post('/api/onboarding/checklists/:checklistId/sections', async (req: any, res: Response) => {
     try {
       const { checklistId } = req.params;
+      const userId = getUserId(req);
 
-      if (!req.session.userId) {
+      if (!userId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }

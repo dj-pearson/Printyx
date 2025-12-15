@@ -46,8 +46,8 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 | `routes-lead-assignment.ts` | 🔄 | Needs testing |
 | `routes-auto-lead-routing.ts` | 🔄 | Needs testing |
 | `routes-customer-success.ts` | 🔄 | Needs testing |
-| `routes-customer-portal.ts` | ⚠️ | Uses session patterns |
-| `routes-customer-numbers.ts` | ⚠️ | Uses session patterns |
+| `routes-customer-portal.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
+| `routes-customer-numbers.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes-platform-business-records.ts` | 🔄 | Needs testing |
 | `routes-platform-deals.ts` | 🔄 | Needs testing |
 | `routes-platform-customer-success.ts` | 🔄 | Needs testing |
@@ -74,7 +74,7 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 | Route File | Status | Notes |
 |------------|--------|-------|
 | `routes-service-dispatch.ts` | ✅ | Uses Router pattern with RBAC |
-| `routes-service-analysis.ts` | ✅ | No problematic patterns found |
+| `routes-service-analysis.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes-enhanced-service.ts` | ✅ | No problematic patterns found |
 | `routes-technician-management.ts` | 🔄 | Needs testing |
 | `routes-mobile-technician.ts` | ✅ | Fixed - Added getUserId helper |
@@ -102,10 +102,10 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 | Route File | Status | Notes |
 |------------|--------|-------|
 | `routes-reporting.ts` | 🔄 | Needs testing |
-| `routes-reporting-architecture.ts` | ⚠️ | Uses `isAuthenticated` pattern |
-| `routes-custom-reports.ts` | ⚠️ | Uses `req.user?.id || req.session?.userId` |
+| `routes-reporting-architecture.ts` | ✅ | Fixed - Added getUserId helper |
+| `routes-custom-reports.ts` | 🔄 | Uses isAuthenticated from replitAuth |
 | `routes-analytics.ts` | 🔄 | Needs testing |
-| `routes-predictive-analytics.ts` | ⚠️ | Uses session pattern |
+| `routes-predictive-analytics.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes/reporting-api.ts` | 🔄 | Needs testing |
 | `routes/sales-reports-api.ts` | 🔄 | Needs testing |
 | `routes/service-reports-api.ts` | 🔄 | Needs testing |
@@ -117,7 +117,7 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 ## Tasks / Projects
 | Route File | Status | Notes |
 |------------|--------|-------|
-| `routes-tasks.ts` | ⚠️ | Already uses hybrid pattern |
+| `routes-tasks.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes-enhanced-tasks.ts` | 🔄 | Needs testing |
 | `routes-templates.ts` | 🔄 | Needs testing |
 | `routes/task-routes.ts` | 🔄 | Needs testing |
@@ -154,12 +154,12 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 ## Admin / Platform
 | Route File | Status | Notes |
 |------------|--------|-------|
-| `routes-root-admin.ts` | ⚠️ | Uses hybrid pattern |
-| `routes-admin-workflows.ts` | ⚠️ | Uses session pattern |
-| `routes-tenant-onboarding.ts` | ⚠️ | Uses session pattern |
-| `routes-enhanced-rbac.ts` | ⚠️ | Uses session pattern |
-| `routes-user-lifecycle.ts` | ⚠️ | Uses session pattern |
-| `routes-onboarding.ts` | ✅ | Fixed - Added getUserId helper |
+| `routes-root-admin.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
+| `routes-admin-workflows.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
+| `routes-tenant-onboarding.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
+| `routes-enhanced-rbac.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
+| `routes-user-lifecycle.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
+| `routes-onboarding.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes-trial.ts` | ✅ | Fixed - Added getUserId helper |
 | `routes-white-label.ts` | 🔄 | Needs testing |
 | `routes-settings.ts` | 🔄 | Needs testing |
@@ -198,7 +198,7 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 | Route File | Status | Notes |
 |------------|--------|-------|
 | `routes-ai-analytics.ts` | 🔄 | Needs testing |
-| `routes-ai-gpt5.ts` | ⚠️ | Uses session pattern |
+| `routes-ai-gpt5.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes/ai-documentation-routes.ts` | 🔄 | Needs testing |
 | `routes/ai-employee-routes.ts` | 🔄 | Needs testing |
 | `routes/ai-search-knowledge-routes.ts` | 🔄 | Needs testing |
@@ -209,15 +209,15 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 ## Other
 | Route File | Status | Notes |
 |------------|--------|-------|
-| `routes-dashboard-layouts.ts` | ⚠️ | Uses `req.user?.id || req.session?.userId` |
-| `routes-csv-import.ts` | ⚠️ | Uses `req.user?.id || req.session?.userId` |
+| `routes-dashboard-layouts.ts` | ✅ | Fixed - Added getUserId helper |
+| `routes-csv-import.ts` | 🔄 | Uses isAuthenticated from replitAuth |
 | `routes-today-dashboard.ts` | ✅ | Fixed - Added getUserId helper |
 | `routes-modular-dashboard.ts` | 🔄 | Needs testing |
 | `routes-universal-search.ts` | 🔄 | Needs testing |
 | `routes-email-parser.ts` | ✅ | Fixed - Added getUserId helper |
-| `routes-proposals.ts` | ⚠️ | Uses session pattern |
+| `routes-proposals.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes-content-marketing.ts` | 🔄 | Needs testing |
-| `routes-social-media.ts` | ⚠️ | Uses session pattern |
+| `routes-social-media.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes-print-cost-calculator.ts` | 🔄 | Needs testing |
 | `routes-demo-scheduling.ts` | 🔄 | Needs testing |
 | `routes-esignature.ts` | 🔄 | Needs testing |
@@ -226,7 +226,7 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 | `routes-renewal-management.ts` | 🔄 | Needs testing |
 | `routes-workflow-automation.ts` | 🔄 | Needs testing |
 | `routes-intelligent-alerts.ts` | 🔄 | Needs testing |
-| `routes-company-ids.ts` | ⚠️ | Uses session pattern |
+| `routes-company-ids.ts` | ✅ | Fixed - Added getUserId/getTenantId helpers |
 | `routes-signup-crm.ts` | 🔄 | Needs testing |
 | `routes-export.ts` | 🔄 | Needs testing |
 | `routes-pagination.ts` | 🔄 | Needs testing |
@@ -247,16 +247,35 @@ Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id |
 
 These files previously used session-only patterns. **All have been fixed to support Supabase JWT:**
 
+### Phase 1 (Previously Fixed)
 1. ✅ `routes-mobile-technician.ts` - **FIXED** - Added getUserId helper
 2. ✅ `routes-knowledge-base.ts` - **FIXED** - Added getUserId helper
 3. ✅ `routes-documents.ts` - **FIXED** - Added getUserId and getTenantId helpers
 4. ✅ `routes-document-automation.ts` - **FIXED** - Added getUserId helper
-5. ✅ `routes-onboarding.ts` - **FIXED** - Added getUserId and getRequestTenantId helpers
+5. ✅ `routes-onboarding.ts` - **FIXED** - Added getUserId and getTenantId helpers
 6. ✅ `routes-trial.ts` - **FIXED** - Added getUserId helper
 7. ✅ `routes-email-parser.ts` - **FIXED** - Added getUserId helper
 8. ✅ `routes-equipment-lifecycle-state-machine.ts` - **FIXED** - Added getUserId helper
 9. ✅ `routes-equipment-disposal.ts` - **FIXED** - Added getUserId helper
 10. ✅ `routes-today-dashboard.ts` - **FIXED** - Added getUserId helper
+
+### Phase 2 (Fixed December 15, 2024)
+11. ✅ `routes-customer-portal.ts` - **FIXED** - Added getUserId/getTenantId helpers
+12. ✅ `routes-customer-numbers.ts` - **FIXED** - Added getUserId/getTenantId helpers
+13. ✅ `routes-admin-workflows.ts` - **FIXED** - Added getUserId/getTenantId helpers
+14. ✅ `routes-tenant-onboarding.ts` - **FIXED** - Added getUserId/getTenantId helpers
+15. ✅ `routes-enhanced-rbac.ts` - **FIXED** - Added getUserId/getTenantId helpers
+16. ✅ `routes-user-lifecycle.ts` - **FIXED** - Added getUserId/getTenantId helpers
+17. ✅ `routes-root-admin.ts` - **FIXED** - Added getUserId/getTenantId helpers
+18. ✅ `routes-tasks.ts` - **FIXED** - Added getUserId/getTenantId helpers
+19. ✅ `routes-proposals.ts` - **FIXED** - Added getUserId/getTenantId helpers
+20. ✅ `routes-company-ids.ts` - **FIXED** - Added getUserId/getTenantId helpers
+21. ✅ `routes-ai-gpt5.ts` - **FIXED** - Added getUserId/getTenantId helpers
+22. ✅ `routes-social-media.ts` - **FIXED** - Added getUserId/getTenantId helpers
+23. ✅ `routes-predictive-analytics.ts` - **FIXED** - Added getUserId/getTenantId helpers
+24. ✅ `routes-dashboard-layouts.ts` - **FIXED** - Added getUserId helper
+25. ✅ `routes-reporting-architecture.ts` - **FIXED** - Added getUserId helper
+26. ✅ `routes-service-analysis.ts` - **FIXED** - Added getUserId/getTenantId helpers
 
 ---
 

@@ -17,35 +17,38 @@ import {
   type EnhancedRole,
   type Permission,
   type UserRoleAssignment,
-  type OrganizationalUnit
+  type OrganizationalUnit,
 } from './enhanced-rbac-schema';
 import { users } from '../shared/schema';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 const router = Router();
 
 // Middleware to ensure user is authenticated (based on existing patterns)
 const requireAuth = (req: any, res: any, next: any) => {
-  // Check for session-based auth (legacy) or user object (current)
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  
-  if (!isAuthenticated) {
+  // Check for authentication using unified helper
+  const userId = getUserId(req);
+
+  if (!userId) {
     return res.status(401).json({ error: 'User not authenticated' });
   }
-  
+
   // Add user context for backwards compatibility
   if (!req.user) {
     req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId,
+      id: userId,
+      tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenantId && !req.user.id) {
-    // If we have user claims but no structured user object, build it
+  } else if (!req.user.tenantId || !req.user.id) {
+    // Ensure user object has id and tenantId
     req.user = {
-      id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId,
+      ...req.user,
+      id: req.user.id || userId,
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
-  
+
   next();
 };
 
@@ -75,27 +78,33 @@ router.get('/status', async (req, res) => {
           'Define organizational structure',
           'Set up role hierarchy',
           'Configure permissions',
-          'Assign initial roles'
-        ]
+          'Assign initial roles',
+        ],
       });
     }
 
     // Get system statistics
-    const [roleCount] = await db.select({ 
-      count: sql<number>`count(*)::int` 
-    }).from(enhancedRoles).where(eq(enhancedRoles.tenantId, tenantId));
+    const [roleCount] = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(enhancedRoles)
+      .where(eq(enhancedRoles.tenantId, tenantId));
 
-    const [unitCount] = await db.select({ 
-      count: sql<number>`count(*)::int` 
-    }).from(organizationalUnits).where(eq(organizationalUnits.tenantId, tenantId));
+    const [unitCount] = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(organizationalUnits)
+      .where(eq(organizationalUnits.tenantId, tenantId));
 
     res.json({
       initialized: true,
       stats: {
         totalRoles: roleCount?.count || 0,
-        organizationalUnits: unitCount?.count || 0
+        organizationalUnits: unitCount?.count || 0,
       },
-      recommendation: 'RBAC system is active and ready for management'
+      recommendation: 'RBAC system is active and ready for management',
     });
   } catch (error) {
     console.error('RBAC status error:', error);
@@ -110,18 +119,20 @@ const permissionCheckSchema = z.object({
     tenantId: z.string(),
     unitId: z.string().optional(),
     locationId: z.string().optional(),
-    regionId: z.string().optional()
+    regionId: z.string().optional(),
   }),
-  resourceId: z.string().optional()
+  resourceId: z.string().optional(),
 });
 
 const roleCustomizationSchema = z.object({
   roleId: z.string(),
-  permissionChanges: z.array(z.object({
-    permissionCode: z.string(),
-    effect: z.enum(['ALLOW', 'DENY']),
-    reason: z.string()
-  }))
+  permissionChanges: z.array(
+    z.object({
+      permissionCode: z.string(),
+      effect: z.enum(['ALLOW', 'DENY']),
+      reason: z.string(),
+    }),
+  ),
 });
 
 const permissionOverrideRequestSchema = z.object({
@@ -132,7 +143,7 @@ const permissionOverrideRequestSchema = z.object({
   businessJustification: z.string(),
   effectiveFrom: z.string().datetime(),
   effectiveUntil: z.string().datetime().optional(),
-  organizationalUnitId: z.string().optional()
+  organizationalUnitId: z.string().optional(),
 });
 
 /**
@@ -148,7 +159,9 @@ router.get('/permissions/check', async (req, res) => {
 
     const validation = permissionCheckSchema.safeParse(req.query);
     if (!validation.success) {
-      return res.status(400).json({ error: 'Invalid request parameters', details: validation.error });
+      return res
+        .status(400)
+        .json({ error: 'Invalid request parameters', details: validation.error });
     }
 
     const { permissionCode, organizationalContext, resourceId } = validation.data;
@@ -157,7 +170,7 @@ router.get('/permissions/check', async (req, res) => {
       userId,
       permissionCode,
       organizationalContext,
-      resourceId
+      resourceId,
     });
 
     res.json({ hasPermission, permissionCode, userId });
@@ -175,7 +188,7 @@ router.get('/permissions/effective', async (req, res) => {
   try {
     const userId = req.user?.id;
     const tenantId = req.user?.tenantId;
-    
+
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -184,16 +197,16 @@ router.get('/permissions/effective', async (req, res) => {
       tenantId,
       unitId: req.query.unitId as string,
       locationId: req.query.locationId as string,
-      regionId: req.query.regionId as string
+      regionId: req.query.regionId as string,
     };
 
     const effectivePermissions = await rbacService.getEffectivePermissions(userId, orgContext);
-    
-    res.json({ 
-      userId, 
+
+    res.json({
+      userId,
       organizationalContext: orgContext,
       permissions: effectivePermissions,
-      count: effectivePermissions.length 
+      count: effectivePermissions.length,
     });
   } catch (error) {
     console.error('Effective permissions error:', error);
@@ -220,7 +233,7 @@ router.get('/roles', async (req, res) => {
       organizationalTier,
       search,
       page = '1',
-      limit = '50'
+      limit = '50',
     } = req.query;
 
     const pageNum = Math.max(1, parseInt(page as string) || 1);
@@ -241,7 +254,9 @@ router.get('/roles', async (req, res) => {
     }
     if (search && typeof search === 'string') {
       const searchPattern = `%${search}%`;
-      conditions.push(sql`(r.name ILIKE ${searchPattern} OR r.code ILIKE ${searchPattern} OR r.description ILIKE ${searchPattern})`);
+      conditions.push(
+        sql`(r.name ILIKE ${searchPattern} OR r.code ILIKE ${searchPattern} OR r.description ILIKE ${searchPattern})`,
+      );
     }
 
     const whereClause = and(...conditions);
@@ -277,8 +292,8 @@ router.get('/roles', async (req, res) => {
         page: pageNum,
         limit: limitNum,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limitNum)
-      }
+        totalPages: Math.ceil(totalCount / limitNum),
+      },
     });
   } catch (error) {
     console.error('Roles fetch error:', error);
@@ -346,7 +361,7 @@ router.get('/roles/:id', async (req, res) => {
     res.json({
       ...role,
       permissions: permissionsResult.rows,
-      assignmentCount: parseInt(assignmentCountResult.rows[0]?.count || '0')
+      assignmentCount: parseInt(assignmentCountResult.rows[0]?.count || '0'),
     });
   } catch (error) {
     console.error('Role fetch error:', error);
@@ -369,16 +384,18 @@ router.post('/roles', async (req, res) => {
 
     // Simple validation for role creation
     const { name, code, description, hierarchyLevel, department, permissionCodes = [] } = req.body;
-    
+
     if (!name || !code || !hierarchyLevel || !department) {
-      return res.status(400).json({ error: 'Missing required fields: name, code, hierarchyLevel, department' });
+      return res
+        .status(400)
+        .json({ error: 'Missing required fields: name, code, hierarchyLevel, department' });
     }
 
     // Check if user has permission to create roles
     const canCreateRoles = await rbacService.hasPermission({
       userId,
       permissionCode: 'role.manage_permissions',
-      organizationalContext: { tenantId }
+      organizationalContext: { tenantId },
     });
 
     if (!canCreateRoles) {
@@ -390,7 +407,7 @@ router.post('/roles', async (req, res) => {
       const existingRole = await db.execute(sql`
         SELECT id FROM enhanced_roles WHERE code = ${code} AND tenant_id = ${tenantId}
       `);
-      
+
       if (existingRole.rows.length > 0) {
         return res.status(400).json({ error: 'Role code already exists' });
       }
@@ -398,7 +415,7 @@ router.post('/roles', async (req, res) => {
       // Create new role
       const roleId = `role-${Date.now()}`;
       const companyUnitId = `company-${tenantId}`;
-      
+
       await db.execute(sql`
         INSERT INTO enhanced_roles (
           id, tenant_id, organizational_unit_id, name, code, description, 
@@ -412,10 +429,14 @@ router.post('/roles', async (req, res) => {
       // Add permissions if provided
       for (const permissionCode of permissionCodes) {
         const permissionId = `perm-${permissionCode}`;
-        await db.execute(sql`
+        await db
+          .execute(
+            sql`
           INSERT INTO role_permissions (id, role_id, permission_id, effect, granted_by)
           VALUES (${`rp-${roleId}-${permissionId}`}, ${roleId}, ${permissionId}, 'ALLOW', ${userId})
-        `).catch(() => {}); // Ignore errors for non-existent permissions
+        `,
+          )
+          .catch(() => {}); // Ignore errors for non-existent permissions
       }
 
       // Fetch the created role
@@ -423,9 +444,9 @@ router.post('/roles', async (req, res) => {
         SELECT * FROM enhanced_roles WHERE id = ${roleId}
       `);
 
-      res.status(201).json({ 
-        role: newRoleResult.rows[0], 
-        message: 'Role created successfully' 
+      res.status(201).json({
+        role: newRoleResult.rows[0],
+        message: 'Role created successfully',
       });
     } catch (error) {
       console.error('Role creation error:', error);
@@ -453,7 +474,9 @@ router.put('/roles/:id/customize', async (req, res) => {
 
     const validation = roleCustomizationSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ error: 'Invalid customization data', details: validation.error });
+      return res
+        .status(400)
+        .json({ error: 'Invalid customization data', details: validation.error });
     }
 
     const { permissionChanges } = validation.data;
@@ -462,7 +485,7 @@ router.put('/roles/:id/customize', async (req, res) => {
     const canCustomizeRoles = await rbacService.hasPermission({
       userId,
       permissionCode: 'role.manage_permissions',
-      organizationalContext: { tenantId }
+      organizationalContext: { tenantId },
     });
 
     if (!canCustomizeRoles) {
@@ -471,7 +494,11 @@ router.put('/roles/:id/customize', async (req, res) => {
 
     await rbacService.customizeRolePermissions(roleId, permissionChanges, userId);
 
-    res.json({ message: 'Role permissions customized successfully', roleId, changes: permissionChanges.length });
+    res.json({
+      message: 'Role permissions customized successfully',
+      roleId,
+      changes: permissionChanges.length,
+    });
   } catch (error) {
     console.error('Role customization error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -503,7 +530,7 @@ router.get('/permissions', async (req, res) => {
     if (search && typeof search === 'string') {
       const searchPattern = `%${search}%`;
       conditions.push(
-        sql`(name ILIKE ${searchPattern} OR code ILIKE ${searchPattern} OR description ILIKE ${searchPattern})`
+        sql`(name ILIKE ${searchPattern} OR code ILIKE ${searchPattern} OR description ILIKE ${searchPattern})`,
       );
     }
 
@@ -524,10 +551,10 @@ router.get('/permissions', async (req, res) => {
       return acc;
     }, {});
 
-    res.json({ 
+    res.json({
       permissions: permissionsList.rows,
       groupedPermissions,
-      totalCount: permissionsList.rows.length 
+      totalCount: permissionsList.rows.length,
     });
   } catch (error) {
     console.error('Permissions fetch error:', error);
@@ -548,20 +575,26 @@ router.get('/users/:userId/roles', async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const assignments = await db.select({
-      assignment: userRoleAssignments,
-      role: enhancedRoles,
-      organizationalUnit: organizationalUnits
-    })
-    .from(userRoleAssignments)
-    .innerJoin(enhancedRoles, eq(userRoleAssignments.roleId, enhancedRoles.id))
-    .leftJoin(organizationalUnits, eq(userRoleAssignments.organizationalUnitId, organizationalUnits.id))
-    .where(and(
-      eq(userRoleAssignments.userId, targetUserId),
-      eq(userRoleAssignments.tenantId, tenantId),
-      eq(userRoleAssignments.isActive, true)
-    ))
-    .orderBy(desc(enhancedRoles.hierarchyLevel));
+    const assignments = await db
+      .select({
+        assignment: userRoleAssignments,
+        role: enhancedRoles,
+        organizationalUnit: organizationalUnits,
+      })
+      .from(userRoleAssignments)
+      .innerJoin(enhancedRoles, eq(userRoleAssignments.roleId, enhancedRoles.id))
+      .leftJoin(
+        organizationalUnits,
+        eq(userRoleAssignments.organizationalUnitId, organizationalUnits.id),
+      )
+      .where(
+        and(
+          eq(userRoleAssignments.userId, targetUserId),
+          eq(userRoleAssignments.tenantId, tenantId),
+          eq(userRoleAssignments.isActive, true),
+        ),
+      )
+      .orderBy(desc(enhancedRoles.hierarchyLevel));
 
     res.json({ assignments, userId: targetUserId });
   } catch (error) {
@@ -588,7 +621,7 @@ router.post('/users/:userId/roles', async (req, res) => {
       ...req.body,
       userId: targetUserId,
       tenantId,
-      assignedBy: userId
+      assignedBy: userId,
     });
 
     if (!validation.success) {
@@ -599,16 +632,14 @@ router.post('/users/:userId/roles', async (req, res) => {
     const canAssignRoles = await rbacService.hasPermission({
       userId,
       permissionCode: 'user.create_location', // or appropriate permission based on scope
-      organizationalContext: { tenantId }
+      organizationalContext: { tenantId },
     });
 
     if (!canAssignRoles) {
       return res.status(403).json({ error: 'Insufficient permissions to assign roles' });
     }
 
-    const [assignment] = await db.insert(userRoleAssignments)
-      .values(validation.data)
-      .returning();
+    const [assignment] = await db.insert(userRoleAssignments).values(validation.data).returning();
 
     res.status(201).json({ assignment, message: 'Role assigned successfully' });
   } catch (error) {
@@ -632,7 +663,7 @@ router.post('/permission-overrides', async (req, res) => {
 
     const validation = permissionOverrideRequestSchema.safeParse({
       ...req.body,
-      tenantId
+      tenantId,
     });
 
     if (!validation.success) {
@@ -642,8 +673,10 @@ router.post('/permission-overrides', async (req, res) => {
     const overrideData = {
       ...validation.data,
       effectiveFrom: new Date(validation.data.effectiveFrom),
-      effectiveUntil: validation.data.effectiveUntil ? new Date(validation.data.effectiveUntil) : undefined,
-      tenantId
+      effectiveUntil: validation.data.effectiveUntil
+        ? new Date(validation.data.effectiveUntil)
+        : undefined,
+      tenantId,
     };
 
     const override = await rbacService.createPermissionOverride(overrideData, userId);
@@ -676,10 +709,10 @@ router.get('/organizational-units', async (req, res) => {
     // Build hierarchy tree
     const buildTree = (nodes: any[], parentId: string | null = null): any[] => {
       return nodes
-        .filter(node => node.parentUnitId === parentId)
-        .map(node => ({
+        .filter((node) => node.parentUnitId === parentId)
+        .map((node) => ({
           ...node,
-          children: buildTree(nodes, node.id)
+          children: buildTree(nodes, node.id),
         }));
     };
 
@@ -723,23 +756,108 @@ router.post('/seed', async (req, res) => {
     `);
 
     // Create basic roles based on dealer type
-    const rolesToCreate = dealerType === 'small' 
-      ? [
-          { id: `owner-${tenantId}`, name: 'Owner', code: 'OWNER', description: 'Business owner with full access', hierarchy_level: 'COMPANY', department: 'administration' },
-          { id: `manager-${tenantId}`, name: 'Manager', code: 'MANAGER', description: 'General manager', hierarchy_level: 'LOCATION', department: 'administration' },
-          { id: `sales-${tenantId}`, name: 'Sales Rep', code: 'SALES_REP', description: 'Sales representative', hierarchy_level: 'INDIVIDUAL', department: 'sales' },
-          { id: `service-${tenantId}`, name: 'Service Tech', code: 'SERVICE_TECH', description: 'Service technician', hierarchy_level: 'INDIVIDUAL', department: 'service' }
-        ]
-      : [
-          { id: `company-admin-${tenantId}`, name: 'Company Admin', code: 'COMPANY_ADMIN', description: 'Company administrator with full access', hierarchy_level: 'COMPANY', department: 'administration' },
-          { id: `regional-manager-${tenantId}`, name: 'Regional Manager', code: 'REGIONAL_MANAGER', description: 'Regional operations manager', hierarchy_level: 'REGIONAL', department: 'administration' },
-          { id: `location-manager-${tenantId}`, name: 'Location Manager', code: 'LOCATION_MANAGER', description: 'Location manager', hierarchy_level: 'LOCATION', department: 'administration' },
-          { id: `sales-manager-${tenantId}`, name: 'Sales Manager', code: 'SALES_MANAGER', description: 'Sales team manager', hierarchy_level: 'DEPARTMENT', department: 'sales' },
-          { id: `service-manager-${tenantId}`, name: 'Service Manager', code: 'SERVICE_MANAGER', description: 'Service team manager', hierarchy_level: 'DEPARTMENT', department: 'service' },
-          { id: `sales-rep-${tenantId}`, name: 'Sales Representative', code: 'SALES_REP', description: 'Sales representative', hierarchy_level: 'INDIVIDUAL', department: 'sales' },
-          { id: `service-tech-${tenantId}`, name: 'Service Technician', code: 'SERVICE_TECH', description: 'Service technician', hierarchy_level: 'INDIVIDUAL', department: 'service' },
-          { id: `admin-assistant-${tenantId}`, name: 'Administrative Assistant', code: 'ADMIN_ASSISTANT', description: 'Administrative support', hierarchy_level: 'INDIVIDUAL', department: 'administration' }
-        ];
+    const rolesToCreate =
+      dealerType === 'small'
+        ? [
+            {
+              id: `owner-${tenantId}`,
+              name: 'Owner',
+              code: 'OWNER',
+              description: 'Business owner with full access',
+              hierarchy_level: 'COMPANY',
+              department: 'administration',
+            },
+            {
+              id: `manager-${tenantId}`,
+              name: 'Manager',
+              code: 'MANAGER',
+              description: 'General manager',
+              hierarchy_level: 'LOCATION',
+              department: 'administration',
+            },
+            {
+              id: `sales-${tenantId}`,
+              name: 'Sales Rep',
+              code: 'SALES_REP',
+              description: 'Sales representative',
+              hierarchy_level: 'INDIVIDUAL',
+              department: 'sales',
+            },
+            {
+              id: `service-${tenantId}`,
+              name: 'Service Tech',
+              code: 'SERVICE_TECH',
+              description: 'Service technician',
+              hierarchy_level: 'INDIVIDUAL',
+              department: 'service',
+            },
+          ]
+        : [
+            {
+              id: `company-admin-${tenantId}`,
+              name: 'Company Admin',
+              code: 'COMPANY_ADMIN',
+              description: 'Company administrator with full access',
+              hierarchy_level: 'COMPANY',
+              department: 'administration',
+            },
+            {
+              id: `regional-manager-${tenantId}`,
+              name: 'Regional Manager',
+              code: 'REGIONAL_MANAGER',
+              description: 'Regional operations manager',
+              hierarchy_level: 'REGIONAL',
+              department: 'administration',
+            },
+            {
+              id: `location-manager-${tenantId}`,
+              name: 'Location Manager',
+              code: 'LOCATION_MANAGER',
+              description: 'Location manager',
+              hierarchy_level: 'LOCATION',
+              department: 'administration',
+            },
+            {
+              id: `sales-manager-${tenantId}`,
+              name: 'Sales Manager',
+              code: 'SALES_MANAGER',
+              description: 'Sales team manager',
+              hierarchy_level: 'DEPARTMENT',
+              department: 'sales',
+            },
+            {
+              id: `service-manager-${tenantId}`,
+              name: 'Service Manager',
+              code: 'SERVICE_MANAGER',
+              description: 'Service team manager',
+              hierarchy_level: 'DEPARTMENT',
+              department: 'service',
+            },
+            {
+              id: `sales-rep-${tenantId}`,
+              name: 'Sales Representative',
+              code: 'SALES_REP',
+              description: 'Sales representative',
+              hierarchy_level: 'INDIVIDUAL',
+              department: 'sales',
+            },
+            {
+              id: `service-tech-${tenantId}`,
+              name: 'Service Technician',
+              code: 'SERVICE_TECH',
+              description: 'Service technician',
+              hierarchy_level: 'INDIVIDUAL',
+              department: 'service',
+            },
+            {
+              id: `admin-assistant-${tenantId}`,
+              name: 'Administrative Assistant',
+              code: 'ADMIN_ASSISTANT',
+              description: 'Administrative support',
+              hierarchy_level: 'INDIVIDUAL',
+              department: 'administration',
+            },
+          ];
 
     // Insert roles
     for (const role of rolesToCreate) {
@@ -756,12 +874,12 @@ router.post('/seed', async (req, res) => {
       VALUES (${`assignment-${userId}-${Date.now()}`}, ${userId}, ${firstRoleId}, ${tenantId}, ${companyUnitId}, ${userId})
     `);
 
-    res.json({ 
-      message: 'RBAC system initialized successfully', 
-      dealerType, 
+    res.json({
+      message: 'RBAC system initialized successfully',
+      dealerType,
       tenantId,
       rolesCreated: rolesToCreate.length,
-      userAssigned: firstRoleId
+      userAssigned: firstRoleId,
     });
   } catch (error) {
     console.error('RBAC seed error:', error);
