@@ -6,6 +6,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { config } from './config';
 
+// Custom fetch that doesn't include credentials to avoid CORS issues with wildcard origins
+const customFetch = (url: RequestInfo | URL, options?: RequestInit) => {
+  return fetch(url, {
+    ...options,
+    credentials: 'omit', // Don't send cookies - use Bearer token auth instead
+  });
+};
+
 // Create Supabase client with custom domain configuration
 export const supabase = createClient(
   config.supabase.url, // https://api.printyx.net in production
@@ -23,11 +31,13 @@ export const supabase = createClient(
       // Storage key for session
       storageKey: 'printyx-auth',
     },
-    // Global headers for all requests
+    // Global configuration
     global: {
       headers: {
         'x-client-info': 'printyx-web',
       },
+      // Use custom fetch to avoid CORS issues with credentials
+      fetch: customFetch,
     },
     // Realtime configuration
     realtime: {
