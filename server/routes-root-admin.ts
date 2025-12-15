@@ -1,32 +1,29 @@
-import { Router } from "express";
-import { z } from "zod";
-import { db } from "./db";
-import {
-  users,
-  roles,
-  tenants,
-  activityReports,
-  auditLogs,
-} from "../shared/schema";
-import { eq, desc, sql, count, and, gte, lte } from "drizzle-orm";
+import { Router } from 'express';
+import { z } from 'zod';
+import { db } from './db';
+import { users, roles, tenants, activityReports, auditLogs } from '../shared/schema';
+import { eq, desc, sql, count, and, gte, lte } from 'drizzle-orm';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
+
 // Middleware to check authentication
 const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated =
-    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  const userId = getUserId(req);
 
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required' });
   }
 
   if (!req.user) {
     req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId,
+      id: userId,
+      tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenantId && !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     req.user = {
-      id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId,
+      ...req.user,
+      id: req.user.id || userId,
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -41,7 +38,7 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
     const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
 
     if (!userId) {
-      return res.status(401).json({ message: "Authentication required" });
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
     // Get user with role information from database
@@ -59,20 +56,16 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
       .limit(1);
 
     if (!userWithRole.length || !userWithRole[0].roleLevel) {
-      return res
-        .status(403)
-        .json({ message: "Root admin access required - no role assigned" });
+      return res.status(403).json({ message: 'Root admin access required - no role assigned' });
     }
 
     const user = userWithRole[0];
 
     // Check if user has root admin level (7+) or can access all tenants
     if (user.roleLevel < 7 && !user.canAccessAllTenants) {
-      return res
-        .status(403)
-        .json({
-          message: "Root admin access required - insufficient privileges",
-        });
+      return res.status(403).json({
+        message: 'Root admin access required - insufficient privileges',
+      });
     }
 
     // Add role info to request for later use
@@ -81,15 +74,13 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
 
     next();
   } catch (error) {
-    console.error("Root admin check error:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error during authorization" });
+    console.error('Root admin check error:', error);
+    res.status(500).json({ message: 'Internal server error during authorization' });
   }
 };
 
 // System Overview
-router.get("/overview", requireRootAdmin, async (req, res) => {
+router.get('/overview', requireRootAdmin, async (req, res) => {
   try {
     // Get total tenants
     const totalTenants = await db.select({ count: count() }).from(tenants);
@@ -98,12 +89,7 @@ router.get("/overview", requireRootAdmin, async (req, res) => {
     const activeTenants = await db
       .select({ count: count() })
       .from(tenants)
-      .where(
-        gte(
-          tenants.lastActivity,
-          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        )
-      ); // Last 30 days
+      .where(gte(tenants.lastActivity, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))); // Last 30 days
 
     // Get total users
     const totalUsers = await db.select({ count: count() }).from(users);
@@ -112,9 +98,7 @@ router.get("/overview", requireRootAdmin, async (req, res) => {
     const activeUsers = await db
       .select({ count: count() })
       .from(users)
-      .where(
-        gte(users.lastLogin, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
-      ); // Last 7 days
+      .where(gte(users.lastLogin, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))); // Last 7 days
 
     // Get critical alerts count
     const criticalAlerts = await db
@@ -122,10 +106,10 @@ router.get("/overview", requireRootAdmin, async (req, res) => {
       .from(activityReports)
       .where(
         and(
-          eq(activityReports.type, "security_alert"),
-          eq(activityReports.severity, "critical"),
-          eq(activityReports.resolved, false)
-        )
+          eq(activityReports.type, 'security_alert'),
+          eq(activityReports.severity, 'critical'),
+          eq(activityReports.resolved, false),
+        ),
       );
 
     // Calculate system uptime (mock for now - would come from monitoring service)
@@ -139,16 +123,16 @@ router.get("/overview", requireRootAdmin, async (req, res) => {
       systemUptime,
       criticalAlerts: criticalAlerts[0]?.count || 0,
       pendingActions: 0, // Would be calculated based on open tickets/tasks
-      systemHealth: criticalAlerts[0]?.count > 0 ? "warning" : "healthy",
+      systemHealth: criticalAlerts[0]?.count > 0 ? 'warning' : 'healthy',
     });
   } catch (error) {
-    console.error("Error fetching system overview:", error);
-    res.status(500).json({ message: "Failed to fetch system overview" });
+    console.error('Error fetching system overview:', error);
+    res.status(500).json({ message: 'Failed to fetch system overview' });
   }
 });
 
 // Tenant Management
-router.get("/tenants", requireRootAdmin, async (req, res) => {
+router.get('/tenants', requireRootAdmin, async (req, res) => {
   try {
     const tenantMetrics = await db
       .select({
@@ -169,15 +153,15 @@ router.get("/tenants", requireRootAdmin, async (req, res) => {
 
     res.json(tenantMetrics);
   } catch (error) {
-    console.error("Error fetching tenant metrics:", error);
-    res.status(500).json({ message: "Failed to fetch tenant metrics" });
+    console.error('Error fetching tenant metrics:', error);
+    res.status(500).json({ message: 'Failed to fetch tenant metrics' });
   }
 });
 
 // Security Alerts
 router.get(
-  "/security-alerts",
-  
+  '/security-alerts',
+
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -194,7 +178,7 @@ router.get(
           resolved: activityReports.resolved,
         })
         .from(activityReports)
-        .where(eq(activityReports.type, "security_alert"))
+        .where(eq(activityReports.type, 'security_alert'))
         .orderBy(desc(activityReports.createdAt))
         .limit(50);
 
@@ -219,25 +203,25 @@ router.get(
 
           return {
             ...alert,
-            tenant: tenant?.[0]?.name || "Unknown",
-            userName: user?.[0]?.name || "Unknown",
-            userEmail: user?.[0]?.email || "unknown@example.com",
+            tenant: tenant?.[0]?.name || 'Unknown',
+            userName: user?.[0]?.name || 'Unknown',
+            userEmail: user?.[0]?.email || 'unknown@example.com',
           };
-        })
+        }),
       );
 
       res.json(enrichedAlerts);
     } catch (error) {
-      console.error("Error fetching security alerts:", error);
-      res.status(500).json({ message: "Failed to fetch security alerts" });
+      console.error('Error fetching security alerts:', error);
+      res.status(500).json({ message: 'Failed to fetch security alerts' });
     }
-  }
+  },
 );
 
 // System Resources
 router.get(
-  "/system-resources",
-  
+  '/system-resources',
+
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -260,59 +244,57 @@ router.get(
       // Create system resource metrics in proper format for dashboard
       const resources = [
         {
-          name: "Database Size",
-          current: parseFloat(
-            dbSize.rows[0]?.size?.replace(/[^\d.]/g, "") || "0"
-          ),
+          name: 'Database Size',
+          current: parseFloat(dbSize.rows[0]?.size?.replace(/[^\d.]/g, '') || '0'),
           threshold: 100,
-          unit: "GB",
-          status: "normal",
-          trend: "stable",
+          unit: 'GB',
+          status: 'normal',
+          trend: 'stable',
         },
         {
-          name: "Active Connections",
-          current: parseInt(connectionCount.rows[0]?.count || "0"),
+          name: 'Active Connections',
+          current: parseInt(connectionCount.rows[0]?.count || '0'),
           threshold: 100,
-          unit: "",
-          status: "normal",
-          trend: "stable",
+          unit: '',
+          status: 'normal',
+          trend: 'stable',
         },
         {
-          name: "Tables Count",
-          current: parseInt(tableCount.rows[0]?.count || "0"),
+          name: 'Tables Count',
+          current: parseInt(tableCount.rows[0]?.count || '0'),
           threshold: 200,
-          unit: "",
-          status: "normal",
-          trend: "stable",
+          unit: '',
+          status: 'normal',
+          trend: 'stable',
         },
         {
-          name: "Cache Hit Ratio",
+          name: 'Cache Hit Ratio',
           current: 95.0,
           threshold: 90,
-          unit: "%",
-          status: "normal",
-          trend: "stable",
+          unit: '%',
+          status: 'normal',
+          trend: 'stable',
         },
         {
-          name: "Query Performance",
+          name: 'Query Performance',
           current: 85.2,
           threshold: 80,
-          unit: "%",
-          status: "normal",
-          trend: "up",
+          unit: '%',
+          status: 'normal',
+          trend: 'up',
         },
       ];
 
       res.json(resources);
     } catch (error) {
-      console.error("Error fetching system resources:", error);
-      res.status(500).json({ message: "Failed to fetch system resources" });
+      console.error('Error fetching system resources:', error);
+      res.status(500).json({ message: 'Failed to fetch system resources' });
     }
-  }
+  },
 );
 
 // User Management
-router.get("/users", requireRootAdmin, async (req, res) => {
+router.get('/users', requireRootAdmin, async (req, res) => {
   try {
     const { role, status, search } = req.query;
 
@@ -333,17 +315,15 @@ router.get("/users", requireRootAdmin, async (req, res) => {
 
     // Apply filters
     const conditions = [];
-    if (role && role !== "all") {
+    if (role && role !== 'all') {
       conditions.push(eq(roles.name, role as string));
     }
-    if (status && status !== "all") {
+    if (status && status !== 'all') {
       conditions.push(eq(users.status, status as string));
     }
     if (search) {
       conditions.push(
-        sql`(${users.name} ILIKE ${`%${search}%`} OR ${
-          users.email
-        } ILIKE ${`%${search}%`})`
+        sql`(${users.name} ILIKE ${`%${search}%`} OR ${users.email} ILIKE ${`%${search}%`})`,
       );
     }
 
@@ -374,24 +354,24 @@ router.get("/users", requireRootAdmin, async (req, res) => {
 
         return {
           ...user,
-          role: role?.[0]?.name || "No Role",
+          role: role?.[0]?.name || 'No Role',
           roleLevel: role?.[0]?.level || 1,
-          tenant: tenant?.[0]?.name || "No Tenant",
-          department: "General", // Would be added to schema
-          location: "Main Office", // Would be added to schema
+          tenant: tenant?.[0]?.name || 'No Tenant',
+          department: 'General', // Would be added to schema
+          location: 'Main Office', // Would be added to schema
         };
-      })
+      }),
     );
 
     res.json(enrichedUsers);
   } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({ message: "Failed to fetch users" });
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Failed to fetch users' });
   }
 });
 
 // Role Management
-router.get("/roles", requireRootAdmin, async (req, res) => {
+router.get('/roles', requireRootAdmin, async (req, res) => {
   try {
     const rolesList = await db
       .select({
@@ -411,13 +391,13 @@ router.get("/roles", requireRootAdmin, async (req, res) => {
 
     res.json(rolesList);
   } catch (error) {
-    console.error("Error fetching roles:", error);
-    res.status(500).json({ message: "Failed to fetch roles" });
+    console.error('Error fetching roles:', error);
+    res.status(500).json({ message: 'Failed to fetch roles' });
   }
 });
 
 // Audit Logs
-router.get("/audit-logs", requireRootAdmin, async (req, res) => {
+router.get('/audit-logs', requireRootAdmin, async (req, res) => {
   try {
     const logs = await db
       .select({
@@ -447,23 +427,23 @@ router.get("/audit-logs", requireRootAdmin, async (req, res) => {
 
         return {
           ...log,
-          userName: user?.[0]?.name || "System",
-          userEmail: user?.[0]?.email || "system@printyx.com",
+          userName: user?.[0]?.name || 'System',
+          userEmail: user?.[0]?.email || 'system@printyx.com',
         };
-      })
+      }),
     );
 
     res.json(enrichedLogs);
   } catch (error) {
-    console.error("Error fetching audit logs:", error);
-    res.status(500).json({ message: "Failed to fetch audit logs" });
+    console.error('Error fetching audit logs:', error);
+    res.status(500).json({ message: 'Failed to fetch audit logs' });
   }
 });
 
 // Database Tables Information
 router.get(
-  "/database-tables",
-  
+  '/database-tables',
+
   requireRootAdmin,
   async (req, res) => {
     try {
@@ -483,37 +463,35 @@ router.get(
 
       res.json(tablesInfo.rows);
     } catch (error) {
-      console.error("Error fetching database tables:", error);
-      res.status(500).json({ message: "Failed to fetch database tables" });
+      console.error('Error fetching database tables:', error);
+      res.status(500).json({ message: 'Failed to fetch database tables' });
     }
-  }
+  },
 );
 
 // Execute SQL Query (with safety restrictions)
 router.post(
-  "/execute-query",
-  
+  '/execute-query',
+
   requireRootAdmin,
   async (req, res) => {
     try {
       const { query } = req.body;
 
-      if (!query || typeof query !== "string") {
-        return res.status(400).json({ message: "Query is required" });
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: 'Query is required' });
       }
 
       // Safety check - only allow SELECT queries
       const trimmedQuery = query.trim().toLowerCase();
-      if (!trimmedQuery.startsWith("select")) {
+      if (!trimmedQuery.startsWith('select')) {
         return res.status(400).json({
-          message: "Only SELECT queries are allowed for security reasons",
+          message: 'Only SELECT queries are allowed for security reasons',
         });
       }
 
       // Limit results to prevent memory issues
-      const limitedQuery = query.includes("limit")
-        ? query
-        : `${query} LIMIT 1000`;
+      const limitedQuery = query.includes('limit') ? query : `${query} LIMIT 1000`;
 
       const result = await db.execute(sql.raw(limitedQuery));
 
@@ -524,13 +502,13 @@ router.post(
         executionTime: Date.now(), // Would be actual execution time
       });
     } catch (error) {
-      console.error("Error executing query:", error);
+      console.error('Error executing query:', error);
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to execute query",
+        message: error.message || 'Failed to execute query',
       });
     }
-  }
+  },
 );
 
 export default router;

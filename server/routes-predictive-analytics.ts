@@ -1,19 +1,28 @@
 import { Router } from 'express';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
+
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+  const userId = getUserId(req);
+
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required' });
   }
-  
+
   if (!req.user) {
     req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId
+      id: userId,
+      tenantId: getTenantId(req),
+    };
+  } else if (!req.user.id || !req.user.tenantId) {
+    req.user = {
+      ...req.user,
+      id: req.user.id || userId,
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
-  
+
   next();
 };
 
@@ -27,7 +36,7 @@ router.get('/dashboard', async (req, res) => {
   try {
     const userId = (req as any).user?.id;
     const tenantId = (req as any).user?.tenantId;
-    
+
     if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
@@ -43,9 +52,9 @@ router.get('/dashboard', async (req, res) => {
         modelTrainingJobs: 3,
         averageProcessingTime: 142,
         dataPointsProcessed: 2847361,
-        successfulPredictions: 0.943
+        successfulPredictions: 0.943,
       },
-      
+
       // Real-time Predictive Insights
       predictiveInsights: [
         {
@@ -61,7 +70,7 @@ router.get('/dashboard', async (req, res) => {
           recommendation: 'Schedule executive meeting and offer service upgrade',
           modelUsed: 'CustomerChurnPredictor_v2.1',
           dataFactors: ['Service calls increased 300%', 'Payment delays', 'Contract renewal due'],
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
         },
         {
           id: 'demand-forecast-002',
@@ -76,7 +85,7 @@ router.get('/dashboard', async (req, res) => {
           recommendation: 'Pre-order 28 Canon imageRUNNER units from supplier',
           modelUsed: 'DemandForecastingEngine_v1.8',
           dataFactors: ['Seasonal trends', 'Market expansion', 'Competitor analysis'],
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
         },
         {
           id: 'maintenance-alert-003',
@@ -91,7 +100,7 @@ router.get('/dashboard', async (req, res) => {
           recommendation: 'Replace drum unit and toner cartridge immediately',
           modelUsed: 'EquipmentFailurePrediction_v3.2',
           dataFactors: ['Drum unit wear patterns', 'Print volume spikes', 'Error frequency'],
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
         },
         {
           id: 'sales-opportunity-004',
@@ -106,10 +115,10 @@ router.get('/dashboard', async (req, res) => {
           recommendation: 'Present Xerox VersaLink C405 solution with managed services',
           modelUsed: 'SalesOpportunityScoring_v2.4',
           dataFactors: ['Website engagement', 'Service call patterns', 'Competitor intel'],
-          lastUpdated: new Date()
-        }
+          lastUpdated: new Date(),
+        },
       ],
-      
+
       // Customer Analytics & Segmentation
       customerAnalytics: {
         totalCustomers: 847,
@@ -122,7 +131,7 @@ router.get('/dashboard', async (req, res) => {
             churnRisk: 0.12,
             satisfactionScore: 4.6,
             characteristics: ['$40K+ annual revenue', 'Multiple locations', 'Managed services'],
-            color: '#10B981'
+            color: '#10B981',
           },
           {
             name: 'Growing SMB',
@@ -132,7 +141,7 @@ router.get('/dashboard', async (req, res) => {
             churnRisk: 0.18,
             satisfactionScore: 4.3,
             characteristics: ['$15-30K revenue', 'Growth trajectory', 'Service focused'],
-            color: '#3B82F6'
+            color: '#3B82F6',
           },
           {
             name: 'Cost-Conscious',
@@ -142,7 +151,7 @@ router.get('/dashboard', async (req, res) => {
             churnRisk: 0.25,
             satisfactionScore: 4.0,
             characteristics: ['Price sensitive', 'Basic services', 'Longer contracts'],
-            color: '#F59E0B'
+            color: '#F59E0B',
           },
           {
             name: 'At-Risk Accounts',
@@ -152,24 +161,24 @@ router.get('/dashboard', async (req, res) => {
             churnRisk: 0.67,
             satisfactionScore: 3.2,
             characteristics: ['Payment issues', 'Service complaints', 'Contract expiring'],
-            color: '#EF4444'
-          }
+            color: '#EF4444',
+          },
         ],
         churnPrediction: {
           next30Days: {
             highRisk: 23,
             mediumRisk: 67,
             lowRisk: 757,
-            totalRevenuAtRisk: 346700
+            totalRevenuAtRisk: 346700,
           },
           next90Days: {
             highRisk: 45,
             mediumRisk: 134,
             lowRisk: 668,
-            totalRevenuAtRisk: 678900
+            totalRevenuAtRisk: 678900,
           },
           preventionActions: 12,
-          retentionSuccessRate: 0.73
+          retentionSuccessRate: 0.73,
         },
         customerLifetimeValue: {
           averageCLV: 67800,
@@ -177,11 +186,11 @@ router.get('/dashboard', async (req, res) => {
           topPerformers: [
             { name: 'GlobalTech Industries', clv: 234500, confidence: 0.91 },
             { name: 'MedCenter Healthcare', clv: 189600, confidence: 0.88 },
-            { name: 'Legal Partners LLC', clv: 156700, confidence: 0.85 }
-          ]
-        }
+            { name: 'Legal Partners LLC', clv: 156700, confidence: 0.85 },
+          ],
+        },
       },
-      
+
       // Business Intelligence Metrics
       businessIntelligence: {
         revenueForecasting: {
@@ -194,38 +203,38 @@ router.get('/dashboard', async (req, res) => {
             { factor: 'Managed Services Growth', impact: 0.34 },
             { factor: 'Equipment Upgrades', impact: 0.28 },
             { factor: 'New Customer Acquisition', impact: 0.23 },
-            { factor: 'Service Contract Renewals', impact: 0.15 }
-          ]
+            { factor: 'Service Contract Renewals', impact: 0.15 },
+          ],
         },
         marketAnalysis: {
           marketShare: 0.087,
           competitorAnalysis: [
             { name: 'CompetitorA', marketShare: 0.156, trend: 'declining' },
             { name: 'CompetitorB', marketShare: 0.134, trend: 'stable' },
-            { name: 'CompetitorC', marketShare: 0.089, trend: 'growing' }
+            { name: 'CompetitorC', marketShare: 0.089, trend: 'growing' },
           ],
           opportunityScore: 7.8,
           threatLevel: 'medium',
           strategicRecommendations: [
             'Focus on managed services expansion',
             'Accelerate digital transformation offerings',
-            'Strengthen customer retention programs'
-          ]
+            'Strengthen customer retention programs',
+          ],
         },
         operationalEfficiency: {
           technicianUtilization: 0.847,
           averageResponseTime: 2.4,
           firstCallResolution: 0.789,
           customerSatisfaction: 4.3,
-          costPerServiceCall: 127.50,
+          costPerServiceCall: 127.5,
           efficiencyTrends: {
             improving: ['Response time', 'First call resolution'],
             declining: ['Technician utilization'],
-            stable: ['Customer satisfaction']
-          }
-        }
+            stable: ['Customer satisfaction'],
+          },
+        },
       },
-      
+
       // Advanced ML Model Performance
       modelPerformance: [
         {
@@ -241,7 +250,7 @@ router.get('/dashboard', async (req, res) => {
           status: 'production',
           predictionsToday: 1247,
           averageConfidence: 0.83,
-          successRate: 0.907
+          successRate: 0.907,
         },
         {
           name: 'Equipment Failure Prediction',
@@ -256,7 +265,7 @@ router.get('/dashboard', async (req, res) => {
           status: 'production',
           predictionsToday: 2891,
           averageConfidence: 0.89,
-          successRate: 0.934
+          successRate: 0.934,
         },
         {
           name: 'Demand Forecasting Engine',
@@ -271,7 +280,7 @@ router.get('/dashboard', async (req, res) => {
           status: 'production',
           predictionsToday: 1456,
           averageConfidence: 0.76,
-          successRate: 0.863
+          successRate: 0.863,
         },
         {
           name: 'Sales Opportunity Scoring',
@@ -286,10 +295,10 @@ router.get('/dashboard', async (req, res) => {
           status: 'production',
           predictionsToday: 892,
           averageConfidence: 0.71,
-          successRate: 0.812
-        }
+          successRate: 0.812,
+        },
       ],
-      
+
       // Real-time Data Processing
       dataProcessing: {
         realTimeStreams: 12,
@@ -300,21 +309,22 @@ router.get('/dashboard', async (req, res) => {
         apiCallsToday: 89347,
         dataSourcesConnected: 18,
         batchJobsCompleted: 47,
-        errorRate: 0.0023
+        errorRate: 0.0023,
       },
-      
+
       // AI-Powered Recommendations
       aiRecommendations: [
         {
           category: 'Revenue Optimization',
           title: 'Managed Services Expansion',
-          description: 'AI analysis suggests 73% of current customers are prime candidates for managed services upgrade',
+          description:
+            'AI analysis suggests 73% of current customers are prime candidates for managed services upgrade',
           impact: 'High',
           estimatedRevenue: '$127,000',
           confidence: 0.86,
           timeframe: '60-90 days',
           action: 'Launch targeted managed services campaign',
-          priority: 1
+          priority: 1,
         },
         {
           category: 'Cost Reduction',
@@ -325,20 +335,21 @@ router.get('/dashboard', async (req, res) => {
           confidence: 0.79,
           timeframe: '30-45 days',
           action: 'Deploy advanced monitoring sensors',
-          priority: 2
+          priority: 2,
         },
         {
           category: 'Customer Retention',
           title: 'At-Risk Customer Intervention',
-          description: 'Immediate action on 23 high-risk accounts could prevent $346K in revenue loss',
+          description:
+            'Immediate action on 23 high-risk accounts could prevent $346K in revenue loss',
           impact: 'Critical',
           estimatedRevenue: '$346,700',
           confidence: 0.91,
           timeframe: '7-14 days',
           action: 'Execute customer success intervention program',
-          priority: 1
-        }
-      ]
+          priority: 1,
+        },
+      ],
     };
 
     res.json(analyticsData);
@@ -353,7 +364,7 @@ router.get('/models', async (req, res) => {
   try {
     const userId = (req as any).user?.id;
     const tenantId = (req as any).user?.tenantId;
-    
+
     if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
@@ -363,13 +374,14 @@ router.get('/models', async (req, res) => {
         {
           id: 'churn-predictor',
           name: 'Customer Churn Predictor',
-          description: 'Predicts customer churn probability using behavioral patterns and engagement metrics',
+          description:
+            'Predicts customer churn probability using behavioral patterns and engagement metrics',
           category: 'Customer Analytics',
           accuracy: 0.927,
           status: 'production',
           lastUpdated: new Date(),
           features: ['Payment history', 'Service calls', 'Contract details', 'Usage patterns'],
-          useCases: ['Retention campaigns', 'Customer success', 'Account management']
+          useCases: ['Retention campaigns', 'Customer success', 'Account management'],
         },
         {
           id: 'equipment-failure',
@@ -379,8 +391,13 @@ router.get('/models', async (req, res) => {
           accuracy: 0.943,
           status: 'production',
           lastUpdated: new Date(),
-          features: ['Sensor data', 'Usage patterns', 'Environmental factors', 'Maintenance history'],
-          useCases: ['Preventive maintenance', 'Parts ordering', 'Service scheduling']
+          features: [
+            'Sensor data',
+            'Usage patterns',
+            'Environmental factors',
+            'Maintenance history',
+          ],
+          useCases: ['Preventive maintenance', 'Parts ordering', 'Service scheduling'],
         },
         {
           id: 'demand-forecasting',
@@ -390,8 +407,13 @@ router.get('/models', async (req, res) => {
           accuracy: 0.876,
           status: 'production',
           lastUpdated: new Date(),
-          features: ['Historical sales', 'Market trends', 'Seasonal patterns', 'Economic indicators'],
-          useCases: ['Inventory planning', 'Sales forecasting', 'Budget planning']
+          features: [
+            'Historical sales',
+            'Market trends',
+            'Seasonal patterns',
+            'Economic indicators',
+          ],
+          useCases: ['Inventory planning', 'Sales forecasting', 'Budget planning'],
         },
         {
           id: 'lead-scoring',
@@ -402,8 +424,8 @@ router.get('/models', async (req, res) => {
           status: 'production',
           lastUpdated: new Date(),
           features: ['Company data', 'Engagement metrics', 'Industry trends', 'Behavioral signals'],
-          useCases: ['Sales prioritization', 'Marketing campaigns', 'Resource allocation']
-        }
+          useCases: ['Sales prioritization', 'Marketing campaigns', 'Resource allocation'],
+        },
       ],
       trainingJobs: [
         {
@@ -414,7 +436,7 @@ router.get('/models', async (req, res) => {
           estimatedCompletion: new Date(Date.now() + 2 * 60 * 60 * 1000),
           dataPoints: 52000,
           currentAccuracy: 0.923,
-          targetAccuracy: 0.935
+          targetAccuracy: 0.935,
         },
         {
           id: 'training-002',
@@ -424,9 +446,9 @@ router.get('/models', async (req, res) => {
           estimatedCompletion: new Date(Date.now() + 6 * 60 * 60 * 1000),
           dataPoints: 145000,
           currentAccuracy: null,
-          targetAccuracy: 0.950
-        }
-      ]
+          targetAccuracy: 0.95,
+        },
+      ],
     };
 
     res.json(modelsData);
@@ -441,7 +463,7 @@ router.get('/data-sources', async (req, res) => {
   try {
     const userId = (req as any).user?.id;
     const tenantId = (req as any).user?.tenantId;
-    
+
     if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
@@ -457,7 +479,7 @@ router.get('/data-sources', async (req, res) => {
           recordCount: 15847,
           dataTypes: ['Customers', 'Contacts', 'Opportunities', 'Activities'],
           healthScore: 0.98,
-          uptime: 0.997
+          uptime: 0.997,
         },
         {
           id: 'service-tickets',
@@ -468,7 +490,7 @@ router.get('/data-sources', async (req, res) => {
           recordCount: 7823,
           dataTypes: ['Service Calls', 'Technician Data', 'Equipment Status', 'Parts'],
           healthScore: 0.95,
-          uptime: 0.994
+          uptime: 0.994,
         },
         {
           id: 'iot-sensors',
@@ -479,7 +501,7 @@ router.get('/data-sources', async (req, res) => {
           recordCount: 234891,
           dataTypes: ['Sensor Readings', 'Performance Metrics', 'Error Logs', 'Usage Data'],
           healthScore: 0.92,
-          uptime: 0.989
+          uptime: 0.989,
         },
         {
           id: 'financial-data',
@@ -490,8 +512,8 @@ router.get('/data-sources', async (req, res) => {
           recordCount: 4567,
           dataTypes: ['Invoices', 'Payments', 'Contracts', 'Revenue Data'],
           healthScore: 0.96,
-          uptime: 0.991
-        }
+          uptime: 0.991,
+        },
       ],
       dataQuality: {
         overallScore: 0.934,
@@ -502,8 +524,8 @@ router.get('/data-sources', async (req, res) => {
         issues: [
           { type: 'Missing values', count: 234, severity: 'low' },
           { type: 'Duplicate records', count: 67, severity: 'medium' },
-          { type: 'Outdated information', count: 89, severity: 'medium' }
-        ]
+          { type: 'Outdated information', count: 89, severity: 'medium' },
+        ],
       },
       dataFlows: [
         {
@@ -512,7 +534,7 @@ router.get('/data-sources', async (req, res) => {
           destination: 'ML Engine',
           throughput: 2847,
           latency: 142,
-          status: 'healthy'
+          status: 'healthy',
         },
         {
           name: 'Batch Processing Pipeline',
@@ -520,9 +542,9 @@ router.get('/data-sources', async (req, res) => {
           destination: 'Data Warehouse',
           throughput: 15000,
           latency: 3600,
-          status: 'healthy'
-        }
-      ]
+          status: 'healthy',
+        },
+      ],
     };
 
     res.json(dataSourcesData);

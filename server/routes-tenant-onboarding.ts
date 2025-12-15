@@ -11,6 +11,8 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 /**
  * TENANT ONBOARDING ROUTES
@@ -30,22 +32,22 @@ const router = Router();
 // ============================================================================
 // Middleware to check authentication
 const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated =
-    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  const userId = getUserId(req);
 
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required' });
   }
 
   if (!req.user) {
     req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId,
+      id: userId,
+      tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenantId && !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     req.user = {
-      id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId,
+      ...req.user,
+      id: req.user.id || userId,
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -70,7 +72,7 @@ router.get('/onboarding/templates', async (req, res) => {
 
     const templates = await TenantOnboardingService.getTemplates(
       industry as string | undefined,
-      companySize as string | undefined
+      companySize as string | undefined,
     );
 
     res.json({ templates });
@@ -413,7 +415,8 @@ router.post('/import/:validationId/execute', async (req, res) => {
     // TODO: Implement actual data import execution
     // This would take the validated data and import it into the database
 
-    const [updated] = await db.update(dataImportValidations)
+    const [updated] = await db
+      .update(dataImportValidations)
       .set({
         importExecuted: true,
         importedAt: new Date(),
@@ -442,9 +445,7 @@ router.post('/import/:validationId/execute', async (req, res) => {
  */
 router.post('/:tenantId/validate-health', async (req, res) => {
   try {
-    const healthScore = await TenantOnboardingService.validateTenantHealth(
-      req.params.tenantId
-    );
+    const healthScore = await TenantOnboardingService.validateTenantHealth(req.params.tenantId);
 
     res.status(201).json({
       success: true,
@@ -564,9 +565,9 @@ router.get('/onboarding/analytics', async (req, res) => {
       orderBy: desc(tenantOnboardingSessions.createdAt),
     });
 
-    const completed = sessions.filter(s => s.status === 'completed').length;
-    const inProgress = sessions.filter(s => s.status === 'in_progress').length;
-    const abandoned = sessions.filter(s => s.status === 'abandoned').length;
+    const completed = sessions.filter((s) => s.status === 'completed').length;
+    const inProgress = sessions.filter((s) => s.status === 'in_progress').length;
+    const abandoned = sessions.filter((s) => s.status === 'abandoned').length;
 
     res.json({
       analytics,
@@ -575,9 +576,7 @@ router.get('/onboarding/analytics', async (req, res) => {
         completed,
         inProgress,
         abandoned,
-        completionRate: sessions.length > 0
-          ? Math.round((completed / sessions.length) * 100)
-          : 0,
+        completionRate: sessions.length > 0 ? Math.round((completed / sessions.length) * 100) : 0,
       },
     });
   } catch (error) {
