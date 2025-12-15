@@ -93,7 +93,7 @@ import { registerProductPricingRoutes } from './routes-product-pricing';
 import { registerSoftwareProductsRoutes } from './routes-software-products';
 // OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
 // import { registerInvoicesRoutes } from './routes-invoices';
-import { setupAuth } from './replitAuth';
+import { setupAuth, isAuthenticated } from './replitAuth';
 import { registerPurchaseOrderRoutes } from './routes-purchase-orders';
 import { registerWarehouseRoutes } from './routes-warehouse';
 import { registerServiceAnalysisRoutes } from './routes-service-analysis';
@@ -646,6 +646,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup passport authentication
   await setupAuth(app);
+
+  // Global authentication middleware for all API routes except public/auth routes
+  // This ensures req.user is populated from Supabase JWT for all protected routes
+  app.use('/api', async (req: any, res, next) => {
+    // Routes that don't require authentication
+    const publicPaths = [
+      '/api/auth', // All auth routes (login, register, callback, etc.)
+      '/api/health', // Health check endpoints
+      '/api/csrf-token', // CSRF token endpoint
+      '/api/trial', // Trial signup
+      '/api/knowledge-base', // Public knowledge base articles
+      '/api/signup-crm', // CRM signup flow
+    ];
+
+    // Check if the request path starts with any public path
+    if (publicPaths.some((p) => req.path.startsWith(p))) {
+      return next();
+    }
+
+    // For all other API routes, require authentication
+    return isAuthenticated(req, res, next);
+  });
 
   // CSRF protection for state-changing routes (session-based)
   // Exempt specific API endpoints that must be CSRF-free (webhooks, file uploads tokens, public GETs)
