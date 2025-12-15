@@ -27,151 +27,153 @@ This guide covers deploying the SEO Blog Writer Agent workflow in a Coolify-host
 
 1. **Coolify Instance** with N8N deployed
 2. **Self-Hosted Supabase** (PostgreSQL + Storage)
-3. **API Keys**:
-   - OpenRouter API key
+3. **API Keys** (Direct access - no OpenRouter needed):
+   - OpenAI API key
+   - Anthropic (Claude) API key
    - Perplexity API key
 
-## Step 1: Database Setup
+## Step 1: Environment Variables in Coolify
 
-### 1.1 Push Schema Changes
+### N8N Service Environment Variables
 
-Run the following to create the `blog_content_queue` table:
+Add these to your N8N service in Coolify:
+
+```env
+# ═══════════════════════════════════════════════════════════════
+# SUPABASE CONNECTION (Printyx-specific naming)
+# ═══════════════════════════════════════════════════════════════
+# Your self-hosted Supabase API URL
+PRINTYX_SUPABASE_URL=https://api.printyx.net
+
+# Service role key for admin operations (NOT the anon key)
+PRINTYX_SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# ═══════════════════════════════════════════════════════════════
+# AI SERVICES - DIRECT API ACCESS
+# ═══════════════════════════════════════════════════════════════
+# OpenAI API key - Used for GPT-4o-mini (SERP analysis, SEO metadata) and DALL-E 3 (images)
+OPENAI_API_KEY=sk-...
+
+# Anthropic Claude API key - Used for Claude 3.5 Haiku/Sonnet (content generation)
+CLAUDE_API_KEY=sk-ant-...
+
+# Perplexity API key - Used for web research and SERP data
+PERPLEXITY_API_KEY=pplx-...
+```
+
+### Environment Variable Descriptions
+
+| Variable | Description | Where to Get |
+|----------|-------------|--------------|
+| `PRINTYX_SUPABASE_URL` | Your Supabase REST API URL. For self-hosted, this is typically your Kong gateway URL (e.g., `https://api.printyx.net`) | Coolify Supabase service config |
+| `PRINTYX_SUPABASE_SERVICE_ROLE_KEY` | Service role JWT for admin operations. Has full database access, bypasses RLS | Supabase Dashboard > Settings > API |
+| `OPENAI_API_KEY` | OpenAI API key for GPT and DALL-E | https://platform.openai.com/api-keys |
+| `CLAUDE_API_KEY` | Anthropic API key for Claude models | https://console.anthropic.com/settings/keys |
+| `PERPLEXITY_API_KEY` | Perplexity API key for research | https://www.perplexity.ai/settings/api |
+
+## Step 2: Database Setup
+
+### 2.1 Push Schema Changes
+
+The `blog_content_queue` table has been added to `shared/content-marketing-schema.ts`. Push it to your database:
 
 ```bash
 npm run db:push
 ```
 
-This will create:
-- `blog_content_queue` table (for pending content requests)
+This creates:
+- `blog_content_queue` table with status tracking
 - Required indexes for efficient querying
 
-### 1.2 Create Storage Bucket
+### 2.2 Create Storage Bucket
 
-In your Supabase dashboard or via SQL:
+In your Supabase SQL Editor, run:
 
 ```sql
 -- Create the blog-images bucket
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('blog-images', 'blog-images', true);
+VALUES ('blog-images', 'blog-images', true)
+ON CONFLICT (id) DO NOTHING;
 
--- Allow public read access
-CREATE POLICY "Public Access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'blog-images');
+-- Allow public read access to images
+CREATE POLICY "Public Access" ON storage.objects
+FOR SELECT USING (bucket_id = 'blog-images');
 
--- Allow authenticated uploads via service role
-CREATE POLICY "Service Role Upload"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'blog-images');
+-- Allow service role to upload images
+CREATE POLICY "Service Role Upload" ON storage.objects
+FOR INSERT WITH CHECK (bucket_id = 'blog-images');
+
+-- Allow service role to delete images
+CREATE POLICY "Service Role Delete" ON storage.objects
+FOR DELETE USING (bucket_id = 'blog-images');
 ```
 
-### 1.3 Verify Tables Exist
+### 2.3 Verify Tables
 
 ```sql
--- Check blog_posts table
+-- Check blog_content_queue table exists
 SELECT column_name, data_type
 FROM information_schema.columns
-WHERE table_name = 'blog_posts';
+WHERE table_name = 'blog_content_queue'
+ORDER BY ordinal_position;
 
--- Check blog_content_queue table
+-- Check blog_posts table exists
 SELECT column_name, data_type
 FROM information_schema.columns
-WHERE table_name = 'blog_content_queue';
+WHERE table_name = 'blog_posts'
+ORDER BY ordinal_position;
 ```
 
-## Step 2: N8N Configuration in Coolify
+## Step 3: Import Workflow into N8N
 
-### 2.1 Environment Variables
+### 3.1 Import the Workflow
 
-Add these environment variables to your N8N service in Coolify:
-
-```env
-# Supabase Connection
-SUPABASE_URL=https://api.printyx.net
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# OpenRouter (for AI models)
-OPENROUTER_API_KEY=your-openrouter-key
-
-# Perplexity (for research)
-PERPLEXITY_API_KEY=your-perplexity-key
-```
-
-### 2.2 Import the Workflow
-
-1. Open N8N in your browser
+1. Open N8N in your browser (via Coolify)
 2. Go to **Workflows** > **Import from File**
 3. Select `SEO-Blog-Writer-Supabase.json`
-4. Review and save the workflow
+4. Save the workflow
 
-### 2.3 Configure Credentials
+### 3.2 No Credentials Needed!
 
-Create these credentials in N8N:
+Unlike the original workflow, this version uses **direct HTTP requests** with environment variables. No N8N credentials need to be configured - all API keys are read from `$env.*` variables.
 
-#### HTTP Header Auth (Supabase)
-- **Name**: `Supabase API`
-- **Header Name**: `apikey`
-- **Header Value**: Use expression `{{ $env.SUPABASE_SERVICE_ROLE_KEY }}`
+This approach:
+- Simplifies setup (no credential management in N8N)
+- Makes it easier to update keys (just change env vars)
+- Works better with Coolify's environment management
 
-#### HTTP Bearer Auth (Perplexity)
-- **Name**: `Perplexity Auth`
-- **Token**: Your Perplexity API key
+## Step 4: Model Usage and Costs
 
-#### OpenRouter API
-- **Name**: `OpenRouter API`
-- **API Key**: Your OpenRouter API key
+### Models Used
 
-## Step 3: Workflow Configuration
+| Stage | API | Model | Purpose |
+|-------|-----|-------|---------|
+| Research | Perplexity | `sonar-pro` | Web search, SERP data, competitor analysis |
+| SERP Analysis | OpenAI | `gpt-4o-mini` | Parse research into structured JSON |
+| Title Refinement | Anthropic | `claude-3-5-haiku` | Optimize title for CTR |
+| Key Takeaways | Anthropic | `claude-3-5-haiku` | Summary bullet points |
+| Outline | Anthropic | `claude-3-5-haiku` | Article structure |
+| Content Writing | Anthropic | `claude-3-5-sonnet` | Main 2500-3500 word article |
+| Humanizing | Anthropic | `claude-3-5-haiku` | Remove AI-sounding phrases |
+| SEO Metadata | OpenAI | `gpt-4o-mini` | Meta title, description, slug |
+| Image Generation | OpenAI | `dall-e-3` | Featured image (1792x1024) |
 
-### 3.1 Adjust Schedule Trigger
+### Estimated Cost per Article
 
-The default schedule runs every 6 hours. Modify in the **Schedule Trigger** node:
+| Component | Estimated Cost |
+|-----------|---------------|
+| Perplexity Research | ~$0.02 |
+| OpenAI GPT-4o-mini (2 calls) | ~$0.01 |
+| Claude Haiku (4 calls) | ~$0.04 |
+| Claude Sonnet (1 call) | ~$0.15 |
+| DALL-E 3 Image | ~$0.04 |
+| **Total per article** | **~$0.26** |
 
-```json
-{
-  "rule": {
-    "interval": [
-      {
-        "field": "hours",
-        "hoursInterval": 6
-      }
-    ]
-  }
-}
-```
+At 5 articles/day = ~$39/month
 
-Options:
-- `hoursInterval: 1` - Every hour
-- `hoursInterval: 12` - Twice daily
-- `hoursInterval: 24` - Once daily
+## Step 5: Using the System
 
-### 3.2 Batch Size
-
-The workflow processes 5 posts per run. Adjust in **Get Pending Posts** node:
-
-```
-limit=5
-```
-
-### 3.3 AI Model Selection
-
-The workflow uses these models via OpenRouter:
-
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| SERP Analysis | GPT-4.1 Mini | Research parsing |
-| Title Refiner | Claude 3.5 Haiku | CTR optimization |
-| Key Takeaways | Claude 3.5 Haiku | Summary generation |
-| Outline | Claude 3.5 Haiku | Structure planning |
-| Content Writer | Claude Sonnet 4 | Main article |
-| Humanizer | Claude 3.5 Haiku | Polish content |
-| SEO Meta | Claude 3.5 Haiku | Metadata generation |
-
-To change models, update the **model** parameter in the respective LLM nodes.
-
-## Step 4: Using the System
-
-### 4.1 Adding Content Requests
+### 5.1 Adding Content to the Queue
 
 Insert rows into `blog_content_queue`:
 
@@ -189,35 +191,28 @@ INSERT INTO blog_content_queue (
   '["copier service management", "field service automation", "technician scheduling"]',
   'service_operations',
   'copier dealers, print service providers, office equipment dealers',
-  1
+  1  -- Higher priority = processed first
 );
 ```
 
-### 4.2 Via Printyx Admin UI
+### 5.2 Available Categories
 
-Create an admin page to manage the queue:
+From `content_category` enum:
 
-```typescript
-// Example API endpoint for adding to queue
-app.post('/api/blog-content-queue', requireAuth, async (req, res) => {
-  const { title, primaryKeyword, secondaryKeywords, category, targetAudience, priority } = req.body;
+| Category | Description |
+|----------|-------------|
+| `operational_efficiency` | Workflow and process optimization |
+| `meter_billing` | Meter reading and billing automation |
+| `service_operations` | Service dispatch and technician management |
+| `business_growth` | Sales, marketing, revenue growth |
+| `integration` | Third-party integrations |
+| `mobile` | Mobile apps and field service |
+| `analytics` | Reporting and business intelligence |
+| `automation` | Process automation and AI |
+| `security` | Data security and compliance |
+| `industry_news` | Industry trends and updates |
 
-  const result = await db.insert(blogContentQueue).values({
-    title,
-    primaryKeyword,
-    secondaryKeywords,
-    category,
-    targetAudience,
-    priority: priority || 0,
-    requestedBy: req.user.id,
-    tenantId: req.tenantId,
-  }).returning();
-
-  res.json(result[0]);
-});
-```
-
-### 4.3 Checking Status
+### 5.3 Monitor Queue Status
 
 ```sql
 -- View queue status
@@ -231,177 +226,264 @@ SELECT
   generated_title,
   error_message
 FROM blog_content_queue
-ORDER BY created_at DESC;
+ORDER BY created_at DESC
+LIMIT 20;
 
--- View generated posts
+-- Count by status
+SELECT status, COUNT(*)
+FROM blog_content_queue
+GROUP BY status;
+```
+
+### 5.4 View Generated Posts
+
+```sql
+-- View recent drafts
 SELECT
   id,
   title,
   slug,
+  word_count,
+  read_time,
   status,
   created_at
 FROM blog_posts
 WHERE status = 'draft'
-ORDER BY created_at DESC;
+ORDER BY created_at DESC
+LIMIT 10;
 ```
 
-## Step 5: Content Categories
+## Step 6: Schedule Configuration
 
-Available categories (from `content_category` enum):
+### Default Schedule
 
-| Category | Description |
-|----------|-------------|
-| `operational_efficiency` | Workflow and process optimization |
-| `meter_billing` | Meter reading and billing automation |
-| `service_operations` | Service dispatch and technician management |
-| `business_growth` | Sales, marketing, revenue growth |
-| `integration` | Third-party integrations (ERP, accounting) |
-| `mobile` | Mobile apps and field service |
-| `analytics` | Reporting and business intelligence |
-| `automation` | Process automation and AI |
-| `security` | Data security and compliance |
-| `industry_news` | Industry trends and updates |
+The workflow runs every **6 hours** and processes up to **5 pending posts** per run.
 
-## Step 6: Monitoring & Troubleshooting
+### Modify Schedule
 
-### 6.1 N8N Execution History
-
-Check workflow executions in N8N:
-- **Workflows** > Select workflow > **Executions**
-- Filter by status: Success, Error, Running
-
-### 6.2 Common Issues
-
-#### Issue: Supabase Connection Failed
-```
-Error: Invalid API key
-```
-**Solution**: Verify `SUPABASE_SERVICE_ROLE_KEY` is correct and not the anon key.
-
-#### Issue: OpenRouter Rate Limit
-```
-Error: 429 Too Many Requests
-```
-**Solution**: Reduce batch size or add delays between API calls.
-
-#### Issue: Image Upload Failed
-```
-Error: Storage bucket not found
-```
-**Solution**: Create the `blog-images` bucket in Supabase Storage.
-
-#### Issue: Content Too Short
-```
-Generated content under 2000 words
-```
-**Solution**: Adjust the Content Writer Agent prompt to emphasize word count.
-
-### 6.3 Error Recovery
-
-Failed items remain in the queue with `status = 'failed'`. To retry:
-
-```sql
--- Reset failed items to pending
-UPDATE blog_content_queue
-SET
-  status = 'pending',
-  error_message = NULL,
-  failed_at = NULL
-WHERE status = 'failed';
-```
-
-## Step 7: Customization
-
-### 7.1 Industry-Specific Prompts
-
-The workflow is configured for copier/print dealers. To adapt for other industries:
-
-1. Update system prompts in each Agent node
-2. Modify the `target_audience` default value
-3. Adjust category enum if needed
-
-### 7.2 Adding FAQs
-
-Extend the workflow to generate FAQs:
+Edit the **Schedule Trigger** node:
 
 ```json
 {
-  "promptType": "define",
-  "text": "Generate 5-7 FAQs for this article...",
-  "options": {
-    "systemMessage": "Generate SEO-optimized FAQ questions..."
+  "rule": {
+    "interval": [
+      {
+        "field": "hours",
+        "hoursInterval": 6  // Change this value
+      }
+    ]
   }
 }
 ```
 
-### 7.3 Multi-Language Support
+Options:
+- `1` - Every hour
+- `6` - Every 6 hours (default)
+- `12` - Twice daily
+- `24` - Once daily
 
-Add a language field to the queue and modify prompts:
+### Modify Batch Size
 
-```sql
-ALTER TABLE blog_content_queue
-ADD COLUMN target_language varchar(10) DEFAULT 'en';
+Edit the **Get Pending Posts** node query parameter:
+
+```
+limit=5  // Change to desired batch size
 ```
 
-## Step 8: Integration with Printyx Frontend
+## Step 7: Troubleshooting
 
-### 8.1 Display Generated Posts
+### Common Issues
+
+#### Issue: `401 Unauthorized` from Supabase
+```
+Error: Invalid API key
+```
+**Cause**: Wrong key or missing `Authorization` header
+**Solution**:
+1. Verify `PRINTYX_SUPABASE_SERVICE_ROLE_KEY` is the **service role** key (not anon key)
+2. Check the key hasn't expired
+3. Ensure the environment variable is properly set in Coolify
+
+#### Issue: `403 Forbidden` on Storage Upload
+```
+Error: new row violates row-level security policy
+```
+**Solution**: Create the storage policies from Step 2.2
+
+#### Issue: OpenAI Rate Limit
+```
+Error: 429 Too Many Requests
+```
+**Solution**:
+1. Reduce batch size
+2. Increase schedule interval
+3. Check your OpenAI usage tier
+
+#### Issue: Claude API Error
+```
+Error: invalid_api_key
+```
+**Solution**:
+1. Verify `CLAUDE_API_KEY` starts with `sk-ant-`
+2. Check key hasn't been revoked
+3. Ensure account has API access enabled
+
+#### Issue: Content Too Short
+```
+Generated article under 2000 words
+```
+**Solution**: The Content Writer prompt specifies 2,500-3,500 words. If consistently short:
+1. Check research data is being passed correctly
+2. Verify outline has enough sections
+3. Consider increasing `max_tokens` in the Content Writer node
+
+### Error Recovery
+
+Failed items remain in queue with `status = 'failed'`. To retry:
+
+```sql
+-- View failed items with errors
+SELECT id, title, error_message, failed_at
+FROM blog_content_queue
+WHERE status = 'failed'
+ORDER BY failed_at DESC;
+
+-- Reset specific item to pending
+UPDATE blog_content_queue
+SET
+  status = 'pending',
+  error_message = NULL,
+  failed_at = NULL,
+  started_at = NULL
+WHERE id = 'your-uuid-here';
+
+-- Reset all failed items
+UPDATE blog_content_queue
+SET
+  status = 'pending',
+  error_message = NULL,
+  failed_at = NULL,
+  started_at = NULL
+WHERE status = 'failed';
+```
+
+## Step 8: Integration with Printyx App
+
+### 8.1 API Endpoint for Queue Management
+
+Add to your Express routes:
 
 ```typescript
-// client/src/pages/BlogAdmin.tsx
-const { data: posts } = useQuery({
-  queryKey: ['blog-posts', 'draft'],
-  queryFn: () => fetch('/api/blog-posts?status=draft').then(r => r.json())
+// server/routes/blog-content-queue.ts
+import { Router } from 'express';
+import { db } from '../db';
+import { blogContentQueue, insertBlogContentQueueSchema } from '@shared/content-marketing-schema';
+import { eq } from 'drizzle-orm';
+
+const router = Router();
+
+// List queue items
+router.get('/api/blog-content-queue', requireAuth, async (req, res) => {
+  const items = await db.query.blogContentQueue.findMany({
+    orderBy: (q, { desc }) => [desc(q.createdAt)],
+    limit: 50
+  });
+  res.json(items);
+});
+
+// Add to queue
+router.post('/api/blog-content-queue', requireAuth, async (req, res) => {
+  const parsed = insertBlogContentQueueSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
+  const result = await db.insert(blogContentQueue)
+    .values({
+      ...parsed.data,
+      requestedBy: req.user.id,
+      tenantId: req.tenantId,
+    })
+    .returning();
+
+  res.json(result[0]);
+});
+
+// Cancel queue item
+router.patch('/api/blog-content-queue/:id/cancel', requireAuth, async (req, res) => {
+  const result = await db.update(blogContentQueue)
+    .set({ status: 'cancelled' })
+    .where(eq(blogContentQueue.id, req.params.id))
+    .returning();
+
+  res.json(result[0]);
+});
+
+export default router;
+```
+
+### 8.2 Publish Draft Posts
+
+```typescript
+// Publish a generated draft
+router.patch('/api/blog-posts/:id/publish', requireAuth, async (req, res) => {
+  const result = await db.update(blogPosts)
+    .set({
+      status: 'published',
+      publishedAt: new Date(),
+      updatedAt: new Date()
+    })
+    .where(eq(blogPosts.id, req.params.id))
+    .returning();
+
+  res.json(result[0]);
 });
 ```
 
-### 8.2 Publish Flow
+## Step 9: Security Considerations
 
-```typescript
-// Publish a draft post
-const publishPost = async (postId: string) => {
-  await fetch(`/api/blog-posts/${postId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      status: 'published',
-      publishedAt: new Date().toISOString()
-    })
-  });
-};
+1. **Service Role Key**: Only used server-side (N8N). Never expose to clients.
+
+2. **Storage Bucket**: Public read, but uploads require service role.
+
+3. **Content Review**: All posts generate as `draft` - require manual publish.
+
+4. **Rate Limiting**: Consider adding rate limits to queue API.
+
+5. **API Key Rotation**: Regularly rotate API keys and update in Coolify.
+
+## Quick Reference
+
+### Environment Variables Summary
+
+```env
+# Supabase (Printyx naming convention)
+PRINTYX_SUPABASE_URL=https://api.printyx.net
+PRINTYX_SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# AI APIs (Direct access)
+OPENAI_API_KEY=sk-...
+CLAUDE_API_KEY=sk-ant-...
+PERPLEXITY_API_KEY=pplx-...
 ```
 
-### 8.3 Public Blog Display
+### Useful SQL Queries
 
-The generated content is stored with proper SEO metadata and structured data for:
-- Meta tags (title, description)
-- Open Graph tags
-- Schema.org Article markup
-- Automatic slug generation
+```sql
+-- Add high-priority content request
+INSERT INTO blog_content_queue (title, primary_keyword, category, priority)
+VALUES ('Your Topic', 'your keyword', 'operational_efficiency', 10);
 
-## Cost Estimation
+-- Check workflow progress
+SELECT title, status, started_at FROM blog_content_queue
+WHERE status = 'processing';
 
-| Component | Estimated Cost/Post |
-|-----------|---------------------|
-| Perplexity Research | ~$0.02 |
-| OpenRouter (Claude Haiku) | ~$0.05 |
-| OpenRouter (Claude Sonnet) | ~$0.15 |
-| Image Generation | ~$0.01 |
-| **Total per post** | **~$0.23** |
+-- Get latest generated posts
+SELECT title, slug, word_count FROM blog_posts
+ORDER BY created_at DESC LIMIT 5;
+```
 
-At 5 posts/day = ~$35/month
+### Workflow Files
 
-## Security Considerations
-
-1. **Service Role Key**: Only use in server-side contexts (N8N)
-2. **Storage Policies**: Ensure proper RLS on storage buckets
-3. **Rate Limiting**: Consider adding rate limits to the queue API
-4. **Content Review**: All posts generate as `draft` status for human review
-
-## Next Steps
-
-1. Set up the workflow following this guide
-2. Add 5-10 content requests to test
-3. Review generated drafts for quality
-4. Adjust prompts based on output quality
-5. Create admin UI for queue management
-6. Set up content calendar integration
+- `SEO-Blog-Writer-Supabase.json` - Main N8N workflow
+- `shared/content-marketing-schema.ts` - Database schema (includes `blogContentQueue`)
