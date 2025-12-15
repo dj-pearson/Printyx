@@ -53,7 +53,20 @@ export default function Login() {
 
       // Restore last visited route or go to dashboard
       const lastRoute = localStorage.getItem('printyx_last_route');
-      const redirectTo = lastRoute && lastRoute !== '/login' ? lastRoute : '/';
+      // Exclude auth pages and API routes from redirect targets
+      const invalidRoutes = [
+        '/login',
+        '/signup',
+        '/forgot-password',
+        '/reset-password',
+        '/auth/callback',
+      ];
+      const isValidRoute =
+        lastRoute && !invalidRoutes.includes(lastRoute) && !lastRoute.startsWith('/api/');
+      const redirectTo = isValidRoute ? lastRoute : '/';
+
+      // Clear the stored route after using it
+      localStorage.removeItem('printyx_last_route');
 
       // Use location.replace for smooth transition without back button issue
       window.location.replace(redirectTo);

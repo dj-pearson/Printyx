@@ -1,17 +1,17 @@
-import { useEffect, ReactNode } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import RoleBasedSidebar from "@/components/layout/role-based-sidebar";
-import { RoleAwareCollapsibleSidebar } from "@/components/layout/RoleAwareCollapsibleSidebar";
-import Header from "@/components/layout/header";
-import MobileBottomNav from "@/components/ui/mobile-bottom-nav";
-import { CommandPalette, useCommandPalette } from "@/components/layout/command-palette";
-import { SmartBreadcrumb } from "@/components/layout/smart-breadcrumb";
+import { useEffect, ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import RoleBasedSidebar from '@/components/layout/role-based-sidebar';
+import { RoleAwareCollapsibleSidebar } from '@/components/layout/RoleAwareCollapsibleSidebar';
+import Header from '@/components/layout/header';
+import MobileBottomNav from '@/components/ui/mobile-bottom-nav';
+import { CommandPalette, useCommandPalette } from '@/components/layout/command-palette';
+import { SmartBreadcrumb } from '@/components/layout/smart-breadcrumb';
 import {
   KeyboardShortcutsDialog,
   useKeyboardNavigation,
-} from "@/components/layout/keyboard-shortcuts-dialog";
+} from '@/components/layout/keyboard-shortcuts-dialog';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -30,12 +30,12 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
+        title: 'Unauthorized',
+        description: 'You are logged out. Logging in again...',
+        variant: 'destructive',
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = '/login';
       }, 500);
       return;
     }
@@ -69,9 +69,7 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
           <SmartBreadcrumb />
 
           <main className="flex-1 overflow-auto">
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6">
-              {children}
-            </div>
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6">{children}</div>
           </main>
         </SidebarInset>
 
