@@ -497,3 +497,68 @@ export type InsertContentFaq = z.infer<typeof insertContentFaqSchema>;
 
 export type ContentCitation = typeof contentCitations.$inferSelect;
 export type InsertContentCitation = z.infer<typeof insertContentCitationSchema>;
+
+// ============= BLOG CONTENT QUEUE (for N8N automation) =============
+
+export const blogContentQueueStatusEnum = pgEnum('blog_content_queue_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+  'cancelled'
+]);
+
+export const blogContentQueue = pgTable('blog_content_queue', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id'), // null for platform-level content
+
+  // Input content request
+  title: varchar('title', { length: 500 }).notNull(),
+  primaryKeyword: varchar('primary_keyword', { length: 255 }).notNull(),
+  secondaryKeywords: jsonb('secondary_keywords').$type<string[]>(),
+  category: contentCategoryEnum('category').notNull(),
+  targetAudience: text('target_audience'),
+
+  // Processing priority (higher = processed first)
+  priority: integer('priority').default(0),
+
+  // Status tracking
+  status: blogContentQueueStatusEnum('status').default('pending').notNull(),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  failedAt: timestamp('failed_at'),
+  errorMessage: text('error_message'),
+
+  // Output references (populated after generation)
+  blogPostId: uuid('blog_post_id'), // FK to blog_posts.id
+  generatedTitle: varchar('generated_title', { length: 500 }),
+  generatedSlug: varchar('generated_slug', { length: 255 }),
+
+  // Metadata
+  requestedBy: uuid('requested_by'), // User who requested the content
+  notes: text('notes'), // Any special instructions
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  statusIdx: index('blog_content_queue_status_idx').on(table.status),
+  priorityIdx: index('blog_content_queue_priority_idx').on(table.priority),
+  tenantIdx: index('blog_content_queue_tenant_idx').on(table.tenantId),
+  createdAtIdx: index('blog_content_queue_created_at_idx').on(table.createdAt),
+}));
+
+export const insertBlogContentQueueSchema = createInsertSchema(blogContentQueue).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  completedAt: true,
+  failedAt: true,
+  blogPostId: true,
+  generatedTitle: true,
+  generatedSlug: true,
+});
+
+export type BlogContentQueue = typeof blogContentQueue.$inferSelect;
+export type InsertBlogContentQueue = z.infer<typeof insertBlogContentQueueSchema>;
