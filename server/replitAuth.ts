@@ -7,6 +7,11 @@ import type { Express, RequestHandler } from 'express';
 import memoize from 'memoizee';
 import connectPg from 'connect-pg-simple';
 import { storage } from './storage';
+import {
+  authenticateSupabaseJWT,
+  isSupabaseAuthenticated,
+  type SupabaseUser,
+} from './middleware/supabase-auth';
 
 // Replit Auth is optional - only used when running on Replit platform
 const isReplitEnvironment = !!process.env.REPLIT_DOMAINS && !!process.env.REPL_ID;
@@ -156,7 +161,35 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // SECURITY FIX: Restrict test mode to development/test environments only
+  // Priority 1: Check for Supabase JWT authentication
+  // First, try to authenticate the JWT (sets req.supabaseUser if valid)
+  await new Promise<void>((resolve) => {
+    authenticateSupabaseJWT(req, res, () => resolve());
+  });
+
+  // If Supabase JWT is valid, use that for authentication
+  if (isSupabaseAuthenticated(req)) {
+    const supabaseUser = (req as any).supabaseUser as SupabaseUser;
+
+    // Populate req.user for backward compatibility with existing routes
+    req.user = {
+      claims: { sub: supabaseUser.id },
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      tenantId: supabaseUser.tenantId,
+      roleId: supabaseUser.roleId,
+      accessScope: supabaseUser.accessScope,
+      isPlatformUser: supabaseUser.isPlatformUser,
+      expires_at: supabaseUser.exp,
+    };
+
+    // Set tenant context
+    (req as any).tenantId = supabaseUser.tenantId;
+
+    return next();
+  }
+
+  // Priority 2: Test mode (development/test environments only)
   const isTestMode =
     (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
     process.env.TEST_MODE === 'true';
@@ -214,7 +247,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     }
   }
 
-  // Support both OIDC and session-based authentication
+  // Priority 3: Legacy session-based authentication (deprecated)
   const sessionUserId = (req.session as any)?.userId;
   const sessionTenantId = (req.session as any)?.tenantId;
   const user = req.user as any;

@@ -48,8 +48,7 @@ export default function Login() {
         title: 'Login successful',
         description: 'Welcome back!',
       });
-      // Invalidate auth queries to fetch fresh user data
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      // Invalidate Supabase auth query to fetch fresh user data
       queryClient.invalidateQueries({ queryKey: ['supabase-auth-user'] });
 
       // Restore last visited route or go to dashboard
