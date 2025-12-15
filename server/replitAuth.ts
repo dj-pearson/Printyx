@@ -171,20 +171,47 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   if (isSupabaseAuthenticated(req)) {
     const supabaseUser = (req as any).supabaseUser as SupabaseUser;
 
+    // If tenantId is not in JWT, try to look it up from database
+    let tenantId = supabaseUser.tenantId;
+    let roleId = supabaseUser.roleId;
+
+    if (!tenantId || !roleId) {
+      try {
+        const dbUser = await storage.getUser(supabaseUser.id);
+        if (dbUser) {
+          tenantId = tenantId || dbUser.tenantId;
+          roleId = roleId || dbUser.roleId;
+          console.log('[Auth] Loaded user context from DB:', {
+            userId: supabaseUser.id,
+            tenantId,
+            roleId,
+          });
+        } else {
+          // User not in database - use default demo tenant
+          tenantId =
+            tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+          console.log('[Auth] User not in DB, using demo tenant:', tenantId);
+        }
+      } catch (error) {
+        console.error('[Auth] Error looking up user:', error);
+        tenantId = tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+      }
+    }
+
     // Populate req.user for backward compatibility with existing routes
     req.user = {
       claims: { sub: supabaseUser.id },
       id: supabaseUser.id,
       email: supabaseUser.email,
-      tenantId: supabaseUser.tenantId,
-      roleId: supabaseUser.roleId,
-      accessScope: supabaseUser.accessScope,
+      tenantId: tenantId,
+      roleId: roleId,
+      accessScope: supabaseUser.accessScope || 'company',
       isPlatformUser: supabaseUser.isPlatformUser,
       expires_at: supabaseUser.exp,
     };
 
     // Set tenant context
-    (req as any).tenantId = supabaseUser.tenantId;
+    (req as any).tenantId = tenantId;
 
     return next();
   }
