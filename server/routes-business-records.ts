@@ -1,18 +1,14 @@
-import type { Express } from "express";
-import { storage } from "./storage";
-import { isAuthenticated } from "./replitAuth";
-import {
-  resolveTenant,
-  requireTenant,
-  TenantRequest,
-} from "./middleware/tenancy";
-import { BusinessRecordsTransformer } from "./data-field-mapping";
+import type { Express } from 'express';
+import { storage } from './storage';
+import { isAuthenticated } from './replitAuth';
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
+import { BusinessRecordsTransformer } from './data-field-mapping';
 import {
   generateCompanyDisplayId,
   generateUniqueUrlSlug,
-  updateBusinessRecordWithIdentifiers
-} from "./utils/company-id-generator";
-import { cacheControl, etag, varyByTenant } from "./middleware/cache-middleware";
+  updateBusinessRecordWithIdentifiers,
+} from './utils/company-id-generator';
+import { cacheControl, etag, varyByTenant } from './middleware/cache-middleware';
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -20,20 +16,21 @@ import {
   hasPermission,
   getQueryBuilder,
   PERMISSIONS,
-  type AuthenticatedRequest
-} from "./middleware/rbac-route-helper";
+  type AuthenticatedRequest,
+} from './middleware/rbac-route-helper';
 // Lead Intelligence - Auto-scoring and enrichment
-import { leadIntelligenceService } from "./services/lead-intelligence-service";
+import { leadIntelligenceService } from './services/lead-intelligence-service';
 
 export function registerBusinessRecordRoutes(app: Express) {
-  // Apply RBAC context to all business records routes
-  app.use("/api/business-records", enhanceUserContext);
+  // Apply authentication and RBAC context to all business records routes
+  // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
+  app.use('/api/business-records', isAuthenticated, enhanceUserContext);
 
   // Unified Business Records API - supports entire lead-to-customer lifecycle
 
   // Get all business records with filtering - requires lead/customer view permission
   app.get(
-    "/api/business-records",
+    '/api/business-records',
     resolveTenant,
     requireTenant,
     requirePermission([
@@ -41,7 +38,7 @@ export function registerBusinessRecordRoutes(app: Express) {
       PERMISSIONS.SALES.LEAD.VIEW_TEAM,
       PERMISSIONS.SALES.LEAD.VIEW_LOCATION,
       PERMISSIONS.SALES.CUSTOMER.VIEW_OWN,
-      PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM
+      PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM,
     ]),
     varyByTenant(),
     cacheControl(180), // Cache for 3 minutes
@@ -56,23 +53,23 @@ export function registerBusinessRecordRoutes(app: Express) {
           recordType as string,
           status as string,
           search as string,
-          limit ? parseInt(limit as string) : undefined
+          limit ? parseInt(limit as string) : undefined,
         );
         // Transform database fields to frontend format
         const transformedRecords = records.map((record) =>
-          BusinessRecordsTransformer.toFrontend(record)
+          BusinessRecordsTransformer.toFrontend(record),
         );
         res.json(transformedRecords);
       } catch (error) {
-        console.error("Error fetching business records:", error);
-        res.status(500).json({ message: "Failed to fetch business records" });
+        console.error('Error fetching business records:', error);
+        res.status(500).json({ message: 'Failed to fetch business records' });
       }
-    }
+    },
   );
 
   // Get specific business record by ID or URL slug
   app.get(
-    "/api/business-records/:identifier",
+    '/api/business-records/:identifier',
     resolveTenant,
     requireTenant,
     varyByTenant(),
@@ -84,10 +81,11 @@ export function registerBusinessRecordRoutes(app: Express) {
         const { identifier } = req.params;
 
         let record;
-        
+
         // Check if identifier is a URL slug (contains dashes and ends with display ID)
-        const isSlug = identifier.includes('-') && identifier.length > 20 && /\d{8}$/.test(identifier);
-        
+        const isSlug =
+          identifier.includes('-') && identifier.length > 20 && /\d{8}$/.test(identifier);
+
         if (isSlug) {
           // Look up by URL slug using direct database query
           record = await storage.getBusinessRecordBySlug(identifier, tenantId);
@@ -97,22 +95,22 @@ export function registerBusinessRecordRoutes(app: Express) {
         }
 
         if (!record) {
-          return res.status(404).json({ message: "Business record not found" });
+          return res.status(404).json({ message: 'Business record not found' });
         }
 
         // Transform database fields to frontend format
         const transformedRecord = BusinessRecordsTransformer.toFrontend(record);
         res.json(transformedRecord);
       } catch (error) {
-        console.error("Error fetching business record:", error);
-        res.status(500).json({ message: "Failed to fetch business record" });
+        console.error('Error fetching business record:', error);
+        res.status(500).json({ message: 'Failed to fetch business record' });
       }
-    }
+    },
   );
 
   // Create new business record (can be lead or customer)
   app.post(
-    "/api/business-records",
+    '/api/business-records',
     resolveTenant,
     requireTenant,
     async (req: TenantRequest, res) => {
@@ -123,37 +121,31 @@ export function registerBusinessRecordRoutes(app: Express) {
         const tenantId = req.tenantId!;
 
         if (!userId) {
-          return res.status(401).json({ message: "Authentication required" });
+          return res.status(401).json({ message: 'Authentication required' });
         }
 
         // Transform frontend data to database format
         const frontendData = req.body;
-        console.log(
-          "[DEBUG] Frontend data received:",
-          JSON.stringify(frontendData, null, 2)
-        );
+        console.log('[DEBUG] Frontend data received:', JSON.stringify(frontendData, null, 2));
         const dbData = BusinessRecordsTransformer.toDb(frontendData);
-        console.log(
-          "[DEBUG] Transformed db data:",
-          JSON.stringify(dbData, null, 2)
-        );
+        console.log('[DEBUG] Transformed db data:', JSON.stringify(dbData, null, 2));
 
         // Normalize record type and status
         const recordType = BusinessRecordsTransformer.normalizeRecordType(
-          frontendData.recordType || "lead"
+          frontendData.recordType || 'lead',
         );
         const status = BusinessRecordsTransformer.normalizeStatus(
-          frontendData.status || "new",
-          recordType
+          frontendData.status || 'new',
+          recordType,
         );
 
         // Generate company display ID and URL slug
         const companyDisplayId = await generateCompanyDisplayId(tenantId);
         const urlSlug = await generateUniqueUrlSlug(
-          recordType, 
-          frontendData.companyName || 'Unnamed Company', 
-          companyDisplayId, 
-          tenantId
+          recordType,
+          frontendData.companyName || 'Unnamed Company',
+          companyDisplayId,
+          tenantId,
         );
 
         const recordData = {
@@ -166,38 +158,40 @@ export function registerBusinessRecordRoutes(app: Express) {
           companyDisplayId: companyDisplayId,
           urlSlug: urlSlug,
         };
-        console.log(
-          "[DEBUG] Final record data with IDs:",
-          JSON.stringify(recordData, null, 2)
-        );
+        console.log('[DEBUG] Final record data with IDs:', JSON.stringify(recordData, null, 2));
 
         const newRecord = await storage.createBusinessRecord(recordData);
 
         // Auto-process lead for scoring and enrichment (non-blocking)
         if (recordType === 'lead') {
-          leadIntelligenceService.processNewLead(newRecord.id, tenantId, userId)
-            .then(result => {
-              console.log(`[Lead Intelligence] Auto-processed lead ${newRecord.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`);
+          leadIntelligenceService
+            .processNewLead(newRecord.id, tenantId, userId)
+            .then((result) => {
+              console.log(
+                `[Lead Intelligence] Auto-processed lead ${newRecord.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`,
+              );
             })
-            .catch(error => {
-              console.error(`[Lead Intelligence] Failed to auto-process lead ${newRecord.id}:`, error);
+            .catch((error) => {
+              console.error(
+                `[Lead Intelligence] Failed to auto-process lead ${newRecord.id}:`,
+                error,
+              );
             });
         }
 
         // Transform response back to frontend format
-        const transformedNewRecord =
-          BusinessRecordsTransformer.toFrontend(newRecord);
+        const transformedNewRecord = BusinessRecordsTransformer.toFrontend(newRecord);
         res.status(201).json(transformedNewRecord);
       } catch (error) {
-        console.error("Error creating business record:", error);
-        res.status(500).json({ message: "Failed to create business record" });
+        console.error('Error creating business record:', error);
+        res.status(500).json({ message: 'Failed to create business record' });
       }
-    }
+    },
   );
 
   // Update business record
   app.put(
-    "/api/business-records/:id",
+    '/api/business-records/:id',
     resolveTenant,
     requireTenant,
     async (req: TenantRequest, res) => {
@@ -209,115 +203,115 @@ export function registerBusinessRecordRoutes(app: Express) {
         const { id } = req.params;
 
         if (!userId) {
-          return res.status(401).json({ message: "Authentication required" });
+          return res.status(401).json({ message: 'Authentication required' });
         }
 
         const frontendData = req.body as Record<string, any>;
         console.log(
-          "[DEBUG] UPDATE - Frontend data received:",
-          JSON.stringify(frontendData, null, 2)
+          '[DEBUG] UPDATE - Frontend data received:',
+          JSON.stringify(frontendData, null, 2),
         );
 
         // Whitelist of updatable fields aligned with Drizzle schema camelCase properties
         const allowedKeys = [
           // Record lifecycle
-          "recordType",
-          "status",
-          "priority",
+          'recordType',
+          'status',
+          'priority',
           // Company
-          "companyName",
-          "accountNumber",
-          "accountType",
-          "website",
-          "industry",
-          "companySize",
-          "employeeCount",
-          "annualRevenue",
-          "customerRating",
-          "parentAccountId",
-          "customerPriority",
-          "slaLevel",
-          "isActive",
-          "upsellOpportunity",
-          "accountNotes",
+          'companyName',
+          'accountNumber',
+          'accountType',
+          'website',
+          'industry',
+          'companySize',
+          'employeeCount',
+          'annualRevenue',
+          'customerRating',
+          'parentAccountId',
+          'customerPriority',
+          'slaLevel',
+          'isActive',
+          'upsellOpportunity',
+          'accountNotes',
           // Primary contact
-          "primaryContactName",
-          "primaryContactEmail",
-          "primaryContactPhone",
-          "primaryContactTitle",
+          'primaryContactName',
+          'primaryContactEmail',
+          'primaryContactPhone',
+          'primaryContactTitle',
           // Billing contact
-          "billingContactName",
-          "billingContactEmail",
-          "billingContactPhone",
+          'billingContactName',
+          'billingContactEmail',
+          'billingContactPhone',
           // Address
-          "addressLine1",
-          "addressLine2",
-          "city",
-          "state",
-          "postalCode",
-          "country",
+          'addressLine1',
+          'addressLine2',
+          'city',
+          'state',
+          'postalCode',
+          'country',
           // Billing address
-          "billingAddressLine1",
-          "billingAddressLine2",
-          "billingCity",
-          "billingState",
-          "billingPostalCode",
+          'billingAddressLine1',
+          'billingAddressLine2',
+          'billingCity',
+          'billingState',
+          'billingPostalCode',
           // Communication
-          "phone",
-          "fax",
-          "preferredContactMethod",
+          'phone',
+          'fax',
+          'preferredContactMethod',
           // Lead pipeline
-          "leadSource",
-          "estimatedAmount",
-          "probability",
-          "closeDate",
-          "salesStage",
-          "interestLevel",
+          'leadSource',
+          'estimatedAmount',
+          'probability',
+          'closeDate',
+          'salesStage',
+          'interestLevel',
           // Assignment
-          "ownerId",
-          "assignedSalesRep",
-          "territory",
-          "accountManagerId",
-          "leadScore",
+          'ownerId',
+          'assignedSalesRep',
+          'territory',
+          'accountManagerId',
+          'leadScore',
           // Customer specific
-          "customerNumber",
-          "customerSince",
-          "customerUntil",
-          "churnReason",
-          "reactivationDate",
-          "churnedDate",
-          "competitorName",
+          'customerNumber',
+          'customerSince',
+          'customerUntil',
+          'churnReason',
+          'reactivationDate',
+          'churnedDate',
+          'competitorName',
           // Financial
-          "creditLimit",
-          "paymentTerms",
-          "billingTerms",
-          "taxExempt",
-          "taxId",
-          "customerTier",
+          'creditLimit',
+          'paymentTerms',
+          'billingTerms',
+          'taxExempt',
+          'taxId',
+          'customerTier',
           // Service
-          "preferredTechnician",
-          "lastServiceDate",
-          "nextScheduledService",
+          'preferredTechnician',
+          'lastServiceDate',
+          'nextScheduledService',
           // Billing status
-          "lastInvoiceDate",
-          "lastPaymentDate",
-          "currentBalance",
+          'lastInvoiceDate',
+          'lastPaymentDate',
+          'currentBalance',
           // Meter reading
-          "lastMeterReadingDate",
-          "nextMeterReadingDate",
+          'lastMeterReadingDate',
+          'nextMeterReadingDate',
           // Activity tracking
-          "lastContactDate",
-          "nextFollowUpDate",
+          'lastContactDate',
+          'nextFollowUpDate',
           // External systems
-          "externalCustomerId",
-          "externalSystemId",
-          "externalSalesforceId",
-          "externalLeadId",
-          "migrationStatus",
-          "lastSyncDate",
-          "externalData",
+          'externalCustomerId',
+          'externalSystemId',
+          'externalSalesforceId',
+          'externalLeadId',
+          'migrationStatus',
+          'lastSyncDate',
+          'externalData',
           // Notes
-          "notes",
+          'notes',
         ];
 
         const updates: Record<string, any> = {};
@@ -335,63 +329,57 @@ export function registerBusinessRecordRoutes(app: Express) {
         // Normalize record type/status and handle lead->customer conversion metadata
         if (frontendData.recordType) {
           const normalizedType = BusinessRecordsTransformer.normalizeRecordType(
-            frontendData.recordType
+            frontendData.recordType,
           );
           const normalizedStatus = BusinessRecordsTransformer.normalizeStatus(
-            frontendData.status || "active",
-            normalizedType
+            frontendData.status || 'active',
+            normalizedType,
           );
           updates.recordType = normalizedType;
           updates.status = normalizedStatus;
-          if (normalizedType === "customer" && !updates.customerSince && !frontendData.customerSince) {
+          if (
+            normalizedType === 'customer' &&
+            !updates.customerSince &&
+            !frontendData.customerSince
+          ) {
             updates.customerSince = new Date();
-            updates.convertedBy = userId || "system";
+            updates.convertedBy = userId || 'system';
           }
         }
 
         console.log(
-          "[DEBUG] UPDATE - Allowed updates after normalization:",
-          JSON.stringify(updates, null, 2)
+          '[DEBUG] UPDATE - Allowed updates after normalization:',
+          JSON.stringify(updates, null, 2),
         );
 
-        const updatedRecord = await storage.updateBusinessRecord(
-          id,
-          tenantId,
-          updates
-        );
+        const updatedRecord = await storage.updateBusinessRecord(id, tenantId, updates);
         if (!updatedRecord) {
-          return res.status(404).json({ message: "Business record not found" });
+          return res.status(404).json({ message: 'Business record not found' });
         }
 
         // Transform response back to frontend format
-        const transformedRecord =
-          BusinessRecordsTransformer.toFrontend(updatedRecord);
+        const transformedRecord = BusinessRecordsTransformer.toFrontend(updatedRecord);
         res.json(transformedRecord);
       } catch (error) {
-        console.error("Error updating business record:", error);
-        res.status(500).json({ message: "Failed to update business record" });
+        console.error('Error updating business record:', error);
+        res.status(500).json({ message: 'Failed to update business record' });
       }
-    }
+    },
   );
 
   // Lead-specific endpoints (filtered views)
-  app.get(
-    "/api/leads",
-    resolveTenant,
-    requireTenant,
-    async (req: TenantRequest, res) => {
-      try {
-        const tenantId = req.tenantId!;
-        const leads = await storage.getLeads(tenantId);
-        res.json(leads);
-      } catch (error) {
-        console.error("Error fetching leads:", error);
-        res.status(500).json({ message: "Failed to fetch leads" });
-      }
+  app.get('/api/leads', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const leads = await storage.getLeads(tenantId);
+      res.json(leads);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      res.status(500).json({ message: 'Failed to fetch leads' });
     }
-  );
+  });
 
-  app.post("/api/leads", isAuthenticated, async (req: any, res) => {
+  app.post('/api/leads', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const userId = req.user?.claims?.sub;
@@ -405,197 +393,162 @@ export function registerBusinessRecordRoutes(app: Express) {
       const newLead = await storage.createLead(leadData);
 
       // Auto-process lead for scoring and enrichment (non-blocking)
-      leadIntelligenceService.processNewLead(newLead.id, tenantId, userId)
-        .then(result => {
-          console.log(`[Lead Intelligence] Auto-processed lead ${newLead.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`);
+      leadIntelligenceService
+        .processNewLead(newLead.id, tenantId, userId)
+        .then((result) => {
+          console.log(
+            `[Lead Intelligence] Auto-processed lead ${newLead.id}: score=${result.score.totalScore}, tier=${result.score.leadTier}`,
+          );
         })
-        .catch(error => {
+        .catch((error) => {
           console.error(`[Lead Intelligence] Failed to auto-process lead ${newLead.id}:`, error);
         });
 
       res.status(201).json(newLead);
     } catch (error) {
-      console.error("Error creating lead:", error);
-      res.status(500).json({ message: "Failed to create lead" });
+      console.error('Error creating lead:', error);
+      res.status(500).json({ message: 'Failed to create lead' });
     }
   });
 
   // Customer-specific endpoints (filtered views)
-  app.get("/api/customers", isAuthenticated, async (req: any, res) => {
+  app.get('/api/customers', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { includeInactive } = req.query;
 
-      const customers = await storage.getCustomers(
-        tenantId,
-        includeInactive === "true"
-      );
+      const customers = await storage.getCustomers(tenantId, includeInactive === 'true');
       res.json(customers);
     } catch (error) {
-      console.error("Error fetching customers:", error);
-      res.status(500).json({ message: "Failed to fetch customers" });
+      console.error('Error fetching customers:', error);
+      res.status(500).json({ message: 'Failed to fetch customers' });
     }
   });
 
-  app.get("/api/customers/:id", isAuthenticated, async (req: any, res) => {
+  app.get('/api/customers/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { id } = req.params;
 
       const customer = await storage.getCustomer(id, tenantId);
       if (!customer) {
-        return res.status(404).json({ message: "Customer not found" });
+        return res.status(404).json({ message: 'Customer not found' });
       }
 
       res.json(customer);
     } catch (error) {
-      console.error("Error fetching customer:", error);
-      res.status(500).json({ message: "Failed to fetch customer" });
+      console.error('Error fetching customer:', error);
+      res.status(500).json({ message: 'Failed to fetch customer' });
     }
   });
 
   // Former customers for reporting
-  app.get("/api/former-customers", isAuthenticated, async (req: any, res) => {
+  app.get('/api/former-customers', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
 
       const formerCustomers = await storage.getFormerCustomers(tenantId);
       res.json(formerCustomers);
     } catch (error) {
-      console.error("Error fetching former customers:", error);
-      res.status(500).json({ message: "Failed to fetch former customers" });
+      console.error('Error fetching former customers:', error);
+      res.status(500).json({ message: 'Failed to fetch former customers' });
     }
   });
 
   // Lead to Customer Conversion - ZERO data duplication
-  app.post("/api/leads/:id/convert", isAuthenticated, async (req: any, res) => {
+  app.post('/api/leads/:id/convert', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const userId = req.user?.claims?.sub;
       const { id } = req.params;
 
-      const convertedCustomer = await storage.convertLeadToCustomer(
-        id,
-        tenantId,
-        userId
-      );
+      const convertedCustomer = await storage.convertLeadToCustomer(id, tenantId, userId);
       if (!convertedCustomer) {
-        return res
-          .status(404)
-          .json({ message: "Lead not found or already converted" });
+        return res.status(404).json({ message: 'Lead not found or already converted' });
       }
 
       res.json({
-        message: "Lead successfully converted to customer",
+        message: 'Lead successfully converted to customer',
         customer: convertedCustomer,
       });
     } catch (error) {
-      console.error("Error converting lead to customer:", error);
-      res.status(500).json({ message: "Failed to convert lead to customer" });
+      console.error('Error converting lead to customer:', error);
+      res.status(500).json({ message: 'Failed to convert lead to customer' });
     }
   });
 
   // Customer Lifecycle Management
-  app.post(
-    "/api/customers/:id/deactivate",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        const userId = req.user?.claims?.sub;
-        const { id } = req.params;
-        const { reason } = req.body;
+  app.post('/api/customers/:id/deactivate', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const userId = req.user?.claims?.sub;
+      const { id } = req.params;
+      const { reason } = req.body;
 
-        if (!reason) {
-          return res
-            .status(400)
-            .json({ message: "Deactivation reason is required" });
-        }
-
-        const deactivatedCustomer = await storage.deactivateCustomer(
-          id,
-          tenantId,
-          userId,
-          reason
-        );
-        if (!deactivatedCustomer) {
-          return res.status(404).json({ message: "Customer not found" });
-        }
-
-        res.json({
-          message: "Customer successfully deactivated",
-          customer: deactivatedCustomer,
-        });
-      } catch (error) {
-        console.error("Error deactivating customer:", error);
-        res.status(500).json({ message: "Failed to deactivate customer" });
+      if (!reason) {
+        return res.status(400).json({ message: 'Deactivation reason is required' });
       }
-    }
-  );
 
-  app.post(
-    "/api/customers/:id/mark-non-payment",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        const userId = req.user?.claims?.sub;
-        const { id } = req.params;
-
-        const customer = await storage.markCustomerNonPayment(
-          id,
-          tenantId,
-          userId
-        );
-        if (!customer) {
-          return res.status(404).json({ message: "Customer not found" });
-        }
-
-        res.json({
-          message: "Customer marked as non-payment",
-          customer,
-        });
-      } catch (error) {
-        console.error("Error marking customer non-payment:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to mark customer non-payment" });
+      const deactivatedCustomer = await storage.deactivateCustomer(id, tenantId, userId, reason);
+      if (!deactivatedCustomer) {
+        return res.status(404).json({ message: 'Customer not found' });
       }
+
+      res.json({
+        message: 'Customer successfully deactivated',
+        customer: deactivatedCustomer,
+      });
+    } catch (error) {
+      console.error('Error deactivating customer:', error);
+      res.status(500).json({ message: 'Failed to deactivate customer' });
     }
-  );
+  });
 
-  app.post(
-    "/api/customers/:id/reactivate",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        const userId = req.user?.claims?.sub;
-        const { id } = req.params;
+  app.post('/api/customers/:id/mark-non-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const userId = req.user?.claims?.sub;
+      const { id } = req.params;
 
-        const reactivatedCustomer = await storage.reactivateCustomer(
-          id,
-          tenantId,
-          userId
-        );
-        if (!reactivatedCustomer) {
-          return res.status(404).json({ message: "Customer not found" });
-        }
-
-        res.json({
-          message: "Customer successfully reactivated",
-          customer: reactivatedCustomer,
-        });
-      } catch (error) {
-        console.error("Error reactivating customer:", error);
-        res.status(500).json({ message: "Failed to reactivate customer" });
+      const customer = await storage.markCustomerNonPayment(id, tenantId, userId);
+      if (!customer) {
+        return res.status(404).json({ message: 'Customer not found' });
       }
+
+      res.json({
+        message: 'Customer marked as non-payment',
+        customer,
+      });
+    } catch (error) {
+      console.error('Error marking customer non-payment:', error);
+      res.status(500).json({ message: 'Failed to mark customer non-payment' });
     }
-  );
+  });
+
+  app.post('/api/customers/:id/reactivate', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const userId = req.user?.claims?.sub;
+      const { id } = req.params;
+
+      const reactivatedCustomer = await storage.reactivateCustomer(id, tenantId, userId);
+      if (!reactivatedCustomer) {
+        return res.status(404).json({ message: 'Customer not found' });
+      }
+
+      res.json({
+        message: 'Customer successfully reactivated',
+        customer: reactivatedCustomer,
+      });
+    } catch (error) {
+      console.error('Error reactivating customer:', error);
+      res.status(500).json({ message: 'Failed to reactivate customer' });
+    }
+  });
 
   // Get contacts for a business record
   app.get(
-    "/api/business-records/:id/contacts",
+    '/api/business-records/:id/contacts',
     resolveTenant,
     requireTenant,
     async (req: TenantRequest, res) => {
@@ -606,15 +559,15 @@ export function registerBusinessRecordRoutes(app: Express) {
         const contacts = await storage.getBusinessRecordContacts(id, tenantId);
         res.json(contacts);
       } catch (error) {
-        console.error("Error fetching business record contacts:", error);
-        res.status(500).json({ message: "Failed to fetch contacts" });
+        console.error('Error fetching business record contacts:', error);
+        res.status(500).json({ message: 'Failed to fetch contacts' });
       }
-    }
+    },
   );
 
   // Create new contact for a business record
   app.post(
-    "/api/business-records/:id/contacts",
+    '/api/business-records/:id/contacts',
     resolveTenant,
     requireTenant,
     async (req: TenantRequest, res) => {
@@ -625,7 +578,7 @@ export function registerBusinessRecordRoutes(app: Express) {
         const { id } = req.params;
 
         if (!userId) {
-          return res.status(401).json({ message: "Authentication required" });
+          return res.status(401).json({ message: 'Authentication required' });
         }
 
         const contactData = {
@@ -635,44 +588,35 @@ export function registerBusinessRecordRoutes(app: Express) {
           createdBy: userId,
         };
 
-        const newContact = await storage.createBusinessRecordContact(
-          contactData
-        );
+        const newContact = await storage.createBusinessRecordContact(contactData);
         res.status(201).json(newContact);
       } catch (error) {
-        console.error("Error creating business record contact:", error);
-        res.status(500).json({ message: "Failed to create contact" });
+        console.error('Error creating business record contact:', error);
+        res.status(500).json({ message: 'Failed to create contact' });
       }
-    }
+    },
   );
 
   // Business Record Activities - Unified activity system
-  app.get("/api/business-records/:id/activities", async (req: any, res) => {
+  app.get('/api/business-records/:id/activities', async (req: any, res) => {
     try {
       const tenantId =
-        req.user?.tenantId ||
-        process.env.DEMO_TENANT_ID ||
-        "550e8400-e29b-41d4-a716-446655440000";
+        req.user?.tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
       const { id } = req.params;
 
-      const activities = await storage.getBusinessRecordActivities(
-        id,
-        tenantId
-      );
+      const activities = await storage.getBusinessRecordActivities(id, tenantId);
       res.json(activities);
     } catch (error) {
-      console.error("Error fetching business record activities:", error);
-      res.status(500).json({ message: "Failed to fetch activities" });
+      console.error('Error fetching business record activities:', error);
+      res.status(500).json({ message: 'Failed to fetch activities' });
     }
   });
 
-  app.post("/api/business-records/:id/activities", async (req: any, res) => {
+  app.post('/api/business-records/:id/activities', async (req: any, res) => {
     try {
       const tenantId =
-        req.user?.tenantId ||
-        process.env.DEMO_TENANT_ID ||
-        "550e8400-e29b-41d4-a716-446655440000";
-      const userId = req.user?.id || "system";
+        req.user?.tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+      const userId = req.user?.id || 'system';
       const { id } = req.params;
 
       const activityData = {
@@ -682,51 +626,39 @@ export function registerBusinessRecordRoutes(app: Express) {
         createdBy: userId,
       };
 
-      const newActivity = await storage.createBusinessRecordActivity(
-        activityData
-      );
+      const newActivity = await storage.createBusinessRecordActivity(activityData);
       res.status(201).json(newActivity);
     } catch (error) {
-      console.error("Error creating business record activity:", error);
-      res.status(500).json({ message: "Failed to create activity" });
+      console.error('Error creating business record activity:', error);
+      res.status(500).json({ message: 'Failed to create activity' });
     }
   });
 
   // Backward compatibility for lead activities
-  app.get(
-    "/api/leads/:id/activities",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        const { id } = req.params;
+  app.get('/api/leads/:id/activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const { id } = req.params;
 
-        const activities = await storage.getLeadActivities(id, tenantId);
-        res.json(activities);
-      } catch (error) {
-        console.error("Error fetching lead activities:", error);
-        res.status(500).json({ message: "Failed to fetch lead activities" });
-      }
+      const activities = await storage.getLeadActivities(id, tenantId);
+      res.json(activities);
+    } catch (error) {
+      console.error('Error fetching lead activities:', error);
+      res.status(500).json({ message: 'Failed to fetch lead activities' });
     }
-  );
+  });
 
   // Backward compatibility for customer activities
-  app.get(
-    "/api/customers/:id/activities",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        const { id } = req.params;
+  app.get('/api/customers/:id/activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const { id } = req.params;
 
-        const activities = await storage.getCustomerActivities(id, tenantId);
-        res.json(activities);
-      } catch (error) {
-        console.error("Error fetching customer activities:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch customer activities" });
-      }
+      const activities = await storage.getCustomerActivities(id, tenantId);
+      res.json(activities);
+    } catch (error) {
+      console.error('Error fetching customer activities:', error);
+      res.status(500).json({ message: 'Failed to fetch customer activities' });
     }
-  );
+  });
 }

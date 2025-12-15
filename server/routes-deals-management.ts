@@ -1,8 +1,8 @@
-import type { Express } from "express";
-import { eq, and, desc, sql, count } from "drizzle-orm";
-import { z } from "zod";
-import { db } from "./db";
-import { isAuthenticated } from "./replitAuth";
+import type { Express } from 'express';
+import { eq, and, desc, sql, count } from 'drizzle-orm';
+import { z } from 'zod';
+import { db } from './db';
+import { isAuthenticated } from './replitAuth';
 import {
   deals,
   dealStages,
@@ -14,9 +14,9 @@ import {
   insertDealActivitySchema,
   type Deal,
   type DealStage,
-  type DealActivity
-} from "@shared/schema";
-import { cacheControl, etag } from "./middleware/cache-middleware";
+  type DealActivity,
+} from '@shared/schema';
+import { cacheControl, etag } from './middleware/cache-middleware';
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -24,73 +24,76 @@ import {
   hasPermission,
   getQueryBuilder,
   PERMISSIONS,
-  type AuthenticatedRequest
-} from "./middleware/rbac-route-helper";
+  type AuthenticatedRequest,
+} from './middleware/rbac-route-helper';
 
 export function registerDealsManagementRoutes(app: Express) {
-  // Apply RBAC context enhancement to all deals routes
-  app.use("/api/deals-management", enhanceUserContext);
+  // Apply authentication and RBAC context enhancement to all deals routes
+  // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
+  app.use('/api/deals-management', isAuthenticated, enhanceUserContext);
 
   // Get all deals for tenant - requires sales.deal.view permission
   // RBAC will automatically scope data based on user's role level
-  app.get("/api/deals-management/deals",
+  app.get(
+    '/api/deals-management/deals',
     isAuthenticated,
     requirePermission([
       PERMISSIONS.SALES.DEAL.VIEW_OWN,
       PERMISSIONS.SALES.DEAL.VIEW_TEAM,
-      PERMISSIONS.SALES.DEAL.VIEW_LOCATION
+      PERMISSIONS.SALES.DEAL.VIEW_LOCATION,
     ]),
     cacheControl(180),
     etag(),
     async (req: AuthenticatedRequest, res) => {
-    try {
-      const tenantId = req.user!.tenantId;
+      try {
+        const tenantId = req.user!.tenantId;
 
-      // Use hierarchical query builder to automatically scope data
-      const queryBuilder = getQueryBuilder(req);
-      const scopeFilter = queryBuilder?.applyHierarchicalFilter({
-        fieldNames: { userId: 'assigned_to_id' }
-      });
-      
-      // Build query with RBAC scope filter
-      // This automatically limits data based on user's role level
-      const whereConditions = scopeFilter
-        ? and(eq(deals.tenantId, tenantId), scopeFilter)
-        : eq(deals.tenantId, tenantId);
+        // Use hierarchical query builder to automatically scope data
+        const queryBuilder = getQueryBuilder(req);
+        const scopeFilter = queryBuilder?.applyHierarchicalFilter({
+          fieldNames: { userId: 'assigned_to_id' },
+        });
 
-      const dealsData = await db
-        .select({
-          id: deals.id,
-          title: deals.title,
-          description: deals.description,
-          value: deals.value,
-          probability: deals.probability,
-          stage: deals.stage,
-          status: deals.status,
-          expectedCloseDate: deals.expectedCloseDate,
-          actualCloseDate: deals.actualCloseDate,
-          assignedToId: deals.assignedToId,
-          customerName: businessRecords.companyName,
-          customerId: deals.customerId,
-          assignedToName: users.firstName,
-          createdAt: deals.createdAt,
-          updatedAt: deals.updatedAt
-        })
-        .from(deals)
-        .leftJoin(businessRecords, eq(deals.customerId, businessRecords.id))
-        .leftJoin(users, eq(deals.assignedToId, users.id))
-        .where(whereConditions)
-        .orderBy(desc(deals.createdAt));
+        // Build query with RBAC scope filter
+        // This automatically limits data based on user's role level
+        const whereConditions = scopeFilter
+          ? and(eq(deals.tenantId, tenantId), scopeFilter)
+          : eq(deals.tenantId, tenantId);
 
-      res.json(dealsData);
-    } catch (error) {
-      console.error("Error fetching deals:", error);
-      res.status(500).json({ error: "Failed to fetch deals" });
-    }
-  });
+        const dealsData = await db
+          .select({
+            id: deals.id,
+            title: deals.title,
+            description: deals.description,
+            value: deals.value,
+            probability: deals.probability,
+            stage: deals.stage,
+            status: deals.status,
+            expectedCloseDate: deals.expectedCloseDate,
+            actualCloseDate: deals.actualCloseDate,
+            assignedToId: deals.assignedToId,
+            customerName: businessRecords.companyName,
+            customerId: deals.customerId,
+            assignedToName: users.firstName,
+            createdAt: deals.createdAt,
+            updatedAt: deals.updatedAt,
+          })
+          .from(deals)
+          .leftJoin(businessRecords, eq(deals.customerId, businessRecords.id))
+          .leftJoin(users, eq(deals.assignedToId, users.id))
+          .where(whereConditions)
+          .orderBy(desc(deals.createdAt));
+
+        res.json(dealsData);
+      } catch (error) {
+        console.error('Error fetching deals:', error);
+        res.status(500).json({ error: 'Failed to fetch deals' });
+      }
+    },
+  );
 
   // Get deal by ID
-  app.get("/api/deals-management/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.get('/api/deals-management/deals/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -111,7 +114,7 @@ export function registerDealsManagementRoutes(app: Express) {
           customerId: deals.customerId,
           assignedToName: users.firstName,
           createdAt: deals.createdAt,
-          updatedAt: deals.updatedAt
+          updatedAt: deals.updatedAt,
         })
         .from(deals)
         .leftJoin(businessRecords, eq(deals.customerId, businessRecords.id))
@@ -119,7 +122,7 @@ export function registerDealsManagementRoutes(app: Express) {
         .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)));
 
       if (!deal) {
-        return res.status(404).json({ error: "Deal not found" });
+        return res.status(404).json({ error: 'Deal not found' });
       }
 
       // Get deal activities
@@ -131,13 +134,13 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json({ ...deal, activities });
     } catch (error) {
-      console.error("Error fetching deal:", error);
-      res.status(500).json({ error: "Failed to fetch deal" });
+      console.error('Error fetching deal:', error);
+      res.status(500).json({ error: 'Failed to fetch deal' });
     }
   });
 
   // Create new deal
-  app.post("/api/deals-management/deals", isAuthenticated, async (req: any, res) => {
+  app.post('/api/deals-management/deals', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const userId = req.user.claims.sub;
@@ -146,37 +149,36 @@ export function registerDealsManagementRoutes(app: Express) {
         ...req.body,
         tenantId,
         createdBy: userId,
-        assignedToId: req.body.assignedToId || userId
+        assignedToId: req.body.assignedToId || userId,
       });
 
-      const [newDeal] = await db
-        .insert(deals)
-        .values(dealData)
-        .returning();
+      const [newDeal] = await db.insert(deals).values(dealData).returning();
 
       res.status(201).json(newDeal);
     } catch (error) {
-      console.error("Error creating deal:", error);
-      res.status(500).json({ error: "Failed to create deal" });
+      console.error('Error creating deal:', error);
+      res.status(500).json({ error: 'Failed to create deal' });
     }
   });
 
   // SECURITY FIX: Add validation schema to prevent mass assignment
-  const updateDealSchema = z.object({
-    title: z.string().max(255).optional(),
-    description: z.string().optional(),
-    amount: z.number().optional(),
-    probability: z.number().min(0).max(100).optional(),
-    expectedCloseDate: z.string().optional(),
-    stage: z.string().optional(),
-    status: z.enum(['open', 'won', 'lost']).optional(),
-    assignedTo: z.string().optional(),
-    businessRecordId: z.string().optional(),
-    notes: z.string().optional(),
-  }).strict(); // Reject unknown properties
+  const updateDealSchema = z
+    .object({
+      title: z.string().max(255).optional(),
+      description: z.string().optional(),
+      amount: z.number().optional(),
+      probability: z.number().min(0).max(100).optional(),
+      expectedCloseDate: z.string().optional(),
+      stage: z.string().optional(),
+      status: z.enum(['open', 'won', 'lost']).optional(),
+      assignedTo: z.string().optional(),
+      businessRecordId: z.string().optional(),
+      notes: z.string().optional(),
+    })
+    .strict(); // Reject unknown properties
 
   // Update deal
-  app.put("/api/deals-management/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.put('/api/deals-management/deals/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -188,27 +190,27 @@ export function registerDealsManagementRoutes(app: Express) {
         .update(deals)
         .set({
           ...validatedData,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
         .returning();
 
       if (!updatedDeal) {
-        return res.status(404).json({ error: "Deal not found" });
+        return res.status(404).json({ error: 'Deal not found' });
       }
 
       res.json(updatedDeal);
     } catch (error) {
-      console.error("Error updating deal:", error);
+      console.error('Error updating deal:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid input", details: error.errors });
+        return res.status(400).json({ error: 'Invalid input', details: error.errors });
       }
-      res.status(500).json({ error: "Failed to update deal" });
+      res.status(500).json({ error: 'Failed to update deal' });
     }
   });
 
   // Delete deal
-  app.delete("/api/deals-management/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.delete('/api/deals-management/deals/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -225,18 +227,18 @@ export function registerDealsManagementRoutes(app: Express) {
         .returning();
 
       if (!deletedDeal) {
-        return res.status(404).json({ error: "Deal not found" });
+        return res.status(404).json({ error: 'Deal not found' });
       }
 
-      res.json({ message: "Deal deleted successfully" });
+      res.json({ message: 'Deal deleted successfully' });
     } catch (error) {
-      console.error("Error deleting deal:", error);
-      res.status(500).json({ error: "Failed to delete deal" });
+      console.error('Error deleting deal:', error);
+      res.status(500).json({ error: 'Failed to delete deal' });
     }
   });
 
   // Get deal stages
-  app.get("/api/deals-management/stages", isAuthenticated, async (req: any, res) => {
+  app.get('/api/deals-management/stages', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -248,35 +250,32 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json(stages);
     } catch (error) {
-      console.error("Error fetching deal stages:", error);
-      res.status(500).json({ error: "Failed to fetch deal stages" });
+      console.error('Error fetching deal stages:', error);
+      res.status(500).json({ error: 'Failed to fetch deal stages' });
     }
   });
 
   // Create deal stage
-  app.post("/api/deals-management/stages", isAuthenticated, async (req: any, res) => {
+  app.post('/api/deals-management/stages', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
 
       const stageData = insertDealStageSchema.parse({
         ...req.body,
-        tenantId
+        tenantId,
       });
 
-      const [newStage] = await db
-        .insert(dealStages)
-        .values(stageData)
-        .returning();
+      const [newStage] = await db.insert(dealStages).values(stageData).returning();
 
       res.status(201).json(newStage);
     } catch (error) {
-      console.error("Error creating deal stage:", error);
-      res.status(500).json({ error: "Failed to create deal stage" });
+      console.error('Error creating deal stage:', error);
+      res.status(500).json({ error: 'Failed to create deal stage' });
     }
   });
 
   // Get deal activities
-  app.get("/api/deals-management/deals/:id/activities", isAuthenticated, async (req: any, res) => {
+  app.get('/api/deals-management/deals/:id/activities', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -291,7 +290,7 @@ export function registerDealsManagementRoutes(app: Express) {
           followUpDate: dealActivities.followUpDate,
           createdBy: dealActivities.createdBy,
           createdByName: users.firstName,
-          createdAt: dealActivities.createdAt
+          createdAt: dealActivities.createdAt,
         })
         .from(dealActivities)
         .leftJoin(users, eq(dealActivities.createdBy, users.id))
@@ -300,13 +299,13 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json(activities);
     } catch (error) {
-      console.error("Error fetching deal activities:", error);
-      res.status(500).json({ error: "Failed to fetch deal activities" });
+      console.error('Error fetching deal activities:', error);
+      res.status(500).json({ error: 'Failed to fetch deal activities' });
     }
   });
 
   // Add deal activity
-  app.post("/api/deals-management/deals/:id/activities", isAuthenticated, async (req: any, res) => {
+  app.post('/api/deals-management/deals/:id/activities', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const dealId = req.params.id;
@@ -316,23 +315,20 @@ export function registerDealsManagementRoutes(app: Express) {
         ...req.body,
         dealId,
         tenantId,
-        createdBy: userId
+        createdBy: userId,
       });
 
-      const [newActivity] = await db
-        .insert(dealActivities)
-        .values(activityData)
-        .returning();
+      const [newActivity] = await db.insert(dealActivities).values(activityData).returning();
 
       res.status(201).json(newActivity);
     } catch (error) {
-      console.error("Error creating deal activity:", error);
-      res.status(500).json({ error: "Failed to create deal activity" });
+      console.error('Error creating deal activity:', error);
+      res.status(500).json({ error: 'Failed to create deal activity' });
     }
   });
 
   // Get deals dashboard stats
-  app.get("/api/deals-management/dashboard", isAuthenticated, async (req: any, res) => {
+  app.get('/api/deals-management/dashboard', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -348,9 +344,9 @@ export function registerDealsManagementRoutes(app: Express) {
         .where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'active')));
 
       const wonDealsResult = await db
-        .select({ 
+        .select({
           count: count(),
-          totalValue: sql<number>`COALESCE(SUM(${deals.value}), 0)`
+          totalValue: sql<number>`COALESCE(SUM(${deals.value}), 0)`,
         })
         .from(deals)
         .where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'won')));
@@ -374,11 +370,11 @@ export function registerDealsManagementRoutes(app: Express) {
         wonDeals,
         lostDeals,
         totalValue,
-        winRate: Math.round(winRate * 100) / 100
+        winRate: Math.round(winRate * 100) / 100,
       });
     } catch (error) {
-      console.error("Error fetching deals dashboard:", error);
-      res.status(500).json({ error: "Failed to fetch deals dashboard" });
+      console.error('Error fetching deals dashboard:', error);
+      res.status(500).json({ error: 'Failed to fetch deals dashboard' });
     }
   });
 }

@@ -143,8 +143,9 @@ interface CustomReportConfig {
 }
 
 export function registerCustomReportsRoutes(app: Express) {
-  // Apply tenant resolution to all custom report routes
-  app.use('/api/reports/custom', resolveTenant, requireTenant, enhanceUserContext);
+  // Apply authentication, tenant resolution, and RBAC context to all custom report routes
+  // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
+  app.use('/api/reports/custom', isAuthenticated, resolveTenant, requireTenant, enhanceUserContext);
 
   /**
    * Get list of user's custom reports
