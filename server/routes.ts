@@ -15232,15 +15232,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register all route modules
-  registerOnboardingRoutes(app);
-  registerBusinessRecordRoutes(app);
-  registerCsvImportRoutes(app);
-  registerCustomReportsRoutes(app);
-  registerDashboardLayoutsRoutes(app);
-  registerIntegrationRoutes(app);
-  registerTaskRoutes(app);
-  registerEnhancedTaskRoutes(app);
+  // NOTE: Route modules are registered earlier in this file (around line 8014-8058)
+  // The duplicate registrations here have been removed to prevent middleware double-execution
 
   // Unified activities endpoint for CRM dashboard
   app.get('/api/activities', async (req: any, res) => {
@@ -15268,14 +15261,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerSoftwareProductsRoutes(app);
   // OLD INVOICE ROUTES - CONSOLIDATED INTO ./routes/billing.ts
   // registerInvoicesRoutes(app);
-  registerPurchaseOrderRoutes(app);
-  registerWarehouseRoutes(app);
-  registerServiceAnalysisRoutes(app);
-  registerCrmGoalRoutes(app);
-  registerSalesforceRoutes(app);
+  // NOTE: The following routes are registered earlier (~line 8032-8058):
+  // registerPurchaseOrderRoutes, registerWarehouseRoutes, registerServiceAnalysisRoutes,
+  // registerCrmGoalRoutes, registerSalesforceRoutes, registerDataEnrichmentRoutes, registerQuickBooksRoutes
   registerSalesforceTestRoutes(app);
-  registerDataEnrichmentRoutes(app);
-  registerQuickBooksRoutes(app);
   // setupSalesPipelineRoutes(app); // Temporarily disabled due to error
   registerModularDashboardRoutes(app);
   registerTodayDashboardRoutes(app);

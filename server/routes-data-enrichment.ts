@@ -1,7 +1,7 @@
 // Data Enrichment API Routes - ZoomInfo and Apollo.io Integration
-import type { Express } from "express";
-import { z } from "zod";
-import { db } from "./db";
+import type { Express } from 'express';
+import { z } from 'zod';
+import { db } from './db';
 import {
   enrichedContacts,
   enrichedCompanies,
@@ -17,20 +17,20 @@ import {
   insertProspectingCampaignSchema,
   type EnrichedContact,
   type EnrichedCompany,
-} from "@shared/schema";
-import { eq, and, desc, asc, sql, like, ilike, gt, lt, gte, lte } from "drizzle-orm";
-import { isAuthenticated } from "./replitAuth";
+} from '@shared/schema';
+import { eq, and, desc, asc, sql, like, ilike, gt, lt, gte, lte } from 'drizzle-orm';
+import { isAuthenticated } from './replitAuth';
 import {
   DATA_ENRICHMENT_MAPPINGS,
   DataEnrichmentTransformer,
-  ProspectingQueryBuilder
-} from "./data-enrichment-mapping";
+  ProspectingQueryBuilder,
+} from './data-enrichment-mapping';
 // RBAC Integration
 import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 // Request validation schemas
@@ -40,14 +40,18 @@ const enrichContactSearchSchema = z.object({
   departments: z.array(z.string()).optional(),
   industries: z.array(z.string()).optional(),
   locations: z.array(z.string()).optional(),
-  companySize: z.object({
-    min: z.number().optional(),
-    max: z.number().optional(),
-  }).optional(),
-  leadScore: z.object({
-    min: z.number().optional(),
-    max: z.number().optional(),
-  }).optional(),
+  companySize: z
+    .object({
+      min: z.number().optional(),
+      max: z.number().optional(),
+    })
+    .optional(),
+  leadScore: z
+    .object({
+      min: z.number().optional(),
+      max: z.number().optional(),
+    })
+    .optional(),
   prospectingStatus: z.array(z.string()).optional(),
   enrichmentSource: z.array(z.string()).optional(),
   page: z.coerce.number().default(1),
@@ -60,14 +64,18 @@ const enrichCompanySearchSchema = z.object({
   query: z.string().optional(),
   industries: z.array(z.string()).optional(),
   companyTypes: z.array(z.string()).optional(),
-  employeeCount: z.object({
-    min: z.number().optional(),
-    max: z.number().optional(),
-  }).optional(),
-  revenue: z.object({
-    min: z.number().optional(),
-    max: z.number().optional(),
-  }).optional(),
+  employeeCount: z
+    .object({
+      min: z.number().optional(),
+      max: z.number().optional(),
+    })
+    .optional(),
+  revenue: z
+    .object({
+      min: z.number().optional(),
+      max: z.number().optional(),
+    })
+    .optional(),
   technologies: z.array(z.string()).optional(),
   locations: z.array(z.string()).optional(),
   targetTier: z.array(z.string()).optional(),
@@ -86,30 +94,30 @@ const prospectingCampaignSchema = z.object({
   target_job_titles: z.array(z.string()).optional(),
   target_management_levels: z.array(z.string()).optional(),
   target_technologies: z.array(z.string()).optional(),
-  sequence_steps: z.array(z.object({
-    step_number: z.number(),
-    step_type: z.string(),
-    delay_days: z.number(),
-    template_content: z.string(),
-  })).optional(),
+  sequence_steps: z
+    .array(
+      z.object({
+        step_number: z.number(),
+        step_type: z.string(),
+        delay_days: z.number(),
+        template_content: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export function registerDataEnrichmentRoutes(app: Express) {
-  
   // =====================================================================
   // ENRICHED CONTACTS ENDPOINTS
   // =====================================================================
 
   // Get enriched contacts with advanced filtering
-  app.get("/api/enrichment/contacts", isAuthenticated, async (req: any, res) => {
+  app.get('/api/enrichment/contacts', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const searchParams = enrichContactSearchSchema.parse(req.query);
-      
-      let query = db
-        .select()
-        .from(enrichedContacts)
-        .where(eq(enrichedContacts.tenantId, tenantId));
+
+      let query = db.select().from(enrichedContacts).where(eq(enrichedContacts.tenantId, tenantId));
 
       // Apply filters
       const conditions = [eq(enrichedContacts.tenantId, tenantId)];
@@ -119,12 +127,14 @@ export function registerDataEnrichmentRoutes(app: Express) {
           sql`(${enrichedContacts.first_name} ILIKE ${`%${searchParams.query}%`} OR 
                ${enrichedContacts.last_name} ILIKE ${`%${searchParams.query}%`} OR 
                ${enrichedContacts.company_name} ILIKE ${`%${searchParams.query}%`} OR 
-               ${enrichedContacts.job_title} ILIKE ${`%${searchParams.query}%`})`
+               ${enrichedContacts.job_title} ILIKE ${`%${searchParams.query}%`})`,
         );
       }
 
       if (searchParams.managementLevels?.length) {
-        conditions.push(sql`${enrichedContacts.management_level} = ANY(${searchParams.managementLevels})`);
+        conditions.push(
+          sql`${enrichedContacts.management_level} = ANY(${searchParams.managementLevels})`,
+        );
       }
 
       if (searchParams.departments?.length) {
@@ -132,11 +142,15 @@ export function registerDataEnrichmentRoutes(app: Express) {
       }
 
       if (searchParams.prospectingStatus?.length) {
-        conditions.push(sql`${enrichedContacts.prospecting_status} = ANY(${searchParams.prospectingStatus})`);
+        conditions.push(
+          sql`${enrichedContacts.prospecting_status} = ANY(${searchParams.prospectingStatus})`,
+        );
       }
 
       if (searchParams.enrichmentSource?.length) {
-        conditions.push(sql`${enrichedContacts.enrichment_source} = ANY(${searchParams.enrichmentSource})`);
+        conditions.push(
+          sql`${enrichedContacts.enrichment_source} = ANY(${searchParams.enrichmentSource})`,
+        );
       }
 
       if (searchParams.leadScore?.min !== undefined) {
@@ -155,14 +169,23 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       try {
         // Apply sorting with safe column fallback
-        const validSortColumns = ['first_name', 'last_name', 'company_name', 'job_title', 'last_enriched_date', 'lead_score', 'created_at'];
-        const sortColumn = validSortColumns.includes(searchParams.sortBy) 
-          ? searchParams.sortBy 
+        const validSortColumns = [
+          'first_name',
+          'last_name',
+          'company_name',
+          'job_title',
+          'last_enriched_date',
+          'lead_score',
+          'created_at',
+        ];
+        const sortColumn = validSortColumns.includes(searchParams.sortBy)
+          ? searchParams.sortBy
           : 'created_at';
-        
-        const orderBy = searchParams.sortOrder === 'asc' 
-          ? asc(enrichedContacts[sortColumn as keyof typeof enrichedContacts])
-          : desc(enrichedContacts[sortColumn as keyof typeof enrichedContacts]);
+
+        const orderBy =
+          searchParams.sortOrder === 'asc'
+            ? asc(enrichedContacts[sortColumn as keyof typeof enrichedContacts])
+            : desc(enrichedContacts[sortColumn as keyof typeof enrichedContacts]);
 
         contacts = await db
           .select()
@@ -200,13 +223,13 @@ export function registerDataEnrichmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error("Error fetching enriched contacts:", error);
-      res.status(500).json({ message: "Failed to fetch enriched contacts" });
+      console.error('Error fetching enriched contacts:', error);
+      res.status(500).json({ message: 'Failed to fetch enriched contacts' });
     }
   });
 
   // Get enriched contact by ID
-  app.get("/api/enrichment/contacts/:id", isAuthenticated, async (req: any, res) => {
+  app.get('/api/enrichment/contacts/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { id } = req.params;
@@ -214,25 +237,22 @@ export function registerDataEnrichmentRoutes(app: Express) {
       const contact = await db
         .select()
         .from(enrichedContacts)
-        .where(and(
-          eq(enrichedContacts.id, id),
-          eq(enrichedContacts.tenantId, tenantId)
-        ))
+        .where(and(eq(enrichedContacts.id, id), eq(enrichedContacts.tenantId, tenantId)))
         .limit(1);
 
       if (!contact.length) {
-        return res.status(404).json({ message: "Contact not found" });
+        return res.status(404).json({ message: 'Contact not found' });
       }
 
       res.json(contact[0]);
     } catch (error) {
-      console.error("Error fetching enriched contact:", error);
-      res.status(500).json({ message: "Failed to fetch enriched contact" });
+      console.error('Error fetching enriched contact:', error);
+      res.status(500).json({ message: 'Failed to fetch enriched contact' });
     }
   });
 
   // Create/update enriched contact
-  app.post("/api/enrichment/contacts", isAuthenticated, async (req: any, res) => {
+  app.post('/api/enrichment/contacts', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const contactData = insertEnrichedContactSchema.parse({
@@ -240,20 +260,17 @@ export function registerDataEnrichmentRoutes(app: Express) {
         tenantId,
       });
 
-      const [contact] = await db
-        .insert(enrichedContacts)
-        .values(contactData)
-        .returning();
+      const [contact] = await db.insert(enrichedContacts).values(contactData).returning();
 
       res.status(201).json(contact);
     } catch (error) {
-      console.error("Error creating enriched contact:", error);
-      res.status(500).json({ message: "Failed to create enriched contact" });
+      console.error('Error creating enriched contact:', error);
+      res.status(500).json({ message: 'Failed to create enriched contact' });
     }
   });
 
   // Update enriched contact
-  app.put("/api/enrichment/contacts/:id", isAuthenticated, async (req: any, res) => {
+  app.put('/api/enrichment/contacts/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { id } = req.params;
@@ -262,20 +279,17 @@ export function registerDataEnrichmentRoutes(app: Express) {
       const [contact] = await db
         .update(enrichedContacts)
         .set(updateData)
-        .where(and(
-          eq(enrichedContacts.id, id),
-          eq(enrichedContacts.tenantId, tenantId)
-        ))
+        .where(and(eq(enrichedContacts.id, id), eq(enrichedContacts.tenantId, tenantId)))
         .returning();
 
       if (!contact) {
-        return res.status(404).json({ message: "Contact not found" });
+        return res.status(404).json({ message: 'Contact not found' });
       }
 
       res.json(contact);
     } catch (error) {
-      console.error("Error updating enriched contact:", error);
-      res.status(500).json({ message: "Failed to update enriched contact" });
+      console.error('Error updating enriched contact:', error);
+      res.status(500).json({ message: 'Failed to update enriched contact' });
     }
   });
 
@@ -284,23 +298,25 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // =====================================================================
 
   // Get enriched companies with advanced filtering
-  app.get("/api/enrichment/companies", isAuthenticated, async (req: any, res) => {
+  app.get('/api/enrichment/companies', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const searchParams = enrichCompanySearchSchema.parse(req.query);
-      
+
       const conditions = [eq(enrichedCompanies.tenantId, tenantId)];
 
       if (searchParams.query) {
         conditions.push(
           sql`(${enrichedCompanies.company_name} ILIKE ${`%${searchParams.query}%`} OR 
                ${enrichedCompanies.primary_domain} ILIKE ${`%${searchParams.query}%`} OR 
-               ${enrichedCompanies.primary_industry} ILIKE ${`%${searchParams.query}%`})`
+               ${enrichedCompanies.primary_industry} ILIKE ${`%${searchParams.query}%`})`,
         );
       }
 
       if (searchParams.industries?.length) {
-        conditions.push(sql`${enrichedCompanies.primary_industry} = ANY(${searchParams.industries})`);
+        conditions.push(
+          sql`${enrichedCompanies.primary_industry} = ANY(${searchParams.industries})`,
+        );
       }
 
       if (searchParams.companyTypes?.length) {
@@ -324,15 +340,18 @@ export function registerDataEnrichmentRoutes(app: Express) {
       }
 
       if (searchParams.targetTier?.length) {
-        conditions.push(sql`${enrichedCompanies.target_account_tier} = ANY(${searchParams.targetTier})`);
+        conditions.push(
+          sql`${enrichedCompanies.target_account_tier} = ANY(${searchParams.targetTier})`,
+        );
       }
 
       const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
       // Apply sorting
-      const orderBy = searchParams.sortOrder === 'asc' 
-        ? asc(enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies])
-        : desc(enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies]);
+      const orderBy =
+        searchParams.sortOrder === 'asc'
+          ? asc(enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies])
+          : desc(enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies]);
 
       const companies = await db
         .select()
@@ -360,13 +379,13 @@ export function registerDataEnrichmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error("Error fetching enriched companies:", error);
-      res.status(500).json({ message: "Failed to fetch enriched companies" });
+      console.error('Error fetching enriched companies:', error);
+      res.status(500).json({ message: 'Failed to fetch enriched companies' });
     }
   });
 
   // Get enriched company by ID
-  app.get("/api/enrichment/companies/:id", isAuthenticated, async (req: any, res) => {
+  app.get('/api/enrichment/companies/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { id } = req.params;
@@ -374,25 +393,22 @@ export function registerDataEnrichmentRoutes(app: Express) {
       const company = await db
         .select()
         .from(enrichedCompanies)
-        .where(and(
-          eq(enrichedCompanies.id, id),
-          eq(enrichedCompanies.tenantId, tenantId)
-        ))
+        .where(and(eq(enrichedCompanies.id, id), eq(enrichedCompanies.tenantId, tenantId)))
         .limit(1);
 
       if (!company.length) {
-        return res.status(404).json({ message: "Company not found" });
+        return res.status(404).json({ message: 'Company not found' });
       }
 
       res.json(company[0]);
     } catch (error) {
-      console.error("Error fetching enriched company:", error);
-      res.status(500).json({ message: "Failed to fetch enriched company" });
+      console.error('Error fetching enriched company:', error);
+      res.status(500).json({ message: 'Failed to fetch enriched company' });
     }
   });
 
   // Create/update enriched company
-  app.post("/api/enrichment/companies", isAuthenticated, async (req: any, res) => {
+  app.post('/api/enrichment/companies', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const companyData = insertEnrichedCompanySchema.parse({
@@ -400,15 +416,12 @@ export function registerDataEnrichmentRoutes(app: Express) {
         tenantId,
       });
 
-      const [company] = await db
-        .insert(enrichedCompanies)
-        .values(companyData)
-        .returning();
+      const [company] = await db.insert(enrichedCompanies).values(companyData).returning();
 
       res.status(201).json(company);
     } catch (error) {
-      console.error("Error creating enriched company:", error);
-      res.status(500).json({ message: "Failed to create enriched company" });
+      console.error('Error creating enriched company:', error);
+      res.status(500).json({ message: 'Failed to create enriched company' });
     }
   });
 
@@ -417,7 +430,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // =====================================================================
 
   // Get intent data for companies
-  app.get("/api/enrichment/intent", isAuthenticated, async (req: any, res) => {
+  app.get('/api/enrichment/intent', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { companyId, intentLevel, buyingStage } = req.query;
@@ -445,8 +458,8 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.json(intentData);
     } catch (error) {
-      console.error("Error fetching intent data:", error);
-      res.status(500).json({ message: "Failed to fetch intent data" });
+      console.error('Error fetching intent data:', error);
+      res.status(500).json({ message: 'Failed to fetch intent data' });
     }
   });
 
@@ -455,7 +468,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // =====================================================================
 
   // Get prospecting campaigns
-  app.get("/api/enrichment/campaigns", isAuthenticated, async (req: any, res) => {
+  app.get('/api/enrichment/campaigns', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { status } = req.query;
@@ -474,19 +487,19 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.json(campaigns);
     } catch (error) {
-      console.error("Error fetching campaigns:", error);
-      res.status(500).json({ message: "Failed to fetch campaigns" });
+      console.error('Error fetching campaigns:', error);
+      res.status(500).json({ message: 'Failed to fetch campaigns' });
     }
   });
 
   // Create prospecting campaign
-  app.post("/api/enrichment/campaigns", isAuthenticated, async (req: any, res) => {
+  app.post('/api/enrichment/campaigns', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const userId = req.user.claims.sub;
-      
+      const userId = req.user?.id || req.user?.claims?.sub;
+
       const campaignData = prospectingCampaignSchema.parse(req.body);
-      
+
       const [campaign] = await db
         .insert(prospectingCampaigns)
         .values({
@@ -498,8 +511,8 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.status(201).json(campaign);
     } catch (error) {
-      console.error("Error creating campaign:", error);
-      res.status(500).json({ message: "Failed to create campaign" });
+      console.error('Error creating campaign:', error);
+      res.status(500).json({ message: 'Failed to create campaign' });
     }
   });
 
@@ -508,16 +521,16 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // =====================================================================
 
   // Import contacts from ZoomInfo
-  app.post("/api/enrichment/import/zoominfo/contacts", isAuthenticated, async (req: any, res) => {
+  app.post('/api/enrichment/import/zoominfo/contacts', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { contacts: rawContacts } = req.body;
 
       if (!Array.isArray(rawContacts)) {
-        return res.status(400).json({ message: "Contacts must be an array" });
+        return res.status(400).json({ message: 'Contacts must be an array' });
       }
 
-      const processedContacts = rawContacts.map(contact => {
+      const processedContacts = rawContacts.map((contact) => {
         const transformed = DataEnrichmentTransformer.transformZoomInfoContact(contact);
         return {
           tenantId,
@@ -553,10 +566,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         };
       });
 
-      const results = await db
-        .insert(enrichedContacts)
-        .values(processedContacts)
-        .returning();
+      const results = await db.insert(enrichedContacts).values(processedContacts).returning();
 
       res.json({
         message: `Successfully imported ${results.length} contacts from ZoomInfo`,
@@ -564,22 +574,22 @@ export function registerDataEnrichmentRoutes(app: Express) {
         contacts: results,
       });
     } catch (error) {
-      console.error("Error importing ZoomInfo contacts:", error);
-      res.status(500).json({ message: "Failed to import ZoomInfo contacts" });
+      console.error('Error importing ZoomInfo contacts:', error);
+      res.status(500).json({ message: 'Failed to import ZoomInfo contacts' });
     }
   });
 
   // Import contacts from Apollo.io
-  app.post("/api/enrichment/import/apollo/contacts", isAuthenticated, async (req: any, res) => {
+  app.post('/api/enrichment/import/apollo/contacts', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
       const { people: rawContacts } = req.body;
 
       if (!Array.isArray(rawContacts)) {
-        return res.status(400).json({ message: "People must be an array" });
+        return res.status(400).json({ message: 'People must be an array' });
       }
 
-      const processedContacts = rawContacts.map(contact => {
+      const processedContacts = rawContacts.map((contact) => {
         const transformed = DataEnrichmentTransformer.transformApolloContact(contact);
         return {
           tenantId,
@@ -612,10 +622,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         };
       });
 
-      const results = await db
-        .insert(enrichedContacts)
-        .values(processedContacts)
-        .returning();
+      const results = await db.insert(enrichedContacts).values(processedContacts).returning();
 
       res.json({
         message: `Successfully imported ${results.length} contacts from Apollo.io`,
@@ -623,8 +630,8 @@ export function registerDataEnrichmentRoutes(app: Express) {
         contacts: results,
       });
     } catch (error) {
-      console.error("Error importing Apollo contacts:", error);
-      res.status(500).json({ message: "Failed to import Apollo contacts" });
+      console.error('Error importing Apollo contacts:', error);
+      res.status(500).json({ message: 'Failed to import Apollo contacts' });
     }
   });
 
@@ -633,7 +640,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // =====================================================================
 
   // Get enrichment analytics
-  app.get("/api/enrichment/analytics", isAuthenticated, async (req: any, res) => {
+  app.get('/api/enrichment/analytics', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
 
@@ -689,8 +696,8 @@ export function registerDataEnrichmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error("Error fetching enrichment analytics:", error);
-      res.status(500).json({ message: "Failed to fetch enrichment analytics" });
+      console.error('Error fetching enrichment analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch enrichment analytics' });
     }
   });
 
@@ -699,36 +706,36 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // =====================================================================
 
   // Build ZoomInfo search query
-  app.post("/api/enrichment/search/zoominfo/build", isAuthenticated, async (req: any, res) => {
+  app.post('/api/enrichment/search/zoominfo/build', isAuthenticated, async (req: any, res) => {
     try {
       const searchCriteria = req.body;
       const query = ProspectingQueryBuilder.buildZoomInfoPersonSearch(searchCriteria);
-      
+
       res.json({
         query,
         endpoint: '/search/person',
         method: 'POST',
       });
     } catch (error) {
-      console.error("Error building ZoomInfo query:", error);
-      res.status(500).json({ message: "Failed to build ZoomInfo query" });
+      console.error('Error building ZoomInfo query:', error);
+      res.status(500).json({ message: 'Failed to build ZoomInfo query' });
     }
   });
 
   // Build Apollo search query
-  app.post("/api/enrichment/search/apollo/build", isAuthenticated, async (req: any, res) => {
+  app.post('/api/enrichment/search/apollo/build', isAuthenticated, async (req: any, res) => {
     try {
       const searchCriteria = req.body;
       const query = ProspectingQueryBuilder.buildApolloPersonSearch(searchCriteria);
-      
+
       res.json({
         query,
         endpoint: '/v1/mixed_people/search',
         method: 'POST',
       });
     } catch (error) {
-      console.error("Error building Apollo query:", error);
-      res.status(500).json({ message: "Failed to build Apollo query" });
+      console.error('Error building Apollo query:', error);
+      res.status(500).json({ message: 'Failed to build Apollo query' });
     }
   });
 }
