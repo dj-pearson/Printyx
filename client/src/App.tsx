@@ -296,7 +296,21 @@ function Router() {
 
   // Save current route to localStorage when authenticated
   React.useEffect(() => {
-    if (isAuthenticated && pathname !== '/' && !pathname.startsWith('/login')) {
+    // Don't save auth pages or API routes
+    const excludedPaths = [
+      '/login',
+      '/signup',
+      '/forgot-password',
+      '/reset-password',
+      '/auth/callback',
+    ];
+    const shouldSave =
+      isAuthenticated &&
+      pathname !== '/' &&
+      !excludedPaths.some((p) => pathname.startsWith(p)) &&
+      !pathname.startsWith('/api/');
+
+    if (shouldSave) {
       try {
         localStorage.setItem(LAST_ROUTE_KEY, pathname);
       } catch (error) {
@@ -310,13 +324,22 @@ function Router() {
     if (isAuthenticated && pathname === '/') {
       try {
         const lastRoute = localStorage.getItem(LAST_ROUTE_KEY);
-        // Only restore if it's a valid authenticated route (not data-enrichment or other edge cases)
-        if (
+        // Only restore if it's a valid authenticated route
+        const excludedPaths = [
+          '/login',
+          '/signup',
+          '/forgot-password',
+          '/reset-password',
+          '/auth/callback',
+        ];
+        const isValidRoute =
           lastRoute &&
           lastRoute !== '/' &&
-          lastRoute !== '/login' &&
-          !lastRoute.includes('data-enrichment')
-        ) {
+          !excludedPaths.some((p) => lastRoute.startsWith(p)) &&
+          !lastRoute.startsWith('/api/') &&
+          !lastRoute.includes('data-enrichment');
+
+        if (isValidRoute) {
           setLocation(lastRoute);
         } else {
           // Clear invalid routes from localStorage
