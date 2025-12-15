@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,9 +27,16 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const { toast } = useToast();
-  const { login } = useAuthContext();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuthContext();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      window.location.replace('/');
+    }
+  }, [isAuthenticated, authLoading]);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
