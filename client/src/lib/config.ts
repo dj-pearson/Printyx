@@ -33,8 +33,10 @@ export const config = {
   // In production, use same-origin proxy to avoid CORS issues
   supabase: {
     // Use proxy in production: /api/* routes to Supabase API
-    url: useProxy ? getOriginUrl() : import.meta.env.VITE_SUPABASE_URL || '',
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+    url: useProxy
+      ? getOriginUrl()
+      : import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co',
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key',
     // Use proxy in production: /functions/* routes to Supabase Edge Functions
     functionsUrl: useProxy
       ? `${getOriginUrl()}/functions`
