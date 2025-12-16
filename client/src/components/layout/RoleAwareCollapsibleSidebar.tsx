@@ -3,6 +3,7 @@ import { useLocation, Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/ui/logo';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -776,9 +777,7 @@ export function RoleAwareCollapsibleSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-3 px-2 py-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
-                <Globe className="h-6 w-6 text-white" />
-              </div>
+              <Logo className="h-10 w-10" />
               <div className="group-data-[collapsible=icon]:hidden">
                 <h1 className="text-xl font-bold text-slate-900">Printyx</h1>
                 <p className="text-xs text-slate-600 font-medium">Business Management</p>
