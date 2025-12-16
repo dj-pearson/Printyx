@@ -29,6 +29,40 @@
     background: hsl(var(--foreground));
   }
 
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Global Executive Background */
+  .bg-executive {
+    background:
+      radial-gradient(circle at top left, hsl(230 30% 96%), transparent 40%),
+      radial-gradient(circle at bottom right, hsl(230 30% 96%), transparent 40%),
+      hsl(var(--background));
+  }
+
+  .dark .bg-executive {
+    background:
+      radial-gradient(circle at top left, hsl(230 30% 15%), transparent 40%),
+      radial-gradient(circle at bottom right, hsl(230 30% 15%), transparent 40%),
+      hsl(var(--background));
+  }
+
   /* Mobile touch improvements */
   @media (max-width: 640px) {
     /* Improve touch targets on mobile */
@@ -320,7 +354,7 @@ div:has([class*='runtime-error']) {
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-background text-foreground custom-scrollbar;
   }
 }
 

@@ -566,10 +566,10 @@ export function RoleAwareCollapsibleSidebar({
   const navigationSections = useMemo(
     () => createNavigationSections(userRole),
     [
-      userRole?.name,
-      userRole?.canAccessAllTenants,
-      userRole?.level,
-      JSON.stringify(userRole?.permissions),
+      (userRole as any)?.name,
+      (userRole as any)?.canAccessAllTenants,
+      (userRole as any)?.level,
+      JSON.stringify((userRole as any)?.permissions),
     ],
   );
 
@@ -717,7 +717,7 @@ export function RoleAwareCollapsibleSidebar({
               data-testid={`nav-${section.id}`}
             >
               <div className="flex items-center gap-3">
-                <section.icon className="h-5 w-5" />
+                <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
                 <span className="font-medium">{section.title}</span>
               </div>
               {isExpanded(section.id) ? (
@@ -736,7 +736,7 @@ export function RoleAwareCollapsibleSidebar({
                   className="w-full justify-start h-auto py-2 px-3 text-sm"
                   data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
                 >
-                  <child.icon className="h-4 w-4 mr-2" />
+                  <child.icon className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:scale-110" />
                   {child.title}
                 </Button>
               </Link>
@@ -755,7 +755,7 @@ export function RoleAwareCollapsibleSidebar({
           data-testid={`nav-${section.id}`}
         >
           <div className="flex items-center gap-3">
-            <section.icon className="h-5 w-5" />
+            <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
             <span className="font-medium">{section.title}</span>
           </div>
         </Button>
@@ -965,7 +965,7 @@ export function RoleAwareCollapsibleSidebar({
       <SidebarFooter className="border-t border-slate-200 bg-white shrink-0">
         <div className="flex items-center gap-3 p-3">
           <Avatar className="w-9 h-9 ring-2 ring-slate-200">
-            <AvatarImage src={user?.avatar} />
+            <AvatarImage src={(user as any)?.avatar} />
             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
               {user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
             </AvatarFallback>
