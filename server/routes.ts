@@ -94,6 +94,7 @@ import { registerSoftwareProductsRoutes } from './routes-software-products';
 // OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
 // import { registerInvoicesRoutes } from './routes-invoices';
 import { setupAuth, isAuthenticated } from './replitAuth';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 import { registerPurchaseOrderRoutes } from './routes-purchase-orders';
 import { registerWarehouseRoutes } from './routes-warehouse';
 import { registerServiceAnalysisRoutes } from './routes-service-analysis';
@@ -212,17 +213,20 @@ const requireAuth = async (req: any, res: any, next: any) => {
     }
   }
 
-  // Add user context for backwards compatibility
+  // Add user context for backwards compatibility using auth helpers
+  const userId = getUserId(req);
+  const tenantId = getTenantId(req);
+
   if (!req.user) {
     req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId,
+      id: userId,
+      tenantId: tenantId,
     };
   } else if (!req.user.tenantId && !req.user.id) {
     // If we have user claims but no structured user object, build it
     req.user = {
-      id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId,
+      id: userId,
+      tenantId: tenantId,
     };
   }
 
@@ -768,7 +772,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tenants route for platform users (Root Admin / platform-only)
   app.get('/api/tenants', async (req: any, res) => {
     try {
-      const user = await storage.getUserWithRole(req.session.userId);
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      const user = await storage.getUserWithRole(userId);
       if (!user?.role?.canAccessAllTenants && (user?.role?.level ?? 0) < 7) {
         return res.status(403).json({ message: 'Root admin access required' });
       }
@@ -785,7 +793,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tenants/:tenantId/locations', async (req: any, res) => {
     try {
       const { tenantId } = req.params;
-      const user = await storage.getUserWithRole(req.session.userId);
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      const user = await storage.getUserWithRole(userId);
 
       // Only allow platform admins (root) or users from the same tenant
       const isRoot = user?.role?.canAccessAllTenants || (user?.role?.level ?? 0) >= 7;
@@ -824,7 +836,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { tenantId } = req.params;
-        const user = await storage.getUserWithRole(req.session.userId);
+        const userId = getUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: 'Not authenticated' });
+        }
+        const user = await storage.getUserWithRole(userId);
 
         // Only allow platform admins or users from the same tenant
         if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
@@ -858,7 +874,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { tenantId } = req.params;
-        const user = await storage.getUserWithRole(req.session.userId);
+        const userId = getUserId(req);
+        if (!userId) {
+          return res.status(401).json({ message: 'Not authenticated' });
+        }
+        const user = await storage.getUserWithRole(userId);
 
         // Only allow platform admins or users from the same tenant
         if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
@@ -6507,12 +6527,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { companyId } = req.params;
         const { contacts } = req.body;
 
-        // Simple session-based authentication check
-        if (!req.session.userId) {
+        // Authentication check using unified auth helpers
+        const userId = getUserId(req);
+        if (!userId) {
           return res.status(401).json({ message: 'Not authenticated' });
         }
 
-        const user = await storage.getUser(req.session.userId);
+        const user = await storage.getUser(userId);
         if (!user?.tenantId) {
           return res.status(403).json({ message: 'Access denied' });
         }
@@ -6827,12 +6848,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { companyId } = req.params;
 
-      // Simple session-based authentication check
-      if (!req.session.userId) {
+      // Authentication check using unified auth helpers
+      const userId = getUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
@@ -6850,12 +6872,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { contactId } = req.params;
       const contactData = req.body;
 
-      // Simple session-based authentication check
-      if (!req.session.userId) {
+      // Authentication check using unified auth helpers
+      const userId = getUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
@@ -6877,12 +6900,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { contactId } = req.params;
 
-      // Simple session-based authentication check
-      if (!req.session.userId) {
+      // Authentication check using unified auth helpers
+      const userId = getUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
@@ -7397,7 +7421,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Workflow Automation Routes
   app.get('/api/workflow-rules', async (req: any, res) => {
     try {
-      const tenantId = req.user.claims.sub;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
 
       // Mock workflow rules data for now - would come from database
       const workflowRules = [
@@ -7473,7 +7500,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/workflow-rules', async (req: any, res) => {
     try {
-      const tenantId = req.user.claims.sub;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
       const ruleData = {
         id: Date.now().toString(),
         ...req.body,
@@ -7521,7 +7551,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.claims.sub;
+        const tenantId = getTenantId(req);
+        if (!tenantId) {
+          return res.status(401).json({ message: 'Not authenticated' });
+        }
         const startDate = String((req.query as any)?.startDate || '');
         const endDate = String((req.query as any)?.endDate || '');
 
@@ -7557,7 +7590,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.claims.sub;
+        const tenantId = getTenantId(req);
+        if (!tenantId) {
+          return res.status(401).json({ message: 'Not authenticated' });
+        }
 
         // Mock customer profitability data
         const profitabilityData = {
@@ -7584,7 +7620,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.claims.sub;
+        const tenantId = getTenantId(req);
+        if (!tenantId) {
+          return res.status(401).json({ message: 'Not authenticated' });
+        }
 
         // Mock service performance data
         const serviceData = {
@@ -7619,11 +7658,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users API for owner lookup
   app.get('/api/users', async (req: any, res) => {
     try {
-      if (!req.session.userId) {
+      const userId = getUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
@@ -7640,12 +7680,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all deals with optional filtering
   app.get('/api/deals', async (req: any, res) => {
-    // Simple session-based authentication check
-    if (!req.session.userId) {
+    // Authentication check using unified auth helpers
+    const userId = getUserId(req);
+    if (!userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    const user = await storage.getUser(req.session.userId);
+    const user = await storage.getUser(userId);
     if (!user?.tenantId) {
       return res.status(403).json({ message: 'Access denied' });
     }
@@ -7666,12 +7707,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get single deal
   app.get('/api/deals/:id', async (req: any, res) => {
     try {
-      // Simple session-based authentication check
-      if (!req.session.userId) {
+      // Authentication check using unified auth helpers
+      const userId = getUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
@@ -7694,12 +7736,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new deal
   app.post('/api/deals', async (req: any, res) => {
     try {
-      // Simple session-based authentication check
-      if (!req.session.userId) {
+      // Authentication check using unified auth helpers
+      const authUserId = getUserId(req);
+      if (!authUserId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(authUserId);
       if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
@@ -7826,12 +7869,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update deal
   app.put('/api/deals/:id', async (req: any, res) => {
     try {
-      // Simple session-based authentication check
-      if (!req.session.userId) {
+      // Authentication check using unified auth helpers
+      const userId = getUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
 
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }

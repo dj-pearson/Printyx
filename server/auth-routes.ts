@@ -10,6 +10,7 @@ import { eq, and, gt, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { EmailTemplates } from "./services/email-templates";
 import { emailService } from "./services/email-service";
+import { getUserId, getTenantId } from "./utils/auth-helpers";
 
 const router = express.Router();
 
@@ -166,7 +167,7 @@ router.get("/user", async (req, res) => {
     if (isTestMode && req.headers['x-test-auth'] === testAuthToken) {
       const testUserId = 'test-user-playwright';
       const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
-      
+
       // Ensure test user exists
       let testUser = await storage.getUser(testUserId);
       if (!testUser) {
@@ -178,7 +179,7 @@ router.get("/user", async (req, res) => {
             domain: "default",
           });
         }
-        
+
         await storage.upsertUser({
           id: testUserId,
           email: 'test@playwright.dev',
@@ -190,7 +191,7 @@ router.get("/user", async (req, res) => {
         });
         testUser = await storage.getUser(testUserId);
       }
-      
+
       const userWithRole = await storage.getUserWithRole(testUserId);
       return res.json({
         id: testUser.id,
@@ -202,12 +203,14 @@ router.get("/user", async (req, res) => {
         tenantId: testUser.tenantId,
       });
     }
-    
-    if (!req.session.userId) {
+
+    // Use unified auth helpers to get user ID (supports Supabase JWT and session)
+    const userId = getUserId(req);
+    if (!userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    const user = await storage.getUserWithRole(req.session.userId);
+    const user = await storage.getUserWithRole(userId);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
