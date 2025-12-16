@@ -383,12 +383,22 @@ export function useSupabaseAuth() {
 
   // Logout function
   const logout = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw new Error(error.message);
+    try {
+      // Sign out from Supabase (this should clear the session from storage)
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase signOut error:', error);
+        throw new Error(error.message);
+      }
+
+      // Clear any cached data
+      queryClient.clear();
+
+      console.log('✅ Successfully signed out from Supabase');
+    } catch (error) {
+      console.error('❌ Logout failed:', error);
+      throw error;
     }
-    // Clear any cached data
-    queryClient.clear();
   }, [queryClient]);
 
   // Password reset request

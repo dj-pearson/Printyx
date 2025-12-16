@@ -112,22 +112,16 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={async () => {
+                  console.log('🔓 Logout clicked...');
                   try {
-                    // Clear localStorage cache before logout
-                    localStorage.removeItem('printyx_auth_user');
-                    localStorage.removeItem('printyx_last_route');
-
-                    // Use Supabase logout
+                    // Use the logout function from AuthProvider
+                    // This will handle all cleanup and redirect
                     await logout();
-
-                    // Redirect to home/login
-                    window.location.href = '/';
                   } catch (error) {
-                    console.error('Logout error:', error);
-                    // Clear cache even on error and redirect
-                    localStorage.removeItem('printyx_auth_user');
-                    localStorage.removeItem('printyx_last_route');
-                    window.location.href = '/';
+                    console.error('❌ Logout error:', error);
+                    // Force logout even on error - clear everything and redirect
+                    localStorage.clear();
+                    window.location.replace('/login');
                   }
                 }}
               >
