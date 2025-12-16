@@ -4,7 +4,7 @@ This document tracks the status of all API routes after migrating from Neon Post
 
 ## Migration Summary
 
-**Database**: Self-hosted Supabase at `209.145.59.219:5555`
+**Database**: Self-hosted Supabase at `209.145.59.219:5433`
 **Auth Method**: Supabase JWT (GoTrue) with `Authorization: Bearer <token>`
 **Tenant Resolution**: Via `x-tenant-id` header or JWT `app_metadata.tenantId`
 
@@ -12,15 +12,30 @@ This document tracks the status of all API routes after migrating from Neon Post
 
 ## Key Changes Made
 
-### Authentication Middleware
+### Authentication Infrastructure (Completed Dec 2024)
 - [x] `server/middleware/tenancy.ts` - Added `x-tenant-id` header support
-- [x] `server/replitAuth.ts` - `isAuthenticated` now supports Supabase JWT
+- [x] `server/replitAuth.ts` - Cleaned up: Removed Replit OIDC code, prioritizes Supabase JWT
 - [x] `server/middleware/supabase-auth.ts` - JWT validation middleware ready
-- [x] `server/utils/auth-helpers.ts` - NEW: Unified auth utility functions
+- [x] `server/utils/auth-helpers.ts` - Unified auth utility functions (`getUserId`, `getTenantId`)
+- [x] `server/auth-routes.ts` - Updated to use unified auth helpers
 
-### Auth Pattern Fix
-Changed from: `req.user.claims.tenantId` / `req.user.claims.sub`
-Changed to: `req.user?.tenantId || req.user?.claims?.tenantId` / `req.user?.id || req.user?.claims?.sub`
+### Main Routes File (Completed Dec 2024)
+- [x] `server/routes.ts` - Updated all routes to use `getUserId()` and `getTenantId()` helpers
+  - Fixed tenant routes (`/api/tenants`, `/api/tenants/:id/locations`, etc.)
+  - Fixed workflow routes (`/api/workflow-rules`)
+  - Fixed advanced reports routes (`/api/advanced-reports/*`)
+  - Fixed deals routes (`/api/deals`, `/api/deals/:id`)
+  - Fixed users route (`/api/users`)
+  - Fixed contact routes (`/api/contacts/*`, `/api/companies/:id/contacts`)
+
+### Auth Pattern Migration
+Changed from:
+- `req.session.userId` / `req.user.claims.sub`
+- `req.session.tenantId` / `req.user.claims.tenantId`
+
+Changed to:
+- `getUserId(req)` - Supports Supabase JWT, session, and user object
+- `getTenantId(req)` - Supports header, JWT metadata, and session
 
 ---
 
