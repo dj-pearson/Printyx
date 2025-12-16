@@ -262,6 +262,21 @@ export default function Signup() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 py-8">
       <div className="w-full max-w-2xl">
+        {/* Back to Homepage Button */}
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="text-gray-700 hover:text-gray-900 hover:bg-white/50"
+          >
+            <a href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Homepage
+            </a>
+          </Button>
+        </div>
+
         <Card>
           <CardHeader className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
