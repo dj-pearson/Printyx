@@ -1,6 +1,6 @@
 // RBAC-enhanced query client that automatically applies role-based filters
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+import { QueryClient, QueryFunction } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
 import { RBACService, applyRBACFilters, UserContext } from './rbac';
 
 // Global RBAC service instance - would be set during app initialization
@@ -13,41 +13,46 @@ export function setGlobalRBACService(rbacService: RBACService) {
 // Enhanced API request with RBAC filtering
 export async function rbacApiRequest(
   url: string,
-  method: string = "GET",
+  method: string = 'GET',
   body?: any,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
 ): Promise<any> {
   const requestHeaders: HeadersInit = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...headers,
   };
 
+  const getTenantIdForHeaders = (): string | undefined => {
+    if (typeof window === 'undefined') return undefined;
+    const isDemo = localStorage.getItem('demo-authenticated') === 'true';
+    if (isDemo) return localStorage.getItem('demo-tenant-id') || undefined;
+    return (
+      localStorage.getItem('tenant-id') ||
+      localStorage.getItem('printyx-tenant-id') ||
+      localStorage.getItem('x-tenant-id') ||
+      undefined
+    );
+  };
+
   // Add demo auth header if localStorage flag is set
-  if (
-    typeof window !== "undefined" &&
-    localStorage.getItem("demo-authenticated") === "true"
-  ) {
-    requestHeaders["X-Demo-Auth"] = "true";
+  if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
+    requestHeaders['X-Demo-Auth'] = 'true';
   }
 
   // Add tenant ID header
-  if (typeof window !== "undefined") {
-    const tenantId =
-      localStorage.getItem("demo-tenant-id") ||
-      "550e8400-e29b-41d4-a716-446655440000";
-    if (tenantId) {
-      requestHeaders["x-tenant-id"] = tenantId;
-    }
+  if (typeof window !== 'undefined') {
+    const tenantId = getTenantIdForHeaders();
+    if (tenantId) requestHeaders['x-tenant-id'] = tenantId;
   }
 
   // Apply RBAC filters if service is available
   let filteredBody = body;
-  if (globalRBACService && method === "GET") {
+  if (globalRBACService && method === 'GET') {
     // For GET requests, apply filters to query parameters
     const urlParts = url.split('?');
     const baseUrl = urlParts[0];
     const queryParams = urlParts[1] ? Object.fromEntries(new URLSearchParams(urlParts[1])) : {};
-    
+
     const filteredParams = applyRBACFilters(baseUrl, queryParams, globalRBACService);
     const newQueryString = new URLSearchParams(filteredParams).toString();
     url = newQueryString ? `${baseUrl}?${newQueryString}` : baseUrl;
@@ -61,7 +66,7 @@ export async function rbacApiRequest(
   async function getCsrfToken(): Promise<string | undefined> {
     if (__csrfToken) return __csrfToken;
     try {
-      const res = await fetch("/api/csrf-token", { credentials: "include" });
+      const res = await fetch('/api/csrf-token', { credentials: 'include' });
       if (!res.ok) return undefined;
       const data = await res.json();
       __csrfToken = data?.csrfToken || data?.token || data?.csrf;
@@ -71,17 +76,17 @@ export async function rbacApiRequest(
     }
   }
 
-  const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(method.toUpperCase());
-  if (isMutating && !("x-csrf-token" in requestHeaders)) {
+  const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase());
+  if (isMutating && !('x-csrf-token' in requestHeaders)) {
     const token = await getCsrfToken();
-    if (token) (requestHeaders as any)["x-csrf-token"] = token;
+    if (token) (requestHeaders as any)['x-csrf-token'] = token;
   }
 
   let res = await fetch(url, {
     method,
     headers: requestHeaders,
     body: filteredBody ? JSON.stringify(filteredBody) : undefined,
-    credentials: "include",
+    credentials: 'include',
   });
 
   // CSRF retry logic
@@ -89,23 +94,23 @@ export async function rbacApiRequest(
     __csrfToken = undefined;
     const token = await getCsrfToken();
     if (token) {
-      (requestHeaders as any)["x-csrf-token"] = token;
+      (requestHeaders as any)['x-csrf-token'] = token;
       res = await fetch(url, {
         method,
         headers: requestHeaders,
         body: filteredBody ? JSON.stringify(filteredBody) : undefined,
-        credentials: "include",
+        credentials: 'include',
       });
     }
   }
 
   if (res.status === 403) {
     toast({
-      title: "Access Denied",
+      title: 'Access Denied',
       description: "You don't have permission to access this resource.",
-      variant: "destructive",
+      variant: 'destructive',
     });
-    throw new Error("403: Access Denied");
+    throw new Error('403: Access Denied');
   }
 
   if (!res.ok) {
@@ -129,7 +134,7 @@ function filterResponseData(data: any, endpoint: string, rbac: RBACService): any
 
   // For arrays, filter each item
   if (Array.isArray(data)) {
-    return data.map(item => filterSingleItem(item, endpoint, rbac));
+    return data.map((item) => filterSingleItem(item, endpoint, rbac));
   }
 
   // For single objects, filter the item
@@ -155,18 +160,16 @@ function filterSingleItem(item: any, endpoint: string, rbac: RBACService): any {
 }
 
 // RBAC-aware query function
-export const getRBACQueryFn: <T>(options: {
-  on401: "returnNull" | "throw";
-}) => QueryFunction<T> =
+export const getRBACQueryFn: <T>(options: { on401: 'returnNull' | 'throw' }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const url = queryKey.join("/") as string;
-    
+    const url = queryKey.join('/') as string;
+
     try {
       const response = await rbacApiRequest(url);
       return response;
     } catch (error: any) {
-      if (error.message.includes('403') && unauthorizedBehavior === "returnNull") {
+      if (error.message.includes('403') && unauthorizedBehavior === 'returnNull') {
         return null;
       }
       throw error;
@@ -177,7 +180,7 @@ export const getRBACQueryFn: <T>(options: {
 export const rbacQueryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getRBACQueryFn({ on401: "throw" }),
+      queryFn: getRBACQueryFn({ on401: 'throw' }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -185,23 +188,20 @@ export const rbacQueryClient = new QueryClient({
       refetchOnMount: true,
       refetchOnReconnect: true,
       onError: (error: any) => {
-        const message =
-          typeof error === "string"
-            ? error
-            : error?.message || "Failed to load data";
-        
+        const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
+
         // Special handling for RBAC errors
         if (message.includes('403') || message.includes('Access Denied')) {
           toast({
-            title: "Access Restricted",
+            title: 'Access Restricted',
             description: "You don't have permission to view this data.",
-            variant: "destructive",
+            variant: 'destructive',
           });
         } else {
           toast({
-            title: "Load error",
+            title: 'Load error',
             description: message,
-            variant: "destructive",
+            variant: 'destructive',
           });
         }
       },
@@ -221,20 +221,19 @@ export const rbacQueryClient = new QueryClient({
     mutations: {
       retry: false,
       onError: (error: any) => {
-        const message =
-          typeof error === "string" ? error : error?.message || "Action failed";
-        
+        const message = typeof error === 'string' ? error : error?.message || 'Action failed';
+
         if (message.includes('403') || message.includes('Access Denied')) {
           toast({
-            title: "Action Not Permitted",
+            title: 'Action Not Permitted',
             description: "You don't have permission to perform this action.",
-            variant: "destructive",
+            variant: 'destructive',
           });
         } else {
           toast({
-            title: "Action failed",
+            title: 'Action failed',
             description: message,
-            variant: "destructive",
+            variant: 'destructive',
           });
         }
       },
@@ -247,7 +246,7 @@ export function useRBACApiRequest() {
   return {
     request: rbacApiRequest,
     queryClient: rbacQueryClient,
-    hasRBAC: globalRBACService !== null
+    hasRBAC: globalRBACService !== null,
   };
 }
 
@@ -284,14 +283,14 @@ export const DEMO_USER_CONTEXTS: Record<string, UserContext> = {
       level: 'executive',
       permissions: [
         { resource: 'reports:*', actions: ['read', 'export'] },
-        { resource: 'data:*', actions: ['read'] }
-      ]
+        { resource: 'data:*', actions: ['read'] },
+      ],
     },
     territoryIds: [],
     teamMemberIds: [],
     isManager: true,
     isExecutive: true,
-    departments: ['sales', 'service', 'finance']
+    departments: ['sales', 'service', 'finance'],
   },
   salesManager: {
     userId: 'mgr-001',
@@ -303,14 +302,14 @@ export const DEMO_USER_CONTEXTS: Record<string, UserContext> = {
       level: 'manager',
       permissions: [
         { resource: 'reports:sales', actions: ['read', 'export'] },
-        { resource: 'data:sales', actions: ['read'], conditions: { scope: 'team' } }
-      ]
+        { resource: 'data:sales', actions: ['read'], conditions: { scope: 'team' } },
+      ],
     },
     territoryIds: ['north', 'east'],
     teamMemberIds: ['rep-001', 'rep-002', 'rep-003'],
     isManager: true,
     isExecutive: false,
-    departments: ['sales']
+    departments: ['sales'],
   },
   salesRep: {
     userId: 'rep-001',
@@ -322,14 +321,14 @@ export const DEMO_USER_CONTEXTS: Record<string, UserContext> = {
       level: 'rep',
       permissions: [
         { resource: 'reports:sales', actions: ['read'], conditions: { scope: 'self' } },
-        { resource: 'data:sales', actions: ['read'], conditions: { scope: 'self' } }
-      ]
+        { resource: 'data:sales', actions: ['read'], conditions: { scope: 'self' } },
+      ],
     },
     territoryIds: ['north'],
     teamMemberIds: [],
     managerId: 'mgr-001',
     isManager: false,
     isExecutive: false,
-    departments: ['sales']
-  }
+    departments: ['sales'],
+  },
 };

@@ -3,6 +3,21 @@ import { toast } from '@/hooks/use-toast';
 import { config, getApiUrl } from '@/lib/config';
 import { getAccessToken } from '@/lib/supabase';
 
+function getTenantIdForHeaders(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+
+  const isDemo = localStorage.getItem('demo-authenticated') === 'true';
+  if (isDemo) return localStorage.getItem('demo-tenant-id') || undefined;
+
+  // Prefer explicit tenant overrides if your app supports tenant switching.
+  return (
+    localStorage.getItem('tenant-id') ||
+    localStorage.getItem('printyx-tenant-id') ||
+    localStorage.getItem('x-tenant-id') ||
+    undefined
+  );
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -64,11 +79,8 @@ export async function apiRequest(
 
   // Add tenant ID header - use localStorage if available, fallback to session
   if (typeof window !== 'undefined') {
-    const tenantId =
-      localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
-    if (tenantId) {
-      requestHeaders['x-tenant-id'] = tenantId;
-    }
+    const tenantId = getTenantIdForHeaders();
+    if (tenantId) requestHeaders['x-tenant-id'] = tenantId;
   }
 
   // CSRF token only needed for legacy auth (session-based)
@@ -152,8 +164,7 @@ export async function apiFormRequest(
 
   // Tenant header
   if (typeof window !== 'undefined') {
-    const tenantId =
-      localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
+    const tenantId = getTenantIdForHeaders();
     if (tenantId) requestHeaders['x-tenant-id'] = tenantId;
   }
 
@@ -221,11 +232,8 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
 
     // Add tenant ID header - use localStorage if available, fallback to session
     if (typeof window !== 'undefined') {
-      const tenantId =
-        localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
-      if (tenantId) {
-        headers['x-tenant-id'] = tenantId;
-      }
+      const tenantId = getTenantIdForHeaders();
+      if (tenantId) headers['x-tenant-id'] = tenantId;
     }
 
     const url = queryKey.join('/') as string;
