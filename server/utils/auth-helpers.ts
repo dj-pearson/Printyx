@@ -130,6 +130,7 @@ export function getAccessScope(req: Request): string {
 
 /**
  * Check if the user is a platform admin.
+ * Checks multiple sources: isPlatformUser flag, role level, and role string.
  *
  * @param req Express Request object
  * @returns boolean
@@ -137,6 +138,7 @@ export function getAccessScope(req: Request): string {
 export function isPlatformAdmin(req: Request): boolean {
   const reqAny = req as any;
 
+  // Check explicit isPlatformUser flag
   if (reqAny.supabaseUser?.isPlatformUser) {
     return true;
   }
@@ -145,7 +147,26 @@ export function isPlatformAdmin(req: Request): boolean {
     return true;
   }
 
-  return false;
+  // Check role level (level 8 = platform admin)
+  if (reqAny.user?.roleLevel >= 8) {
+    return true;
+  }
+
+  // Check hasAllPermissions flag (from enhanced RBAC)
+  if (reqAny.user?.hasAllPermissions) {
+    return true;
+  }
+
+  // Check role code/name for admin patterns
+  const roleCode = reqAny.user?.roleCode?.toLowerCase() || '';
+  const roleName = reqAny.user?.role?.name?.toLowerCase() || '';
+
+  const adminPatterns = ['admin', 'root', 'platform', 'system'];
+  const isAdminRole = adminPatterns.some(
+    (pattern) => roleCode.includes(pattern) || roleName.includes(pattern),
+  );
+
+  return isAdminRole;
 }
 
 /**
