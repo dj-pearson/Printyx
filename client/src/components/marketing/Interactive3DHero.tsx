@@ -179,7 +179,7 @@ const Interactive3DHero = () => {
                 initial={{ opacity: 0, y: 100, rotateX: 20 }}
                 animate={{ opacity: 1, y: 0, rotateX: 0 }}
                 transition={{ duration: 1, delay: 0.2, type: 'spring' }}
-                className="absolute inset-x-0 top-10 z-20 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden"
+                className="absolute inset-x-0 top-10 z-20 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden"
                 style={{ transformStyle: 'preserve-3d', transform: 'translateZ(50px)' }}
               >
                 {/* Window Controls */}
@@ -242,7 +242,7 @@ const Interactive3DHero = () => {
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.6 }}
-                className="absolute -right-12 top-1/4 z-30 bg-slate-800/90 backdrop-blur-md p-4 rounded-xl border border-slate-600 shadow-2xl w-64"
+                className="absolute -right-12 top-1/4 z-30 bg-slate-800/95 backdrop-blur-md p-4 rounded-xl border border-slate-600 shadow-2xl w-64"
                 style={{ transform: 'translateZ(100px)' }}
               >
                 <div className="flex items-start gap-3">
@@ -269,7 +269,7 @@ const Interactive3DHero = () => {
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.8 }}
-                className="absolute -left-8 bottom-1/4 z-30 bg-slate-800/90 backdrop-blur-md p-4 rounded-xl border border-slate-600 shadow-2xl w-56"
+                className="absolute -left-8 bottom-1/4 z-30 bg-slate-800/95 backdrop-blur-md p-4 rounded-xl border border-slate-600 shadow-2xl w-56"
                 style={{ transform: 'translateZ(75px)' }}
               >
                 <div className="flex items-center gap-3 mb-3">

@@ -1,7 +1,7 @@
-import { Search, Settings, User, ChevronDown, Bell, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Search, Settings, User, ChevronDown, Bell, Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,12 +10,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import SystemAlertBell from "@/components/layout/SystemAlertBell";
-import { queryClient } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import SystemAlertBell from '@/components/layout/SystemAlertBell';
+import { queryClient } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
 
 interface HeaderProps {
   title?: string;
@@ -27,7 +27,7 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white backdrop-blur-sm shadow-sm">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm shadow-sm">
       <div className="flex h-16 items-center px-4 lg:px-6">
         {/* Sidebar Toggle - Enhanced for mobile visibility */}
         <SidebarTrigger className="mr-3 h-9 w-9 hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 md:mr-4" />
@@ -60,12 +60,7 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
           </div>
           {/* Mobile search button */}
           <div className="sm:hidden flex justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Search"
-              onClick={onSearchClick}
-            >
+            <Button variant="ghost" size="icon" aria-label="Search" onClick={onSearchClick}>
               <Search className="h-5 w-5" />
             </Button>
           </div>
@@ -80,10 +75,7 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage
-                    src={user?.profileImageUrl || ""}
-                    alt={user?.firstName || ""}
-                  />
+                  <AvatarImage src={user?.profileImageUrl || ''} alt={user?.firstName || ''} />
                   <AvatarFallback className="text-xs">
                     {user?.firstName?.[0]}
                     {user?.lastName?.[0]}
@@ -97,9 +89,7 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
                   <p className="text-sm font-medium leading-none">
                     {user?.firstName} {user?.lastName}
                   </p>
-                  <p className="text-xs leading-none text-gray-500">
-                    {user?.email}
-                  </p>
+                  <p className="text-xs leading-none text-gray-500">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -116,9 +106,7 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
                 <DropdownMenuItem className="sm:hidden">
                   <Bell className="mr-2 h-4 w-4" />
                   <span>Notifications</span>
-                  <Badge className="ml-auto h-5 w-5 rounded-full p-0 text-xs bg-red-500">
-                    3
-                  </Badge>
+                  <Badge className="ml-auto h-5 w-5 rounded-full p-0 text-xs bg-red-500">3</Badge>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -126,22 +114,22 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
                 onClick={async () => {
                   try {
                     // Clear localStorage cache before logout
-                    localStorage.removeItem("printyx_auth_user");
-                    localStorage.removeItem("printyx_last_route");
+                    localStorage.removeItem('printyx_auth_user');
+                    localStorage.removeItem('printyx_last_route');
 
-                    const response = await fetch("/api/auth/logout", {
-                      method: "POST",
-                      credentials: "include",
+                    const response = await fetch('/api/auth/logout', {
+                      method: 'POST',
+                      credentials: 'include',
                     });
                     if (response.ok) {
-                      window.location.href = "/";
+                      window.location.href = '/';
                     }
                   } catch (error) {
-                    console.error("Logout error:", error);
+                    console.error('Logout error:', error);
                     // Clear cache even on error
-                    localStorage.removeItem("printyx_auth_user");
-                    localStorage.removeItem("printyx_last_route");
-                    window.location.href = "/";
+                    localStorage.removeItem('printyx_auth_user');
+                    localStorage.removeItem('printyx_last_route');
+                    window.location.href = '/';
                   }
                 }}
               >
