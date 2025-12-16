@@ -871,7 +871,8 @@ export const users = pgTable('users', {
   lastName: varchar('last_name'),
   profileImageUrl: varchar('profile_image_url'),
   passwordHash: varchar('password_hash'), // bcrypt hashed password
-  roleId: varchar('role_id'), // references roles.id
+  role: varchar('role'), // Legacy string role (admin, manager, etc.) - kept for backward compatibility
+  roleId: varchar('role_id'), // references roles.id - new enhanced RBAC
   teamId: varchar('team_id'), // references teams.id
   managerId: varchar('manager_id'), // direct manager - references users.id
   employeeId: varchar('employee_id'), // company employee ID

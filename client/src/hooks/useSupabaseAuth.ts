@@ -133,90 +133,162 @@ export function useSupabaseAuth() {
       const authUser = transformUser(session.user);
       if (!authUser) return null;
 
-      // Prefer fetching profile/role/team from the app server (avoids Supabase PostgREST RLS issues).
-      // In production, if no app API base URL is configured, /api/* will be served by the static site
-      // and return HTML. In that case, use a Supabase Edge Function (/me) to hydrate role/permissions.
+      // Fetch user profile and role data separately (avoids PostgREST join issues)
       try {
-        // If the app API is configured, use it.
-        if (!(config.isProduction && !config.apiBaseUrl)) {
-          const me = await apiRequest('/api/me', 'GET');
+        // Get user profile with role information
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select(
+            'id, email, first_name, last_name, tenant_id, role, role_id, team_id, access_scope, is_platform_user, profile_image_url',
+          )
+          .eq('id', session.user.id)
+          .single();
 
-          const merged: any = {
-            ...authUser,
-            firstName: me?.firstName || authUser.firstName,
-            lastName: me?.lastName || authUser.lastName,
-            tenantId: me?.tenantId || authUser.tenantId,
-            roleId: me?.roleId || authUser.roleId,
-            teamId: me?.teamId || authUser.teamId,
-            accessScope: me?.accessScope || authUser.accessScope,
-            isPlatformUser: me?.isPlatformUser ?? authUser.isPlatformUser,
-            role: me?.role || authUser.role,
-            team: me?.team || authUser.team,
-          };
+        if (profileError) {
+          console.warn('No user profile found, using auth metadata');
+        }
 
-          // Ensure role shape is compatible with navigation
-          if (merged.role) {
-            merged.role = {
-              ...merged.role,
-              permissions:
-                normalizePermissions((merged.role as any).permissions) || defaultRolePermissions(),
-              canAccessAllTenants: Boolean(
-                (merged.role as any).canAccessAllTenants ??
-                  (merged.role as any).can_access_all_tenants,
-              ),
-              level: (merged.role as any).level ?? 1,
-              name: (merged.role as any).name ?? 'User',
-              id: (merged.role as any).id ?? 'default',
+        // Determine role - check both role (string) and role_id (FK) columns
+        const roleString = profile?.role; // String role like 'admin', 'manager', etc.
+        const roleId = profile?.role_id || authUser.roleId;
+        let roleData = null;
+
+        // First try to fetch from roles table if we have role_id
+        if (roleId) {
+          const { data: role, error: roleError } = await supabase
+            .from('roles')
+            .select('id, name, level, permissions, can_access_all_tenants')
+            .eq('id', roleId)
+            .single();
+
+          if (!roleError && role) {
+            roleData = {
+              id: role.id,
+              name: role.name,
+              level: role.level || 1,
+              permissions: role.permissions || {},
+              canAccessAllTenants: role.can_access_all_tenants || false,
             };
           } else {
-            merged.role = getDefaultRole();
+            console.warn('Could not fetch role data:', roleError?.message);
           }
-
-          return merged;
         }
 
-        // No app API in production: use Supabase Edge Function if configured
-        const functionsUrl = config.supabase.functionsUrl;
-        if (functionsUrl && session?.access_token) {
-          const resp = await fetch(`${functionsUrl}/me`, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: config.supabase.anonKey,
-              'Content-Type': 'application/json',
+        // If no role from roles table, use role string to determine permissions
+        if (!roleData && roleString) {
+          // Map string role to permissions
+          const roleLowerCase = roleString.toLowerCase();
+
+          // Determine if this is an admin role
+          const isAdmin =
+            roleLowerCase === 'admin' ||
+            roleLowerCase === 'root_admin' ||
+            roleLowerCase === 'platform_admin' ||
+            roleLowerCase === 'company_admin' ||
+            roleLowerCase === 'system_admin';
+
+          // Determine role level based on role string
+          let level = 1;
+          if (
+            roleLowerCase === 'admin' ||
+            roleLowerCase === 'root_admin' ||
+            roleLowerCase === 'platform_admin'
+          ) {
+            level = 8; // Platform admin level
+          } else if (roleLowerCase === 'company_admin' || roleLowerCase === 'director') {
+            level = 7; // Company admin level
+          } else if (
+            roleLowerCase === 'manager' ||
+            roleLowerCase === 'sales_manager' ||
+            roleLowerCase === 'service_manager'
+          ) {
+            level = 5; // Manager level
+          } else if (roleLowerCase === 'team_lead') {
+            level = 3;
+          } else if (roleLowerCase === 'technician' || roleLowerCase === 'sales_rep') {
+            level = 2;
+          }
+
+          roleData = {
+            id: roleString,
+            name: roleString,
+            level: level,
+            permissions: {
+              sales: true,
+              service: true,
+              products: true,
+              inventory: true,
+              billing: isAdmin,
+              reports: true,
+              admin: isAdmin,
+              users: isAdmin,
+              settings: isAdmin,
             },
-          });
+            canAccessAllTenants: isAdmin,
+          };
 
-          if (resp.ok) {
-            const me = await resp.json();
-            const role = me?.role
-              ? {
-                  ...me.role,
-                  permissions:
-                    normalizePermissions(me.role.permissions) || defaultRolePermissions(),
-                  canAccessAllTenants: Boolean(
-                    me.role.canAccessAllTenants ?? me.role.can_access_all_tenants,
-                  ),
-                }
-              : getDefaultRole();
+          console.log(`Using role string '${roleString}' - level ${level}, isAdmin: ${isAdmin}`);
+        }
 
-            return {
-              ...authUser,
-              firstName: me?.firstName || authUser.firstName,
-              lastName: me?.lastName || authUser.lastName,
-              tenantId: me?.tenantId || authUser.tenantId,
-              roleId: me?.roleId || authUser.roleId,
-              teamId: me?.teamId || authUser.teamId,
-              accessScope: me?.accessScope || authUser.accessScope,
-              isPlatformUser: me?.isPlatformUser ?? authUser.isPlatformUser,
-              role,
-              team: me?.team || null,
+        // Get team data if we have a team_id
+        const teamId = profile?.team_id || authUser.teamId;
+        let teamData = null;
+
+        if (teamId) {
+          const { data: team, error: teamError } = await supabase
+            .from('teams')
+            .select('id, name')
+            .eq('id', teamId)
+            .single();
+
+          if (!teamError && team) {
+            teamData = {
+              id: team.id,
+              name: team.name,
             };
           }
         }
 
-        // If neither app API nor edge function worked, fall back.
-        throw new Error('PROFILE_HYDRATION_UNAVAILABLE');
+        // If still no role found, provide a default role for navigation
+        if (!roleData) {
+          console.warn('No role found (neither role string nor role_id), using default user role');
+          roleData = {
+            id: 'default',
+            name: 'User',
+            level: 1,
+            permissions: {
+              sales: true,
+              service: true,
+              products: true,
+              inventory: true,
+              billing: true,
+              reports: true,
+            },
+            canAccessAllTenants: false,
+          };
+        }
+
+        // Detect isPlatformUser based on role or explicit flag
+        const isPlatformUser =
+          profile?.is_platform_user ||
+          roleData.level >= 8 ||
+          roleString?.toLowerCase().includes('admin') ||
+          roleString?.toLowerCase().includes('root') ||
+          roleString?.toLowerCase().includes('platform');
+
+        // Merge profile data with auth user
+        return {
+          ...authUser,
+          firstName: profile?.first_name || authUser.firstName,
+          lastName: profile?.last_name || authUser.lastName,
+          tenantId: profile?.tenant_id || authUser.tenantId,
+          roleId: profile?.role_id || authUser.roleId,
+          teamId: profile?.team_id || authUser.teamId,
+          accessScope: profile?.access_scope || authUser.accessScope,
+          isPlatformUser: isPlatformUser,
+          role: roleData,
+          team: teamData,
+        };
       } catch (err) {
         // Fallback to auth user with default role if fetch fails.
         if (!(err instanceof Error && err.message === 'PROFILE_HYDRATION_UNAVAILABLE')) {
