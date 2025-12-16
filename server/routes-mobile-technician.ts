@@ -39,7 +39,7 @@ const upload = multer({
 router.get('/sync', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const since = req.query.since; // Last sync timestamp for incremental sync
 
     // Get assigned tickets (open or in progress)
@@ -48,9 +48,9 @@ router.get('/sync', async (req: any, res) => {
         eq(phoneInTickets.tenantId, tenantId),
         or(
           eq(phoneInTickets.assignedTo, technicianId),
-          eq(phoneInTickets.enhancedTicketStatus, 'new')
+          eq(phoneInTickets.enhancedTicketStatus, 'new'),
         ),
-        since ? gte(phoneInTickets.updatedAt, new Date(since)) : undefined
+        since ? gte(phoneInTickets.updatedAt, new Date(since)) : undefined,
       ),
       with: {
         customer: true,
@@ -73,10 +73,7 @@ router.get('/sync', async (req: any, res) => {
 
     // Get technician's own profile
     const technician = await db.query.users.findFirst({
-      where: and(
-        eq(users.id, technicianId),
-        eq(users.tenantId, tenantId)
-      ),
+      where: and(eq(users.id, technicianId), eq(users.tenantId, tenantId)),
     });
 
     res.json({
@@ -91,7 +88,7 @@ router.get('/sync', async (req: any, res) => {
     console.error('[MobileAPI] Sync error:', error);
     res.status(500).json({
       message: 'Sync failed',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -104,12 +101,12 @@ router.get('/sync', async (req: any, res) => {
 router.get('/tickets', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const status = req.query.status; // Filter by status
 
     let whereConditions: any = and(
       eq(phoneInTickets.tenantId, tenantId),
-      eq(phoneInTickets.assignedTo, technicianId)
+      eq(phoneInTickets.assignedTo, technicianId),
     );
 
     if (status) {
@@ -144,10 +141,7 @@ router.get('/tickets/:id', async (req: any, res) => {
     const { id } = req.params;
 
     const ticket = await db.query.phoneInTickets.findFirst({
-      where: and(
-        eq(phoneInTickets.id, id),
-        eq(phoneInTickets.tenantId, tenantId)
-      ),
+      where: and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)),
       with: {
         customer: true,
         equipment: true,
@@ -195,10 +189,7 @@ router.patch('/tickets/:id', async (req: any, res) => {
     const [ticket] = await db
       .update(phoneInTickets)
       .set(updates)
-      .where(and(
-        eq(phoneInTickets.id, id),
-        eq(phoneInTickets.tenantId, tenantId)
-      ))
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
       .returning();
 
     if (!ticket) {
@@ -220,7 +211,7 @@ router.patch('/tickets/:id', async (req: any, res) => {
 router.post('/tickets/:id/start', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const { latitude, longitude } = req.body;
 
@@ -232,10 +223,7 @@ router.post('/tickets/:id/start', async (req: any, res) => {
         startedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(phoneInTickets.id, id),
-        eq(phoneInTickets.tenantId, tenantId)
-      ))
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
       .returning();
 
     // Log location if provided
@@ -267,7 +255,7 @@ router.post('/tickets/:id/start', async (req: any, res) => {
 router.post('/tickets/:id/complete', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const {
       signature,
@@ -277,7 +265,7 @@ router.post('/tickets/:id/complete', async (req: any, res) => {
       partsUsed,
       timeSpent,
       latitude,
-      longitude
+      longitude,
     } = req.body;
 
     // Update ticket
@@ -294,10 +282,7 @@ router.post('/tickets/:id/complete', async (req: any, res) => {
         customerSignatureTitle: signatureTitle,
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(phoneInTickets.id, id),
-        eq(phoneInTickets.tenantId, tenantId)
-      ))
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
       .returning();
 
     // Log completion location
@@ -319,7 +304,7 @@ router.post('/tickets/:id/complete', async (req: any, res) => {
 
     res.json({
       ticket,
-      message: 'Ticket completed successfully'
+      message: 'Ticket completed successfully',
     });
   } catch (error) {
     console.error('[MobileAPI] Complete ticket error:', error);
@@ -335,7 +320,7 @@ router.post('/tickets/:id/complete', async (req: any, res) => {
 router.post('/tickets/:id/photos', upload.array('photos', 10), async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const files = req.files as Express.Multer.File[];
 
@@ -355,24 +340,27 @@ router.post('/tickets/:id/photos', upload.array('photos', 10), async (req: any, 
       });
 
       // Save photo record to database
-      const [photo] = await db.insert(servicePhotos).values({
-        ticketId: id,
-        tenantId,
-        uploadedBy: technicianId,
-        filename,
-        url,
-        mimeType: file.mimetype,
-        size: file.size,
-        caption: req.body[`caption_${file.originalname}`] || null,
-        capturedAt: new Date(),
-      }).returning();
+      const [photo] = await db
+        .insert(servicePhotos)
+        .values({
+          ticketId: id,
+          tenantId,
+          uploadedBy: technicianId,
+          filename,
+          url,
+          mimeType: file.mimetype,
+          size: file.size,
+          caption: req.body[`caption_${file.originalname}`] || null,
+          capturedAt: new Date(),
+        })
+        .returning();
 
       uploadedPhotos.push(photo);
     }
 
     res.json({
       photos: uploadedPhotos,
-      message: `${uploadedPhotos.length} photo(s) uploaded successfully`
+      message: `${uploadedPhotos.length} photo(s) uploaded successfully`,
     });
   } catch (error) {
     console.error('[MobileAPI] Photo upload error:', error);
@@ -388,7 +376,7 @@ router.post('/tickets/:id/photos', upload.array('photos', 10), async (req: any, 
 router.post('/tickets/:id/notes', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const { note, isInternal } = req.body;
 
@@ -398,10 +386,7 @@ router.post('/tickets/:id/notes', async (req: any, res) => {
 
     // Get current notes
     const ticket = await db.query.phoneInTickets.findFirst({
-      where: and(
-        eq(phoneInTickets.id, id),
-        eq(phoneInTickets.tenantId, tenantId)
-      ),
+      where: and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)),
     });
 
     if (!ticket) {
@@ -425,7 +410,7 @@ router.post('/tickets/:id/notes', async (req: any, res) => {
 
     res.json({
       ticket: updated,
-      message: 'Note added successfully'
+      message: 'Note added successfully',
     });
   } catch (error) {
     console.error('[MobileAPI] Add note error:', error);
@@ -444,10 +429,7 @@ router.get('/equipment/:id', async (req: any, res) => {
     const { id } = req.params;
 
     const equipmentItem = await db.query.equipment.findFirst({
-      where: and(
-        eq(equipment.id, id),
-        eq(equipment.tenantId, tenantId)
-      ),
+      where: and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)),
       with: {
         customer: true,
       },
@@ -459,17 +441,14 @@ router.get('/equipment/:id', async (req: any, res) => {
 
     // Get recent service history for this equipment
     const recentTickets = await db.query.phoneInTickets.findMany({
-      where: and(
-        eq(phoneInTickets.equipmentId, id),
-        eq(phoneInTickets.tenantId, tenantId)
-      ),
+      where: and(eq(phoneInTickets.equipmentId, id), eq(phoneInTickets.tenantId, tenantId)),
       orderBy: [desc(phoneInTickets.createdAt)],
       limit: 5,
     });
 
     res.json({
       equipment: equipmentItem,
-      recentTickets
+      recentTickets,
     });
   } catch (error) {
     console.error('[MobileAPI] Equipment fetch error:', error);
@@ -497,8 +476,8 @@ router.post('/equipment/scan', async (req: any, res) => {
         eq(equipment.tenantId, tenantId),
         or(
           qrCode ? eq(equipment.id, qrCode) : undefined,
-          serialNumber ? eq(equipment.serialNumber, serialNumber) : undefined
-        )
+          serialNumber ? eq(equipment.serialNumber, serialNumber) : undefined,
+        ),
       ),
       with: {
         customer: true,
@@ -524,7 +503,7 @@ router.post('/equipment/scan', async (req: any, res) => {
 router.post('/location', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { latitude, longitude, accuracy, ticketId, eventType } = req.body;
 
     if (!latitude || !longitude) {
@@ -557,7 +536,7 @@ router.post('/location', async (req: any, res) => {
 router.get('/stats', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.session.userId;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
 
     // Get counts by status
     const stats = await db
@@ -566,10 +545,9 @@ router.get('/stats', async (req: any, res) => {
         count: db.count(),
       })
       .from(phoneInTickets)
-      .where(and(
-        eq(phoneInTickets.tenantId, tenantId),
-        eq(phoneInTickets.assignedTo, technicianId)
-      ))
+      .where(
+        and(eq(phoneInTickets.tenantId, tenantId), eq(phoneInTickets.assignedTo, technicianId)),
+      )
       .groupBy(phoneInTickets.enhancedTicketStatus);
 
     const statsByStatus = stats.reduce((acc: any, stat: any) => {

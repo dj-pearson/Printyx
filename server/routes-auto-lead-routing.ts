@@ -1,19 +1,26 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { autoLeadRoutingService } from './services/auto-lead-routing-service';
-import { platformLeadAssignmentHistory as leadAssignmentHistory, platformLeadScoreCalculations as leadScoreCalculations, platformRepCapacity as repCapacity, businessRecords } from '@shared/schema';
+import {
+  platformLeadAssignmentHistory as leadAssignmentHistory,
+  platformLeadScoreCalculations as leadScoreCalculations,
+  platformRepCapacity as repCapacity,
+  businessRecords,
+} from '@shared/schema';
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
+import { isAuthenticated } from './replitAuth';
 // RBAC Integration
 import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 export function registerAutoLeadRoutingRoutes(app: Express) {
-  // Apply RBAC context to all auto-lead-routing routes
-  app.use('/api/auto-lead-routing', enhanceUserContext);
+  // Apply authentication and RBAC context to all auto-lead-routing routes
+  // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
+  app.use('/api/auto-lead-routing', isAuthenticated, enhanceUserContext);
   /**
    * Manually trigger auto-routing for a specific lead
    */
@@ -28,10 +35,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
 
       console.log(`🤖 Auto-routing lead ${leadId} for tenant ${tenantId}...`);
 
-      const result = await autoLeadRoutingService.routeLeadAutomatically(
-        leadId,
-        tenantId
-      );
+      const result = await autoLeadRoutingService.routeLeadAutomatically(leadId, tenantId);
 
       console.log(`✅ Lead routed in ${result.processingTimeMs}ms to ${result.assignedRepName}`);
 
@@ -72,10 +76,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
 
       for (const leadId of leadIds) {
         try {
-          const result = await autoLeadRoutingService.routeLeadAutomatically(
-            leadId,
-            tenantId
-          );
+          const result = await autoLeadRoutingService.routeLeadAutomatically(leadId, tenantId);
           results.push({ leadId, ...result });
         } catch (error: any) {
           errors.push({ leadId, error: error.message });
@@ -121,8 +122,8 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
           and(
             eq(leadAssignmentHistory.tenantId, tenantId),
             eq(leadAssignmentHistory.assignmentReason, 'auto_ai_routing'),
-            gte(leadAssignmentHistory.assignedAt, thirtyDaysAgo)
-          )
+            gte(leadAssignmentHistory.assignedAt, thirtyDaysAgo),
+          ),
         );
 
       const totalAutoRouted = autoRoutedLeads[0]?.count || 0;
@@ -138,15 +139,13 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
           and(
             eq(leadAssignmentHistory.tenantId, tenantId),
             eq(leadAssignmentHistory.assignmentReason, 'auto_ai_routing'),
-            gte(leadAssignmentHistory.assignedAt, thirtyDaysAgo)
-          )
+            gte(leadAssignmentHistory.assignedAt, thirtyDaysAgo),
+          ),
         );
 
       const avgResponseTime = responseStats[0]?.avgResponseTime || 0;
       const fastResponseRate =
-        totalAutoRouted > 0
-          ? ((responseStats[0]?.fastResponses || 0) / totalAutoRouted) * 100
-          : 0;
+        totalAutoRouted > 0 ? ((responseStats[0]?.fastResponses || 0) / totalAutoRouted) * 100 : 0;
 
       // Lead score distribution
       const scoreDistribution = await db
@@ -158,8 +157,8 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         .where(
           and(
             eq(leadScoreCalculations.tenantId, tenantId),
-            gte(leadScoreCalculations.calculatedAt, thirtyDaysAgo)
-          )
+            gte(leadScoreCalculations.calculatedAt, thirtyDaysAgo),
+          ),
         )
         .groupBy(leadScoreCalculations.leadGrade);
 
@@ -174,12 +173,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
           avgResponseTime: repCapacity.averageResponseTimeMinutes,
         })
         .from(repCapacity)
-        .where(
-          and(
-            eq(repCapacity.tenantId, tenantId),
-            eq(repCapacity.isAvailable, true)
-          )
-        );
+        .where(and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.isAvailable, true)));
 
       // Recent auto-routed leads
       const recentLeads = await db
@@ -195,8 +189,8 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         .where(
           and(
             eq(leadAssignmentHistory.tenantId, tenantId),
-            eq(leadAssignmentHistory.assignmentReason, 'auto_ai_routing')
-          )
+            eq(leadAssignmentHistory.assignmentReason, 'auto_ai_routing'),
+          ),
         )
         .orderBy(desc(leadAssignmentHistory.assignedAt))
         .limit(10);
@@ -216,11 +210,11 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
           timeSavedCost: (timeSavedHours * 35).toFixed(0), // $35/hour
           period: '30 days',
         },
-        scoreDistribution: scoreDistribution.map(d => ({
+        scoreDistribution: scoreDistribution.map((d) => ({
           grade: d.grade,
           count: d.count,
         })),
-        repWorkload: repWorkload.map(rep => ({
+        repWorkload: repWorkload.map((rep) => ({
           userId: rep.userId,
           utilizationPercent: ((rep.currentLoad / (rep.maxLoad || 50)) * 100).toFixed(0),
           currentLoad: rep.currentLoad,
@@ -316,10 +310,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
 
       // Fetch lead
       const lead = await db.query.businessRecords.findFirst({
-        where: and(
-          eq(businessRecords.id, leadId),
-          eq(businessRecords.tenantId, tenantId)
-        ),
+        where: and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)),
       });
 
       if (!lead) {

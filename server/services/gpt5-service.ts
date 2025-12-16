@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI from 'openai';
 
 // Configuration for different use cases in the Printyx platform
 interface GPT5Config {
@@ -23,96 +23,108 @@ export const GPT5_CONFIGS = {
   LEAD_ANALYSIS: {
     model: 'gpt-5-mini' as const,
     reasoning: { effort: 'medium' as const },
-    text: { verbosity: 'medium' as const }
+    text: { verbosity: 'medium' as const },
   },
-  
+
   // For quote and proposal generation
   PROPOSAL_GENERATION: {
     model: 'gpt-5' as const,
     reasoning: { effort: 'high' as const },
-    text: { verbosity: 'high' as const }
+    text: { verbosity: 'high' as const },
   },
-  
+
   // For service ticket analysis and predictive maintenance
   SERVICE_ANALYSIS: {
     model: 'gpt-5-mini' as const,
     reasoning: { effort: 'medium' as const },
-    text: { verbosity: 'medium' as const }
+    text: { verbosity: 'medium' as const },
   },
-  
+
   // For quick customer support responses
   CUSTOMER_SUPPORT: {
     model: 'gpt-5-nano' as const,
     reasoning: { effort: 'minimal' as const },
-    text: { verbosity: 'low' as const }
+    text: { verbosity: 'low' as const },
   },
-  
+
   // For complex business analytics and forecasting
   BUSINESS_ANALYTICS: {
     model: 'gpt-5' as const,
     reasoning: { effort: 'high' as const },
-    text: { verbosity: 'high' as const }
+    text: { verbosity: 'high' as const },
   },
-  
+
   // For code generation and technical tasks
   CODE_GENERATION: {
     model: 'gpt-5' as const,
     reasoning: { effort: 'minimal' as const },
-    text: { verbosity: 'medium' as const }
+    text: { verbosity: 'medium' as const },
   },
-  
+
   // For high-throughput classification tasks
   CLASSIFICATION: {
     model: 'gpt-5-nano' as const,
     reasoning: { effort: 'minimal' as const },
-    text: { verbosity: 'low' as const }
-  }
+    text: { verbosity: 'low' as const },
+  },
 } as const;
 
 // Custom tools for Printyx business operations
 export const PRINTYX_TOOLS = {
   CRM_DATA_LOOKUP: {
-    type: "custom" as const,
-    name: "crm_data_lookup",
-    description: "Looks up customer data, lead information, and business records from the Printyx CRM system"
+    type: 'custom' as const,
+    name: 'crm_data_lookup',
+    description:
+      'Looks up customer data, lead information, and business records from the Printyx CRM system',
   },
-  
+
   EQUIPMENT_LOOKUP: {
-    type: "custom" as const,
-    name: "equipment_lookup", 
-    description: "Retrieves equipment information, service history, and maintenance data"
+    type: 'custom' as const,
+    name: 'equipment_lookup',
+    description: 'Retrieves equipment information, service history, and maintenance data',
   },
-  
+
   FINANCIAL_ANALYSIS: {
-    type: "custom" as const,
-    name: "financial_analysis",
-    description: "Performs financial calculations, revenue analysis, and commission calculations"
+    type: 'custom' as const,
+    name: 'financial_analysis',
+    description: 'Performs financial calculations, revenue analysis, and commission calculations',
   },
-  
+
   PROPOSAL_BUILDER: {
-    type: "custom" as const,
-    name: "proposal_builder",
-    description: "Generates professional proposals and quotes based on customer requirements and pricing data"
+    type: 'custom' as const,
+    name: 'proposal_builder',
+    description:
+      'Generates professional proposals and quotes based on customer requirements and pricing data',
   },
-  
+
   SERVICE_SCHEDULER: {
-    type: "custom" as const,
-    name: "service_scheduler",
-    description: "Schedules service appointments and optimizes technician routes"
-  }
+    type: 'custom' as const,
+    name: 'service_scheduler',
+    description: 'Schedules service appointments and optimizes technician routes',
+  },
 } as const;
 
 export class GPT5Service {
-  private openai: OpenAI;
-  
+  private openai: OpenAI | null = null;
+  private isEnabled: boolean = false;
+
   constructor() {
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY environment variable is required");
+      console.warn('[GPT5Service] OPENAI_API_KEY not set - AI features will be disabled');
+      return;
     }
-    
+
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
+      apiKey: process.env.OPENAI_API_KEY,
     });
+    this.isEnabled = true;
+  }
+
+  private checkEnabled() {
+    if (!this.isEnabled || !this.openai) {
+      return { success: false, error: 'OpenAI API key not configured' };
+    }
+    return null;
   }
 
   /**
@@ -122,13 +134,16 @@ export class GPT5Service {
   async generateResponse(
     input: string,
     config: GPT5Config = GPT5_CONFIGS.LEAD_ANALYSIS,
-    previousResponseId?: string
+    previousResponseId?: string,
   ) {
+    const disabled = this.checkEnabled();
+    if (disabled) return disabled;
+
     try {
       const requestData: any = {
         model: config.model,
         input,
-        ...config
+        ...config,
       };
 
       // Pass previous reasoning for better performance
@@ -136,21 +151,21 @@ export class GPT5Service {
         requestData.previous_response_id = previousResponseId;
       }
 
-      const response = await this.openai.responses.create(requestData);
-      
+      const response = await this.openai!.responses.create(requestData);
+
       return {
         success: true,
         data: response,
         responseId: response.id,
         content: response.output?.content || '',
         reasoning: response.reasoning,
-        usage: response.usage
+        usage: response.usage,
       };
     } catch (error) {
       console.error('GPT-5 Responses API error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
@@ -161,19 +176,22 @@ export class GPT5Service {
    */
   async generateChatCompletion(
     messages: Array<{ role: string; content: string }>,
-    config: GPT5Config = GPT5_CONFIGS.LEAD_ANALYSIS
+    config: GPT5Config = GPT5_CONFIGS.LEAD_ANALYSIS,
   ) {
+    const disabled = this.checkEnabled();
+    if (disabled) return disabled;
+
     try {
       const requestData: any = {
         model: config.model,
-        messages
+        messages,
       };
 
       // Add GPT-5 specific parameters for Chat Completions
       if (config.reasoning?.effort) {
         requestData.reasoning_effort = config.reasoning.effort;
       }
-      
+
       if (config.text?.verbosity) {
         requestData.verbosity = config.text.verbosity;
       }
@@ -182,19 +200,19 @@ export class GPT5Service {
         requestData.tools = config.tools;
       }
 
-      const response = await this.openai.chat.completions.create(requestData);
-      
+      const response = await this.openai!.chat.completions.create(requestData);
+
       return {
         success: true,
         data: response,
         content: response.choices[0]?.message?.content || '',
-        usage: response.usage
+        usage: response.usage,
       };
     } catch (error) {
       console.error('GPT-5 Chat Completions error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }

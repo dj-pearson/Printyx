@@ -1,3 +1,7 @@
+// Load environment variables FIRST before anything else
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig(); // Load .env file
+
 import express, { type Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -73,10 +77,13 @@ setupMonitoringMiddleware(app, {
   },
 });
 
-// CORS configuration
-const isDevelopment = process.env.NODE_ENV !== 'production';
-const allowedOriginsProd = [/^https?:\/\/([a-z0-9-]+\.)?printyx\.net$/i, 'https://printyx.net']; // subdomains + apex
-// SECURITY FIX: Whitelist specific origins even in development for better security
+// CORS configuration - ALWAYS allow production origins
+const allowedOriginsProd = [
+  /^https?:\/\/([a-z0-9-]+\.)?printyx\.net$/i,
+  'https://printyx.net',
+  'https://api.printyx.net', // Allow API subdomain for server-to-server
+];
+
 const allowedOriginsDev = [
   'http://localhost:5000',
   'http://localhost:3000',
@@ -86,29 +93,99 @@ const allowedOriginsDev = [
   /^https:\/\/.*\.replit\.dev$/, // Replit development environments
 ];
 
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// Helper to check if origin is allowed and return the actual origin string
+function getAllowedOrigin(origin: string | undefined): string | false {
+  // No origin = server-to-server request, allow but don't set CORS headers
+  if (!origin) {
+    return false;
+  }
+
+  // Check production origins
+  const isProdOrigin = allowedOriginsProd.some((o) =>
+    o instanceof RegExp ? o.test(origin) : o === origin,
+  );
+  if (isProdOrigin) {
+    return origin; // Return the actual origin string, not true
+  }
+
+  // In development, also allow dev origins
+  if (isDevelopment) {
+    const isDevOrigin = allowedOriginsDev.some((o) =>
+      o instanceof RegExp ? o.test(origin) : o === origin,
+    );
+    if (isDevOrigin) {
+      return origin; // Return the actual origin string
+    }
+  }
+
+  return false;
+}
+
+// Manual CORS middleware to ensure headers are set correctly
+// This prevents proxies from overriding with Access-Control-Allow-Origin: *
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigin = getAllowedOrigin(origin);
+
+  if (allowedOrigin) {
+    // Set CORS headers explicitly with the specific origin (never *)
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, X-CSRF-Token, X-Requested-With, x-tenant-id, X-Demo-Auth',
+    );
+    res.setHeader('Access-Control-Expose-Headers', 'X-CSRF-Token');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+
+    // Log CORS decision
+    console.log('[CORS] ✅ Allowed origin:', allowedOrigin);
+  } else if (origin) {
+    console.error('[CORS] ❌ BLOCKED origin:', origin);
+  }
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    if (allowedOrigin) {
+      res.setHeader('Vary', 'Origin');
+      return res.status(204).end();
+    } else {
+      return res.status(403).json({ error: 'CORS not allowed for this origin' });
+    }
+  }
+
+  next();
+});
+
+// Also use cors package as backup (it will respect already-set headers)
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, Postman, etc.)
-      if (!origin) return callback(null, true);
-
-      // Check production origins
-      if (!isDevelopment) {
-        if (allowedOriginsProd.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))) {
-          return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
+      const allowed = getAllowedOrigin(origin);
+      if (allowed || !origin) {
+        // Return the actual origin string, not true
+        callback(null, allowed || true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
       }
-
-      // SECURITY FIX: In development, whitelist specific origins instead of allowing all
-      if (allowedOriginsDev.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))) {
-        return callback(null, true);
-      }
-
-      console.warn(`[CORS] Blocked origin in development: ${origin}`);
-      return callback(new Error('Not allowed by CORS - add to allowedOriginsDev if needed'));
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-CSRF-Token',
+      'X-Requested-With',
+      'x-tenant-id',
+      'X-Demo-Auth',
+    ],
+    exposedHeaders: ['X-CSRF-Token'],
+    maxAge: 86400,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   }),
 );
 
@@ -185,7 +262,11 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const duration = Date.now() - start;
     // Only log in development mode for legacy format
-    if (path.startsWith('/api') && process.env.NODE_ENV === 'development' && process.env.LEGACY_LOGGING === 'true') {
+    if (
+      path.startsWith('/api') &&
+      process.env.NODE_ENV === 'development' &&
+      process.env.LEGACY_LOGGING === 'true'
+    ) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
@@ -241,13 +322,16 @@ app.use((req, res, next) => {
     res.status(status).json({ message, code, details, requestId });
 
     // Log using structured logging
-    serverLog.error({
-      err,
-      requestId,
-      method: req.method,
-      path: req.path,
-      statusCode: status,
-    }, `Error ${status}: ${message}`);
+    serverLog.error(
+      {
+        err,
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: status,
+      },
+      `Error ${status}: ${message}`,
+    );
   });
 
   // importantly only setup vite in development and after

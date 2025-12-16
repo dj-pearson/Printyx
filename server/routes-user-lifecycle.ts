@@ -14,6 +14,8 @@ import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';
 import * as fs from 'fs';
 import * as path from 'path';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 /**
  * USER LIFECYCLE MANAGEMENT ROUTES
@@ -33,22 +35,22 @@ const router = Router();
 // ============================================================================
 // Middleware to check authentication
 const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated =
-    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  const userId = getUserId(req);
 
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required' });
   }
 
   if (!req.user) {
     req.user = {
-      id: req.session.userId,
-      tenantId: req.session.tenantId || req.user?.tenantId,
+      id: userId,
+      tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenantId && !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     req.user = {
-      id: req.user.claims?.sub || req.user.id,
-      tenantId: req.user.tenantId || req.session?.tenantId,
+      ...req.user,
+      id: req.user.id || userId,
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -66,7 +68,9 @@ const auditLog = (action: string) => {
       targetUserId: req.params.userId || req.body.userId,
       ip: req.ip || req.connection.remoteAddress,
       userAgent: req.headers['user-agent'],
-      requestBody: action.includes('IMPERSONATION') ? { ...req.body, password: '[REDACTED]' } : req.body,
+      requestBody: action.includes('IMPERSONATION')
+        ? { ...req.body, password: '[REDACTED]' }
+        : req.body,
     };
 
     // Log to file for audit trail
@@ -98,14 +102,10 @@ router.get('/templates', async (req, res) => {
   try {
     const { tenantId, category } = req.query;
 
-    const templates = await UserLifecycleService.getTemplates(
-      tenantId as string | undefined
-    );
+    const templates = await UserLifecycleService.getTemplates(tenantId as string | undefined);
 
     // Filter by category if specified
-    const filtered = category
-      ? templates.filter(t => t.category === category)
-      : templates;
+    const filtered = category ? templates.filter((t) => t.category === category) : templates;
 
     res.json({ templates: filtered });
   } catch (error) {
@@ -298,7 +298,7 @@ router.put('/:userId/onboarding/:checklistId/items/:itemId', async (req, res) =>
 
     // Update item in the items array
     const items = (checklist.items as any[]) || [];
-    const itemIndex = items.findIndex(item => item.id === req.params.itemId);
+    const itemIndex = items.findIndex((item) => item.id === req.params.itemId);
 
     if (itemIndex === -1) {
       return res.status(404).json({ error: 'Checklist item not found' });
@@ -313,11 +313,12 @@ router.put('/:userId/onboarding/:checklistId/items/:itemId', async (req, res) =>
     };
 
     // Calculate new progress
-    const completedItems = items.filter(item => item.status === 'completed').length;
+    const completedItems = items.filter((item) => item.status === 'completed').length;
     const progressPercent = Math.round((completedItems / items.length) * 100);
 
     // Update checklist
-    const [updated] = await db.update(onboardingChecklists)
+    const [updated] = await db
+      .update(onboardingChecklists)
       .set({
         items,
         completedItems,
@@ -407,12 +408,14 @@ router.get('/:userId/offboarding', async (req, res) => {
  */
 router.post('/access-review', async (req, res) => {
   try {
-    const { tenantId, managerId, reviewPeriod, reviewYear, reviewQuarter, organizationalUnitId } = req.body;
+    const { tenantId, managerId, reviewPeriod, reviewYear, reviewQuarter, organizationalUnitId } =
+      req.body;
 
     // Validate required fields
     if (!tenantId || !managerId || !reviewPeriod || !reviewYear || !reviewQuarter) {
       return res.status(400).json({
-        error: 'Missing required fields: tenantId, managerId, reviewPeriod, reviewYear, reviewQuarter',
+        error:
+          'Missing required fields: tenantId, managerId, reviewPeriod, reviewYear, reviewQuarter',
       });
     }
 
@@ -454,7 +457,7 @@ router.get('/access-review', async (req, res) => {
 
     const reviews = await UserLifecycleService.getPendingAccessReviews(
       managerId as string,
-      tenantId as string
+      tenantId as string,
     );
 
     res.json({ reviews });
@@ -572,7 +575,7 @@ router.get('/impersonate/active', async (req, res) => {
     const sessions = await db.query.userImpersonationSessions.findMany({
       where: and(
         eq(userImpersonationSessions.isActive, true),
-        tenantId ? eq(userImpersonationSessions.tenantId, tenantId as string) : undefined
+        tenantId ? eq(userImpersonationSessions.tenantId, tenantId as string) : undefined,
       ),
       orderBy: desc(userImpersonationSessions.startedAt),
     });

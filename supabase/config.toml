@@ -1,0 +1,21 @@
+# Supabase Edge Functions Configuration
+
+project_id = "printyx"
+
+[api]
+enabled = true
+port = 54321
+
+[functions]
+# Edge Functions configuration
+enabled = true
+verify_jwt = true
+
+[functions.hello]
+# Sample function configuration
+verify_jwt = false  # Set to true if you want JWT verification
+
+[functions.signup]
+# Signup function - no JWT required (creates new users)
+verify_jwt = false
+

@@ -5,6 +5,17 @@ import { businessRecordActivities, businessRecords, deals } from '@shared/schema
 import type { Request, Response } from 'express';
 import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek } from 'date-fns';
 
+// Helper to get user ID from request (supports Supabase JWT and session)
+const getUserId = (req: Request): string | undefined => {
+  const reqAny = req as any;
+  return (
+    reqAny.user?.id ||
+    reqAny.user?.claims?.sub ||
+    reqAny.session?.userId ||
+    reqAny.session?.user?.id
+  );
+};
+
 interface TenantRequest extends Request {
   tenantId?: string;
   session?: {
@@ -31,7 +42,7 @@ export function registerTodayDashboardRoutes(app: Router) {
   app.get('/api/dashboards/today', async (req: TenantRequest, res: Response) => {
     try {
       const tenantId = req.tenantId;
-      const userId = req.session?.userId || req.session?.user?.id;
+      const userId = getUserId(req);
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });

@@ -125,7 +125,7 @@ async function seedGpsTracking() {
     const historyCount = 20;
     for (let i = 0; i < historyCount; i++) {
       const minutesAgo = i * 5; // Every 5 minutes
-      await storage.createLocationHistory({
+      await storage.createGpsLocationHistory({
         tenantId,
         technicianId: 'tech-001',
         latitude: (30.2872 + i * 0.001).toString(),

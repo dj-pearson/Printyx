@@ -1,32 +1,36 @@
-import { Express } from "express";
-import { db } from "./db";
-import { 
-  serviceCallAnalysis, 
-  servicePartsUsed, 
-  partsOrders, 
+import { Express } from 'express';
+import { db } from './db';
+import {
+  serviceCallAnalysis,
+  servicePartsUsed,
+  partsOrders,
   partsOrderItems,
   insertServiceCallAnalysisSchema,
   insertServicePartsUsedSchema,
   insertPartsOrderSchema,
-  insertPartsOrderItemSchema
-} from "../shared/service-analysis-schema";
-import { serviceTickets } from "../shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
-import { z } from "zod";
+  insertPartsOrderItemSchema,
+} from '../shared/service-analysis-schema';
+import { serviceTickets } from '../shared/schema';
+import { eq, and, desc, sql } from 'drizzle-orm';
+import { z } from 'zod';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 function requireAuth(req: any, res: any, next: any) {
-  if (!req.session?.tenantId) {
-    return res.status(401).json({ message: "Not authenticated" });
+  const tenantId = getTenantId(req);
+  if (!tenantId) {
+    return res.status(401).json({ message: 'Not authenticated' });
   }
+  // Store tenantId on request for easy access
+  req.tenantId = tenantId;
   next();
 }
 
 export function registerServiceAnalysisRoutes(app: Express) {
-  
   // Get service call analysis for a ticket
   app.get('/api/service-tickets/:ticketId/analysis', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { ticketId } = req.params;
 
       const analysis = await db
@@ -35,22 +39,22 @@ export function registerServiceAnalysisRoutes(app: Express) {
         .where(
           and(
             eq(serviceCallAnalysis.tenantId, tenantId),
-            eq(serviceCallAnalysis.serviceTicketId, ticketId)
-          )
+            eq(serviceCallAnalysis.serviceTicketId, ticketId),
+          ),
         )
         .orderBy(desc(serviceCallAnalysis.createdAt));
 
       res.json(analysis);
     } catch (error) {
-      console.error("Error fetching service analysis:", error);
-      res.status(500).json({ error: "Failed to fetch service analysis" });
+      console.error('Error fetching service analysis:', error);
+      res.status(500).json({ error: 'Failed to fetch service analysis' });
     }
   });
 
   // Create service call analysis
   app.post('/api/service-tickets/:ticketId/analysis', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { ticketId } = req.params;
       const analysisData = insertServiceCallAnalysisSchema.parse({
         ...req.body,
@@ -58,97 +62,76 @@ export function registerServiceAnalysisRoutes(app: Express) {
         serviceTicketId: ticketId,
       });
 
-      const [newAnalysis] = await db
-        .insert(serviceCallAnalysis)
-        .values(analysisData)
-        .returning();
+      const [newAnalysis] = await db.insert(serviceCallAnalysis).values(analysisData).returning();
 
       // Update service ticket status based on outcome
       if (analysisData.outcome === 'resolved') {
         await db
           .update(serviceTickets)
           .set({ status: 'completed', updatedAt: new Date() })
-          .where(
-            and(
-              eq(serviceTickets.id, ticketId),
-              eq(serviceTickets.tenantId, tenantId)
-            )
-          );
+          .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
       } else if (analysisData.outcome === 'requires_parts') {
         await db
           .update(serviceTickets)
           .set({ status: 'awaiting_parts', updatedAt: new Date() })
-          .where(
-            and(
-              eq(serviceTickets.id, ticketId),
-              eq(serviceTickets.tenantId, tenantId)
-            )
-          );
+          .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
       }
 
       res.status(201).json(newAnalysis);
     } catch (error) {
-      console.error("Error creating service analysis:", error);
-      res.status(500).json({ error: "Failed to create service analysis" });
+      console.error('Error creating service analysis:', error);
+      res.status(500).json({ error: 'Failed to create service analysis' });
     }
   });
 
   // Update service call analysis
   app.put('/api/service-analysis/:id', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { id } = req.params;
       const updateData = req.body;
 
       const [updatedAnalysis] = await db
         .update(serviceCallAnalysis)
         .set({ ...updateData, updatedAt: new Date() })
-        .where(
-          and(
-            eq(serviceCallAnalysis.id, id),
-            eq(serviceCallAnalysis.tenantId, tenantId)
-          )
-        )
+        .where(and(eq(serviceCallAnalysis.id, id), eq(serviceCallAnalysis.tenantId, tenantId)))
         .returning();
 
       if (!updatedAnalysis) {
-        return res.status(404).json({ error: "Service analysis not found" });
+        return res.status(404).json({ error: 'Service analysis not found' });
       }
 
       res.json(updatedAnalysis);
     } catch (error) {
-      console.error("Error updating service analysis:", error);
-      res.status(500).json({ error: "Failed to update service analysis" });
+      console.error('Error updating service analysis:', error);
+      res.status(500).json({ error: 'Failed to update service analysis' });
     }
   });
 
   // Get parts used in analysis
   app.get('/api/service-analysis/:analysisId/parts-used', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { analysisId } = req.params;
 
       const parts = await db
         .select()
         .from(servicePartsUsed)
         .where(
-          and(
-            eq(servicePartsUsed.tenantId, tenantId),
-            eq(servicePartsUsed.analysisId, analysisId)
-          )
+          and(eq(servicePartsUsed.tenantId, tenantId), eq(servicePartsUsed.analysisId, analysisId)),
         );
 
       res.json(parts);
     } catch (error) {
-      console.error("Error fetching parts used:", error);
-      res.status(500).json({ error: "Failed to fetch parts used" });
+      console.error('Error fetching parts used:', error);
+      res.status(500).json({ error: 'Failed to fetch parts used' });
     }
   });
 
   // Add parts used
   app.post('/api/service-analysis/:analysisId/parts-used', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { analysisId } = req.params;
       const partsData = insertServicePartsUsedSchema.parse({
         ...req.body,
@@ -156,38 +139,32 @@ export function registerServiceAnalysisRoutes(app: Express) {
         analysisId,
       });
 
-      const [newPart] = await db
-        .insert(servicePartsUsed)
-        .values(partsData)
-        .returning();
+      const [newPart] = await db.insert(servicePartsUsed).values(partsData).returning();
 
       res.status(201).json(newPart);
     } catch (error) {
-      console.error("Error adding parts used:", error);
-      res.status(500).json({ error: "Failed to add parts used" });
+      console.error('Error adding parts used:', error);
+      res.status(500).json({ error: 'Failed to add parts used' });
     }
   });
 
   // Create parts order
   app.post('/api/service-analysis/:analysisId/parts-order', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { analysisId } = req.params;
-      
+
       // Get analysis to get service ticket ID
       const analysis = await db
         .select()
         .from(serviceCallAnalysis)
         .where(
-          and(
-            eq(serviceCallAnalysis.id, analysisId),
-            eq(serviceCallAnalysis.tenantId, tenantId)
-          )
+          and(eq(serviceCallAnalysis.id, analysisId), eq(serviceCallAnalysis.tenantId, tenantId)),
         )
         .limit(1);
 
       if (!analysis.length) {
-        return res.status(404).json({ error: "Service analysis not found" });
+        return res.status(404).json({ error: 'Service analysis not found' });
       }
 
       const orderData = insertPartsOrderSchema.parse({
@@ -198,130 +175,109 @@ export function registerServiceAnalysisRoutes(app: Express) {
         orderNumber: `PO-${Date.now()}`, // Generate order number
       });
 
-      const [newOrder] = await db
-        .insert(partsOrders)
-        .values(orderData)
-        .returning();
+      const [newOrder] = await db.insert(partsOrders).values(orderData).returning();
 
       res.status(201).json(newOrder);
     } catch (error) {
-      console.error("Error creating parts order:", error);
-      res.status(500).json({ error: "Failed to create parts order" });
+      console.error('Error creating parts order:', error);
+      res.status(500).json({ error: 'Failed to create parts order' });
     }
   });
 
   // Get parts orders for analysis
   app.get('/api/service-analysis/:analysisId/parts-orders', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { analysisId } = req.params;
 
       const orders = await db
         .select()
         .from(partsOrders)
-        .where(
-          and(
-            eq(partsOrders.tenantId, tenantId),
-            eq(partsOrders.analysisId, analysisId)
-          )
-        )
+        .where(and(eq(partsOrders.tenantId, tenantId), eq(partsOrders.analysisId, analysisId)))
         .orderBy(desc(partsOrders.createdAt));
 
       res.json(orders);
     } catch (error) {
-      console.error("Error fetching parts orders:", error);
-      res.status(500).json({ error: "Failed to fetch parts orders" });
+      console.error('Error fetching parts orders:', error);
+      res.status(500).json({ error: 'Failed to fetch parts orders' });
     }
   });
 
   // Update parts order status
   app.patch('/api/parts-orders/:orderId', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { orderId } = req.params;
       const { status, trackingNumber, actualDeliveryDate } = req.body;
 
       const [updatedOrder] = await db
         .update(partsOrders)
-        .set({ 
-          status, 
-          trackingNumber, 
+        .set({
+          status,
+          trackingNumber,
           actualDeliveryDate: actualDeliveryDate ? new Date(actualDeliveryDate) : undefined,
-          updatedAt: new Date() 
+          updatedAt: new Date(),
         })
-        .where(
-          and(
-            eq(partsOrders.id, orderId),
-            eq(partsOrders.tenantId, tenantId)
-          )
-        )
+        .where(and(eq(partsOrders.id, orderId), eq(partsOrders.tenantId, tenantId)))
         .returning();
 
       if (!updatedOrder) {
-        return res.status(404).json({ error: "Parts order not found" });
+        return res.status(404).json({ error: 'Parts order not found' });
       }
 
       res.json(updatedOrder);
     } catch (error) {
-      console.error("Error updating parts order:", error);
-      res.status(500).json({ error: "Failed to update parts order" });
+      console.error('Error updating parts order:', error);
+      res.status(500).json({ error: 'Failed to update parts order' });
     }
   });
 
   // Add parts order items
   app.post('/api/parts-orders/:orderId/items', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { orderId } = req.params;
       const itemsData = req.body.items || [req.body]; // Support both single item and array
 
-      const items = itemsData.map((item: any) => 
+      const items = itemsData.map((item: any) =>
         insertPartsOrderItemSchema.parse({
           ...item,
           tenantId,
           orderId,
-        })
+        }),
       );
 
-      const newItems = await db
-        .insert(partsOrderItems)
-        .values(items)
-        .returning();
+      const newItems = await db.insert(partsOrderItems).values(items).returning();
 
       res.status(201).json(newItems);
     } catch (error) {
-      console.error("Error adding parts order items:", error);
-      res.status(500).json({ error: "Failed to add parts order items" });
+      console.error('Error adding parts order items:', error);
+      res.status(500).json({ error: 'Failed to add parts order items' });
     }
   });
 
   // Get parts order items
   app.get('/api/parts-orders/:orderId/items', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const { orderId } = req.params;
 
       const items = await db
         .select()
         .from(partsOrderItems)
-        .where(
-          and(
-            eq(partsOrderItems.tenantId, tenantId),
-            eq(partsOrderItems.orderId, orderId)
-          )
-        );
+        .where(and(eq(partsOrderItems.tenantId, tenantId), eq(partsOrderItems.orderId, orderId)));
 
       res.json(items);
     } catch (error) {
-      console.error("Error fetching parts order items:", error);
-      res.status(500).json({ error: "Failed to fetch parts order items" });
+      console.error('Error fetching parts order items:', error);
+      res.status(500).json({ error: 'Failed to fetch parts order items' });
     }
   });
 
   // Service Analysis Dashboard Stats
   app.get('/api/service-analysis/stats', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
 
       const stats = await db
         .select({
@@ -349,15 +305,15 @@ export function registerServiceAnalysisRoutes(app: Express) {
         partsStats: partsOrderStats[0],
       });
     } catch (error) {
-      console.error("Error fetching service analysis stats:", error);
-      res.status(500).json({ error: "Failed to fetch service analysis stats" });
+      console.error('Error fetching service analysis stats:', error);
+      res.status(500).json({ error: 'Failed to fetch service analysis stats' });
     }
   });
 
   // Get recent service analyses with ticket details
   app.get('/api/service-analysis/recent', async (req: any, res) => {
     try {
-      const tenantId = req.session.tenantId;
+      const tenantId = getTenantId(req);
       const limit = parseInt(req.query.limit as string) || 10;
 
       const recentAnalyses = await db
@@ -380,8 +336,8 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(recentAnalyses);
     } catch (error) {
-      console.error("Error fetching recent service analyses:", error);
-      res.status(500).json({ error: "Failed to fetch recent service analyses" });
+      console.error('Error fetching recent service analyses:', error);
+      res.status(500).json({ error: 'Failed to fetch recent service analyses' });
     }
   });
 }

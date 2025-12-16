@@ -14,6 +14,17 @@ import { z } from 'zod';
 
 const router = Router();
 
+// Helper to get user ID from request (supports Supabase JWT and session)
+const getUserId = (req: Request): string | undefined => {
+  const reqAny = req as any;
+  return (
+    reqAny.user?.id ||
+    reqAny.user?.claims?.sub ||
+    reqAny.session?.userId ||
+    reqAny.session?.user?.id
+  );
+};
+
 // Request type with tenant context
 interface TenantRequest extends Request {
   tenantId?: string;
@@ -40,7 +51,7 @@ router.post(
     try {
       const { equipmentId } = req.params;
       const { toStage, reason, metadata } = req.body;
-      const userId = req.session?.userId || req.session?.user?.id;
+      const userId = getUserId(req);
       const tenantId = req.tenantId;
 
       if (!userId) {
@@ -71,7 +82,7 @@ router.post(
         userId,
         tenantId,
         reason,
-        metadata
+        metadata,
       );
 
       if (result.success) {
@@ -95,7 +106,7 @@ router.post(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 /**
@@ -116,10 +127,7 @@ router.get(
         });
       }
 
-      const history = await EquipmentLifecycleStateMachine.getHistory(
-        equipmentId,
-        tenantId
-      );
+      const history = await EquipmentLifecycleStateMachine.getHistory(equipmentId, tenantId);
 
       return res.json({
         success: true,
@@ -133,7 +141,7 @@ router.get(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // ===================================================================
@@ -169,8 +177,8 @@ router.get(
         .where(
           and(
             eq(equipmentLifecycle.equipmentId, equipmentId),
-            eq(equipmentLifecycle.tenantId, tenantId)
-          )
+            eq(equipmentLifecycle.tenantId, tenantId),
+          ),
         );
 
       if (!equipment) {
@@ -183,22 +191,19 @@ router.get(
       const currentStage = equipment.currentStage;
 
       // Check if transition is allowed
-      const canTransition = EquipmentLifecycleStateMachine.canTransition(
-        currentStage,
-        toStage
-      );
+      const canTransition = EquipmentLifecycleStateMachine.canTransition(currentStage, toStage);
 
       // Get validation requirements
       const validationRequirements = EquipmentLifecycleStateMachine.getValidationRequirements(
         currentStage,
-        toStage
+        toStage,
       );
 
       // Run validations
       const validation = await EquipmentLifecycleStateMachine.validateTransition(
         equipmentId,
         currentStage,
-        toStage
+        toStage,
       );
 
       return res.json({
@@ -212,7 +217,7 @@ router.get(
           message: canTransition
             ? validation.isValid
               ? 'Transition allowed'
-              : `Validation required: ${validation.failed.map(f => f.name).join(', ')}`
+              : `Validation required: ${validation.failed.map((f) => f.name).join(', ')}`
             : 'Transition not allowed from current stage',
         },
       });
@@ -224,7 +229,7 @@ router.get(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 /**
@@ -256,8 +261,8 @@ router.get(
         .where(
           and(
             eq(equipmentLifecycle.equipmentId, equipmentId),
-            eq(equipmentLifecycle.tenantId, tenantId)
-          )
+            eq(equipmentLifecycle.tenantId, tenantId),
+          ),
         );
 
       if (!equipment) {
@@ -268,16 +273,15 @@ router.get(
       }
 
       const currentStage = equipment.currentStage;
-      const availableTransitions = EquipmentLifecycleStateMachine.getAvailableTransitions(
-        currentStage
-      );
+      const availableTransitions =
+        EquipmentLifecycleStateMachine.getAvailableTransitions(currentStage);
 
       // Get validation requirements for each available transition
-      const transitionsWithValidations = availableTransitions.map(toStage => ({
+      const transitionsWithValidations = availableTransitions.map((toStage) => ({
         toStage,
         validationRequirements: EquipmentLifecycleStateMachine.getValidationRequirements(
           currentStage,
-          toStage
+          toStage,
         ),
       }));
 
@@ -296,7 +300,7 @@ router.get(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // ===================================================================
@@ -317,7 +321,7 @@ router.post(
     try {
       const { transitionId } = req.params;
       const { reason } = req.body;
-      const userId = req.session?.userId || req.session?.user?.id;
+      const userId = getUserId(req);
       const tenantId = req.tenantId;
 
       if (!userId) {
@@ -342,10 +346,7 @@ router.post(
       }
 
       // Check if rollback is allowed
-      const canRollback = await EquipmentLifecycleStateMachine.canRollback(
-        transitionId,
-        tenantId
-      );
+      const canRollback = await EquipmentLifecycleStateMachine.canRollback(transitionId, tenantId);
 
       if (!canRollback) {
         return res.status(400).json({
@@ -359,7 +360,7 @@ router.post(
         transitionId,
         userId,
         tenantId,
-        reason
+        reason,
       );
 
       if (result.success) {
@@ -383,7 +384,7 @@ router.post(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 /**
@@ -404,10 +405,7 @@ router.get(
         });
       }
 
-      const canRollback = await EquipmentLifecycleStateMachine.canRollback(
-        transitionId,
-        tenantId
-      );
+      const canRollback = await EquipmentLifecycleStateMachine.canRollback(transitionId, tenantId);
 
       return res.json({
         success: true,
@@ -426,7 +424,7 @@ router.get(
         error: error.message,
       });
     }
-  }
+  },
 );
 
 // ===================================================================
@@ -444,7 +442,7 @@ router.get('/api/equipment-lifecycle/stages', async (req: TenantRequest, res: Re
     const stages = Object.entries(LIFECYCLE_STAGES).map(([key, value]) => ({
       key,
       value,
-      name: value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      name: value.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
     }));
 
     return res.json({

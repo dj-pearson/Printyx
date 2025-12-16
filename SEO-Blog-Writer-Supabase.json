@@ -1,0 +1,1384 @@
+{
+  "name": "SEO Blog Writer Agent - Printyx Supabase",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# Setup Guide for Printyx Self-Hosted Supabase\n\n## Prerequisites\n1. Self-hosted Supabase in Coolify\n2. N8N running in Coolify\n3. Direct API keys (no OpenRouter needed)\n\n## Required Environment Variables\n\n### Supabase (Printyx-specific naming)\n- `PRINTYX_SUPABASE_URL` - Your Supabase API URL (e.g., https://api.printyx.net)\n- `PRINTYX_SUPABASE_SERVICE_ROLE_KEY` - Service role key for admin operations\n\n### AI Services (Direct API Access)\n- `OPENAI_API_KEY` - OpenAI API key for GPT models\n- `CLAUDE_API_KEY` - Anthropic API key for Claude models\n- `PERPLEXITY_API_KEY` - Perplexity API key for research\n\n## Database Tables Required\n- `blog_content_queue` - Pending blog requests\n- `blog_posts` - Published blog content\n\n## Storage Bucket Required\n- `blog-images` bucket in Supabase Storage\n\n## Model Usage\n- GPT-4o-mini: SERP analysis, SEO metadata\n- Claude 3.5 Haiku: Title, takeaways, outline, humanizing\n- Claude 3.5 Sonnet: Main content writing",
+        "height": 640,
+        "width": 520,
+        "color": 7
+      },
+      "id": "setup-guide",
+      "name": "Setup Guide",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, 0],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "# 1. Fetch Pending Blog Requests from Supabase",
+        "height": 400,
+        "width": 600,
+        "color": 5
+      },
+      "id": "section-1-note",
+      "name": "Section 1: Queue",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [560, 0],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [600, 120],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.PRINTYX_SUPABASE_URL }}/rest/v1/blog_content_queue",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "eq.pending"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            },
+            {
+              "name": "order",
+              "value": "priority.desc,created_at.asc"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-pending-posts",
+      "name": "Get Pending Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [820, 120],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "loop-posts",
+      "name": "Loop Over Posts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [1040, 120],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "queue-id",
+              "name": "queue_id",
+              "type": "string",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "id": "title",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "id": "keywords",
+              "name": "keywords",
+              "type": "string",
+              "value": "={{ $json.primary_keyword }}"
+            },
+            {
+              "id": "secondary-kw",
+              "name": "secondary_keywords",
+              "type": "string",
+              "value": "={{ $json.secondary_keywords }}"
+            },
+            {
+              "id": "category",
+              "name": "category",
+              "type": "string",
+              "value": "={{ $json.category }}"
+            },
+            {
+              "id": "tenant-id",
+              "name": "tenant_id",
+              "type": "string",
+              "value": "={{ $json.tenant_id }}"
+            },
+            {
+              "id": "target-audience",
+              "name": "target_audience",
+              "type": "string",
+              "value": "={{ $json.target_audience || 'copier dealers, print service providers, office equipment dealers' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-inputs",
+      "name": "Set Inputs",
+      "type": "n8n-nodes-base.set",
+      "position": [1260, 240],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.PRINTYX_SUPABASE_URL }}/rest/v1/blog_content_queue",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $json.queue_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"processing\",\n  \"started_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "mark-processing",
+      "name": "Mark Processing",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1480, 240],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "# 2. Research & SERP Analysis (Perplexity Direct API)",
+        "height": 560,
+        "width": 900,
+        "color": 4
+      },
+      "id": "section-2-note",
+      "name": "Section 2: Research",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [560, 440],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PERPLEXITY_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"sonar-pro\",\n  \"web_search_options\": {\n    \"max_search_results\": 10\n  },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a professional B2B content strategist specializing in the copier/MFP dealer industry. Research topics deeply for print service providers, copier dealers, and office equipment businesses. Focus on operational efficiency, service management, fleet management, meter billing, and dealer growth strategies.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Research the following topic for a B2B copier dealer audience: '{{ $('Set Inputs').item.json.title }}'\\n\\nTarget Keywords: {{ $('Set Inputs').item.json.keywords }}\\n\\nProvide:\\n1. **Search Intent Analysis** - What are copier dealers/print service providers looking for?\\n2. **Content Gap** - What's missing from existing content?\\n3. **Key Subtopics & Questions** - Industry-specific questions to address\\n4. **Primary & Secondary Keywords** - Ranked by relevance to copier dealer industry\\n5. **Competitor Analysis** - Top 3 resources and their approach\\n6. **Data & Statistics** - Industry stats, ROI figures, efficiency metrics\\n7. **Audience Pain Points** - Specific challenges for copier dealers\\n8. **CTA Opportunities** - Where to drive demo requests/trials\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "perplexity-research",
+      "name": "Perplexity Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 560],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "research",
+              "name": "research",
+              "type": "string",
+              "value": "={{ $json.choices[0].message.content.replaceAll(\"[1]\", \" - source: \" + ($json.citations?.[0] || '')).replaceAll(\"[2]\", \" - source: \" + ($json.citations?.[1] || '')).replaceAll(\"[3]\", \" - source: \" + ($json.citations?.[2] || '')).replaceAll(\"[4]\", \" - source: \" + ($json.citations?.[3] || '')).replaceAll(\"[5]\", \" - source: \" + ($json.citations?.[4] || '')) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cleanup-citations",
+      "name": "Cleanup Citations",
+      "type": "n8n-nodes-base.set",
+      "position": [840, 560],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert content strategist for B2B SaaS in the copier/print industry. Analyze search data and generate optimized writing guidelines.\\n\\nFocus on:\\n- Copier dealer operational challenges\\n- Print service provider efficiency\\n- Fleet management and MPS\\n- Meter billing automation\\n- Service dispatch optimization\\n- Technician productivity\\n\\nAlways output valid JSON with no extra text.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyze for: {{ $('Set Inputs').item.json.title }}\\nPrimary Keyword: {{ $('Set Inputs').item.json.keywords }}\\nTarget Audience: {{ $('Set Inputs').item.json.target_audience }}\\nIndustry: Copier dealers, MFP dealers, print service providers, office equipment\\n\\nResearch Data:\\n{{ $json.research.substring(0, 8000) }}\\n\\nOutput JSON only:\\n{\\n  \\\"search_intent\\\": \\\"informational|transactional|navigational|commercial\\\",\\n  \\\"writing_style\\\": \\\"string\\\",\\n  \\\"writing_tone\\\": \\\"string\\\",\\n  \\\"hidden_insight\\\": \\\"string\\\",\\n  \\\"target_audience\\\": \\\"string\\\",\\n  \\\"article_goal\\\": \\\"string\\\",\\n  \\\"semantic_analysis\\\": {\\n    \\\"common_subtopics\\\": [\\\"string\\\"],\\n    \\\"related_questions\\\": [\\\"string\\\"]\\n  },\\n  \\\"keywords\\\": {\\n    \\\"primary_keyword\\\": \\\"string\\\",\\n    \\\"secondary_keywords\\\": [\\\"string\\\"],\\n    \\\"semantic_keywords\\\": [\\\"string\\\"],\\n    \\\"long_tail_keywords\\\": [\\\"string\\\"]\\n  }\\n}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "serp-analysis-openai",
+      "name": "SERP Analysis (OpenAI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1080, 560],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "serp-data",
+              "name": "serp_data",
+              "type": "object",
+              "value": "={{ JSON.parse($json.choices[0].message.content) }}"
+            },
+            {
+              "id": "research",
+              "name": "research",
+              "type": "string",
+              "value": "={{ $('Cleanup Citations').item.json.research }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "merge-research",
+      "name": "Merge Research Data",
+      "type": "n8n-nodes-base.set",
+      "position": [1320, 560],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "content": "# 3. Content Generation Pipeline (Claude Direct API)",
+        "height": 680,
+        "width": 1800,
+        "color": 4
+      },
+      "id": "section-3-note",
+      "name": "Section 3: Content Gen",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [560, 1040],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.CLAUDE_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-haiku-20241022\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Refine this blog post title for maximum CTR:\\n\\nWorking Title: {{ $json.serp_data.article_goal ? $('Set Inputs').item.json.title : $('Set Inputs').item.json.title }}\\nPrimary Keyword: {{ $('Set Inputs').item.json.keywords }}\\nSearch Intent: {{ $json.serp_data.search_intent }}\\nTarget Audience: {{ $json.serp_data.target_audience }}\\nArticle Goal: {{ $json.serp_data.article_goal }}\\n\\nRequirements:\\n- 30-55 characters\\n- Include primary keyword naturally\\n- Action-driven, benefit-focused\\n- Industry-specific appeal for copier dealers\\n\\nOutput JSON only:\\n{\\n  \\\"revised_title\\\": \\\"string\\\",\\n  \\\"reasoning\\\": \\\"string\\\"\\n}\"\n    }\n  ],\n  \"system\": \"You are a B2B headline specialist for the office equipment industry. Create compelling titles that resonate with copier dealers and print service providers. Focus on ROI and efficiency gains, service optimization, operational challenges solved, competitive advantages. Output only valid JSON.\"\n}",
+        "options": {}
+      },
+      "id": "title-refiner-claude",
+      "name": "Title Refiner (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 1160],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "new-title",
+              "name": "new_title",
+              "type": "string",
+              "value": "={{ JSON.parse($json.content[0].text).revised_title }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-new-title",
+      "name": "Set New Title",
+      "type": "n8n-nodes-base.set",
+      "position": [840, 1160],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.CLAUDE_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-haiku-20241022\",\n  \"max_tokens\": 2048,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Create Key Takeaways for:\\n\\nTitle: {{ $json.new_title }}\\nPrimary Keyword: {{ $('Set Inputs').item.json.keywords }}\\nSecondary Keywords: {{ JSON.stringify($('Merge Research Data').item.json.serp_data.keywords.secondary_keywords) }}\\nSearch Intent: {{ $('Merge Research Data').item.json.serp_data.search_intent }}\\nTarget Audience: {{ $('Merge Research Data').item.json.serp_data.target_audience }}\\nArticle Goal: {{ $('Merge Research Data').item.json.serp_data.article_goal }}\\nResearch: {{ $('Merge Research Data').item.json.research.substring(0, 4000) }}\"\n    }\n  ],\n  \"system\": \"You are a content strategist for B2B copier dealer content. Create 6-8 key takeaways that:\\n\\n1. Start with an intro paragraph (2-3 sentences)\\n2. Use bullet points with **bolded action headings**: Concise explanation\\n3. End with an outro paragraph leading into the main content\\n\\nFocus on:\\n- ROI and cost savings\\n- Time efficiency gains\\n- Service optimization\\n- Competitive advantages\\n- Practical implementation steps\\n\\nFormat in Markdown. No extra headers or dividers.\"\n}",
+        "options": {}
+      },
+      "id": "key-takeaways-claude",
+      "name": "Key Takeaways (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1080, 1160],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "takeaways",
+              "name": "key_takeaways",
+              "type": "string",
+              "value": "={{ $json.content[0].text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-takeaways",
+      "name": "Set Key Takeaways",
+      "type": "n8n-nodes-base.set",
+      "position": [1320, 1160],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.CLAUDE_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-haiku-20241022\",\n  \"max_tokens\": 2048,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Generate article outline for:\\n\\nTitle: {{ $('Set New Title').item.json.new_title }}\\nPrimary Keyword: {{ $('Set Inputs').item.json.keywords }}\\nKey Takeaways: {{ $json.key_takeaways.substring(0, 2000) }}\\nSecondary Keywords: {{ JSON.stringify($('Merge Research Data').item.json.serp_data.keywords.secondary_keywords) }}\\nSemantic Analysis: {{ JSON.stringify($('Merge Research Data').item.json.serp_data.semantic_analysis) }}\\nArticle Goal: {{ $('Merge Research Data').item.json.serp_data.article_goal }}\\n\\nCreate a detailed outline with:\\n- ## for main sections\\n- ### for subsections\\n- Brief descriptions for each section\\n- Natural keyword placement in headings\\n\\nDo NOT include Introduction or Conclusion - focus on body sections only.\"\n    }\n  ],\n  \"system\": \"You are a B2B content architect for the copier/print industry. Create logical, SEO-optimized outlines.\\n\\nStructure principles:\\n- Lead with value/benefit\\n- Progress from problem to solution\\n- Include practical implementation sections\\n- Add industry-specific examples\\n- Use secondary keywords in H2/H3 naturally\\n\\nOutput Markdown outline only.\"\n}",
+        "options": {}
+      },
+      "id": "outline-claude",
+      "name": "Outline (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1560, 1160],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "outline",
+              "name": "post_outline",
+              "type": "string",
+              "value": "={{ $json.content[0].text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-outline",
+      "name": "Set Outline",
+      "type": "n8n-nodes-base.set",
+      "position": [1800, 1160],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.CLAUDE_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-sonnet-20241022\",\n  \"max_tokens\": 8192,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Write a comprehensive blog post:\\n\\nTitle: {{ $('Set New Title').item.json.new_title }}\\nPrimary Keyword: {{ $('Set Inputs').item.json.keywords }}\\nOutline: {{ $json.post_outline }}\\nKey Takeaways: {{ $('Set Key Takeaways').item.json.key_takeaways.substring(0, 2000) }}\\n\\nWriting Style: {{ $('Merge Research Data').item.json.serp_data.writing_style }}\\nWriting Tone: {{ $('Merge Research Data').item.json.serp_data.writing_tone }}\\nTarget Audience: {{ $('Merge Research Data').item.json.serp_data.target_audience }}\\nArticle Goal: {{ $('Merge Research Data').item.json.serp_data.article_goal }}\\n\\nSecondary Keywords: {{ JSON.stringify($('Merge Research Data').item.json.serp_data.keywords.secondary_keywords) }}\\nSemantic Keywords: {{ JSON.stringify($('Merge Research Data').item.json.serp_data.keywords.semantic_keywords) }}\\n\\nResearch Data:\\n{{ $('Merge Research Data').item.json.research.substring(0, 6000) }}\\n\\nRequirements:\\n- 2,500-3,500 words\\n- Introduction: 150-200 words, primary keyword in first 100 words\\n- Follow outline structure exactly\\n- 1-2% keyword density\\n- Include practical examples for copier dealers\\n- End with compelling CTA\\n- Markdown format\"\n    }\n  ],\n  \"system\": \"You are an expert B2B content writer for the copier/print industry. Write authoritative, practical content for copier dealers, print service providers, and office equipment businesses.\\n\\nWriting principles:\\n- Lead with value and ROI\\n- Use active voice\\n- Include specific metrics and examples\\n- Break complex concepts into actionable steps\\n- 3-4 sentence paragraphs max\\n- Use bullet points for lists\\n- Include relevant statistics\\n- Address industry-specific pain points\\n\\nNever use:\\n- Generic filler phrases\\n- Overly promotional language\\n- Jargon without explanation\\n- em dashes or semicolons\\n\\nFocus on practical solutions for:\\n- Service dispatch efficiency\\n- Meter billing automation\\n- Technician productivity\\n- Fleet management\\n- Customer retention\"\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "content-writer-claude",
+      "name": "Content Writer (Claude Sonnet)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2040, 1160],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "draft",
+              "name": "post_draft",
+              "type": "string",
+              "value": "={{ $json.content[0].text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-draft",
+      "name": "Set Draft",
+      "type": "n8n-nodes-base.set",
+      "position": [2280, 1160],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.CLAUDE_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-haiku-20241022\",\n  \"max_tokens\": 8192,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Humanize and polish this content:\\n\\n{{ $json.post_draft.substring(0, 12000) }}\\n\\nMake it:\\n- Sound natural and conversational\\n- Remove any AI-sounding phrases\\n- Keep the structure and information\\n- Maintain professional B2B tone\\n- Preserve all keywords naturally\\n\\nReturn ONLY the humanized content.\"\n    }\n  ],\n  \"system\": \"You are an editor who makes AI-written content sound human and natural.\\n\\nRules:\\n- Use clear simple language\\n- Short direct sentences\\n- Active voice\\n- Address reader as 'you'\\n- No em dashes, semicolons\\n- No filler words (just, really, very, basically)\\n- No banned words: delve, embark, game-changer, unlock, discover, harness, powerful, groundbreaking, cutting-edge\\n\\nOutput only the edited content.\"\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "humanizer-claude",
+      "name": "Humanizer (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2520, 1160],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "final-content",
+              "name": "final_content",
+              "type": "string",
+              "value": "={{ $json.content[0].text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-final-content",
+      "name": "Set Final Content",
+      "type": "n8n-nodes-base.set",
+      "position": [2760, 1160],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "content": "# 4. SEO Metadata & Image Generation",
+        "height": 560,
+        "width": 1200,
+        "color": 6
+      },
+      "id": "section-4-note",
+      "name": "Section 4: SEO & Images",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [560, 1760],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an SEO specialist for B2B SaaS content. Generate optimized metadata.\\n\\nMeta title: 50-60 chars, keyword near start, compelling\\nMeta description: 150-160 chars, keyword in first 30 chars, clear benefit/value\\nSlug: lowercase, hyphens, no stop words, keyword-focused\\nImage prompt: Professional business imagery, clean design, relevant to copier/print industry\\n\\nOutput only valid JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Generate SEO metadata for:\\n\\nTitle: {{ $('Set New Title').item.json.new_title }}\\nKeyword: {{ $('Set Inputs').item.json.keywords }}\\nContent Preview: {{ $json.final_content.substring(0, 1500) }}\\n\\nOutput JSON only:\\n{\\n  \\\"seo_meta\\\": {\\n    \\\"meta_title\\\": \\\"50-60 chars with keyword\\\",\\n    \\\"meta_description\\\": \\\"150-160 chars, keyword in first 30 chars, benefit-focused\\\",\\n    \\\"focus_keyword\\\": \\\"primary keyword\\\",\\n    \\\"secondary_keywords\\\": [\\\"array of 5-7 keywords\\\"],\\n    \\\"slug\\\": \\\"url-friendly-slug\\\",\\n    \\\"image_prompt\\\": \\\"Detailed prompt for featured image - professional, B2B business theme, clean modern design\\\"\\n  }\\n}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "seo-meta-openai",
+      "name": "SEO Meta (OpenAI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 1880],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "seo-meta",
+              "name": "seo_meta",
+              "type": "object",
+              "value": "={{ JSON.parse($json.choices[0].message.content).seo_meta }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-seo-meta",
+      "name": "Set SEO Meta",
+      "type": "n8n-nodes-base.set",
+      "position": [840, 1880],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{ $json.seo_meta.image_prompt.replace(/\\\"/g, '\\\\\"').replace(/\\n/g, ' ') }}. Professional business photography style, clean modern design, 16:9 aspect ratio, suitable for B2B blog header.\",\n  \"n\": 1,\n  \"size\": \"1792x1024\",\n  \"quality\": \"standard\",\n  \"response_format\": \"b64_json\"\n}",
+        "options": {}
+      },
+      "id": "image-gen-openai",
+      "name": "Generate Image (DALL-E 3)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1080, 1880],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "image-base64",
+              "name": "image_base64",
+              "type": "string",
+              "value": "={{ $json.data?.[0]?.b64_json || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-image",
+      "name": "Extract Image Base64",
+      "type": "n8n-nodes-base.set",
+      "position": [1320, 1880],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "has-image",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              },
+              "leftValue": "={{ $json.image_base64 }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "check-image",
+      "name": "Has Image?",
+      "type": "n8n-nodes-base.if",
+      "position": [1560, 1880],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "image_base64",
+        "options": {
+          "fileName": "=featured-image-{{ Date.now() }}.png",
+          "mimeType": "image/png"
+        }
+      },
+      "id": "convert-to-file",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "position": [1800, 1800],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PRINTYX_SUPABASE_URL }}/storage/v1/object/blog-images/{{ $('Set SEO Meta').item.json.seo_meta.slug }}-{{ Date.now() }}.png",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "image/png"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "upload-to-supabase",
+      "name": "Upload to Supabase Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2040, 1800],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "image-url",
+              "name": "featured_image_url",
+              "type": "string",
+              "value": "={{ $env.PRINTYX_SUPABASE_URL }}/storage/v1/object/public/blog-images/{{ $('Set SEO Meta').item.json.seo_meta.slug }}-{{ $now.toMillis() }}.png"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-image-url",
+      "name": "Set Image URL",
+      "type": "n8n-nodes-base.set",
+      "position": [2280, 1800],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "no-image",
+              "name": "featured_image_url",
+              "type": "string",
+              "value": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-no-image",
+      "name": "No Image",
+      "type": "n8n-nodes-base.set",
+      "position": [1800, 1960],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-image-result",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "position": [2520, 1880],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "content": "# 5. Save to Supabase blog_posts",
+        "height": 480,
+        "width": 900,
+        "color": 6
+      },
+      "id": "section-5-note",
+      "name": "Section 5: Save to Supabase",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [560, 2360],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Count words in content\nconst content = $('Set Final Content').first().json.final_content;\nconst wordCount = content.trim().split(/\\s+/).filter(Boolean).length;\nconst readTime = Math.ceil(wordCount / 200); // 200 words per minute\n\nreturn {\n  json: {\n    word_count: wordCount,\n    read_time: readTime\n  }\n};"
+      },
+      "id": "calculate-metrics",
+      "name": "Calculate Metrics",
+      "type": "n8n-nodes-base.code",
+      "position": [600, 2480],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PRINTYX_SUPABASE_URL }}/rest/v1/blog_posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tenant_id\": {{ $('Set Inputs').item.json.tenant_id ? '\"' + $('Set Inputs').item.json.tenant_id + '\"' : 'null' }},\n  \"title\": {{ JSON.stringify($('Set New Title').item.json.new_title) }},\n  \"slug\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.slug) }},\n  \"excerpt\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.meta_description) }},\n  \"content\": {{ JSON.stringify($('Set Final Content').item.json.final_content) }},\n  \"meta_title\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.meta_title) }},\n  \"meta_description\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.meta_description) }},\n  \"focus_keyword\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.focus_keyword) }},\n  \"secondary_keywords\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.secondary_keywords) }},\n  \"featured_image\": {{ $('Merge Results').item.json.featured_image_url ? JSON.stringify($('Merge Results').item.json.featured_image_url) : 'null' }},\n  \"featured_image_alt\": {{ JSON.stringify($('Set New Title').item.json.new_title) }},\n  \"category\": {{ JSON.stringify($('Set Inputs').item.json.category || 'operational_efficiency') }},\n  \"tags\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.secondary_keywords.slice(0, 5)) }},\n  \"status\": \"draft\",\n  \"author_name\": \"Printyx Content Team\",\n  \"word_count\": {{ $json.word_count }},\n  \"read_time\": {{ $json.read_time }},\n  \"has_faq_section\": true,\n  \"seo_score\": 85,\n  \"structured_data\": {\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"Article\",\n    \"headline\": {{ JSON.stringify($('Set New Title').item.json.new_title) }},\n    \"description\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.meta_description) }},\n    \"author\": {\n      \"@type\": \"Organization\",\n      \"name\": \"Printyx\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "save-blog-post",
+      "name": "Save Blog Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [840, 2480],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.PRINTYX_SUPABASE_URL }}/rest/v1/blog_content_queue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Set Inputs').item.json.queue_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"completed\",\n  \"completed_at\": \"{{ new Date().toISOString() }}\",\n  \"blog_post_id\": {{ $json[0]?.id ? '\"' + $json[0].id + '\"' : 'null' }},\n  \"generated_title\": {{ JSON.stringify($('Set New Title').item.json.new_title) }},\n  \"generated_slug\": {{ JSON.stringify($('Set SEO Meta').item.json.seo_meta.slug) }}\n}",
+        "options": {}
+      },
+      "id": "update-queue-success",
+      "name": "Mark Queue Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1080, 2480],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {},
+      "id": "continue-loop",
+      "name": "Continue Loop",
+      "type": "n8n-nodes-base.noOp",
+      "position": [1320, 2480],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "# Error Handling",
+        "height": 200,
+        "width": 400,
+        "color": 2
+      },
+      "id": "error-note",
+      "name": "Error Handling Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [560, 2880],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.PRINTYX_SUPABASE_URL }}/rest/v1/blog_content_queue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PRINTYX_SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Set Inputs').item.json.queue_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"failed\",\n  \"error_message\": {{ JSON.stringify($json.error?.message || 'Unknown error occurred') }},\n  \"failed_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "mark-failed",
+      "name": "Mark Queue Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 2960],
+      "typeVersion": 4.2
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Posts": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Posts": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Set Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Inputs": {
+      "main": [
+        [
+          {
+            "node": "Mark Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Processing": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Research": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Citations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Citations": {
+      "main": [
+        [
+          {
+            "node": "SERP Analysis (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SERP Analysis (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Merge Research Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Research Data": {
+      "main": [
+        [
+          {
+            "node": "Title Refiner (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Title Refiner (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Set New Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set New Title": {
+      "main": [
+        [
+          {
+            "node": "Key Takeaways (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Key Takeaways (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Set Key Takeaways",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Key Takeaways": {
+      "main": [
+        [
+          {
+            "node": "Outline (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outline (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Set Outline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Outline": {
+      "main": [
+        [
+          {
+            "node": "Content Writer (Claude Sonnet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Writer (Claude Sonnet)": {
+      "main": [
+        [
+          {
+            "node": "Set Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Draft": {
+      "main": [
+        [
+          {
+            "node": "Humanizer (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Humanizer (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Set Final Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Final Content": {
+      "main": [
+        [
+          {
+            "node": "SEO Meta (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SEO Meta (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Set SEO Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set SEO Meta": {
+      "main": [
+        [
+          {
+            "node": "Generate Image (DALL-E 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image (DALL-E 3)": {
+      "main": [
+        [
+          {
+            "node": "Extract Image Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Image Base64": {
+      "main": [
+        [
+          {
+            "node": "Has Image?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Image?": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Upload to Supabase Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Supabase Storage": {
+      "main": [
+        [
+          {
+            "node": "Set Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Image URL": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Image": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Calculate Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Metrics": {
+      "main": [
+        [
+          {
+            "node": "Save Blog Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Blog Post": {
+      "main": [
+        [
+          {
+            "node": "Mark Queue Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Queue Complete": {
+      "main": [
+        [
+          {
+            "node": "Continue Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continue Loop": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "2",
+  "triggerCount": 1
+}

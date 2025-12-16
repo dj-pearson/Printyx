@@ -1,7 +1,7 @@
-import { Router, Request, Response } from "express";
-import { storage } from "../storage";
-import { z } from "zod";
-import crypto from "crypto";
+import { Router, Request, Response } from 'express';
+import { storage } from '../storage';
+import { z } from 'zod';
+import crypto from 'crypto';
 // SECURITY FIX: Import requireRootAdmin middleware for admin-only endpoints
 import { requireRootAdmin } from '../routes-root-admin';
 
@@ -44,7 +44,7 @@ function base32Decode(input: string): Buffer {
   let bits = 0;
   let value = 0;
   let index = 0;
-  const output = Buffer.alloc(Math.ceil(cleanInput.length * 5 / 8));
+  const output = Buffer.alloc(Math.ceil((cleanInput.length * 5) / 8));
 
   for (let i = 0; i < cleanInput.length; i++) {
     const charIndex = alphabet.indexOf(cleanInput[i]);
@@ -109,25 +109,25 @@ function getRequestMetadata(req: Request) {
 // ==================== MFA Enrollment Routes ====================
 
 // POST /api/mfa/enroll/init - Initialize MFA enrollment (generate secret and QR code URL)
-router.post("/enroll/init", async (req: Request, res: Response) => {
+router.post('/enroll/init', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
     // Generate a new TOTP secret
     const secret = generateTOTPSecret();
-    
+
     // Store the secret in the session for verification
     if (!req.session) {
-      return res.status(500).json({ error: "Session not available" });
+      return res.status(500).json({ error: 'Session not available' });
     }
     req.session.pendingMfaSecret = secret;
     req.session.pendingMfaTimestamp = Date.now();
-    
+
     // Create otpauth URL for QR code
-    const issuer = "Printyx";
+    const issuer = 'Printyx';
     const accountName = user.email || user.id;
     const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(accountName)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
 
@@ -139,7 +139,7 @@ router.post("/enroll/init", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('MFA enrollment init error:', error);
-    res.status(500).json({ error: "Failed to initialize MFA enrollment" });
+    res.status(500).json({ error: 'Failed to initialize MFA enrollment' });
   }
 });
 
@@ -148,14 +148,14 @@ const verifyMfaSchema = z.object({
   token: z.string().length(6),
 });
 
-router.post("/enroll/verify", async (req: Request, res: Response) => {
+router.post('/enroll/verify', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   if (!req.session) {
-    return res.status(500).json({ error: "Session not available" });
+    return res.status(500).json({ error: 'Session not available' });
   }
 
   try {
@@ -176,7 +176,9 @@ router.post("/enroll/verify", async (req: Request, res: Response) => {
         ...getRequestMetadata(req),
       });
 
-      return res.status(400).json({ error: "No pending MFA enrollment. Please start enrollment again." });
+      return res
+        .status(400)
+        .json({ error: 'No pending MFA enrollment. Please start enrollment again.' });
     }
 
     // Check if the secret has expired (10 minutes)
@@ -185,7 +187,7 @@ router.post("/enroll/verify", async (req: Request, res: Response) => {
       // Clear expired secret
       delete req.session.pendingMfaSecret;
       delete req.session.pendingMfaTimestamp;
-      
+
       await storage.createMfaAuditLog({
         userId: user.id,
         tenantId: user.tenantId || null,
@@ -195,7 +197,9 @@ router.post("/enroll/verify", async (req: Request, res: Response) => {
         ...getRequestMetadata(req),
       });
 
-      return res.status(400).json({ error: "Enrollment session expired. Please start enrollment again." });
+      return res
+        .status(400)
+        .json({ error: 'Enrollment session expired. Please start enrollment again.' });
     }
 
     // Verify the TOTP token against the server-stored secret
@@ -212,7 +216,7 @@ router.post("/enroll/verify", async (req: Request, res: Response) => {
         ...getRequestMetadata(req),
       });
 
-      return res.status(400).json({ error: "Invalid verification code" });
+      return res.status(400).json({ error: 'Invalid verification code' });
     }
 
     // Enable MFA for the user with the server-stored secret
@@ -237,14 +241,14 @@ router.post("/enroll/verify", async (req: Request, res: Response) => {
     res.json({
       success: true,
       backupCodes: codes,
-      message: "MFA enabled successfully. Save your backup codes in a secure location.",
+      message: 'MFA enabled successfully. Save your backup codes in a secure location.',
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
     console.error('MFA enrollment verify error:', error);
-    res.status(500).json({ error: "Failed to complete MFA enrollment" });
+    res.status(500).json({ error: 'Failed to complete MFA enrollment' });
   }
 });
 
@@ -257,13 +261,13 @@ const verifyLoginSchema = z.object({
   useBackupCode: z.boolean().optional(),
 });
 
-router.post("/verify", async (req: Request, res: Response) => {
+router.post('/verify', async (req: Request, res: Response) => {
   try {
     const { userId, code, useBackupCode } = verifyLoginSchema.parse(req.body);
 
     const user = await storage.getUser(userId);
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
-      return res.status(400).json({ error: "MFA not enabled for this user" });
+      return res.status(400).json({ error: 'MFA not enabled for this user' });
     }
 
     let isValid = false;
@@ -298,7 +302,7 @@ router.post("/verify", async (req: Request, res: Response) => {
         ...getRequestMetadata(req),
       });
 
-      return res.status(400).json({ error: "Invalid verification code" });
+      return res.status(400).json({ error: 'Invalid verification code' });
     }
 
     // Log successful verification
@@ -314,20 +318,20 @@ router.post("/verify", async (req: Request, res: Response) => {
     res.json({ success: true, usedBackupCode });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
     console.error('MFA verification error:', error);
-    res.status(500).json({ error: "Failed to verify MFA code" });
+    res.status(500).json({ error: 'Failed to verify MFA code' });
   }
 });
 
 // ==================== MFA Status & Management Routes ====================
 
 // GET /api/mfa/status - Get user's MFA status
-router.get("/status", async (req: Request, res: Response) => {
+router.get('/status', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
@@ -335,7 +339,7 @@ router.get("/status", async (req: Request, res: Response) => {
     res.json(status);
   } catch (error) {
     console.error('Get MFA status error:', error);
-    res.status(500).json({ error: "Failed to get MFA status" });
+    res.status(500).json({ error: 'Failed to get MFA status' });
   }
 });
 
@@ -344,10 +348,10 @@ const disableMfaSchema = z.object({
   token: z.string().length(6),
 });
 
-router.post("/disable", async (req: Request, res: Response) => {
+router.post('/disable', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
@@ -356,13 +360,13 @@ router.post("/disable", async (req: Request, res: Response) => {
     // Get current user data
     const currentUser = await storage.getUser(user.id);
     if (!currentUser || !currentUser.twoFactorEnabled || !currentUser.twoFactorSecret) {
-      return res.status(400).json({ error: "MFA is not enabled" });
+      return res.status(400).json({ error: 'MFA is not enabled' });
     }
 
     // Verify TOTP token before disabling
     const isValid = verifyTOTP(currentUser.twoFactorSecret, token);
     if (!isValid) {
-      return res.status(400).json({ error: "Invalid verification code" });
+      return res.status(400).json({ error: 'Invalid verification code' });
     }
 
     // Disable MFA
@@ -378,13 +382,13 @@ router.post("/disable", async (req: Request, res: Response) => {
       ...getRequestMetadata(req),
     });
 
-    res.json({ success: true, message: "MFA disabled successfully" });
+    res.json({ success: true, message: 'MFA disabled successfully' });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
     console.error('MFA disable error:', error);
-    res.status(500).json({ error: "Failed to disable MFA" });
+    res.status(500).json({ error: 'Failed to disable MFA' });
   }
 });
 
@@ -395,10 +399,10 @@ const regenerateCodesSchema = z.object({
   token: z.string().length(6),
 });
 
-router.post("/backup-codes/regenerate", async (req: Request, res: Response) => {
+router.post('/backup-codes/regenerate', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
@@ -407,13 +411,13 @@ router.post("/backup-codes/regenerate", async (req: Request, res: Response) => {
     // Get current user data
     const currentUser = await storage.getUser(user.id);
     if (!currentUser || !currentUser.twoFactorEnabled || !currentUser.twoFactorSecret) {
-      return res.status(400).json({ error: "MFA is not enabled" });
+      return res.status(400).json({ error: 'MFA is not enabled' });
     }
 
     // Verify TOTP token before regenerating
     const isValid = verifyTOTP(currentUser.twoFactorSecret, token);
     if (!isValid) {
-      return res.status(400).json({ error: "Invalid verification code" });
+      return res.status(400).json({ error: 'Invalid verification code' });
     }
 
     // Generate new backup codes
@@ -422,22 +426,22 @@ router.post("/backup-codes/regenerate", async (req: Request, res: Response) => {
     res.json({
       success: true,
       backupCodes: codes,
-      message: "Backup codes regenerated successfully. Save them in a secure location.",
+      message: 'Backup codes regenerated successfully. Save them in a secure location.',
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
     console.error('Regenerate backup codes error:', error);
-    res.status(500).json({ error: "Failed to regenerate backup codes" });
+    res.status(500).json({ error: 'Failed to regenerate backup codes' });
   }
 });
 
 // GET /api/mfa/backup-codes/count - Get count of unused backup codes
-router.get("/backup-codes/count", async (req: Request, res: Response) => {
+router.get('/backup-codes/count', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
@@ -445,7 +449,7 @@ router.get("/backup-codes/count", async (req: Request, res: Response) => {
     res.json({ count: unusedCodes.length });
   } catch (error) {
     console.error('Get backup codes count error:', error);
-    res.status(500).json({ error: "Failed to get backup codes count" });
+    res.status(500).json({ error: 'Failed to get backup codes count' });
   }
 });
 
@@ -453,10 +457,10 @@ router.get("/backup-codes/count", async (req: Request, res: Response) => {
 
 // POST /api/mfa/admin/reset/:userId - Admin: Reset MFA for a user
 // SECURITY FIX: Added requireRootAdmin middleware to restrict access to root admins only
-router.post("/admin/reset/:userId", requireRootAdmin, async (req: Request, res: Response) => {
+router.post('/admin/reset/:userId', requireRootAdmin, async (req: Request, res: Response) => {
   const user = (req as any).user || req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
@@ -475,22 +479,22 @@ router.post("/admin/reset/:userId", requireRootAdmin, async (req: Request, res: 
       ...getRequestMetadata(req),
     });
 
-    res.json({ success: true, message: "MFA reset successfully for user" });
+    res.json({ success: true, message: 'MFA reset successfully for user' });
   } catch (error) {
     console.error('Admin MFA reset error:', error);
-    res.status(500).json({ error: "Failed to reset MFA" });
+    res.status(500).json({ error: 'Failed to reset MFA' });
   }
 });
 
 // GET /api/mfa/admin/compliance-report - Admin: Get MFA compliance report for tenant
-router.get("/admin/compliance-report", async (req: Request, res: Response) => {
+router.get('/admin/compliance-report', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   if (!user.tenantId) {
-    return res.status(400).json({ error: "User must belong to a tenant" });
+    return res.status(400).json({ error: 'User must belong to a tenant' });
   }
 
   try {
@@ -498,19 +502,19 @@ router.get("/admin/compliance-report", async (req: Request, res: Response) => {
     res.json(report);
   } catch (error) {
     console.error('Get compliance report error:', error);
-    res.status(500).json({ error: "Failed to get compliance report" });
+    res.status(500).json({ error: 'Failed to get compliance report' });
   }
 });
 
 // GET /api/mfa/admin/users-without-mfa - Admin: Get users without MFA enabled
-router.get("/admin/users-without-mfa", async (req: Request, res: Response) => {
+router.get('/admin/users-without-mfa', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   if (!user.tenantId) {
-    return res.status(400).json({ error: "User must belong to a tenant" });
+    return res.status(400).json({ error: 'User must belong to a tenant' });
   }
 
   try {
@@ -518,20 +522,20 @@ router.get("/admin/users-without-mfa", async (req: Request, res: Response) => {
     res.json(users);
   } catch (error) {
     console.error('Get users without MFA error:', error);
-    res.status(500).json({ error: "Failed to get users without MFA" });
+    res.status(500).json({ error: 'Failed to get users without MFA' });
   }
 });
 
 // GET /api/mfa/audit-logs - Get MFA audit logs for current user
-router.get("/audit-logs", async (req: Request, res: Response) => {
+router.get('/audit-logs', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
     const { eventType, success } = req.query;
-    
+
     const filters: { eventType?: string; success?: boolean } = {};
     if (eventType && typeof eventType === 'string') {
       filters.eventType = eventType;
@@ -544,24 +548,24 @@ router.get("/audit-logs", async (req: Request, res: Response) => {
     res.json(logs);
   } catch (error) {
     console.error('Get audit logs error:', error);
-    res.status(500).json({ error: "Failed to get audit logs" });
+    res.status(500).json({ error: 'Failed to get audit logs' });
   }
 });
 
 // GET /api/mfa/admin/audit-logs - Admin: Get MFA audit logs for entire tenant
-router.get("/admin/audit-logs", async (req: Request, res: Response) => {
+router.get('/admin/audit-logs', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: "Not authenticated" });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   if (!user.tenantId) {
-    return res.status(400).json({ error: "User must belong to a tenant" });
+    return res.status(400).json({ error: 'User must belong to a tenant' });
   }
 
   try {
     const { eventType, success } = req.query;
-    
+
     const filters: { eventType?: string; success?: boolean } = {};
     if (eventType && typeof eventType === 'string') {
       filters.eventType = eventType;
@@ -574,7 +578,281 @@ router.get("/admin/audit-logs", async (req: Request, res: Response) => {
     res.json(logs);
   } catch (error) {
     console.error('Get tenant audit logs error:', error);
-    res.status(500).json({ error: "Failed to get tenant audit logs" });
+    res.status(500).json({ error: 'Failed to get tenant audit logs' });
+  }
+});
+
+// ==================== SMS/Email OTP Routes ====================
+
+import {
+  sendEmailOtp,
+  sendSmsOtp,
+  verifyOtp,
+  getAvailableMfaMethods,
+  isValidPhoneNumber,
+  maskPhoneNumber,
+  maskEmail,
+} from '../services/mfa-otp-service';
+
+// POST /api/mfa/otp/email/send - Send OTP via email
+const sendEmailOtpSchema = z.object({
+  email: z.string().email().optional(), // Uses user's email if not provided
+});
+
+router.post('/otp/email/send', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { email: customEmail } = sendEmailOtpSchema.parse(req.body);
+    const userEmail = customEmail || user.email;
+
+    if (!userEmail) {
+      return res.status(400).json({ error: 'No email address available' });
+    }
+
+    const result = await sendEmailOtp(
+      user.id,
+      userEmail,
+      user.tenantId || null,
+      user.firstName || user.email,
+    );
+
+    if (!result.success) {
+      return res.status(429).json({ error: result.message });
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      destination: maskEmail(userEmail),
+      expiresAt: result.expiresAt,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+    }
+    console.error('Send email OTP error:', error);
+    res.status(500).json({ error: 'Failed to send verification code' });
+  }
+});
+
+// POST /api/mfa/otp/sms/send - Send OTP via SMS
+const sendSmsOtpSchema = z.object({
+  phoneNumber: z.string(),
+});
+
+router.post('/otp/sms/send', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { phoneNumber } = sendSmsOtpSchema.parse(req.body);
+
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({
+        error: 'Invalid phone number format',
+        message: 'Please provide a phone number in E.164 format (e.g., +1234567890)',
+      });
+    }
+
+    const result = await sendSmsOtp(user.id, phoneNumber, user.tenantId || null);
+
+    if (!result.success) {
+      return res.status(429).json({ error: result.message });
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      destination: maskPhoneNumber(phoneNumber),
+      expiresAt: result.expiresAt,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+    }
+    console.error('Send SMS OTP error:', error);
+    res.status(500).json({ error: 'Failed to send verification code' });
+  }
+});
+
+// POST /api/mfa/otp/verify - Verify OTP code (email or SMS)
+const verifyOtpSchema = z.object({
+  code: z.string().length(6),
+  method: z.enum(['email', 'sms']),
+});
+
+router.post('/otp/verify', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { code, method } = verifyOtpSchema.parse(req.body);
+
+    const result = await verifyOtp(user.id, code, method);
+
+    if (!result.success) {
+      // Log failed verification
+      await storage.createMfaAuditLog({
+        userId: user.id,
+        tenantId: user.tenantId || null,
+        eventType: 'otp_verification_failure',
+        success: false,
+        failureReason: 'invalid_code',
+        eventDetails: { method },
+        ...getRequestMetadata(req),
+      });
+
+      return res.status(400).json({ error: result.message });
+    }
+
+    // Log successful verification
+    await storage.createMfaAuditLog({
+      userId: user.id,
+      tenantId: user.tenantId || null,
+      eventType: 'otp_verification_success',
+      success: true,
+      eventDetails: { method },
+      ...getRequestMetadata(req),
+    });
+
+    // Mark MFA as verified in session
+    if (req.session) {
+      (req.session as any).mfaVerified = true;
+      (req.session as any).mfaVerifiedAt = Date.now();
+      (req.session as any).mfaMethod = method;
+    }
+
+    res.json({
+      success: true,
+      message: 'Verification successful',
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+    }
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: 'Failed to verify code' });
+  }
+});
+
+// GET /api/mfa/methods - Get available MFA methods for current user
+router.get('/methods', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    // Get TOTP status
+    const mfaStatus = await storage.getUserMfaStatus(user.id);
+
+    // Get OTP methods
+    const otpMethods = await getAvailableMfaMethods(user.id);
+
+    res.json({
+      totp: {
+        available: true,
+        enabled: mfaStatus?.enabled || false,
+        description: 'Time-based One-Time Password (Authenticator App)',
+      },
+      sms: {
+        available: otpMethods.sms.available,
+        enabled: otpMethods.sms.enabled,
+        destination: otpMethods.sms.destination
+          ? maskPhoneNumber(otpMethods.sms.destination)
+          : undefined,
+        description: 'SMS Text Message',
+      },
+      email: {
+        available: otpMethods.email.available,
+        enabled: otpMethods.email.enabled,
+        destination: user.email ? maskEmail(user.email) : undefined,
+        description: 'Email Verification Code',
+      },
+      backupCodes: {
+        available: mfaStatus?.enabled || false,
+        enabled: mfaStatus?.hasBackupCodes || false,
+        description: 'Pre-generated Backup Codes',
+      },
+    });
+  } catch (error) {
+    console.error('Get MFA methods error:', error);
+    res.status(500).json({ error: 'Failed to get MFA methods' });
+  }
+});
+
+// POST /api/mfa/challenge - Request MFA challenge (for re-verification)
+const challengeSchema = z.object({
+  method: z.enum(['totp', 'sms', 'email']).default('totp'),
+  phoneNumber: z.string().optional(), // Required for SMS
+});
+
+router.post('/challenge', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { method, phoneNumber } = challengeSchema.parse(req.body);
+
+    switch (method) {
+      case 'email':
+        const emailResult = await sendEmailOtp(
+          user.id,
+          user.email,
+          user.tenantId || null,
+          user.firstName,
+        );
+        return res.json({
+          success: emailResult.success,
+          method: 'email',
+          message: emailResult.message,
+          destination: user.email ? maskEmail(user.email) : undefined,
+        });
+
+      case 'sms':
+        if (!phoneNumber) {
+          return res.status(400).json({ error: 'Phone number required for SMS challenge' });
+        }
+        const smsResult = await sendSmsOtp(user.id, phoneNumber, user.tenantId || null);
+        return res.json({
+          success: smsResult.success,
+          method: 'sms',
+          message: smsResult.message,
+          destination: maskPhoneNumber(phoneNumber),
+        });
+
+      case 'totp':
+      default:
+        // TOTP doesn't require sending - just verify user has it enabled
+        const mfaStatus = await storage.getUserMfaStatus(user.id);
+        if (!mfaStatus?.enabled) {
+          return res.status(400).json({
+            error: 'TOTP not enabled',
+            message: 'Please set up an authenticator app first',
+          });
+        }
+        return res.json({
+          success: true,
+          method: 'totp',
+          message: 'Enter the code from your authenticator app',
+        });
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+    }
+    console.error('MFA challenge error:', error);
+    res.status(500).json({ error: 'Failed to initiate MFA challenge' });
   }
 });
 
