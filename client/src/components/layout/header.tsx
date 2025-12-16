@@ -24,7 +24,7 @@ interface HeaderProps {
 }
 
 export default function Header({ title, description, onSearchClick }: HeaderProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm shadow-sm">
@@ -117,16 +117,14 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
                     localStorage.removeItem('printyx_auth_user');
                     localStorage.removeItem('printyx_last_route');
 
-                    const response = await fetch('/api/auth/logout', {
-                      method: 'POST',
-                      credentials: 'include',
-                    });
-                    if (response.ok) {
-                      window.location.href = '/';
-                    }
+                    // Use Supabase logout
+                    await logout();
+
+                    // Redirect to home/login
+                    window.location.href = '/';
                   } catch (error) {
                     console.error('Logout error:', error);
-                    // Clear cache even on error
+                    // Clear cache even on error and redirect
                     localStorage.removeItem('printyx_auth_user');
                     localStorage.removeItem('printyx_last_route');
                     window.location.href = '/';
