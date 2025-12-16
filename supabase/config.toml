@@ -19,3 +19,7 @@ verify_jwt = false  # Set to true if you want JWT verification
 # Signup function - no JWT required (creates new users)
 verify_jwt = false
 
+[functions.me]
+# Current user profile/role endpoint
+verify_jwt = true
+
