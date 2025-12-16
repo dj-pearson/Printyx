@@ -23,6 +23,11 @@
  */
 
 import type { Express } from 'express';
+import {
+  setupLoggingMiddleware,
+  setupErrorLoggingMiddleware,
+  type LoggingMiddlewareOptions,
+} from '../middleware/logging-middleware';
 
 // Re-export logger utilities
 export {
@@ -144,10 +149,7 @@ export async function initMonitoring(config: MonitoringConfig = {}): Promise<voi
 
   // Log aggregation is automatically configured via Pino transports
   if (enableLogAggregation) {
-    log.info(
-      { transport: process.env.LOG_TRANSPORT },
-      'Log aggregation enabled',
-    );
+    log.info({ transport: process.env.LOG_TRANSPORT }, 'Log aggregation enabled');
   }
 
   isInitialized = true;
@@ -162,14 +164,9 @@ export async function initMonitoring(config: MonitoringConfig = {}): Promise<voi
 export function setupMonitoringMiddleware(
   app: Express,
   options: {
-    loggingOptions?: import('../middleware/logging-middleware').LoggingMiddlewareOptions;
+    loggingOptions?: LoggingMiddlewareOptions;
   } = {},
 ): void {
-  // Import dynamically to avoid circular dependencies
-  const {
-    setupLoggingMiddleware,
-  } = require('../middleware/logging-middleware');
-
   // Setup Sentry middleware (must be first)
   setupSentryMiddleware(app);
 
@@ -185,8 +182,6 @@ export function setupMonitoringMiddleware(
  * This should be called after all routes are registered.
  */
 export function setupMonitoringErrorHandlers(app: Express): void {
-  const { setupErrorLoggingMiddleware } = require('../middleware/logging-middleware');
-
   // Setup error logging middleware
   setupErrorLoggingMiddleware(app);
 

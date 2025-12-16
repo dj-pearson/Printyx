@@ -7,7 +7,7 @@ import { useSeo } from '@/lib/useSeo';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
-import { useAuth } from '@/hooks/useAuth';
+import { AuthProvider, useAuthContext } from '@/providers/AuthProvider';
 import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
@@ -20,6 +20,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Signup from '@/pages/Signup';
 import VerifyEmail from '@/pages/VerifyEmail';
+import AuthCallback from '@/pages/AuthCallback';
 import EndUserLicenseAgreement from '@/pages/legal/EndUserLicenseAgreement';
 import PrivacyPolicy from '@/pages/legal/PrivacyPolicy';
 import TermsAndConditions from '@/pages/legal/TermsAndConditions';
@@ -287,7 +288,7 @@ const LAST_ROUTE_KEY = 'printyx_last_route';
 
 function Router() {
   console.log('🎯 Router: Component rendering');
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuthContext();
   const [pathname, setLocation] = useLocation();
   const { open, setOpen } = useCommandPalette();
   console.log('🎯 Router state:', { isAuthenticated, isLoading, pathname });
@@ -295,7 +296,21 @@ function Router() {
 
   // Save current route to localStorage when authenticated
   React.useEffect(() => {
-    if (isAuthenticated && pathname !== '/' && !pathname.startsWith('/login')) {
+    // Don't save auth pages or API routes
+    const excludedPaths = [
+      '/login',
+      '/signup',
+      '/forgot-password',
+      '/reset-password',
+      '/auth/callback',
+    ];
+    const shouldSave =
+      isAuthenticated &&
+      pathname !== '/' &&
+      !excludedPaths.some((p) => pathname.startsWith(p)) &&
+      !pathname.startsWith('/api/');
+
+    if (shouldSave) {
       try {
         localStorage.setItem(LAST_ROUTE_KEY, pathname);
       } catch (error) {
@@ -309,13 +324,22 @@ function Router() {
     if (isAuthenticated && pathname === '/') {
       try {
         const lastRoute = localStorage.getItem(LAST_ROUTE_KEY);
-        // Only restore if it's a valid authenticated route (not data-enrichment or other edge cases)
-        if (
+        // Only restore if it's a valid authenticated route
+        const excludedPaths = [
+          '/login',
+          '/signup',
+          '/forgot-password',
+          '/reset-password',
+          '/auth/callback',
+        ];
+        const isValidRoute =
           lastRoute &&
           lastRoute !== '/' &&
-          lastRoute !== '/login' &&
-          !lastRoute.includes('data-enrichment')
-        ) {
+          !excludedPaths.some((p) => lastRoute.startsWith(p)) &&
+          !lastRoute.startsWith('/api/') &&
+          !lastRoute.includes('data-enrichment');
+
+        if (isValidRoute) {
           setLocation(lastRoute);
         } else {
           // Clear invalid routes from localStorage
@@ -363,6 +387,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/eula" component={EndUserLicenseAgreement} />
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsAndConditions} />
@@ -403,6 +428,14 @@ function Router() {
     );
   }
 
+  // Redirect component for auth pages when already authenticated
+  const RedirectToDashboard = () => {
+    React.useEffect(() => {
+      window.location.replace('/');
+    }, []);
+    return null;
+  };
+
   // Authenticated routes
   console.log('✅ Router: Rendering authenticated routes');
   return (
@@ -423,6 +456,11 @@ function Router() {
         {console.log('🔄 Inside Suspense, rendering Switch...')}
         <Switch>
           {console.log('📍 Rendering routes, pathname:', pathname)}
+          {/* Redirect auth pages to dashboard for authenticated users */}
+          <Route path="/login" component={RedirectToDashboard} />
+          <Route path="/signup" component={RedirectToDashboard} />
+          <Route path="/forgot-password" component={RedirectToDashboard} />
+          <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/" component={Dashboard} />
           <Route path="/today" component={TodayDashboard} />
           <Route path="/dashboard/today" component={TodayDashboard} />
@@ -474,7 +512,10 @@ function Router() {
           {/* Equipment Lifecycle Management - now redirects to unified hub */}
           <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
           {/* Legacy Equipment Lifecycle Management (keeping for reference during transition) */}
-          <Route path="/equipment-lifecycle-management-legacy" component={EquipmentLifecycleManagement} />
+          <Route
+            path="/equipment-lifecycle-management-legacy"
+            component={EquipmentLifecycleManagement}
+          />
           <Route path="/commission-management" component={CommissionManagement} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
@@ -709,16 +750,18 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <PWAProvider>
-          <Toaster />
-          <ErrorBoundary>
-            <React.Suspense fallback={<div className="p-6">Loading…</div>}>
-              <Router />
-            </React.Suspense>
-          </ErrorBoundary>
-        </PWAProvider>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <PWAProvider>
+            <Toaster />
+            <ErrorBoundary>
+              <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+                <Router />
+              </React.Suspense>
+            </ErrorBoundary>
+          </PWAProvider>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

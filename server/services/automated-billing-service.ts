@@ -3,20 +3,23 @@
  *
  * Handles scheduled invoice generation, billing automation,
  * and batch processing for meter-based billing.
+ *
+ * NOTE: This service is currently disabled as billingSchedules and
+ * invoiceGenerationLogs tables need to be added to the schema.
  */
 
 import { db } from '../db';
 import { eq, and, lte, gte, isNull, sql, desc } from 'drizzle-orm';
 import {
-  billingSchedules,
   invoices,
   invoiceLineItems,
-  invoiceGenerationLogs,
   contracts,
   meterReadings,
   businessRecords,
+  billingSchedules,
+  invoiceGenerationLogs,
 } from '@shared/schema';
-import { billingEngineService } from './billing-engine-service';
+import { billingEngine } from './billing-engine-service';
 
 export interface ScheduledBillingRun {
   scheduleId: string;
@@ -62,11 +65,11 @@ class AutomatedBillingService {
         and(
           eq(billingSchedules.tenantId, tenantId),
           eq(billingSchedules.isActive, true),
-          lte(billingSchedules.nextRunDate, now)
-        )
+          lte(billingSchedules.nextRunDate, now),
+        ),
       );
 
-    return schedules.map(s => ({
+    return schedules.map((s) => ({
       scheduleId: s.id,
       scheduleName: s.scheduleName,
       contractId: s.contractId || undefined,
@@ -82,10 +85,13 @@ class AutomatedBillingService {
   async executeScheduledRun(
     scheduleId: string,
     tenantId: string,
-    triggeredBy: string
+    triggeredBy: string,
   ): Promise<BatchBillingResult> {
     const startTime = new Date();
-    const runId = `BR-${startTime.toISOString().replace(/[-:T.Z]/g, '').substring(0, 14)}`;
+    const runId = `BR-${startTime
+      .toISOString()
+      .replace(/[-:T.Z]/g, '')
+      .substring(0, 14)}`;
     const invoicesGenerated: string[] = [];
     const errors: { customerId?: string; contractId?: string; error: string }[] = [];
     let successful = 0;
@@ -97,12 +103,7 @@ class AutomatedBillingService {
       const [schedule] = await db
         .select()
         .from(billingSchedules)
-        .where(
-          and(
-            eq(billingSchedules.id, scheduleId),
-            eq(billingSchedules.tenantId, tenantId)
-          )
-        )
+        .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenantId, tenantId)))
         .limit(1);
 
       if (!schedule) {
@@ -113,10 +114,7 @@ class AutomatedBillingService {
       const billingPeriodEnd = new Date();
       billingPeriodEnd.setHours(23, 59, 59, 999);
 
-      const billingPeriodStart = this.calculatePeriodStart(
-        schedule.frequency,
-        billingPeriodEnd
-      );
+      const billingPeriodStart = this.calculatePeriodStart(schedule.frequency, billingPeriodEnd);
 
       // Get contracts to process
       let contractsToProcess: any[] = [];
@@ -126,12 +124,7 @@ class AutomatedBillingService {
         const [contract] = await db
           .select()
           .from(contracts)
-          .where(
-            and(
-              eq(contracts.id, schedule.contractId),
-              eq(contracts.tenantId, tenantId)
-            )
-          )
+          .where(and(eq(contracts.id, schedule.contractId), eq(contracts.tenantId, tenantId)))
           .limit(1);
 
         if (contract) {
@@ -146,20 +139,15 @@ class AutomatedBillingService {
             and(
               eq(contracts.customerId, schedule.customerId),
               eq(contracts.tenantId, tenantId),
-              eq(contracts.status, 'active')
-            )
+              eq(contracts.status, 'active'),
+            ),
           );
       } else {
         // All active contracts for the tenant
         contractsToProcess = await db
           .select()
           .from(contracts)
-          .where(
-            and(
-              eq(contracts.tenantId, tenantId),
-              eq(contracts.status, 'active')
-            )
-          );
+          .where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active')));
       }
 
       // Process each contract
@@ -170,7 +158,7 @@ class AutomatedBillingService {
             contract,
             billingPeriodStart,
             billingPeriodEnd,
-            tenantId
+            tenantId,
           );
 
           if (!shouldBill.bill) {
@@ -179,16 +167,12 @@ class AutomatedBillingService {
           }
 
           // Generate invoice
-          const invoice = await billingEngineService.generateInvoiceFromContract(
-            contract.id,
-            tenantId,
-            {
-              billingPeriodStart,
-              billingPeriodEnd,
-              autoSend: schedule.autoSendInvoice || false,
-              applyLateFees: schedule.autoApplyLateFees || false,
-            }
-          );
+          const invoice = await billingEngine.generateInvoiceFromContract(contract.id, tenantId, {
+            billingPeriodStart,
+            billingPeriodEnd,
+            autoSend: schedule.autoSendInvoice || false,
+            applyLateFees: schedule.autoApplyLateFees || false,
+          });
 
           invoicesGenerated.push(invoice.id);
           successful++;
@@ -203,7 +187,7 @@ class AutomatedBillingService {
             billingPeriodStart,
             billingPeriodEnd,
             'success',
-            triggeredBy
+            triggeredBy,
           );
         } catch (error: any) {
           failed++;
@@ -224,7 +208,7 @@ class AutomatedBillingService {
             billingPeriodEnd,
             'failed',
             triggeredBy,
-            error.message
+            error.message,
           );
         }
       }
@@ -239,7 +223,6 @@ class AutomatedBillingService {
           updatedAt: new Date(),
         })
         .where(eq(billingSchedules.id, scheduleId));
-
     } catch (error: any) {
       errors.push({ error: error.message });
     }
@@ -264,7 +247,7 @@ class AutomatedBillingService {
     contract: any,
     periodStart: Date,
     periodEnd: Date,
-    tenantId: string
+    tenantId: string,
   ): Promise<{ bill: boolean; reason?: string }> {
     // Check contract status
     if (contract.status !== 'active') {
@@ -280,8 +263,8 @@ class AutomatedBillingService {
           eq(invoices.tenantId, tenantId),
           eq(invoices.contractId, contract.id),
           gte(invoices.billingPeriodStart, periodStart),
-          lte(invoices.billingPeriodEnd, periodEnd)
-        )
+          lte(invoices.billingPeriodEnd, periodEnd),
+        ),
       )
       .limit(1);
 
@@ -299,8 +282,8 @@ class AutomatedBillingService {
           eq(meterReadings.contractId, contract.id),
           gte(meterReadings.readingDate, periodStart),
           lte(meterReadings.readingDate, periodEnd),
-          eq(meterReadings.billingStatus, 'pending')
-        )
+          eq(meterReadings.billingStatus, 'pending'),
+        ),
       )
       .limit(1);
 
@@ -388,7 +371,7 @@ class AutomatedBillingService {
     periodEnd: Date,
     status: 'success' | 'failed' | 'partial' | 'skipped',
     triggeredBy: string,
-    errorMessage?: string
+    errorMessage?: string,
   ): Promise<void> {
     await db.insert(invoiceGenerationLogs).values({
       tenantId,
@@ -478,7 +461,7 @@ class AutomatedBillingService {
    */
   async processPendingMeterReadings(
     tenantId: string,
-    triggeredBy: string
+    triggeredBy: string,
   ): Promise<{ processed: number; billed: number; errors: number }> {
     let processed = 0;
     let billed = 0;
@@ -488,12 +471,7 @@ class AutomatedBillingService {
     const pendingReadings = await db
       .select()
       .from(meterReadings)
-      .where(
-        and(
-          eq(meterReadings.tenantId, tenantId),
-          eq(meterReadings.billingStatus, 'pending')
-        )
-      )
+      .where(and(eq(meterReadings.tenantId, tenantId), eq(meterReadings.billingStatus, 'pending')))
       .orderBy(meterReadings.contractId, meterReadings.readingDate);
 
     // Group by contract
@@ -518,13 +496,9 @@ class AutomatedBillingService {
         const latestReading = readings[readings.length - 1];
 
         // Generate invoice
-        const invoice = await billingEngineService.generateInvoiceFromContract(
-          contractId,
-          tenantId,
-          {
-            meterReadings: readings,
-          }
-        );
+        const invoice = await billingEngine.generateInvoiceFromContract(contractId, tenantId, {
+          meterReadings: readings,
+        });
 
         // Mark readings as billed
         for (const reading of readings) {
@@ -565,7 +539,7 @@ class AutomatedBillingService {
       autoApplyLateFees?: boolean;
       notifyBeforeDays?: number;
     },
-    createdBy: string
+    createdBy: string,
   ): Promise<any> {
     const nextRunDate = this.calculateNextRunDate(data.frequency, new Date());
 
@@ -610,34 +584,19 @@ class AutomatedBillingService {
     const [pendingResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(invoices)
-      .where(
-        and(
-          eq(invoices.tenantId, tenantId),
-          eq(invoices.status, 'open')
-        )
-      );
+      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'open')));
 
     // Get overdue invoices count
     const [overdueResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(invoices)
-      .where(
-        and(
-          eq(invoices.tenantId, tenantId),
-          eq(invoices.status, 'overdue')
-        )
-      );
+      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'overdue')));
 
     // Get pending meter readings count
     const [pendingReadingsResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(meterReadings)
-      .where(
-        and(
-          eq(meterReadings.tenantId, tenantId),
-          eq(meterReadings.billingStatus, 'pending')
-        )
-      );
+      .where(and(eq(meterReadings.tenantId, tenantId), eq(meterReadings.billingStatus, 'pending')));
 
     // Get scheduled runs count (due in next 7 days)
     const weekFromNow = new Date();
@@ -650,8 +609,8 @@ class AutomatedBillingService {
         and(
           eq(billingSchedules.tenantId, tenantId),
           eq(billingSchedules.isActive, true),
-          lte(billingSchedules.nextRunDate, weekFromNow)
-        )
+          lte(billingSchedules.nextRunDate, weekFromNow),
+        ),
       );
 
     // Get recent generation logs

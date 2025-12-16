@@ -1,30 +1,41 @@
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
+import * as client from 'openid-client';
+import { Strategy, type VerifyFunction } from 'openid-client/passport';
 
-import passport from "passport";
-import session from "express-session";
-import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
-import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+import passport from 'passport';
+import session from 'express-session';
+import type { Express, RequestHandler } from 'express';
+import memoize from 'memoizee';
+import connectPg from 'connect-pg-simple';
+import { storage } from './storage';
+import {
+  authenticateSupabaseJWT,
+  isSupabaseAuthenticated,
+  type SupabaseUser,
+} from './middleware/supabase-auth';
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Replit Auth is optional - only used when running on Replit platform
+const isReplitEnvironment = !!process.env.REPLIT_DOMAINS && !!process.env.REPL_ID;
+
+if (!isReplitEnvironment) {
+  console.log('[Auth] Replit environment not detected - using standard authentication');
 }
 
 const getOidcConfig = memoize(
   async () => {
+    if (!isReplitEnvironment) {
+      throw new Error('OIDC config not available outside Replit environment');
+    }
     return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      new URL(process.env.ISSUER_URL ?? 'https://replit.com/oidc'),
+      process.env.REPL_ID!,
     );
   },
-  { maxAge: 3600 * 1000 }
+  { maxAge: 3600 * 1000 },
 );
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  
+
   // Use memory store for now to avoid session configuration issues
   return session({
     secret: process.env.SESSION_SECRET!,
@@ -40,7 +51,7 @@ export function getSession() {
 
 function updateUserSession(
   user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
@@ -48,19 +59,17 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(claims: any) {
   // Use existing demo tenant for all authenticated users
-  const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
-  
+  const defaultTenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+
   // Ensure tenant exists
   let tenant = await storage.getTenant(defaultTenantId);
   if (!tenant) {
     try {
       tenant = await storage.createTenant({
-        name: "Default Copier Dealer",
-        domain: "default",
+        name: 'Default Copier Dealer',
+        domain: 'default',
       });
     } catch (error: any) {
       if (error.code === '23505') {
@@ -73,27 +82,35 @@ async function upsertUser(
   }
 
   await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    id: claims['sub'],
+    email: claims['email'],
+    firstName: claims['first_name'],
+    lastName: claims['last_name'],
+    profileImageUrl: claims['profile_image_url'],
     tenantId: tenant?.id || defaultTenantId,
-    role: "admin", // Give all users admin role for demo
+    role: 'admin', // Give all users admin role for demo
   });
 }
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
+  app.set('trust proxy', 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Only setup Replit OIDC routes if in Replit environment
+  if (!isReplitEnvironment) {
+    console.log('[Auth] Skipping Replit OIDC setup - using standard auth routes only');
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+    return;
+  }
 
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
+    verified: passport.AuthenticateCallback,
   ) => {
     const user = {};
     updateUserSession(user, tokens);
@@ -101,13 +118,12 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  for (const domain of process.env.REPLIT_DOMAINS!.split(',')) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
         config,
-        scope: "openid email profile offline_access",
+        scope: 'openid email profile offline_access',
         callbackURL: `https://${domain}/api/callback`,
       },
       verify,
@@ -118,50 +134,106 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  app.get("/api/login", (req, res, next) => {
+  app.get('/api/login', (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
+      prompt: 'login consent',
+      scope: ['openid', 'email', 'profile', 'offline_access'],
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
+  app.get('/api/callback', (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+      successReturnToOrRedirect: '/',
+      failureRedirect: '/api/login',
     })(req, res, next);
   });
 
-  app.get("/api/logout", (req, res) => {
+  app.get('/api/logout', (req, res) => {
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
+        }).href,
       );
     });
   });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // SECURITY FIX: Restrict test mode to development/test environments only
-  const isTestMode = (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
-    && process.env.TEST_MODE === 'true';
+  // Priority 1: Check for Supabase JWT authentication
+  // First, try to authenticate the JWT (sets req.supabaseUser if valid)
+  await new Promise<void>((resolve) => {
+    authenticateSupabaseJWT(req, res, () => resolve());
+  });
+
+  // If Supabase JWT is valid, use that for authentication
+  if (isSupabaseAuthenticated(req)) {
+    const supabaseUser = (req as any).supabaseUser as SupabaseUser;
+
+    // If tenantId is not in JWT, try to look it up from database
+    let tenantId = supabaseUser.tenantId;
+    let roleId = supabaseUser.roleId;
+
+    if (!tenantId || !roleId) {
+      try {
+        const dbUser = await storage.getUser(supabaseUser.id);
+        if (dbUser) {
+          tenantId = tenantId || dbUser.tenantId;
+          roleId = roleId || dbUser.roleId;
+          console.log('[Auth] Loaded user context from DB:', {
+            userId: supabaseUser.id,
+            tenantId,
+            roleId,
+          });
+        } else {
+          // User not in database - use default demo tenant
+          tenantId =
+            tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+          console.log('[Auth] User not in DB, using demo tenant:', tenantId);
+        }
+      } catch (error) {
+        console.error('[Auth] Error looking up user:', error);
+        tenantId = tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+      }
+    }
+
+    // Populate req.user for backward compatibility with existing routes
+    req.user = {
+      claims: { sub: supabaseUser.id },
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      tenantId: tenantId,
+      roleId: roleId,
+      accessScope: supabaseUser.accessScope || 'company',
+      isPlatformUser: supabaseUser.isPlatformUser,
+      expires_at: supabaseUser.exp,
+    };
+
+    // Set tenant context
+    (req as any).tenantId = tenantId;
+
+    return next();
+  }
+
+  // Priority 2: Test mode (development/test environments only)
+  const isTestMode =
+    (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
+    process.env.TEST_MODE === 'true';
 
   const testAuthToken = process.env.TEST_AUTH_SECRET || 'playwright';
   if (isTestMode && req.headers['x-test-auth'] === testAuthToken) {
     // Create or retrieve test user
     const testUserId = 'test-user-playwright';
-    const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
-    
+    const defaultTenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+
     try {
       // Ensure tenant exists
       let tenant = await storage.getTenant(defaultTenantId);
       if (!tenant) {
         tenant = await storage.createTenant({
-          name: "Default Copier Dealer",
-          domain: "default",
+          name: 'Default Copier Dealer',
+          domain: 'default',
         });
       }
 
@@ -202,7 +274,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     }
   }
 
-  // Support both OIDC and session-based authentication
+  // Priority 3: Legacy session-based authentication (deprecated)
   const sessionUserId = (req.session as any)?.userId;
   const sessionTenantId = (req.session as any)?.tenantId;
   const user = req.user as any;
@@ -224,36 +296,43 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   // Check for OIDC-authenticated user
   if (!req.isAuthenticated || !req.isAuthenticated() || !user?.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
   // Add tenant context to user if missing - FIXED APPROACH
   if (!user.tenantId) {
-    console.log("User missing tenantId, user object:", JSON.stringify({
-      hasClaimsSub: !!user.claims?.sub,
-      claims: user.claims,
-      keys: Object.keys(user)
-    }, null, 2));
-    
+    console.log(
+      'User missing tenantId, user object:',
+      JSON.stringify(
+        {
+          hasClaimsSub: !!user.claims?.sub,
+          claims: user.claims,
+          keys: Object.keys(user),
+        },
+        null,
+        2,
+      ),
+    );
+
     // Try to get from database or use default tenant for demo
     if (user.claims?.sub) {
       try {
         const dbUser = await storage.getUser(user.claims.sub);
         if (dbUser && dbUser.tenantId) {
           user.tenantId = dbUser.tenantId;
-          console.log("Set tenantId from DB user:", user.tenantId);
+          console.log('Set tenantId from DB user:', user.tenantId);
         } else {
-          user.tenantId = "550e8400-e29b-41d4-a716-446655440000";
-          console.log("DB user not found, using default tenantId");
+          user.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+          console.log('DB user not found, using default tenantId');
         }
       } catch (error) {
-        console.error("Error fetching user from DB:", error);
-        user.tenantId = "550e8400-e29b-41d4-a716-446655440000";
-        console.log("Error fallback - using default tenantId");
+        console.error('Error fetching user from DB:', error);
+        user.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+        console.log('Error fallback - using default tenantId');
       }
     } else {
-      user.tenantId = "550e8400-e29b-41d4-a716-446655440000";
-      console.log("No user claims.sub, using default tenantId");
+      user.tenantId = '550e8400-e29b-41d4-a716-446655440000';
+      console.log('No user claims.sub, using default tenantId');
     }
   }
 
@@ -264,7 +343,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
+    res.status(401).json({ message: 'Unauthorized' });
     return;
   }
 
@@ -274,7 +353,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     updateUserSession(user, tokenResponse);
     return next();
   } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
+    res.status(401).json({ message: 'Unauthorized' });
     return;
   }
 };

@@ -5,13 +5,21 @@
 
 import express from 'express';
 import { db } from './db';
-import { reportDefinitions, kpiDefinitions, kpiValues, reportExecutions } from '../shared/reporting-schema';
+import {
+  reportDefinitions,
+  kpiDefinitions,
+  kpiValues,
+  reportExecutions,
+} from '../shared/reporting-schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId } from './utils/auth-helpers';
+
 // Basic auth middleware since we don't need the complex RBAC for Phase 1
 const requireAuth = async (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required' });
   }
   next();
 };
@@ -33,18 +41,19 @@ router.get('/reports', async (req: any, res) => {
 
     const { category, search } = req.query;
 
-    let query = db.select().from(reportDefinitions)
-      .where(and(
-        eq(reportDefinitions.tenantId, tenantId),
-        eq(reportDefinitions.isActive, true)
-      ));
+    let query = db
+      .select()
+      .from(reportDefinitions)
+      .where(and(eq(reportDefinitions.tenantId, tenantId), eq(reportDefinitions.isActive, true)));
 
     if (category) {
-      query = query.where(and(
-        eq(reportDefinitions.tenantId, tenantId),
-        eq(reportDefinitions.category, category as string),
-        eq(reportDefinitions.isActive, true)
-      ));
+      query = query.where(
+        and(
+          eq(reportDefinitions.tenantId, tenantId),
+          eq(reportDefinitions.category, category as string),
+          eq(reportDefinitions.isActive, true),
+        ),
+      );
     }
 
     const reports = await query.orderBy(reportDefinitions.name);
@@ -55,14 +64,14 @@ router.get('/reports', async (req: any, res) => {
       meta: {
         total: reports.length,
         category: category || 'all',
-        tenantId
-      }
+        tenantId,
+      },
     });
   } catch (error) {
     console.error('Error fetching reports:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch reports',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -77,11 +86,11 @@ router.get('/reports/:id', async (req: any, res) => {
 
     const { id } = req.params;
 
-    const report = await db.select().from(reportDefinitions)
-      .where(and(
-        eq(reportDefinitions.id, id),
-        eq(reportDefinitions.tenantId, tenantId)
-      )).limit(1);
+    const report = await db
+      .select()
+      .from(reportDefinitions)
+      .where(and(eq(reportDefinitions.id, id), eq(reportDefinitions.tenantId, tenantId)))
+      .limit(1);
 
     if (report.length === 0) {
       return res.status(404).json({ error: 'Report not found' });
@@ -89,13 +98,13 @@ router.get('/reports/:id', async (req: any, res) => {
 
     res.json({
       success: true,
-      data: report[0]
+      data: report[0],
     });
   } catch (error) {
     console.error('Error fetching report:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch report',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -112,12 +121,17 @@ router.post('/reports/:code/execute', async (req: any, res) => {
     const { parameters = {} } = req.body;
 
     // Get report definition
-    const reportDef = await db.select().from(reportDefinitions)
-      .where(and(
-        eq(reportDefinitions.code, code),
-        eq(reportDefinitions.tenantId, tenantId),
-        eq(reportDefinitions.isActive, true)
-      )).limit(1);
+    const reportDef = await db
+      .select()
+      .from(reportDefinitions)
+      .where(
+        and(
+          eq(reportDefinitions.code, code),
+          eq(reportDefinitions.tenantId, tenantId),
+          eq(reportDefinitions.isActive, true),
+        ),
+      )
+      .limit(1);
 
     if (reportDef.length === 0) {
       return res.status(404).json({ error: 'Report not found' });
@@ -138,8 +152,8 @@ router.post('/reports/:code/execute', async (req: any, res) => {
       summary: {
         totalRecords: 0,
         executionTime: '0.5s',
-        cacheHit: false
-      }
+        cacheHit: false,
+      },
     };
 
     // Log execution
@@ -151,7 +165,7 @@ router.post('/reports/:code/execute', async (req: any, res) => {
         parameters: JSON.stringify(parameters),
         status: 'completed',
         executionTime: 500, // milliseconds
-        resultRows: 0
+        resultRows: 0,
       });
     } catch (logError) {
       console.warn('Failed to log report execution:', logError);
@@ -159,13 +173,13 @@ router.post('/reports/:code/execute', async (req: any, res) => {
 
     res.json({
       success: true,
-      data: executionResult
+      data: executionResult,
     });
   } catch (error) {
     console.error('Error executing report:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to execute report',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -186,7 +200,7 @@ router.get('/kpis', async (req: any, res) => {
 
     let whereConditions = [
       eq(kpiDefinitions.tenantId, tenantId),
-      eq(kpiDefinitions.isActive, true)
+      eq(kpiDefinitions.isActive, true),
     ];
 
     if (category) {
@@ -197,7 +211,9 @@ router.get('/kpis', async (req: any, res) => {
       whereConditions.push(eq(kpiDefinitions.isHighPriority, true));
     }
 
-    const kpis = await db.select().from(kpiDefinitions)
+    const kpis = await db
+      .select()
+      .from(kpiDefinitions)
       .where(and(...whereConditions))
       .orderBy(desc(kpiDefinitions.isHighPriority), kpiDefinitions.name);
 
@@ -208,14 +224,14 @@ router.get('/kpis', async (req: any, res) => {
         total: kpis.length,
         category: category || 'all',
         highPriorityOnly: highPriority === 'true',
-        tenantId
-      }
+        tenantId,
+      },
     });
   } catch (error) {
     console.error('Error fetching KPIs:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch KPIs',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -231,40 +247,39 @@ router.get('/kpis/:id/current-value', async (req: any, res) => {
     const { id } = req.params;
 
     // Get KPI definition
-    const kpiDef = await db.select().from(kpiDefinitions)
-      .where(and(
-        eq(kpiDefinitions.id, id),
-        eq(kpiDefinitions.tenantId, tenantId)
-      )).limit(1);
+    const kpiDef = await db
+      .select()
+      .from(kpiDefinitions)
+      .where(and(eq(kpiDefinitions.id, id), eq(kpiDefinitions.tenantId, tenantId)))
+      .limit(1);
 
     if (kpiDef.length === 0) {
       return res.status(404).json({ error: 'KPI not found' });
     }
 
     // Get latest KPI value
-    const latestValue = await db.select().from(kpiValues)
-      .where(and(
-        eq(kpiValues.kpiId, id),
-        eq(kpiValues.tenantId, tenantId)
-      ))
+    const latestValue = await db
+      .select()
+      .from(kpiValues)
+      .where(and(eq(kpiValues.kpiId, id), eq(kpiValues.tenantId, tenantId)))
       .orderBy(desc(kpiValues.recordedAt))
       .limit(1);
 
     const result = {
       kpi: kpiDef[0],
       currentValue: latestValue.length > 0 ? latestValue[0] : null,
-      hasData: latestValue.length > 0
+      hasData: latestValue.length > 0,
     };
 
     res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
     console.error('Error fetching KPI value:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch KPI value',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -281,30 +296,28 @@ router.get('/reports/categories', async (req: any, res) => {
       return res.status(400).json({ error: 'Missing x-tenant-id header' });
     }
 
-    const categories = await db.select({
-      category: reportDefinitions.category,
-      count: sql<number>`count(*)`.as('count')
-    })
-    .from(reportDefinitions)
-    .where(and(
-      eq(reportDefinitions.tenantId, tenantId),
-      eq(reportDefinitions.isActive, true)
-    ))
-    .groupBy(reportDefinitions.category);
+    const categories = await db
+      .select({
+        category: reportDefinitions.category,
+        count: sql<number>`count(*)`.as('count'),
+      })
+      .from(reportDefinitions)
+      .where(and(eq(reportDefinitions.tenantId, tenantId), eq(reportDefinitions.isActive, true)))
+      .groupBy(reportDefinitions.category);
 
     res.json({
       success: true,
       data: categories,
       meta: {
         totalCategories: categories.length,
-        tenantId
-      }
+        tenantId,
+      },
     });
   } catch (error) {
     console.error('Error fetching report categories:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch report categories',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -321,31 +334,31 @@ router.get('/kpis/categories', async (req: any, res) => {
       return res.status(400).json({ error: 'Missing x-tenant-id header' });
     }
 
-    const categories = await db.select({
-      category: kpiDefinitions.category,
-      count: sql<number>`count(*)`.as('count'),
-      highPriorityCount: sql<number>`sum(case when is_high_priority then 1 else 0 end)`.as('highPriorityCount')
-    })
-    .from(kpiDefinitions)
-    .where(and(
-      eq(kpiDefinitions.tenantId, tenantId),
-      eq(kpiDefinitions.isActive, true)
-    ))
-    .groupBy(kpiDefinitions.category);
+    const categories = await db
+      .select({
+        category: kpiDefinitions.category,
+        count: sql<number>`count(*)`.as('count'),
+        highPriorityCount: sql<number>`sum(case when is_high_priority then 1 else 0 end)`.as(
+          'highPriorityCount',
+        ),
+      })
+      .from(kpiDefinitions)
+      .where(and(eq(kpiDefinitions.tenantId, tenantId), eq(kpiDefinitions.isActive, true)))
+      .groupBy(kpiDefinitions.category);
 
     res.json({
       success: true,
       data: categories,
       meta: {
         totalCategories: categories.length,
-        tenantId
-      }
+        tenantId,
+      },
     });
   } catch (error) {
     console.error('Error fetching KPI categories:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch KPI categories',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

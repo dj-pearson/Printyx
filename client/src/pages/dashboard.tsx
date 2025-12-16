@@ -1,27 +1,27 @@
-import { useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
-import ModularDashboard from "@/components/ModularDashboard";
-import { DashboardSkeleton } from "@/components/ui/skeletons";
+import { useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import ModularDashboard from '@/components/ModularDashboard';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 
-console.log("📊 Dashboard module loading...");
+console.log('📊 Dashboard module loading...');
 
 export default function Dashboard() {
-  console.log("📊 Dashboard component rendering");
+  console.log('📊 Dashboard component rendering');
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  console.log("📊 Dashboard auth state:", { isAuthenticated, isLoading });
+  console.log('📊 Dashboard auth state:', { isAuthenticated, isLoading });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
+        title: 'Unauthorized',
+        description: 'You are logged out. Logging in again...',
+        variant: 'destructive',
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = '/login';
       }, 500);
       return;
     }

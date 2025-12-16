@@ -18,20 +18,22 @@ function isAdminOrManager(user: any): boolean {
   if (!user?.role) return false;
   const role = user.role || '';
   const roleLower = role.toLowerCase();
-  return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
+  return (
+    roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive')
+  );
 }
 
 // Helper function to calculate distance between two coordinates (Haversine formula)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3; // Earth's radius in meters
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) *
-    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c; // Distance in meters
@@ -64,11 +66,11 @@ router.get('/technicians/:id/location', async (req: Request, res: Response) => {
 
   try {
     const location = await storage.getTechnicianLocation(req.params.id, user.tenantId);
-    
+
     if (!location) {
       return res.status(404).json({ error: 'Technician location not found' });
     }
-    
+
     res.json(location);
   } catch (error) {
     console.error('Get technician location error:', error);
@@ -90,7 +92,7 @@ router.put('/technicians/:id/location', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       technicianId: req.params.id,
     });
-    
+
     res.json(location);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -111,9 +113,9 @@ router.get('/technicians/status/:status', async (req: Request, res: Response) =>
   try {
     const locations = await storage.getTechnicianLocationsByStatus(
       user.tenantId,
-      req.params.status
+      req.params.status,
     );
-    
+
     res.json(locations);
   } catch (error) {
     console.error('Get technicians by status error:', error);
@@ -130,7 +132,7 @@ router.get('/technicians/nearby', async (req: Request, res: Response) => {
 
   try {
     const { lat, lng, radius } = req.query;
-    
+
     if (!lat || !lng) {
       return res.status(400).json({ error: 'Latitude and longitude are required' });
     }
@@ -144,21 +146,21 @@ router.get('/technicians/nearby', async (req: Request, res: Response) => {
     }
 
     const allLocations = await storage.getActiveTechnicianLocations(user.tenantId);
-    
+
     // Filter locations within radius
     const nearbyTechnicians = allLocations
-      .map(location => ({
+      .map((location) => ({
         ...location,
         distance: calculateDistance(
           latitude,
           longitude,
           parseFloat(location.latitude),
-          parseFloat(location.longitude)
-        )
+          parseFloat(location.longitude),
+        ),
       }))
-      .filter(location => location.distance <= radiusMeters)
+      .filter((location) => location.distance <= radiusMeters)
       .sort((a, b) => a.distance - b.distance);
-    
+
     res.json(nearbyTechnicians);
   } catch (error) {
     console.error('Find nearby technicians error:', error);
@@ -177,19 +179,15 @@ router.get('/technicians/:id/history', async (req: Request, res: Response) => {
 
   try {
     const { startDate, endDate, activityType, ticketId } = req.query;
-    
+
     const filters: any = {};
     if (startDate) filters.startDate = new Date(startDate as string);
     if (endDate) filters.endDate = new Date(endDate as string);
     if (activityType) filters.activityType = activityType as string;
     if (ticketId) filters.ticketId = ticketId as string;
 
-    const history = await storage.getLocationHistory(
-      req.params.id,
-      user.tenantId,
-      filters
-    );
-    
+    const history = await storage.getGpsLocationHistory(req.params.id, user.tenantId, filters);
+
     res.json(history);
   } catch (error) {
     console.error('Get location history error:', error);
@@ -206,11 +204,11 @@ router.post('/location-history', async (req: Request, res: Response) => {
 
   try {
     const data = insertLocationHistorySchema.parse(req.body);
-    const history = await storage.createLocationHistory({
+    const history = await storage.createGpsLocationHistory({
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(history);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -229,11 +227,8 @@ router.get('/tickets/:ticketId/activity-timeline', async (req: Request, res: Res
   }
 
   try {
-    const timeline = await storage.getTicketActivityTimeline(
-      req.params.ticketId,
-      user.tenantId
-    );
-    
+    const timeline = await storage.getTicketActivityTimeline(req.params.ticketId, user.tenantId);
+
     res.json(timeline);
   } catch (error) {
     console.error('Get ticket activity timeline error:', error);
@@ -250,7 +245,7 @@ router.get('/technicians/:id/distance', async (req: Request, res: Response) => {
 
   try {
     const { startDate, endDate } = req.query;
-    
+
     if (!startDate || !endDate) {
       return res.status(400).json({ error: 'Start date and end date are required' });
     }
@@ -262,10 +257,15 @@ router.get('/technicians/:id/distance', async (req: Request, res: Response) => {
       req.params.id,
       user.tenantId,
       start,
-      end
+      end,
     );
-    
-    res.json({ technicianId: req.params.id, startDate: start, endDate: end, totalDistanceMeters: distance });
+
+    res.json({
+      technicianId: req.params.id,
+      startDate: start,
+      endDate: end,
+      totalDistanceMeters: distance,
+    });
   } catch (error) {
     console.error('Calculate distance traveled error:', error);
     res.status(500).json({ error: 'Failed to calculate distance traveled' });
@@ -283,14 +283,14 @@ router.get('/routes', async (req: Request, res: Response) => {
 
   try {
     const { technicianId, routeDate, routeStatus } = req.query;
-    
+
     const filters: any = {};
     if (technicianId) filters.technicianId = technicianId as string;
     if (routeDate) filters.routeDate = new Date(routeDate as string);
     if (routeStatus) filters.routeStatus = routeStatus as string;
 
     const routes = await storage.getRouteAssignments(user.tenantId, filters);
-    
+
     res.json(routes);
   } catch (error) {
     console.error('Get route assignments error:', error);
@@ -307,11 +307,11 @@ router.get('/routes/:id', async (req: Request, res: Response) => {
 
   try {
     const route = await storage.getRouteAssignment(req.params.id, user.tenantId);
-    
+
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
-    
+
     res.json(route);
   } catch (error) {
     console.error('Get route assignment error:', error);
@@ -333,7 +333,7 @@ router.post('/routes', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       createdBy: user.id,
     });
-    
+
     res.status(201).json(route);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -359,7 +359,7 @@ router.put('/routes/:id', async (req: Request, res: Response) => {
 
     const data = insertRouteAssignmentSchema.partial().parse(req.body);
     const updated = await storage.updateRouteAssignment(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -415,7 +415,7 @@ router.post('/routes/:id/start', async (req: Request, res: Response) => {
     const { startLocation } = startSchema.parse(req.body);
 
     const updated = await storage.startRoute(req.params.id, user.tenantId, startLocation);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -454,9 +454,9 @@ router.post('/routes/:id/complete', async (req: Request, res: Response) => {
       req.params.id,
       user.tenantId,
       endLocation,
-      actualDuration
+      actualDuration,
     );
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -488,7 +488,7 @@ router.patch('/routes/:id/progress', async (req: Request, res: Response) => {
     const data = progressSchema.parse(req.body);
 
     const updated = await storage.updateRouteProgress(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -510,7 +510,7 @@ router.get('/deviations', async (req: Request, res: Response) => {
 
   try {
     const { routeId, technicianId, deviationType, severity, resolved } = req.query;
-    
+
     const filters: any = {};
     if (routeId) filters.routeId = routeId as string;
     if (technicianId) filters.technicianId = technicianId as string;
@@ -519,7 +519,7 @@ router.get('/deviations', async (req: Request, res: Response) => {
     if (resolved !== undefined) filters.resolved = resolved === 'true';
 
     const deviations = await storage.getRouteDeviations(user.tenantId, filters);
-    
+
     res.json(deviations);
   } catch (error) {
     console.error('Get route deviations error:', error);
@@ -536,7 +536,7 @@ router.get('/deviations/unresolved', async (req: Request, res: Response) => {
 
   try {
     const deviations = await storage.getRouteDeviations(user.tenantId, { resolved: false });
-    
+
     res.json(deviations);
   } catch (error) {
     console.error('Get unresolved deviations error:', error);
@@ -553,11 +553,11 @@ router.get('/deviations/:id', async (req: Request, res: Response) => {
 
   try {
     const deviation = await storage.getRouteDeviation(req.params.id, user.tenantId);
-    
+
     if (!deviation) {
       return res.status(404).json({ error: 'Deviation not found' });
     }
-    
+
     res.json(deviation);
   } catch (error) {
     console.error('Get route deviation error:', error);
@@ -578,7 +578,7 @@ router.post('/deviations', async (req: Request, res: Response) => {
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(deviation);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -611,9 +611,9 @@ router.post('/deviations/:id/acknowledge', async (req: Request, res: Response) =
     const updated = await storage.acknowledgeDeviation(
       req.params.id,
       user.tenantId,
-      acknowledgedBy
+      acknowledgedBy,
     );
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -648,9 +648,9 @@ router.post('/deviations/:id/resolve', async (req: Request, res: Response) => {
       req.params.id,
       user.tenantId,
       resolvedBy,
-      resolutionNotes
+      resolutionNotes,
     );
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -672,14 +672,14 @@ router.get('/etas', async (req: Request, res: Response) => {
 
   try {
     const { ticketId, technicianId, routeId } = req.query;
-    
+
     const filters: any = {};
     if (ticketId) filters.ticketId = ticketId as string;
     if (technicianId) filters.technicianId = technicianId as string;
     if (routeId) filters.routeId = routeId as string;
 
     const etas = await storage.getEtaCalculations(user.tenantId, filters);
-    
+
     res.json(etas);
   } catch (error) {
     console.error('Get ETA calculations error:', error);
@@ -696,11 +696,11 @@ router.get('/etas/:id', async (req: Request, res: Response) => {
 
   try {
     const eta = await storage.getEtaCalculation(req.params.id, user.tenantId);
-    
+
     if (!eta) {
       return res.status(404).json({ error: 'ETA calculation not found' });
     }
-    
+
     res.json(eta);
   } catch (error) {
     console.error('Get ETA calculation error:', error);
@@ -721,7 +721,7 @@ router.post('/etas', async (req: Request, res: Response) => {
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(eta);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -741,11 +741,11 @@ router.get('/tickets/:ticketId/eta', async (req: Request, res: Response) => {
 
   try {
     const eta = await storage.getLatestEtaForTicket(req.params.ticketId, user.tenantId);
-    
+
     if (!eta) {
       return res.status(404).json({ error: 'No ETA found for this ticket' });
     }
-    
+
     res.json(eta);
   } catch (error) {
     console.error('Get latest ETA for ticket error:', error);
@@ -772,12 +772,8 @@ router.patch('/etas/:id/arrival', async (req: Request, res: Response) => {
 
     const { actualArrivalTime } = arrivalSchema.parse(req.body);
 
-    const updated = await storage.updateEtaArrival(
-      req.params.id,
-      user.tenantId,
-      actualArrivalTime
-    );
-    
+    const updated = await storage.updateEtaArrival(req.params.id, user.tenantId, actualArrivalTime);
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -797,17 +793,12 @@ router.get('/technicians/:id/eta-accuracy', async (req: Request, res: Response) 
 
   try {
     const { startDate, endDate } = req.query;
-    
+
     const start = startDate ? new Date(startDate as string) : undefined;
     const end = endDate ? new Date(endDate as string) : undefined;
 
-    const accuracy = await storage.getEtaAccuracyMetrics(
-      req.params.id,
-      user.tenantId,
-      start,
-      end
-    );
-    
+    const accuracy = await storage.getEtaAccuracyMetrics(req.params.id, user.tenantId, start, end);
+
     res.json(accuracy);
   } catch (error) {
     console.error('Get ETA accuracy metrics error:', error);
@@ -826,14 +817,14 @@ router.get('/geofences', async (req: Request, res: Response) => {
 
   try {
     const { geofenceType, isActive, customerId } = req.query;
-    
+
     const filters: any = {};
     if (geofenceType) filters.geofenceType = geofenceType as string;
     if (isActive !== undefined) filters.isActive = isActive === 'true';
     if (customerId) filters.customerId = customerId as string;
 
     const geofences = await storage.getGeofences(user.tenantId, filters);
-    
+
     res.json(geofences);
   } catch (error) {
     console.error('Get geofences error:', error);
@@ -850,11 +841,11 @@ router.get('/geofences/:id', async (req: Request, res: Response) => {
 
   try {
     const geofence = await storage.getGeofence(req.params.id, user.tenantId);
-    
+
     if (!geofence) {
       return res.status(404).json({ error: 'Geofence not found' });
     }
-    
+
     res.json(geofence);
   } catch (error) {
     console.error('Get geofence error:', error);
@@ -870,7 +861,9 @@ router.post('/geofences', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage geofences' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to manage geofences' });
   }
 
   try {
@@ -880,7 +873,7 @@ router.post('/geofences', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       createdBy: user.id,
     });
-    
+
     res.status(201).json(geofence);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -899,7 +892,9 @@ router.put('/geofences/:id', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage geofences' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to manage geofences' });
   }
 
   try {
@@ -910,7 +905,7 @@ router.put('/geofences/:id', async (req: Request, res: Response) => {
 
     const data = insertGeofenceSchema.partial().parse(req.body);
     const updated = await storage.updateGeofence(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -929,7 +924,9 @@ router.delete('/geofences/:id', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage geofences' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to manage geofences' });
   }
 
   try {
@@ -968,7 +965,7 @@ router.post('/geofences/check', async (req: Request, res: Response) => {
     }
 
     const isInside = await storage.checkGeofence(geofenceId, user.tenantId, latitude, longitude);
-    
+
     res.json({ geofenceId, latitude, longitude, isInside });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -990,7 +987,7 @@ router.get('/geofence-events', async (req: Request, res: Response) => {
 
   try {
     const { geofenceId, technicianId, eventType, ticketId } = req.query;
-    
+
     const filters: any = {};
     if (geofenceId) filters.geofenceId = geofenceId as string;
     if (technicianId) filters.technicianId = technicianId as string;
@@ -998,7 +995,7 @@ router.get('/geofence-events', async (req: Request, res: Response) => {
     if (ticketId) filters.ticketId = ticketId as string;
 
     const events = await storage.getGeofenceEvents(user.tenantId, filters);
-    
+
     res.json(events);
   } catch (error) {
     console.error('Get geofence events error:', error);
@@ -1019,7 +1016,7 @@ router.post('/geofence-events', async (req: Request, res: Response) => {
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(event);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -1039,7 +1036,7 @@ router.get('/technicians/:id/geofence-events', async (req: Request, res: Respons
 
   try {
     const { startDate, endDate, eventType } = req.query;
-    
+
     const filters: any = {};
     if (startDate) filters.startDate = new Date(startDate as string);
     if (endDate) filters.endDate = new Date(endDate as string);
@@ -1048,9 +1045,9 @@ router.get('/technicians/:id/geofence-events', async (req: Request, res: Respons
     const events = await storage.getGeofenceEventsForTechnician(
       req.params.id,
       user.tenantId,
-      filters
+      filters,
     );
-    
+
     res.json(events);
   } catch (error) {
     console.error('Get technician geofence events error:', error);
@@ -1066,11 +1063,8 @@ router.get('/tickets/:ticketId/geofence-events', async (req: Request, res: Respo
   }
 
   try {
-    const events = await storage.getGeofenceEventsForTicket(
-      req.params.ticketId,
-      user.tenantId
-    );
-    
+    const events = await storage.getGeofenceEventsForTicket(req.params.ticketId, user.tenantId);
+
     res.json(events);
   } catch (error) {
     console.error('Get ticket geofence events error:', error);

@@ -5,21 +5,31 @@ import { eq, and } from 'drizzle-orm';
 
 const router = express.Router();
 
+// Helper to get user ID from request (supports Supabase JWT and session)
+const getUserId = (req: any): string | undefined => {
+  return req.user?.id || req.user?.claims?.sub || req.session?.userId;
+};
+
+// Helper to get tenant ID from request
+const getTenantId = (req: any): string | undefined => {
+  return req.tenantId || req.user?.tenantId || req.user?.claims?.tenantId || req.session?.tenantId;
+};
+
 // Middleware for authentication and tenant
 const requireAuth = (req: any, res: any, next: any) => {
-  const session = req.session as any;
-  if (!session?.userId) {
+  const userId = getUserId(req);
+  if (!userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
 };
 
 const requireTenant = (req: any, res: any, next: any) => {
-  const session = req.session as any;
-  if (!session?.tenantId) {
+  const tenantId = getTenantId(req);
+  if (!tenantId) {
     return res.status(400).json({ message: 'Tenant ID is required' });
   }
-  req.tenantId = session.tenantId;
+  req.tenantId = tenantId;
   next();
 };
 
@@ -42,8 +52,7 @@ router.get('/', requireTenant, async (req: any, res) => {
 // Create a new document
 router.post('/', requireTenant, async (req: any, res) => {
   try {
-    const session = req.session as any;
-    const userId = session.userId;
+    const userId = getUserId(req);
 
     const documentData = {
       ...req.body,

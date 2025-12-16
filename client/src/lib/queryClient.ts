@@ -1,5 +1,7 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+import { QueryClient, QueryFunction } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
+import { config, getApiUrl } from '@/lib/config';
+import { getAccessToken } from '@/lib/supabase';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,205 +9,234 @@ async function throwIfResNotOk(res: Response) {
     throw new Error(`${res.status}: ${text}`);
   }
 }
-// In-memory CSRF token cache
+
+// In-memory CSRF token cache (for legacy auth)
 let __csrfToken: string | undefined;
+
+// CSRF token: fetch on first use and cache in-memory (legacy auth only)
+async function getCsrfToken(): Promise<string | undefined> {
+  if (__csrfToken) return __csrfToken;
+  try {
+    const res = await fetch(getApiUrl('api/csrf-token'), { credentials: 'include' });
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    __csrfToken = data?.csrfToken || data?.token || data?.csrf;
+    return __csrfToken;
+  } catch {
+    return undefined;
+  }
+}
+
+// Determine the base URL for API requests
+// Note: All API requests go to the Express server, Edge Functions are called directly when needed
+function getRequestUrl(url: string): string {
+  // Always use the configured API URL for /api/* routes
+  // Edge Functions (signup, etc.) are called directly via fetch, not through this function
+  return getApiUrl(url);
+}
 
 export async function apiRequest(
   url: string,
-  method: string = "GET",
+  method: string = 'GET',
   body?: any,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
 ): Promise<any> {
   const requestHeaders: HeadersInit = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...headers,
   };
 
+  const authMode = config.authMode;
+  const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
+
+  // Add Bearer token for Supabase auth modes
+  if (isSupabaseMode) {
+    const accessToken = await getAccessToken();
+    if (accessToken) {
+      requestHeaders['Authorization'] = `Bearer ${accessToken}`;
+    }
+  }
+
   // Add demo auth header if localStorage flag is set
-  if (
-    typeof window !== "undefined" &&
-    localStorage.getItem("demo-authenticated") === "true"
-  ) {
-    requestHeaders["X-Demo-Auth"] = "true";
+  if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
+    requestHeaders['X-Demo-Auth'] = 'true';
   }
 
   // Add tenant ID header - use localStorage if available, fallback to session
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     const tenantId =
-      localStorage.getItem("demo-tenant-id") ||
-      "550e8400-e29b-41d4-a716-446655440000";
+      localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
     if (tenantId) {
-      requestHeaders["x-tenant-id"] = tenantId;
+      requestHeaders['x-tenant-id'] = tenantId;
     }
   }
 
-  // CSRF token: fetch on first use and cache in-memory
-  async function getCsrfToken(): Promise<string | undefined> {
-    if (__csrfToken) return __csrfToken;
-    try {
-      const res = await fetch("/api/csrf-token", { credentials: "include" });
-      if (!res.ok) return undefined;
-      const data = await res.json();
-      __csrfToken = data?.csrfToken || data?.token || data?.csrf;
-      return __csrfToken;
-    } catch {
-      return undefined;
-    }
-  }
+  // CSRF token only needed for legacy auth (session-based)
+  const safeMethod = method || 'GET';
+  const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(safeMethod.toUpperCase());
 
-  // Attach CSRF only for state-changing methods
-  const safeMethod = method || "GET";
-  const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(
-    safeMethod.toUpperCase()
-  );
-  if (isMutating && !("x-csrf-token" in requestHeaders)) {
+  if (authMode === 'legacy' && isMutating && !('x-csrf-token' in requestHeaders)) {
     const token = await getCsrfToken();
-    if (token) (requestHeaders as any)["x-csrf-token"] = token;
+    if (token) (requestHeaders as any)['x-csrf-token'] = token;
   }
 
-  let res = await fetch(url, {
+  const requestUrl = getRequestUrl(url);
+
+  let res = await fetch(requestUrl, {
     method: safeMethod,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
+    // Only include credentials for legacy auth (cookies)
+    credentials: authMode === 'legacy' ? 'include' : 'omit',
   });
 
-  // If forbidden, try refreshing CSRF token once and retry
-  if (res.status === 403 && isMutating) {
+  // If forbidden in legacy mode, try refreshing CSRF token once and retry
+  if (res.status === 403 && isMutating && authMode === 'legacy') {
     __csrfToken = undefined;
     const token = await getCsrfToken();
     if (token) {
-      (requestHeaders as any)["x-csrf-token"] = token;
-      res = await fetch(url, {
+      (requestHeaders as any)['x-csrf-token'] = token;
+      res = await fetch(requestUrl, {
         method: safeMethod,
         headers: requestHeaders,
         body: body ? JSON.stringify(body) : undefined,
-        credentials: "include",
+        credentials: 'include',
       });
     }
   }
 
   if (res.status === 403 && isMutating) {
     toast({
-      title: "Action blocked",
-      description:
-        "Your session protection failed. Please refresh and try again.",
-      variant: "destructive",
+      title: 'Action blocked',
+      description: 'Your session protection failed. Please refresh and try again.',
+      variant: 'destructive',
     });
   }
+
+  // Handle 401 for Supabase mode - may need token refresh
+  if (res.status === 401 && isSupabaseMode) {
+    // Token may have expired, the auth provider will handle refresh
+    throw new Error('401: Session expired. Please log in again.');
+  }
+
   await throwIfResNotOk(res);
   return await res.json();
 }
 
-// Form-data aware request that preserves multipart encoding and still injects CSRF/tenant/demo headers
+// Form-data aware request that preserves multipart encoding and still injects auth headers
 export async function apiFormRequest(
   url: string,
-  method: string = "POST",
+  method: string = 'POST',
   formData: FormData,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
 ): Promise<any> {
   const requestHeaders: HeadersInit = {
     ...extraHeaders,
   };
 
-  // Demo auth
-  if (
-    typeof window !== "undefined" &&
-    localStorage.getItem("demo-authenticated") === "true"
-  ) {
-    requestHeaders["X-Demo-Auth"] = "true";
-  }
+  const authMode = config.authMode;
+  const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
 
-  // Tenant header
-  if (typeof window !== "undefined") {
-    const tenantId =
-      localStorage.getItem("demo-tenant-id") ||
-      "550e8400-e29b-41d4-a716-446655440000";
-    if (tenantId) requestHeaders["x-tenant-id"] = tenantId;
-  }
-
-  // CSRF token
-  async function getCsrfToken(): Promise<string | undefined> {
-    if (__csrfToken) return __csrfToken;
-    try {
-      const res = await fetch("/api/csrf-token", { credentials: "include" });
-      if (!res.ok) return undefined;
-      const data = await res.json();
-      __csrfToken = data?.csrfToken || data?.token || data?.csrf;
-      return __csrfToken;
-    } catch {
-      return undefined;
+  // Add Bearer token for Supabase auth modes
+  if (isSupabaseMode) {
+    const accessToken = await getAccessToken();
+    if (accessToken) {
+      requestHeaders['Authorization'] = `Bearer ${accessToken}`;
     }
   }
 
-  const token = await getCsrfToken();
-  if (token) (requestHeaders as any)["x-csrf-token"] = token;
+  // Demo auth
+  if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
+    requestHeaders['X-Demo-Auth'] = 'true';
+  }
 
-  let res = await fetch(url, {
+  // Tenant header
+  if (typeof window !== 'undefined') {
+    const tenantId =
+      localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
+    if (tenantId) requestHeaders['x-tenant-id'] = tenantId;
+  }
+
+  // CSRF token only for legacy auth
+  if (authMode === 'legacy') {
+    const token = await getCsrfToken();
+    if (token) (requestHeaders as any)['x-csrf-token'] = token;
+  }
+
+  const requestUrl = getRequestUrl(url);
+
+  let res = await fetch(requestUrl, {
     method,
     headers: requestHeaders,
     body: formData,
-    credentials: "include",
+    credentials: authMode === 'legacy' ? 'include' : 'omit',
   });
 
-  if (res.status === 403) {
+  if (res.status === 403 && authMode === 'legacy') {
     __csrfToken = undefined;
     const newToken = await getCsrfToken();
     if (newToken) {
-      (requestHeaders as any)["x-csrf-token"] = newToken;
-      res = await fetch(url, {
+      (requestHeaders as any)['x-csrf-token'] = newToken;
+      res = await fetch(requestUrl, {
         method,
         headers: requestHeaders,
         body: formData,
-        credentials: "include",
+        credentials: 'include',
       });
     }
   }
 
   if (res.status === 403) {
     toast({
-      title: "Upload blocked",
-      description:
-        "Your session protection failed. Please refresh and try again.",
-      variant: "destructive",
+      title: 'Upload blocked',
+      description: 'Your session protection failed. Please refresh and try again.',
+      variant: 'destructive',
     });
   }
   await throwIfResNotOk(res);
   return await res.json();
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
+type UnauthorizedBehavior = 'returnNull' | 'throw';
+export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const headers: HeadersInit = {};
 
-    // Add demo auth header if localStorage flag is set
-    if (
-      typeof window !== "undefined" &&
-      localStorage.getItem("demo-authenticated") === "true"
-    ) {
-      headers["X-Demo-Auth"] = "true";
-    }
+    const authMode = config.authMode;
+    const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
 
-    // Add tenant ID header - use localStorage if available, fallback to session
-    if (typeof window !== "undefined") {
-      const tenantId =
-        localStorage.getItem("demo-tenant-id") ||
-        "550e8400-e29b-41d4-a716-446655440000";
-      if (tenantId) {
-        headers["x-tenant-id"] = tenantId;
+    // Add Bearer token for Supabase auth modes
+    if (isSupabaseMode) {
+      const accessToken = await getAccessToken();
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
       }
     }
 
-    const res = await fetch(queryKey.join("/") as string, {
+    // Add demo auth header if localStorage flag is set
+    if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
+      headers['X-Demo-Auth'] = 'true';
+    }
+
+    // Add tenant ID header - use localStorage if available, fallback to session
+    if (typeof window !== 'undefined') {
+      const tenantId =
+        localStorage.getItem('demo-tenant-id') || '550e8400-e29b-41d4-a716-446655440000';
+      if (tenantId) {
+        headers['x-tenant-id'] = tenantId;
+      }
+    }
+
+    const url = queryKey.join('/') as string;
+    const requestUrl = getRequestUrl(url.startsWith('/') ? url : `/${url}`);
+
+    const res = await fetch(requestUrl, {
       headers,
-      credentials: "include",
+      credentials: authMode === 'legacy' ? 'include' : 'omit',
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    if (unauthorizedBehavior === 'returnNull' && res.status === 401) {
       return null;
     }
 
@@ -216,7 +247,7 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: getQueryFn({ on401: 'throw' }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity
@@ -224,23 +255,16 @@ export const queryClient = new QueryClient({
       refetchOnMount: true,
       refetchOnReconnect: true,
       onError: (error: any) => {
-        const message =
-          typeof error === "string"
-            ? error
-            : error?.message || "Failed to load data";
+        const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
         toast({
-          title: "Load error",
+          title: 'Load error',
           description: message,
-          variant: "destructive",
+          variant: 'destructive',
         });
       },
       retry: (failureCount, error: any) => {
         // Don't retry on auth errors or client errors
-        if (
-          error?.status === 401 ||
-          error?.status === 403 ||
-          error?.status === 404
-        ) {
+        if (error?.status === 401 || error?.status === 403 || error?.status === 404) {
           return false;
         }
         return failureCount < 2; // Limit retries
@@ -250,12 +274,11 @@ export const queryClient = new QueryClient({
     mutations: {
       retry: false,
       onError: (error: any) => {
-        const message =
-          typeof error === "string" ? error : error?.message || "Action failed";
+        const message = typeof error === 'string' ? error : error?.message || 'Action failed';
         toast({
-          title: "Action failed",
+          title: 'Action failed',
           description: message,
-          variant: "destructive",
+          variant: 'destructive',
         });
       },
     },

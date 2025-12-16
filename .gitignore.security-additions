@@ -1,0 +1,73 @@
+# Additional Security Entries for .gitignore
+# Add these to your existing .gitignore if not already present
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+*.env
+.env.*
+
+# Generated files that may contain secrets
+CLOUDFLARE_ENV_VARS.txt
+setup-output.txt
+*.credentials
+*.secrets
+
+# Backup files that might contain secrets
+*.env.backup
+*.env.bak
+.env.save
+
+# Log files that might contain sensitive data
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Database dumps and exports (may contain data)
+*.sql
+*.dump
+database-exports/*.sql
+
+# IDE/Editor files that might cache secrets
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+---
+
+# How to add these to your .gitignore:
+
+# Option 1: Manual
+# Copy relevant lines above and paste into your .gitignore file
+
+# Option 2: Append (PowerShell)
+# Get-Content .gitignore.security-additions >> .gitignore
+
+# Option 3: Merge intelligently
+# Review both files and merge without duplicates
+
+---
+
+# Verify your .gitignore works:
+# git status
+# 
+# Your .env file should NOT appear in untracked files
+# If it does, add it to .gitignore and run: git rm --cached .env
+

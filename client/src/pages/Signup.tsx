@@ -1,17 +1,11 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -20,129 +14,161 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Printer, ArrowRight, ArrowLeft, CheckCircle, Eye, EyeOff, Mail } from "lucide-react";
-import { Link } from "wouter";
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import { useAuthContext } from '@/providers/AuthProvider';
+import { Printer, ArrowRight, ArrowLeft, CheckCircle, Eye, EyeOff, Mail } from 'lucide-react';
+import { Link } from 'wouter';
 
-const signupSchema = z.object({
-  // Company information
-  companyName: z.string().min(2, "Company name is required"),
-  industry: z.string().optional(),
-  companySize: z.string().optional(),
-  website: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+const signupSchema = z
+  .object({
+    // Company information
+    companyName: z.string().min(2, 'Company name is required'),
+    industry: z.string().optional(),
+    companySize: z.string().optional(),
+    website: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
 
-  // Admin user
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Valid email is required"),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      "Password must contain uppercase, lowercase, and number"
-    ),
-  confirmPassword: z.string(),
-  phone: z.string().optional(),
+    // Admin user
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Valid email is required'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        'Password must contain uppercase, lowercase, and number',
+      ),
+    confirmPassword: z.string(),
+    phone: z.string().optional(),
 
-  // Company details
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zip: z.string().optional(),
-  country: z.string(),
-  timezone: z.string(),
+    // Company details
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional(),
+    country: z.string(),
+    timezone: z.string(),
 
-  // Plan selection
-  planSlug: z.string(),
-  billingCycle: z.enum(["monthly", "annual"]),
+    // Plan selection
+    planSlug: z.string(),
+    billingCycle: z.enum(['monthly', 'annual']),
 
-  // Terms acceptance
-  acceptedTerms: z.boolean().refine(val => val === true, "You must accept the terms"),
-  acceptedPrivacy: z.boolean().refine(val => val === true, "You must accept the privacy policy"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+    // Terms acceptance
+    acceptedTerms: z.boolean().refine((val) => val === true, 'You must accept the terms'),
+    acceptedPrivacy: z
+      .boolean()
+      .refine((val) => val === true, 'You must accept the privacy policy'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 type SignupForm = z.infer<typeof signupSchema>;
 
 const INDUSTRIES = [
-  "Copier Dealer", "Office Equipment", "Managed Print Services",
-  "Document Management", "IT Services", "Other"
+  'Copier Dealer',
+  'Office Equipment',
+  'Managed Print Services',
+  'Document Management',
+  'IT Services',
+  'Other',
 ];
 
-const COMPANY_SIZES = [
-  "1-10 employees", "11-50 employees", "51-200 employees", "200+ employees"
-];
+const COMPANY_SIZES = ['1-10 employees', '11-50 employees', '51-200 employees', '200+ employees'];
 
 const TIMEZONES = [
-  "America/New_York", "America/Chicago", "America/Denver",
-  "America/Los_Angeles", "America/Phoenix", "America/Anchorage",
-  "Pacific/Honolulu"
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Phoenix',
+  'America/Anchorage',
+  'Pacific/Honolulu',
 ];
 
 export default function Signup() {
   const { toast } = useToast();
+  const { signup } = useAuthContext();
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [signupEmail, setSignupEmail] = useState("");
+  const [signupEmail, setSignupEmail] = useState('');
 
   const form = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      companyName: "",
-      industry: "",
-      companySize: "",
-      website: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      zip: "",
-      country: "US",
-      timezone: "America/New_York",
-      planSlug: "starter",
-      billingCycle: "monthly",
+      companyName: '',
+      industry: '',
+      companySize: '',
+      website: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      country: 'US',
+      timezone: 'America/New_York',
+      planSlug: 'starter',
+      billingCycle: 'monthly',
       acceptedTerms: false,
       acceptedPrivacy: false,
     },
-    mode: "onChange",
+    mode: 'onChange',
   });
 
   const signupMutation = useMutation({
     mutationFn: async (data: SignupForm) => {
-      return await apiRequest("/api/auth/signup", "POST", data);
+      // Prepare metadata for tenant/company creation
+      const metadata = {
+        companyName: data.companyName,
+        industry: data.industry,
+        companySize: data.companySize,
+        website: data.website,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        country: data.country,
+        timezone: data.timezone,
+        planSlug: data.planSlug,
+        billingCycle: data.billingCycle,
+      };
+
+      await signup(data.email, data.password, metadata);
+      return { email: data.email };
     },
     onSuccess: (data) => {
       setSignupEmail(data.email);
       setIsSuccess(true);
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
+        title: 'Account created!',
+        description: 'Please check your email to verify your account.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Signup failed",
-        description: error.message || "Please try again",
-        variant: "destructive",
+        title: 'Signup failed',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
       });
     },
   });
@@ -167,15 +193,15 @@ export default function Signup() {
   const getFieldsForStep = (step: number): (keyof SignupForm)[] => {
     switch (step) {
       case 1:
-        return ["companyName", "industry", "companySize", "website"];
+        return ['companyName', 'industry', 'companySize', 'website'];
       case 2:
-        return ["firstName", "lastName", "email", "password", "confirmPassword", "phone"];
+        return ['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'phone'];
       case 3:
-        return ["address", "city", "state", "zip", "country", "timezone"];
+        return ['address', 'city', 'state', 'zip', 'country', 'timezone'];
       case 4:
-        return ["planSlug", "billingCycle"];
+        return ['planSlug', 'billingCycle'];
       case 5:
-        return ["acceptedTerms", "acceptedPrivacy"];
+        return ['acceptedTerms', 'acceptedPrivacy'];
       default:
         return [];
     }
@@ -203,7 +229,8 @@ export default function Signup() {
                   Account Created Successfully!
                 </p>
                 <p className="text-sm text-green-700 mb-4">
-                  We've sent a verification email to:<br />
+                  We've sent a verification email to:
+                  <br />
                   <strong>{signupEmail}</strong>
                 </p>
                 <p className="text-xs text-green-600">
@@ -223,9 +250,7 @@ export default function Signup() {
               </div>
 
               <Link href="/login">
-                <Button className="w-full">
-                  Go to Login
-                </Button>
+                <Button className="w-full">Go to Login</Button>
               </Link>
             </CardContent>
           </Card>
@@ -257,17 +282,15 @@ export default function Signup() {
                   key={step}
                   className={`h-2 rounded-full transition-all ${
                     step === currentStep
-                      ? "w-8 bg-primary"
+                      ? 'w-8 bg-primary'
                       : step < currentStep
-                      ? "w-2 bg-primary"
-                      : "w-2 bg-gray-300"
+                        ? 'w-2 bg-primary'
+                        : 'w-2 bg-gray-300'
                   }`}
                 />
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Step {currentStep} of 5
-            </p>
+            <p className="text-xs text-muted-foreground mt-2">Step {currentStep} of 5</p>
           </CardHeader>
 
           <CardContent>
@@ -430,7 +453,7 @@ export default function Signup() {
                           <FormControl>
                             <div className="relative">
                               <Input
-                                type={showPassword ? "text" : "password"}
+                                type={showPassword ? 'text' : 'password'}
                                 placeholder="Create a strong password"
                                 {...field}
                               />
@@ -464,7 +487,7 @@ export default function Signup() {
                           <FormControl>
                             <div className="relative">
                               <Input
-                                type={showConfirmPassword ? "text" : "password"}
+                                type={showConfirmPassword ? 'text' : 'password'}
                                 placeholder="Confirm your password"
                                 {...field}
                               />
@@ -582,7 +605,7 @@ export default function Signup() {
                             <SelectContent>
                               {TIMEZONES.map((tz) => (
                                 <SelectItem key={tz} value={tz}>
-                                  {tz.replace(/_/g, " ")}
+                                  {tz.replace(/_/g, ' ')}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -600,9 +623,7 @@ export default function Signup() {
                     <h3 className="font-semibold text-lg">Choose Your Plan</h3>
 
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-blue-800 font-medium">
-                        14-Day Free Trial
-                      </p>
+                      <p className="text-sm text-blue-800 font-medium">14-Day Free Trial</p>
                       <p className="text-xs text-blue-700 mt-1">
                         No credit card required. Full access to all features.
                       </p>
@@ -621,9 +642,15 @@ export default function Signup() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="starter">Starter - Best for getting started</SelectItem>
-                              <SelectItem value="professional">Professional - Most popular</SelectItem>
-                              <SelectItem value="enterprise">Enterprise - Advanced features</SelectItem>
+                              <SelectItem value="starter">
+                                Starter - Best for getting started
+                              </SelectItem>
+                              <SelectItem value="professional">
+                                Professional - Most popular
+                              </SelectItem>
+                              <SelectItem value="enterprise">
+                                Enterprise - Advanced features
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -672,14 +699,11 @@ export default function Signup() {
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                           <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>
-                              I agree to the{" "}
+                              I agree to the{' '}
                               <a
                                 href="/terms"
                                 target="_blank"
@@ -700,14 +724,11 @@ export default function Signup() {
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                           <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>
-                              I agree to the{" "}
+                              I agree to the{' '}
                               <a
                                 href="/privacy"
                                 target="_blank"
@@ -727,7 +748,8 @@ export default function Signup() {
                         Ready to get started?
                       </p>
                       <p className="text-xs text-green-700">
-                        Click "Create Account" to complete your registration. We'll send you a verification email to activate your account.
+                        Click "Create Account" to complete your registration. We'll send you a
+                        verification email to activate your account.
                       </p>
                     </div>
                   </div>
@@ -736,11 +758,7 @@ export default function Signup() {
                 {/* Navigation Buttons */}
                 <div className="flex justify-between pt-4 border-t">
                   {currentStep > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={prevStep}
-                    >
+                    <Button type="button" variant="outline" onClick={prevStep}>
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Previous
                     </Button>
@@ -750,24 +768,20 @@ export default function Signup() {
                     <Button
                       type="button"
                       onClick={nextStep}
-                      className={currentStep === 1 ? "ml-auto" : ""}
+                      className={currentStep === 1 ? 'ml-auto' : ''}
                     >
                       Next
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   ) : (
-                    <Button
-                      type="submit"
-                      disabled={signupMutation.isPending}
-                      className="ml-auto"
-                    >
-                      {signupMutation.isPending ? "Creating Account..." : "Create Account"}
+                    <Button type="submit" disabled={signupMutation.isPending} className="ml-auto">
+                      {signupMutation.isPending ? 'Creating Account...' : 'Create Account'}
                     </Button>
                   )}
                 </div>
 
                 <div className="text-center text-sm text-muted-foreground border-t pt-4">
-                  Already have an account?{" "}
+                  Already have an account?{' '}
                   <Link href="/login">
                     <a className="text-primary hover:underline">Sign in</a>
                   </Link>

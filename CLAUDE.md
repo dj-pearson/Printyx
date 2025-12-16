@@ -70,17 +70,18 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - **esbuild 0.25**: Production bundler
 
 **Database & ORM**
-- **PostgreSQL**: Neon serverless hosting
+- **PostgreSQL**: Self-hosted Supabase (migrated from Neon serverless)
+- **Supabase**: Self-hosted at `209.145.59.219:5433` (see Supabase section below)
 - **Drizzle ORM 0.39.1**: Type-safe SQL toolkit
 - **drizzle-kit 0.30.6**: Schema migrations
 - **connect-pg-simple 10.0**: PostgreSQL session store
 
 **Authentication**
-- **Replit Auth**: OpenID Connect provider
-- **openid-client 6.6**: OIDC implementation
-- **Passport 0.7**: Authentication middleware
-- **bcrypt 6.0**: Password hashing
-- **express-session 1.18**: Session management
+- **Supabase GoTrue**: JWT-based authentication (migrated from Replit Auth)
+- **@supabase/supabase-js**: Supabase client SDK
+- **JWT Tokens**: `Authorization: Bearer <token>` header
+- **bcrypt 6.0**: Password hashing (legacy support)
+- **express-session 1.18**: Session management (fallback support)
 
 **Third-Party Integrations**
 - **Stripe 18.5**: Payment processing
@@ -902,27 +903,50 @@ File Storage:
 
 ### Authentication Flow
 
-1. **Replit Auth Setup**: server/replitAuth.ts
-2. **Auth Routes**: server/auth-routes.ts
-3. **Session Management**: PostgreSQL-backed sessions (connect-pg-simple)
-4. **Middleware**: requireAuth checks session.userId or user.id
+**Current: Supabase GoTrue (JWT-based)**
+1. **Supabase Auth Middleware**: server/middleware/supabase-auth.ts
+2. **Auth Helpers**: server/utils/auth-helpers.ts (unified auth utilities)
+3. **Auth Routes**: server/auth-routes.ts
+4. **JWT Validation**: Bearer token in `Authorization` header
 5. **RBAC**: Enhanced RBAC with 8-level role hierarchy (server/enhanced-rbac-service.ts)
 
-**Session Configuration**:
-- Store: PostgreSQL (connect-pg-simple)
-- Secret: SESSION_SECRET environment variable
-- Cookie: httpOnly, secure (production only), sameSite: 'lax'
-- Max age: 30 days
+**Supabase JWT Authentication**:
+- Frontend sends: `Authorization: Bearer <supabase_access_token>`
+- Tenant resolved from: `x-tenant-id` header OR JWT `app_metadata.tenantId`
+- User ID from: `req.user.id` (decoded JWT)
+- Fallback: Session-based auth still supported for backward compatibility
+
+**Auth Helper Functions** (server/utils/auth-helpers.ts):
+```typescript
+import { getUserId, getTenantId, isAuthenticated } from '../utils/auth-helpers';
+
+// Get user ID (supports JWT, claims, and session)
+const userId = getUserId(req);
+
+// Get tenant ID (supports header, JWT, and session)
+const tenantId = getTenantId(req);
+
+// Check if authenticated
+if (!isAuthenticated(req)) {
+  return res.status(401).json({ message: 'Not authenticated' });
+}
+```
 
 **Protected Route Pattern**:
 ```typescript
 app.get('/api/protected', requireAuth, requireTenant, async (req, res) => {
   // User is authenticated and tenant is resolved
-  const userId = req.session.userId;
+  const userId = getUserId(req);  // Supports Supabase JWT + session fallback
   const tenantId = req.tenantId;
   // ... route logic
 });
 ```
+
+**Legacy Session Configuration** (fallback support):
+- Store: PostgreSQL (connect-pg-simple)
+- Secret: SESSION_SECRET environment variable
+- Cookie: httpOnly, secure (production only), sameSite: 'lax'
+- Max age: 30 days
 
 ### Database Patterns
 
@@ -1433,12 +1457,24 @@ High-priority KPIs have automated alerts:
 
 ### Environment Variables
 See .env.example for complete list. Key variables:
-- `DATABASE_URL`: PostgreSQL connection string (Neon)
+
+**Database (Self-Hosted Supabase)**:
+- `DATABASE_URL`: PostgreSQL connection string (e.g., `postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres`)
+- `DB_SSL`: Enable SSL (`true` | `false`)
+- `DB_SSL_REJECT_UNAUTHORIZED`: Accept self-signed certs (`false` for self-hosted)
+
+**Supabase Configuration**:
+- `SUPABASE_URL`: Supabase API URL (e.g., `https://api.printyx.net`)
+- `SUPABASE_ANON_KEY`: Supabase anonymous/public key
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server-side only)
+
+**Session & Security**:
 - `SESSION_SECRET`: Session encryption secret
 - `NODE_ENV`: development | production
 - `PORT`: Server port (default: 5000)
+
+**Third-Party Services**:
 - `STRIPE_SECRET_KEY`: Stripe API key
-- `REPL_ID`, `REPL_OWNER`: Replit Auth configuration
 
 ### Important Files
 - `server/index.ts`: Server entry point
@@ -1482,3 +1518,142 @@ npm start            # Start production server
 - Ask questions about unfamiliar patterns before implementing
 - Refer to component examples in client/src/components/
 - Check server/routes/ for API endpoint patterns
+
+---
+
+## Self-Hosted Supabase Infrastructure
+
+### Overview
+
+Printyx has migrated from Neon PostgreSQL to a self-hosted Supabase instance. This provides:
+- Full control over data and infrastructure
+- JWT-based authentication via GoTrue
+- PostgreSQL with connection pooling via Supavisor
+- Edge Functions support
+
+### Infrastructure Details
+
+**Host Server**: `209.145.59.219`
+
+| Service | URL/Port | Description |
+|---------|----------|-------------|
+| Supabase API | `https://api.printyx.net` | Main Supabase API endpoint |
+| Edge Functions | `https://functions.printyx.net` | Serverless edge functions |
+| PostgreSQL (Pooler) | `209.145.59.219:5433` | Supavisor connection pooler |
+| PostgreSQL (Direct) | `209.145.59.219:5432` | Direct PostgreSQL (if available) |
+
+### Database Connection
+
+**Connection String Format**:
+```
+postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres
+```
+
+**Environment Variables**:
+```env
+DATABASE_URL=postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres
+DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=false
+SUPABASE_URL=https://api.printyx.net
+SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+```
+
+**SSL Configuration** (server/db.ts):
+- For self-hosted Supabase with self-signed certificates, set:
+  - `DB_SSL=true`
+  - `DB_SSL_REJECT_UNAUTHORIZED=false`
+- The pooler port (5433) typically requires SSL
+
+### Authentication Architecture
+
+**Frontend Authentication**:
+```typescript
+// client/src/hooks/useSupabaseAuth.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+// Sign in
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
+
+// Get session token
+const session = await supabase.auth.getSession();
+const accessToken = session.data.session?.access_token;
+```
+
+**API Requests from Frontend**:
+```typescript
+// Include JWT token in all API requests
+fetch('/api/some-endpoint', {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'x-tenant-id': tenantId,  // Optional: explicit tenant
+    'Content-Type': 'application/json',
+  },
+});
+```
+
+**Backend JWT Validation**:
+```typescript
+// server/middleware/supabase-auth.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// Middleware extracts and validates JWT
+const token = req.headers.authorization?.replace('Bearer ', '');
+const { data: { user }, error } = await supabase.auth.getUser(token);
+req.user = user;
+```
+
+### Tenant Resolution
+
+Tenants are resolved in this priority order:
+1. `x-tenant-id` header (explicit)
+2. JWT `app_metadata.tenantId` (from Supabase user metadata)
+3. Session `tenantId` (legacy fallback)
+
+**Setting Tenant in Supabase User**:
+```sql
+-- In Supabase, set tenant on user creation
+UPDATE auth.users
+SET raw_app_meta_data = raw_app_meta_data || '{"tenantId": "tenant-uuid"}'::jsonb
+WHERE id = 'user-uuid';
+```
+
+### Key Files for Supabase Integration
+
+| File | Purpose |
+|------|---------|
+| `server/middleware/supabase-auth.ts` | JWT validation middleware |
+| `server/utils/auth-helpers.ts` | Unified auth utility functions |
+| `server/db.ts` | Database connection with SSL config |
+| `client/src/hooks/useSupabaseAuth.ts` | Frontend auth hook |
+| `client/src/lib/supabase.ts` | Supabase client initialization |
+
+### Migration Status
+
+See `docs/ROUTE_MIGRATION_CHECKLIST.md` for detailed route-by-route migration status.
+See `docs/SUPABASE_MIGRATION_GUIDE.md` for comprehensive migration documentation.
+
+### Troubleshooting
+
+**Connection Issues**:
+- If `ECONNREFUSED`: Check port (5433 for pooler, 5432 for direct)
+- If `Connection terminated unexpectedly`: Check SSL settings
+- If `ECONNRESET`: SSL might be required - set `DB_SSL=true`
+
+**Authentication Issues**:
+- If 401 Unauthorized: Check JWT token is being sent
+- If tenant not found: Verify `x-tenant-id` header or `app_metadata.tenantId`
+- If user not found: Verify Supabase user exists and is confirmed

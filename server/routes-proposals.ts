@@ -35,8 +35,10 @@ import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 const router = Router();
 
@@ -47,24 +49,23 @@ router.use(enhanceUserContext);
 
 // Basic auth middleware
 const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  if (!isAuthenticated) {
+  const userId = getUserId(req);
+  if (!userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   if (!req.user) {
     req.user = {
-      id: req.session.userId,
+      id: userId,
       tenantId:
-        req.session.tenantId ||
-        process.env.DEMO_TENANT_ID ||
-        '550e8400-e29b-41d4-a716-446655440000',
+        getTenantId(req) || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000',
     };
-  } else if (!req.user.tenantId && !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     req.user = {
-      id: req.user.claims?.sub || req.user.id,
+      ...req.user,
+      id: req.user.id || userId,
       tenantId:
         req.user.tenantId ||
-        req.session?.tenantId ||
+        getTenantId(req) ||
         process.env.DEMO_TENANT_ID ||
         '550e8400-e29b-41d4-a716-446655440000',
     };
@@ -73,41 +74,45 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 
 // Get all proposal templates - requires quote view permission
-router.get('/proposal-templates',
-  
+router.get(
+  '/proposal-templates',
+
   requirePermission([PERMISSIONS.SALES.QUOTE.VIEW]),
   async (req: any, res) => {
-  try {
-    // For now, return empty array since tables don't exist yet
-    // Once we run db:push, this will use the actual table
-    const templates = [];
-    res.json(templates);
-  } catch (error) {
-    console.error('Error fetching proposal templates:', error);
-    res.status(500).json({ error: 'Failed to fetch proposal templates' });
-  }
-});
+    try {
+      // For now, return empty array since tables don't exist yet
+      // Once we run db:push, this will use the actual table
+      const templates = [];
+      res.json(templates);
+    } catch (error) {
+      console.error('Error fetching proposal templates:', error);
+      res.status(500).json({ error: 'Failed to fetch proposal templates' });
+    }
+  },
+);
 
 // Create proposal template - requires quote create permission
-router.post('/proposal-templates',
-  
+router.post(
+  '/proposal-templates',
+
   requirePermission([PERMISSIONS.SALES.QUOTE.CREATE]),
   async (req: any, res) => {
-  try {
-    const validatedData = insertProposalTemplateSchema.parse({
-      ...req.body,
-      tenantId: req.user.tenantId,
-      createdBy: req.user.id,
-    });
+    try {
+      const validatedData = insertProposalTemplateSchema.parse({
+        ...req.body,
+        tenantId: req.user.tenantId,
+        createdBy: req.user.id,
+      });
 
-    const [template] = await db.insert(proposalTemplates).values([validatedData]).returning();
+      const [template] = await db.insert(proposalTemplates).values([validatedData]).returning();
 
-    res.status(201).json(template);
-  } catch (error) {
-    console.error('Error creating proposal template:', error);
-    res.status(500).json({ error: 'Failed to create proposal template' });
-  }
-});
+      res.status(201).json(template);
+    } catch (error) {
+      console.error('Error creating proposal template:', error);
+      res.status(500).json({ error: 'Failed to create proposal template' });
+    }
+  },
+);
 
 // Update proposal template
 router.put('/proposal-templates/:id', async (req: any, res) => {
@@ -173,65 +178,67 @@ router.post('/equipment-packages', async (req: any, res) => {
 // ============= PROPOSALS =============
 
 // Get all proposals - requires quote view permission
-router.get('/',
-  
+router.get(
+  '/',
+
   requirePermission([PERMISSIONS.SALES.QUOTE.VIEW]),
   async (req: any, res) => {
-  try {
-    const { status, businessRecordId, filter, days } = req.query as Record<string, string>;
+    try {
+      const { status, businessRecordId, filter, days } = req.query as Record<string, string>;
 
-    let baseQuery = db
-      .select({
-        id: proposals.id,
-        proposalNumber: proposals.proposalNumber,
-        version: proposals.version,
-        title: proposals.title,
-        businessRecordId: proposals.businessRecordId,
-        proposalType: proposals.proposalType,
-        status: proposals.status,
-        totalAmount: proposals.totalAmount,
-        validUntil: proposals.validUntil,
-        sentAt: proposals.sentAt,
-        viewedAt: proposals.viewedAt,
-        acceptedAt: proposals.acceptedAt,
-        createdBy: proposals.createdBy,
-        assignedTo: proposals.assignedTo,
-        createdAt: proposals.createdAt,
-        // Join with business records to get customer info
-        customerName: businessRecords.companyName,
-        customerEmail: businessRecords.primaryContactEmail,
-      })
-      .from(proposals)
-      .leftJoin(businessRecords, eq(proposals.businessRecordId, businessRecords.id));
+      let baseQuery = db
+        .select({
+          id: proposals.id,
+          proposalNumber: proposals.proposalNumber,
+          version: proposals.version,
+          title: proposals.title,
+          businessRecordId: proposals.businessRecordId,
+          proposalType: proposals.proposalType,
+          status: proposals.status,
+          totalAmount: proposals.totalAmount,
+          validUntil: proposals.validUntil,
+          sentAt: proposals.sentAt,
+          viewedAt: proposals.viewedAt,
+          acceptedAt: proposals.acceptedAt,
+          createdBy: proposals.createdBy,
+          assignedTo: proposals.assignedTo,
+          createdAt: proposals.createdAt,
+          // Join with business records to get customer info
+          customerName: businessRecords.companyName,
+          customerEmail: businessRecords.primaryContactEmail,
+        })
+        .from(proposals)
+        .leftJoin(businessRecords, eq(proposals.businessRecordId, businessRecords.id));
 
-    const conditions: any[] = [eq(proposals.tenantId, req.user.tenantId)];
+      const conditions: any[] = [eq(proposals.tenantId, req.user.tenantId)];
 
-    if (status) {
-      conditions.push(eq(proposals.status, status as string));
-    }
-
-    if (businessRecordId) {
-      conditions.push(eq(proposals.businessRecordId, businessRecordId as string));
-    }
-
-    // Aging filter: proposals older than N days
-    if (filter === 'aging' && days) {
-      const n = Number.parseInt(days, 10);
-      if (!Number.isNaN(n) && n > 0) {
-        conditions.push(sql`${proposals.createdAt} < NOW() - INTERVAL '${n} days'`);
+      if (status) {
+        conditions.push(eq(proposals.status, status as string));
       }
+
+      if (businessRecordId) {
+        conditions.push(eq(proposals.businessRecordId, businessRecordId as string));
+      }
+
+      // Aging filter: proposals older than N days
+      if (filter === 'aging' && days) {
+        const n = Number.parseInt(days, 10);
+        if (!Number.isNaN(n) && n > 0) {
+          conditions.push(sql`${proposals.createdAt} < NOW() - INTERVAL '${n} days'`);
+        }
+      }
+
+      const query = baseQuery.where(and(...conditions));
+
+      const result = await query.orderBy(desc(proposals.createdAt));
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error fetching proposals:', error);
+      res.status(500).json({ error: 'Failed to fetch proposals' });
     }
-
-    const query = baseQuery.where(and(...conditions));
-
-    const result = await query.orderBy(desc(proposals.createdAt));
-
-    res.json(result);
-  } catch (error) {
-    console.error('Error fetching proposals:', error);
-    res.status(500).json({ error: 'Failed to fetch proposals' });
-  }
-});
+  },
+);
 
 // Get new proposal template
 router.get('/new', async (req: any, res) => {
@@ -311,75 +318,80 @@ router.get('/:id', async (req: any, res) => {
 });
 
 // Create new proposal - requires quote create permission
-router.post('/',
-  
+router.post(
+  '/',
+
   requirePermission([PERMISSIONS.SALES.QUOTE.CREATE]),
   async (req: any, res) => {
-  console.log('🚀 POST /api/proposals endpoint hit!');
-  try {
-    console.log('=== PROPOSAL CREATION DEBUG ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('User:', req.user);
+    console.log('🚀 POST /api/proposals endpoint hit!');
+    try {
+      console.log('=== PROPOSAL CREATION DEBUG ===');
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      console.log('User:', req.user);
 
-    // Generate proposal number
-    const proposalNumber = await generateProposalNumber(req.user.tenantId);
-    console.log('Generated proposal number:', proposalNumber);
+      // Generate proposal number
+      const proposalNumber = await generateProposalNumber(req.user.tenantId);
+      console.log('Generated proposal number:', proposalNumber);
 
-    const dataToValidate = {
-      ...req.body,
-      tenantId: req.user.tenantId,
-      proposalNumber,
-      createdBy: req.user.id,
-      assignedTo: req.user.id, // Default to creator
-      // Convert ISO date string to Date object if validUntil exists
-      validUntil: req.body.validUntil ? new Date(req.body.validUntil) : undefined,
-    };
-    console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
-
-    const validatedData = insertProposalSchema.parse(dataToValidate);
-    console.log('Validated data:', JSON.stringify(validatedData, null, 2));
-
-    const [proposal] = await db.insert(proposals).values([validatedData]).returning();
-
-    console.log('Created proposal:', proposal);
-
-    // If line items provided, add them
-    if (req.body.lineItems && req.body.lineItems.length > 0) {
-      const lineItemsData = req.body.lineItems.map((item: any, index: number) => ({
-        ...item,
+      const dataToValidate = {
+        ...req.body,
         tenantId: req.user.tenantId,
-        proposalId: proposal.id,
-        lineNumber: item.lineNumber || index + 1,
-        itemType: item.itemType || 'equipment', // Use provided itemType or default to equipment
-      }));
+        proposalNumber,
+        createdBy: req.user.id,
+        assignedTo: req.user.id, // Default to creator
+        // Convert ISO date string to Date object if validUntil exists
+        validUntil: req.body.validUntil ? new Date(req.body.validUntil) : undefined,
+      };
+      console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
 
-      const lineItems = await db.insert(proposalLineItems).values(lineItemsData).returning();
+      const validatedData = insertProposalSchema.parse(dataToValidate);
+      console.log('Validated data:', JSON.stringify(validatedData, null, 2));
 
-      // Calculate totals
-      const subtotal = lineItems.reduce((sum, item) => sum + parseFloat(item.totalPrice || '0'), 0);
+      const [proposal] = await db.insert(proposals).values([validatedData]).returning();
 
-      // Update proposal with calculated totals
-      await db
-        .update(proposals)
-        .set({
-          subtotal: subtotal.toString(),
-          totalAmount: subtotal.toString(), // Simple case without tax/discount
-          updatedAt: new Date(),
-        })
-        .where(eq(proposals.id, proposal.id));
+      console.log('Created proposal:', proposal);
+
+      // If line items provided, add them
+      if (req.body.lineItems && req.body.lineItems.length > 0) {
+        const lineItemsData = req.body.lineItems.map((item: any, index: number) => ({
+          ...item,
+          tenantId: req.user.tenantId,
+          proposalId: proposal.id,
+          lineNumber: item.lineNumber || index + 1,
+          itemType: item.itemType || 'equipment', // Use provided itemType or default to equipment
+        }));
+
+        const lineItems = await db.insert(proposalLineItems).values(lineItemsData).returning();
+
+        // Calculate totals
+        const subtotal = lineItems.reduce(
+          (sum, item) => sum + parseFloat(item.totalPrice || '0'),
+          0,
+        );
+
+        // Update proposal with calculated totals
+        await db
+          .update(proposals)
+          .set({
+            subtotal: subtotal.toString(),
+            totalAmount: subtotal.toString(), // Simple case without tax/discount
+            updatedAt: new Date(),
+          })
+          .where(eq(proposals.id, proposal.id));
+      }
+
+      res.status(201).json(proposal);
+    } catch (error) {
+      console.error('=== PROPOSAL CREATION ERROR ===');
+      console.error('Error creating proposal:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+      res.status(500).json({ error: 'Failed to create proposal', details: error.message });
     }
-
-    res.status(201).json(proposal);
-  } catch (error) {
-    console.error('=== PROPOSAL CREATION ERROR ===');
-    console.error('Error creating proposal:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
-    res.status(500).json({ error: 'Failed to create proposal', details: error.message });
-  }
-});
+  },
+);
 
 // Update proposal
 router.put('/:id', async (req: any, res) => {
