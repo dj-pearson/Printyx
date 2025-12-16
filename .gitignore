@@ -9,3 +9,5 @@ testing/debug-*.js
 testing/test-*.js
 neondb_backup.sql
 database-exports/
+.env
+*env
