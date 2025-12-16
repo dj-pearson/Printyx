@@ -114,7 +114,7 @@ const Interactive3DHero = () => {
               </Badge>
             </motion.div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.1]">
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 leading-[1.1]">
               Command Your <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-gradient-x">
                 Entire Fleet
@@ -129,7 +129,7 @@ const Interactive3DHero = () => {
             <div className="flex flex-col sm:flex-row gap-5">
               <Button
                 size="lg"
-                className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-7 text-lg rounded-xl shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_0_60px_-15px_rgba(37,99,235,0.6)] transition-all duration-300 group"
+                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 text-base sm:px-8 sm:py-7 sm:text-lg rounded-xl shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_0_60px_-15px_rgba(37,99,235,0.6)] transition-all duration-300 group"
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -137,7 +137,7 @@ const Interactive3DHero = () => {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white px-8 py-7 text-lg rounded-xl backdrop-blur-sm"
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white px-6 py-4 text-base sm:px-8 sm:py-7 sm:text-lg rounded-xl backdrop-blur-sm"
               >
                 Schedule Demo
               </Button>
