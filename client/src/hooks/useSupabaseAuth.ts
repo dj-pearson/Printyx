@@ -10,6 +10,48 @@ import { apiRequest } from '@/lib/queryClient';
 import { config } from '@/lib/config';
 import type { Session, User } from '@supabase/supabase-js';
 
+type RolePermissions = Record<string, boolean>;
+
+function defaultRolePermissions(): RolePermissions {
+  return {
+    sales: true,
+    service: true,
+    products: true,
+    inventory: true,
+    purchasing: true,
+    billing: true,
+    finance: true,
+    reports: true,
+    system: true,
+  };
+}
+
+function normalizePermissions(input: unknown): RolePermissions {
+  if (!input) return {};
+  if (Array.isArray(input)) {
+    if (input.includes('*')) return defaultRolePermissions();
+    const out: RolePermissions = {};
+    for (const v of input) if (typeof v === 'string') out[v] = true;
+    return out;
+  }
+  if (typeof input === 'object') {
+    const out: RolePermissions = {};
+    for (const [k, v] of Object.entries(input as Record<string, unknown>)) out[k] = Boolean(v);
+    return out;
+  }
+  return {};
+}
+
+function getDefaultRole() {
+  return {
+    id: 'default',
+    name: 'User',
+    level: 1,
+    permissions: defaultRolePermissions(),
+    canAccessAllTenants: false,
+  };
+}
+
 // User profile with app metadata
 export interface AuthUser {
   id: string;
@@ -93,52 +135,96 @@ export function useSupabaseAuth() {
 
       // Prefer fetching profile/role/team from the app server (avoids Supabase PostgREST RLS issues).
       // In production, if no app API base URL is configured, /api/* will be served by the static site
-      // and return HTML. In that case, skip the server profile call and use JWT metadata.
+      // and return HTML. In that case, use a Supabase Edge Function (/me) to hydrate role/permissions.
       try {
-        if (config.isProduction && !config.apiBaseUrl) {
-          throw new Error('APP_API_NOT_CONFIGURED');
-        }
+        // If the app API is configured, use it.
+        if (!(config.isProduction && !config.apiBaseUrl)) {
+          const me = await apiRequest('/api/me', 'GET');
 
-        const me = await apiRequest('/api/me', 'GET');
-
-        // Merge server profile with auth user (auth user as fallback)
-        const merged = {
-          ...authUser,
-          firstName: me?.firstName || authUser.firstName,
-          lastName: me?.lastName || authUser.lastName,
-          tenantId: me?.tenantId || authUser.tenantId,
-          roleId: me?.roleId || authUser.roleId,
-          teamId: me?.teamId || authUser.teamId,
-          accessScope: me?.accessScope || authUser.accessScope,
-          isPlatformUser: me?.isPlatformUser ?? authUser.isPlatformUser,
-          role: me?.role || authUser.role,
-          team: me?.team || authUser.team,
-        };
-
-        // If server didn't provide role, provide a default role for navigation
-        if (!merged.role) {
-          console.warn('No role found, using default user role');
-          merged.role = {
-            id: 'default',
-            name: 'User',
-            level: 1,
+          const merged: any = {
+            ...authUser,
+            firstName: me?.firstName || authUser.firstName,
+            lastName: me?.lastName || authUser.lastName,
+            tenantId: me?.tenantId || authUser.tenantId,
+            roleId: me?.roleId || authUser.roleId,
+            teamId: me?.teamId || authUser.teamId,
+            accessScope: me?.accessScope || authUser.accessScope,
+            isPlatformUser: me?.isPlatformUser ?? authUser.isPlatformUser,
+            role: me?.role || authUser.role,
+            team: me?.team || authUser.team,
           };
+
+          // Ensure role shape is compatible with navigation
+          if (merged.role) {
+            merged.role = {
+              ...merged.role,
+              permissions:
+                normalizePermissions((merged.role as any).permissions) || defaultRolePermissions(),
+              canAccessAllTenants: Boolean(
+                (merged.role as any).canAccessAllTenants ??
+                  (merged.role as any).can_access_all_tenants,
+              ),
+              level: (merged.role as any).level ?? 1,
+              name: (merged.role as any).name ?? 'User',
+              id: (merged.role as any).id ?? 'default',
+            };
+          } else {
+            merged.role = getDefaultRole();
+          }
+
+          return merged;
         }
 
-        return merged;
+        // No app API in production: use Supabase Edge Function if configured
+        const functionsUrl = config.supabase.functionsUrl;
+        if (functionsUrl && session?.access_token) {
+          const resp = await fetch(`${functionsUrl}/me`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: config.supabase.anonKey,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (resp.ok) {
+            const me = await resp.json();
+            const role = me?.role
+              ? {
+                  ...me.role,
+                  permissions:
+                    normalizePermissions(me.role.permissions) || defaultRolePermissions(),
+                  canAccessAllTenants: Boolean(
+                    me.role.canAccessAllTenants ?? me.role.can_access_all_tenants,
+                  ),
+                }
+              : getDefaultRole();
+
+            return {
+              ...authUser,
+              firstName: me?.firstName || authUser.firstName,
+              lastName: me?.lastName || authUser.lastName,
+              tenantId: me?.tenantId || authUser.tenantId,
+              roleId: me?.roleId || authUser.roleId,
+              teamId: me?.teamId || authUser.teamId,
+              accessScope: me?.accessScope || authUser.accessScope,
+              isPlatformUser: me?.isPlatformUser ?? authUser.isPlatformUser,
+              role,
+              team: me?.team || null,
+            };
+          }
+        }
+
+        // If neither app API nor edge function worked, fall back.
+        throw new Error('PROFILE_HYDRATION_UNAVAILABLE');
       } catch (err) {
         // Fallback to auth user with default role if fetch fails.
-        // Avoid noisy logs when the app API isn't configured in production.
-        if (!(err instanceof Error && err.message === 'APP_API_NOT_CONFIGURED')) {
+        if (!(err instanceof Error && err.message === 'PROFILE_HYDRATION_UNAVAILABLE')) {
           console.warn('Profile fetch error, using auth metadata:', err);
         }
         return {
           ...authUser,
-          role: {
-            id: 'default',
-            name: 'User',
-            level: 1,
-          },
+          role: getDefaultRole(),
         };
       }
     },
