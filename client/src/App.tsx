@@ -1,7 +1,8 @@
 import { Switch, Route } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
+import React, { useState, useEffect, lazy } from 'react';
+import LogoExport from '@/pages/LogoExport';
 import { useLocation } from 'wouter';
 import { useSeo } from '@/lib/useSeo';
 import { Toaster } from '@/components/ui/toaster';
@@ -382,6 +383,7 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
+        <Route path="/export-logos" component={lazy(() => import('@/pages/LogoExport'))} />
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
@@ -423,6 +425,7 @@ function Router() {
           path="/p/master-product-catalog-canon-imagerunner"
           component={CanonMasterProductCatalog}
         />
+        <Route path="/export-logos" component={LogoExport} />
         <Route component={Homepage} />
       </Switch>
     );

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/ui/logo';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -161,7 +162,7 @@ const Homepage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Printer className="h-8 w-8 text-blue-600" />
+              <Logo className="h-8 w-8" />
               <span className="ml-2 text-xl font-bold text-gray-900">Printyx</span>
             </div>
 
@@ -284,18 +285,18 @@ const Homepage = () => {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className={`transform transition-all duration-700 delay-${
+                className={`transform transition - all duration - 700 delay - ${
                   index * 100
-                } hover:scale-105 hover:shadow-xl border-2 hover:border-blue-300 ${
+                } hover: scale - 105 hover: shadow - xl border - 2 hover: border - blue - 300 ${
                   isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                }`}
+                } `}
               >
                 <CardHeader>
                   <Badge className="mb-3 bg-blue-50 text-blue-700 border-blue-200 w-fit">
                     {feature.badge}
                   </Badge>
                   <div
-                    className={`inline-flex items-center justify-center w-14 h-14 ${feature.color} rounded-xl mb-4 shadow-lg`}
+                    className={`inline - flex items - center justify - center w - 14 h - 14 ${feature.color} rounded - xl mb - 4 shadow - lg`}
                   >
                     <feature.icon className="h-7 w-7 text-white" />
                   </div>
@@ -340,11 +341,11 @@ const Homepage = () => {
             {benefits.map((benefit, index) => (
               <Card
                 key={index}
-                className={`transform transition-all duration-700 delay-${
+                className={`transform transition - all duration - 700 delay - ${
                   index * 150
-                } hover:shadow-2xl border-2 hover:border-purple-300 ${
+                } hover: shadow - 2xl border - 2 hover: border - purple - 300 ${
                   isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                }`}
+                } `}
               >
                 <CardContent className="p-8">
                   <div className="flex items-start space-x-4">
@@ -574,11 +575,11 @@ const Homepage = () => {
             {testimonials.map((testimonial, index) => (
               <Card
                 key={index}
-                className={`transform transition-all duration-700 delay-${
+                className={`transform transition - all duration - 700 delay - ${
                   index * 150
-                } hover:shadow-lg border-2 hover:border-blue-300 ${
+                } hover: shadow - lg border - 2 hover: border - blue - 300 ${
                   isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                }`}
+                } `}
               >
                 <CardContent className="p-6">
                   <div className="flex mb-4">
@@ -607,7 +608,7 @@ const Homepage = () => {
           <div
             className="absolute inset-0"
             style={{
-              backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+              backgroundImage: `radial - gradient(circle at 2px 2px, white 1px, transparent 0)`,
               backgroundSize: '40px 40px',
             }}
           />
@@ -675,7 +676,7 @@ const Homepage = () => {
             {/* Company Info */}
             <div className="md:col-span-1">
               <div className="flex items-center mb-4">
-                <Printer className="h-8 w-8 text-blue-400" />
+                <Logo className="h-8 w-8" />
                 <span className="ml-2 text-xl font-bold">Printyx</span>
               </div>
               <p className="text-gray-400 text-sm mb-4">
