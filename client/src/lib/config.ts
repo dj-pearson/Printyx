@@ -20,8 +20,10 @@ const getOriginUrl = () => {
   return '';
 };
 
-// Determine auth mode - default to supabase in production
-const resolvedAuthMode: AuthMode = (import.meta.env.VITE_AUTH_MODE as AuthMode) || 'supabase';
+// Determine auth mode (normalize casing) - default to supabase
+const rawAuthMode = String(import.meta.env.VITE_AUTH_MODE || '').toLowerCase();
+const resolvedAuthMode: AuthMode =
+  rawAuthMode === 'legacy' ? 'legacy' : rawAuthMode === 'hybrid' ? 'hybrid' : 'supabase';
 
 export const config = {
   // API Base URL - defaults to relative for dev, can be overridden for production
