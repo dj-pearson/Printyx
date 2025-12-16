@@ -8088,6 +8088,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Register user profile routes (for fetching current user with role)
+  const { registerUserProfileRoutes } = await import('./routes-user-profile');
+  registerUserProfileRoutes(app);
+
   // Register integration and deployment routes
   registerIntegrationRoutes(app);
 
