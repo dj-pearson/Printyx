@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { apiRequest } from '@/lib/queryClient';
 import type { Session, User } from '@supabase/supabase-js';
 
 // User profile with app metadata
@@ -89,94 +90,35 @@ export function useSupabaseAuth() {
       const authUser = transformUser(session.user);
       if (!authUser) return null;
 
-      // Fetch user profile and role data separately (avoids PostgREST join issues)
+      // Prefer fetching profile/role/team from the app server (avoids Supabase PostgREST RLS issues)
       try {
-        // Get user profile
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        const me = await apiRequest('/api/me', 'GET');
 
-        if (profileError) {
-          console.warn('No user profile found, using auth metadata');
-        }
+        // Merge server profile with auth user (auth user as fallback)
+        const merged = {
+          ...authUser,
+          firstName: me?.firstName || authUser.firstName,
+          lastName: me?.lastName || authUser.lastName,
+          tenantId: me?.tenantId || authUser.tenantId,
+          roleId: me?.roleId || authUser.roleId,
+          teamId: me?.teamId || authUser.teamId,
+          accessScope: me?.accessScope || authUser.accessScope,
+          isPlatformUser: me?.isPlatformUser ?? authUser.isPlatformUser,
+          role: me?.role || authUser.role,
+          team: me?.team || authUser.team,
+        };
 
-        // Get role data if we have a role_id
-        const roleId = profile?.role_id || authUser.roleId;
-        let roleData = null;
-
-        if (roleId) {
-          const { data: role, error: roleError } = await supabase
-            .from('roles')
-            .select('id, name, level, permissions, can_access_all_tenants')
-            .eq('id', roleId)
-            .single();
-
-          if (!roleError && role) {
-            roleData = {
-              id: role.id,
-              name: role.name,
-              level: role.level || 1,
-              permissions: role.permissions || {},
-              canAccessAllTenants: role.can_access_all_tenants || false,
-            };
-          } else {
-            console.warn('Could not fetch role data:', roleError?.message);
-          }
-        }
-
-        // Get team data if we have a team_id
-        const teamId = profile?.team_id || authUser.teamId;
-        let teamData = null;
-
-        if (teamId) {
-          const { data: team, error: teamError } = await supabase
-            .from('teams')
-            .select('id, name')
-            .eq('id', teamId)
-            .single();
-
-          if (!teamError && team) {
-            teamData = {
-              id: team.id,
-              name: team.name,
-            };
-          }
-        }
-
-        // If no role found in DB, provide a default role for navigation
-        if (!roleData) {
+        // If server didn't provide role, provide a default role for navigation
+        if (!merged.role) {
           console.warn('No role found, using default user role');
-          roleData = {
+          merged.role = {
             id: 'default',
             name: 'User',
             level: 1,
-            permissions: {
-              sales: true,
-              service: true,
-              products: true,
-              inventory: true,
-              billing: true,
-              reports: true,
-            },
-            canAccessAllTenants: false,
           };
         }
 
-        // Merge profile data with auth user
-        return {
-          ...authUser,
-          firstName: profile?.first_name || authUser.firstName,
-          lastName: profile?.last_name || authUser.lastName,
-          tenantId: profile?.tenant_id || authUser.tenantId,
-          roleId: profile?.role_id || authUser.roleId,
-          teamId: profile?.team_id || authUser.teamId,
-          accessScope: profile?.access_scope || authUser.accessScope,
-          isPlatformUser: profile?.is_platform_user || authUser.isPlatformUser,
-          role: roleData,
-          team: teamData,
-        };
+        return merged;
       } catch (err) {
         // Fallback to auth user with default role if fetch fails
         console.warn('Profile fetch error, using auth metadata:', err);
@@ -186,15 +128,6 @@ export function useSupabaseAuth() {
             id: 'default',
             name: 'User',
             level: 1,
-            permissions: {
-              sales: true,
-              service: true,
-              products: true,
-              inventory: true,
-              billing: true,
-              reports: true,
-            },
-            canAccessAllTenants: false,
           },
         };
       }
