@@ -7,31 +7,18 @@ const CACHE_VERSION = 'printyx-v1.0.0';
 const CACHE_NAME = `printyx-cache-${CACHE_VERSION}`;
 
 // Core app shell files to cache on install
-const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
-];
+const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icon-192x192.png', '/icon-512x512.png'];
 
 // API endpoints to cache (with network-first strategy)
 const API_CACHE_PATTERNS = [
   /\/api\/dashboard/,
   /\/api\/customers/,
   /\/api\/service-dispatch/,
-  /\/api\/user/
+  /\/api\/user/,
 ];
 
 // Static assets to cache (with cache-first strategy)
-const STATIC_CACHE_PATTERNS = [
-  /\.js$/,
-  /\.css$/,
-  /\.woff2?$/,
-  /\.png$/,
-  /\.jpg$/,
-  /\.svg$/
-];
+const STATIC_CACHE_PATTERNS = [/\.js$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.jpg$/, /\.svg$/];
 
 /**
  * Install Event - Cache app shell
@@ -40,7 +27,8 @@ self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installing...');
 
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches
+      .open(CACHE_NAME)
       .then((cache) => {
         console.log('[Service Worker] Caching app shell');
         return cache.addAll(APP_SHELL);
@@ -51,7 +39,7 @@ self.addEventListener('install', (event) => {
       })
       .catch((error) => {
         console.error('[Service Worker] Cache installation failed:', error);
-      })
+      }),
   );
 });
 
@@ -62,7 +50,8 @@ self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activating...');
 
   event.waitUntil(
-    caches.keys()
+    caches
+      .keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames
@@ -73,13 +62,13 @@ self.addEventListener('activate', (event) => {
             .map((cacheName) => {
               console.log('[Service Worker] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
-            })
+            }),
         );
       })
       .then(() => {
         console.log('[Service Worker] Claiming clients');
         return self.clients.claim(); // Take control immediately
-      })
+      }),
   );
 });
 
@@ -90,6 +79,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Only handle http/https requests. Some browser extensions trigger chrome-extension://
+  // requests that cannot be cached via the Cache API.
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
 
   // Skip non-GET requests
   if (request.method !== 'GET') {
@@ -134,7 +129,11 @@ async function networkFirstStrategy(request) {
     // Cache successful responses (200-299)
     if (networkResponse.ok) {
       const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+      try {
+        await cache.put(request, networkResponse.clone());
+      } catch {
+        // Some request types (e.g., opaque/cross-scheme) can't be cached; ignore.
+      }
     }
 
     return networkResponse;
@@ -156,15 +155,15 @@ async function networkFirstStrategy(request) {
     return new Response(
       JSON.stringify({
         error: 'Offline',
-        message: 'You are currently offline. Please check your connection.'
+        message: 'You are currently offline. Please check your connection.',
       }),
       {
         status: 503,
         statusText: 'Service Unavailable',
         headers: new Headers({
-          'Content-Type': 'application/json'
-        })
-      }
+          'Content-Type': 'application/json',
+        }),
+      },
     );
   }
 }
@@ -181,8 +180,13 @@ async function cacheFirstStrategy(request) {
     fetch(request)
       .then((networkResponse) => {
         if (networkResponse.ok) {
-          caches.open(CACHE_NAME)
-            .then((cache) => cache.put(request, networkResponse));
+          caches.open(CACHE_NAME).then((cache) => {
+            try {
+              return cache.put(request, networkResponse);
+            } catch {
+              return;
+            }
+          });
         }
       })
       .catch(() => {
@@ -197,7 +201,11 @@ async function cacheFirstStrategy(request) {
 
   if (networkResponse.ok) {
     const cache = await caches.open(CACHE_NAME);
-    cache.put(request, networkResponse.clone());
+    try {
+      await cache.put(request, networkResponse.clone());
+    } catch {
+      // Some request types (e.g., opaque/cross-scheme) can't be cached; ignore.
+    }
   }
 
   return networkResponse;
@@ -213,7 +221,11 @@ async function navigationStrategy(request) {
 
     if (networkResponse.ok) {
       const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+      try {
+        await cache.put(request, networkResponse.clone());
+      } catch {
+        // Some request types can't be cached; ignore.
+      }
     }
 
     return networkResponse;
@@ -286,9 +298,9 @@ async function navigationStrategy(request) {
       {
         status: 200,
         headers: new Headers({
-          'Content-Type': 'text/html'
-        })
-      }
+          'Content-Type': 'text/html',
+        }),
+      },
     );
   }
 }
@@ -297,15 +309,16 @@ async function navigationStrategy(request) {
  * Check if request is an API call
  */
 function isApiRequest(pathname) {
-  return pathname.startsWith('/api/') ||
-         API_CACHE_PATTERNS.some(pattern => pattern.test(pathname));
+  return (
+    pathname.startsWith('/api/') || API_CACHE_PATTERNS.some((pattern) => pattern.test(pathname))
+  );
 }
 
 /**
  * Check if request is a static asset
  */
 function isStaticAsset(pathname) {
-  return STATIC_CACHE_PATTERNS.some(pattern => pattern.test(pathname));
+  return STATIC_CACHE_PATTERNS.some((pattern) => pattern.test(pathname));
 }
 
 /**
@@ -351,12 +364,10 @@ self.addEventListener('push', (event) => {
     tag: data.tag || 'default',
     data: data,
     requireInteraction: data.requireInteraction || false,
-    actions: data.actions || []
+    actions: data.actions || [],
   };
 
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 /**
@@ -370,20 +381,19 @@ self.addEventListener('notificationclick', (event) => {
   const urlToOpen = event.notification.data?.url || '/';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((windowClients) => {
-        // Check if there's already a window open
-        for (let client of windowClients) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
-          }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there's already a window open
+      for (let client of windowClients) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
+      }
 
-        // Open new window
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      })
+      // Open new window
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    }),
   );
 });
 
@@ -399,18 +409,14 @@ self.addEventListener('message', (event) => {
 
   if (event.data.type === 'CACHE_URLS') {
     const urls = event.data.urls || [];
-    event.waitUntil(
-      caches.open(CACHE_NAME)
-        .then((cache) => cache.addAll(urls))
-    );
+    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(urls)));
   }
 
   if (event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
-      caches.delete(CACHE_NAME)
-        .then(() => {
-          return caches.open(CACHE_NAME);
-        })
+      caches.delete(CACHE_NAME).then(() => {
+        return caches.open(CACHE_NAME);
+      }),
     );
   }
 });

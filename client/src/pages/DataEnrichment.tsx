@@ -1,25 +1,19 @@
-import { useState, useEffect } from "react";
-import { MainLayout } from "@/components/layout/main-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from 'react';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Plus,
   Search,
@@ -31,9 +25,9 @@ import {
   Users,
   Building,
   Plug,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import ApolloLeadEnrichment from "./ApolloLeadEnrichment";
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import ApolloLeadEnrichment from './ApolloLeadEnrichment';
 
 interface EnrichedContact {
   id: string;
@@ -76,97 +70,73 @@ interface ProspectingCampaign {
 export default function DataEnrichment() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
-  const [filterSource, setFilterSource] = useState<string>("");
-  const [activeTab, setActiveTab] = useState("contacts");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterSource, setFilterSource] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('contacts');
 
   // Fetch enriched contacts
   const { data: contactsData, isLoading: contactsLoading } = useQuery({
-    queryKey: ["/api/enrichment/contacts", searchQuery, filterStatus, filterSource],
+    queryKey: ['/api/enrichment/contacts', searchQuery, filterStatus, filterSource],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (searchQuery) params.append("query", searchQuery);
-      if (filterStatus) params.append("prospectingStatus", filterStatus);
-      if (filterSource) params.append("enrichmentSource", filterSource);
-      params.append("page", "1");
-      params.append("limit", "25");
-      
+      if (searchQuery) params.append('query', searchQuery);
+      if (filterStatus) params.append('prospectingStatus', filterStatus);
+      if (filterSource) params.append('enrichmentSource', filterSource);
+      params.append('page', '1');
+      params.append('limit', '25');
+
       const url = `/api/enrichment/contacts?${params.toString()}`;
-      const response = await fetch(url, {
-        headers: {
-          "x-tenant-id": localStorage.getItem("demo-tenant-id") || "550e8400-e29b-41d4-a716-446655440000",
-          "X-Demo-Auth": localStorage.getItem("demo-authenticated") === "true" ? "true" : "",
-        },
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
+      return await apiRequest(url, 'GET');
     },
-    enabled: activeTab === "contacts",
+    enabled: activeTab === 'contacts',
   });
 
   // Fetch enriched companies
   const { data: companiesData, isLoading: companiesLoading } = useQuery({
-    queryKey: ["/api/enrichment/companies", searchQuery],
+    queryKey: ['/api/enrichment/companies', searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (searchQuery) params.append("query", searchQuery);
-      params.append("page", "1");
-      params.append("limit", "25");
-      
+      if (searchQuery) params.append('query', searchQuery);
+      params.append('page', '1');
+      params.append('limit', '25');
+
       const url = `/api/enrichment/companies?${params.toString()}`;
-      const response = await fetch(url, {
-        headers: {
-          "x-tenant-id": localStorage.getItem("demo-tenant-id") || "550e8400-e29b-41d4-a716-446655440000",
-          "X-Demo-Auth": localStorage.getItem("demo-authenticated") === "true" ? "true" : "",
-        },
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
+      return await apiRequest(url, 'GET');
     },
-    enabled: activeTab === "companies",
+    enabled: activeTab === 'companies',
   });
 
   // Fetch prospecting campaigns
   const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
-    queryKey: ["/api/enrichment/campaigns"],
-    enabled: activeTab === "campaigns",
+    queryKey: ['/api/enrichment/campaigns'],
+    enabled: activeTab === 'campaigns',
   });
 
   // Fetch analytics
   const { data: analyticsData } = useQuery({
-    queryKey: ["/api/enrichment/analytics"],
-    enabled: activeTab === "analytics",
+    queryKey: ['/api/enrichment/analytics'],
+    enabled: activeTab === 'analytics',
   });
 
   // Create campaign mutation
   const createCampaignMutation = useMutation({
     mutationFn: async (campaignData: any) =>
-      apiRequest("/api/enrichment/campaigns", "POST", campaignData),
+      apiRequest('/api/enrichment/campaigns', 'POST', campaignData),
     onSuccess: () => {
       toast({
-        title: "Campaign Created",
-        description: "Your prospecting campaign has been created successfully.",
+        title: 'Campaign Created',
+        description: 'Your prospecting campaign has been created successfully.',
       });
       queryClient.invalidateQueries({
-        queryKey: ["/api/enrichment/campaigns"],
+        queryKey: ['/api/enrichment/campaigns'],
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create campaign",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create campaign',
+        variant: 'destructive',
       });
     },
   });
@@ -181,17 +151,17 @@ export default function DataEnrichment() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      new: "bg-blue-100 text-blue-800",
-      contacted: "bg-yellow-100 text-yellow-800",
-      qualified: "bg-green-100 text-green-800",
-      opportunity: "bg-purple-100 text-purple-800",
-      closed: "bg-gray-100 text-gray-800",
+      new: 'bg-blue-100 text-blue-800',
+      contacted: 'bg-yellow-100 text-yellow-800',
+      qualified: 'bg-green-100 text-green-800',
+      opportunity: 'bg-purple-100 text-purple-800',
+      closed: 'bg-gray-100 text-gray-800',
     };
-    return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   const getSourceIcon = (source: string) => {
-    return source === "zoominfo" ? "🔍" : source === "apollo" ? "🚀" : "📝";
+    return source === 'zoominfo' ? '🔍' : source === 'apollo' ? '🚀' : '📝';
   };
 
   return (
@@ -226,21 +196,17 @@ export default function DataEnrichment() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Contacts
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {analyticsData?.contacts?.bySource?.reduce(
                     (sum: number, item: any) => sum + item.count,
-                    0
+                    0,
                   ) || 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Across all sources
-                </p>
+                <p className="text-xs text-muted-foreground">Across all sources</p>
               </CardContent>
             </Card>
 
@@ -253,50 +219,39 @@ export default function DataEnrichment() {
                 <div className="text-2xl font-bold">
                   {analyticsData?.companies?.byIndustry?.reduce(
                     (sum: number, item: any) => sum + item.count,
-                    0
+                    0,
                   ) || 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Enriched companies
-                </p>
+                <p className="text-xs text-muted-foreground">Enriched companies</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Qualified Leads
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Qualified Leads</CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {analyticsData?.contacts?.byStatus?.find(
-                    (item: any) => item.status === "qualified"
+                    (item: any) => item.status === 'qualified',
                   )?.count || 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Ready for outreach
-                </p>
+                <p className="text-xs text-muted-foreground">Ready for outreach</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Active Campaigns
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {campaigns?.filter(
-                    (c: ProspectingCampaign) => c.status === "active"
-                  )?.length || 0}
+                  {campaigns?.filter((c: ProspectingCampaign) => c.status === 'active')?.length ||
+                    0}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Currently running
-                </p>
+                <p className="text-xs text-muted-foreground">Currently running</p>
               </CardContent>
             </Card>
           </div>
@@ -384,22 +339,17 @@ export default function DataEnrichment() {
               <CardHeader>
                 <CardTitle>Enriched Contacts</CardTitle>
                 <CardDescription>
-                  Contacts from ZoomInfo and Apollo.io with comprehensive
-                  prospecting data
+                  Contacts from ZoomInfo and Apollo.io with comprehensive prospecting data
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {contactsLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="text-muted-foreground">
-                      Loading contacts...
-                    </div>
+                    <div className="text-muted-foreground">Loading contacts...</div>
                   </div>
                 ) : contacts.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="text-muted-foreground mb-4">
-                      No contacts found
-                    </div>
+                    <div className="text-muted-foreground mb-4">No contacts found</div>
                     <Button>Import Your First Contacts</Button>
                   </div>
                 ) : (
@@ -423,26 +373,18 @@ export default function DataEnrichment() {
                             <div className="text-sm text-muted-foreground">
                               {contact.job_title} at {contact.company_name}
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              {contact.email}
-                            </div>
+                            <div className="text-sm text-muted-foreground">{contact.email}</div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Badge
-                            className={getStatusColor(
-                              contact.prospecting_status
-                            )}
-                          >
+                          <Badge className={getStatusColor(contact.prospecting_status)}>
                             {contact.prospecting_status}
                           </Badge>
                           <span className="text-lg">
                             {getSourceIcon(contact.enrichment_source)}
                           </span>
                           {contact.lead_score && (
-                            <Badge variant="outline">
-                              Score: {contact.lead_score}
-                            </Badge>
+                            <Badge variant="outline">Score: {contact.lead_score}</Badge>
                           )}
                         </div>
                       </div>
@@ -465,15 +407,11 @@ export default function DataEnrichment() {
               <CardContent>
                 {companiesLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="text-muted-foreground">
-                      Loading companies...
-                    </div>
+                    <div className="text-muted-foreground">Loading companies...</div>
                   </div>
                 ) : companies.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="text-muted-foreground mb-4">
-                      No companies found
-                    </div>
+                    <div className="text-muted-foreground mb-4">No companies found</div>
                     <Button>Import Company Data</Button>
                   </div>
                 ) : (
@@ -488,27 +426,20 @@ export default function DataEnrichment() {
                             <Building className="w-5 h-5 text-green-600" />
                           </div>
                           <div>
-                            <div className="font-medium">
-                              {company.company_name}
-                            </div>
+                            <div className="font-medium">{company.company_name}</div>
                             <div className="text-sm text-muted-foreground">
                               {company.primary_industry}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {company.employee_count &&
-                                `${company.employee_count} employees`}
+                              {company.employee_count && `${company.employee_count} employees`}
                               {company.annual_revenue &&
-                                ` • $${(
-                                  company.annual_revenue / 1000000
-                                ).toFixed(1)}M revenue`}
+                                ` • $${(company.annual_revenue / 1000000).toFixed(1)}M revenue`}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
                           {company.target_account_tier && (
-                            <Badge variant="outline">
-                              {company.target_account_tier}
-                            </Badge>
+                            <Badge variant="outline">{company.target_account_tier}</Badge>
                           )}
                           <span className="text-lg">
                             {getSourceIcon(company.enrichment_source)}
@@ -527,28 +458,22 @@ export default function DataEnrichment() {
             <Card>
               <CardHeader>
                 <CardTitle>Prospecting Campaigns</CardTitle>
-                <CardDescription>
-                  Organize and track your outreach efforts
-                </CardDescription>
+                <CardDescription>Organize and track your outreach efforts</CardDescription>
               </CardHeader>
               <CardContent>
                 {campaignsLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="text-muted-foreground">
-                      Loading campaigns...
-                    </div>
+                    <div className="text-muted-foreground">Loading campaigns...</div>
                   </div>
                 ) : campaigns.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="text-muted-foreground mb-4">
-                      No campaigns found
-                    </div>
+                    <div className="text-muted-foreground mb-4">No campaigns found</div>
                     <Button
                       onClick={() => {
                         createCampaignMutation.mutate({
-                          campaign_name: "Sample Campaign",
-                          campaign_type: "email_sequence",
-                          campaign_description: "Sample prospecting campaign",
+                          campaign_name: 'Sample Campaign',
+                          campaign_type: 'email_sequence',
+                          campaign_description: 'Sample prospecting campaign',
                         });
                       }}
                     >
@@ -563,12 +488,9 @@ export default function DataEnrichment() {
                         className="flex items-center justify-between p-4 border rounded-lg"
                       >
                         <div>
-                          <div className="font-medium">
-                            {campaign.campaign_name}
-                          </div>
+                          <div className="font-medium">{campaign.campaign_name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {campaign.campaign_type} • {campaign.total_contacts}{" "}
-                            contacts
+                            {campaign.campaign_type} • {campaign.total_contacts} contacts
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -577,8 +499,7 @@ export default function DataEnrichment() {
                           </Badge>
                           {campaign.response_rate && (
                             <Badge variant="outline">
-                              {(campaign.response_rate * 100).toFixed(1)}%
-                              response
+                              {(campaign.response_rate * 100).toFixed(1)}% response
                             </Badge>
                           )}
                         </div>
@@ -598,24 +519,15 @@ export default function DataEnrichment() {
                   <CardTitle>Contacts by Source</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {analyticsData?.contacts?.bySource?.map(
-                    (item: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <span>{getSourceIcon(item.source)}</span>
-                          <span className="capitalize">{item.source}</span>
-                        </div>
-                        <Badge variant="outline">{item.count}</Badge>
+                  {analyticsData?.contacts?.bySource?.map((item: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between py-2">
+                      <div className="flex items-center space-x-2">
+                        <span>{getSourceIcon(item.source)}</span>
+                        <span className="capitalize">{item.source}</span>
                       </div>
-                    )
-                  ) || (
-                    <div className="text-muted-foreground text-sm">
-                      No data available
+                      <Badge variant="outline">{item.count}</Badge>
                     </div>
-                  )}
+                  )) || <div className="text-muted-foreground text-sm">No data available</div>}
                 </CardContent>
               </Card>
 
@@ -624,23 +536,12 @@ export default function DataEnrichment() {
                   <CardTitle>Prospecting Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {analyticsData?.contacts?.byStatus?.map(
-                    (item: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <span className="capitalize">{item.status}</span>
-                        <Badge className={getStatusColor(item.status)}>
-                          {item.count}
-                        </Badge>
-                      </div>
-                    )
-                  ) || (
-                    <div className="text-muted-foreground text-sm">
-                      No data available
+                  {analyticsData?.contacts?.byStatus?.map((item: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between py-2">
+                      <span className="capitalize">{item.status}</span>
+                      <Badge className={getStatusColor(item.status)}>{item.count}</Badge>
                     </div>
-                  )}
+                  )) || <div className="text-muted-foreground text-sm">No data available</div>}
                 </CardContent>
               </Card>
 
@@ -649,21 +550,12 @@ export default function DataEnrichment() {
                   <CardTitle>Management Levels</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {analyticsData?.contacts?.byLevel?.map(
-                    (item: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <span>{item.level || "Unknown"}</span>
-                        <Badge variant="outline">{item.count}</Badge>
-                      </div>
-                    )
-                  ) || (
-                    <div className="text-muted-foreground text-sm">
-                      No data available
+                  {analyticsData?.contacts?.byLevel?.map((item: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between py-2">
+                      <span>{item.level || 'Unknown'}</span>
+                      <Badge variant="outline">{item.count}</Badge>
                     </div>
-                  )}
+                  )) || <div className="text-muted-foreground text-sm">No data available</div>}
                 </CardContent>
               </Card>
 
@@ -672,21 +564,12 @@ export default function DataEnrichment() {
                   <CardTitle>Top Industries</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {analyticsData?.companies?.byIndustry?.map(
-                    (item: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <span>{item.industry || "Unknown"}</span>
-                        <Badge variant="outline">{item.count}</Badge>
-                      </div>
-                    )
-                  ) || (
-                    <div className="text-muted-foreground text-sm">
-                      No data available
+                  {analyticsData?.companies?.byIndustry?.map((item: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between py-2">
+                      <span>{item.industry || 'Unknown'}</span>
+                      <Badge variant="outline">{item.count}</Badge>
                     </div>
-                  )}
+                  )) || <div className="text-muted-foreground text-sm">No data available</div>}
                 </CardContent>
               </Card>
             </div>
