@@ -7,7 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { apiRequest } from '@/lib/queryClient';
-import { config } from '@/lib/config';
+import { config, getApiUrl } from '@/lib/config';
 import type { Session, User } from '@supabase/supabase-js';
 
 type RolePermissions = Record<string, boolean>;
@@ -133,10 +133,13 @@ export function useSupabaseAuth() {
       const authUser = transformUser(session.user);
       if (!authUser) return null;
 
-      // Fetch user profile and role data separately (avoids PostgREST join issues)
+      // Fetch user profile and role data
       try {
-        // Get user profile with role information
-        const { data: profile, error: profileError } = await supabase
+        let profile: any = null;
+        let profileError: any = null;
+
+        // Try direct Supabase query first
+        const supabaseResult = await supabase
           .from('users')
           .select(
             'id, email, first_name, last_name, tenant_id, role, role_id, team_id, access_scope, is_platform_user, profile_image_url',
@@ -144,8 +147,47 @@ export function useSupabaseAuth() {
           .eq('id', session.user.id)
           .single();
 
+        profile = supabaseResult.data;
+        profileError = supabaseResult.error;
+
+        // If Supabase query fails (likely due to RLS), fallback to backend API
         if (profileError) {
-          console.warn('No user profile found, using auth metadata');
+          console.warn(
+            'Direct Supabase query failed (likely RLS policy), trying backend API:',
+            profileError.message,
+          );
+
+          try {
+            // Get access token for API call
+            const {
+              data: { session: currentSession },
+            } = await supabase.auth.getSession();
+
+            if (currentSession?.access_token) {
+              // Call backend API to fetch user profile
+              const apiUrl = getApiUrl('api/auth/me');
+              const response = await fetch(apiUrl, {
+                headers: {
+                  Authorization: `Bearer ${currentSession.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              if (response.ok) {
+                profile = await response.json();
+                profileError = null;
+                console.log('✅ User profile fetched from backend API successfully');
+              } else {
+                console.warn('Backend API also failed:', response.status, response.statusText);
+              }
+            }
+          } catch (apiError) {
+            console.warn('Backend API error:', apiError);
+          }
+        }
+
+        if (!profile && profileError) {
+          console.warn('No user profile found from any source, using auth metadata');
         }
 
         // Determine role - check both role (string) and role_id (FK) columns
