@@ -308,28 +308,28 @@ div:has([class*='runtime-error']) {
     --foreground: 210 40% 98%;
     /* Soft White */
 
-    --card: 230 25% 20%;
+    --card: 230 25% 25%;
     /* Lighter, less saturated indigo */
     --card-foreground: 210 40% 98%;
 
-    --popover: 230 25% 20%;
+    --popover: 230 25% 25%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 250 90% 70%;
     /* Vivid Indigo - Brighter */
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 230 20% 30%;
+    --secondary: 230 20% 35%;
     /* Much lighter Secondary */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 230 20% 30%;
+    --muted: 230 20% 35%;
     --muted-foreground: 210 20% 80%;
 
     --accent: 250 80% 65%;
     --accent-foreground: 210 40% 98%;
 
-    --border: 230 20% 30%;
+    --border: 230 20% 35%;
     /* Subtle Indigo Grey */
     --input: 230 30% 20%;
     --ring: 250 90% 65%;
