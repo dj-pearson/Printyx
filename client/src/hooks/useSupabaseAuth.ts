@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { apiRequest } from '@/lib/queryClient';
+import { config } from '@/lib/config';
 import type { Session, User } from '@supabase/supabase-js';
 
 // User profile with app metadata
@@ -90,8 +91,14 @@ export function useSupabaseAuth() {
       const authUser = transformUser(session.user);
       if (!authUser) return null;
 
-      // Prefer fetching profile/role/team from the app server (avoids Supabase PostgREST RLS issues)
+      // Prefer fetching profile/role/team from the app server (avoids Supabase PostgREST RLS issues).
+      // In production, if no app API base URL is configured, /api/* will be served by the static site
+      // and return HTML. In that case, skip the server profile call and use JWT metadata.
       try {
+        if (config.isProduction && !config.apiBaseUrl) {
+          throw new Error('APP_API_NOT_CONFIGURED');
+        }
+
         const me = await apiRequest('/api/me', 'GET');
 
         // Merge server profile with auth user (auth user as fallback)
@@ -120,8 +127,11 @@ export function useSupabaseAuth() {
 
         return merged;
       } catch (err) {
-        // Fallback to auth user with default role if fetch fails
-        console.warn('Profile fetch error, using auth metadata:', err);
+        // Fallback to auth user with default role if fetch fails.
+        // Avoid noisy logs when the app API isn't configured in production.
+        if (!(err instanceof Error && err.message === 'APP_API_NOT_CONFIGURED')) {
+          console.warn('Profile fetch error, using auth metadata:', err);
+        }
         return {
           ...authUser,
           role: {

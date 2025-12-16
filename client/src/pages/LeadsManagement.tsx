@@ -1,22 +1,16 @@
-import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -24,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -32,14 +26,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import { useLocation } from "wouter";
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/lib/supabase';
+import MainLayout from '@/components/layout/main-layout';
+import { useLocation } from 'wouter';
+import { useAuthContext } from '@/providers/AuthProvider';
 import {
   Search,
   Filter,
@@ -64,7 +59,7 @@ import {
   Clock,
   ChevronRight,
   CheckSquare,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,14 +67,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { LeadsImport } from "@/components/leads/LeadsImport";
+} from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LeadsImport } from '@/components/leads/LeadsImport';
 
 interface Lead {
   id: string;
@@ -121,248 +112,366 @@ interface TableColumn {
 }
 
 const statusColors = {
-  new: "bg-blue-100 text-blue-800",
-  contacted: "bg-yellow-100 text-yellow-800",
-  qualified: "bg-green-100 text-green-800",
-  proposal: "bg-purple-100 text-purple-800",
-  negotiation: "bg-orange-100 text-orange-800",
-  closed_won: "bg-green-100 text-green-800",
-  closed_lost: "bg-red-100 text-red-800",
+  new: 'bg-blue-100 text-blue-800',
+  contacted: 'bg-yellow-100 text-yellow-800',
+  qualified: 'bg-green-100 text-green-800',
+  proposal: 'bg-purple-100 text-purple-800',
+  negotiation: 'bg-orange-100 text-orange-800',
+  closed_won: 'bg-green-100 text-green-800',
+  closed_lost: 'bg-red-100 text-red-800',
 };
 
 const priorityColors = {
-  low: "bg-gray-100 text-gray-800",
-  medium: "bg-yellow-100 text-yellow-800",
-  high: "bg-red-100 text-red-800",
+  low: 'bg-gray-100 text-gray-800',
+  medium: 'bg-yellow-100 text-yellow-800',
+  high: 'bg-red-100 text-red-800',
 };
 
 // Available table columns with HubSpot-style configuration
 const AVAILABLE_COLUMNS: TableColumn[] = [
   {
-    id: "lead",
-    label: "Lead name",
+    id: 'lead',
+    label: 'Lead name',
     icon: User,
-    width: "min-w-[250px]",
+    width: 'min-w-[250px]',
     sortable: true,
   },
   {
-    id: "company",
-    label: "Company name",
+    id: 'company',
+    label: 'Company name',
     icon: Building2,
-    width: "min-w-[200px]",
+    width: 'min-w-[200px]',
     sortable: true,
   },
   {
-    id: "status",
-    label: "Lead status",
+    id: 'status',
+    label: 'Lead status',
     icon: Target,
-    width: "min-w-[120px]",
+    width: 'min-w-[120px]',
     sortable: true,
   },
   {
-    id: "priority",
-    label: "Priority",
+    id: 'priority',
+    label: 'Priority',
     icon: TrendingUp,
-    width: "min-w-[100px]",
+    width: 'min-w-[100px]',
     sortable: true,
   },
   {
-    id: "source",
-    label: "Lead source",
+    id: 'source',
+    label: 'Lead source',
     icon: MapPin,
-    width: "min-w-[120px]",
+    width: 'min-w-[120px]',
     sortable: true,
   },
   {
-    id: "industry",
-    label: "Industry",
+    id: 'industry',
+    label: 'Industry',
     icon: Building2,
-    width: "min-w-[120px]",
+    width: 'min-w-[120px]',
     sortable: true,
   },
   {
-    id: "territory",
-    label: "Territory",
+    id: 'territory',
+    label: 'Territory',
     icon: MapPin,
-    width: "min-w-[120px]",
+    width: 'min-w-[120px]',
     sortable: true,
   },
   {
-    id: "value",
-    label: "Deal amount",
+    id: 'value',
+    label: 'Deal amount',
     icon: DollarSign,
-    width: "min-w-[120px]",
+    width: 'min-w-[120px]',
     sortable: true,
   },
   {
-    id: "score",
-    label: "Lead score",
+    id: 'score',
+    label: 'Lead score',
     icon: Target,
-    width: "min-w-[100px]",
+    width: 'min-w-[100px]',
     sortable: true,
   },
   {
-    id: "lastActivity",
-    label: "Last activity date",
+    id: 'lastActivity',
+    label: 'Last activity date',
     icon: Clock,
-    width: "min-w-[150px]",
+    width: 'min-w-[150px]',
     sortable: true,
   },
   {
-    id: "nextFollowUp",
-    label: "Next activity date",
+    id: 'nextFollowUp',
+    label: 'Next activity date',
     icon: Calendar,
-    width: "min-w-[150px]",
+    width: 'min-w-[150px]',
     sortable: true,
   },
   {
-    id: "assignedTo",
-    label: "Lead owner",
+    id: 'assignedTo',
+    label: 'Lead owner',
     icon: User,
-    width: "min-w-[150px]",
+    width: 'min-w-[150px]',
     sortable: true,
   },
   {
-    id: "phone",
-    label: "Phone number",
+    id: 'phone',
+    label: 'Phone number',
     icon: Phone,
-    width: "min-w-[140px]",
+    width: 'min-w-[140px]',
     sortable: false,
   },
   {
-    id: "email",
-    label: "Email",
+    id: 'email',
+    label: 'Email',
     icon: Mail,
-    width: "min-w-[200px]",
+    width: 'min-w-[200px]',
     sortable: false,
   },
   {
-    id: "website",
-    label: "Website",
+    id: 'website',
+    label: 'Website',
     icon: Building2,
-    width: "min-w-[180px]",
+    width: 'min-w-[180px]',
     sortable: false,
   },
   {
-    id: "employeeCount",
-    label: "Number of employees",
+    id: 'employeeCount',
+    label: 'Number of employees',
     icon: Users,
-    width: "min-w-[150px]",
+    width: 'min-w-[150px]',
     sortable: true,
   },
   {
-    id: "annualRevenue",
-    label: "Annual revenue",
+    id: 'annualRevenue',
+    label: 'Annual revenue',
     icon: DollarSign,
-    width: "min-w-[140px]",
+    width: 'min-w-[140px]',
     sortable: true,
   },
   {
-    id: "createdDate",
-    label: "Create date",
+    id: 'createdDate',
+    label: 'Create date',
     icon: Calendar,
-    width: "min-w-[120px]",
+    width: 'min-w-[120px]',
     sortable: true,
   },
 ];
 
 // Default visible columns (HubSpot-style defaults)
 const DEFAULT_VISIBLE_COLUMNS = [
-  "lead",
-  "company",
-  "status",
-  "source",
-  "value",
-  "lastActivity",
-  "assignedTo",
+  'lead',
+  'company',
+  'status',
+  'source',
+  'value',
+  'lastActivity',
+  'assignedTo',
 ];
 
 export default function LeadsManagement() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
+  const { user } = useAuthContext();
 
   // Responsive view mode: cards on mobile, table on desktop
-  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    DEFAULT_VISIBLE_COLUMNS
-  );
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_VISIBLE_COLUMNS);
   const [isColumnCustomizerOpen, setIsColumnCustomizerOpen] = useState(false);
 
   // Auto-switch to cards on mobile
   useEffect(() => {
     if (isMobile) {
-      setViewMode("cards");
+      setViewMode('cards');
     }
   }, [isMobile]);
 
-  // Fetch leads data from business records
+  // Fetch leads data from Supabase business_records
   const {
-    data: allBusinessRecords = [],
+    data: leads = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["/api/business-records"],
+    queryKey: ['supabase-business-records', user?.tenantId, 'lead'],
+    enabled: !!user?.id && !!user?.tenantId,
     retry: false,
-  });
+    queryFn: async () => {
+      const tenantId = user?.tenantId;
+      if (!tenantId) return [];
 
-  // Filter for leads only
-  const leads = useMemo(() => {
-    return (allBusinessRecords as any[]).filter(
-      (record: any) => record.recordType === "lead"
-    );
-  }, [allBusinessRecords]);
+      const { data, error } = await supabase
+        .from('business_records')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('record_type', 'lead')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Map snake_case DB rows into the Lead interface used by this page (camelCase)
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.primary_contact_name || row.primaryContactName || '',
+        email: row.primary_contact_email || row.primaryContactEmail || '',
+        phone: row.primary_contact_phone || row.primaryContactPhone || row.phone || '',
+        companyName: row.company_name || row.companyName || '',
+        jobTitle: row.primary_contact_title || row.primaryContactTitle || '',
+        leadSource: row.source || row.leadSource || '',
+        status: row.status || 'new',
+        priority: row.priority || 'medium',
+        estimatedValue: Number(row.estimated_deal_value ?? row.estimatedAmount ?? 0) || 0,
+        lastActivity:
+          row.last_contact_date || row.lastContactDate || row.updated_at || row.updatedAt || '',
+        assignedTo:
+          row.assigned_sales_rep || row.assignedSalesRep || row.owner_id || row.ownerId || '',
+        createdAt: row.created_at || row.createdAt || '',
+        notes: row.notes || '',
+        address: row.address_line1 || row.addressLine1 || '',
+        city: row.city || '',
+        state: row.state || '',
+        zipCode: row.postal_code || row.postalCode || '',
+        recordType: row.record_type || row.recordType || 'lead',
+        industry: row.industry || undefined,
+        territory: row.territory || undefined,
+        leadScore: row.lead_score ?? row.leadScore ?? undefined,
+        nextFollowUpDate: row.next_follow_up_date || row.nextFollowUpDate || undefined,
+        website: row.website || undefined,
+        employeeCount: row.employee_count ?? row.employeeCount ?? undefined,
+        annualRevenue: row.annual_revenue ?? row.annualRevenue ?? undefined,
+        lastContactDate: row.last_contact_date || row.lastContactDate || undefined,
+      }));
+    },
+  });
 
   // Create lead mutation
   const createLeadMutation = useMutation({
-    mutationFn: (leadData: Partial<Lead>) =>
-      apiRequest("/api/business-records", "POST", {
-        ...leadData,
-        recordType: "lead",
-      }),
+    mutationFn: async (leadData: Partial<Lead>) => {
+      if (!user?.id || !user?.tenantId) {
+        throw new Error('Missing user/tenant context');
+      }
+
+      const payload: any = {
+        tenant_id: user.tenantId,
+        record_type: 'lead',
+        status: leadData.status || 'new',
+        priority: leadData.priority || 'medium',
+        company_name: leadData.companyName || '',
+        source: leadData.leadSource || 'website',
+        primary_contact_name: leadData.name || null,
+        primary_contact_email: leadData.email || null,
+        primary_contact_phone: leadData.phone || null,
+        primary_contact_title: leadData.jobTitle || null,
+        address_line1: leadData.address || null,
+        city: leadData.city || null,
+        state: leadData.state || null,
+        postal_code: leadData.zipCode || null,
+        notes: leadData.notes || null,
+        website: leadData.website || null,
+        industry: leadData.industry || null,
+        territory: leadData.territory || null,
+        employee_count: leadData.employeeCount ?? null,
+        annual_revenue: leadData.annualRevenue ?? null,
+        estimated_deal_value: leadData.estimatedValue ?? null,
+        next_follow_up_date: leadData.nextFollowUpDate || null,
+        lead_score: leadData.leadScore ?? null,
+        created_by: user.id,
+      };
+
+      const { data, error } = await supabase
+        .from('business_records')
+        .insert(payload)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+      queryClient.invalidateQueries({
+        queryKey: ['supabase-business-records', user?.tenantId, 'lead'],
+      });
       setIsNewLeadOpen(false);
       toast({
-        title: "Success",
-        description: "Lead created successfully",
+        title: 'Success',
+        description: 'Lead created successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create lead",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create lead',
+        variant: 'destructive',
       });
     },
   });
 
   // Update lead mutation
   const updateLeadMutation = useMutation({
-    mutationFn: ({ id, ...data }: Partial<Lead> & { id: string }) =>
-      apiRequest(`/api/business-records/${id}`, "PUT", data),
+    mutationFn: async ({ id, ...data }: Partial<Lead> & { id: string }) => {
+      if (!user?.tenantId) throw new Error('Missing tenant context');
+
+      const patch: any = {
+        status: data.status,
+        priority: data.priority,
+        company_name: data.companyName,
+        source: data.leadSource,
+        primary_contact_name: data.name,
+        primary_contact_email: data.email,
+        primary_contact_phone: data.phone,
+        primary_contact_title: data.jobTitle,
+        address_line1: data.address,
+        city: data.city,
+        state: data.state,
+        postal_code: data.zipCode,
+        notes: data.notes,
+        website: data.website,
+        industry: data.industry,
+        territory: data.territory,
+        employee_count: data.employeeCount,
+        annual_revenue: data.annualRevenue,
+        estimated_deal_value: data.estimatedValue,
+        next_follow_up_date: data.nextFollowUpDate,
+        lead_score: data.leadScore,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Remove undefined keys so we don't overwrite with null accidentally
+      Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
+
+      const { data: updated, error } = await supabase
+        .from('business_records')
+        .update(patch)
+        .eq('id', id)
+        .eq('tenant_id', user.tenantId)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return updated;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+      queryClient.invalidateQueries({
+        queryKey: ['supabase-business-records', user?.tenantId, 'lead'],
+      });
       setEditingLead(null);
       toast({
-        title: "Success",
-        description: "Lead updated successfully",
+        title: 'Success',
+        description: 'Lead updated successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to update lead",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update lead',
+        variant: 'destructive',
       });
     },
   });
@@ -378,12 +487,9 @@ export default function LeadsManagement() {
         lead.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.phone?.includes(searchTerm);
 
-      const matchesStatus =
-        statusFilter === "all" || lead.status === statusFilter;
-      const matchesPriority =
-        priorityFilter === "all" || lead.priority === priorityFilter;
-      const matchesSource =
-        sourceFilter === "all" || lead.leadSource === sourceFilter;
+      const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
+      const matchesPriority = priorityFilter === 'all' || lead.priority === priorityFilter;
+      const matchesSource = sourceFilter === 'all' || lead.leadSource === sourceFilter;
 
       return matchesSearch && matchesStatus && matchesPriority && matchesSource;
     });
@@ -392,22 +498,20 @@ export default function LeadsManagement() {
   // Get unique sources for filter dropdown
   const leadSources = useMemo(() => {
     if (!leads || leads.length === 0) return [];
-    const sources = [
-      ...new Set(leads.map((lead: Lead) => lead.leadSource).filter(Boolean)),
-    ];
+    const sources = [...new Set(leads.map((lead: Lead) => lead.leadSource).filter(Boolean))];
     return sources;
   }, [leads]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
     }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
-    if (!date) return "Never";
+    if (!date) return 'Never';
     return new Date(date).toLocaleDateString();
   };
 
@@ -438,107 +542,85 @@ export default function LeadsManagement() {
   // Render table cell content based on column type
   const renderTableCell = (lead: Lead, column: TableColumn) => {
     switch (column.id) {
-      case "lead":
+      case 'lead':
         return (
-          <div
-            className="cursor-pointer"
-            onClick={() => handleLeadClick(lead)}
-          >
-            <div className="font-medium text-blue-600 hover:text-blue-800">
-              {lead.name}
-            </div>
+          <div className="cursor-pointer" onClick={() => handleLeadClick(lead)}>
+            <div className="font-medium text-blue-600 hover:text-blue-800">{lead.name}</div>
             <div className="text-sm text-gray-500">{lead.jobTitle}</div>
           </div>
         );
-      case "company":
+      case 'company':
         return (
-          <div
-            className="cursor-pointer"
-            onClick={() => handleLeadClick(lead)}
-          >
-            <div className="font-medium text-blue-600 hover:text-blue-800">
-              {lead.companyName}
-            </div>
-            <div className="text-sm text-gray-500">{lead.industry || "-"}</div>
+          <div className="cursor-pointer" onClick={() => handleLeadClick(lead)}>
+            <div className="font-medium text-blue-600 hover:text-blue-800">{lead.companyName}</div>
+            <div className="text-sm text-gray-500">{lead.industry || '-'}</div>
           </div>
         );
-      case "status":
+      case 'status':
         return (
           <Badge
-            className={
-              statusColors[lead.status as keyof typeof statusColors] ||
-              "bg-gray-100"
-            }
+            className={statusColors[lead.status as keyof typeof statusColors] || 'bg-gray-100'}
           >
             {lead.status}
           </Badge>
         );
-      case "priority":
+      case 'priority':
         return (
           <Badge
             className={
-              priorityColors[lead.priority as keyof typeof priorityColors] ||
-              "bg-gray-100"
+              priorityColors[lead.priority as keyof typeof priorityColors] || 'bg-gray-100'
             }
           >
             {lead.priority}
           </Badge>
         );
-      case "source":
+      case 'source':
         return <span className="text-sm">{lead.leadSource}</span>;
-      case "industry":
-        return <span className="text-sm">{lead.industry || "-"}</span>;
-      case "territory":
-        return <span className="text-sm">{lead.territory || "-"}</span>;
-      case "value":
-        return (
-          <span className="font-medium">
-            {formatCurrency(lead.estimatedValue)}
-          </span>
-        );
-      case "score":
+      case 'industry':
+        return <span className="text-sm">{lead.industry || '-'}</span>;
+      case 'territory':
+        return <span className="text-sm">{lead.territory || '-'}</span>;
+      case 'value':
+        return <span className="font-medium">{formatCurrency(lead.estimatedValue)}</span>;
+      case 'score':
         return <Badge variant="outline">{lead.leadScore || 0}</Badge>;
-      case "lastActivity":
+      case 'lastActivity':
         return <span className="text-sm">{formatDate(lead.lastActivity)}</span>;
-      case "nextFollowUp":
+      case 'nextFollowUp':
         return (
           <span className="text-sm">
-            {lead.nextFollowUpDate ? formatDate(lead.nextFollowUpDate) : "-"}
+            {lead.nextFollowUpDate ? formatDate(lead.nextFollowUpDate) : '-'}
           </span>
         );
-      case "assignedTo":
-        return (
-          <span className="text-sm">{lead.assignedTo || "Unassigned"}</span>
-        );
-      case "phone":
+      case 'assignedTo':
+        return <span className="text-sm">{lead.assignedTo || 'Unassigned'}</span>;
+      case 'phone':
         return (
           <div className="flex items-center space-x-2">
             <Phone className="h-4 w-4 text-gray-400" />
             <span className="text-sm">{lead.phone}</span>
           </div>
         );
-      case "email":
+      case 'email':
         return (
           <div className="flex items-center space-x-2">
             <Mail className="h-4 w-4 text-gray-400" />
             <span className="text-sm">{lead.email}</span>
           </div>
         );
-      case "website":
+      case 'website':
         return (
-          <span className="text-sm text-blue-600 hover:text-blue-800">
-            {lead.website || "-"}
-          </span>
+          <span className="text-sm text-blue-600 hover:text-blue-800">{lead.website || '-'}</span>
         );
-      case "employeeCount":
-        return <span className="text-sm">{lead.employeeCount || "-"}</span>;
-      case "annualRevenue":
+      case 'employeeCount':
+        return <span className="text-sm">{lead.employeeCount || '-'}</span>;
+      case 'annualRevenue':
         return (
           <span className="text-sm">
-            {lead.annualRevenue ? formatCurrency(lead.annualRevenue) : "-"}
+            {lead.annualRevenue ? formatCurrency(lead.annualRevenue) : '-'}
           </span>
         );
-      case "createdDate":
+      case 'createdDate':
         return <span className="text-sm">{formatDate(lead.createdAt)}</span>;
       default:
         return <span>-</span>;
@@ -548,25 +630,23 @@ export default function LeadsManagement() {
   const handleBulkAction = (action: string) => {
     if (selectedLeads.length === 0) {
       toast({
-        title: "No leads selected",
-        description: "Please select leads to perform bulk actions",
-        variant: "destructive",
+        title: 'No leads selected',
+        description: 'Please select leads to perform bulk actions',
+        variant: 'destructive',
       });
       return;
     }
 
     // Implement bulk actions here
     toast({
-      title: "Bulk Action",
+      title: 'Bulk Action',
       description: `${action} applied to ${selectedLeads.length} leads`,
     });
   };
 
   const toggleLeadSelection = (leadId: string) => {
     setSelectedLeads((prev) =>
-      prev.includes(leadId)
-        ? prev.filter((id) => id !== leadId)
-        : [...prev, leadId]
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId],
     );
   };
 
@@ -594,29 +674,28 @@ export default function LeadsManagement() {
   }
 
   return (
-    <MainLayout
-      title="Leads Management"
-      description="Manage and track your sales leads"
-    >
+    <MainLayout title="Leads Management" description="Manage and track your sales leads">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Leads
-            </h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Leads</h1>
             <p className="text-sm sm:text-base text-gray-600">Manage and track your sales leads</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => handleBulkAction("export")}
+              onClick={() => handleBulkAction('export')}
               className="min-h-[44px] touch-manipulation active:scale-[0.98]"
             >
               <Download className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Export</span>
             </Button>
-            <LeadsImport onImportComplete={() => queryClient.invalidateQueries({ queryKey: ["/api/business-records"] })} />
+            <LeadsImport
+              onImportComplete={() =>
+                queryClient.invalidateQueries({ queryKey: ['/api/business-records'] })
+              }
+            />
             <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
               <DialogTrigger asChild>
                 <Button className="min-h-[44px] touch-manipulation active:scale-[0.98]">
@@ -628,9 +707,7 @@ export default function LeadsManagement() {
               <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
                   <DialogTitle>Create New Lead</DialogTitle>
-                  <DialogDescription>
-                    Add a new lead to your sales pipeline
-                  </DialogDescription>
+                  <DialogDescription>Add a new lead to your sales pipeline</DialogDescription>
                 </DialogHeader>
                 <LeadForm
                   onSubmit={(data) => createLeadMutation.mutate(data)}
@@ -648,12 +725,8 @@ export default function LeadsManagement() {
               <div className="flex items-center">
                 <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                 <div className="ml-3 sm:ml-4">
-                  <p className="text-xl sm:text-2xl font-bold">
-                    {filteredLeads.length}
-                  </p>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Total Leads
-                  </p>
+                  <p className="text-xl sm:text-2xl font-bold">{filteredLeads.length}</p>
+                  <p className="text-sm sm:text-base text-gray-600">Total Leads</p>
                 </div>
               </div>
             </CardContent>
@@ -664,15 +737,9 @@ export default function LeadsManagement() {
                 <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
                 <div className="ml-3 sm:ml-4">
                   <p className="text-xl sm:text-2xl font-bold">
-                    {
-                      filteredLeads.filter(
-                        (lead: Lead) => lead.status === "qualified"
-                      ).length
-                    }
+                    {filteredLeads.filter((lead: Lead) => lead.status === 'qualified').length}
                   </p>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Qualified
-                  </p>
+                  <p className="text-sm sm:text-base text-gray-600">Qualified</p>
                 </div>
               </div>
             </CardContent>
@@ -685,15 +752,12 @@ export default function LeadsManagement() {
                   <p className="text-xl sm:text-2xl font-bold">
                     {formatCurrency(
                       filteredLeads.reduce(
-                        (sum: number, lead: Lead) =>
-                          sum + (lead.estimatedValue || 0),
-                        0
-                      )
+                        (sum: number, lead: Lead) => sum + (lead.estimatedValue || 0),
+                        0,
+                      ),
                     )}
                   </p>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Pipeline Value
-                  </p>
+                  <p className="text-sm sm:text-base text-gray-600">Pipeline Value</p>
                 </div>
               </div>
             </CardContent>
@@ -713,9 +777,7 @@ export default function LeadsManagement() {
                       }).length
                     }
                   </p>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Need Follow-up
-                  </p>
+                  <p className="text-sm sm:text-base text-gray-600">Need Follow-up</p>
                 </div>
               </div>
             </CardContent>
@@ -754,10 +816,7 @@ export default function LeadsManagement() {
                     </SelectContent>
                   </Select>
 
-                  <Select
-                    value={priorityFilter}
-                    onValueChange={setPriorityFilter}
-                  >
+                  <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                     <SelectTrigger className="w-[140px] min-h-[44px] touch-manipulation">
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
@@ -786,17 +845,17 @@ export default function LeadsManagement() {
                   {!isMobile && (
                     <div className="flex border rounded">
                       <Button
-                        variant={viewMode === "table" ? "default" : "ghost"}
+                        variant={viewMode === 'table' ? 'default' : 'ghost'}
                         size="sm"
-                        onClick={() => setViewMode("table")}
+                        onClick={() => setViewMode('table')}
                         className="rounded-r-none min-h-[40px] touch-manipulation active:scale-[0.98]"
                       >
                         Table
                       </Button>
                       <Button
-                        variant={viewMode === "cards" ? "default" : "ghost"}
+                        variant={viewMode === 'cards' ? 'default' : 'ghost'}
                         size="sm"
-                        onClick={() => setViewMode("cards")}
+                        onClick={() => setViewMode('cards')}
                         className="rounded-l-none min-h-[40px] touch-manipulation active:scale-[0.98]"
                       >
                         Cards
@@ -805,11 +864,8 @@ export default function LeadsManagement() {
                   )}
 
                   {/* Column Customizer */}
-                  {viewMode === "table" && !isMobile && (
-                    <Popover
-                      open={isColumnCustomizerOpen}
-                      onOpenChange={setIsColumnCustomizerOpen}
-                    >
+                  {viewMode === 'table' && !isMobile && (
+                    <Popover open={isColumnCustomizerOpen} onOpenChange={setIsColumnCustomizerOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -827,9 +883,7 @@ export default function LeadsManagement() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
-                                setVisibleColumns(DEFAULT_VISIBLE_COLUMNS)
-                              }
+                              onClick={() => setVisibleColumns(DEFAULT_VISIBLE_COLUMNS)}
                               className="touch-manipulation active:scale-[0.98]"
                             >
                               Reset
@@ -839,16 +893,11 @@ export default function LeadsManagement() {
                             {AVAILABLE_COLUMNS.map((column) => {
                               const Icon = column.icon;
                               return (
-                                <div
-                                  key={column.id}
-                                  className="flex items-center space-x-2"
-                                >
+                                <div key={column.id} className="flex items-center space-x-2">
                                   <Checkbox
                                     id={column.id}
                                     checked={visibleColumns.includes(column.id)}
-                                    onCheckedChange={() =>
-                                      toggleColumn(column.id)
-                                    }
+                                    onCheckedChange={() => toggleColumn(column.id)}
                                   />
                                   <Icon className="h-4 w-4 text-gray-500" />
                                   <Label
@@ -862,8 +911,7 @@ export default function LeadsManagement() {
                             })}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {visibleColumns.length} of{" "}
-                            {AVAILABLE_COLUMNS.length} columns selected
+                            {visibleColumns.length} of {AVAILABLE_COLUMNS.length} columns selected
                           </div>
                         </div>
                       </PopoverContent>
@@ -879,13 +927,13 @@ export default function LeadsManagement() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <span className="text-sm font-medium text-blue-800">
                     {selectedLeads.length} lead
-                    {selectedLeads.length === 1 ? "" : "s"} selected
+                    {selectedLeads.length === 1 ? '' : 's'} selected
                   </span>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleBulkAction("update_status")}
+                      onClick={() => handleBulkAction('update_status')}
                       className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                     >
                       <span className="hidden sm:inline">Update Status</span>
@@ -894,7 +942,7 @@ export default function LeadsManagement() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleBulkAction("assign")}
+                      onClick={() => handleBulkAction('assign')}
                       className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                     >
                       Assign
@@ -902,7 +950,7 @@ export default function LeadsManagement() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleBulkAction("delete")}
+                      onClick={() => handleBulkAction('delete')}
                       className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                     >
                       Delete
@@ -919,7 +967,7 @@ export default function LeadsManagement() {
           <div className="flex items-center justify-center p-8">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
           </div>
-        ) : viewMode === "table" ? (
+        ) : viewMode === 'table' ? (
           <Card className="hidden lg:block">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -954,10 +1002,7 @@ export default function LeadsManagement() {
                   </TableHeader>
                   <TableBody>
                     {filteredLeads.map((lead: Lead) => (
-                      <TableRow
-                        key={lead.id}
-                        className="hover:bg-gray-50 transition-colors"
-                      >
+                      <TableRow key={lead.id} className="hover:bg-gray-50 transition-colors">
                         <TableCell className="pl-6">
                           <Checkbox
                             checked={selectedLeads.includes(lead.id)}
@@ -972,24 +1017,17 @@ export default function LeadsManagement() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                className="h-8 w-8 p-0 hover:bg-gray-200"
-                              >
+                              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-200">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() => handleLeadClick(lead)}
-                              >
+                              <DropdownMenuItem onClick={() => handleLeadClick(lead)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setEditingLead(lead)}
-                              >
+                              <DropdownMenuItem onClick={() => setEditingLead(lead)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
@@ -1022,7 +1060,10 @@ export default function LeadsManagement() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {filteredLeads.map((lead: Lead) => (
-              <Card key={lead.id} className="hover:shadow-lg transition-shadow touch-manipulation active:scale-[0.98]">
+              <Card
+                key={lead.id}
+                className="hover:shadow-lg transition-shadow touch-manipulation active:scale-[0.98]"
+              >
                 <CardHeader className="p-4 sm:p-6 pb-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -1031,20 +1072,19 @@ export default function LeadsManagement() {
                           className="text-base sm:text-lg cursor-pointer text-blue-600 hover:text-blue-800 min-h-[44px] flex items-center touch-manipulation active:scale-[0.98] flex-1"
                           onClick={() => handleLeadClick(lead)}
                         >
-                          {lead.companyName || "Unknown Company"}
+                          {lead.companyName || 'Unknown Company'}
                         </CardTitle>
                         <Badge
                           className={`flex-shrink-0 ${
-                            statusColors[
-                              lead.status as keyof typeof statusColors
-                            ] || "bg-gray-100 text-gray-800"
+                            statusColors[lead.status as keyof typeof statusColors] ||
+                            'bg-gray-100 text-gray-800'
                           }`}
                         >
                           {lead.status}
                         </Badge>
                       </div>
                       <CardDescription className="text-sm">
-                        {lead.name} • {lead.jobTitle || "Contact"}
+                        {lead.name} • {lead.jobTitle || 'Contact'}
                       </CardDescription>
                       {lead.leadSource && (
                         <CardDescription className="text-xs text-gray-500 mt-1">
@@ -1104,9 +1144,8 @@ export default function LeadsManagement() {
                           <Badge
                             variant="outline"
                             className={`text-xs px-1 py-0 ${
-                              priorityColors[
-                                lead.priority as keyof typeof priorityColors
-                              ] || "bg-gray-100 text-gray-800"
+                              priorityColors[lead.priority as keyof typeof priorityColors] ||
+                              'bg-gray-100 text-gray-800'
                             }`}
                           >
                             {lead.priority}
@@ -1185,10 +1224,7 @@ export default function LeadsManagement() {
 
         {/* Edit Lead Dialog */}
         {editingLead && (
-          <Dialog
-            open={!!editingLead}
-            onOpenChange={() => setEditingLead(null)}
-          >
+          <Dialog open={!!editingLead} onOpenChange={() => setEditingLead(null)}>
             <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
               <DialogHeader>
                 <DialogTitle>Edit Lead</DialogTitle>
@@ -1196,9 +1232,7 @@ export default function LeadsManagement() {
               </DialogHeader>
               <LeadForm
                 initialData={editingLead}
-                onSubmit={(data) =>
-                  updateLeadMutation.mutate({ ...data, id: editingLead.id })
-                }
+                onSubmit={(data) => updateLeadMutation.mutate({ ...data, id: editingLead.id })}
                 isLoading={updateLeadMutation.isPending}
               />
             </DialogContent>
@@ -1220,43 +1254,46 @@ function LeadForm({
   isLoading: boolean;
 }) {
   const [formData, setFormData] = useState({
-    companyName: initialData?.companyName || "",
-    name: initialData?.name || "",
-    email: initialData?.email || "",
-    phone: initialData?.phone || "",
-    jobTitle: initialData?.jobTitle || "",
-    leadSource: initialData?.leadSource || "",
-    status: initialData?.status || "new",
-    priority: initialData?.priority || "medium",
+    companyName: initialData?.companyName || '',
+    name: initialData?.name || '',
+    email: initialData?.email || '',
+    phone: initialData?.phone || '',
+    jobTitle: initialData?.jobTitle || '',
+    leadSource: initialData?.leadSource || '',
+    status: initialData?.status || 'new',
+    priority: initialData?.priority || 'medium',
     estimatedValue: initialData?.estimatedValue || 0,
-    notes: initialData?.notes || "",
-    address: initialData?.address || "",
-    city: initialData?.city || "",
-    state: initialData?.state || "",
-    zipCode: initialData?.zipCode || "",
-    industry: "",
-    website: "",
+    notes: initialData?.notes || '',
+    address: initialData?.address || '',
+    city: initialData?.city || '',
+    state: initialData?.state || '',
+    zipCode: initialData?.zipCode || '',
+    industry: '',
+    website: '',
   });
 
-  const [companySearchTerm, setCompanySearchTerm] = useState(initialData?.companyName || "");
+  const [companySearchTerm, setCompanySearchTerm] = useState(initialData?.companyName || '');
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [selectedExistingCompany, setSelectedExistingCompany] = useState<any>(null);
 
   // Fetch existing companies for autocomplete
   const { data: existingCompanies = [] } = useQuery({
-    queryKey: ["/api/business-records"],
+    queryKey: ['/api/business-records'],
     select: (data: any[]) => {
       // Get unique companies and deduplicate
       const companies = data
         .filter((record: any) => record.companyName && record.companyName.trim())
-        .reduce((acc, record) => {
-          const companyName = record.companyName.toLowerCase();
-          if (!acc[companyName] || record.recordType === 'customer') {
-            acc[companyName] = record;
-          }
-          return acc;
-        }, {} as Record<string, any>);
-      
+        .reduce(
+          (acc, record) => {
+            const companyName = record.companyName.toLowerCase();
+            if (!acc[companyName] || record.recordType === 'customer') {
+              acc[companyName] = record;
+            }
+            return acc;
+          },
+          {} as Record<string, any>,
+        );
+
       return Object.values(companies);
     },
   });
@@ -1264,10 +1301,10 @@ function LeadForm({
   // Filter companies based on search term
   const filteredCompanies = useMemo(() => {
     if (!companySearchTerm || companySearchTerm.length < 2) return [];
-    
+
     return existingCompanies
-      .filter((company: any) => 
-        company.companyName.toLowerCase().includes(companySearchTerm.toLowerCase())
+      .filter((company: any) =>
+        company.companyName.toLowerCase().includes(companySearchTerm.toLowerCase()),
       )
       .slice(0, 10); // Limit to 10 results
   }, [existingCompanies, companySearchTerm]);
@@ -1276,20 +1313,20 @@ function LeadForm({
     setSelectedExistingCompany(company);
     setCompanySearchTerm(company.companyName);
     setIsCompanyDropdownOpen(false);
-    
+
     // Pre-fill form with existing company data
     setFormData({
       ...formData,
       companyName: company.companyName,
-      name: company.primaryContactName || "",
-      email: company.primaryContactEmail || "",
-      phone: company.primaryContactPhone || company.phone || "",
-      address: company.addressLine1 || "",
-      city: company.city || "",
-      state: company.state || "",
-      zipCode: company.postalCode || "",
-      industry: company.industry || "",
-      website: company.website || "",
+      name: company.primaryContactName || '',
+      email: company.primaryContactEmail || '',
+      phone: company.primaryContactPhone || company.phone || '',
+      address: company.addressLine1 || '',
+      city: company.city || '',
+      state: company.state || '',
+      zipCode: company.postalCode || '',
+      industry: company.industry || '',
+      website: company.website || '',
     });
   };
 
@@ -1323,17 +1360,14 @@ function LeadForm({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 sm:space-y-6"
-    >
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
       {/* Company Information - Primary Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
           <Building2 className="h-5 w-5 text-blue-600" />
           Company Information
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="companyName" className="text-base font-medium">
             Company Name *
@@ -1349,7 +1383,7 @@ function LeadForm({
               onFocus={() => setIsCompanyDropdownOpen(companySearchTerm.length >= 2)}
               onBlur={() => setTimeout(() => setIsCompanyDropdownOpen(false), 200)}
             />
-            
+
             {/* Company Autocomplete Dropdown */}
             {isCompanyDropdownOpen && filteredCompanies.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -1369,7 +1403,10 @@ function LeadForm({
                           <span className="text-blue-600">Lead</span>
                         )}
                         {company.city && company.state && (
-                          <span> • {company.city}, {company.state}</span>
+                          <span>
+                            {' '}
+                            • {company.city}, {company.state}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1382,7 +1419,8 @@ function LeadForm({
           {selectedExistingCompany && (
             <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
               <CheckSquare className="h-4 w-4" />
-              Information loaded from existing {selectedExistingCompany.recordType}. You can modify before saving.
+              Information loaded from existing {selectedExistingCompany.recordType}. You can modify
+              before saving.
             </div>
           )}
         </div>
@@ -1394,7 +1432,7 @@ function LeadForm({
           <User className="h-5 w-5 text-blue-600" />
           Contact Details
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="name">Contact Name</Label>
@@ -1410,9 +1448,7 @@ function LeadForm({
             <Input
               id="jobTitle"
               value={formData.jobTitle}
-              onChange={(e) =>
-                setFormData({ ...formData, jobTitle: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
               placeholder="e.g., Office Manager, CEO"
             />
           </div>
@@ -1422,9 +1458,7 @@ function LeadForm({
               id="email"
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="contact@company.com"
             />
           </div>
@@ -1433,9 +1467,7 @@ function LeadForm({
             <Input
               id="phone"
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               placeholder="(555) 123-4567"
             />
           </div>
@@ -1448,15 +1480,13 @@ function LeadForm({
           <Target className="h-5 w-5 text-blue-600" />
           Lead Details
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="leadSource">Lead Source</Label>
             <Select
               value={formData.leadSource}
-              onValueChange={(value) =>
-                setFormData({ ...formData, leadSource: value })
-              }
+              onValueChange={(value) => setFormData({ ...formData, leadSource: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="How did they find you?" />
@@ -1492,9 +1522,7 @@ function LeadForm({
             <Label htmlFor="status">Status</Label>
             <Select
               value={formData.status}
-              onValueChange={(value) =>
-                setFormData({ ...formData, status: value })
-              }
+              onValueChange={(value) => setFormData({ ...formData, status: value })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -1514,9 +1542,7 @@ function LeadForm({
             <Label htmlFor="priority">Priority</Label>
             <Select
               value={formData.priority}
-              onValueChange={(value) =>
-                setFormData({ ...formData, priority: value })
-              }
+              onValueChange={(value) => setFormData({ ...formData, priority: value })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -1537,16 +1563,14 @@ function LeadForm({
           <MapPin className="h-5 w-5 text-blue-600" />
           Address Information
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="address">Street Address</Label>
             <Input
               id="address"
               value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               placeholder="123 Main Street"
             />
           </div>
@@ -1564,9 +1588,7 @@ function LeadForm({
             <Input
               id="state"
               value={formData.state}
-              onChange={(e) =>
-                setFormData({ ...formData, state: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
               placeholder="State"
             />
           </div>
@@ -1575,9 +1597,7 @@ function LeadForm({
             <Input
               id="zipCode"
               value={formData.zipCode}
-              onChange={(e) =>
-                setFormData({ ...formData, zipCode: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
               placeholder="12345"
             />
           </div>
@@ -1602,11 +1622,7 @@ function LeadForm({
           disabled={isLoading}
           className="min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
         >
-          {isLoading
-            ? "Saving..."
-            : initialData
-            ? "Update Lead"
-            : "Create Lead"}
+          {isLoading ? 'Saving...' : initialData ? 'Update Lead' : 'Create Lead'}
         </Button>
       </div>
     </form>
