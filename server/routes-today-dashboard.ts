@@ -4,26 +4,17 @@ import { eq, and, gte, lte, desc, sql, isNull, or } from 'drizzle-orm';
 import { businessRecordActivities, businessRecords, deals } from '@shared/schema';
 import type { Request, Response } from 'express';
 import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek } from 'date-fns';
-
-// Helper to get user ID from request (supports Supabase JWT and session)
-const getUserId = (req: Request): string | undefined => {
-  const reqAny = req as any;
-  return (
-    reqAny.user?.id ||
-    reqAny.user?.claims?.sub ||
-    reqAny.session?.userId ||
-    reqAny.session?.user?.id
-  );
-};
+// Supabase authentication middleware and helpers
+import { protectedRoute } from './middleware/supabase-auth';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 interface TenantRequest extends Request {
   tenantId?: string;
-  session?: {
-    userId?: string;
-    user?: {
-      id?: string;
-      role?: string;
-    };
+  supabaseUser?: {
+    id: string;
+    email: string;
+    tenantId?: string;
+    roleId?: string;
   };
 }
 
@@ -38,10 +29,13 @@ export function registerTodayDashboardRoutes(app: Router) {
    * - Pipeline alerts (stalled deals)
    * - Recent wins
    * - Quick stats
+   *
+   * Protected with Supabase JWT authentication
    */
-  app.get('/api/dashboards/today', async (req: TenantRequest, res: Response) => {
+  app.get('/api/dashboards/today', protectedRoute, async (req: TenantRequest, res: Response) => {
     try {
-      const tenantId = req.tenantId;
+      // Use Supabase auth helpers to get tenant and user context
+      const tenantId = getTenantId(req);
       const userId = getUserId(req);
 
       if (!tenantId) {
