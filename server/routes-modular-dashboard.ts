@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { db } from "./db";
 import { eq, and, sql, desc, sum, count, gte, lte } from "drizzle-orm";
 import {
@@ -11,6 +11,9 @@ import {
   inventoryItems,
   type User,
 } from "@shared/schema";
+// Supabase authentication middleware and helpers
+import { protectedRoute } from "./middleware/supabase-auth";
+import { getUserId, getTenantId, getRoleId } from "./utils/auth-helpers";
 
 // Role-based card permissions and availability
 const roleCardConfig = {
@@ -42,11 +45,14 @@ const roleCardConfig = {
 
 export function registerModularDashboardRoutes(app: Express) {
   // Get available card configurations for a role
-  app.get("/api/dashboard/card-config", async (req: any, res) => {
+  // Protected with Supabase JWT authentication
+  app.get("/api/dashboard/card-config", protectedRoute, async (req: Request, res: Response) => {
     try {
-      const userRole = req.user?.role || 'sales';
-      const config = roleCardConfig[userRole] || roleCardConfig.sales;
-      
+      // Get user role from Supabase JWT or database lookup
+      const reqAny = req as any;
+      const userRole = reqAny.supabaseUser?.role || reqAny.user?.role || 'sales';
+      const config = roleCardConfig[userRole as keyof typeof roleCardConfig] || roleCardConfig.sales;
+
       res.json({
         role: userRole,
         defaultCards: config.defaultCards,
@@ -60,23 +66,27 @@ export function registerModularDashboardRoutes(app: Express) {
   });
 
   // Get user-specific dashboard modules based on role and enabled cards
-  app.get("/api/dashboard/modules", async (req: any, res) => {
+  // Protected with Supabase JWT authentication
+  app.get("/api/dashboard/modules", protectedRoute, async (req: Request, res: Response) => {
     try {
-      // Try multiple ways to get tenant ID from the request
-      const tenantId = req.user?.tenantId || req.tenantId || '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
-      const userId = req.user?.id;
+      // Use Supabase auth helpers to get tenant and user context
+      const tenantId = getTenantId(req);
+      const userId = getUserId(req);
       
       if (!tenantId) {
         return res.status(400).json({ message: "Tenant ID is required" });
       }
 
-      // Get user role and enabled cards from query params
-      const userRole = req.user?.role || 'sales';
-      const enabledCards = req.query.enabled ? req.query.enabled.split(',') : [];
+      // Get user role from Supabase JWT or fallback to 'sales'
+      const reqAny = req as any;
+      const userRole = reqAny.supabaseUser?.role || reqAny.user?.role || 'sales';
+      // Get enabled cards from query params
+      const enabledParam = req.query.enabled as string | undefined;
+      const enabledCards = enabledParam ? enabledParam.split(',') : [];
       
       // Get role configuration
-      const roleConfig = roleCardConfig[userRole] || roleCardConfig.sales;
-      const activeCards = [...roleConfig.defaultCards, ...enabledCards.filter(card => 
+      const roleConfig = roleCardConfig[userRole as keyof typeof roleCardConfig] || roleCardConfig.sales;
+      const activeCards = [...roleConfig.defaultCards, ...enabledCards.filter(card =>
         roleConfig.availableCards.includes(card)
       )];
       
