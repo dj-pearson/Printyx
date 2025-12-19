@@ -7,8 +7,9 @@
 import { config as dotenvConfig } from 'dotenv';
 dotenvConfig();
 
-import { Pool } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import pg from 'pg';
+const { Pool } = pg;
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { users } from './shared/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
