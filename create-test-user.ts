@@ -7,7 +7,8 @@
 import { config as dotenvConfig } from 'dotenv';
 dotenvConfig();
 
-import { Pool } from '@neondatabase/serverless';
+import pg from 'pg';
+const { Pool } = pg;
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 
