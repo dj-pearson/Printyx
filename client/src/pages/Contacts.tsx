@@ -1,21 +1,21 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -23,32 +23,32 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { TableSkeleton } from "@/components/ui/skeletons";
-import { EmptyState } from "@/components/ui/empty-state";
-import { BulkOperationsToolbar, useBulkSelection, type BulkAction } from "@/components/ui/bulk-operations-toolbar";
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { TableSkeleton } from '@/components/ui/skeletons';
+import { EmptyState } from '@/components/ui/empty-state';
+import {
+  BulkOperationsToolbar,
+  useBulkSelection,
+  type BulkAction,
+} from '@/components/ui/bulk-operations-toolbar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { format } from "date-fns";
+} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
 import {
   Search,
   Filter,
@@ -75,23 +75,24 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import { useAuthContext } from '@/providers/AuthProvider';
 
 // Contact form schema
 const contactFormSchema = z.object({
   salutation: z.string().optional(),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
   mobile: z.string().optional(),
   title: z.string().optional(),
   department: z.string().optional(),
   reportsTo: z.string().optional(),
-  companyName: z.string().min(1, "Company is required"),
+  companyName: z.string().min(1, 'Company is required'),
   companyId: z.string().optional(),
   isPrimaryContact: z.boolean().default(false),
   leadStatus: z.string().optional(),
@@ -139,17 +140,18 @@ interface Contact {
 export default function Contacts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuthContext();
+  const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
-    contactOwner: "",
-    createDate: "",
-    lastActivityDate: "",
-    leadStatus: "",
-    view: "all",
+    contactOwner: '',
+    createDate: '',
+    lastActivityDate: '',
+    leadStatus: '',
+    view: 'all',
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [sortBy, setSortBy] = useState("lastActivityDate");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [sortBy, setSortBy] = useState('lastActivityDate');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -165,104 +167,179 @@ export default function Contacts() {
 
   // Contact form state
   const [showNewCompanyConfirm, setShowNewCompanyConfirm] = useState(false);
-  const [pendingContactData, setPendingContactData] =
-    useState<ContactFormData | null>(null);
+  const [pendingContactData, setPendingContactData] = useState<ContactFormData | null>(null);
 
   // Contact form
   const contactForm = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
-      salutation: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      mobile: "",
-      title: "",
-      department: "",
-      reportsTo: "",
-      companyName: "",
-      companyId: "",
+      salutation: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      mobile: '',
+      title: '',
+      department: '',
+      reportsTo: '',
+      companyName: '',
+      companyId: '',
       isPrimaryContact: false,
-      leadStatus: "new",
-      leadSource: "",
+      leadStatus: 'new',
+      leadSource: '',
       emailOptOut: false,
       doNotCall: false,
     },
   });
 
-  // Fetch business records for dropdown (since they contain the actual company data)
+  // Tenant context is required for Supabase/RLS
+  const tenantId = user?.tenantId;
+
+  // Fetch business records (companies) for dropdown
   const {
     data: companies,
     isLoading: companiesLoading,
     error: companiesError,
   } = useQuery({
-    queryKey: ["/api/business-records"],
-    queryFn: async () => {
-      return await apiRequest("/api/business-records");
-    },
-    enabled: true,
+    queryKey: ['supabase-business-records-companies', tenantId],
+    enabled: !!tenantId,
     retry: 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('business_records')
+        .select('id, company_name, record_type, status')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        companyName: row.company_name,
+        recordType: row.record_type,
+        status: row.status,
+      }));
+    },
   });
 
   // Fetch users for owner lookup
   const { data: users } = useQuery({
-    queryKey: ["/api/users"],
+    queryKey: ['supabase-users', tenantId],
+    enabled: !!tenantId,
     queryFn: async () => {
-      return await apiRequest("/api/users");
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .eq('tenant_id', tenantId);
+      if (error) throw error;
+      return (data || []).map((u: any) => ({
+        id: u.id,
+        firstName: u.first_name,
+        lastName: u.last_name,
+        email: u.email,
+      }));
     },
+    retry: 1,
   });
 
   // Helper function to get company name by ID
   const getCompanyName = (companyId: string) => {
     const company = companies?.find((c: any) => c.id === companyId);
-    return company?.companyName || "--";
+    return company?.companyName || '--';
   };
 
   // Helper function to get user name by ID
   const getUserName = (userId: string) => {
     const user = users?.find((u: any) => u.id === userId);
-    if (!user) return "Unassigned";
-    return (
-      `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
-      user.email ||
-      "Unassigned"
-    );
+    if (!user) return 'Unassigned';
+    return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unassigned';
   };
 
   // Create company mutation
   const createCompanyMutation = useMutation({
     mutationFn: async (companyName: string) => {
-      return await apiRequest("/api/business-records", "POST", {
-        companyName,
-        recordType: "lead",
-        status: "new",
-      });
+      if (!tenantId || !user?.id) {
+        throw new Error('Missing tenant/user context');
+      }
+
+      const { data, error } = await supabase
+        .from('business_records')
+        .insert({
+          tenant_id: tenantId,
+          record_type: 'lead',
+          status: 'new',
+          company_name: companyName,
+          source: 'manual',
+          created_by: user.id,
+        })
+        .select('id, company_name, record_type, status')
+        .single();
+
+      if (error) throw error;
+
+      return {
+        id: data.id,
+        companyName: data.company_name,
+        recordType: data.record_type,
+        status: data.status,
+      };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+      queryClient.invalidateQueries({
+        queryKey: ['supabase-business-records-companies', tenantId],
+      });
     },
   });
 
   // Create contact mutation
   const createContactMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
-      return await apiRequest("/api/company-contacts", "POST", data);
+      if (!tenantId) throw new Error('Missing tenant context');
+      if (!data.companyId) throw new Error('Missing companyId');
+
+      const payload: any = {
+        tenant_id: tenantId,
+        company_id: data.companyId,
+        salutation: data.salutation || null,
+        first_name: data.firstName || null,
+        last_name: data.lastName,
+        email: data.email || null,
+        phone: data.phone || null,
+        mobile: data.mobile || null,
+        title: data.title || null,
+        department: data.department || null,
+        reports_to: data.reportsTo || null,
+        is_primary_contact: data.isPrimaryContact || false,
+        lead_status: data.leadStatus || 'new',
+        owner_id: filters.contactOwner || null,
+        // Store comm prefs in basic fields we have
+        preferred_channels: null,
+        favorite_content_type: null,
+      };
+
+      const { data: created, error } = await supabase
+        .from('company_contacts')
+        .insert(payload)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return created;
     },
     onSuccess: () => {
       toast({
-        title: "Success",
-        description: "Contact created successfully",
+        title: 'Success',
+        description: 'Contact created successfully',
       });
       contactForm.reset();
       setDialogs((prev) => ({ ...prev, createContact: false }));
-      queryClient.invalidateQueries({ queryKey: ["/api/company-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ['supabase-company-contacts', tenantId] });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create contact",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create contact',
+        variant: 'destructive',
       });
     },
   });
@@ -272,8 +349,7 @@ export default function Contacts() {
     // Check if the company exists (case-insensitive)
     const existingCompany = companies?.find(
       (company: any) =>
-        (company.companyName || company.name)?.toLowerCase() ===
-        data.companyName.toLowerCase()
+        (company.companyName || company.name)?.toLowerCase() === data.companyName.toLowerCase(),
     );
 
     if (existingCompany) {
@@ -295,9 +371,7 @@ export default function Contacts() {
 
     try {
       // Create company first
-      const newCompany = await createCompanyMutation.mutateAsync(
-        pendingContactData.companyName
-      );
+      const newCompany = await createCompanyMutation.mutateAsync(pendingContactData.companyName);
 
       // Then create contact with the new company ID
       createContactMutation.mutate({
@@ -309,9 +383,9 @@ export default function Contacts() {
       setPendingContactData(null);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create company",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create company',
+        variant: 'destructive',
       });
     }
   };
@@ -323,12 +397,10 @@ export default function Contacts() {
   };
 
   // Filter companies based on search term from form field
-  const currentCompanyName = contactForm.watch("companyName") || "";
+  const currentCompanyName = contactForm.watch('companyName') || '';
   const filteredCompanies =
     companies?.filter((company: any) =>
-      company.companyName
-        ?.toLowerCase()
-        .includes(currentCompanyName.toLowerCase())
+      company.companyName?.toLowerCase().includes(currentCompanyName.toLowerCase()),
     ) || [];
 
   // Fetch all company contacts directly (since /api/contacts has auth issues)
@@ -338,7 +410,8 @@ export default function Contacts() {
     error,
   } = useQuery({
     queryKey: [
-      "/api/company-contacts",
+      'supabase-company-contacts',
+      tenantId,
       filters,
       searchQuery,
       sortBy,
@@ -347,21 +420,34 @@ export default function Contacts() {
       pageSize,
     ],
     queryFn: async () => {
-      const data = await apiRequest("/api/company-contacts");
+      if (!tenantId) return { contacts: [], total: 0, page: currentPage, limit: pageSize };
+
+      const { data, error } = await supabase
+        .from('company_contacts')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
 
       // Transform the flat array into the expected format with pagination
       const allContacts = Array.isArray(data) ? data : [];
+      const companyNameById = new Map<string, string>();
+      (companies || []).forEach((c: any) => companyNameById.set(c.id, c.companyName));
+      const ownerNameById = new Map<string, string>();
+      (users || []).forEach((u: any) =>
+        ownerNameById.set(
+          u.id,
+          (`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Unassigned').trim(),
+        ),
+      );
 
       const filteredContacts = allContacts.filter((contact) => {
         // Only apply search filter if there's actually a search query
-        if (searchQuery && searchQuery.trim() !== "") {
+        if (searchQuery && searchQuery.trim() !== '') {
           const matchesSearch =
-            contact.firstName
-              ?.toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            contact.lastName
-              ?.toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
+            contact.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            contact.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             contact.email?.toLowerCase().includes(searchQuery.toLowerCase());
           if (!matchesSearch) {
             return false;
@@ -369,20 +455,20 @@ export default function Contacts() {
         }
 
         // Apply view filter first
-        if (filters.view === "my" && !contact.ownerId) {
+        if (filters.view === 'my' && !contact.owner_id) {
           return false;
         }
 
-        if (filters.view === "unassigned" && contact.ownerId) {
+        if (filters.view === 'unassigned' && contact.owner_id) {
           return false;
         }
 
         // Apply other filters
-        if (filters.leadStatus && contact.leadStatus !== filters.leadStatus) {
+        if (filters.leadStatus && contact.lead_status !== filters.leadStatus) {
           return false;
         }
 
-        if (filters.contactOwner && contact.ownerId !== filters.contactOwner) {
+        if (filters.contactOwner && contact.owner_id !== filters.contactOwner) {
           return false;
         }
 
@@ -394,29 +480,56 @@ export default function Contacts() {
       const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
 
       return {
-        contacts: paginatedContacts,
+        contacts: paginatedContacts.map((c: any) => ({
+          id: c.id,
+          firstName: c.first_name || undefined,
+          lastName: c.last_name,
+          email: c.email || undefined,
+          phone: c.phone || undefined,
+          title: c.title || undefined,
+          companyId: c.company_id,
+          companyName: companyNameById.get(c.company_id) || undefined,
+          leadStatus: c.lead_status || undefined,
+          lastContactDate: c.last_contact_date || undefined,
+          nextFollowUpDate: c.next_follow_up_date || undefined,
+          createdAt: c.created_at || undefined,
+          ownerId: c.owner_id || undefined,
+          ownerName: (c.owner_id && ownerNameById.get(c.owner_id)) || undefined,
+          favoriteContentType: c.favorite_content_type || undefined,
+          preferredChannels: c.preferred_channels || undefined,
+          tenantId: c.tenant_id,
+          salutation: c.salutation || undefined,
+          department: c.department || undefined,
+          mobile: c.mobile || undefined,
+          reportsTo: c.reports_to || undefined,
+          contactRoles: c.contact_roles || undefined,
+          isPrimaryContact: c.is_primary_contact || undefined,
+          leadSource: c.lead_source || undefined,
+          emailOptOut: c.email_opt_out || undefined,
+          doNotCall: c.do_not_call || undefined,
+        })),
         total: filteredContacts.length,
         page: currentPage,
         limit: pageSize,
       };
     },
     retry: 2,
-    enabled: true,
+    enabled: !!tenantId,
   });
 
   // Delete contact mutation
   const deleteContactMutation = useMutation({
     mutationFn: async (contactId: string) =>
-      apiRequest(`/api/company-contacts/${contactId}`, "DELETE"),
+      supabase.from('company_contacts').delete().eq('id', contactId).eq('tenant_id', tenantId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company-contacts"] });
-      toast({ title: "Success", description: "Contact deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['supabase-company-contacts', tenantId] });
+      toast({ title: 'Success', description: 'Contact deleted successfully' });
     },
     onError: (err: any) => {
       toast({
-        title: "Error",
-        description: err?.message || "Failed to delete contact",
-        variant: "destructive",
+        title: 'Error',
+        description: err?.message || 'Failed to delete contact',
+        variant: 'destructive',
       });
     },
   });
@@ -440,84 +553,76 @@ export default function Contacts() {
   // Define bulk actions for the toolbar
   const bulkActions: BulkAction[] = [
     {
-      id: "email",
-      label: "Send Email",
+      id: 'email',
+      label: 'Send Email',
       icon: Mail,
       onClick: (ids) => {
         toast({
-          title: "Email",
+          title: 'Email',
           description: `Preparing email for ${ids.length} contact(s)`,
         });
       },
     },
     {
-      id: "edit",
-      label: "Edit Properties",
+      id: 'edit',
+      label: 'Edit Properties',
       icon: Edit,
       onClick: (ids) => {
         toast({
-          title: "Edit",
+          title: 'Edit',
           description: `Editing ${ids.length} contact(s)`,
         });
       },
     },
     {
-      id: "assign",
-      label: "Assign Owner",
+      id: 'assign',
+      label: 'Assign Owner',
       icon: User,
       onClick: (ids) => {
         toast({
-          title: "Assign",
+          title: 'Assign',
           description: `Assigning owner to ${ids.length} contact(s)`,
         });
       },
     },
     {
-      id: "delete",
-      label: "Delete",
+      id: 'delete',
+      label: 'Delete',
       icon: Trash2,
       onClick: async (ids) => {
-        await Promise.all(
-          ids.map((id) =>
-            deleteContactMutation.mutateAsync(id).catch(() => null)
-          )
-        );
-        queryClient.invalidateQueries({ queryKey: ["/api/company-contacts"] });
+        await Promise.all(ids.map((id) => deleteContactMutation.mutateAsync(id).catch(() => null)));
+        queryClient.invalidateQueries({ queryKey: ['supabase-company-contacts', tenantId] });
       },
-      variant: "destructive",
+      variant: 'destructive',
       requiresConfirmation: true,
-      confirmationTitle: "Delete Contacts",
+      confirmationTitle: 'Delete Contacts',
       confirmationDescription: `Are you sure you want to delete ${selectedCount} contact(s)? This action cannot be undone.`,
     },
   ];
 
   // Get unique values for filters
-  const uniqueOwners = [
-    ...new Set(contacts.map((c: Contact) => c.ownerName).filter(Boolean)),
-  ];
-  const uniqueStatuses = [
-    ...new Set(contacts.map((c: Contact) => c.leadStatus).filter(Boolean)),
-  ];
+  const uniqueOwners = [...new Set(contacts.map((c: Contact) => c.ownerName).filter(Boolean))];
+  const uniqueStatuses = [...new Set(contacts.map((c: Contact) => c.leadStatus).filter(Boolean))];
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return "Never";
-    return format(new Date(dateString), "MMM d, yyyy");
+    if (!dateString) return 'Never';
+    return format(new Date(dateString), 'MMM d, yyyy');
   };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case "new":
-        return "bg-blue-100 text-blue-800";
-      case "contacted":
-        return "bg-yellow-100 text-yellow-800";
-      case "qualified":
-        return "bg-green-100 text-green-800";
-      case "unqualified":
-        return "bg-red-100 text-red-800";
-      case "customer":
-        return "bg-purple-100 text-purple-800";
+      case 'new':
+        return 'bg-blue-100 text-blue-800';
+      case 'contacted':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'qualified':
+        return 'bg-green-100 text-green-800';
+      case 'unqualified':
+        return 'bg-red-100 text-red-800';
+      case 'customer':
+        return 'bg-purple-100 text-purple-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -533,13 +638,13 @@ export default function Contacts() {
 
   const clearFilters = () => {
     setFilters({
-      contactOwner: "",
-      createDate: "",
-      lastActivityDate: "",
-      leadStatus: "",
-      view: "all",
+      contactOwner: '',
+      createDate: '',
+      lastActivityDate: '',
+      leadStatus: '',
+      view: 'all',
     });
-    setSearchQuery("");
+    setSearchQuery('');
   };
 
   if (isLoading) {
@@ -562,12 +667,8 @@ export default function Contacts() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Contacts
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">
-              {totalContacts} records
-            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Contacts</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">{totalContacts} records</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" className="touch-manipulation active:scale-[0.98]">
@@ -580,9 +681,7 @@ export default function Contacts() {
             </Button>
             <Dialog
               open={dialogs.createContact}
-              onOpenChange={(open) =>
-                setDialogs((prev) => ({ ...prev, createContact: open }))
-              }
+              onOpenChange={(open) => setDialogs((prev) => ({ ...prev, createContact: open }))}
             >
               <DialogTrigger asChild>
                 <Button
@@ -610,10 +709,7 @@ export default function Contacts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Salutation</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select salutation" />
@@ -638,10 +734,7 @@ export default function Contacts() {
                           <FormItem>
                             <FormLabel>First name *</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Enter first name"
-                                {...field}
-                              />
+                              <Input placeholder="Enter first name" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -669,11 +762,7 @@ export default function Contacts() {
                           <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input
-                                type="email"
-                                placeholder="Enter email address"
-                                {...field}
-                              />
+                              <Input type="email" placeholder="Enter email address" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -686,10 +775,7 @@ export default function Contacts() {
                           <FormItem>
                             <FormLabel>Phone</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Enter phone number"
-                                {...field}
-                              />
+                              <Input placeholder="Enter phone number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -705,10 +791,7 @@ export default function Contacts() {
                           <FormItem>
                             <FormLabel>Mobile</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Enter mobile number"
-                                {...field}
-                              />
+                              <Input placeholder="Enter mobile number" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -736,10 +819,7 @@ export default function Contacts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Department</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select department" />
@@ -747,23 +827,13 @@ export default function Contacts() {
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="sales">Sales</SelectItem>
-                                <SelectItem value="marketing">
-                                  Marketing
-                                </SelectItem>
+                                <SelectItem value="marketing">Marketing</SelectItem>
                                 <SelectItem value="finance">Finance</SelectItem>
-                                <SelectItem value="operations">
-                                  Operations
-                                </SelectItem>
-                                <SelectItem value="hr">
-                                  Human Resources
-                                </SelectItem>
+                                <SelectItem value="operations">Operations</SelectItem>
+                                <SelectItem value="hr">Human Resources</SelectItem>
                                 <SelectItem value="it">IT</SelectItem>
-                                <SelectItem value="purchasing">
-                                  Purchasing
-                                </SelectItem>
-                                <SelectItem value="management">
-                                  Management
-                                </SelectItem>
+                                <SelectItem value="purchasing">Purchasing</SelectItem>
+                                <SelectItem value="management">Management</SelectItem>
                                 <SelectItem value="other">Other</SelectItem>
                               </SelectContent>
                             </Select>
@@ -778,10 +848,7 @@ export default function Contacts() {
                           <FormItem>
                             <FormLabel>Reports To</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Manager or supervisor"
-                                {...field}
-                              />
+                              <Input placeholder="Manager or supervisor" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -801,7 +868,7 @@ export default function Contacts() {
                                 <Input
                                   placeholder="Type company name..."
                                   {...field}
-                                  value={field.value || ""}
+                                  value={field.value || ''}
                                   list="companies-datalist"
                                   autoComplete="off"
                                 />
@@ -813,7 +880,7 @@ export default function Contacts() {
                                     value={company.companyName || company.name}
                                   >
                                     {company.companyName || company.name} (
-                                    {company.recordType || "company"})
+                                    {company.recordType || 'company'})
                                   </option>
                                 ))}
                               </datalist>
@@ -822,11 +889,10 @@ export default function Contacts() {
                               !filteredCompanies.some(
                                 (c: any) =>
                                   (c.companyName || c.name)?.toLowerCase() ===
-                                  currentCompanyName.toLowerCase()
+                                  currentCompanyName.toLowerCase(),
                               ) && (
                                 <div className="text-xs text-blue-600 mt-1">
-                                  ✨ New company "{currentCompanyName}" will be
-                                  created as a lead
+                                  ✨ New company "{currentCompanyName}" will be created as a lead
                                 </div>
                               )}
                             <FormMessage />
@@ -839,10 +905,7 @@ export default function Contacts() {
                         render={({ field }) => (
                           <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-4">
                             <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                             </FormControl>
                             <div className="space-y-1 leading-none">
                               <FormLabel>Primary contact</FormLabel>
@@ -859,10 +922,7 @@ export default function Contacts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Lead status</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select status" />
@@ -870,18 +930,10 @@ export default function Contacts() {
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="contacted">
-                                  Contacted
-                                </SelectItem>
-                                <SelectItem value="qualified">
-                                  Qualified
-                                </SelectItem>
-                                <SelectItem value="unqualified">
-                                  Unqualified
-                                </SelectItem>
-                                <SelectItem value="customer">
-                                  Customer
-                                </SelectItem>
+                                <SelectItem value="contacted">Contacted</SelectItem>
+                                <SelectItem value="qualified">Qualified</SelectItem>
+                                <SelectItem value="unqualified">Unqualified</SelectItem>
+                                <SelectItem value="customer">Customer</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -894,10 +946,7 @@ export default function Contacts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Lead Source</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select source" />
@@ -905,21 +954,11 @@ export default function Contacts() {
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="website">Website</SelectItem>
-                                <SelectItem value="referral">
-                                  Referral
-                                </SelectItem>
-                                <SelectItem value="cold_call">
-                                  Cold Call
-                                </SelectItem>
-                                <SelectItem value="email_campaign">
-                                  Email Campaign
-                                </SelectItem>
-                                <SelectItem value="trade_show">
-                                  Trade Show
-                                </SelectItem>
-                                <SelectItem value="social_media">
-                                  Social Media
-                                </SelectItem>
+                                <SelectItem value="referral">Referral</SelectItem>
+                                <SelectItem value="cold_call">Cold Call</SelectItem>
+                                <SelectItem value="email_campaign">Email Campaign</SelectItem>
+                                <SelectItem value="trade_show">Trade Show</SelectItem>
+                                <SelectItem value="social_media">Social Media</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -940,10 +979,7 @@ export default function Contacts() {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                               <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
                               <div className="space-y-1 leading-none">
                                 <FormLabel>Email Opt-Out</FormLabel>
@@ -957,10 +993,7 @@ export default function Contacts() {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                               <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
                               <div className="space-y-1 leading-none">
                                 <FormLabel>Do Not Call</FormLabel>
@@ -990,9 +1023,7 @@ export default function Contacts() {
                         className="bg-orange-500 hover:bg-orange-600 min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
                         disabled={createContactMutation.isPending}
                       >
-                        {createContactMutation.isPending
-                          ? "Creating..."
-                          : "Create contact"}
+                        {createContactMutation.isPending ? 'Creating...' : 'Create contact'}
                       </Button>
                     </div>
                   </form>
@@ -1001,10 +1032,7 @@ export default function Contacts() {
             </Dialog>
 
             {/* New Company Confirmation Dialog */}
-            <Dialog
-              open={showNewCompanyConfirm}
-              onOpenChange={setShowNewCompanyConfirm}
-            >
+            <Dialog open={showNewCompanyConfirm} onOpenChange={setShowNewCompanyConfirm}>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>Create New Company</DialogTitle>
@@ -1012,14 +1040,12 @@ export default function Contacts() {
                 <div className="space-y-4">
                   <p className="text-sm text-gray-600">
                     The company "
-                    <span className="font-semibold">
-                      {pendingContactData?.companyName}
-                    </span>
-                    " doesn't exist in your database.
+                    <span className="font-semibold">{pendingContactData?.companyName}</span>"
+                    doesn't exist in your database.
                   </p>
                   <p className="text-sm text-gray-600">
-                    Would you like to create this company as a new lead? The
-                    contact will be added to this new company.
+                    Would you like to create this company as a new lead? The contact will be added
+                    to this new company.
                   </p>
                   <div className="flex justify-end gap-3 pt-4 flex-col sm:flex-row">
                     <Button
@@ -1033,15 +1059,11 @@ export default function Contacts() {
                     <Button
                       onClick={handleCreateNewCompany}
                       className="bg-orange-500 hover:bg-orange-600 min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
-                      disabled={
-                        createCompanyMutation.isPending ||
-                        createContactMutation.isPending
-                      }
+                      disabled={createCompanyMutation.isPending || createContactMutation.isPending}
                     >
-                      {createCompanyMutation.isPending ||
-                      createContactMutation.isPending
-                        ? "Creating..."
-                        : "Yes, create company"}
+                      {createCompanyMutation.isPending || createContactMutation.isPending
+                        ? 'Creating...'
+                        : 'Yes, create company'}
                     </Button>
                   </div>
                 </div>
@@ -1057,34 +1079,26 @@ export default function Contacts() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
-                    variant={filters.view === "all" ? "default" : "outline"}
+                    variant={filters.view === 'all' ? 'default' : 'outline'}
                     size="sm"
                     className="touch-manipulation active:scale-[0.98]"
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, view: "all" }))
-                    }
+                    onClick={() => setFilters((prev) => ({ ...prev, view: 'all' }))}
                   >
                     All contacts
                   </Button>
                   <Button
-                    variant={filters.view === "my" ? "default" : "outline"}
+                    variant={filters.view === 'my' ? 'default' : 'outline'}
                     size="sm"
                     className="touch-manipulation active:scale-[0.98]"
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, view: "my" }))
-                    }
+                    onClick={() => setFilters((prev) => ({ ...prev, view: 'my' }))}
                   >
                     My contacts
                   </Button>
                   <Button
-                    variant={
-                      filters.view === "unassigned" ? "default" : "outline"
-                    }
+                    variant={filters.view === 'unassigned' ? 'default' : 'outline'}
                     size="sm"
                     className="touch-manipulation active:scale-[0.98]"
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, view: "unassigned" }))
-                    }
+                    onClick={() => setFilters((prev) => ({ ...prev, view: 'unassigned' }))}
                   >
                     Unassigned
                   </Button>
@@ -1096,9 +1110,7 @@ export default function Contacts() {
                   </Button>
                 </div>
               </div>
-              <div className="text-sm text-gray-500 hidden sm:block">
-                All Views
-              </div>
+              <div className="text-sm text-gray-500 hidden sm:block">All Views</div>
             </div>
 
             {/* Filters Row */}
@@ -1137,9 +1149,7 @@ export default function Contacts() {
 
                 <Select
                   value={filters.leadStatus}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, leadStatus: value }))
-                  }
+                  onValueChange={(value) => setFilters((prev) => ({ ...prev, leadStatus: value }))}
                 >
                   <SelectTrigger className="w-40 min-h-[44px] touch-manipulation">
                     <SelectValue placeholder="Lead status" />
@@ -1175,7 +1185,11 @@ export default function Contacts() {
                   <span className="sm:hidden">Clear</span>
                 </Button>
 
-                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                >
                   <Settings className="w-4 h-4" />
                 </Button>
               </div>
@@ -1259,8 +1273,7 @@ export default function Contacts() {
               <div>
                 <p className="font-medium text-blue-900">Data Quality</p>
                 <p className="text-sm text-blue-700">
-                  Your contact data quality is good. 95% of contacts have
-                  complete information.
+                  Your contact data quality is good. 95% of contacts have complete information.
                 </p>
               </div>
             </div>
@@ -1292,12 +1305,9 @@ export default function Contacts() {
               <div className="flex items-center space-x-3">
                 <AlertCircle className="w-5 h-5 text-red-600" />
                 <div>
-                  <h3 className="font-medium text-red-900">
-                    Error Loading Contacts
-                  </h3>
+                  <h3 className="font-medium text-red-900">Error Loading Contacts</h3>
                   <p className="text-sm text-red-700 mt-1">
-                    {error.message ||
-                      "Failed to load contacts. Please try again."}
+                    {error.message || 'Failed to load contacts. Please try again.'}
                   </p>
                 </div>
               </div>
@@ -1313,40 +1323,48 @@ export default function Contacts() {
                 icon={Users}
                 title="No contacts found"
                 description={
-                  searchQuery || Object.values(filters).some((f) => f && f !== "all")
-                    ? "No contacts match your current search and filters."
+                  searchQuery || Object.values(filters).some((f) => f && f !== 'all')
+                    ? 'No contacts match your current search and filters.'
                     : "You haven't added any contacts yet. Create your first contact to get started."
                 }
-                type={searchQuery || Object.values(filters).some((f) => f && f !== "all") ? "search" : "default"}
+                type={
+                  searchQuery || Object.values(filters).some((f) => f && f !== 'all')
+                    ? 'search'
+                    : 'default'
+                }
                 action={{
-                  label: searchQuery || Object.values(filters).some((f) => f && f !== "all")
-                    ? "Clear filters"
-                    : "Create your first contact",
+                  label:
+                    searchQuery || Object.values(filters).some((f) => f && f !== 'all')
+                      ? 'Clear filters'
+                      : 'Create your first contact',
                   onClick: () => {
-                    if (searchQuery || Object.values(filters).some((f) => f && f !== "all")) {
+                    if (searchQuery || Object.values(filters).some((f) => f && f !== 'all')) {
                       clearFilters();
                     } else {
                       setDialogs((prev) => ({ ...prev, createContact: true }));
                     }
                   },
-                  icon: searchQuery || Object.values(filters).some((f) => f && f !== "all") ? Filter : Plus,
+                  icon:
+                    searchQuery || Object.values(filters).some((f) => f && f !== 'all')
+                      ? Filter
+                      : Plus,
                 }}
                 secondaryAction={
-                  searchQuery || Object.values(filters).some((f) => f && f !== "all")
+                  searchQuery || Object.values(filters).some((f) => f && f !== 'all')
                     ? {
-                        label: "Create contact",
+                        label: 'Create contact',
                         onClick: () => setDialogs((prev) => ({ ...prev, createContact: true })),
-                        variant: "outline",
+                        variant: 'outline',
                         icon: Plus,
                       }
                     : undefined
                 }
                 suggestions={
-                  searchQuery || Object.values(filters).some((f) => f && f !== "all")
+                  searchQuery || Object.values(filters).some((f) => f && f !== 'all')
                     ? [
-                        "Check for typos in your search",
-                        "Try broader search terms",
-                        "Remove some filters",
+                        'Check for typos in your search',
+                        'Try broader search terms',
+                        'Remove some filters',
                       ]
                     : undefined
                 }
@@ -1359,41 +1377,21 @@ export default function Contacts() {
                     <thead>
                       <tr className="border-b bg-gray-50">
                         <th className="text-left p-4 w-12">
-                          <Checkbox
-                            checked={isAllSelected}
-                            onCheckedChange={toggleAll}
-                          />
+                          <Checkbox checked={isAllSelected} onCheckedChange={toggleAll} />
                         </th>
-                        <th className="text-left p-4 font-medium text-gray-700">
-                          NAME
-                        </th>
-                        <th className="text-left p-4 font-medium text-gray-700">
-                          EMAIL
-                        </th>
-                        <th className="text-left p-4 font-medium text-gray-700">
-                          PHONE
-                        </th>
-                        <th className="text-left p-4 font-medium text-gray-700">
-                          DEPARTMENT
-                        </th>
-                        <th className="text-left p-4 font-medium text-gray-700">
-                          STATUS
-                        </th>
-                        <th className="text-left p-4 font-medium text-gray-700">
-                          COMPANY
-                        </th>
-                        <th className="text-left p-4 font-medium text-gray-700">
-                          OWNER
-                        </th>
+                        <th className="text-left p-4 font-medium text-gray-700">NAME</th>
+                        <th className="text-left p-4 font-medium text-gray-700">EMAIL</th>
+                        <th className="text-left p-4 font-medium text-gray-700">PHONE</th>
+                        <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
+                        <th className="text-left p-4 font-medium text-gray-700">STATUS</th>
+                        <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
+                        <th className="text-left p-4 font-medium text-gray-700">OWNER</th>
                         <th className="w-12"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {contacts.map((contact: Contact) => (
-                        <tr
-                          key={contact.id}
-                          className="border-b hover:bg-gray-50"
-                        >
+                        <tr key={contact.id} className="border-b hover:bg-gray-50">
                           <td className="p-4">
                             <Checkbox
                               checked={isSelected(contact.id)}
@@ -1404,8 +1402,8 @@ export default function Contacts() {
                             <div className="flex items-center space-x-3">
                               <Avatar className="h-8 w-8">
                                 <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
-                                  {contact.firstName?.charAt(0) || "C"}
-                                  {contact.lastName?.charAt(0) || "C"}
+                                  {contact.firstName?.charAt(0) || 'C'}
+                                  {contact.lastName?.charAt(0) || 'C'}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
@@ -1413,35 +1411,21 @@ export default function Contacts() {
                                   className="font-medium text-blue-600 hover:text-blue-800 text-left"
                                   onClick={() => handleViewContact(contact)}
                                 >
-                                  {contact.salutation
-                                    ? `${contact.salutation} `
-                                    : ""}
-                                  {contact.firstName || ""} {contact.lastName}
+                                  {contact.salutation ? `${contact.salutation} ` : ''}
+                                  {contact.firstName || ''} {contact.lastName}
                                 </button>
                                 {contact.title && (
-                                  <p className="text-sm text-gray-500">
-                                    {contact.title}
-                                  </p>
+                                  <p className="text-sm text-gray-500">{contact.title}</p>
                                 )}
                               </div>
                             </div>
                           </td>
-                          <td className="p-4 text-gray-900">
-                            {contact.email || "--"}
-                          </td>
-                          <td className="p-4 text-gray-900">
-                            {contact.phone || "--"}
-                          </td>
-                          <td className="p-4 text-gray-900">
-                            {contact.department || "--"}
-                          </td>
+                          <td className="p-4 text-gray-900">{contact.email || '--'}</td>
+                          <td className="p-4 text-gray-900">{contact.phone || '--'}</td>
+                          <td className="p-4 text-gray-900">{contact.department || '--'}</td>
                           <td className="p-4">
-                            <Badge
-                              className={`${getStatusColor(
-                                contact.leadStatus
-                              )} border-0`}
-                            >
-                              {contact.leadStatus || "New"}
+                            <Badge className={`${getStatusColor(contact.leadStatus)} border-0`}>
+                              {contact.leadStatus || 'New'}
                             </Badge>
                           </td>
                           <td className="p-4">
@@ -1452,9 +1436,7 @@ export default function Contacts() {
                               </span>
                             </div>
                           </td>
-                          <td className="p-4 text-gray-900">
-                            {getUserName(contact.ownerId)}
-                          </td>
+                          <td className="p-4 text-gray-900">{getUserName(contact.ownerId)}</td>
 
                           <td className="p-4">
                             <DropdownMenu>
@@ -1464,15 +1446,11 @@ export default function Contacts() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => handleViewContact(contact)}
-                                >
+                                <DropdownMenuItem onClick={() => handleViewContact(contact)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   View contact
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleLogActivity(contact)}
-                                >
+                                <DropdownMenuItem onClick={() => handleLogActivity(contact)}>
                                   <Activity className="w-4 h-4 mr-2" />
                                   Log activity
                                 </DropdownMenuItem>
@@ -1497,9 +1475,9 @@ export default function Contacts() {
                                   onClick={() => {
                                     if (
                                       confirm(
-                                        `Delete ${contact.firstName || ""} ${
+                                        `Delete ${contact.firstName || ''} ${
                                           contact.lastName
-                                        }? This cannot be undone.`
+                                        }? This cannot be undone.`,
                                       )
                                     ) {
                                       deleteContactMutation.mutate(contact.id);
@@ -1534,25 +1512,29 @@ export default function Contacts() {
                           />
                           <Avatar className="h-12 w-12 flex-shrink-0">
                             <AvatarFallback className="bg-blue-100 text-blue-600">
-                              {contact.firstName?.charAt(0) || "C"}
-                              {contact.lastName?.charAt(0) || "C"}
+                              {contact.firstName?.charAt(0) || 'C'}
+                              {contact.lastName?.charAt(0) || 'C'}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <button
-                              className="font-semibold text-blue-600 hover:text-blue-800 text-left block truncate w-full min-h-[44px] flex items-center touch-manipulation active:scale-[0.98]"
+                              className="font-semibold text-blue-600 hover:text-blue-800 text-left truncate w-full min-h-[44px] flex items-center touch-manipulation active:scale-[0.98]"
                               onClick={() => handleViewContact(contact)}
                             >
-                              {contact.firstName || ""} {contact.lastName}
+                              {contact.firstName || ''} {contact.lastName}
                             </button>
                             <p className="text-sm text-gray-500 truncate -mt-2">
-                              {contact.title || "No title"}
+                              {contact.title || 'No title'}
                             </p>
                           </div>
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation active:scale-[0.98]">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="min-w-[44px] min-h-[44px] touch-manipulation active:scale-[0.98]"
+                            >
                               <MoreHorizontal className="w-5 h-5" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -1585,15 +1567,9 @@ export default function Contacts() {
 
                       <div className="space-y-3">
                         <div className="flex items-center justify-between min-h-[32px]">
-                          <span className="text-sm font-medium text-gray-600">
-                            Status
-                          </span>
-                          <Badge
-                            className={`${getStatusColor(
-                              contact.leadStatus
-                            )} border-0`}
-                          >
-                            {contact.leadStatus || "New"}
+                          <span className="text-sm font-medium text-gray-600">Status</span>
+                          <Badge className={`${getStatusColor(contact.leadStatus)} border-0`}>
+                            {contact.leadStatus || 'New'}
                           </Badge>
                         </div>
 
@@ -1602,31 +1578,21 @@ export default function Contacts() {
                             <span className="text-sm font-medium text-gray-600 flex-shrink-0">
                               Email
                             </span>
-                            <span className="text-sm text-gray-900 truncate">
-                              {contact.email}
-                            </span>
+                            <span className="text-sm text-gray-900 truncate">{contact.email}</span>
                           </div>
                         )}
 
                         {contact.phone && (
                           <div className="flex items-center justify-between min-h-[32px]">
-                            <span className="text-sm font-medium text-gray-600">
-                              Phone
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              {contact.phone}
-                            </span>
+                            <span className="text-sm font-medium text-gray-600">Phone</span>
+                            <span className="text-sm text-gray-900">{contact.phone}</span>
                           </div>
                         )}
 
                         {contact.department && (
                           <div className="flex items-center justify-between min-h-[32px]">
-                            <span className="text-sm font-medium text-gray-600">
-                              Department
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              {contact.department}
-                            </span>
+                            <span className="text-sm font-medium text-gray-600">Department</span>
+                            <span className="text-sm text-gray-900">{contact.department}</span>
                           </div>
                         )}
 
@@ -1635,7 +1601,7 @@ export default function Contacts() {
                             Company
                           </span>
                           <span className="text-sm text-gray-900 truncate">
-                            {getCompanyName(contact.companyId) || "No company"}
+                            {getCompanyName(contact.companyId) || 'No company'}
                           </span>
                         </div>
                       </div>
@@ -1668,17 +1634,14 @@ export default function Contacts() {
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-500">
                   {(currentPage - 1) * pageSize + 1}-
-                  {Math.min(currentPage * pageSize, totalContacts)} of{" "}
-                  {totalContacts}
+                  {Math.min(currentPage * pageSize, totalContacts)} of {totalContacts}
                 </span>
                 <div className="flex space-x-1">
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={currentPage === 1}
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
@@ -1686,9 +1649,7 @@ export default function Contacts() {
                     variant="outline"
                     size="sm"
                     disabled={currentPage === totalPages}
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   >
                     <ChevronRight className="w-4 h-4" />
                   </Button>
@@ -1701,32 +1662,45 @@ export default function Contacts() {
         {/* Log Activity Dialog */}
         <Dialog
           open={dialogs.logActivity}
-          onOpenChange={(open) =>
-            setDialogs((prev) => ({ ...prev, logActivity: open }))
-          }
+          onOpenChange={(open) => setDialogs((prev) => ({ ...prev, logActivity: open }))}
         >
           <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle>
-                Log activity for {selectedContact?.firstName}{" "}
-                {selectedContact?.lastName}
+                Log activity for {selectedContact?.firstName} {selectedContact?.lastName}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 sm:space-y-6">
               <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                >
                   <FileText className="w-4 h-4 mr-2" />
                   Note
                 </Button>
-                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                >
                   <Mail className="w-4 h-4 mr-2" />
                   Email
                 </Button>
-                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                >
                   <Phone className="w-4 h-4 mr-2" />
                   Call
                 </Button>
-                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation active:scale-[0.98]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] touch-manipulation active:scale-[0.98]"
+                >
                   <Calendar className="w-4 h-4 mr-2" />
                   Meeting
                 </Button>
@@ -1743,10 +1717,7 @@ export default function Contacts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Activity date</Label>
-                  <Input
-                    type="date"
-                    defaultValue={new Date().toISOString().split("T")[0]}
-                  />
+                  <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} />
                 </div>
                 <div>
                   <Label>Follow-up in</Label>
@@ -1768,9 +1739,7 @@ export default function Contacts() {
               <div className="flex justify-end gap-3 pt-4 flex-col sm:flex-row">
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    setDialogs((prev) => ({ ...prev, logActivity: false }))
-                  }
+                  onClick={() => setDialogs((prev) => ({ ...prev, logActivity: false }))}
                   className="min-h-[44px] touch-manipulation active:scale-[0.98] order-2 sm:order-1"
                 >
                   Cancel
@@ -1786,9 +1755,7 @@ export default function Contacts() {
         {/* Contact Details Dialog */}
         <Dialog
           open={dialogs.contactDetails}
-          onOpenChange={(open) =>
-            setDialogs((prev) => ({ ...prev, contactDetails: open }))
-          }
+          onOpenChange={(open) => setDialogs((prev) => ({ ...prev, contactDetails: open }))}
         >
           <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
@@ -1809,11 +1776,9 @@ export default function Contacts() {
                     </h3>
                     <p className="text-gray-600">{selectedContact.title}</p>
                     <Badge
-                      className={`${getStatusColor(
-                        selectedContact.leadStatus
-                      )} border-0 mt-1`}
+                      className={`${getStatusColor(selectedContact.leadStatus)} border-0 mt-1`}
                     >
-                      {selectedContact.leadStatus || "New"}
+                      {selectedContact.leadStatus || 'New'}
                     </Badge>
                   </div>
                 </div>
@@ -1821,52 +1786,32 @@ export default function Contacts() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Email
-                      </Label>
-                      <p className="text-gray-900">
-                        {selectedContact.email || "Not provided"}
-                      </p>
+                      <Label className="text-sm font-medium text-gray-500">Email</Label>
+                      <p className="text-gray-900">{selectedContact.email || 'Not provided'}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Phone
-                      </Label>
-                      <p className="text-gray-900">
-                        {selectedContact.phone || "Not provided"}
-                      </p>
+                      <Label className="text-sm font-medium text-gray-500">Phone</Label>
+                      <p className="text-gray-900">{selectedContact.phone || 'Not provided'}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Company
-                      </Label>
+                      <Label className="text-sm font-medium text-gray-500">Company</Label>
                       <p className="text-gray-900">
-                        {selectedContact.companyName || "Not provided"}
+                        {selectedContact.companyName || 'Not provided'}
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Owner
-                      </Label>
-                      <p className="text-gray-900">
-                        {selectedContact.ownerName || "Unassigned"}
-                      </p>
+                      <Label className="text-sm font-medium text-gray-500">Owner</Label>
+                      <p className="text-gray-900">{selectedContact.ownerName || 'Unassigned'}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Last Activity
-                      </Label>
-                      <p className="text-gray-900">
-                        {formatDate(selectedContact.lastContactDate)}
-                      </p>
+                      <Label className="text-sm font-medium text-gray-500">Last Activity</Label>
+                      <p className="text-gray-900">{formatDate(selectedContact.lastContactDate)}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Next Follow-up
-                      </Label>
+                      <Label className="text-sm font-medium text-gray-500">Next Follow-up</Label>
                       <p className="text-gray-900">
                         {formatDate(selectedContact.nextFollowUpDate)}
                       </p>
@@ -1877,14 +1822,14 @@ export default function Contacts() {
                 <div className="flex justify-end gap-3 pt-4 flex-col sm:flex-row">
                   <Button
                     variant="outline"
-                    onClick={() =>
-                      setDialogs((prev) => ({ ...prev, contactDetails: false }))
-                    }
+                    onClick={() => setDialogs((prev) => ({ ...prev, contactDetails: false }))}
                     className="min-h-[44px] touch-manipulation active:scale-[0.98] order-2 sm:order-1"
                   >
                     Close
                   </Button>
-                  <Button className="min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2">Edit Contact</Button>
+                  <Button className="min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2">
+                    Edit Contact
+                  </Button>
                 </div>
               </div>
             )}
