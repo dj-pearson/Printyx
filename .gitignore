@@ -56,3 +56,4 @@ EDGE_FUNCTIONS_QUICK_START.md
 docs/SUPABASE_AUTH_MIGRATION.md
 START_HERE_DEPLOYMENT.md
 .env
+scripts/export-complete-database.js
