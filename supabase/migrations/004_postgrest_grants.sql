@@ -17,6 +17,7 @@ GRANT USAGE ON SCHEMA public TO anon;
 GRANT SELECT ON TABLE public.roles TO authenticated;
 GRANT SELECT ON TABLE public.teams TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.users TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.company_contacts TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.business_records TO authenticated;
 
 -- If your app reads tenants in-client (optional; keep RLS)

@@ -7,11 +7,33 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from './config';
 
 // Custom fetch that doesn't include credentials to avoid CORS issues with wildcard origins
-const customFetch = (url: RequestInfo | URL, options?: RequestInit) => {
-  return fetch(url, {
+const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
+  const res = await fetch(url, {
     ...options,
     credentials: 'omit', // Don't send cookies - use Bearer token auth instead
   });
+
+  // If we ever see HTML, we're almost certainly hitting the SPA (index.html)
+  // due to a misconfigured Supabase URL/proxy.
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('text/html')) {
+    const requestUrl = typeof url === 'string' ? url : url.toString();
+    const hint =
+      `Supabase request returned HTML (likely index.html). ` +
+      `Check VITE_SUPABASE_URL and VITE_USE_SUPABASE_PROXY. ` +
+      `Request: ${requestUrl} (status ${res.status}).`;
+    // Log full context for quick diagnosis
+    console.error(hint, {
+      requestUrl,
+      status: res.status,
+      contentType,
+      configuredSupabaseUrl: config.supabase.url,
+      useProxy: config.useSupabaseProxy,
+    });
+    throw new Error(hint);
+  }
+
+  return res;
 };
 
 // Create Supabase client with custom domain configuration
