@@ -96,17 +96,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Logout handler
   const logout = useCallback(async () => {
-    await supabaseAuth.logout();
+    try {
+      // Sign out from Supabase
+      await supabaseAuth.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
 
-    // Clear local storage
+    // Clear ALL local storage items related to auth
     localStorage.removeItem('printyx_auth_user');
     localStorage.removeItem('printyx_last_route');
+    localStorage.removeItem('printyx-auth'); // Supabase session storage key
+
+    // Also clear any other Supabase storage keys (they use this pattern)
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('sb-') || key.includes('supabase') || key.includes('printyx')) {
+        localStorage.removeItem(key);
+      }
+    });
 
     // Clear query cache
     queryClient.clear();
 
-    // Redirect to login
-    window.location.href = '/login';
+    // Force redirect to login page (use replace to prevent back button)
+    window.location.replace('/login');
   }, [supabaseAuth, queryClient]);
 
   // Build context value

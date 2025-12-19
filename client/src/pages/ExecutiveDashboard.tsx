@@ -1,15 +1,22 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  BarChart3, 
+import {
+  BarChart3,
   TrendingUp,
   TrendingDown,
   Target,
@@ -30,26 +37,26 @@ import {
   ArrowDown,
   Building,
   Zap,
-  Star
+  Star,
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  PieChart as RechartsPieChart, 
-  Pie, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
   Cell,
   AreaChart,
   Area,
-  ComposedChart
+  ComposedChart,
 } from 'recharts';
 
 // Executive data types
@@ -141,10 +148,32 @@ interface TerritoryPerformance {
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 100,
+    },
+  },
+};
+
 export default function ExecutiveDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'30d' | '90d' | 'ytd' | '12m'>('ytd');
   const [selectedView, setSelectedView] = useState<'overview' | 'detailed'>('overview');
-  
+
   // Fetch executive summary
   const { data: executiveSummary } = useQuery<ExecutiveSummary>({
     queryKey: ['/api/reports/executive-summary', selectedPeriod],
@@ -184,33 +213,45 @@ export default function ExecutiveDashboard() {
   // Helper functions
   const getKPIStatusColor = (status: string) => {
     switch (status) {
-      case 'above': return 'text-green-600';
-      case 'at': return 'text-blue-600';
-      default: return 'text-red-600';
+      case 'above':
+        return 'text-green-600';
+      case 'at':
+        return 'text-blue-600';
+      default:
+        return 'text-red-600';
     }
   };
 
   const getKPIStatusIcon = (status: string) => {
     switch (status) {
-      case 'above': return ArrowUp;
-      case 'at': return Target;
-      default: return ArrowDown;
+      case 'above':
+        return ArrowUp;
+      case 'at':
+        return Target;
+      default:
+        return ArrowDown;
     }
   };
 
   const getInsightIcon = (category: string) => {
     switch (category) {
-      case 'opportunity': return TrendingUp;
-      case 'risk': return AlertTriangle;
-      default: return Activity;
+      case 'opportunity':
+        return TrendingUp;
+      case 'risk':
+        return AlertTriangle;
+      default:
+        return Activity;
     }
   };
 
   const getInsightColor = (impact: string) => {
     switch (impact) {
-      case 'high': return 'border-red-200 bg-red-50';
-      case 'medium': return 'border-yellow-200 bg-yellow-50';
-      default: return 'border-blue-200 bg-blue-50';
+      case 'high':
+        return 'border-red-200 bg-red-50';
+      case 'medium':
+        return 'border-yellow-200 bg-yellow-50';
+      default:
+        return 'border-blue-200 bg-blue-50';
     }
   };
 
@@ -219,204 +260,249 @@ export default function ExecutiveDashboard() {
       title="Executive Dashboard"
       description="Strategic insights and cross-functional performance metrics"
     >
-      <div className="space-y-6">
+      <motion.div
+        className="space-y-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Filters and Controls */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="flex flex-col md:flex-row gap-4">
-                <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30d">Last 30 days</SelectItem>
-                    <SelectItem value="90d">Last 90 days</SelectItem>
-                    <SelectItem value="ytd">Year to date</SelectItem>
-                    <SelectItem value="12m">Last 12 months</SelectItem>
-                  </SelectContent>
-                </Select>
+        <motion.div variants={itemVariants}>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <Select
+                    value={selectedPeriod}
+                    onValueChange={(value: any) => setSelectedPeriod(value)}
+                  >
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                      <SelectItem value="90d">Last 90 days</SelectItem>
+                      <SelectItem value="ytd">Year to date</SelectItem>
+                      <SelectItem value="12m">Last 12 months</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Select value={selectedView} onValueChange={(value: any) => setSelectedView(value)}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="overview">Overview</SelectItem>
-                    <SelectItem value="detailed">Detailed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <Select
+                    value={selectedView}
+                    onValueChange={(value: any) => setSelectedView(value)}
+                  >
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="overview">Overview</SelectItem>
+                      <SelectItem value="detailed">Detailed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Report
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Schedule
-                </Button>
-                <Button variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Report
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Schedule
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Critical Business Alerts */}
-        {businessInsights.filter(insight => insight.impact === 'high').length > 0 && (
-          <Alert className="border-orange-200 bg-orange-50">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              <strong>Strategic Attention Required:</strong> {businessInsights.filter(insight => insight.impact === 'high').length} high-impact insights require executive review.
-            </AlertDescription>
-          </Alert>
+        {businessInsights.filter((insight) => insight.impact === 'high').length > 0 && (
+          <motion.div variants={itemVariants}>
+            <Alert className="border-orange-200 bg-orange-50 animate-pulse">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-800">
+                <strong>Strategic Attention Required:</strong>{' '}
+                {businessInsights.filter((insight) => insight.impact === 'high').length} high-impact
+                insights require executive review.
+              </AlertDescription>
+            </Alert>
+          </motion.div>
         )}
 
         {/* Executive Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Revenue */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <DollarSign className="h-8 w-8 text-green-600" />
-                <Badge variant={
-                  (executiveSummary?.revenue.attainment || 0) >= 100 ? 'default' : 
-                  (executiveSummary?.revenue.attainment || 0) >= 85 ? 'secondary' : 
-                  'destructive'
-                }>
-                  {executiveSummary?.revenue.attainment.toFixed(0) || 0}%
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold">
-                  ${executiveSummary?.revenue.total?.toLocaleString() || '0'}
-                </p>
-                <div className="flex items-center text-xs mt-1">
-                  {(executiveSummary?.revenue.growth || 0) >= 0 ? 
-                    <ArrowUp className="h-3 w-3 mr-1 text-green-600" /> :
-                    <ArrowDown className="h-3 w-3 mr-1 text-red-600" />
-                  }
-                  <span className={(executiveSummary?.revenue.growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {(executiveSummary?.revenue.growth || 0) >= 0 ? '+' : ''}{executiveSummary?.revenue.growth?.toFixed(1) || 0}%
-                  </span>
+          <motion.div variants={itemVariants} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+            <Card className="h-full hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <DollarSign className="h-8 w-8 text-green-600" />
+                  <Badge
+                    variant={
+                      (executiveSummary?.revenue.attainment || 0) >= 100
+                        ? 'default'
+                        : (executiveSummary?.revenue.attainment || 0) >= 85
+                          ? 'secondary'
+                          : 'destructive'
+                    }
+                  >
+                    {executiveSummary?.revenue.attainment.toFixed(0) || 0}%
+                  </Badge>
                 </div>
-                <Progress value={executiveSummary?.revenue.attainment || 0} className="mt-2" />
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-2xl font-bold">
+                    ${executiveSummary?.revenue.total?.toLocaleString() || '0'}
+                  </p>
+                  <div className="flex items-center text-xs mt-1">
+                    {(executiveSummary?.revenue.growth || 0) >= 0 ? (
+                      <ArrowUp className="h-3 w-3 mr-1 text-green-600" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3 mr-1 text-red-600" />
+                    )}
+                    <span
+                      className={
+                        (executiveSummary?.revenue.growth || 0) >= 0
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }
+                    >
+                      {(executiveSummary?.revenue.growth || 0) >= 0 ? '+' : ''}
+                      {executiveSummary?.revenue.growth?.toFixed(1) || 0}%
+                    </span>
+                  </div>
+                  <Progress value={executiveSummary?.revenue.attainment || 0} className="mt-2" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Sales Performance */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Target className="h-8 w-8 text-blue-600" />
-                <Badge variant="outline">
-                  {executiveSummary?.sales.closeRate.toFixed(1) || 0}%
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Sales Pipeline</p>
-                <p className="text-2xl font-bold">
-                  ${executiveSummary?.sales.pipelineValue?.toLocaleString() || '0'}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {executiveSummary?.sales.dealsWon || 0} deals won this period
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Avg cycle: {executiveSummary?.sales.salesCycleTime || 0} days
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+            <Card className="h-full hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Target className="h-8 w-8 text-blue-600" />
+                  <Badge variant="outline">
+                    {executiveSummary?.sales.closeRate.toFixed(1) || 0}%
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Sales Pipeline</p>
+                  <p className="text-2xl font-bold">
+                    ${executiveSummary?.sales.pipelineValue?.toLocaleString() || '0'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {executiveSummary?.sales.dealsWon || 0} deals won this period
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Avg cycle: {executiveSummary?.sales.salesCycleTime || 0} days
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Service Excellence */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Users className="h-8 w-8 text-purple-600" />
-                <Badge variant={
-                  (executiveSummary?.service.customerSatisfaction || 0) >= 4.5 ? 'default' :
-                  (executiveSummary?.service.customerSatisfaction || 0) >= 4.0 ? 'secondary' :
-                  'destructive'
-                }>
-                  {executiveSummary?.service.customerSatisfaction.toFixed(1) || 0}/5
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Customer Satisfaction</p>
-                <p className="text-2xl font-bold">
-                  {executiveSummary?.service.firstCallResolution.toFixed(0) || 0}%
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  First call resolution rate
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Avg response: {executiveSummary?.service.avgResponseTime.toFixed(1) || 0}h
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+            <Card className="h-full hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Users className="h-8 w-8 text-purple-600" />
+                  <Badge
+                    variant={
+                      (executiveSummary?.service.customerSatisfaction || 0) >= 4.5
+                        ? 'default'
+                        : (executiveSummary?.service.customerSatisfaction || 0) >= 4.0
+                          ? 'secondary'
+                          : 'destructive'
+                    }
+                  >
+                    {executiveSummary?.service.customerSatisfaction.toFixed(1) || 0}/5
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Customer Satisfaction</p>
+                  <p className="text-2xl font-bold">
+                    {executiveSummary?.service.firstCallResolution.toFixed(0) || 0}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">First call resolution rate</p>
+                  <p className="text-xs text-muted-foreground">
+                    Avg response: {executiveSummary?.service.avgResponseTime.toFixed(1) || 0}h
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Financial Health */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <BarChart3 className="h-8 w-8 text-orange-600" />
-                <Badge variant={
-                  (executiveSummary?.financial.grossMargin || 0) >= 35 ? 'default' :
-                  (executiveSummary?.financial.grossMargin || 0) >= 25 ? 'secondary' :
-                  'destructive'
-                }>
-                  {executiveSummary?.financial.grossMargin.toFixed(1) || 0}%
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Gross Margin</p>
-                <p className="text-2xl font-bold">
-                  {executiveSummary?.financial.collectionRate.toFixed(0) || 0}%
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Collection rate
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  DSO: {executiveSummary?.financial.daysOutstanding || 0} days
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+            <Card className="h-full hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <BarChart3 className="h-8 w-8 text-orange-600" />
+                  <Badge
+                    variant={
+                      (executiveSummary?.financial.grossMargin || 0) >= 35
+                        ? 'default'
+                        : (executiveSummary?.financial.grossMargin || 0) >= 25
+                          ? 'secondary'
+                          : 'destructive'
+                    }
+                  >
+                    {executiveSummary?.financial.grossMargin.toFixed(1) || 0}%
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Gross Margin</p>
+                  <p className="text-2xl font-bold">
+                    {executiveSummary?.financial.collectionRate.toFixed(0) || 0}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Collection rate</p>
+                  <p className="text-xs text-muted-foreground">
+                    DSO: {executiveSummary?.financial.daysOutstanding || 0} days
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Customer Growth */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Activity className="h-8 w-8 text-indigo-600" />
-                <Badge variant={
-                  (executiveSummary?.customers.churnRate || 0) <= 5 ? 'default' :
-                  (executiveSummary?.customers.churnRate || 0) <= 10 ? 'secondary' :
-                  'destructive'
-                }>
-                  {executiveSummary?.customers.churnRate.toFixed(1) || 0}%
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Customer Churn</p>
-                <p className="text-2xl font-bold">
-                  {executiveSummary?.customers.totalActive?.toLocaleString() || '0'}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Active customers
-                </p>
-                <p className="text-xs text-green-600">
-                  +{executiveSummary?.customers.newAcquisitions || 0} new this period
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div variants={itemVariants} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+            <Card className="h-full hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Activity className="h-8 w-8 text-indigo-600" />
+                  <Badge
+                    variant={
+                      (executiveSummary?.customers.churnRate || 0) <= 5
+                        ? 'default'
+                        : (executiveSummary?.customers.churnRate || 0) <= 10
+                          ? 'secondary'
+                          : 'destructive'
+                    }
+                  >
+                    {executiveSummary?.customers.churnRate.toFixed(1) || 0}%
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Customer Churn</p>
+                  <p className="text-2xl font-bold">
+                    {executiveSummary?.customers.totalActive?.toLocaleString() || '0'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Active customers</p>
+                  <p className="text-xs text-green-600">
+                    +{executiveSummary?.customers.newAcquisitions || 0} new this period
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         <Tabs defaultValue="insights" className="w-full">
@@ -434,7 +520,9 @@ export default function ExecutiveDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle>Strategic Insights</CardTitle>
-                  <CardDescription>AI-powered business intelligence and recommendations</CardDescription>
+                  <CardDescription>
+                    AI-powered business intelligence and recommendations
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -443,7 +531,10 @@ export default function ExecutiveDashboard() {
                       .map((insight, index) => {
                         const InsightIcon = getInsightIcon(insight.category);
                         return (
-                          <div key={index} className={`p-4 rounded-lg border ${getInsightColor(insight.impact)}`}>
+                          <div
+                            key={index}
+                            className={`p-4 rounded-lg border ${getInsightColor(insight.impact)}`}
+                          >
                             <div className="flex items-start space-x-3">
                               <div className="p-1 rounded">
                                 <InsightIcon className="h-4 w-4" />
@@ -451,11 +542,15 @@ export default function ExecutiveDashboard() {
                               <div className="flex-1">
                                 <div className="flex items-center justify-between mb-1">
                                   <h4 className="font-medium">{insight.title}</h4>
-                                  <Badge variant={
-                                    insight.impact === 'high' ? 'destructive' :
-                                    insight.impact === 'medium' ? 'secondary' :
-                                    'outline'
-                                  }>
+                                  <Badge
+                                    variant={
+                                      insight.impact === 'high'
+                                        ? 'destructive'
+                                        : insight.impact === 'medium'
+                                          ? 'secondary'
+                                          : 'outline'
+                                    }
+                                  >
                                     {insight.impact} impact
                                   </Badge>
                                 </div>
@@ -489,8 +584,20 @@ export default function ExecutiveDashboard() {
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
-                      <Area type="monotone" dataKey="revenue" stackId="1" stroke="#8884d8" fill="#8884d8" opacity={0.6} />
-                      <Line type="monotone" dataKey="customerSatisfaction" stroke="#82ca9d" strokeWidth={2} />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stackId="1"
+                        stroke="#8884d8"
+                        fill="#8884d8"
+                        opacity={0.6}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="customerSatisfaction"
+                        stroke="#82ca9d"
+                        strokeWidth={2}
+                      />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -504,7 +611,9 @@ export default function ExecutiveDashboard() {
               <Card key={index}>
                 <CardHeader>
                   <CardTitle>{scorecard.category} Performance</CardTitle>
-                  <CardDescription>Key performance indicators vs targets and benchmarks</CardDescription>
+                  <CardDescription>
+                    Key performance indicators vs targets and benchmarks
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -515,7 +624,9 @@ export default function ExecutiveDashboard() {
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-medium">{kpi.name}</h4>
                             <div className="flex items-center">
-                              <StatusIcon className={`h-4 w-4 mr-1 ${getKPIStatusColor(kpi.status)}`} />
+                              <StatusIcon
+                                className={`h-4 w-4 mr-1 ${getKPIStatusColor(kpi.status)}`}
+                              />
                               {kpi.criticalSuccess && <Star className="h-4 w-4 text-yellow-500" />}
                             </div>
                           </div>
@@ -523,21 +634,29 @@ export default function ExecutiveDashboard() {
                             <div className="flex justify-between text-sm">
                               <span>Current:</span>
                               <span className="font-medium">
-                                {kpi.current}{kpi.unit}
+                                {kpi.current}
+                                {kpi.unit}
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span>Target:</span>
-                              <span>{kpi.target}{kpi.unit}</span>
+                              <span>
+                                {kpi.target}
+                                {kpi.unit}
+                              </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span>Benchmark:</span>
-                              <span>{kpi.benchmark}{kpi.unit}</span>
+                              <span>
+                                {kpi.benchmark}
+                                {kpi.unit}
+                              </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span>Trend:</span>
                               <span className={kpi.trend >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                {kpi.trend >= 0 ? '+' : ''}{kpi.trend.toFixed(1)}%
+                                {kpi.trend >= 0 ? '+' : ''}
+                                {kpi.trend.toFixed(1)}%
                               </span>
                             </div>
                             <Progress value={Math.min((kpi.current / kpi.target) * 100, 100)} />
@@ -556,7 +675,9 @@ export default function ExecutiveDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Market Position Analysis</CardTitle>
-                <CardDescription>Performance vs industry benchmarks and competitors</CardDescription>
+                <CardDescription>
+                  Performance vs industry benchmarks and competitors
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -564,11 +685,15 @@ export default function ExecutiveDashboard() {
                     <div key={index} className="p-4 border rounded-lg">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-medium">{metric.metric}</h4>
-                        <Badge variant={
-                          metric.ranking <= metric.totalCompetitors * 0.3 ? 'default' :
-                          metric.ranking <= metric.totalCompetitors * 0.7 ? 'secondary' :
-                          'destructive'
-                        }>
+                        <Badge
+                          variant={
+                            metric.ranking <= metric.totalCompetitors * 0.3
+                              ? 'default'
+                              : metric.ranking <= metric.totalCompetitors * 0.7
+                                ? 'secondary'
+                                : 'destructive'
+                          }
+                        >
                           #{metric.ranking} of {metric.totalCompetitors}
                         </Badge>
                       </div>
@@ -583,16 +708,24 @@ export default function ExecutiveDashboard() {
                         </div>
                         <div className="text-center">
                           <p className="text-muted-foreground">Top Performer</p>
-                          <p className="text-lg font-semibold text-green-600">{metric.topPerformer}</p>
+                          <p className="text-lg font-semibold text-green-600">
+                            {metric.topPerformer}
+                          </p>
                         </div>
                       </div>
                       <div className="mt-3">
                         <div className="flex justify-between text-xs mb-1">
                           <span>Gap to Leader</span>
-                          <span>{((metric.topPerformer - metric.ourValue) / metric.topPerformer * 100).toFixed(1)}%</span>
+                          <span>
+                            {(
+                              ((metric.topPerformer - metric.ourValue) / metric.topPerformer) *
+                              100
+                            ).toFixed(1)}
+                            %
+                          </span>
                         </div>
-                        <Progress 
-                          value={Math.min((metric.ourValue / metric.topPerformer) * 100, 100)} 
+                        <Progress
+                          value={Math.min((metric.ourValue / metric.topPerformer) * 100, 100)}
                           className="h-2"
                         />
                       </div>
@@ -608,7 +741,9 @@ export default function ExecutiveDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Territory Performance Matrix</CardTitle>
-                <CardDescription>Regional performance and market penetration analysis</CardDescription>
+                <CardDescription>
+                  Regional performance and market penetration analysis
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -617,20 +752,29 @@ export default function ExecutiveDashboard() {
                       <div className="flex items-center justify-between mb-4">
                         <div>
                           <h4 className="font-medium">{territory.territory} Territory</h4>
-                          <p className="text-sm text-muted-foreground">Manager: {territory.manager}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Manager: {territory.manager}
+                          </p>
                         </div>
-                        <Badge variant={
-                          territory.revenueGrowth >= 15 ? 'default' :
-                          territory.revenueGrowth >= 5 ? 'secondary' :
-                          'destructive'
-                        }>
-                          {territory.revenueGrowth >= 0 ? '+' : ''}{territory.revenueGrowth.toFixed(1)}% growth
+                        <Badge
+                          variant={
+                            territory.revenueGrowth >= 15
+                              ? 'default'
+                              : territory.revenueGrowth >= 5
+                                ? 'secondary'
+                                : 'destructive'
+                          }
+                        >
+                          {territory.revenueGrowth >= 0 ? '+' : ''}
+                          {territory.revenueGrowth.toFixed(1)}% growth
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">Revenue</p>
-                          <p className="font-semibold text-lg">${territory.revenue.toLocaleString()}</p>
+                          <p className="font-semibold text-lg">
+                            ${territory.revenue.toLocaleString()}
+                          </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Customers</p>
@@ -646,7 +790,9 @@ export default function ExecutiveDashboard() {
                         </div>
                         <div>
                           <p className="text-muted-foreground">CSAT</p>
-                          <p className="font-semibold">{territory.customerSatisfaction.toFixed(1)}/5</p>
+                          <p className="font-semibold">
+                            {territory.customerSatisfaction.toFixed(1)}/5
+                          </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Rep Productivity</p>
@@ -656,7 +802,10 @@ export default function ExecutiveDashboard() {
                       <div className="mt-3 grid grid-cols-3 gap-2">
                         <div>
                           <p className="text-xs text-muted-foreground">Revenue Progress</p>
-                          <Progress value={Math.min(territory.revenueGrowth + 100, 100)} className="h-2" />
+                          <Progress
+                            value={Math.min(territory.revenueGrowth + 100, 100)}
+                            className="h-2"
+                          />
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Profitability</p>
@@ -708,7 +857,9 @@ export default function ExecutiveDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle>Cross-Functional Impact</CardTitle>
-                  <CardDescription>How each department contributes to overall success</CardDescription>
+                  <CardDescription>
+                    How each department contributes to overall success
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -748,7 +899,7 @@ export default function ExecutiveDashboard() {
             </div>
           </TabsContent>
         </Tabs>
-      </div>
+      </motion.div>
     </MainLayout>
   );
 }

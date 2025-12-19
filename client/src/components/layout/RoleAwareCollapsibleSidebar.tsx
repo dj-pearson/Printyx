@@ -1,13 +1,27 @@
-import { useState, useEffect, useMemo } from "react";
-import { useLocation, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, useSidebar } from "@/components/ui/sidebar";
-import { cn } from "@/lib/utils";
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation, Link } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/ui/logo';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarFooter,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Target,
@@ -63,8 +77,11 @@ import {
   Search,
   Mic,
   Video,
-  Share2
-} from "lucide-react";
+  Share2,
+  ChevronsUpDown,
+  Minimize2,
+  Maximize2,
+} from 'lucide-react';
 
 interface NavigationItem {
   title: string;
@@ -91,10 +108,10 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
 
   const permissions = userRole.permissions || {};
   const isPlatformRole = userRole.canAccessAllTenants === true;
-  const isCompanyAdmin = userRole.name?.includes("Admin");
+  const isCompanyAdmin = userRole.name?.includes('Admin');
   const level = userRole.level || 1;
   const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
-  const adminPrefix = useAdminRoutes ? "/admin" : "";
+  const adminPrefix = useAdminRoutes ? '/admin' : '';
 
   const sections: NavigationSection[] = [];
 
@@ -104,7 +121,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     title: 'Dashboard',
     icon: LayoutDashboard,
     path: '/',
-    matchPatterns: ['/dashboard*']
+    matchPatterns: ['/dashboard*'],
   });
 
   // Platform Admin Hub - Only for platform roles with hierarchical structure
@@ -114,7 +131,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Platform Admin Hub',
       icon: Crown,
       path: '/admin-hub',
-      matchPatterns: ['/admin-hub*']
+      matchPatterns: ['/admin-hub*'],
     });
 
     // Tenant & Organization Management
@@ -123,13 +140,17 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Tenant & Organization',
       icon: Building2,
       path: `${adminPrefix}/tenant-management`,
-      matchPatterns: [`${adminPrefix}/tenant*`, '/root-admin-signups*', '/customer-self-service-portal*'],
+      matchPatterns: [
+        `${adminPrefix}/tenant*`,
+        '/root-admin-signups*',
+        '/customer-self-service-portal*',
+      ],
       children: [
         { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
         { title: 'Tenant Onboarding', path: '/tenant-setup', icon: Rocket },
         { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
-        { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck }
-      ]
+        { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
+      ],
     });
 
     // User & Access Management
@@ -138,13 +159,23 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'User & Access',
       icon: UserCheck,
       path: `${adminPrefix}/user-management`,
-      matchPatterns: [`${adminPrefix}/user*`, `${adminPrefix}/root-admin-security*`, `${adminPrefix}/system-security*`, '/role-management*', '/security-compliance-management*'],
+      matchPatterns: [
+        `${adminPrefix}/user*`,
+        `${adminPrefix}/root-admin-security*`,
+        `${adminPrefix}/system-security*`,
+        '/role-management*',
+        '/security-compliance-management*',
+      ],
       children: [
         { title: 'User Management', path: `${adminPrefix}/user-management`, icon: Users },
         { title: 'Role Management', path: '/role-management', icon: Shield },
-        { title: 'Security & Permissions', path: `${adminPrefix}/root-admin-security`, icon: Shield },
-        { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText }
-      ]
+        {
+          title: 'Security & Permissions',
+          path: `${adminPrefix}/root-admin-security`,
+          icon: Shield,
+        },
+        { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
+      ],
     });
 
     // System Operations & Monitoring
@@ -153,14 +184,22 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'System Operations',
       icon: Monitor,
       path: '/root-admin-dashboard',
-      matchPatterns: ['/root-admin-dashboard*', '/system-monitoring*', '/database-management*', `${adminPrefix}/platform*`, `${adminPrefix}/system*`, '/platform-configuration*', '/mobile-optimization*'],
+      matchPatterns: [
+        '/root-admin-dashboard*',
+        '/system-monitoring*',
+        '/database-management*',
+        `${adminPrefix}/platform*`,
+        `${adminPrefix}/system*`,
+        '/platform-configuration*',
+        '/mobile-optimization*',
+      ],
       children: [
         { title: 'System Dashboard', path: '/root-admin-dashboard', icon: Activity },
         { title: 'Database Management', path: '/database-management', icon: Database },
         { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 },
         { title: 'System Configuration', path: '/platform-configuration', icon: Settings },
-        { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone }
-      ]
+        { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
+      ],
     });
 
     // Platform Features & Tools
@@ -173,8 +212,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       children: [
         { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
         { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
-        { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain }
-      ]
+        { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
+      ],
     });
   }
 
@@ -185,7 +224,24 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Sales Hub',
       icon: Target,
       path: '/opportunities',
-      matchPatterns: ['/leads*', '/contacts*', '/deals*', '/opportunities*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*', '/commission*', '/customer-success*', '/sales-command*', '/sales-performance*', '/data-enrichment*', '/document-builder*', '/deal-desk*'],
+      matchPatterns: [
+        '/leads*',
+        '/contacts*',
+        '/deals*',
+        '/opportunities*',
+        '/sales-pipeline*',
+        '/quote*',
+        '/proposal*',
+        '/demo*',
+        '/contracts*',
+        '/commission*',
+        '/customer-success*',
+        '/sales-command*',
+        '/sales-performance*',
+        '/data-enrichment*',
+        '/document-builder*',
+        '/deal-desk*',
+      ],
       children: [
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
         { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
@@ -204,8 +260,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
         { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
         { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
-        { title: 'Commission Management', path: '/commission-management', icon: DollarSign }
-      ]
+        { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
+      ],
     });
   }
 
@@ -216,7 +272,20 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Service Hub',
       icon: Wrench,
       path: '/service-hub',
-      matchPatterns: ['/service*', '/meter-readings*', '/technician*', '/preventive*', '/mobile-service*', '/remote-monitoring*', '/fleet-monitoring*', '/vehicle*', '/asset*', '/onboarding*', '/incident*', '/manufacturer*'],
+      matchPatterns: [
+        '/service*',
+        '/meter-readings*',
+        '/technician*',
+        '/preventive*',
+        '/mobile-service*',
+        '/remote-monitoring*',
+        '/fleet-monitoring*',
+        '/vehicle*',
+        '/asset*',
+        '/onboarding*',
+        '/incident*',
+        '/manufacturer*',
+      ],
       children: [
         { title: 'Service Hub', path: '/service-hub', icon: Wrench },
         { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
@@ -227,7 +296,11 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
         { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
         { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
-        { title: 'Preventive Maintenance', path: '/preventive-maintenance-scheduling', icon: Calendar },
+        {
+          title: 'Preventive Maintenance',
+          path: '/preventive-maintenance-scheduling',
+          icon: Calendar,
+        },
         { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
         { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
         { title: 'Mobile Field Operations', path: '/mobile-field-operations', icon: Activity },
@@ -235,8 +308,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
         { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp },
         { title: 'Incident Response', path: '/incident-response-system', icon: AlertTriangle },
-        { title: 'Manufacturer Integration', path: '/manufacturer-integration', icon: Plug }
-      ]
+        { title: 'Manufacturer Integration', path: '/manufacturer-integration', icon: Plug },
+      ],
     });
   }
 
@@ -247,7 +320,13 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Product Hub',
       icon: Package,
       path: '/product-hub',
-      matchPatterns: ['/product*', '/supplies*', '/professional-services*', '/managed-services*', '/software-products*'],
+      matchPatterns: [
+        '/product*',
+        '/supplies*',
+        '/professional-services*',
+        '/managed-services*',
+        '/software-products*',
+      ],
       children: [
         { title: 'Product Hub', path: '/product-hub', icon: Package },
         { title: 'Product Catalog', path: '/product-catalog', icon: Package },
@@ -257,8 +336,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Software Products', path: '/software-products', icon: Code },
         { title: 'Professional Services', path: '/professional-services', icon: FileText },
         { title: 'Managed Services', path: '/managed-services', icon: Crown },
-        { title: 'Service Products', path: '/service-products', icon: Wrench }
-      ]
+        { title: 'Service Products', path: '/service-products', icon: Wrench },
+      ],
     });
   }
 
@@ -276,8 +355,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'PO Optimization', path: '/purchase-orders-optimization', icon: ShoppingCart },
         { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
         { title: 'Inventory Management', path: '/inventory', icon: Package },
-        { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog }
-      ]
+        { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog },
+      ],
     });
   }
 
@@ -288,7 +367,16 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Billing Hub',
       icon: DollarSign,
       path: '/billing-hub',
-      matchPatterns: ['/billing*', '/invoices*', '/accounts*', '/meter-billing*', '/journal*', '/chart-of-accounts*', '/financial*', '/leases*'],
+      matchPatterns: [
+        '/billing*',
+        '/invoices*',
+        '/accounts*',
+        '/meter-billing*',
+        '/journal*',
+        '/chart-of-accounts*',
+        '/financial*',
+        '/leases*',
+      ],
       children: [
         { title: 'Billing Hub', path: '/billing', icon: DollarSign },
         { title: 'Leases', path: '/leases', icon: FileText },
@@ -300,8 +388,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard },
         { title: 'Vendors', path: '/vendors', icon: Building2 },
         { title: 'Journal Entries', path: '/journal-entries', icon: BookOpen },
-        { title: 'Financial Forecasting', path: '/financial-forecasting', icon: TrendingUp }
-      ]
+        { title: 'Financial Forecasting', path: '/financial-forecasting', icon: TrendingUp },
+      ],
     });
   }
 
@@ -312,17 +400,29 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Reports',
       icon: BarChart3,
       path: '/reports',
-      matchPatterns: ['/reports*', '/advanced-reporting*', '/performance-monitoring*', '/analytics*', '/executive*', '/financial-intelligence*', '/predictive*'],
+      matchPatterns: [
+        '/reports*',
+        '/advanced-reporting*',
+        '/performance-monitoring*',
+        '/analytics*',
+        '/executive*',
+        '/financial-intelligence*',
+        '/predictive*',
+      ],
       children: [
         { title: 'Reports Hub', path: '/reports', icon: BarChart3 },
         { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
         { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
         { title: 'Advanced Analytics', path: '/advanced-analytics', icon: Brain },
-        { title: 'Financial Intelligence', path: '/financial-intelligence-dashboard', icon: PieChart },
+        {
+          title: 'Financial Intelligence',
+          path: '/financial-intelligence-dashboard',
+          icon: PieChart,
+        },
         { title: 'Predictive Analytics', path: '/predictive-analytics', icon: TrendingUp },
         { title: 'AI Analytics Dashboard', path: '/ai-analytics-dashboard', icon: Brain },
-        { title: 'Executive Dashboard', path: '/executive-dashboard', icon: Crown }
-      ]
+        { title: 'Executive Dashboard', path: '/executive-dashboard', icon: Crown },
+      ],
     });
   }
 
@@ -335,8 +435,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     matchPatterns: ['/task*'],
     children: [
       { title: 'Advanced Tasks', path: '/task-management', icon: Brain },
-      { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare }
-    ]
+      { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare },
+    ],
   });
 
   // AI Hub - Always available for AI-powered features
@@ -352,8 +452,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
       { title: 'AI Search & Knowledge', path: '/ai-search', icon: Search },
       { title: 'AI Task Scheduling', path: '/ai-task-scheduling', icon: Brain },
-      { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare }
-    ]
+      { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare },
+    ],
   });
 
   // Knowledge Base - Always available for all users
@@ -362,7 +462,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     title: 'Knowledge Base',
     icon: BookOpen,
     path: '/knowledge-base',
-    matchPatterns: ['/knowledge-base*']
+    matchPatterns: ['/knowledge-base*'],
   });
 
   // Integrations Hub - show if user has system permissions or is admin
@@ -372,14 +472,20 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'Integrations',
       icon: Plug,
       path: '/integration-hub',
-      matchPatterns: ['/integration*', '/quickbooks*', '/erp*', '/esignature*', '/system-integrations*'],
+      matchPatterns: [
+        '/integration*',
+        '/quickbooks*',
+        '/erp*',
+        '/esignature*',
+        '/system-integrations*',
+      ],
       children: [
         { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
         { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
         { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
         { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
-        { title: 'System Integrations', path: '/system-integrations', icon: Plug }
-      ]
+        { title: 'System Integrations', path: '/system-integrations', icon: Plug },
+      ],
     });
   }
 
@@ -390,17 +496,29 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       title: 'System Administration',
       icon: Settings,
       path: '/workflow-automation',
-      matchPatterns: ['/workflow*', '/business-process*', '/document-management*', '/security-compliance*', '/deployment*', '/customer-number*', '/seo*'],
+      matchPatterns: [
+        '/workflow*',
+        '/business-process*',
+        '/document-management*',
+        '/security-compliance*',
+        '/deployment*',
+        '/customer-number*',
+        '/seo*',
+      ],
       children: [
         { title: 'SEO Management', path: '/seo', icon: Search },
         { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
-        { title: 'Business Process Optimization', path: '/business-process-optimization', icon: TrendingUp },
+        {
+          title: 'Business Process Optimization',
+          path: '/business-process-optimization',
+          icon: TrendingUp,
+        },
         { title: 'Document Management', path: '/document-management', icon: FileText },
         { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
         { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
         { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
-        { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash }
-      ]
+        { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash },
+      ],
     });
   }
 
@@ -417,45 +535,54 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Leads', path: '/customers?tab=leads', icon: UserPlus },
         { title: 'Prospects', path: '/customers?tab=prospects', icon: Users },
         { title: 'Active Customers', path: '/customers?tab=active', icon: UserCheck },
-      ]
+      ],
     },
     {
       id: 'settings',
       title: 'Settings',
       icon: Settings,
       path: '/settings',
-      matchPatterns: ['/settings*']
-    }
+      matchPatterns: ['/settings*'],
+    },
   );
 
   return sections;
 };
 
-export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCollapsibleSidebarProps) {
+export function RoleAwareCollapsibleSidebar({
+  className,
+  ...props
+}: RoleAwareCollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
-
+  const [searchQuery, setSearchQuery] = useState('');
+  const [compactMode, setCompactMode] = useState(false);
 
   // Use role from user object instead of separate API call
   const userRole = user?.role;
 
   // Stable navigation sections
-  const navigationSections = useMemo(() => 
-    createNavigationSections(userRole), 
-    [userRole?.name, userRole?.canAccessAllTenants, userRole?.level, JSON.stringify(userRole?.permissions)]
+  const navigationSections = useMemo(
+    () => createNavigationSections(userRole),
+    [
+      (userRole as any)?.name,
+      (userRole as any)?.canAccessAllTenants,
+      (userRole as any)?.level,
+      JSON.stringify((userRole as any)?.permissions),
+    ],
   );
 
   // Debug removed for cleaner console output
 
   // Auto-expand based on current route
   useEffect(() => {
-    const currentSection = navigationSections.find(section => {
+    const currentSection = navigationSections.find((section) => {
       if (location === section.path) return true;
-      
+
       if (section.matchPatterns) {
-        return section.matchPatterns.some(pattern => {
+        return section.matchPatterns.some((pattern) => {
           const regexPattern = pattern.replace(/\*/g, '.*');
           const regex = new RegExp(`^${regexPattern}`);
           return regex.test(location);
@@ -463,17 +590,17 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
       }
 
       if (section.children) {
-        return section.children.some(child => location === child.path);
+        return section.children.some((child) => location === child.path);
       }
 
       return false;
     });
 
-    setExpandedSections(prevExpanded => {
+    setExpandedSections((prevExpanded) => {
       const newExpanded = new Set<string>();
-      
+
       // Keep user-expanded sections
-      userExpandedSections.forEach(sectionId => {
+      userExpandedSections.forEach((sectionId) => {
         newExpanded.add(sectionId);
       });
 
@@ -487,7 +614,7 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
   }, [location, navigationSections, userExpandedSections]);
 
   const toggleSection = (sectionId: string) => {
-    setUserExpandedSections(prev => {
+    setUserExpandedSections((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(sectionId)) {
         newSet.delete(sectionId);
@@ -498,8 +625,57 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
     });
   };
 
+  const collapseAll = () => {
+    setUserExpandedSections(new Set());
+  };
+
+  const expandAll = () => {
+    const allSectionIds = navigationSections
+      .filter((s) => s.children && s.children.length > 0)
+      .map((s) => s.id);
+    setUserExpandedSections(new Set(allSectionIds));
+  };
+
   const isExpanded = (sectionId: string) => expandedSections.has(sectionId);
   const isActive = (path: string) => location === path || location.startsWith(path + '/');
+
+  // Filter sections based on search query
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) return navigationSections;
+
+    const query = searchQuery.toLowerCase();
+    return navigationSections
+      .map((section) => {
+        // Check if section title matches
+        if (section.title.toLowerCase().includes(query)) {
+          return section;
+        }
+
+        // Check if any child matches
+        if (section.children) {
+          const matchingChildren = section.children.filter((child) =>
+            child.title.toLowerCase().includes(query),
+          );
+
+          if (matchingChildren.length > 0) {
+            return { ...section, children: matchingChildren };
+          }
+        }
+
+        return null;
+      })
+      .filter((section): section is NavigationSection => section !== null);
+  }, [navigationSections, searchQuery]);
+
+  // Auto-expand sections when searching
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const sectionsToExpand = filteredSections
+        .filter((s) => s.children && s.children.length > 0)
+        .map((s) => s.id);
+      setUserExpandedSections(new Set(sectionsToExpand));
+    }
+  }, [searchQuery, filteredSections]);
 
   if (!isAuthenticated) {
     return (
@@ -510,8 +686,6 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
       </div>
     );
   }
-
-
 
   if (!navigationSections || navigationSections.length === 0) {
     return (
@@ -527,7 +701,7 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
   const renderNavigationItem = (section: NavigationSection) => {
     const hasChildren = section.children && section.children.length > 0;
     const isCurrentlyActive = isActive(section.path);
-    const isParentActive = section.children?.some(child => isActive(child.path));
+    const isParentActive = section.children?.some((child) => isActive(child.path));
     const shouldShowAsActive = isCurrentlyActive || isParentActive;
 
     if (hasChildren) {
@@ -539,12 +713,12 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
         >
           <CollapsibleTrigger asChild>
             <Button
-              variant={shouldShowAsActive ? "secondary" : "ghost"}
+              variant={shouldShowAsActive ? 'secondary' : 'ghost'}
               className="w-full justify-between h-auto py-3 px-4 mb-1"
               data-testid={`nav-${section.id}`}
             >
               <div className="flex items-center gap-3">
-                <section.icon className="h-5 w-5" />
+                <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
                 <span className="font-medium">{section.title}</span>
               </div>
               {isExpanded(section.id) ? (
@@ -559,11 +733,11 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
             {section.children?.map((child) => (
               <Link key={child.path} href={child.path}>
                 <Button
-                  variant={isActive(child.path) ? "secondary" : "ghost"}
+                  variant={isActive(child.path) ? 'secondary' : 'ghost'}
                   className="w-full justify-start h-auto py-2 px-3 text-sm"
                   data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
                 >
-                  <child.icon className="h-4 w-4 mr-2" />
+                  <child.icon className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:scale-110" />
                   {child.title}
                 </Button>
               </Link>
@@ -577,12 +751,12 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
     return (
       <Link key={section.id} href={section.path}>
         <Button
-          variant={shouldShowAsActive ? "secondary" : "ghost"}
+          variant={shouldShowAsActive ? 'secondary' : 'ghost'}
           className="w-full justify-start h-auto py-3 px-4 mb-1"
           data-testid={`nav-${section.id}`}
         >
           <div className="flex items-center gap-3">
-            <section.icon className="h-5 w-5" />
+            <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
             <span className="font-medium">{section.title}</span>
           </div>
         </Button>
@@ -594,14 +768,16 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
   const sidebarOpen = isMobile ? openMobile : open;
 
   return (
-    <Sidebar collapsible="icon" className="bg-slate-50 border-r border-slate-200" {...props}>
-      <SidebarHeader className="border-b border-slate-200 bg-white">
+    <Sidebar
+      collapsible="icon"
+      className="bg-slate-50 border-r border-slate-200 flex flex-col"
+      {...props}
+    >
+      <SidebarHeader className="border-b border-slate-200 bg-white shrink-0">
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-3 px-2 py-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
-                <Globe className="h-6 w-6 text-white" />
-              </div>
+              <Logo className="h-10 w-10" />
               <div className="group-data-[collapsible=icon]:hidden">
                 <h1 className="text-xl font-bold text-slate-900">Printyx</h1>
                 <p className="text-xs text-slate-600 font-medium">Business Management</p>
@@ -609,51 +785,103 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
+
+        {/* Search Bar */}
+        <div className="px-3 pb-3 group-data-[collapsible=icon]:hidden">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search menu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+
+          {/* Collapse/Expand Controls */}
+          {filteredSections.some((s) => s.children) && (
+            <div className="flex gap-1 mt-2">
+              <Button variant="ghost" size="sm" onClick={expandAll} className="flex-1 h-7 text-xs">
+                <ChevronsUpDown className="h-3 w-3 mr-1" />
+                Expand All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={collapseAll}
+                className="flex-1 h-7 text-xs"
+              >
+                <Minimize2 className="h-3 w-3 mr-1" />
+                Collapse All
+              </Button>
+            </div>
+          )}
+        </div>
       </SidebarHeader>
-      
-      <SidebarContent className="py-6 px-4">
+
+      <SidebarContent className="py-4 px-4 overflow-y-auto flex-1">
         <SidebarGroup>
           <SidebarGroupContent className="space-y-3">
             <SidebarMenu>
-              {navigationSections.map((section) => {
+              {filteredSections.length === 0 && searchQuery ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No menu items found</p>
+                  <p className="text-xs mt-1">Try a different search term</p>
+                </div>
+              ) : null}
+              {filteredSections.map((section) => {
                 const shouldShowAsActive = section.children
-                  ? section.children.some(child => isActive(child.path)) || isActive(section.path) ||
-                    (section.matchPatterns?.some(pattern => isActive(pattern)) ?? false)
-                  : isActive(section.path) || (section.matchPatterns?.some(pattern => isActive(pattern)) ?? false);
+                  ? section.children.some((child) => isActive(child.path)) ||
+                    isActive(section.path) ||
+                    (section.matchPatterns?.some((pattern) => isActive(pattern)) ?? false)
+                  : isActive(section.path) ||
+                    (section.matchPatterns?.some((pattern) => isActive(pattern)) ?? false);
 
                 if (section.children) {
                   return (
-                    <Collapsible key={section.id} open={isExpanded(section.id)} onOpenChange={() => toggleSection(section.id)}>
+                    <Collapsible
+                      key={section.id}
+                      open={isExpanded(section.id)}
+                      onOpenChange={() => toggleSection(section.id)}
+                    >
                       <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
-                          <SidebarMenuButton 
+                          <SidebarMenuButton
                             className={cn(
-                              "w-full justify-between py-3 px-4 rounded-lg transition-all duration-200",
+                              'w-full justify-between py-3 px-4 rounded-lg transition-all duration-200',
                               shouldShowAsActive
-                                ? "bg-slate-800 hover:bg-slate-700 text-white" 
-                                : "hover:bg-slate-100 text-slate-700",
-                              "font-semibold text-sm mb-1"
+                                ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                                : 'hover:bg-slate-100 text-slate-700',
+                              'font-semibold text-sm mb-1',
                             )}
                             data-active={shouldShowAsActive}
                             data-testid={`nav-${section.id}`}
                           >
                             <div className="flex items-center gap-3">
-                              <section.icon className={cn(
-                                "h-5 w-5", 
-                                shouldShowAsActive ? "text-white" : "text-slate-600"
-                              )} />
+                              <section.icon
+                                className={cn(
+                                  'h-5 w-5',
+                                  shouldShowAsActive ? 'text-white' : 'text-slate-600',
+                                )}
+                              />
                               <span className="font-semibold">{section.title}</span>
                             </div>
                             {isExpanded(section.id) ? (
-                              <ChevronDown className={cn(
-                                "h-4 w-4", 
-                                shouldShowAsActive ? "text-white" : "text-slate-500"
-                              )} />
+                              <ChevronDown
+                                className={cn(
+                                  'h-4 w-4',
+                                  shouldShowAsActive ? 'text-white' : 'text-slate-500',
+                                )}
+                              />
                             ) : (
-                              <ChevronRight className={cn(
-                                "h-4 w-4", 
-                                shouldShowAsActive ? "text-white" : "text-slate-500"
-                              )} />
+                              <ChevronRight
+                                className={cn(
+                                  'h-4 w-4',
+                                  shouldShowAsActive ? 'text-white' : 'text-slate-500',
+                                )}
+                              />
                             )}
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
@@ -661,23 +889,25 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
                           <SidebarMenu>
                             {section.children.map((child) => (
                               <SidebarMenuItem key={child.path}>
-                                <SidebarMenuButton 
-                                  asChild 
+                                <SidebarMenuButton
+                                  asChild
                                   className={cn(
-                                    "py-2.5 px-4 ml-6 rounded-md transition-all duration-200 text-sm font-normal",
-                                    "border-l-2 border-transparent hover:border-slate-300",
+                                    'py-2.5 px-4 ml-6 rounded-md transition-all duration-200 text-sm font-normal',
+                                    'border-l-2 border-transparent hover:border-slate-300',
                                     isActive(child.path)
-                                      ? "bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500" 
-                                      : "hover:bg-slate-50 text-slate-800"
+                                      ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500'
+                                      : 'hover:bg-slate-50 text-slate-800',
                                   )}
                                   data-active={isActive(child.path)}
                                   data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
                                 >
                                   <Link href={child.path}>
-                                    <child.icon className={cn(
-                                      "h-4 w-4", 
-                                      isActive(child.path) ? "text-blue-600" : "text-slate-700"
-                                    )} />
+                                    <child.icon
+                                      className={cn(
+                                        'h-4 w-4',
+                                        isActive(child.path) ? 'text-blue-600' : 'text-slate-700',
+                                      )}
+                                    />
                                     <span>{child.title}</span>
                                     {isActive(child.path) && (
                                       <Badge className="ml-auto bg-blue-600 text-white text-xs">
@@ -697,28 +927,28 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
 
                 return (
                   <SidebarMenuItem key={section.id}>
-                    <SidebarMenuButton 
-                      asChild 
+                    <SidebarMenuButton
+                      asChild
                       className={cn(
-                        "py-3 px-4 rounded-lg transition-all duration-200",
+                        'py-3 px-4 rounded-lg transition-all duration-200',
                         shouldShowAsActive
-                          ? "bg-slate-800 hover:bg-slate-700 text-white" 
-                          : "hover:bg-slate-100 text-slate-900",
-                        "font-semibold text-sm mb-1"
+                          ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                          : 'hover:bg-slate-100 text-slate-900',
+                        'font-semibold text-sm mb-1',
                       )}
                       data-active={shouldShowAsActive}
                       data-testid={`nav-${section.id}`}
                     >
                       <Link href={section.path}>
-                        <section.icon className={cn(
-                          "h-5 w-5", 
-                          shouldShowAsActive ? "text-white" : "text-slate-800"
-                        )} />
+                        <section.icon
+                          className={cn(
+                            'h-5 w-5',
+                            shouldShowAsActive ? 'text-white' : 'text-slate-800',
+                          )}
+                        />
                         <span className="font-semibold">{section.title}</span>
                         {shouldShowAsActive && (
-                          <Badge className="ml-auto bg-blue-600 text-white text-xs">
-                            Active
-                          </Badge>
+                          <Badge className="ml-auto bg-blue-600 text-white text-xs">Active</Badge>
                         )}
                       </Link>
                     </SidebarMenuButton>
@@ -730,25 +960,43 @@ export function RoleAwareCollapsibleSidebar({ className, ...props }: RoleAwareCo
         </SidebarGroup>
       </SidebarContent>
 
-      {/* User Profile Footer */}
-      <div className="mt-auto p-4 border-t">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={user?.avatar} />
-            <AvatarFallback className="bg-blue-100 text-blue-600">
-              {user?.username?.[0]?.toUpperCase() || 'U'}
+      {/* User Profile Footer - Sticky at bottom */}
+      <SidebarFooter className="border-t border-slate-200 bg-white shrink-0">
+        <div className="flex items-center gap-3 p-3">
+          <Avatar className="w-9 h-9 ring-2 ring-slate-200">
+            <AvatarImage src={(user as any)?.avatar} />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
+              {user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="group-data-[collapsible=icon]:hidden flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.username || 'User'}
+            <p className="text-sm font-semibold text-slate-900 truncate">
+              {user?.firstName || user?.email?.split('@')[0] || 'User'}
             </p>
-            <p className="text-xs text-gray-500 truncate">
-              {userRole?.name || 'User'}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-slate-600 truncate">{userRole?.name || 'User'}</p>
+              {userRole?.level && userRole.level >= 8 && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 h-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0"
+                >
+                  <Crown className="h-2.5 w-2.5 mr-0.5" />
+                  Admin
+                </Badge>
+              )}
+            </div>
           </div>
+          <Link href="/settings">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 group-data-[collapsible=icon]:hidden"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
-      </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

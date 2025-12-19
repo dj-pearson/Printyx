@@ -29,6 +29,40 @@
     background: hsl(var(--foreground));
   }
 
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Global Executive Background */
+  .bg-executive {
+    background:
+      radial-gradient(circle at top left, hsl(230 30% 96%), transparent 40%),
+      radial-gradient(circle at bottom right, hsl(230 30% 96%), transparent 40%),
+      hsl(var(--background));
+  }
+
+  .dark .bg-executive {
+    background:
+      radial-gradient(circle at top left, hsl(230 30% 15%), transparent 40%),
+      radial-gradient(circle at bottom right, hsl(230 30% 15%), transparent 40%),
+      hsl(var(--background));
+  }
+
   /* Mobile touch improvements */
   @media (max-width: 640px) {
     /* Improve touch targets on mobile */
@@ -274,32 +308,28 @@ div:has([class*='runtime-error']) {
     --foreground: 210 40% 98%;
     /* Soft White */
 
-    --card: 230 35% 14%;
-    /* Slightly lighter than bg */
+    --card: 230 25% 25%;
+    /* Lighter, less saturated indigo */
     --card-foreground: 210 40% 98%;
 
-    --popover: 230 35% 14%;
+    --popover: 230 25% 25%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 250 90% 65%;
-    /* Vivid Indigo */
+    --primary: 250 90% 70%;
+    /* Vivid Indigo - Brighter */
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 230 25% 20%;
-    /* Muted Midnight */
+    --secondary: 230 20% 35%;
+    /* Much lighter Secondary */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 230 25% 20%;
-    --muted-foreground: 230 20% 70%;
+    --muted: 230 20% 35%;
+    --muted-foreground: 210 20% 80%;
 
-    --accent: 250 80% 60%;
-    /* Slightly varied Indigo for accent */
+    --accent: 250 80% 65%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 230 30% 20%;
+    --border: 230 20% 35%;
     /* Subtle Indigo Grey */
     --input: 230 30% 20%;
     --ring: 250 90% 65%;
@@ -320,7 +350,7 @@ div:has([class*='runtime-error']) {
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-background text-foreground custom-scrollbar;
   }
 }
 

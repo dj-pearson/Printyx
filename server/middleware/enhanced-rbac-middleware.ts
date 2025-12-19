@@ -84,7 +84,11 @@ class PermissionCacheService {
   /**
    * Get cached permissions for a user
    */
-  static async getCachedPermissions(userId: string, tenantId: string, organizationalContext: string): Promise<Set<string> | null> {
+  static async getCachedPermissions(
+    userId: string,
+    tenantId: string,
+    organizationalContext: string,
+  ): Promise<Set<string> | null> {
     // Check memory cache first (L1)
     const memoryCacheKey = `${userId}:${organizationalContext}`;
     const memoryEntry = this.memoryCache.get(memoryCacheKey);
@@ -102,8 +106,8 @@ class PermissionCacheService {
           eq(permissionCache.userId, userId),
           eq(permissionCache.organizationalContext, organizationalContext),
           eq(permissionCache.tenantId, tenantId),
-          sql`${permissionCache.expiresAt} > NOW()`
-        )
+          sql`${permissionCache.expiresAt} > NOW()`,
+        ),
       )
       .limit(1);
 
@@ -137,7 +141,7 @@ class PermissionCacheService {
     tenantId: string,
     organizationalContext: string,
     permissionSet: Set<string>,
-    computationTime: number
+    computationTime: number,
   ): Promise<void> {
     const permissionsArray = Array.from(permissionSet);
     const permissionHash = crypto
@@ -179,9 +183,7 @@ class PermissionCacheService {
     }
 
     // Delete from database
-    await db
-      .delete(permissionCache)
-      .where(eq(permissionCache.userId, userId));
+    await db.delete(permissionCache).where(eq(permissionCache.userId, userId));
   }
 
   /**
@@ -197,9 +199,7 @@ class PermissionCacheService {
     }
 
     // Cleanup database cache
-    await db
-      .delete(permissionCache)
-      .where(sql`${permissionCache.expiresAt} <= NOW()`);
+    await db.delete(permissionCache).where(sql`${permissionCache.expiresAt} <= NOW()`);
   }
 }
 
@@ -216,7 +216,7 @@ class PermissionComputationService {
    */
   static async computeUserPermissions(
     userId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<{ permissions: Set<string>; userContext: Partial<EnhancedUserContext> }> {
     const startTime = Date.now();
 
@@ -235,13 +235,96 @@ class PermissionComputationService {
           eq(userRoleAssignments.isActive, true),
           or(
             eq(userRoleAssignments.effectiveUntil, null),
-            sql`${userRoleAssignments.effectiveUntil} > NOW()`
-          )
-        )
+            sql`${userRoleAssignments.effectiveUntil} > NOW()`,
+          ),
+        ),
       )
       .limit(1);
 
+    // If no role assignment found in the new RBAC tables, check if user has a role string in users table
     if (roleAssignment.length === 0) {
+      const [userWithRole] = await db
+        .select()
+        .from((await import('../db')).users)
+        .where(eq((await import('../db')).users.id, userId))
+        .limit(1);
+
+      if (userWithRole && (userWithRole as any).role) {
+        // User has a string role - grant permissions based on role string
+        const roleString = (userWithRole as any).role;
+        const roleLowerCase = roleString.toLowerCase();
+
+        // Check if this is an admin role
+        const isAdmin =
+          roleLowerCase === 'admin' ||
+          roleLowerCase === 'root_admin' ||
+          roleLowerCase === 'platform_admin' ||
+          roleLowerCase === 'company_admin' ||
+          roleLowerCase === 'system_admin';
+
+        // Grant all permissions for admin users
+        const permissionSet = new Set<string>();
+        if (isAdmin) {
+          // Admin users get all permissions
+          const allPerms = await db
+            .select()
+            .from(permissions)
+            .where(eq(permissions.isActive, true));
+          for (const perm of allPerms) {
+            permissionSet.add(perm.code);
+          }
+        } else {
+          // Non-admin users get basic permissions
+          permissionSet.add('basic.view');
+          permissionSet.add('own.data.view');
+          permissionSet.add('own.data.edit');
+        }
+
+        // Determine role level
+        let roleLevel = 1;
+        if (
+          roleLowerCase === 'admin' ||
+          roleLowerCase === 'root_admin' ||
+          roleLowerCase === 'platform_admin'
+        ) {
+          roleLevel = 8;
+        } else if (roleLowerCase === 'company_admin' || roleLowerCase === 'director') {
+          roleLevel = 7;
+        } else if (roleLowerCase === 'manager' || roleLowerCase.includes('manager')) {
+          roleLevel = 5;
+        } else if (roleLowerCase === 'team_lead') {
+          roleLevel = 3;
+        } else if (roleLowerCase === 'technician' || roleLowerCase === 'sales_rep') {
+          roleLevel = 2;
+        }
+
+        const userContext: Partial<EnhancedUserContext> = {
+          roleId: roleString,
+          roleCode: roleString.toUpperCase(),
+          roleLevel,
+          roleTier: roleLevel >= 8 ? 'platform' : roleLevel >= 7 ? 'company' : 'location',
+          department: 'general',
+          territoryScope: roleLevel >= 8 ? 'platform' : roleLevel >= 7 ? 'company' : 'own',
+          hasAllPermissions: roleLevel >= 8,
+        };
+
+        const computationTime = Date.now() - startTime;
+        console.log(
+          `[RBAC] User ${userId} has string role '${roleString}' (level ${roleLevel}) - granting ${permissionSet.size} permissions`,
+        );
+
+        // Cache the computed permissions
+        await PermissionCacheService.setCachedPermissions(
+          userId,
+          tenantId,
+          'default',
+          permissionSet,
+          computationTime,
+        );
+
+        return { permissions: permissionSet, userContext };
+      }
+
       throw new Error('No active role assignment found for user');
     }
 
@@ -259,8 +342,8 @@ class PermissionComputationService {
         and(
           eq(rolePermissions.roleId, role.id),
           eq(rolePermissions.effect, 'ALLOW'),
-          eq(permissions.isActive, true)
-        )
+          eq(permissions.isActive, true),
+        ),
       );
 
     // Get user-specific permission overrides
@@ -277,9 +360,9 @@ class PermissionComputationService {
           eq(permissionOverrides.isActive, true),
           or(
             eq(permissionOverrides.effectiveUntil, null),
-            sql`${permissionOverrides.effectiveUntil} > NOW()`
-          )
-        )
+            sql`${permissionOverrides.effectiveUntil} > NOW()`,
+          ),
+        ),
       );
 
     // Combine permissions and apply overrides
@@ -335,7 +418,7 @@ class PermissionComputationService {
       tenantId,
       organizationalContext,
       permissionSet,
-      computationTime
+      computationTime,
     );
 
     return { permissions: permissionSet, userContext };
@@ -346,7 +429,7 @@ class PermissionComputationService {
    */
   private static determineTerritoryScope(
     role: EnhancedRole,
-    assignment: UserRoleAssignment
+    assignment: UserRoleAssignment,
   ): EnhancedUserContext['territoryScope'] {
     // Platform-level access
     if (role.organizationalTier === 'platform') {
@@ -389,7 +472,7 @@ class PermissionComputationService {
 export const enhanceUserContext = async (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     // Skip if already enhanced
@@ -416,7 +499,7 @@ export const enhanceUserContext = async (
     const cachedPermissions = await PermissionCacheService.getCachedPermissions(
       userId,
       tenantId,
-      organizationalContext
+      organizationalContext,
     );
 
     let permissions: Set<string>;
@@ -438,8 +521,8 @@ export const enhanceUserContext = async (
           and(
             eq(userRoleAssignments.userId, userId),
             eq(userRoleAssignments.tenantId, tenantId),
-            eq(userRoleAssignments.isActive, true)
-          )
+            eq(userRoleAssignments.isActive, true),
+          ),
         )
         .limit(1);
 
@@ -450,8 +533,14 @@ export const enhanceUserContext = async (
 
       const { assignment, role } = roleAssignment[0];
       const levelMap: Record<string, number> = {
-        level_1: 1, level_2: 2, level_3: 3, level_4: 4,
-        level_5: 5, level_6: 6, level_7: 7, level_8: 8,
+        level_1: 1,
+        level_2: 2,
+        level_3: 3,
+        level_4: 4,
+        level_5: 5,
+        level_6: 6,
+        level_7: 7,
+        level_8: 8,
       };
 
       userContext = {
@@ -466,7 +555,10 @@ export const enhanceUserContext = async (
     } else {
       // Compute permissions
       try {
-        const computed = await PermissionComputationService.computeUserPermissions(userId, tenantId);
+        const computed = await PermissionComputationService.computeUserPermissions(
+          userId,
+          tenantId,
+        );
         permissions = computed.permissions;
         userContext = computed.userContext;
       } catch (permError) {
@@ -507,7 +599,7 @@ export const enhanceUserContext = async (
  */
 export const requirePermission = (
   permission: string | string[],
-  options: PermissionCheckOptions = {}
+  options: PermissionCheckOptions = {},
 ): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -524,7 +616,7 @@ export const requirePermission = (
     const userPermissions = req.user.permissions;
 
     // Check if user has ANY of the required permissions
-    const hasPermission = requiredPermissions.some(perm => userPermissions.has(perm));
+    const hasPermission = requiredPermissions.some((perm) => userPermissions.has(perm));
 
     if (!hasPermission) {
       // Log failed permission check
@@ -574,7 +666,7 @@ export const requirePermission = (
  */
 export const requireAllPermissions = (
   requiredPermissions: string[],
-  options: PermissionCheckOptions = {}
+  options: PermissionCheckOptions = {},
 ): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -588,7 +680,7 @@ export const requireAllPermissions = (
     }
 
     const userPermissions = req.user.permissions;
-    const missingPermissions = requiredPermissions.filter(perm => !userPermissions.has(perm));
+    const missingPermissions = requiredPermissions.filter((perm) => !userPermissions.has(perm));
 
     if (missingPermissions.length > 0) {
       // Log failed permission check
@@ -614,7 +706,7 @@ export const requireAllPermissions = (
  */
 export const requireAnyPermission = (
   requiredPermissions: string[],
-  options: PermissionCheckOptions = {}
+  options: PermissionCheckOptions = {},
 ): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -628,7 +720,7 @@ export const requireAnyPermission = (
     }
 
     const userPermissions = req.user.permissions;
-    const hasAny = requiredPermissions.some(perm => userPermissions.has(perm));
+    const hasAny = requiredPermissions.some((perm) => userPermissions.has(perm));
 
     if (!hasAny) {
       // Log failed permission check
@@ -652,7 +744,7 @@ export const requireAnyPermission = (
  * Require minimum role level
  */
 export const requireLevel = (
-  minLevel: number
+  minLevel: number,
 ): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -678,7 +770,7 @@ export const requireLevel = (
  * Require minimum organizational scope
  */
 export const requireScope = (
-  minScope: 'own' | 'team' | 'location' | 'regional' | 'company' | 'platform'
+  minScope: 'own' | 'team' | 'location' | 'regional' | 'company' | 'platform',
 ): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -716,19 +808,25 @@ export const hasPermission = (req: AuthenticatedRequest, permission: string): bo
 /**
  * Check if user has ALL specified permissions (for use in route logic)
  */
-export const hasAllPermissions = (req: AuthenticatedRequest, requiredPermissions: string[]): boolean => {
+export const hasAllPermissions = (
+  req: AuthenticatedRequest,
+  requiredPermissions: string[],
+): boolean => {
   if (!req.user) return false;
   if (req.user.hasAllPermissions) return true;
-  return requiredPermissions.every(perm => req.user!.permissions.has(perm));
+  return requiredPermissions.every((perm) => req.user!.permissions.has(perm));
 };
 
 /**
  * Check if user has ANY of the specified permissions (for use in route logic)
  */
-export const hasAnyPermission = (req: AuthenticatedRequest, requiredPermissions: string[]): boolean => {
+export const hasAnyPermission = (
+  req: AuthenticatedRequest,
+  requiredPermissions: string[],
+): boolean => {
   if (!req.user) return false;
   if (req.user.hasAllPermissions) return true;
-  return requiredPermissions.some(perm => req.user!.permissions.has(perm));
+  return requiredPermissions.some((perm) => req.user!.permissions.has(perm));
 };
 
 // =====================================================================
@@ -739,11 +837,7 @@ export const hasAnyPermission = (req: AuthenticatedRequest, requiredPermissions:
  * Require MFA verification for sensitive operations
  * Checks if the user has verified MFA within the session
  */
-export const requireMFA = (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): void => {
+export const requireMFA = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
     res.status(401).json({ error: 'Authentication required' });
     return;
@@ -755,7 +849,7 @@ export const requireMFA = (
 
   // MFA verification expires after 30 minutes of inactivity
   const MFA_TIMEOUT = 30 * 60 * 1000;
-  const mfaExpired = mfaVerifiedAt && (Date.now() - mfaVerifiedAt > MFA_TIMEOUT);
+  const mfaExpired = mfaVerifiedAt && Date.now() - mfaVerifiedAt > MFA_TIMEOUT;
 
   if (!mfaVerified || mfaExpired) {
     // Log MFA requirement
@@ -783,7 +877,7 @@ export const requireMFA = (
  */
 export const requirePermissionWithMFA = (
   permission: string | string[],
-  options: PermissionCheckOptions = {}
+  options: PermissionCheckOptions = {},
 ): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // First check permission
@@ -808,7 +902,7 @@ export const checkApprovalRequired = async (
   permissionCode: string,
   userId: string,
   tenantId: string,
-  resourceId?: string
+  resourceId?: string,
 ): Promise<{ required: boolean; approved: boolean; pendingApprovalId?: string }> => {
   // Get permission definition to check if approval is required
   const [permission] = await db
@@ -830,8 +924,8 @@ export const checkApprovalRequired = async (
         eq(permissionOverrides.userId, userId),
         eq(permissionOverrides.permissionId, permission.id),
         eq(permissionOverrides.isActive, true),
-        sql`${permissionOverrides.effectiveUntil} > NOW() OR ${permissionOverrides.effectiveUntil} IS NULL`
-      )
+        sql`${permissionOverrides.effectiveUntil} > NOW() OR ${permissionOverrides.effectiveUntil} IS NULL`,
+      ),
     )
     .limit(1);
 
@@ -850,7 +944,7 @@ export const checkApprovalRequired = async (
  * Middleware that checks for approval on sensitive operations
  */
 export const requireApproval = (
-  permissionCode: string
+  permissionCode: string,
 ): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -870,7 +964,7 @@ export const requireApproval = (
         permissionCode,
         req.user.id,
         req.user.tenantId,
-        resourceId
+        resourceId,
       );
 
       if (approvalStatus.required && !approvalStatus.approved) {
@@ -926,7 +1020,7 @@ interface RBACLogEntry {
 async function logRBACEvent(
   req: AuthenticatedRequest,
   eventType: string,
-  details: Record<string, any>
+  details: Record<string, any>,
 ): Promise<void> {
   const logEntry: RBACLogEntry = {
     timestamp: new Date().toISOString(),
@@ -952,7 +1046,9 @@ async function logRBACEvent(
 
   // Write to database asynchronously (fire and forget for performance)
   try {
-    await db.execute(sql`
+    await db
+      .execute(
+        sql`
       INSERT INTO rbac_audit_log (
         event_type, user_id, tenant_id, role_code, role_level,
         details, route, method, ip_address, user_agent, session_id, request_id
@@ -963,12 +1059,14 @@ async function logRBACEvent(
         ${req.ip || null}, ${req.get('user-agent') || null},
         ${req.session?.id || null}, ${(req as any).requestId || null}
       )
-    `).catch(err => {
-      // Table might not exist yet - silently fail
-      if (!err.message?.includes('does not exist')) {
-        console.error('[RBAC] Audit log write error:', err);
-      }
-    });
+    `,
+      )
+      .catch((err) => {
+        // Table might not exist yet - silently fail
+        if (!err.message?.includes('does not exist')) {
+          console.error('[RBAC] Audit log write error:', err);
+        }
+      });
   } catch (error) {
     // Non-critical - don't fail the request
     console.error('[RBAC] Audit log error:', error);
@@ -985,7 +1083,7 @@ async function logRBACEvent(
 function logFailedPermissionCheck(
   req: AuthenticatedRequest,
   requiredPermissions: string[],
-  checkType: string
+  checkType: string,
 ): void {
   logRBACEvent(req, 'PERMISSION_DENIED', {
     checkType,
@@ -1004,7 +1102,13 @@ export async function invalidateUserPermissionCache(userId: string): Promise<voi
 /**
  * Get user's effective permissions (for debugging/admin UI)
  */
-export async function getUserEffectivePermissions(userId: string, tenantId: string): Promise<string[]> {
-  const { permissions } = await PermissionComputationService.computeUserPermissions(userId, tenantId);
+export async function getUserEffectivePermissions(
+  userId: string,
+  tenantId: string,
+): Promise<string[]> {
+  const { permissions } = await PermissionComputationService.computeUserPermissions(
+    userId,
+    tenantId,
+  );
   return Array.from(permissions);
 }
