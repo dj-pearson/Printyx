@@ -143,7 +143,57 @@ export const authenticateSupabaseJWT: RequestHandler = async (
     }
 
     const payload = await verifySupabaseJWT(token);
-    req.supabaseUser = transformPayloadToUser(payload);
+    const supabaseUser = transformPayloadToUser(payload);
+
+    // Fetch user from database to get role information
+    // This ensures we have the most up-to-date role data
+    try {
+      const { db } = await import('../db');
+      const { users } = await import('../../shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const [userRecord] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, supabaseUser.id))
+        .limit(1);
+
+      if (userRecord) {
+        // Check for string role column (legacy)
+        const roleString = (userRecord as any).role;
+
+        if (roleString) {
+          const roleLowerCase = roleString.toLowerCase();
+
+          // Detect if user is platform admin based on role string
+          const isPlatformAdmin =
+            roleLowerCase === 'admin' ||
+            roleLowerCase === 'root_admin' ||
+            roleLowerCase === 'platform_admin' ||
+            roleLowerCase === 'company_admin' ||
+            roleLowerCase === 'system_admin';
+
+          // Override isPlatformUser based on role
+          supabaseUser.isPlatformUser = isPlatformAdmin || userRecord.isPlatformUser || false;
+
+          console.log(
+            `[Auth] User ${supabaseUser.email} has role '${roleString}', isPlatformUser: ${supabaseUser.isPlatformUser}`,
+          );
+        }
+
+        // Update other fields from database
+        supabaseUser.tenantId = userRecord.tenantId || supabaseUser.tenantId;
+        supabaseUser.roleId = userRecord.roleId || supabaseUser.roleId;
+        supabaseUser.teamId = userRecord.teamId || supabaseUser.teamId;
+        supabaseUser.firstName = userRecord.firstName || supabaseUser.firstName;
+        supabaseUser.lastName = userRecord.lastName || supabaseUser.lastName;
+      }
+    } catch (dbError) {
+      console.warn('[Auth] Could not fetch user from database:', dbError);
+      // Continue with JWT data only
+    }
+
+    req.supabaseUser = supabaseUser;
 
     // Also set tenantId on request for backward compatibility
     if (req.supabaseUser.tenantId) {

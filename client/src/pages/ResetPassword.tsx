@@ -18,7 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuthContext } from '@/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
-import { Printer, CheckCircle, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Printer, CheckCircle, AlertCircle, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 
 const resetPasswordSchema = z
@@ -125,6 +125,21 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+          {/* Back to Homepage Button */}
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-gray-700 hover:text-gray-900 hover:bg-white/50"
+            >
+              <a href="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Homepage
+              </a>
+            </Button>
+          </div>
+
           <Card className="w-full">
             <CardContent className="pt-6 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
@@ -141,6 +156,21 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+          {/* Back to Homepage Button */}
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="text-gray-700 hover:text-gray-900 hover:bg-white/50"
+            >
+              <a href="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Homepage
+              </a>
+            </Button>
+          </div>
+
           <Card className="w-full">
             <CardHeader className="text-center">
               <div className="flex items-center justify-center space-x-2 mb-4">
@@ -180,6 +210,21 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Back to Homepage Button */}
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="text-gray-700 hover:text-gray-900 hover:bg-white/50"
+          >
+            <a href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Homepage
+            </a>
+          </Button>
+        </div>
+
         <Card className="w-full">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthContext } from '@/providers/AuthProvider';
-import { Printer } from 'lucide-react';
+import { Printer, ArrowLeft } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -99,6 +99,21 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Back to Homepage Button */}
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="text-gray-700 hover:text-gray-900 hover:bg-white/50"
+          >
+            <a href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Homepage
+            </a>
+          </Button>
+        </div>
+
         {/* Login Form */}
         <Card className="w-full">
           <CardHeader className="text-center">

@@ -2,7 +2,6 @@ import { useEffect, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import RoleBasedSidebar from '@/components/layout/role-based-sidebar';
 import { RoleAwareCollapsibleSidebar } from '@/components/layout/RoleAwareCollapsibleSidebar';
 import Header from '@/components/layout/header';
 import MobileBottomNav from '@/components/ui/mobile-bottom-nav';
@@ -54,7 +53,7 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen w-full bg-gray-50">
+      <div className="flex min-h-screen w-full bg-executive">
         {/* Global Components */}
         <CommandPalette open={open} onOpenChange={setOpen} />
         <KeyboardShortcutsDialog />
