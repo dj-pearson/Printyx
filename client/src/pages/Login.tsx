@@ -16,7 +16,9 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthContext } from '@/providers/AuthProvider';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { config } from '@/lib/config';
+import { Printer, ArrowLeft, Chrome, Apple } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -30,6 +32,50 @@ export default function Login() {
   const { login, isAuthenticated, isLoading: authLoading } = useAuthContext();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
+
+  const oauthEnabled =
+    !!config.supabase.url &&
+    !!config.supabase.anonKey &&
+    !config.supabase.url.includes('placeholder') &&
+    !config.supabase.anonKey.includes('placeholder');
+
+  const startOAuth = async (provider: 'google' | 'apple') => {
+    if (!oauthEnabled) {
+      toast({
+        title: 'OAuth not configured',
+        description:
+          'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, and enable the provider in Supabase GoTrue.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setOauthLoading(provider);
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          scopes: provider === 'google' ? 'email profile' : 'email name',
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error('No OAuth redirect URL returned');
+
+      // Redirect to provider
+      window.location.assign(data.url);
+    } catch (error: any) {
+      toast({
+        title: `Sign in with ${provider === 'google' ? 'Google' : 'Apple'} failed`,
+        description: error?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+      setOauthLoading(null);
+    }
+  };
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -129,6 +175,39 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* OAuth providers */}
+            <div className="space-y-2 mb-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={!oauthEnabled || oauthLoading !== null}
+                onClick={() => startOAuth('google')}
+              >
+                <Chrome className="h-4 w-4 mr-2" />
+                {oauthLoading === 'google' ? 'Redirecting…' : 'Sign in with Google'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={!oauthEnabled || oauthLoading !== null}
+                onClick={() => startOAuth('apple')}
+              >
+                <Apple className="h-4 w-4 mr-2" />
+                {oauthLoading === 'apple' ? 'Redirecting…' : 'Sign in with Apple'}
+              </Button>
+            </div>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">Or continue with email</span>
+              </div>
+            </div>
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
