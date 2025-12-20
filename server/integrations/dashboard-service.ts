@@ -3,8 +3,8 @@
  * Provides real data for the integration hub dashboard
  */
 import { db } from '../db';
-import { systemIntegrations } from '../../shared/schema';
-import { eq, and, gte, lte, count } from 'drizzle-orm';
+import { systemIntegrations, integrationMetrics, integrationApiLogs } from '../../shared/schema';
+import { eq, and, gte, lte, count, desc, sql, sum } from 'drizzle-orm';
 import { IntegrationService } from './integration-service';
 import { availableIntegrations } from './oauth-config';
 
@@ -38,6 +38,7 @@ export class DashboardService {
 
   /**
    * Get integration overview statistics
+   * Now uses real metrics data from integration_metrics table
    */
   private static async getIntegrationOverview(tenantId: string) {
     const integrations = await db
@@ -54,9 +55,55 @@ export class DashboardService {
     const integrationSuccessRate =
       totalIntegrations > 0 ? (activeIntegrations / totalIntegrations) * 100 : 0;
 
-    // Mock some real-time metrics (in a real app, these would come from metrics collection)
+    // Get today's metrics from the database
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Query today's metrics for all integrations
+    const todayMetrics = await db
+      .select({
+        totalApiCalls: sql<number>`COALESCE(SUM(${integrationMetrics.totalApiCalls}), 0)`,
+        successfulCalls: sql<number>`COALESCE(SUM(${integrationMetrics.successfulCalls}), 0)`,
+        failedCalls: sql<number>`COALESCE(SUM(${integrationMetrics.failedCalls}), 0)`,
+        avgLatency: sql<number>`COALESCE(AVG(${integrationMetrics.avgLatencyMs}), 0)`,
+        recordsSynced: sql<number>`COALESCE(SUM(${integrationMetrics.recordsSynced}), 0)`,
+        dataVolumeBytes: sql<number>`COALESCE(SUM(${integrationMetrics.dataVolumeBytes}), 0)`,
+        webhooksProcessed: sql<number>`COALESCE(SUM(${integrationMetrics.webhooksProcessed}), 0)`,
+        webhooksFailed: sql<number>`COALESCE(SUM(${integrationMetrics.webhooksFailed}), 0)`,
+        rateLimitHits: sql<number>`COALESCE(SUM(${integrationMetrics.rateLimitHits}), 0)`,
+      })
+      .from(integrationMetrics)
+      .where(
+        and(
+          eq(integrationMetrics.tenantId, tenantId),
+          gte(integrationMetrics.periodStart, today)
+        )
+      );
+
+    const metrics = todayMetrics[0] || {
+      totalApiCalls: 0,
+      successfulCalls: 0,
+      failedCalls: 0,
+      avgLatency: 0,
+      recordsSynced: 0,
+      dataVolumeBytes: 0,
+      webhooksProcessed: 0,
+      webhooksFailed: 0,
+      rateLimitHits: 0,
+    };
+
+    // Calculate derived metrics
+    const totalCalls = Number(metrics.totalApiCalls) || 0;
+    const successfulCalls = Number(metrics.successfulCalls) || 0;
+    const failedCalls = Number(metrics.failedCalls) || 0;
+    const successRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 100;
+    const errorRate = totalCalls > 0 ? (failedCalls / totalCalls) * 100 : 0;
+
+    // Calculate uptime based on success rate (if we have calls)
+    const integrationUptime = totalCalls > 0 ? successRate : (activeIntegrations > 0 ? 100 : 0);
+
+    // Convert bytes to GB for display
+    const dataTransferredGB = Math.round((Number(metrics.dataVolumeBytes) / (1024 * 1024 * 1024)) * 100) / 100;
 
     return {
       totalIntegrations,
@@ -64,47 +111,108 @@ export class DashboardService {
       pendingIntegrations,
       failedIntegrations,
       integrationSuccessRate: Math.round(integrationSuccessRate * 10) / 10,
-      apiCallsToday: activeIntegrations * 150 + Math.floor(Math.random() * 500), // Simulated
-      dataTransferred: Math.round((activeIntegrations * 2.3 + Math.random() * 5) * 10) / 10,
-      webhooksDelivered: activeIntegrations * 45 + Math.floor(Math.random() * 200),
-      integrationUptime: activeIntegrations > 0 ? 98.5 + Math.random() * 1.5 : 0,
-      averageLatency: 150 + Math.floor(Math.random() * 100),
-      errorRate: failedIntegrations > 0 ? (failedIntegrations / totalIntegrations) * 100 : 0.1,
-      rateLimitHits: Math.floor(Math.random() * 25),
+      apiCallsToday: totalCalls,
+      dataTransferred: dataTransferredGB,
+      webhooksDelivered: Number(metrics.webhooksProcessed) || 0,
+      integrationUptime: Math.round(integrationUptime * 10) / 10,
+      averageLatency: Math.round(Number(metrics.avgLatency) || 0),
+      errorRate: Math.round(errorRate * 100) / 100,
+      rateLimitHits: Number(metrics.rateLimitHits) || 0,
+      recordsSynced: Number(metrics.recordsSynced) || 0,
     };
   }
 
   /**
    * Get active integrations with real data
+   * Now queries integration_metrics table for actual metrics
    */
   private static async getActiveIntegrations(tenantId: string) {
     const integrations = await IntegrationService.getIntegrations(tenantId);
 
-    return integrations.map((integration) => ({
-      id: integration.id,
-      apiId: integration.providerId,
-      name: integration.name,
-      status: integration.status,
-      configuredAt: new Date(), // This should come from the integration record
-      lastSync: integration.lastSync || new Date(),
-      syncFrequency: integration.providerId.includes('calendar') ? 'real-time' : 'hourly',
-      recordsSynced: Math.floor(Math.random() * 10000), // TODO: Track real metrics
-      apiCallsToday: Math.floor(Math.random() * 1000),
-      successRate: integration.status === 'connected' ? 95 + Math.random() * 4 : 0,
-      averageLatency: 150 + Math.floor(Math.random() * 200),
-      dataVolume: Math.round(Math.random() * 3 * 10) / 10,
-      errorCount:
-        integration.status === 'error'
-          ? Math.floor(Math.random() * 10)
-          : Math.floor(Math.random() * 3),
-      configuration: {
-        environment: 'production',
-        ...(integration.metadata && { userInfo: integration.metadata }),
-      },
-      dataMapping: this.getDataMappingForProvider(integration.providerId),
-      webhooks: this.getWebhooksForProvider(integration.providerId),
-      recentActivity: this.generateRecentActivity(integration),
-    }));
+    // Get today's date for metrics query
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Fetch metrics for each integration
+    const metricsResults = await db
+      .select()
+      .from(integrationMetrics)
+      .where(
+        and(
+          eq(integrationMetrics.tenantId, tenantId),
+          gte(integrationMetrics.periodStart, today)
+        )
+      );
+
+    // Build a map of integration metrics
+    const metricsMap = new Map<string, typeof metricsResults[0]>();
+    for (const metric of metricsResults) {
+      if (!metricsMap.has(metric.integrationId)) {
+        metricsMap.set(metric.integrationId, metric);
+      }
+    }
+
+    // Get recent API logs for activity display
+    const recentLogs = await db
+      .select()
+      .from(integrationApiLogs)
+      .where(
+        and(
+          eq(integrationApiLogs.tenantId, tenantId),
+          gte(integrationApiLogs.requestTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000))
+        )
+      )
+      .orderBy(desc(integrationApiLogs.requestTimestamp))
+      .limit(100);
+
+    // Build activity map by integration
+    const activityMap = new Map<string, typeof recentLogs>();
+    for (const log of recentLogs) {
+      if (!activityMap.has(log.integrationId)) {
+        activityMap.set(log.integrationId, []);
+      }
+      activityMap.get(log.integrationId)!.push(log);
+    }
+
+    return integrations.map((integration) => {
+      const metrics = metricsMap.get(integration.id);
+      const logs = activityMap.get(integration.id) || [];
+
+      // Calculate metrics from real data or use defaults
+      const totalCalls = Number(metrics?.totalApiCalls) || 0;
+      const successfulCalls = Number(metrics?.successfulCalls) || 0;
+      const failedCalls = Number(metrics?.failedCalls) || 0;
+      const successRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : (integration.status === 'connected' ? 100 : 0);
+
+      return {
+        id: integration.id,
+        apiId: integration.providerId,
+        name: integration.name,
+        status: integration.status,
+        configuredAt: integration.config?.createdAt || new Date(),
+        lastSync: integration.lastSync || null,
+        syncFrequency: integration.providerId.includes('calendar') ? 'real-time' : 'hourly',
+        recordsSynced: Number(metrics?.recordsSynced) || 0,
+        apiCallsToday: totalCalls,
+        successRate: Math.round(successRate * 10) / 10,
+        averageLatency: Number(metrics?.avgLatencyMs) || 0,
+        dataVolume: Math.round((Number(metrics?.dataVolumeBytes) || 0) / (1024 * 1024) * 100) / 100, // MB
+        errorCount: failedCalls,
+        configuration: {
+          environment: 'production',
+          ...(integration.metadata && { userInfo: integration.metadata }),
+        },
+        dataMapping: this.getDataMappingForProvider(integration.providerId),
+        webhooks: this.getWebhooksForProvider(integration.providerId),
+        recentActivity: logs.slice(0, 5).map(log => ({
+          timestamp: log.requestTimestamp,
+          action: log.endpoint.split('/').pop() || 'api_call',
+          records: log.recordsAffected || 0,
+          status: log.success ? 'success' : 'failed',
+          latency: log.latencyMs,
+        })),
+      };
+    });
   }
 
   /**

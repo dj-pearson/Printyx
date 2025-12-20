@@ -85,25 +85,22 @@ Utilization now calculated from real ticket data:
   - Service call durations
   - SLA compliance and first-time fix rate
 
-### 2.3 Remote Monitoring Historical Data (STUBBED)
-**File:** `server/routes-remote-monitoring.ts:316-332`
-**Issue:** Historical data is generated with random values
-```typescript
-temperature: Array.from({ length: 24 }, (_, i) => ({
-  timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000),
-  value: 40 + Math.random() * 8, // ← Random
-  status: 'normal'
-})),
-powerConsumption: Array.from({ length: 24 }, (_, i) => ({
-  value: 300 + Math.random() * 400, // ← Random
-})),
-utilizationRate: Array.from({ length: 24 }, (_, i) => ({
-  value: Math.random() * 100, // ← Random
-})),
-```
+### 2.3 Remote Monitoring Historical Data - FIXED ✅
+**File:** `server/routes-remote-monitoring.ts`
+**Status:** Fixed on 2025-12-20
 
-- [ ] Implement real SNMP data collection and storage
-- [ ] Query historical data from database
+All remote monitoring endpoints now query real data from the database:
+- Equipment status endpoint queries `deviceRegistrations` and `deviceMetrics` tables
+- Sensor data endpoint queries historical metrics with configurable time ranges
+- Fleet overview endpoint calculates real statistics from device data
+- Alerts are generated dynamically based on actual toner/paper levels and device status
+- Weekly performance trends calculated from historical database records
+
+Note: Temperature/humidity/power consumption metrics are not currently collected by the Printyx monitoring client. These would require SNMP OID extensions to collect environmental sensor data.
+
+- [x] Implement real data queries from deviceMetrics table
+- [x] Query historical data from database
+- [ ] Extended SNMP collection for environmental sensors (future enhancement)
 
 ### 2.4 Client Monitoring Dashboard - FIXED ✅
 **File:** `server/routes-client-monitoring.ts`
@@ -116,31 +113,27 @@ Metrics now calculated from real data:
 - [x] Implement uptime tracking in database
 - [x] Calculate fleet utilization from actual usage data
 
-### 2.5 Integration Dashboard (STUBBED)
-**File:** `server/integrations/dashboard-service.ts:91-99`
-**Issue:** All metrics are randomly generated
-```typescript
-recordsSynced: Math.floor(Math.random() * 10000), // TODO: Track real metrics
-apiCallsToday: Math.floor(Math.random() * 1000),
-successRate: integration.status === 'connected' ? 95 + Math.random() * 4 : 0,
-averageLatency: 150 + Math.floor(Math.random() * 200),
-dataVolume: Math.round(Math.random() * 3 * 10) / 10,
-errorCount: integration.status === 'error' ? Math.floor(Math.random() * 10) : Math.floor(Math.random() * 3),
-```
+### 2.5 Integration Dashboard - FIXED ✅
+**File:** `server/integrations/dashboard-service.ts`
+**Status:** Fixed on 2025-12-20
 
-- [ ] Create integration metrics table
-- [ ] Track actual API calls and success rates
-- [ ] Store latency measurements
+Integration metrics now tracked in real database tables:
+- Created `integration_metrics` table for aggregated daily metrics
+- Created `integration_api_logs` table for individual API call tracking
+- Dashboard now queries real data: API calls, success rates, latency, data volume
+- Error counts calculated from actual failed API calls
 
-### 2.6 Integration Routes (STUBBED)
-**File:** `server/integrations/routes.ts:72-88`
-**Issue:** Same random data pattern as dashboard-service
-```typescript
-recordsSynced: Math.floor(Math.random() * 10000), // TODO: Replace with real data
-apiCallsToday: Math.floor(Math.random() * 1000),
-```
+- [x] Create integration metrics table
+- [x] Track actual API calls and success rates
+- [x] Store latency measurements
 
-- [ ] Same fix as 2.5 above
+### 2.6 Integration Routes - FIXED ✅
+**File:** `server/integrations/routes.ts`
+**Status:** Fixed on 2025-12-20
+
+Integration routes now use the same real metrics infrastructure as dashboard-service.
+
+- [x] Same fix as 2.5 above
 
 ### 2.7 Preventive Maintenance Cost Savings - FIXED ✅
 **File:** `server/routes-preventive-maintenance.ts`
@@ -202,28 +195,32 @@ All Neon database references have been migrated to use the standard `pg` module.
 
 ---
 
-## 4. Documentation with Old Cloud Supabase References
+## 4. Documentation with Old Cloud Supabase References - FIXED ✅
 
-### 4.1 ENV Setup Guide
+### 4.1 ENV Setup Guide - FIXED ✅
 **File:** `ENV_SETUP_GUIDE.md`
-**Lines:** 24, 27, 78, 117, 142
-**Issue:** References `supabase.co` cloud URLs
+**Status:** Fixed on 2025-12-20
+- Added self-hosted Supabase note at top
+- Updated DATABASE_URL examples to use 209.145.59.219:5433
+- Updated VITE_SUPABASE_URL to api.printyx.net
 
-- [ ] Update to reference self-hosted `api.printyx.net`
+- [x] Update to reference self-hosted `api.printyx.net`
 
-### 4.2 Cloudflare Pages Setup
+### 4.2 Cloudflare Pages Setup - FIXED ✅
 **File:** `CLOUDFLARE_PAGES_SETUP.md`
-**Lines:** 59, 63, 95
-**Issue:** Contains `your-project-id.supabase.co` placeholders
+**Status:** Fixed on 2025-12-20
+- Updated environment variable examples to use printyx.net domains
+- Updated proxy redirect examples
 
-- [ ] Update to show `api.printyx.net` and `functions.printyx.net`
+- [x] Update to show `api.printyx.net` and `functions.printyx.net`
 
-### 4.3 SEO Duplication Guide
+### 4.3 SEO Duplication Guide - FIXED ✅
 **File:** `SEO_DUPLICATION_GUIDE.md`
-**Lines:** 351, 584, 753, 814
-**Issue:** References `your-project.supabase.co`
+**Status:** Fixed on 2025-12-20
+- Updated all Supabase URL references to printyx.net domains
+- Updated pg_dump commands to use self-hosted host/port
 
-- [ ] Update to show self-hosted URLs
+- [x] Update to show self-hosted URLs
 
 ---
 
@@ -383,26 +380,27 @@ Multiple files contain `example.com` emails which is fine for examples/documenta
 2. [x] Remove/update config.ts placeholders - Fixed 2025-12-20
 3. [x] Neon imports already migrated to standard `pg`
 
-### Phase 2: Core Business Data ✅ MOSTLY COMPLETE
+### Phase 2: Core Business Data ✅ COMPLETE
 1. [x] Implement real customer health scores - Fixed 2025-12-20
 2. [x] Implement real technician utilization metrics - Fixed 2025-12-20
-3. [ ] Implement integration metrics tracking (requires new table)
+3. [x] Implement integration metrics tracking - Fixed 2025-12-20 (added integrationMetrics and integrationApiLogs tables)
 4. [x] Fix preventive maintenance cost savings - Fixed 2025-12-20
 
-### Phase 3: Device Monitoring Data ⏳ PARTIALLY COMPLETE
-1. [ ] Implement SNMP data storage (requires infrastructure)
+### Phase 3: Device Monitoring Data ✅ COMPLETE
+1. [x] Implement real data queries from deviceMetrics table - Fixed 2025-12-20
 2. [x] Calculate real uptime/utilization from stored data - Fixed 2025-12-20
-3. [ ] Store and query historical device data (requires infrastructure)
+3. [x] Store and query historical device data - Fixed 2025-12-20
+4. [ ] Extended SNMP collection for environmental sensors (future enhancement - not blocking)
 
 ### Phase 4: Integrations & Workflows
 1. [ ] Complete calendar OAuth integration
 2. [ ] Implement e-signature provider
 3. [ ] Complete email parser IMAP testing
 
-### Phase 5: Documentation Updates
-1. [ ] Update ENV_SETUP_GUIDE.md
-2. [ ] Update CLOUDFLARE_PAGES_SETUP.md
-3. [ ] Update SEO_DUPLICATION_GUIDE.md
+### Phase 5: Documentation Updates ✅ COMPLETE
+1. [x] Update ENV_SETUP_GUIDE.md - Fixed 2025-12-20
+2. [x] Update CLOUDFLARE_PAGES_SETUP.md - Fixed 2025-12-20
+3. [x] Update SEO_DUPLICATION_GUIDE.md - Fixed 2025-12-20
 
 ---
 
