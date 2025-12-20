@@ -31,16 +31,17 @@ export const config = {
 
   // Supabase Configuration
   // In production, use same-origin proxy to avoid CORS issues
+  // Self-hosted Supabase at api.printyx.net
   supabase: {
     // Use proxy in production: /api/* routes to Supabase API
     url: useProxy
       ? getOriginUrl()
-      : import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co',
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key',
+      : import.meta.env.VITE_SUPABASE_URL || 'https://api.printyx.net',
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
     // Use proxy in production: /functions/* routes to Supabase Edge Functions
     functionsUrl: useProxy
       ? `${getOriginUrl()}/functions`
-      : import.meta.env.VITE_FUNCTIONS_URL || '',
+      : import.meta.env.VITE_FUNCTIONS_URL || 'https://functions.printyx.net',
   },
 
   // Whether Supabase requests are proxied through Cloudflare Pages Functions
