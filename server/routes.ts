@@ -189,8 +189,9 @@ const requireAuth = async (req: any, res: any, next: any) => {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  // Get user ID from various sources
-  const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+  // Get user ID and tenant ID using auth helpers for consistency
+  let userId = getUserId(req);
+  let tenantId = getTenantId(req);
 
   if (userId && (!req.user || !req.user.tenantId)) {
     // Fetch full user details from database if missing
@@ -207,15 +208,14 @@ const requireAuth = async (req: any, res: any, next: any) => {
           firstName: fullUser.firstName,
           lastName: fullUser.lastName,
         };
+        // Update with values from database
+        userId = fullUser.id;
+        tenantId = fullUser.tenantId;
       }
     } catch (error) {
       console.error('Error fetching user details:', error);
     }
   }
-
-  // Add user context for backwards compatibility using auth helpers
-  const userId = getUserId(req);
-  const tenantId = getTenantId(req);
 
   if (!req.user) {
     req.user = {
