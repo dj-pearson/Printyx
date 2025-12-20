@@ -10,10 +10,10 @@ class APIClient {
   private authToken: string | null = null;
 
   constructor() {
-    // TODO: Replace with your actual API URL
+    // Use printyx.net domain for production (self-hosted Supabase)
     const baseURL = __DEV__
       ? 'http://localhost:5000/api' // Development
-      : 'https://api.printyx.com/api'; // Production
+      : 'https://api.printyx.net/api'; // Production
 
     this.client = axios.create({
       baseURL,

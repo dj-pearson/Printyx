@@ -5446,6 +5446,77 @@ export const systemIntegrations = pgTable('system_integrations', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Integration Metrics - Tracks API call statistics for each integration
+export const integrationMetrics = pgTable('integration_metrics', {
+  id: varchar('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar('tenant_id').notNull(),
+  integrationId: varchar('integration_id').notNull(),
+
+  // Time period for this metrics record
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+
+  // API Call Statistics
+  totalApiCalls: integer('total_api_calls').default(0),
+  successfulCalls: integer('successful_calls').default(0),
+  failedCalls: integer('failed_calls').default(0),
+
+  // Latency metrics (in milliseconds)
+  avgLatencyMs: integer('avg_latency_ms').default(0),
+  minLatencyMs: integer('min_latency_ms'),
+  maxLatencyMs: integer('max_latency_ms'),
+  p95LatencyMs: integer('p95_latency_ms'),
+
+  // Data transfer metrics
+  recordsSynced: integer('records_synced').default(0),
+  dataVolumeBytes: bigint('data_volume_bytes', { mode: 'number' }).default(0),
+
+  // Webhook metrics
+  webhooksReceived: integer('webhooks_received').default(0),
+  webhooksProcessed: integer('webhooks_processed').default(0),
+  webhooksFailed: integer('webhooks_failed').default(0),
+
+  // Rate limiting
+  rateLimitHits: integer('rate_limit_hits').default(0),
+
+  // Error tracking
+  errorsByType: jsonb('errors_by_type').default({}), // { "timeout": 5, "auth": 2, "server": 1 }
+
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Integration API Call Log - Detailed log of individual API calls (for debugging/audit)
+export const integrationApiLogs = pgTable('integration_api_logs', {
+  id: varchar('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenantId: varchar('tenant_id').notNull(),
+  integrationId: varchar('integration_id').notNull(),
+
+  // Request details
+  endpoint: varchar('endpoint').notNull(),
+  method: varchar('method').notNull(), // GET, POST, PUT, DELETE
+  requestTimestamp: timestamp('request_timestamp').notNull(),
+
+  // Response details
+  responseStatus: integer('response_status'),
+  latencyMs: integer('latency_ms'),
+  success: boolean('success').default(false),
+
+  // Error details (if failed)
+  errorType: varchar('error_type'), // timeout, auth, rate_limit, server, network
+  errorMessage: text('error_message'),
+
+  // Data metrics
+  recordsAffected: integer('records_affected').default(0),
+  responseSize: integer('response_size'), // bytes
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // Insert schemas and types for new tables
 export const insertTaskSchema = createInsertSchema(tasks)
   .omit({

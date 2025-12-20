@@ -9,11 +9,31 @@ import {
   platformSalesTerritories as salesTerritories,
   platformLeadAssignmentHistory as leadAssignmentHistory,
   leadAssignmentQueue,
+  users,
   type InsertLeadScoreCalculation,
   type InsertLeadAssignmentHistory,
   type InsertLeadAssignmentQueue
 } from '@shared/schema';
 import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
+
+// Helper to get user full name
+async function getUserFullName(userId: string): Promise<string> {
+  try {
+    const user = await db
+      .select({ firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user.length > 0) {
+      const { firstName, lastName } = user[0];
+      return [firstName, lastName].filter(Boolean).join(' ') || userId;
+    }
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+  }
+  return userId;
+}
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({
@@ -392,9 +412,12 @@ Format as JSON:
         reasons.push('Top performer for hot lead');
       }
 
+      // Get rep name from users table
+      const userName = await getUserFullName(rep.userId);
+
       repScores.push({
         userId: rep.userId,
-        userName: rep.userId, // TODO: Join with users table for actual name
+        userName,
         score,
         reasons,
         capacity: {

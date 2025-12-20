@@ -1,7 +1,8 @@
 import express from 'express';
-import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
+import { desc, eq, and, sql, asc, gte, lte, count } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
+import { deviceRegistrations, deviceMetrics } from '../shared/manufacturer-integration-schema';
 
 const router = express.Router();
 
@@ -15,270 +16,196 @@ router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    // Real-time equipment monitoring data
-    const equipmentStatus = [
-      {
-        equipmentId: 'eq-001',
-        serialNumber: 'MX-2025-001',
-        model: 'Canon ImageRunner 2535i',
-        location: {
-          customerName: 'Metro Office Solutions',
-          address: '123 Business Center Dr, Suite 200',
-          floor: '2nd Floor - Copy Center',
-          coordinates: { lat: 40.7128, lng: -74.0060 }
-        },
-        
-        // Current operational status
-        status: 'operational',
-        connectionStatus: 'connected',
-        lastPing: new Date('2025-02-03T23:45:32Z'),
-        uptime: 98.7,
-        
-        // Real-time metrics
-        currentMetrics: {
-          pagesPerMinute: 35,
-          tonerLevels: {
-            black: 78,
-            cyan: 82,
-            magenta: 75,
-            yellow: 91
-          },
-          paperLevels: {
-            tray1: 85,
-            tray2: 92,
-            tray3: 67
-          },
-          temperature: 42.3,
-          humidity: 45,
-          errorCount: 0,
-          jamCount: 2,
-          lastJobCompleted: new Date('2025-02-03T23:44:15Z')
-        },
-        
-        // Performance metrics
-        performance: {
-          dailyPageCount: 1247,
-          weeklyPageCount: 8650,
-          monthlyPageCount: 32450,
-          utilizationRate: 87,
-          efficiency: 94.2,
-          averageJobSize: 12.5,
-          peakUsageHour: 14
-        },
-        
-        // Maintenance status
-        maintenance: {
-          nextScheduled: new Date('2025-02-15T09:00:00Z'),
-          lastCompleted: new Date('2025-01-20T14:30:00Z'),
-          maintenanceScore: 92,
-          predictiveAlerts: [
-            {
-              component: 'Fuser Unit',
-              condition: 'good',
-              estimatedLife: 85,
-              nextReplacement: new Date('2025-04-15T00:00:00Z')
-            },
-            {
-              component: 'Drum Unit',
-              condition: 'fair',
-              estimatedLife: 65,
-              nextReplacement: new Date('2025-03-10T00:00:00Z')
-            }
-          ]
-        },
-        
-        // Current alerts and notifications
-        alerts: [
-          {
-            id: 'alert-001',
-            type: 'supply_low',
-            severity: 'medium',
-            message: 'Magenta toner at 75% - consider ordering replacement',
-            timestamp: new Date('2025-02-03T22:30:00Z'),
-            acknowledged: false
-          }
-        ],
-        
-        // Energy and environmental data
-        environmental: {
-          powerConsumption: 450, // watts
-          energyEfficiency: 'A+',
-          carbonFootprint: 2.3, // kg CO2/day
-          sleepModeActive: false,
-          autoSleepEnabled: true
-        }
-      },
-      {
-        equipmentId: 'eq-002',
-        serialNumber: 'TX-2024-007',
-        model: 'Xerox WorkCentre 5855',
-        location: {
-          customerName: 'TechStart Innovations',
-          address: '456 Innovation Blvd',
-          floor: 'Main Floor - Reception',
-          coordinates: { lat: 40.7589, lng: -73.9851 }
-        },
-        
-        status: 'warning',
-        connectionStatus: 'connected',
-        lastPing: new Date('2025-02-03T23:45:28Z'),
-        uptime: 92.3,
-        
-        currentMetrics: {
-          pagesPerMinute: 22,
-          tonerLevels: {
-            black: 15,
-            cyan: 45,
-            magenta: 38,
-            yellow: 52
-          },
-          paperLevels: {
-            tray1: 25,
-            tray2: 0,
-            tray3: 78
-          },
-          temperature: 48.7,
-          humidity: 52,
-          errorCount: 3,
-          jamCount: 8,
-          lastJobCompleted: new Date('2025-02-03T22:15:42Z')
-        },
-        
-        performance: {
-          dailyPageCount: 456,
-          weeklyPageCount: 2890,
-          monthlyPageCount: 12340,
-          utilizationRate: 52,
-          efficiency: 78.5,
-          averageJobSize: 8.2,
-          peakUsageHour: 11
-        },
-        
-        maintenance: {
-          nextScheduled: new Date('2025-02-08T10:00:00Z'),
-          lastCompleted: new Date('2025-01-12T16:45:00Z'),
-          maintenanceScore: 68,
-          predictiveAlerts: [
-            {
-              component: 'Paper Feed Mechanism',
-              condition: 'poor',
-              estimatedLife: 25,
-              nextReplacement: new Date('2025-02-20T00:00:00Z')
-            }
-          ]
-        },
-        
-        alerts: [
-          {
-            id: 'alert-002',
+    // Query registered devices from database
+    const devices = await db
+      .select()
+      .from(deviceRegistrations)
+      .where(eq(deviceRegistrations.tenantId, tenantId));
+
+    // Get latest metrics for each device
+    const equipmentStatus = await Promise.all(devices.map(async (device) => {
+      // Get the most recent metrics for this device
+      const latestMetrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(eq(deviceMetrics.deviceId, device.id))
+        .orderBy(desc(deviceMetrics.collectionTimestamp))
+        .limit(1);
+
+      const metrics = latestMetrics[0];
+
+      // Get metrics from last 24 hours to calculate daily totals
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const dailyMetrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(
+          and(
+            eq(deviceMetrics.deviceId, device.id),
+            gte(deviceMetrics.collectionTimestamp, oneDayAgo)
+          )
+        )
+        .orderBy(asc(deviceMetrics.collectionTimestamp));
+
+      // Calculate daily page count from meter readings
+      let dailyPageCount = 0;
+      if (dailyMetrics.length >= 2) {
+        const firstReading = dailyMetrics[0].totalImpressions || 0;
+        const lastReading = dailyMetrics[dailyMetrics.length - 1].totalImpressions || 0;
+        dailyPageCount = lastReading - firstReading;
+      }
+
+      // Determine connection status based on last seen
+      const lastSeenDate = device.lastSeen ? new Date(device.lastSeen) : null;
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const connectionStatus = lastSeenDate && lastSeenDate > tenMinutesAgo ? 'connected' : 'disconnected';
+
+      // Parse toner and paper levels from metrics
+      const tonerLevels = metrics?.tonerLevels as Record<string, number> || {};
+      const paperLevels = metrics?.paperLevels as Record<string, number> || {};
+
+      // Calculate error count from error codes
+      const errorCodes = metrics?.errorCodes || [];
+      const errorCount = errorCodes.length;
+
+      // Build alerts based on current conditions
+      const alerts: any[] = [];
+
+      // Check toner levels for alerts
+      Object.entries(tonerLevels).forEach(([color, level]) => {
+        if (level < 10) {
+          alerts.push({
+            id: `alert-toner-${color}-${device.id}`,
             type: 'supply_critical',
             severity: 'high',
-            message: 'Black toner critically low (15%) - immediate replacement needed',
-            timestamp: new Date('2025-02-03T20:45:00Z'),
+            message: `${color.charAt(0).toUpperCase() + color.slice(1)} toner critically low (${level}%) - immediate replacement needed`,
+            timestamp: new Date(),
             acknowledged: false
-          },
-          {
-            id: 'alert-003',
+          });
+        } else if (level < 25) {
+          alerts.push({
+            id: `alert-toner-${color}-${device.id}`,
+            type: 'supply_low',
+            severity: 'medium',
+            message: `${color.charAt(0).toUpperCase() + color.slice(1)} toner at ${level}% - consider ordering replacement`,
+            timestamp: new Date(),
+            acknowledged: false
+          });
+        }
+      });
+
+      // Check paper levels
+      Object.entries(paperLevels).forEach(([tray, level]) => {
+        if (level === 0) {
+          alerts.push({
+            id: `alert-paper-${tray}-${device.id}`,
             type: 'paper_empty',
             severity: 'medium',
-            message: 'Tray 2 is empty - refill required',
-            timestamp: new Date('2025-02-03T19:22:00Z'),
-            acknowledged: true
-          },
-          {
-            id: 'alert-004',
-            type: 'maintenance_due',
-            severity: 'medium',
-            message: 'Frequent paper jams detected - maintenance recommended',
-            timestamp: new Date('2025-02-03T18:00:00Z'),
+            message: `${tray} is empty - refill required`,
+            timestamp: new Date(),
             acknowledged: false
-          }
-        ],
-        
-        environmental: {
-          powerConsumption: 520,
-          energyEfficiency: 'B',
-          carbonFootprint: 3.1,
-          sleepModeActive: false,
-          autoSleepEnabled: true
+          });
+        } else if (level < 20) {
+          alerts.push({
+            id: `alert-paper-${tray}-${device.id}`,
+            type: 'paper_low',
+            severity: 'low',
+            message: `${tray} is low (${level}%)`,
+            timestamp: new Date(),
+            acknowledged: false
+          });
         }
-      },
-      {
-        equipmentId: 'eq-003',
-        serialNumber: 'RM-2025-012',
-        model: 'Ricoh MP C3004',
+      });
+
+      // Connection lost alert
+      if (connectionStatus === 'disconnected' && lastSeenDate) {
+        const hoursOffline = Math.floor((Date.now() - lastSeenDate.getTime()) / (60 * 60 * 1000));
+        alerts.push({
+          id: `alert-connection-${device.id}`,
+          type: 'connection_lost',
+          severity: hoursOffline > 8 ? 'critical' : 'high',
+          message: `Equipment offline for ${hoursOffline}+ hours - network connectivity issue`,
+          timestamp: lastSeenDate,
+          acknowledged: false
+        });
+      }
+
+      // Determine overall status
+      let status = 'operational';
+      if (connectionStatus === 'disconnected') {
+        status = 'offline';
+      } else if (alerts.some(a => a.severity === 'critical' || a.severity === 'high')) {
+        status = 'warning';
+      } else if (device.status === 'error') {
+        status = 'critical';
+      } else if (device.status === 'maintenance') {
+        status = 'maintenance';
+      }
+
+      return {
+        equipmentId: device.id,
+        serialNumber: device.serialNumber || 'N/A',
+        model: device.model || 'Unknown Model',
         location: {
-          customerName: 'Regional Medical Center',
-          address: '789 Healthcare Plaza',
-          floor: 'Level 3 - Administrative Wing',
-          coordinates: { lat: 40.7831, lng: -73.9712 }
+          customerName: device.location || 'Unknown Location',
+          address: device.department || '',
+          floor: '',
+          coordinates: null
         },
-        
-        status: 'offline',
-        connectionStatus: 'disconnected',
-        lastPing: new Date('2025-02-03T15:32:18Z'),
-        uptime: 99.2,
-        
+
+        // Current operational status
+        status,
+        connectionStatus,
+        lastPing: device.lastSeen,
+        uptime: metrics?.uptime ? Number(metrics.uptime) : 0,
+
+        // Real-time metrics
         currentMetrics: {
-          pagesPerMinute: 0,
-          tonerLevels: {
-            black: 92,
-            cyan: 88,
-            magenta: 94,
-            yellow: 85
-          },
-          paperLevels: {
-            tray1: 95,
-            tray2: 88,
-            tray3: 92
-          },
-          temperature: null,
+          pagesPerMinute: 0, // Would need real-time calculation
+          tonerLevels,
+          paperLevels,
+          temperature: null, // Not stored in current schema
           humidity: null,
-          errorCount: 0,
-          jamCount: 0,
-          lastJobCompleted: new Date('2025-02-03T15:28:45Z')
+          errorCount,
+          jamCount: 0, // Would need specific error code parsing
+          lastJobCompleted: metrics?.collectionTimestamp || null
         },
-        
+
+        // Performance metrics
         performance: {
-          dailyPageCount: 2840,
-          weeklyPageCount: 18960,
-          monthlyPageCount: 75840,
-          utilizationRate: 95,
-          efficiency: 98.7,
-          averageJobSize: 18.5,
-          peakUsageHour: 10
+          dailyPageCount,
+          weeklyPageCount: 0, // Would need week range query
+          monthlyPageCount: 0, // Would need month range query
+          utilizationRate: metrics?.uptime ? Number(metrics.uptime) : 0,
+          efficiency: 0,
+          averageJobSize: 0,
+          peakUsageHour: 0
         },
-        
+
+        // Maintenance status (would need separate maintenance tracking table)
         maintenance: {
-          nextScheduled: new Date('2025-02-10T08:00:00Z'),
-          lastCompleted: new Date('2025-01-25T11:15:00Z'),
-          maintenanceScore: 96,
+          nextScheduled: null,
+          lastCompleted: null,
+          maintenanceScore: 0,
           predictiveAlerts: []
         },
-        
-        alerts: [
-          {
-            id: 'alert-005',
-            type: 'connection_lost',
-            severity: 'critical',
-            message: 'Equipment offline for 8+ hours - network connectivity issue',
-            timestamp: new Date('2025-02-03T15:32:18Z'),
-            acknowledged: false
-          }
-        ],
-        
+
+        alerts,
+
+        // Environmental data (not stored in current schema)
         environmental: {
           powerConsumption: 0,
-          energyEfficiency: 'A++',
+          energyEfficiency: 'N/A',
           carbonFootprint: 0,
           sleepModeActive: false,
-          autoSleepEnabled: true
+          autoSleepEnabled: false
         }
-      }
-    ];
+      };
+    }));
 
     res.json(equipmentStatus);
-    
+
   } catch (error) {
     console.error('Error fetching equipment status:', error);
     res.status(500).json({ message: 'Failed to fetch equipment status' });
@@ -290,120 +217,199 @@ router.get('/api/remote-monitoring/sensor-data', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { equipmentId, timeRange = '24h' } = req.query;
-    
+
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    // IoT sensor data with historical trends
+    if (!equipmentId) {
+      return res.status(400).json({ message: "Equipment ID is required" });
+    }
+
+    // Determine time range in hours
+    const hoursMap: Record<string, number> = {
+      '1h': 1,
+      '6h': 6,
+      '12h': 12,
+      '24h': 24,
+      '7d': 168,
+      '30d': 720
+    };
+    const hours = hoursMap[timeRange as string] || 24;
+    const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    // Fetch historical metrics from database
+    const historicalMetrics = await db
+      .select()
+      .from(deviceMetrics)
+      .where(
+        and(
+          eq(deviceMetrics.deviceId, equipmentId as string),
+          gte(deviceMetrics.collectionTimestamp, startTime)
+        )
+      )
+      .orderBy(asc(deviceMetrics.collectionTimestamp));
+
+    // Get the most recent metrics for current readings
+    const latestMetrics = historicalMetrics.length > 0
+      ? historicalMetrics[historicalMetrics.length - 1]
+      : null;
+
+    // Build historical data arrays from real metrics
+    const utilizationHistory = historicalMetrics.map(m => ({
+      timestamp: m.collectionTimestamp,
+      value: m.uptime ? Number(m.uptime) : 0,
+      status: 'normal'
+    }));
+
+    // Calculate page count changes between readings (as utilization proxy)
+    const pageCountHistory: { timestamp: Date; value: number; status: string }[] = [];
+    for (let i = 1; i < historicalMetrics.length; i++) {
+      const prev = historicalMetrics[i - 1];
+      const curr = historicalMetrics[i];
+      const pagesDiff = (curr.totalImpressions || 0) - (prev.totalImpressions || 0);
+      pageCountHistory.push({
+        timestamp: curr.collectionTimestamp,
+        value: Math.max(0, pagesDiff),
+        status: 'normal'
+      });
+    }
+
+    // Build error events from error codes
+    const errorEvents = historicalMetrics
+      .filter(m => m.errorCodes && m.errorCodes.length > 0)
+      .map(m => ({
+        timestamp: m.collectionTimestamp,
+        type: m.errorCodes?.[0] || 'unknown',
+        severity: 'medium',
+        resolved: false,
+        resolutionTime: null
+      }));
+
+    // Calculate average uptime for this equipment
+    const avgUptime = historicalMetrics.length > 0
+      ? historicalMetrics.reduce((sum, m) => sum + (m.uptime ? Number(m.uptime) : 0), 0) / historicalMetrics.length
+      : 0;
+
+    // Parse toner levels for prediction
+    const tonerLevels = latestMetrics?.tonerLevels as Record<string, number> || {};
+
+    // Estimate toner replacement dates based on usage rate (simplified)
+    const tonerReplacementDates: Record<string, Date | null> = {};
+    Object.entries(tonerLevels).forEach(([color, level]) => {
+      if (level > 0) {
+        // Estimate days remaining based on average 2% consumption per day
+        const daysRemaining = Math.floor(level / 2);
+        const replacementDate = new Date();
+        replacementDate.setDate(replacementDate.getDate() + daysRemaining);
+        tonerReplacementDates[color] = replacementDate;
+      } else {
+        tonerReplacementDates[color] = new Date(); // Replace now
+      }
+    });
+
+    // Build recommended actions based on current state
+    const recommendedActions: any[] = [];
+
+    // Low toner actions
+    Object.entries(tonerLevels).forEach(([color, level]) => {
+      if (level < 25) {
+        recommendedActions.push({
+          action: `Order ${color} toner cartridge`,
+          priority: level < 10 ? 'critical' : 'high',
+          estimatedCost: 85, // Approximate cost
+          preventsPotentialIssue: 'Print quality issues or printing stoppage'
+        });
+      }
+    });
+
+    // Calculate fleet average uptime for benchmarks
+    const fleetMetrics = await db
+      .select()
+      .from(deviceMetrics)
+      .where(
+        and(
+          eq(deviceMetrics.tenantId, tenantId),
+          gte(deviceMetrics.collectionTimestamp, startTime)
+        )
+      );
+
+    const fleetAvgUptime = fleetMetrics.length > 0
+      ? fleetMetrics.reduce((sum, m) => sum + (m.uptime ? Number(m.uptime) : 0), 0) / fleetMetrics.length
+      : 0;
+
     const sensorData = {
-      equipmentId: equipmentId || 'eq-001',
+      equipmentId,
       collectionPeriod: timeRange,
-      
-      // Real-time sensor readings
+      dataPointsCollected: historicalMetrics.length,
+
+      // Current readings from latest metrics
       currentReadings: {
-        temperature: 42.3,
-        humidity: 45,
-        vibration: 0.8,
-        acousticLevel: 52,
-        powerDraw: 450,
-        networkSignal: -45,
-        ambientLight: 350
+        temperature: null, // Not stored in current schema
+        humidity: null,
+        vibration: null,
+        acousticLevel: null,
+        powerDraw: null,
+        networkSignal: latestMetrics?.responseTime || null,
+        ambientLight: null
       },
-      
-      // Historical data points (last 24 hours)
+
+      // Real historical data from database
       historicalData: {
-        temperature: Array.from({ length: 24 }, (_, i) => ({
-          timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000),
-          value: 40 + Math.random() * 8,
-          status: 'normal'
-        })),
-        
-        powerConsumption: Array.from({ length: 24 }, (_, i) => ({
-          timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000),
-          value: 300 + Math.random() * 400,
-          status: 'normal'
-        })),
-        
-        utilizationRate: Array.from({ length: 24 }, (_, i) => ({
-          timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000),
-          value: Math.random() * 100,
-          status: 'normal'
-        })),
-        
-        errorEvents: [
-          {
-            timestamp: new Date('2025-02-03T14:30:00Z'),
-            type: 'paper_jam',
-            severity: 'low',
-            resolved: true,
-            resolutionTime: 180 // seconds
-          },
-          {
-            timestamp: new Date('2025-02-03T09:15:00Z'),
-            type: 'toner_low_warning',
-            severity: 'medium',
-            resolved: false,
-            resolutionTime: null
-          }
-        ]
+        // Temperature not stored - would need schema extension
+        temperature: [],
+
+        // Power consumption not stored - would need schema extension
+        powerConsumption: [],
+
+        // Utilization based on uptime readings
+        utilizationRate: utilizationHistory,
+
+        // Page count changes as activity metric
+        pageActivity: pageCountHistory,
+
+        // Error events from actual error codes
+        errorEvents
       },
-      
-      // Predictive analytics
+
+      // Predictive analytics based on real data
       predictions: {
-        nextMaintenanceRequired: new Date('2025-02-15T09:00:00Z'),
-        estimatedTonerReplacementDates: {
-          black: new Date('2025-02-20T00:00:00Z'),
-          cyan: new Date('2025-03-05T00:00:00Z'),
-          magenta: new Date('2025-02-25T00:00:00Z'),
-          yellow: new Date('2025-03-15T00:00:00Z')
-        },
+        nextMaintenanceRequired: null, // Would need maintenance scheduling integration
+        estimatedTonerReplacementDates: tonerReplacementDates,
         probabilityOfFailure: {
-          next7Days: 5,
-          next30Days: 18,
-          next90Days: 45
+          // Based on error frequency and uptime
+          next7Days: errorEvents.length > 5 ? 20 : (avgUptime < 90 ? 15 : 5),
+          next30Days: errorEvents.length > 5 ? 40 : (avgUptime < 90 ? 30 : 15),
+          next90Days: errorEvents.length > 5 ? 60 : (avgUptime < 90 ? 50 : 35)
         },
-        recommendedActions: [
-          {
-            action: 'Schedule proactive maintenance',
-            priority: 'medium',
-            estimatedCost: 150,
-            preventsPotentialIssue: 'Fuser unit degradation'
-          },
-          {
-            action: 'Order replacement toner cartridges',
-            priority: 'high',
-            estimatedCost: 320,
-            preventsPotentialIssue: 'Print quality issues'
-          }
-        ]
+        recommendedActions
       },
-      
-      // Performance benchmarks
+
+      // Performance benchmarks with real data
       benchmarks: {
         industryAverage: {
           uptime: 94.5,
           efficiency: 87.2,
           energyEfficiency: 'B+',
-          maintenanceCost: 1200 // annual
+          maintenanceCost: 1200
         },
         fleetAverage: {
-          uptime: 96.8,
-          efficiency: 91.5,
-          energyEfficiency: 'A-',
-          maintenanceCost: 980
+          uptime: Math.round(fleetAvgUptime * 10) / 10,
+          efficiency: 0, // Would need efficiency calculation
+          energyEfficiency: 'N/A',
+          maintenanceCost: 0
         },
         thisEquipment: {
-          uptime: 98.7,
-          efficiency: 94.2,
-          energyEfficiency: 'A+',
-          maintenanceCost: 750
+          uptime: Math.round(avgUptime * 10) / 10,
+          efficiency: 0,
+          energyEfficiency: 'N/A',
+          maintenanceCost: 0
         }
       }
     };
 
     res.json(sensorData);
-    
+
   } catch (error) {
     console.error('Error fetching sensor data:', error);
     res.status(500).json({ message: 'Failed to fetch sensor data' });
@@ -418,134 +424,243 @@ router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
+    // Get all devices for this tenant
+    const devices = await db
+      .select()
+      .from(deviceRegistrations)
+      .where(eq(deviceRegistrations.tenantId, tenantId));
+
+    const totalEquipment = devices.length;
+
+    // Determine online/offline status based on last seen
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const onlineDevices = devices.filter(d => d.lastSeen && new Date(d.lastSeen) > tenMinutesAgo);
+    const offlineDevices = devices.filter(d => !d.lastSeen || new Date(d.lastSeen) <= tenMinutesAgo);
+
+    // Get latest metrics for all devices
+    const latestMetrics = await Promise.all(devices.map(async (device) => {
+      const metrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(eq(deviceMetrics.deviceId, device.id))
+        .orderBy(desc(deviceMetrics.collectionTimestamp))
+        .limit(1);
+      return { device, metrics: metrics[0] || null };
+    }));
+
+    // Calculate status distribution
+    let operational = 0, warning = 0, critical = 0, offline = 0, maintenance = 0;
+
+    const devicesWithIssues: any[] = [];
+    const topPerformers: any[] = [];
+
+    for (const { device, metrics } of latestMetrics) {
+      const isOnline = device.lastSeen && new Date(device.lastSeen) > tenMinutesAgo;
+
+      if (!isOnline) {
+        offline++;
+        if (device.lastSeen) {
+          const hoursOffline = Math.floor((Date.now() - new Date(device.lastSeen).getTime()) / (60 * 60 * 1000));
+          if (hoursOffline > 2) {
+            devicesWithIssues.push({
+              equipmentId: device.id,
+              customerName: device.location || 'Unknown',
+              model: device.model || 'Unknown',
+              issues: [`Connection lost for ${hoursOffline}+ hours`],
+              priority: hoursOffline > 8 ? 'critical' : 'high',
+              estimatedRevenueLoss: hoursOffline * 50 // Approximate
+            });
+          }
+        }
+      } else if (device.status === 'maintenance') {
+        maintenance++;
+      } else if (device.status === 'error') {
+        critical++;
+      } else {
+        // Check for supply warnings
+        const tonerLevels = metrics?.tonerLevels as Record<string, number> || {};
+        const hasLowSupply = Object.values(tonerLevels).some(level => level < 25);
+        const hasCriticalSupply = Object.values(tonerLevels).some(level => level < 10);
+        const hasErrors = metrics?.errorCodes && metrics.errorCodes.length > 0;
+
+        if (hasCriticalSupply || hasErrors) {
+          warning++;
+          const issues: string[] = [];
+          if (hasCriticalSupply) issues.push('Critical supply levels');
+          if (hasErrors) issues.push(`${metrics?.errorCodes?.length} active errors`);
+          devicesWithIssues.push({
+            equipmentId: device.id,
+            customerName: device.location || 'Unknown',
+            model: device.model || 'Unknown',
+            issues,
+            priority: 'high',
+            estimatedRevenueLoss: 200
+          });
+        } else if (hasLowSupply) {
+          warning++;
+        } else {
+          operational++;
+        }
+      }
+
+      // Track high performers (online with good uptime)
+      if (isOnline && metrics?.uptime && Number(metrics.uptime) > 95) {
+        topPerformers.push({
+          equipmentId: device.id,
+          customerName: device.location || 'Unknown',
+          model: device.model || 'Unknown',
+          uptime: Number(metrics.uptime),
+          efficiency: 0,
+          utilizationRate: Number(metrics.uptime)
+        });
+      }
+    }
+
+    // Sort top performers by uptime
+    topPerformers.sort((a, b) => b.uptime - a.uptime);
+
+    // Calculate average uptime from metrics
+    const allUptimes = latestMetrics
+      .filter(({ metrics }) => metrics?.uptime)
+      .map(({ metrics }) => Number(metrics!.uptime));
+    const averageUptime = allUptimes.length > 0
+      ? Math.round((allUptimes.reduce((a, b) => a + b, 0) / allUptimes.length) * 10) / 10
+      : 0;
+
+    // Calculate fleet utilization (devices with activity in last 24 hours)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentMetrics = await db
+      .select()
+      .from(deviceMetrics)
+      .where(
+        and(
+          eq(deviceMetrics.tenantId, tenantId),
+          gte(deviceMetrics.collectionTimestamp, oneDayAgo)
+        )
+      );
+
+    const activeDeviceIds = new Set(recentMetrics.map(m => m.deviceId));
+    const fleetUtilization = totalEquipment > 0
+      ? Math.round((activeDeviceIds.size / totalEquipment) * 1000) / 10
+      : 0;
+
+    // Group devices by location for location analytics
+    const locationGroups = new Map<string, typeof latestMetrics>();
+    for (const item of latestMetrics) {
+      const location = item.device.location || 'Unknown Location';
+      if (!locationGroups.has(location)) {
+        locationGroups.set(location, []);
+      }
+      locationGroups.get(location)!.push(item);
+    }
+
+    const locationAnalytics = Array.from(locationGroups.entries()).map(([region, items]) => {
+      const uptimes = items
+        .filter(({ metrics }) => metrics?.uptime)
+        .map(({ metrics }) => Number(metrics!.uptime));
+      const avgUptime = uptimes.length > 0
+        ? Math.round((uptimes.reduce((a, b) => a + b, 0) / uptimes.length) * 10) / 10
+        : 0;
+      const criticalCount = items.filter(({ device }) => device.status === 'error').length;
+
+      return {
+        region,
+        equipmentCount: items.length,
+        averageUptime: avgUptime,
+        criticalAlerts: criticalCount,
+        utilizationRate: avgUptime // Simplified
+      };
+    });
+
+    // Calculate weekly performance trends from historical data
+    const weeklyUptime: number[] = [];
+    const weeklyUtilization: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date();
+      dayStart.setDate(dayStart.getDate() - i);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const dayMetrics = await db
+        .select()
+        .from(deviceMetrics)
+        .where(
+          and(
+            eq(deviceMetrics.tenantId, tenantId),
+            gte(deviceMetrics.collectionTimestamp, dayStart),
+            lte(deviceMetrics.collectionTimestamp, dayEnd)
+          )
+        );
+
+      const uptimes = dayMetrics.filter(m => m.uptime).map(m => Number(m.uptime));
+      const avgUptime = uptimes.length > 0
+        ? Math.round((uptimes.reduce((a, b) => a + b, 0) / uptimes.length) * 10) / 10
+        : 0;
+      weeklyUptime.push(avgUptime);
+
+      const activeCount = new Set(dayMetrics.map(m => m.deviceId)).size;
+      const utilizationRate = totalEquipment > 0
+        ? Math.round((activeCount / totalEquipment) * 1000) / 10
+        : 0;
+      weeklyUtilization.push(utilizationRate);
+    }
+
     const fleetOverview = {
       summary: {
-        totalEquipment: 47,
-        onlineEquipment: 44,
-        offlineEquipment: 3,
-        equipmentWithAlerts: 8,
-        criticalAlerts: 2,
-        averageUptime: 96.8,
-        fleetUtilization: 78.5,
-        energyEfficiency: 'A-'
+        totalEquipment,
+        onlineEquipment: onlineDevices.length,
+        offlineEquipment: offlineDevices.length,
+        equipmentWithAlerts: devicesWithIssues.length,
+        criticalAlerts: devicesWithIssues.filter(d => d.priority === 'critical').length,
+        averageUptime,
+        fleetUtilization,
+        energyEfficiency: 'N/A' // Not tracked in current schema
       },
-      
+
       // Status distribution
       statusDistribution: {
-        operational: 38,
-        warning: 6,
-        critical: 2,
-        offline: 3,
-        maintenance: 1
+        operational,
+        warning,
+        critical,
+        offline,
+        maintenance
       },
-      
+
       // Geographic distribution
-      locationAnalytics: [
-        {
-          region: 'Downtown Business District',
-          equipmentCount: 18,
-          averageUptime: 98.2,
-          criticalAlerts: 0,
-          utilizationRate: 85.7
-        },
-        {
-          region: 'Industrial Park',
-          equipmentCount: 15,
-          averageUptime: 95.8,
-          criticalAlerts: 1,
-          utilizationRate: 72.3
-        },
-        {
-          region: 'Medical Center Complex',
-          equipmentCount: 14,
-          averageUptime: 97.1,
-          criticalAlerts: 1,
-          utilizationRate: 82.1
-        }
-      ],
-      
-      // Performance trends
+      locationAnalytics,
+
+      // Performance trends from real data
       performanceTrends: {
-        weeklyUptime: [96.2, 97.1, 96.8, 97.5, 96.9, 97.2, 96.8],
-        weeklyUtilization: [75.2, 78.1, 76.8, 79.5, 77.9, 80.2, 78.5],
-        weeklyEfficiency: [89.2, 91.1, 90.8, 92.5, 91.9, 93.2, 91.5]
+        weeklyUptime,
+        weeklyUtilization,
+        weeklyEfficiency: weeklyUptime // Simplified - using uptime as proxy
       },
-      
+
       // Top performing equipment
-      topPerformers: [
-        {
-          equipmentId: 'eq-003',
-          customerName: 'Regional Medical Center',
-          model: 'Ricoh MP C3004',
-          uptime: 99.2,
-          efficiency: 98.7,
-          utilizationRate: 95
-        },
-        {
-          equipmentId: 'eq-001',
-          customerName: 'Metro Office Solutions',
-          model: 'Canon ImageRunner 2535i',
-          uptime: 98.7,
-          efficiency: 94.2,
-          utilizationRate: 87
-        }
-      ],
-      
+      topPerformers: topPerformers.slice(0, 5),
+
       // Equipment requiring attention
-      attentionRequired: [
-        {
-          equipmentId: 'eq-002',
-          customerName: 'TechStart Innovations',
-          model: 'Xerox WorkCentre 5855',
-          issues: ['Critical toner low', 'Frequent jams', 'Maintenance overdue'],
-          priority: 'high',
-          estimatedRevenueLoss: 1200
-        },
-        {
-          equipmentId: 'eq-003',
-          customerName: 'Regional Medical Center',
-          model: 'Ricoh MP C3004',
-          issues: ['Connection lost'],
-          priority: 'critical',
-          estimatedRevenueLoss: 2400
-        }
-      ],
-      
-      // Predictive maintenance schedule
-      maintenanceSchedule: [
-        {
-          equipmentId: 'eq-002',
-          customerName: 'TechStart Innovations',
-          scheduledDate: new Date('2025-02-08T10:00:00Z'),
-          type: 'emergency',
-          estimatedDuration: 180,
-          technicianAssigned: 'Mike Rodriguez'
-        },
-        {
-          equipmentId: 'eq-001',
-          customerName: 'Metro Office Solutions',
-          scheduledDate: new Date('2025-02-15T09:00:00Z'),
-          type: 'preventive',
-          estimatedDuration: 120,
-          technicianAssigned: 'Sarah Chen'
-        }
-      ],
-      
-      // Cost and efficiency metrics
+      attentionRequired: devicesWithIssues.slice(0, 10),
+
+      // Maintenance schedule - would need integration with maintenance table
+      maintenanceSchedule: [],
+
+      // Cost metrics - would need integration with billing/cost data
       costMetrics: {
-        totalMaintenanceCost: 12800,
-        energyCost: 8960,
-        supplyCost: 15600,
+        totalMaintenanceCost: 0,
+        energyCost: 0,
+        supplyCost: 0,
         potentialSavings: {
-          predictiveMaintenance: 3200,
-          energyOptimization: 1800,
-          supplyOptimization: 2400
+          predictiveMaintenance: 0,
+          energyOptimization: 0,
+          supplyOptimization: 0
         }
       }
     };
 
     res.json(fleetOverview);
-    
+
   } catch (error) {
     console.error('Error fetching fleet overview:', error);
     res.status(500).json({ message: 'Failed to fetch fleet overview' });
