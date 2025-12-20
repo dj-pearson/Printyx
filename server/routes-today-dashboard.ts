@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from './db';
 import { eq, and, gte, lte, desc, sql, isNull, or } from 'drizzle-orm';
 import { businessRecordActivities, businessRecords, deals } from '@shared/schema';
+import { leadScoreCalculations } from '@shared/lead-scoring-schema';
 import type { Request, Response } from 'express';
 import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek } from 'date-fns';
 // Supabase authentication middleware and helpers
@@ -91,28 +92,41 @@ export function registerTodayDashboardRoutes(app: Router) {
           limit: 10,
         })) || [];
 
-      // Fetch hot leads (high-scoring leads from lead_scoring table or high-priority leads)
-      // TODO: Implement lead scoring when leadScoring table is available
-      const hotLeads: any[] = [];
+      // Fetch hot leads (high-scoring leads from lead_score_calculations table)
+      const hotLeads = await db
+        .select()
+        .from(leadScoreCalculations)
+        .where(
+          and(
+            eq(leadScoreCalculations.tenantId, tenantId),
+            gte(leadScoreCalculations.totalScore, 70), // High-scoring leads (70+)
+            or(
+              eq(leadScoreCalculations.qualificationStatus, 'qualified'),
+              eq(leadScoreCalculations.qualificationStatus, 'hot')
+            )
+          )
+        )
+        .orderBy(desc(leadScoreCalculations.totalScore))
+        .limit(10);
 
       // Enrich leads with business record data
       const enrichedHotLeads = await Promise.all(
         hotLeads.map(async (lead) => {
-          const businessRecord = lead.businessRecordId
+          const businessRecord = lead.leadId
             ? await db.query.businessRecords?.findFirst({
-                where: eq(businessRecords.id, lead.businessRecordId),
+                where: eq(businessRecords.id, lead.leadId),
               })
             : null;
 
           return {
-            id: lead.businessRecordId || lead.id,
+            id: lead.leadId || lead.id,
             companyName: businessRecord?.companyName || 'Unknown',
             contactName: businessRecord?.primaryContactName,
-            estimatedValue: businessRecord?.estimatedDealValue || lead.estimatedValue,
-            score: lead.score,
+            estimatedValue: businessRecord?.estimatedDealValue || 0,
+            score: lead.totalScore,
             status: businessRecord?.status || 'lead',
             lastContact: businessRecord?.lastContactDate,
-            reason: lead.scoringReason || 'High engagement and budget confirmed',
+            reason: `${lead.leadGrade || 'A'} grade lead - ${lead.qualificationStatus || 'qualified'}`,
           };
         }),
       );

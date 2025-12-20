@@ -1223,10 +1223,34 @@ const validateStructuredData = seoService.validateStructuredData;
 const detectRedirectChains = seoService.detectRedirectChains;
 
 // Simplified implementations for functions not yet in service layer
-async function checkKeywordPosition(keyword: string, targetUrl: string | null) {
-  // TODO: Integrate with SERP API (SERPApi or DataForSEO)
-  // For now, return estimate
-  return Math.floor(Math.random() * 50) + 1;
+async function checkKeywordPosition(keyword: string, targetUrl: string | null, tenantId?: string) {
+  // Query stored position from database
+  if (tenantId) {
+    try {
+      const conditions = [eq(seoKeywords.keyword, keyword)];
+      if (targetUrl) {
+        conditions.push(eq(seoKeywords.targetUrl, targetUrl));
+      }
+      conditions.push(eq(seoKeywords.tenantId, tenantId));
+
+      const result = await db
+        .select({ currentPosition: seoKeywords.currentPosition })
+        .from(seoKeywords)
+        .where(and(...conditions))
+        .limit(1);
+
+      if (result.length > 0 && result[0].currentPosition !== null) {
+        return result[0].currentPosition;
+      }
+    } catch (error) {
+      console.error('Error checking keyword position:', error);
+    }
+  }
+
+  // Return null if no data available
+  // NOTE: Real-time SERP position tracking requires integration with SERP API (SERPApi or DataForSEO)
+  // Positions can be updated via Google Search Console integration or manual tracking
+  return null;
 }
 
 async function analyzePage(url: string) {

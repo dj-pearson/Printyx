@@ -6,6 +6,9 @@ import express from 'express';
 import { IntegrationService } from './integration-service';
 import { availableIntegrations, validateOAuthConfig } from './oauth-config';
 import webhookRoutes from './webhook-routes';
+import { db } from '../db';
+import { integrationMetrics, integrationApiLogs } from '../../shared/schema';
+import { eq, and, gte, desc } from 'drizzle-orm';
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -48,47 +51,100 @@ router.get('/api/integrations/marketplace', async (req: any, res) => {
 });
 
 /**
- * Get user's active integrations
+ * Get user's active integrations with real metrics data
  */
 router.get('/api/integrations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
     const integrations = await IntegrationService.getIntegrations(tenantId);
-    
-    // Transform for frontend
-    const activeIntegrations = integrations.map(integration => ({
-      id: integration.id,
-      apiId: integration.providerId,
-      name: integration.name,
-      status: integration.status,
-      configuredAt: integration.config?.userInfo?.created || new Date(),
-      lastSync: integration.lastSync || new Date(),
-      syncFrequency: 'real-time',
-      recordsSynced: Math.floor(Math.random() * 10000), // TODO: Replace with real data
-      apiCallsToday: Math.floor(Math.random() * 1000),
-      successRate: integration.status === 'connected' ? 98.5 : 0,
-      averageLatency: 150 + Math.floor(Math.random() * 100),
-      dataVolume: Math.random() * 5,
-      errorCount: integration.status === 'error' ? Math.floor(Math.random() * 10) : 0,
-      configuration: {
-        environment: 'production',
-        userInfo: integration.metadata
-      },
-      webhooks: [],
-      recentActivity: [
-        {
-          timestamp: integration.lastSync || new Date(),
-          action: 'calendar_sync',
-          records: Math.floor(Math.random() * 50),
-          status: integration.status === 'connected' ? 'success' : 'failed'
-        }
-      ]
-    }));
+
+    // Get today's metrics for all integrations
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const metricsResults = await db
+      .select()
+      .from(integrationMetrics)
+      .where(
+        and(
+          eq(integrationMetrics.tenantId, tenantId),
+          gte(integrationMetrics.periodStart, today)
+        )
+      );
+
+    // Build metrics map by integration ID
+    const metricsMap = new Map<string, typeof metricsResults[0]>();
+    for (const metric of metricsResults) {
+      metricsMap.set(metric.integrationId, metric);
+    }
+
+    // Get recent activity logs
+    const recentLogs = await db
+      .select()
+      .from(integrationApiLogs)
+      .where(
+        and(
+          eq(integrationApiLogs.tenantId, tenantId),
+          gte(integrationApiLogs.requestTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000))
+        )
+      )
+      .orderBy(desc(integrationApiLogs.requestTimestamp))
+      .limit(50);
+
+    // Build activity map by integration ID
+    const activityMap = new Map<string, typeof recentLogs>();
+    for (const log of recentLogs) {
+      if (!activityMap.has(log.integrationId)) {
+        activityMap.set(log.integrationId, []);
+      }
+      activityMap.get(log.integrationId)!.push(log);
+    }
+
+    // Transform for frontend with real metrics
+    const activeIntegrations = integrations.map(integration => {
+      const metrics = metricsMap.get(integration.id);
+      const logs = activityMap.get(integration.id) || [];
+
+      // Calculate success rate from real data
+      const totalCalls = Number(metrics?.totalApiCalls) || 0;
+      const successfulCalls = Number(metrics?.successfulCalls) || 0;
+      const failedCalls = Number(metrics?.failedCalls) || 0;
+      const successRate = totalCalls > 0
+        ? (successfulCalls / totalCalls) * 100
+        : (integration.status === 'connected' ? 100 : 0);
+
+      return {
+        id: integration.id,
+        apiId: integration.providerId,
+        name: integration.name,
+        status: integration.status,
+        configuredAt: integration.config?.userInfo?.created || new Date(),
+        lastSync: integration.lastSync || null,
+        syncFrequency: integration.providerId.includes('calendar') ? 'real-time' : 'hourly',
+        recordsSynced: Number(metrics?.recordsSynced) || 0,
+        apiCallsToday: totalCalls,
+        successRate: Math.round(successRate * 10) / 10,
+        averageLatency: Number(metrics?.avgLatencyMs) || 0,
+        dataVolume: Math.round((Number(metrics?.dataVolumeBytes) || 0) / (1024 * 1024) * 100) / 100, // MB
+        errorCount: failedCalls,
+        configuration: {
+          environment: 'production',
+          userInfo: integration.metadata
+        },
+        webhooks: [],
+        recentActivity: logs.slice(0, 5).map(log => ({
+          timestamp: log.requestTimestamp,
+          action: log.endpoint.split('/').pop() || 'sync',
+          records: log.recordsAffected || 0,
+          status: log.success ? 'success' : 'failed'
+        }))
+      };
+    });
 
     res.json(activeIntegrations);
   } catch (error) {
