@@ -15,6 +15,7 @@ This document tracks issues discovered during systematic code review of navigati
 |-----|----------------|----------|------|--------|
 | 001 | Signup.tsx | Low | UX/HTML | Fixed ✅ |
 | 002 | customers.tsx | Medium | Validation | Fixed ✅ |
+| 003 | LeadsManagement.tsx | Medium | Validation | Open |
 
 ---
 
@@ -158,6 +159,126 @@ const form = useForm({
 
 ---
 
+### Issue #003: Missing Form Validation in Leads Management Page
+**File**: `/client/src/pages/LeadsManagement.tsx`
+**Lines**: 1247-1360 (LeadForm component)
+**Severity**: Medium
+**Type**: Data Validation
+
+**Description**:
+The Lead create/edit form uses basic useState form management with only HTML5 validation, lacking comprehensive client-side validation.
+
+**Current Implementation**:
+- Uses `useState` for form state (not `react-hook-form`)
+- Only HTML5 `required` attribute validation
+- No Zod schema validation
+- No client-side validation for:
+  - Email format
+  - Phone format
+  - Website URL format
+  - State code format
+  - Field length constraints
+  - Estimated value number validation
+
+**Affected Fields**:
+- `companyName` (only HTML5 required)
+- `name` (primary contact name - no validation)
+- `email` (no email format validation)
+- `phone` (no phone format validation)
+- `website` (no URL validation)
+- `estimatedValue` (no number validation)
+- `state` (no length limit)
+- All other fields (no constraints)
+
+**Current Code** (line 1256-1273):
+```tsx
+const [formData, setFormData] = useState({
+  companyName: initialData?.companyName || '',
+  name: initialData?.name || '',
+  email: initialData?.email || '',
+  phone: initialData?.phone || '',
+  // ... other fields with no validation
+});
+```
+
+**Current Submit Handler** (line 1340-1360):
+```tsx
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+  onSubmit({
+    ...formData,
+    // Direct submission without validation
+  });
+};
+```
+
+**Recommended Fix**:
+Convert to `react-hook-form` with Zod validation similar to customers page:
+
+```tsx
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const leadSchema = z.object({
+  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
+  name: z.string().min(2, 'Contact name must be at least 2 characters'),
+  email: z.string().email('Invalid email format'),
+  phone: z.string().optional(),
+  jobTitle: z.string().optional(),
+  leadSource: z.string().optional(),
+  status: z.enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost']).default('new'),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  estimatedValue: z.number().min(0, 'Value must be positive').optional(),
+  notes: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().max(2, 'Use 2-letter state code').optional(),
+  zipCode: z.string().optional(),
+  website: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  industry: z.string().optional(),
+});
+
+function LeadForm({ initialData, onSubmit, isLoading }) {
+  const form = useForm({
+    resolver: zodResolver(leadSchema),
+    defaultValues: {
+      companyName: initialData?.companyName || '',
+      name: initialData?.name || '',
+      email: initialData?.email || '',
+      // ... other fields
+    }
+  });
+
+  const handleSubmit = form.handleSubmit((data) => {
+    onSubmit(data);
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={handleSubmit}>
+        {/* FormField components with validation */}
+      </form>
+    </Form>
+  );
+}
+```
+
+**Impact**:
+- **Medium** - Invalid data could be submitted to database
+- Poor user experience (no validation feedback until server response)
+- Potential data integrity issues
+- Inconsistent with updated customers page validation
+
+**Security Considerations**:
+- Server-side validation must remain as primary defense
+- Client-side validation reduces unnecessary API calls
+- Proper validation prevents malformed data entry
+
+**Status**: ⏳ **Open** - Pending fix
+
+---
+
 ## Issues to Investigate
 
 These patterns were observed but require further investigation:
@@ -228,11 +349,16 @@ Based on issues found:
 
 ## Review Status
 
-### Pages Reviewed (5/150+)
-- ✅ Login.tsx
-- ✅ Signup.tsx
-- ✅ ForgotPassword.tsx
-- ✅ customers.tsx (Customers & CRM page)
+### Pages Reviewed (9/150+)
+- ✅ Login.tsx - Has proper Zod validation
+- ✅ Signup.tsx - Has proper Zod validation (fixed nested anchor issue)
+- ✅ ForgotPassword.tsx - Has proper Zod validation
+- ✅ customers.tsx - Added Zod validation ✅
+- ✅ LeadsManagement.tsx - **Needs validation** ⚠️
+- ✅ dashboard.tsx - Display page (no forms)
+- ✅ ModularDashboard.tsx - Display component (no forms)
+- ✅ ServiceDispatchOptimization.tsx - Settings dialog only (minimal forms)
+- ✅ QuotesManagement.tsx / QuoteBuilderPage.tsx - Display/navigation (checked)
 - ✅ Navigation components (Sidebar, Mobile Nav, Command Palette)
 
 ### Pages Pending Review
@@ -251,6 +377,9 @@ Based on issues found:
 
 - All authentication pages have proper validation ✅
 - Authentication flow appears solid with good UX ✅
-- Customers page has comprehensive UI but lacks validation ⚠️
+- Customers page now has comprehensive validation ✅ (Fixed)
+- Leads Management page lacks validation ⚠️ (Same issue as customers had)
+- **Pattern Identified**: CRUD pages with forms need systematic validation review
 - Need to establish validation as a standard pattern across all forms ⚠️
+- Dashboard and display-only pages are generally clean ✅
 
