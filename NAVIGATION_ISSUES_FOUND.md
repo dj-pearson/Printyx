@@ -13,8 +13,8 @@ This document tracks issues discovered during systematic code review of navigati
 
 | #   | Page/Component | Severity | Type | Status |
 |-----|----------------|----------|------|--------|
-| 001 | Signup.tsx | Low | UX/HTML | Open |
-| 002 | customers.tsx | Medium | Validation | Open |
+| 001 | Signup.tsx | Low | UX/HTML | Fixed ✅ |
+| 002 | customers.tsx | Medium | Validation | Fixed ✅ |
 
 ---
 
@@ -50,6 +50,12 @@ The signup page uses both Wouter's `<Link>` component and a native `<a>` tag tog
 ```
 
 **Impact**: Low - Page functions correctly but HTML is invalid
+
+**Status**: ✅ **Fixed** in commit `05c9eb2`
+- Removed nested `<a>` tag
+- Link component now renders correctly
+- HTML is now valid
+- Accessibility improved
 
 ---
 
@@ -141,6 +147,14 @@ const form = useForm({
 **Security Considerations**:
 - Server-side validation should still be the primary defense
 - Client-side validation improves UX and reduces unnecessary API calls
+
+**Status**: ✅ **Fixed** in commit `1156347`
+- Added comprehensive Zod validation schema
+- All required fields now validated client-side
+- Email and URL format validation added
+- State code length validation added
+- Clear error messages for all validation failures
+- Form now consistent with other validated forms in the app
 
 ---
 
