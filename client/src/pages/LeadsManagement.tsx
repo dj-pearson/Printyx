@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +32,14 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/lib/supabase';
@@ -1242,6 +1253,28 @@ export default function LeadsManagement() {
     </MainLayout>
   );
 }
+
+// Lead form validation schema
+const leadSchema = z.object({
+  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
+  name: z.string().min(2, 'Contact name must be at least 2 characters'),
+  email: z.string().email('Invalid email format'),
+  phone: z.string().optional(),
+  jobTitle: z.string().optional(),
+  leadSource: z.string().optional(),
+  status: z.enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost']).default('new'),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  estimatedValue: z.coerce.number().min(0, 'Value must be positive').optional(),
+  notes: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().max(2, 'Use 2-letter state code').optional(),
+  zipCode: z.string().optional(),
+  website: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  industry: z.string().optional(),
+});
+
+type LeadFormData = z.infer<typeof leadSchema>;
 
 // Lead Form Component
 function LeadForm({
