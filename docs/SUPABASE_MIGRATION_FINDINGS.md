@@ -271,50 +271,40 @@ Updated comment to reference standard PostgreSQL error codes instead of Neon-spe
 
 - [ ] Implement IMAP connection testing
 
-### 5.5 Lead Scoring
-**File:** `server/routes-today-dashboard.ts:95`
-```typescript
-// TODO: Implement lead scoring when leadScoring table is available
-```
+### 5.5 Lead Scoring - FIXED ✅
+**File:** `server/routes-today-dashboard.ts`
+**Status:** Fixed on 2025-12-20
 
-- [ ] Create lead scoring table if not exists
-- [ ] Implement AI-powered lead scoring
+Hot leads now query from the `lead_score_calculations` table:
+- Fetches leads with score >= 70 and qualification status of 'qualified' or 'hot'
+- Enriches with business record data for display
+- Returns real lead grade and qualification status
+
+- [x] Query lead scoring table for hot leads
+- [x] Implement lead enrichment with business records
 
 ### 5.6 Chrome Extension API Keys
 **File:** `server/routes/chrome-extension-routes.ts:464-519`
-```typescript
-// TODO: Store API key in database (create extension_api_keys table)
-// TODO: Add expiration
-// TODO: Check ZoomInfo when implemented
-```
 
 - [ ] Create extension_api_keys table
 - [ ] Implement key storage and rotation
 - [ ] Add ZoomInfo integration check
 
-### 5.7 Predictive Service Dispatch
-**File:** `server/services/predictive-service-dispatch-service.ts:443-506`
-```typescript
-technicianName: tech.userId, // TODO: Join with users table
-distance: 10, // TODO: Calculate actual distance
-// TODO: Create service call in database
-// TODO: Actually create purchase orders
-```
+### 5.7 Predictive Service Dispatch - PARTIALLY FIXED ✅
+**File:** `server/services/predictive-service-dispatch-service.ts`
+**Status:** Partially fixed on 2025-12-20
 
-- [ ] Implement user table join for names
-- [ ] Integrate distance calculation API (Google Maps)
+- [x] Implement user table join for technician names
+- [ ] Integrate distance calculation API (Google Maps) - requires API key
 - [ ] Implement service call creation
 - [ ] Implement purchase order creation
 
-### 5.8 Auto Lead Routing Service
-**File:** `server/services/auto-lead-routing-service.ts:397-468`
-```typescript
-userName: rep.userId, // TODO: Join with users table for actual name
-// TODO: Integrate with email service
-```
+### 5.8 Auto Lead Routing Service - PARTIALLY FIXED ✅
+**File:** `server/services/auto-lead-routing-service.ts`
+**Status:** Partially fixed on 2025-12-20
 
-- [ ] Implement user table join
-- [ ] Integrate notification emails
+- [x] Implement user table join for rep names
+- [ ] Integrate notification emails - requires email service configuration
 
 ### 5.9 Equipment Lifecycle
 **File:** `server/services/equipment-lifecycle-state-machine.ts:460-466`
