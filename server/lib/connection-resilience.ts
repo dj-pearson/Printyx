@@ -115,7 +115,8 @@ export function isRetryableError(error: any, config: RetryConfig): boolean {
     }
   }
 
-  // Check for specific PostgreSQL/Neon transient errors
+  // Check for specific PostgreSQL connection errors (Class 08 - Connection Exception)
+  // https://www.postgresql.org/docs/current/errcodes-appendix.html
   if (error.severity === 'FATAL' && error.code?.startsWith('08')) {
     return true;
   }

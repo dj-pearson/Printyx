@@ -150,14 +150,14 @@ Cost savings now calculated using industry-standard methodology:
   - Maintenance frequency impact
   - Equipment count
 
-### 2.8 SEO Position Tracking (STUBBED)
-**File:** `server/routes-seo.ts:1229`
-**Issue:** Position data is randomly generated
-```typescript
-return Math.floor(Math.random() * 50) + 1;
-```
+### 2.8 SEO Position Tracking - FIXED ✅
+**File:** `server/routes-seo.ts`
+**Status:** Fixed on 2025-12-20
 
-- [ ] Integrate with actual SERP API (SERPApi or DataForSEO)
+Position tracking now queries the `seoKeywords` table for stored positions instead of generating random data. Returns null when no position data is available.
+
+- [x] Query stored positions from database
+- [ ] Integrate with actual SERP API (SERPApi or DataForSEO) - requires external service contract
 
 ---
 
@@ -187,11 +187,13 @@ All Neon database references have been migrated to use the standard `pg` module.
 
 - [x] Update to use standard `pg` Pool
 
-### 3.4 Connection Resilience Comments
+### 3.4 Connection Resilience Comments - FIXED ✅
 **File:** `server/lib/connection-resilience.ts:118`
-**Issue:** Comment mentions Neon transient errors (cosmetic only)
+**Status:** Fixed on 2025-12-20
 
-- [ ] Update comment to reference PostgreSQL errors generically (low priority)
+Updated comment to reference standard PostgreSQL error codes instead of Neon-specific terminology.
+
+- [x] Update comment to reference PostgreSQL errors generically
 
 ---
 
@@ -392,10 +394,14 @@ Multiple files contain `example.com` emails which is fine for examples/documenta
 3. [x] Store and query historical device data - Fixed 2025-12-20
 4. [ ] Extended SNMP collection for environmental sensors (future enhancement - not blocking)
 
-### Phase 4: Integrations & Workflows
-1. [ ] Complete calendar OAuth integration
-2. [ ] Implement e-signature provider
-3. [ ] Complete email parser IMAP testing
+### Phase 4: External Integrations (Requires Third-Party Credentials)
+These items require external service accounts/contracts and are not blocking the migration:
+
+1. [ ] **Calendar OAuth** (Google/Microsoft) - Requires OAuth client setup in cloud consoles
+2. [ ] **E-signature** (DocuSign/Adobe Sign) - Requires service contract and API credentials
+3. [ ] **Email Parser IMAP** - Requires IMAP server credentials for testing
+4. [ ] **SERP API** (SERPApi/DataForSEO) - Requires API subscription for real-time position tracking
+5. [ ] **Distance Calculation** - Requires Google Maps API key for route optimization
 
 ### Phase 5: Documentation Updates ✅ COMPLETE
 1. [x] Update ENV_SETUP_GUIDE.md - Fixed 2025-12-20
