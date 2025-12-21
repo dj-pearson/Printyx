@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { MainLayout } from "@/components/layout/main-layout";
@@ -75,6 +77,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Customer form validation schema
+const customerSchema = z.object({
+  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
+  website: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  industry: z.string().optional(),
+  companySize: z.string().optional(),
+  primaryContactName: z.string().min(2, 'Contact name must be at least 2 characters'),
+  primaryContactTitle: z.string().optional(),
+  primaryContactEmail: z.string().email('Invalid email format'),
+  primaryContactPhone: z.string().optional(),
+  addressLine1: z.string().optional(),
+  addressLine2: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().max(2, 'Use 2-letter state code').optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  customerTier: z.string().optional(),
+  assignedSalesRep: z.string().optional(),
+  leadSource: z.string().optional(),
+  tags: z.string().optional(),
+  notes: z.string().optional(),
+  estimatedDealValue: z.string().optional(),
+  expectedCloseDate: z.string().optional(),
+  probability: z.string().optional(),
+});
+
 export default function Customers() {
   const { isAuthenticated } = useAuth();
   const [location, navigate] = useLocation();
@@ -108,6 +137,7 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [isCreating, setIsCreating] = useState(false);
   const form = useForm({
+    resolver: zodResolver(customerSchema),
     defaultValues: {
       companyName: "",
       website: "",
