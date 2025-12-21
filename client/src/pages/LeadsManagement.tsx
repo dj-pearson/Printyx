@@ -1276,7 +1276,7 @@ const leadSchema = z.object({
 
 type LeadFormData = z.infer<typeof leadSchema>;
 
-// Lead Form Component
+// Lead Form Component with react-hook-form
 function LeadForm({
   initialData,
   onSubmit,
@@ -1286,23 +1286,26 @@ function LeadForm({
   onSubmit: (data: Partial<Lead>) => void;
   isLoading: boolean;
 }) {
-  const [formData, setFormData] = useState({
-    companyName: initialData?.companyName || '',
-    name: initialData?.name || '',
-    email: initialData?.email || '',
-    phone: initialData?.phone || '',
-    jobTitle: initialData?.jobTitle || '',
-    leadSource: initialData?.leadSource || '',
-    status: initialData?.status || 'new',
-    priority: initialData?.priority || 'medium',
-    estimatedValue: initialData?.estimatedValue || 0,
-    notes: initialData?.notes || '',
-    address: initialData?.address || '',
-    city: initialData?.city || '',
-    state: initialData?.state || '',
-    zipCode: initialData?.zipCode || '',
-    industry: '',
-    website: '',
+  const form = useForm<LeadFormData>({
+    resolver: zodResolver(leadSchema),
+    defaultValues: {
+      companyName: initialData?.companyName || '',
+      name: initialData?.name || '',
+      email: initialData?.email || '',
+      phone: initialData?.phone || '',
+      jobTitle: initialData?.jobTitle || '',
+      leadSource: initialData?.leadSource || '',
+      status: (initialData?.status as any) || 'new',
+      priority: (initialData?.priority as any) || 'medium',
+      estimatedValue: initialData?.estimatedValue || 0,
+      notes: initialData?.notes || '',
+      address: initialData?.address || '',
+      city: initialData?.city || '',
+      state: initialData?.state || '',
+      zipCode: initialData?.zipCode || '',
+      industry: initialData?.industry || '',
+      website: initialData?.website || '',
+    },
   });
 
   const [companySearchTerm, setCompanySearchTerm] = useState(initialData?.companyName || '');
@@ -1313,7 +1316,6 @@ function LeadForm({
   const { data: existingCompanies = [] } = useQuery({
     queryKey: ['/api/business-records'],
     select: (data: any[]) => {
-      // Get unique companies and deduplicate
       const companies = data
         .filter((record: any) => record.companyName && record.companyName.trim())
         .reduce(
@@ -1326,7 +1328,6 @@ function LeadForm({
           },
           {} as Record<string, any>,
         );
-
       return Object.values(companies);
     },
   });
@@ -1334,12 +1335,11 @@ function LeadForm({
   // Filter companies based on search term
   const filteredCompanies = useMemo(() => {
     if (!companySearchTerm || companySearchTerm.length < 2) return [];
-
     return existingCompanies
       .filter((company: any) =>
         company.companyName.toLowerCase().includes(companySearchTerm.toLowerCase()),
       )
-      .slice(0, 10); // Limit to 10 results
+      .slice(0, 10);
   }, [existingCompanies, companySearchTerm]);
 
   const handleCompanySelect = (company: any) => {
@@ -1347,317 +1347,378 @@ function LeadForm({
     setCompanySearchTerm(company.companyName);
     setIsCompanyDropdownOpen(false);
 
-    // Pre-fill form with existing company data
-    setFormData({
-      ...formData,
-      companyName: company.companyName,
-      name: company.primaryContactName || '',
-      email: company.primaryContactEmail || '',
-      phone: company.primaryContactPhone || company.phone || '',
-      address: company.addressLine1 || '',
-      city: company.city || '',
-      state: company.state || '',
-      zipCode: company.postalCode || '',
-      industry: company.industry || '',
-      website: company.website || '',
-    });
+    // Pre-fill form with existing company data using setValue
+    form.setValue('companyName', company.companyName);
+    form.setValue('name', company.primaryContactName || '');
+    form.setValue('email', company.primaryContactEmail || '');
+    form.setValue('phone', company.primaryContactPhone || company.phone || '');
+    form.setValue('address', company.addressLine1 || '');
+    form.setValue('city', company.city || '');
+    form.setValue('state', company.state || '');
+    form.setValue('zipCode', company.postalCode || '');
+    form.setValue('industry', company.industry || '');
+    form.setValue('website', company.website || '');
   };
 
   const handleCompanyInputChange = (value: string) => {
     setCompanySearchTerm(value);
-    setFormData({ ...formData, companyName: value });
+    form.setValue('companyName', value);
     setSelectedExistingCompany(null);
     setIsCompanyDropdownOpen(value.length >= 2);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      ...formData,
-      // Map form data to Lead interface fields
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      companyName: formData.companyName,
-      jobTitle: formData.jobTitle,
-      leadSource: formData.leadSource,
-      status: formData.status,
-      priority: formData.priority,
-      estimatedValue: formData.estimatedValue,
-      notes: formData.notes,
-      address: formData.address,
-      city: formData.city,
-      state: formData.state,
-      zipCode: formData.zipCode,
-    });
-  };
+  const handleFormSubmit = form.handleSubmit((data) => {
+    onSubmit(data);
+  });
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-      {/* Company Information - Primary Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
-          <Building2 className="h-5 w-5 text-blue-600" />
-          Company Information
-        </div>
+    <Form {...form}>
+      <form onSubmit={handleFormSubmit} className="space-y-4 sm:space-y-6">
+        {/* Company Information - Primary Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
+            <Building2 className="h-5 w-5 text-blue-600" />
+            Company Information
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="companyName" className="text-base font-medium">
-            Company Name *
-          </Label>
-          <div className="relative">
-            <Input
-              id="companyName"
-              value={companySearchTerm}
-              onChange={(e) => handleCompanyInputChange(e.target.value)}
-              placeholder="Start typing company name..."
-              className="text-base"
-              required
-              onFocus={() => setIsCompanyDropdownOpen(companySearchTerm.length >= 2)}
-              onBlur={() => setTimeout(() => setIsCompanyDropdownOpen(false), 200)}
-            />
+          <FormField
+            control={form.control}
+            name="companyName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-base font-medium">Company Name *</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      {...field}
+                      value={companySearchTerm}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        handleCompanyInputChange(e.target.value);
+                      }}
+                      placeholder="Start typing company name..."
+                      className="text-base"
+                      onFocus={() => setIsCompanyDropdownOpen(companySearchTerm.length >= 2)}
+                      onBlur={() => setTimeout(() => setIsCompanyDropdownOpen(false), 200)}
+                    />
 
-            {/* Company Autocomplete Dropdown */}
-            {isCompanyDropdownOpen && filteredCompanies.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                {filteredCompanies.map((company: any) => (
-                  <button
-                    key={company.id}
-                    type="button"
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
-                    onClick={() => handleCompanySelect(company)}
-                  >
-                    <div>
-                      <div className="font-medium text-gray-900">{company.companyName}</div>
-                      <div className="text-sm text-gray-500">
-                        {company.recordType === 'customer' ? (
-                          <span className="text-green-600">Existing Customer</span>
-                        ) : (
-                          <span className="text-blue-600">Lead</span>
-                        )}
-                        {company.city && company.state && (
-                          <span>
-                            {' '}
-                            • {company.city}, {company.state}
-                          </span>
-                        )}
+                    {/* Company Autocomplete Dropdown */}
+                    {isCompanyDropdownOpen && filteredCompanies.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {filteredCompanies.map((company: any) => (
+                          <button
+                            key={company.id}
+                            type="button"
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                            onClick={() => handleCompanySelect(company)}
+                          >
+                            <div>
+                              <div className="font-medium text-gray-900">{company.companyName}</div>
+                              <div className="text-sm text-gray-500">
+                                {company.recordType === 'customer' ? (
+                                  <span className="text-green-600">Existing Customer</span>
+                                ) : (
+                                  <span className="text-blue-600">Lead</span>
+                                )}
+                                {company.city && company.state && (
+                                  <span>
+                                    {' '}
+                                    • {company.city}, {company.state}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                          </button>
+                        ))}
                       </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </button>
-                ))}
-              </div>
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage />
+                {selectedExistingCompany && (
+                  <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded mt-2">
+                    <CheckSquare className="h-4 w-4" />
+                    Information loaded from existing {selectedExistingCompany.recordType}. You can
+                    modify before saving.
+                  </div>
+                )}
+              </FormItem>
             )}
+          />
+        </div>
+
+        {/* Contact Information */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 border-b pb-2">
+            <User className="h-5 w-5 text-blue-600" />
+            Contact Details
           </div>
-          {selectedExistingCompany && (
-            <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
-              <CheckSquare className="h-4 w-4" />
-              Information loaded from existing {selectedExistingCompany.recordType}. You can modify
-              before saving.
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Name *</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Primary contact person" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="jobTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Job Title</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="e.g., Office Manager, CEO" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email *</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="email" placeholder="contact@company.com" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="(555) 123-4567" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Lead Information */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 border-b pb-2">
+            <Target className="h-5 w-5 text-blue-600" />
+            Lead Details
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="leadSource"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lead Source</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="How did they find you?" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="website">Website</SelectItem>
+                      <SelectItem value="referral">Referral</SelectItem>
+                      <SelectItem value="cold_call">Cold Call</SelectItem>
+                      <SelectItem value="email_campaign">Email Campaign</SelectItem>
+                      <SelectItem value="trade_show">Trade Show</SelectItem>
+                      <SelectItem value="social_media">Social Media</SelectItem>
+                      <SelectItem value="google_ads">Google Ads</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="estimatedValue"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Estimated Value</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      placeholder="0"
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="contacted">Contacted</SelectItem>
+                      <SelectItem value="qualified">Qualified</SelectItem>
+                      <SelectItem value="proposal">Proposal</SelectItem>
+                      <SelectItem value="negotiation">Negotiation</SelectItem>
+                      <SelectItem value="closed_won">Closed Won</SelectItem>
+                      <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Address Information */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 border-b pb-2">
+            <MapPin className="h-5 w-5 text-blue-600" />
+            Address Information
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Street Address</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="123 Main Street" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
+
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="City" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="state"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>State</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="CA" maxLength={2} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="zipCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ZIP Code</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="12345" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Notes</FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  rows={3}
+                  placeholder="Additional notes about this lead..."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
-      </div>
-
-      {/* Contact Information */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 border-b pb-2">
-          <User className="h-5 w-5 text-blue-600" />
-          Contact Details
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Contact Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Primary contact person"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="jobTitle">Job Title</Label>
-            <Input
-              id="jobTitle"
-              value={formData.jobTitle}
-              onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
-              placeholder="e.g., Office Manager, CEO"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="contact@company.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="(555) 123-4567"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Lead Information */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 border-b pb-2">
-          <Target className="h-5 w-5 text-blue-600" />
-          Lead Details
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="leadSource">Lead Source</Label>
-            <Select
-              value={formData.leadSource}
-              onValueChange={(value) => setFormData({ ...formData, leadSource: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="How did they find you?" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="website">Website</SelectItem>
-                <SelectItem value="referral">Referral</SelectItem>
-                <SelectItem value="cold_call">Cold Call</SelectItem>
-                <SelectItem value="email_campaign">Email Campaign</SelectItem>
-                <SelectItem value="trade_show">Trade Show</SelectItem>
-                <SelectItem value="social_media">Social Media</SelectItem>
-                <SelectItem value="google_ads">Google Ads</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="estimatedValue">Estimated Value</Label>
-            <Input
-              id="estimatedValue"
-              type="number"
-              value={formData.estimatedValue}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  estimatedValue: parseFloat(e.target.value) || 0,
-                })
-              }
-              placeholder="0"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => setFormData({ ...formData, status: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="contacted">Contacted</SelectItem>
-                <SelectItem value="qualified">Qualified</SelectItem>
-                <SelectItem value="proposal">Proposal</SelectItem>
-                <SelectItem value="negotiation">Negotiation</SelectItem>
-                <SelectItem value="closed_won">Closed Won</SelectItem>
-                <SelectItem value="closed_lost">Closed Lost</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="priority">Priority</Label>
-            <Select
-              value={formData.priority}
-              onValueChange={(value) => setFormData({ ...formData, priority: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* Address Information */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 border-b pb-2">
-          <MapPin className="h-5 w-5 text-blue-600" />
-          Address Information
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="address">Street Address</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="123 Main Street"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="city">City</Label>
-            <Input
-              id="city"
-              value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              placeholder="City"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="state">State</Label>
-            <Input
-              id="state"
-              value={formData.state}
-              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-              placeholder="State"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="zipCode">ZIP Code</Label>
-            <Input
-              id="zipCode"
-              value={formData.zipCode}
-              onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-              placeholder="12345"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
-        <Textarea
-          id="notes"
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          rows={3}
-          placeholder="Additional notes about this lead..."
         />
-      </div>
 
-      <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
-        >
-          {isLoading ? 'Saving...' : initialData ? 'Update Lead' : 'Create Lead'}
-        </Button>
-      </div>
-    </form>
+        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="min-h-[44px] touch-manipulation active:scale-[0.98] order-1 sm:order-2"
+          >
+            {isLoading ? 'Saving...' : initialData ? 'Update Lead' : 'Create Lead'}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }
+
