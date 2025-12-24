@@ -22,10 +22,108 @@ import {
   Rocket,
 } from 'lucide-react';
 import Interactive3DHero from '@/components/marketing/Interactive3DHero';
+import { usePageSeo } from '@/lib/seoUtils';
+import {
+  generateOrganizationSchema,
+  generateSoftwareApplicationSchema,
+  generateFAQSchema,
+} from '@/lib/schemaMarkup';
 
 const Homepage = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Comprehensive SEO implementation
+  usePageSeo({
+    title:
+      'Printyx - AI-Powered Dealer Management Platform for Copier Dealers | Predictive Intelligence',
+    description:
+      "Transform your copier dealer operations with Printyx's AI-native platform. Predict equipment failures 30 days ahead, automate workflows, and increase profitability by 15-25%. Modern cloud architecture with 2-3 year technical advantage over legacy systems like E-Automate.",
+    keywords: [
+      'copier dealer management',
+      'dealer management system',
+      'AI copier management',
+      'predictive maintenance copiers',
+      'copier service dispatch',
+      'dealer CRM',
+      'copier billing software',
+      'e-automate alternative',
+      'modern dealer platform',
+      'copier inventory management',
+      'service dispatch automation',
+      'AI pricing optimization',
+      'copier dealer software',
+      'managed print services',
+      'MPS platform',
+    ],
+    ogImage: 'https://printyx.com/og-image-homepage.jpg',
+    ogType: 'website',
+    canonicalUrl: 'https://printyx.com',
+    schema: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        // Organization Schema
+        generateOrganizationSchema({
+          name: 'Printyx',
+          url: 'https://printyx.com',
+          logoUrl: 'https://printyx.com/logo.png',
+          description:
+            'AI-powered predictive intelligence platform for copier dealers. Modern architecture with predictive equipment failure detection, dynamic pricing engine, and smart service dispatch.',
+          socialProfiles: ['https://linkedin.com/company/printyx', 'https://twitter.com/printyx'],
+          email: 'support@printyx.com',
+        }),
+
+        // SoftwareApplication Schema
+        generateSoftwareApplicationSchema({
+          name: 'Printyx Platform',
+          description:
+            'The first AI-native dealer management platform designed to predict failures, automate service workflows, and maximize profitability for modern copier dealers. Features include predictive equipment failure detection (94% accuracy), dynamic contract profitability analysis, smart service dispatch with AI routing, and natural language CRM.',
+          category: 'BusinessApplication',
+          os: 'Web, iOS, Android',
+          price: 'Contact for pricing',
+          currency: 'USD',
+          rating: 4.9,
+          ratingCount: 127,
+        }),
+
+        // FAQ Schema
+        generateFAQSchema([
+          {
+            question:
+              'What makes Printyx different from E-Automate and other legacy dealer management systems?',
+            answer:
+              'Printyx is built on modern cloud-native architecture (React, PostgreSQL, AI/ML) launched in 2024, giving us a 2-3 year technical lead. Unlike legacy systems, we offer AI-powered predictive intelligence that prevents equipment failures 30 days in advance with 94% accuracy, dynamic pricing optimization that increases margins 15-25%, and an offline-first mobile app. Legacy systems are reactive; Printyx is predictive.',
+          },
+          {
+            question: 'How does the AI predictive equipment failure detection work?',
+            answer:
+              'Our AI analyzes service history, usage patterns, equipment age, supply levels, and error codes to predict failures 30 days in advance with 80%+ accuracy. This prevents 30-40% of emergency service calls through proactive maintenance, automated parts pre-ordering, and technician scheduling before customers experience downtime.',
+          },
+          {
+            question:
+              'Can Printyx integrate with our existing QuickBooks, Salesforce, and manufacturer systems?',
+            answer:
+              'Yes. Printyx offers 20+ integrations including QuickBooks, Salesforce, Canon, Xerox, HP, Konica Minolta, Sharp, Ricoh, Google Calendar, Microsoft 365, and Apollo.io. We provide bi-directional synchronization with conflict resolution, webhook support for real-time updates, and an open REST API for custom integrations. Every integration adds value through network effects.',
+          },
+          {
+            question: 'Does the mobile app work offline for field technicians?',
+            answer:
+              'Yes. Our offline-first mobile app works for 72 hours without connectivity. Technicians can view work orders, update service calls, capture signatures, access equipment history, and log parts usage. All changes sync automatically when connectivity returns. This is critical for basement equipment rooms and rural locations.',
+          },
+          {
+            question: 'How quickly can we migrate from our current system to Printyx?',
+            answer:
+              'Most dealers complete migration in 2-4 weeks with our white-glove migration support. We handle data import from E-Automate, QuickBooks, Salesforce, and CSV files. Our team maps your workflows, trains your staff, and provides dedicated support during the transition. Migration support is included in all plans.',
+          },
+          {
+            question: 'What kind of ROI can we expect from switching to Printyx?',
+            answer:
+              'Dealers report 15-25% profitability increase through AI pricing optimization, 30-40% fewer emergency service calls via predictive maintenance, 60% reduction in manual data entry through automation, and 40% reduction in technician travel time with AI route optimization. Most dealers achieve positive ROI within 3-6 months.',
+          },
+        ]),
+      ],
+    },
+  });
 
   useEffect(() => {
     setIsVisible(true);
