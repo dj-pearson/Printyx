@@ -4687,29 +4687,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Get contacts for a specific business record
-  app.get('/api/business-records/:id/contacts', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      const { id } = req.params;
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // First, get the business record to get the company name
-      const businessRecord = await storage.getBusinessRecord(id, tenantId);
-      if (!businessRecord) {
-        return res.status(404).json({ message: 'Business record not found' });
-      }
-
-      // Get contacts by company name from enhanced_contacts table
-      const contacts = await storage.getContactsByCompanyName(businessRecord.companyName, tenantId);
-      res.json(contacts || []);
-    } catch (error) {
-      console.error('Error fetching business record contacts:', error);
-      res.status(500).json({ message: 'Failed to fetch contacts' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - GET /api/business-records/:id/contacts
+   */
 
   app.get(
     '/api/customers/:id',
@@ -4797,37 +4778,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Unified business records route (handles both customers and leads by slug/ID)
-  app.get('/api/business-records/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Try to get by URL slug first, then by ID
-      let record;
-      const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
-
-      if (isSlug) {
-        record = await storage.getBusinessRecordBySlug(id, tenantId);
-      } else {
-        record = await storage.getBusinessRecord(id, tenantId);
-      }
-
-      if (!record) {
-        return res.status(404).json({ message: 'Business record not found' });
-      }
-
-      // Transform database fields to frontend format
-      const transformedRecord = BusinessRecordsTransformer.toFrontend(record);
-      res.json(transformedRecord);
-    } catch (error) {
-      console.error('Error fetching business record:', error);
-      res.status(500).json({ message: 'Failed to fetch business record' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - GET /api/business-records/:id
+   */
 
   // Business Records Import (CSV)
   app.post(
@@ -14291,18 +14245,10 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
   // ===== BUSINESS LOGIC CONSISTENCY FIXES =====
 
-  // Helper function to generate customer numbers
-  async function generateCustomerNumber(tenantId: string): Promise<string> {
-    const count = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(businessRecords)
-      .where(
-        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
-      );
-
-    const customerCount = count[0]?.count || 0;
-    return `CUST-${String(customerCount + 1).padStart(6, '0')}`;
-  }
+  /**
+   * NOTE: Migrated helper function to routes-business-records.ts:
+   * - generateCustomerNumber()
+   */
 
   // Helper function for tiered billing calculation
   function calculateTieredAmount(copies: number, rates: any[], baseRate: number): number {
@@ -14338,119 +14284,15 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
   // ===== BUSINESS LOGIC CONSISTENCY FIXES =====
 
-  // 1. Complete Lead-to-Customer Conversion Implementation
-  app.post('/api/business-records/:id/convert-to-customer', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { id } = req.params;
-      const { customerNumber, serviceAddress, billingAddress } = req.body;
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - POST /api/business-records/:id/convert-to-customer
+   */
 
-      // Get the lead record
-      const lead = await storage.getBusinessRecord(id, tenantId);
-      if (!lead || lead.recordType !== 'lead') {
-        return res.status(404).json({ message: 'Lead not found' });
-      }
-
-      // Generate customer number if not provided
-      const generatedCustomerNumber = customerNumber || (await generateCustomerNumber(tenantId));
-
-      // Update the record to customer status
-      const updatedRecord = await storage.updateBusinessRecord(id, tenantId, {
-        recordType: 'customer',
-        status: 'active',
-        customerNumber: generatedCustomerNumber,
-        customerSince: new Date(),
-        convertedBy: userId,
-        serviceAddress: serviceAddress || (lead as any).address,
-        billingAddress: billingAddress || (lead as any).address,
-        probability: 100,
-      });
-
-      // Create customer conversion activity
-      await storage.createBusinessRecordActivity({
-        tenantId,
-        businessRecordId: id,
-        activityType: 'conversion',
-        title: 'Lead Converted to Customer',
-        description: `Lead successfully converted to customer with number ${generatedCustomerNumber}`,
-        userId,
-        activityDate: new Date(),
-      });
-
-      // Auto-create initial service contract if applicable
-      if (lead.estimatedAmount && lead.estimatedAmount > 0) {
-        await storage.createContract({
-          tenantId,
-          customerId: id,
-          contractNumber: `CONTRACT-${generatedCustomerNumber}-${Date.now()}`,
-          status: 'pending',
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-          monthlyBase: String((lead.estimatedAmount / 12).toFixed(2)),
-          blackRate: null,
-          colorRate: null,
-        } as any);
-      }
-
-      res.json(updatedRecord);
-    } catch (error) {
-      console.error('Error converting lead to customer:', error);
-      res.status(500).json({ message: 'Failed to convert lead to customer' });
-    }
-  });
-
-  // 2. Business Records Lifecycle Management
-  app.patch('/api/business-records/:id/lifecycle', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { id } = req.params;
-      const { status, reason, notes } = req.body;
-
-      const updates: any = { leadStatus: status };
-
-      // Handle customer deactivation scenarios
-      if (status === 'churned' || status === 'competitor_switch' || status === 'non_payment') {
-        updates.customerUntil = new Date();
-        updates.churnReason = reason;
-        updates.deactivatedBy = userId;
-
-        // Auto-expire contracts
-        await db
-          .update(contracts)
-          .set({
-            status: 'cancelled',
-            endDate: new Date(),
-          })
-          .where(
-            and(
-              eq(contracts.customerId, id),
-              eq(contracts.tenantId, tenantId),
-              eq(contracts.status, 'active'),
-            ),
-          );
-      }
-
-      const updatedRecord = await storage.updateBusinessRecord(id, updates, tenantId);
-
-      // Log lifecycle change activity
-      await storage.createBusinessRecordActivity({
-        tenantId,
-        businessRecordId: id,
-        activityType: 'status_change',
-        title: `Status Changed to ${status}`,
-        description:
-          notes ||
-          `Business record status updated to ${status}${reason ? ` due to ${reason}` : ''}`,
-        userId,
-        activityDate: new Date(),
-      });
-
-      res.json(updatedRecord);
-    } catch (error) {
-      console.error('Error updating business record lifecycle:', error);
-      res.status(500).json({ message: 'Failed to update business record lifecycle' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - PATCH /api/business-records/:id/lifecycle
+   */
 
   // 3. Equipment Lifecycle Integration with Service Workflows
   app.post('/api/equipment/:equipmentId/trigger-service', async (req: any, res) => {
