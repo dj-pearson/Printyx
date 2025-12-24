@@ -108,6 +108,7 @@ import { registerDealsRoutes } from './routes-deals';
 import { registerCommissionRoutes } from './routes-commission';
 import { registerCatalogRoutes } from './routes-catalog';
 import { registerAnalyticsRoutes } from './routes-analytics';
+import { registerFinancialRoutes } from './routes-financial';
 import { registerCsvImportRoutes } from './routes-csv-import';
 import { registerCustomReportsRoutes } from './routes-custom-reports';
 import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
@@ -5844,34 +5845,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chart of Accounts Management
-  app.get('/api/chart-of-accounts', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const accounts = await storage.getChartOfAccounts(tenantId);
-      res.json(accounts);
-    } catch (error) {
-      console.error('Error fetching chart of accounts:', error);
-      res.status(500).json({ message: 'Failed to fetch chart of accounts' });
-    }
-  });
-
-  app.post('/api/chart-of-accounts', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const accountData = { ...req.body, tenantId };
-      const newAccount = await storage.createChartOfAccount(accountData);
-      res.status(201).json(newAccount);
-    } catch (error) {
-      console.error('Error creating account:', error);
-      res.status(500).json({ message: 'Failed to create account' });
-    }
-  });
-
-  // Journal Entries Management (temporarily disabled; storage methods not implemented)
-  app.all(['/api/journal-entries', '/api/journal-entries/:id'], (_req, res) => {
-    res.status(501).json({ message: 'Journal entries API not implemented' });
-  });
+  /**
+   * NOTE: Migrated to routes-financial.ts (Phase 2):
+   * - GET /api/chart-of-accounts - Get chart of accounts
+   * - POST /api/chart-of-accounts - Create chart of account entry
+   * - ALL /api/journal-entries - Journal entries (501 Not Implemented stub)
+   */
 
   // Purchase Orders Management
   app.get('/api/purchase-orders', async (req, res) => {
@@ -13941,6 +13920,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   registerCommissionRoutes(app);
   registerCatalogRoutes(app);
   registerAnalyticsRoutes(app);
+  registerFinancialRoutes(app);
   registerRenewalManagementRoutes(app);
 
   // Register Sales Forecasting routes
