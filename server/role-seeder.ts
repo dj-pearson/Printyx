@@ -333,7 +333,13 @@ export async function createDemoTenant() {
 
 export async function seedDemoUsers(tenantId: string) {
   console.log("Seeding demo users with new role hierarchy...");
-  
+
+  // ⚠️  SECURITY WARNING: HARDCODED PASSWORDS BELOW ⚠️
+  // This section contains hardcoded passwords for demo/test purposes ONLY.
+  // These passwords should NEVER be used in production environments.
+  // The initializeRoleHierarchy() function has guards to prevent running in production.
+  // For production, users should be created through the UI with secure password requirements.
+
   const demoUsers = [
     // Printyx Platform Users (no tenantId)
     {
@@ -341,7 +347,7 @@ export async function seedDemoUsers(tenantId: string) {
       email: "Pearsonperformance@gmail.com",
       firstName: "Root",
       lastName: "Admin",
-      password: "Infomax1!",
+      password: "Infomax1!",  // HARDCODED - Demo/test only
       roleCode: "ROOT_ADMIN",
       tenantId: null,
       isPlatformUser: true
@@ -488,14 +494,27 @@ export async function seedDemoUsers(tenantId: string) {
 
 export async function initializeRoleHierarchy() {
   console.log("Initializing comprehensive role hierarchy...");
-  
+
+  // SECURITY: Prevent running in production with hardcoded passwords
+  if (process.env.NODE_ENV === 'production') {
+    const allowSeeding = process.env.ALLOW_DEMO_SEEDING === 'true';
+    if (!allowSeeding) {
+      throw new Error(
+        'SECURITY BLOCKED: Cannot run role seeder with hardcoded passwords in production. ' +
+        'Set ALLOW_DEMO_SEEDING=true environment variable only if this is a demo/test environment.'
+      );
+    }
+    console.warn('⚠️  WARNING: Running demo seeder with hardcoded passwords in production mode!');
+    console.warn('⚠️  This should ONLY be done in isolated demo/test environments.');
+  }
+
   try {
     // Step 1: Seed all roles
     await seedRoles();
-    
+
     // Step 2: Create demo tenant
     const tenantId = await createDemoTenant();
-    
+
     // Step 3: Seed demo users with new hierarchy
     await seedDemoUsers(tenantId);
     

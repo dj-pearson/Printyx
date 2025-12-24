@@ -101,6 +101,15 @@ const passwordResetLimiter = rateLimit({
   message: { message: "Too many password reset attempts. Please try again later." },
 });
 
+// SECURITY FIX: Rate limiting for signup to prevent automated account creation
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 signups per hour per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many signup attempts. Please try again later." },
+});
+
 // Login endpoint
 router.post("/login", loginLimiter, async (req, res) => {
   try {
@@ -237,8 +246,9 @@ router.get("/user", async (req, res) => {
 /**
  * POST /api/auth/signup
  * Create new tenant and admin user account
+ * SECURITY: Rate limited to prevent automated mass account creation
  */
-router.post("/signup", async (req, res) => {
+router.post("/signup", signupLimiter, async (req, res) => {
   try {
     const data = signupSchema.parse(req.body);
 
