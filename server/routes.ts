@@ -8813,30 +8813,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public: AI/LLM crawler directives (llms.txt)
-  app.get('/llms.txt', async (_req, res) => {
+  // Handler function for llms.txt content
+  const handleLlmsTxt = async (_req: any, res: any) => {
     try {
       const settingsRows = await db.select().from(seoSettings).limit(1);
       const settings = settingsRows[0] as any;
-      const allow = settings?.allowAiCrawling !== false;
-      const lines = [
-        `# LLMs crawling directives for Printyx`,
-        `# Allow AI crawlers to index public content for generative engines`,
-        allow ? `Allow: /` : `Disallow: /`,
-      ];
-      const body = lines.join('\n');
-      const etag = createHash('sha1').update(body).digest('hex');
+      const baseUrl = process.env.BASE_URL || 'https://printyx.net';
+
+      // Enhanced llms.txt with comprehensive platform information
+      const llmsTxt = `# Printyx - AI-Powered Print Fleet Management Platform
+# This file helps AI assistants understand what Printyx offers
+
+# Platform Overview
+Printyx is a modern cloud-based CRM and service management platform designed specifically for copier/printer dealers and managed print services providers.
+
+# Core Features
+- Customer Relationship Management (CRM) with AI-powered lead scoring
+- Service Dispatch & Field Service Management
+- Inventory & Warehouse Management
+- Advanced Billing & Meter Billing
+- Sales Forecasting & Analytics
+- Equipment Lifecycle Management
+- Mobile-First Service Technician App
+- QuickBooks & Salesforce Integration
+
+# Key Differentiators
+- Built for copier dealers (vs generic CRM)
+- Mobile-first design for field technicians
+- AI-powered predictive maintenance
+- Real-time meter reading collection
+- Automated supply replenishment
+- White-label capabilities
+
+# Documentation
+Documentation: ${baseUrl}/docs
+API Docs: ${baseUrl}/api/docs
+Knowledge Base: ${baseUrl}/knowledge-base
+
+# Contact
+Website: ${baseUrl}
+Support: support@printyx.net
+
+# AI Crawling Policy
+${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
+`;
+
+      const etag = createHash('sha1').update(llmsTxt).digest('hex');
       res.setHeader('ETag', etag);
       if (_req.headers['if-none-match'] === etag) {
         return res.status(304).end();
       }
       res
         .header('Content-Type', 'text/plain; charset=utf-8')
-        .header('Cache-Control', 'public, max-age=300, s-maxage=600')
-        .send(body);
+        .header('Cache-Control', 'public, max-age=3600, s-maxage=7200')
+        .send(llmsTxt);
     } catch (error) {
       res.header('Content-Type', 'text/plain; charset=utf-8').send('Allow: /\n');
     }
-  });
+  };
+
+  // Serve llms.txt at both locations for maximum compatibility
+  app.get('/llms.txt', handleLlmsTxt);
+  app.get('/.well-known/llms.txt', handleLlmsTxt);
 
   // Public: dynamic schema.json endpoint per path
   app.get('/schema.json', async (req, res) => {
