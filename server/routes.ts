@@ -3444,7 +3444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Security & Compliance Management Routes
-  app.get('/api/security-compliance/dashboard', async (req: any, res) => {
+  app.get('/api/security-compliance/dashboard', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -12556,7 +12556,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   );
 
   // Security & Compliance routes
-  app.get('/api/security-compliance/security-dashboard', async (req: any, res) => {
+  app.get('/api/security-compliance/security-dashboard', requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.user;
       res.json({
@@ -12575,7 +12575,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     }
   });
 
-  app.get('/api/security-compliance/audit-logs', async (req: any, res) => {
+  app.get('/api/security-compliance/audit-logs', requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.user;
       const page = Number((req.query as any)?.page ?? 1);
@@ -12608,7 +12608,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     }
   });
 
-  app.get('/api/security-compliance/gdpr-requests', async (req: any, res) => {
+  app.get('/api/security-compliance/gdpr-requests', requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.user;
 
@@ -12640,7 +12640,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     }
   });
 
-  app.get('/api/security-compliance/security-sessions', async (req: any, res) => {
+  app.get('/api/security-compliance/security-sessions', requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.user;
 
@@ -12666,7 +12666,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     }
   });
 
-  app.get('/api/security-compliance/compliance-settings', async (req: any, res) => {
+  app.get('/api/security-compliance/compliance-settings', requireAuth, async (req: any, res) => {
     try {
       const { tenantId } = req.user;
 

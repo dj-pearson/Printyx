@@ -145,16 +145,19 @@ class ReportCacheService {
 setInterval(() => ReportCacheService.cleanup(), 10 * 60 * 1000);
 
 // =====================================================================
-// QUERY PARAMETER SUBSTITUTION
+// QUERY PARAMETER SUBSTITUTION - SECURE VERSION
 // =====================================================================
+
+interface PreparedQueryResult {
+  query: string;
+  params: any[];
+}
 
 function substituteQueryParameters(
   sqlQuery: string,
   params: ReportParameters,
-  user: AuthenticatedRequest['user']
-): string {
-  let query = sqlQuery;
-
+  user: AuthenticatedRequest['user'],
+): PreparedQueryResult {
   // Default parameters
   const defaultParams: ReportParameters = {
     userId: user?.id,
@@ -168,19 +171,47 @@ function substituteQueryParameters(
   // Merge with custom parameters
   const allParams = { ...defaultParams, ...params };
 
-  // Replace all :paramName with actual values
+  // Whitelist of allowed parameter names to prevent SQL injection
+  const allowedParams = [
+    'userId',
+    'tenantId',
+    'locationId',
+    'regionId',
+    'dateFrom',
+    'dateTo',
+    'productId',
+    'customerId',
+    'status',
+    'category',
+    'type',
+    'stage',
+    'priority',
+  ];
+
+  let query = sqlQuery;
+  const paramValues: any[] = [];
+  let paramIndex = 1;
+
+  // Replace :paramName with $1, $2, etc. (PostgreSQL prepared statement syntax)
   for (const [key, value] of Object.entries(allParams)) {
     const placeholder = `:${key}`;
-    const escapedValue = value === null || value === undefined
-      ? 'NULL'
-      : typeof value === 'string'
-        ? `'${value.replace(/'/g, "''")}'` // SQL escape single quotes
-        : value.toString();
 
-    query = query.replace(new RegExp(placeholder, 'g'), escapedValue);
+    // Security: Only allow whitelisted parameter names
+    if (!allowedParams.includes(key)) {
+      console.warn(`Skipping non-whitelisted parameter: ${key}`);
+      continue;
+    }
+
+    // Replace all occurrences of :paramName with $N
+    const regex = new RegExp(placeholder, 'g');
+    if (query.includes(placeholder)) {
+      query = query.replace(regex, `$${paramIndex}`);
+      paramValues.push(value);
+      paramIndex++;
+    }
   }
 
-  return query;
+  return { query, params: paramValues };
 }
 
 // =====================================================================
@@ -218,7 +249,11 @@ class ReportExportService {
   /**
    * Export to Excel
    */
-  static async exportToExcel(data: any[], reportName: string, reportTitle: string): Promise<string> {
+  static async exportToExcel(
+    data: any[],
+    reportName: string,
+    reportTitle: string,
+  ): Promise<string> {
     await this.initialize();
 
     const workbook = new ExcelJS.Workbook();
@@ -239,14 +274,14 @@ class ReportExportService {
       worksheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
 
       // Add data rows
-      data.forEach(row => {
+      data.forEach((row) => {
         worksheet.addRow(Object.values(row));
       });
 
       // Auto-fit columns
-      worksheet.columns.forEach(column => {
+      worksheet.columns.forEach((column) => {
         let maxLength = 0;
-        column.eachCell?.({ includeEmpty: true }, cell => {
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
           const cellLength = cell.value ? cell.value.toString().length : 0;
           maxLength = Math.max(maxLength, cellLength);
         });
@@ -289,7 +324,7 @@ class ReportExportService {
       // Headers
       doc.fontSize(10).fillColor('black');
       let xPos = 50;
-      headers.forEach(header => {
+      headers.forEach((header) => {
         doc.text(header, xPos, doc.y, { width: columnWidth, align: 'left' });
         xPos += columnWidth;
       });
@@ -297,7 +332,8 @@ class ReportExportService {
       doc.moveDown();
 
       // Rows
-      data.slice(0, 100).forEach(row => { // Limit to 100 rows for PDF
+      data.slice(0, 100).forEach((row) => {
+        // Limit to 100 rows for PDF
         xPos = 50;
         Object.values(row).forEach((value: any) => {
           doc.text(String(value || ''), xPos, doc.y, { width: columnWidth, align: 'left' });
@@ -351,8 +387,8 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
       .where(
         and(
           eq(reportDefinitions.tenantId, req.user.tenantId),
-          eq(reportDefinitions.isActive, true)
-        )
+          eq(reportDefinitions.isActive, true),
+        ),
       );
 
     // Apply filters
@@ -367,7 +403,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     let reports = await query;
 
     // Filter by permissions
-    reports = reports.filter(report => {
+    reports = reports.filter((report) => {
       const requiredPerms = report.requiredPermissions as string[];
       return hasAnyPermission(req, requiredPerms);
     });
@@ -375,15 +411,16 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     // Filter by search term
     if (search) {
       const searchTerm = (search as string).toLowerCase();
-      reports = reports.filter(report =>
-        report.name.toLowerCase().includes(searchTerm) ||
-        report.description?.toLowerCase().includes(searchTerm) ||
-        report.code.toLowerCase().includes(searchTerm)
+      reports = reports.filter(
+        (report) =>
+          report.name.toLowerCase().includes(searchTerm) ||
+          report.description?.toLowerCase().includes(searchTerm) ||
+          report.code.toLowerCase().includes(searchTerm),
       );
     }
 
     res.json({
-      reports: reports.map(r => ({
+      reports: reports.map((r) => ({
         id: r.id,
         code: r.code,
         name: r.name,
@@ -424,8 +461,8 @@ router.get('/:code', async (req: AuthenticatedRequest, res: Response) => {
         and(
           eq(reportDefinitions.code, code),
           eq(reportDefinitions.tenantId, req.user.tenantId),
-          eq(reportDefinitions.isActive, true)
-        )
+          eq(reportDefinitions.isActive, true),
+        ),
       )
       .limit(1);
 
@@ -451,8 +488,8 @@ router.get('/:code', async (req: AuthenticatedRequest, res: Response) => {
       .where(
         and(
           eq(userReportPreferences.userId, req.user.id),
-          eq(userReportPreferences.reportDefinitionId, reportDef.id)
-        )
+          eq(userReportPreferences.reportDefinitionId, reportDef.id),
+        ),
       )
       .limit(1);
 
@@ -492,8 +529,8 @@ router.post('/:code/execute', async (req: AuthenticatedRequest, res: Response) =
         and(
           eq(reportDefinitions.code, code),
           eq(reportDefinitions.tenantId, req.user.tenantId),
-          eq(reportDefinitions.isActive, true)
-        )
+          eq(reportDefinitions.isActive, true),
+        ),
       )
       .limit(1);
 
@@ -544,38 +581,38 @@ router.post('/:code/execute', async (req: AuthenticatedRequest, res: Response) =
 
     // Build query with hierarchical filtering
     const queryBuilder = new HierarchicalQueryBuilder(req.user);
-    let sqlQuery = reportDef.sqlQuery;
 
-    // Substitute parameters
-    sqlQuery = substituteQueryParameters(
-      sqlQuery,
+    // Substitute parameters using prepared statements
+    const { query: sqlQuery, params: queryParams } = substituteQueryParameters(
+      reportDef.sqlQuery,
       executionRequest.parameters || {},
-      req.user
+      req.user,
     );
 
-    // Apply hierarchical filtering (if query supports it)
-    const scopeFilter = queryBuilder.getSQLWhereClause({
-      overrideScope: executionRequest.overrideScope,
-    });
+    // Note: Hierarchical filtering and pagination should be part of the report definition
+    // or applied through whitelisted parameters to prevent SQL injection
+    // The current implementation of dynamic WHERE clause injection is unsafe
 
-    // Inject scope filter into WHERE clause (simple approach - may need enhancement)
-    if (scopeFilter && sqlQuery.toLowerCase().includes('where')) {
-      sqlQuery = sqlQuery.replace(/WHERE/i, `WHERE ${scopeFilter} AND`);
-    } else if (scopeFilter) {
-      sqlQuery += ` WHERE ${scopeFilter}`;
-    }
-
-    // Apply pagination
+    // Validate pagination values to prevent SQL injection
+    let finalQuery = sqlQuery;
     if (executionRequest.pagination) {
-      const { page = 1, limit = 50 } = executionRequest.pagination;
+      const page = Math.max(1, parseInt(String(executionRequest.pagination.page || 1), 10));
+      const limit = Math.min(
+        1000,
+        Math.max(1, parseInt(String(executionRequest.pagination.limit || 50), 10)),
+      );
       const offset = (page - 1) * limit;
-      sqlQuery += ` LIMIT ${limit} OFFSET ${offset}`;
+      finalQuery += ` LIMIT ${limit} OFFSET ${offset}`;
     } else if (reportDef.maxRowLimit) {
-      sqlQuery += ` LIMIT ${reportDef.maxRowLimit}`;
+      const maxLimit = Math.min(10000, Math.max(1, parseInt(String(reportDef.maxRowLimit), 10)));
+      finalQuery += ` LIMIT ${maxLimit}`;
     }
 
-    // Execute query with timeout
-    const result = await db.execute(sql.raw(sqlQuery));
+    // Execute query with prepared statement parameters
+    const result =
+      queryParams.length > 0
+        ? await db.execute(sql.raw(finalQuery, queryParams))
+        : await db.execute(sql.raw(finalQuery));
 
     const data = result.rows;
     const rowCount = data.length;
@@ -645,7 +682,10 @@ router.post('/:code/export', async (req: AuthenticatedRequest, res: Response) =>
     }
 
     const { code } = req.params;
-    const { format = 'csv', ...executionRequest }: { format: 'csv' | 'xlsx' | 'pdf' } & ReportExecutionRequest = req.body;
+    const {
+      format = 'csv',
+      ...executionRequest
+    }: { format: 'csv' | 'xlsx' | 'pdf' } & ReportExecutionRequest = req.body;
 
     // Get report definition
     const reportResult = await db
@@ -655,8 +695,8 @@ router.post('/:code/export', async (req: AuthenticatedRequest, res: Response) =>
         and(
           eq(reportDefinitions.code, code),
           eq(reportDefinitions.tenantId, req.user.tenantId),
-          eq(reportDefinitions.isActive, true)
-        )
+          eq(reportDefinitions.isActive, true),
+        ),
       )
       .limit(1);
 
@@ -677,16 +717,17 @@ router.post('/:code/export', async (req: AuthenticatedRequest, res: Response) =>
       return res.status(403).json({ error: 'Insufficient permissions to export this report' });
     }
 
-    // Execute report to get data
-    // (In production, you might want to reuse the execute endpoint logic)
-    const queryBuilder = new HierarchicalQueryBuilder(req.user);
-    let sqlQuery = substituteQueryParameters(
+    // Execute report to get data using prepared statements
+    const { query: sqlQuery, params: queryParams } = substituteQueryParameters(
       reportDef.sqlQuery,
       executionRequest.parameters || {},
-      req.user
+      req.user,
     );
 
-    const result = await db.execute(sql.raw(sqlQuery));
+    const result =
+      queryParams.length > 0
+        ? await db.execute(sql.raw(sqlQuery, queryParams))
+        : await db.execute(sql.raw(sqlQuery));
     const data = result.rows as any[];
 
     // Export based on format
@@ -743,8 +784,8 @@ router.post('/:code/schedule', async (req: AuthenticatedRequest, res: Response) 
         and(
           eq(reportDefinitions.code, code),
           eq(reportDefinitions.tenantId, req.user.tenantId),
-          eq(reportDefinitions.isActive, true)
-        )
+          eq(reportDefinitions.isActive, true),
+        ),
       )
       .limit(1);
 
@@ -761,23 +802,26 @@ router.post('/:code/schedule', async (req: AuthenticatedRequest, res: Response) 
     }
 
     // Create schedule
-    const schedule = await db.insert(reportSchedules).values({
-      tenantId: req.user.tenantId,
-      reportDefinitionId: reportDef.id,
-      name: scheduleRequest.name,
-      description: scheduleRequest.description || null,
-      cronExpression: scheduleRequest.cronExpression,
-      timezone: scheduleRequest.timezone || 'UTC',
-      parameters: scheduleRequest.parameters || {},
-      filters: scheduleRequest.filters || {},
-      recipients: scheduleRequest.recipients,
-      deliveryMethod: scheduleRequest.deliveryMethod || 'email',
-      exportFormat: scheduleRequest.exportFormat || 'pdf',
-      emailSubject: scheduleRequest.emailSubject || null,
-      emailBody: scheduleRequest.emailBody || null,
-      isActive: true,
-      createdBy: req.user.id,
-    }).returning();
+    const schedule = await db
+      .insert(reportSchedules)
+      .values({
+        tenantId: req.user.tenantId,
+        reportDefinitionId: reportDef.id,
+        name: scheduleRequest.name,
+        description: scheduleRequest.description || null,
+        cronExpression: scheduleRequest.cronExpression,
+        timezone: scheduleRequest.timezone || 'UTC',
+        parameters: scheduleRequest.parameters || {},
+        filters: scheduleRequest.filters || {},
+        recipients: scheduleRequest.recipients,
+        deliveryMethod: scheduleRequest.deliveryMethod || 'email',
+        exportFormat: scheduleRequest.exportFormat || 'pdf',
+        emailSubject: scheduleRequest.emailSubject || null,
+        emailBody: scheduleRequest.emailBody || null,
+        isActive: true,
+        createdBy: req.user.id,
+      })
+      .returning();
 
     res.status(201).json({
       schedule: schedule[0],
@@ -810,13 +854,13 @@ router.get('/scheduled/list', async (req: AuthenticatedRequest, res: Response) =
         and(
           eq(reportSchedules.tenantId, req.user.tenantId),
           eq(reportSchedules.createdBy, req.user.id),
-          eq(reportSchedules.isActive, true)
-        )
+          eq(reportSchedules.isActive, true),
+        ),
       )
       .orderBy(desc(reportSchedules.createdAt));
 
     res.json({
-      schedules: schedules.map(s => ({
+      schedules: schedules.map((s) => ({
         ...s.schedule,
         reportName: s.report.name,
         reportCode: s.report.code,
@@ -849,8 +893,8 @@ router.delete('/scheduled/:id', async (req: AuthenticatedRequest, res: Response)
         and(
           eq(reportSchedules.id, id),
           eq(reportSchedules.tenantId, req.user.tenantId),
-          eq(reportSchedules.createdBy, req.user.id)
-        )
+          eq(reportSchedules.createdBy, req.user.id),
+        ),
       )
       .limit(1);
 
@@ -893,14 +937,14 @@ router.get('/executions/recent', async (req: AuthenticatedRequest, res: Response
       .where(
         and(
           eq(reportExecutions.tenantId, req.user.tenantId),
-          eq(reportExecutions.userId, req.user.id)
-        )
+          eq(reportExecutions.userId, req.user.id),
+        ),
       )
       .orderBy(desc(reportExecutions.createdAt))
       .limit(Number(limit));
 
     res.json({
-      executions: executions.map(e => ({
+      executions: executions.map((e) => ({
         ...e.execution,
         reportName: e.report.name,
         reportCode: e.report.code,
