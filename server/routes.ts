@@ -106,6 +106,7 @@ import { registerBusinessRecordRoutes } from './routes-business-records';
 import { registerCustomerRoutes } from './routes-customers';
 import { registerDealsRoutes } from './routes-deals';
 import { registerCommissionRoutes } from './routes-commission';
+import { registerCatalogRoutes } from './routes-catalog';
 import { registerCsvImportRoutes } from './routes-csv-import';
 import { registerCustomReportsRoutes } from './routes-custom-reports';
 import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
@@ -7988,196 +7989,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Master Product Catalog Routes
-  app.get('/api/catalog/models', async (req: any, res) => {
-    try {
-      const manufacturer = String((req.query as any)?.manufacturer || '');
-      const search = String((req.query as any)?.search || '');
-      const category = String((req.query as any)?.category || '');
-      const status = String((req.query as any)?.status || '');
-      const rows = await storage.browseMasterProducts({
-        manufacturer,
-        search,
-        category,
-        status,
-      });
-      res.json(rows);
-    } catch (error) {
-      console.error('Error browsing master catalog:', error);
-      res.status(500).json({ message: 'Failed to fetch master catalog' });
-    }
-  });
-
-  app.post('/api/catalog/models', async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser ||
-        req.user?.is_platform_user ||
-        req.user?.role === 'platform_admin' ||
-        req.user?.role === 'root_admin' ||
-        req.user?.role === 'Platform Admin' ||
-        req.user?.role === 'Root Admin' ||
-        req.user?.role === 'admin';
-
-      if (!isPlatformUser) {
-        return res.status(403).json({
-          message: 'Platform admin required',
-          userRole: req.user?.role,
-          userId: req.user?.id,
-        });
-      }
-      const payload = insertMasterProductModelSchema.parse(req.body);
-      const saved = await storage.upsertMasterProduct(payload);
-      res.status(201).json(saved);
-    } catch (error: any) {
-      console.error('Error creating master product:', error);
-      res.status(500).json({
-        message: 'Failed to create master product',
-        detail: error?.message,
-      });
-    }
-  });
-
-  app.get('/api/catalog/manufacturers', async (_req: any, res) => {
-    try {
-      const rows = await storage.listMasterManufacturers();
-      res.json(rows);
-    } catch (error) {
-      console.error('Error fetching manufacturers:', error);
-      res.status(500).json({ message: 'Failed to fetch manufacturers' });
-    }
-  });
-
-  app.get('/api/enabled-products', async (req: any, res) => {
-    try {
-      const { tenantId } = req.user;
-      const rows = await storage.getEnabledProducts(tenantId);
-      res.json(rows);
-    } catch (error) {
-      console.error('Error fetching enabled products:', error);
-      res.status(500).json({ message: 'Failed to fetch enabled products' });
-    }
-  });
-
-  app.post('/api/catalog/models/:id/enable', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { id } = req.params;
-      const overrides = { ...req.body, enabledBy: userId };
-      const result = await storage.enableMasterProduct(tenantId, id, overrides);
-      res.json(result);
-    } catch (error) {
-      console.error('Error enabling product:', error);
-      res.status(500).json({ message: 'Failed to enable product' });
-    }
-  });
-
-  app.post('/api/catalog/models/bulk-enable', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { masterProductIds = [], defaultOverrides = {} } = req.body ?? {};
-      let enabled = 0;
-      let skipped = 0;
-      for (const pid of masterProductIds) {
-        try {
-          await storage.enableMasterProduct(tenantId, pid, {
-            ...defaultOverrides,
-            enabledBy: userId,
-          });
-          enabled += 1;
-        } catch {
-          skipped += 1;
-        }
-      }
-      res.json({ enabled, skipped });
-    } catch (error) {
-      console.error('Error bulk enabling products:', error);
-      res.status(500).json({ message: 'Failed to bulk enable products' });
-    }
-  });
-
-  // Tenant: enable products directly from CSV (uses Dealer Price as dealerCost)
-  app.post(
-    '/api/catalog/models/enable-from-csv',
-
-    upload.single('file'),
-    async (req: any, res) => {
-      try {
-        const { tenantId, id: userId } = req.user;
-        const file = req.file;
-        if (!file) return res.status(400).json({ message: 'CSV file required' });
-
-        const csvText = file.buffer.toString('utf-8');
-        const lines = csvText.split(/\r?\n/);
-        let columns: string[] = [];
-        let enabled = 0;
-        let skipped = 0;
-
-        const isHeader = (arr: string[]) => {
-          const lc = arr.map((s) => s.trim().toLowerCase());
-          return (
-            lc.includes('item no.') &&
-            lc.includes('description') &&
-            lc.some((c) => c.includes('dealer price')) &&
-            lc.includes('msrp')
-          );
-        };
-
-        const normalizeMoney = (s?: string) => {
-          if (!s) return undefined;
-          const n = Number(String(s).replace(/[$,\s]/g, ''));
-          return Number.isFinite(n) ? n : undefined;
-        };
-
-        for (const raw of lines) {
-          const line = raw.trimEnd();
-          if (!line) continue;
-          const parts = line.split(',');
-          if (isHeader(parts)) {
-            columns = parts.map((h: string) => h.trim().toLowerCase());
-            continue;
-          }
-          if (!columns.length) continue;
-
-          const row: any = {};
-          columns.forEach((c: string, i: number) => (row[c] = (parts[i] || '').trim()));
-          const modelCode = row['item no.'] || row['item no'] || row['item'];
-          const description = row['description'];
-          const dealerPrice = normalizeMoney(row['dealer price']) ?? normalizeMoney(row['dealer']);
-          if (!modelCode || !description) continue;
-
-          // Make sure a corresponding master product exists (create minimal if missing)
-          let master = await storage.findMasterProduct('Canon', modelCode);
-          if (!master) {
-            master = await storage.upsertMasterProduct({
-              manufacturer: 'Canon',
-              modelCode,
-              displayName: description,
-              msrp: undefined,
-            } as any);
-          }
-
-          try {
-            await storage.enableMasterProduct(tenantId, (master as any).id, {
-              dealerCost: dealerPrice as any,
-              updatedAt: new Date(),
-            } as any);
-            enabled += 1;
-          } catch {
-            skipped += 1;
-          }
-        }
-
-        res.json({ enabled, skipped });
-      } catch (error: any) {
-        console.error('Error enabling products from CSV:', error);
-        res.status(500).json({
-          message: 'Failed to enable from CSV',
-          detail: error?.message,
-        });
-      }
-    },
-  );
+  /**
+   * NOTE: Migrated to routes-catalog.ts (Phase 2):
+   * - GET /api/catalog/models - Browse master product catalog
+   * - POST /api/catalog/models - Create/update master product
+   * - GET /api/catalog/manufacturers - List manufacturers
+   * - GET /api/enabled-products - Get tenant-enabled products
+   * - POST /api/catalog/models/:id/enable - Enable product for tenant
+   * - POST /api/catalog/models/bulk-enable - Bulk enable products
+   * - POST /api/catalog/models/enable-from-csv - Enable from CSV file
+   *
+   * Additional routes migrated:
+   * - PATCH /api/catalog/models/:id (see below)
+   * - POST /api/catalog/normalize-categories (see below)
+   */
 
   // ===== SEO Management Routes =====
   // Root Admin: upsert global SEO settings
@@ -8904,49 +8729,10 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   );
 
   // Update master product
-  app.patch('/api/catalog/models/:id', async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser ||
-        req.user?.is_platform_user ||
-        req.user?.role === 'platform_admin' ||
-        req.user?.role === 'root_admin' ||
-        req.user?.role === 'Platform Admin' ||
-        req.user?.role === 'Root Admin' ||
-        req.user?.role === 'admin';
-
-      if (!isPlatformUser) {
-        return res.status(403).json({
-          message: 'Platform admin required to update master products',
-        });
-      }
-
-      const { id } = req.params;
-      const { displayName, msrp, dealerCost, marginPercentage, category, productType, status } =
-        req.body;
-
-      // Update the master product
-      const updateData: any = {};
-      if (displayName !== undefined) updateData.displayName = displayName;
-      if (msrp !== undefined) updateData.msrp = msrp;
-      if (dealerCost !== undefined) updateData.dealerCost = dealerCost;
-      if (marginPercentage !== undefined) updateData.marginPercentage = marginPercentage;
-      if (category !== undefined) updateData.category = category;
-      if (productType !== undefined) updateData.productType = productType;
-      if (status !== undefined) updateData.status = status;
-      updateData.updatedAt = new Date();
-
-      await db.update(masterProductModels).set(updateData).where(eq(masterProductModels.id, id));
-
-      res.json({ success: true, updated: updateData });
-    } catch (error: any) {
-      console.error('Error updating master product:', error);
-      res.status(500).json({
-        message: 'Failed to update master product',
-        detail: error?.message,
-      });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-catalog.ts (Phase 2):
+   * - PATCH /api/catalog/models/:id
+   */
 
   // Helper functions for enhanced CSV import
   const createFieldMappings = (headers: string[]) => {
@@ -9305,59 +9091,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     },
   );
 
-  // Normalize existing product categories
-  app.post('/api/catalog/normalize-categories', async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser ||
-        req.user?.is_platform_user ||
-        req.user?.role === 'platform_admin' ||
-        req.user?.role === 'root_admin' ||
-        req.user?.role === 'Platform Admin' ||
-        req.user?.role === 'Root Admin' ||
-        req.user?.role === 'admin';
-
-      if (!isPlatformUser) {
-        return res.status(403).json({
-          message: 'Platform admin required to normalize categories',
-        });
-      }
-
-      // Get all products with categories that need normalization
-      const products = await db
-        .select()
-        .from(masterProductModels)
-        .where(sql`category IS NOT NULL`);
-
-      let updated = 0;
-      for (const product of products) {
-        const normalizedCategory = normalizeCategoryName(String(product.category || ''));
-        if (normalizedCategory !== product.category) {
-          await db
-            .update(masterProductModels)
-            .set({
-              category: normalizedCategory,
-              productType: normalizedCategory === 'Accessory' ? 'accessory' : 'model',
-              updatedAt: new Date(),
-            })
-            .where(eq(masterProductModels.id, product.id));
-          updated++;
-        }
-      }
-
-      res.json({
-        success: true,
-        message: `Normalized ${updated} product categories`,
-        updated,
-      });
-    } catch (error: any) {
-      console.error('Error normalizing categories:', error);
-      res.status(500).json({
-        message: 'Failed to normalize categories',
-        detail: error?.message,
-      });
-    }
-  });
+  // POST /api/catalog/normalize-categories - Migrated to routes-catalog.ts
 
   // Bulk update pricing
   app.post(
@@ -14831,6 +14565,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   registerSalesHandoffRoutes(app);
   registerDealsRoutes(app);
   registerCommissionRoutes(app);
+  registerCatalogRoutes(app);
   registerRenewalManagementRoutes(app);
 
   // Register Sales Forecasting routes
