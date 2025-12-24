@@ -104,6 +104,7 @@ import breachDetectionRoutes from './routes-breach-detection';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerBusinessRecordRoutes } from './routes-business-records';
 import { registerCustomerRoutes } from './routes-customers';
+import { registerDealsRoutes } from './routes-deals';
 import { registerCsvImportRoutes } from './routes-csv-import';
 import { registerCustomReportsRoutes } from './routes-custom-reports';
 import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
@@ -7716,202 +7717,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get single deal
-  app.get('/api/deals/:id', async (req: any, res) => {
-    try {
-      // Authentication check using unified auth helpers
-      const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      const tenantId = user.tenantId;
-      const dealId = req.params.id;
-
-      const deal = await storage.getDeal(dealId, tenantId);
-      if (!deal) {
-        return res.status(404).json({ message: 'Deal not found' });
-      }
-
-      res.json(deal);
-    } catch (error) {
-      console.error('Error fetching deal:', error);
-      res.status(500).json({ message: 'Failed to fetch deal' });
-    }
-  });
-
-  // Create new deal
-  app.post('/api/deals', async (req: any, res) => {
-    try {
-      // Authentication check using unified auth helpers
-      const authUserId = getUserId(req);
-      if (!authUserId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const user = await storage.getUser(authUserId);
-      if (!user?.tenantId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      const tenantId = user.tenantId;
-      const userId = user.id;
-
-      // Get the first available stage as default
-      const stages = await storage.getDealStages(tenantId);
-      const defaultStageId = stages.length > 0 ? stages[0].id : null;
-
-      if (!defaultStageId) {
-        // Initialize default stages if none exist
-        const defaultStages = [
-          {
-            name: 'Appointment Scheduled',
-            color: '#3B82F6',
-            sortOrder: 1,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Qualified to Buy',
-            color: '#8B5CF6',
-            sortOrder: 2,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Presentation Scheduled',
-            color: '#06B6D4',
-            sortOrder: 3,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Decision Maker Bought-In',
-            color: '#F59E0B',
-            sortOrder: 4,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Contract Sent',
-            color: '#EF4444',
-            sortOrder: 5,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Closed Won',
-            color: '#10B981',
-            sortOrder: 6,
-            isClosingStage: true,
-            isWonStage: true,
-          },
-          {
-            name: 'Closed Lost',
-            color: '#6B7280',
-            sortOrder: 7,
-            isClosingStage: true,
-            isWonStage: false,
-          },
-        ];
-
-        const createdStages = [];
-        for (const stage of defaultStages) {
-          const stageData = {
-            ...stage,
-            tenantId,
-            isActive: true,
-          };
-          const newStage = await storage.createDealStage(stageData);
-          createdStages.push(newStage);
-        }
-
-        if (createdStages.length === 0) {
-          throw new Error('Could not create default deal stages');
-        }
-      }
-
-      // Get the updated stages list after potential creation
-      const finalStages = await storage.getDealStages(tenantId);
-      const finalStageId = finalStages.length > 0 ? finalStages[0].id : null;
-
-      if (!finalStageId) {
-        throw new Error('No deal stages available');
-      }
-
-      // Transform the data to match schema expectations
-      const dealData = {
-        tenantId,
-        ownerId: userId,
-        createdById: userId, // Add the required createdById field
-        stageId: finalStageId,
-        title: req.body.title,
-        description: req.body.description || null,
-        amount: req.body.amount ? req.body.amount : null,
-        estimatedMonthlyValue: req.body.estimatedMonthlyValue
-          ? req.body.estimatedMonthlyValue
-          : null,
-        expectedCloseDate: req.body.expectedCloseDate ? new Date(req.body.expectedCloseDate) : null,
-        companyName: req.body.companyName || null,
-        primaryContactName: req.body.primaryContactName || null,
-        primaryContactEmail: req.body.primaryContactEmail || null,
-        primaryContactPhone: req.body.primaryContactPhone || null,
-        source: req.body.source || null,
-        dealType: req.body.dealType || null,
-        priority: req.body.priority || 'medium',
-        productsInterested: req.body.productsInterested || null,
-        probability: 25, // Default probability for new deals
-      };
-
-      console.log('[DEAL DEBUG] Processed deal data:', JSON.stringify(dealData, null, 2));
-
-      const deal = await storage.createDeal(dealData);
-      res.status(201).json(deal);
-    } catch (error) {
-      console.error('Error creating deal:', error);
-      res.status(500).json({ message: 'Failed to create deal' });
-    }
-  });
-
-  // Update deal
-  app.put('/api/deals/:id', async (req: any, res) => {
-    try {
-      // Authentication check using unified auth helpers
-      const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      const tenantId = user.tenantId;
-      const dealId = req.params.id;
-
-      // Convert date strings to Date objects for Drizzle
-      const updateData = { ...req.body };
-      if (updateData.expectedCloseDate && typeof updateData.expectedCloseDate === 'string') {
-        updateData.expectedCloseDate = new Date(updateData.expectedCloseDate);
-      }
-
-      const deal = await storage.updateDeal(dealId, updateData, tenantId);
-      if (!deal) {
-        return res.status(404).json({ message: 'Deal not found' });
-      }
-
-      res.json(deal);
-    } catch (error) {
-      console.error('Error updating deal:', error);
-      res.status(500).json({ message: 'Failed to update deal' });
-    }
-  });
+  /**
+   * NOTE: The following routes have been migrated to routes-deals.ts:
+   * - GET /api/deals/:id
+   * - POST /api/deals
+   * - PUT /api/deals/:id
+   *
+   * See server/routes-deals.ts (Migrated 2/225 routes)
+   */
 
   // Update deal stage (for drag and drop)
   app.put('/api/deals/:id/stage', async (req: any, res) => {
@@ -15409,6 +15222,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
+  registerDealsRoutes(app);
   registerRenewalManagementRoutes(app);
 
   // Register Sales Forecasting routes
