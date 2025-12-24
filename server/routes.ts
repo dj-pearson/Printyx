@@ -169,6 +169,7 @@ import warehouseFpyRoutes from './routes-warehouse-fpy';
 import consolidatedBillingRoutes from './routes/billing';
 import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
+import seoRoutes from './routes-seo';
 import { registerHealthRoutes } from './routes/health-routes';
 import {
   getCompanyPricingSettings,
@@ -12778,6 +12779,9 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Register content marketing routes (blog, guides, case studies, landing pages)
   app.use(contentMarketingRoutes);
   app.use(printCostCalculatorRoutes);
+
+  // Register SEO routes (sitemap.xml, robots.txt, SEO management)
+  app.use(seoRoutes);
 
   // Register DoD enforcement routes
   const dodEnforcementRoutes = (await import('./routes-dod-enforcement')).default;
