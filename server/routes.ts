@@ -651,8 +651,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup passport authentication
   await setupAuth(app);
 
-  // Global authentication middleware for all API routes except public/auth routes
-  // This ensures req.user is populated from Supabase JWT for all protected routes
+  // Import Supabase auth middleware
+  const { authenticateSupabaseJWT } = await import('./middleware/supabase-auth');
+  const { getUserId, getTenantId } = await import('./utils/auth-helpers');
+
+  // Global authentication middleware for all API routes
+  // Phase 1: Always try Supabase JWT first (non-blocking)
+  app.use('/api', authenticateSupabaseJWT);
+
+  // Phase 2: Populate req.user for backward compatibility
+  app.use('/api', async (req: any, res, next) => {
+    // If Supabase JWT auth succeeded, populate req.user for backward compatibility
+    if (req.supabaseUser) {
+      req.user = {
+        id: req.supabaseUser.id,
+        email: req.supabaseUser.email,
+        tenantId: req.supabaseUser.tenantId,
+        roleId: req.supabaseUser.roleId,
+        teamId: req.supabaseUser.teamId,
+        accessScope: req.supabaseUser.accessScope,
+        isPlatformUser: req.supabaseUser.isPlatformUser,
+        firstName: req.supabaseUser.firstName,
+        lastName: req.supabaseUser.lastName,
+      };
+    }
+    next();
+  });
+
+  // Phase 3: Require authentication (except public paths)
+  // This works with both Supabase JWT and session auth via unified helpers
   app.use('/api', async (req: any, res, next) => {
     // Routes that don't require authentication
     const publicPaths = [
@@ -669,8 +696,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
 
-    // For all other API routes, require authentication
-    return isAuthenticated(req, res, next);
+    // Check authentication using unified helpers (supports both JWT and session)
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Authentication required',
+        code: 'UNAUTHORIZED',
+      });
+    }
+
+    // Authentication succeeded
+    next();
   });
 
   // CSRF protection for state-changing routes (session-based)
