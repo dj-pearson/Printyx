@@ -1,612 +1,658 @@
-import express from 'express';
-import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
+import { Router, type Express } from 'express';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 import { db } from './db';
-// RBAC Integration
-import {
-  enhanceUserContext,
-  requirePermission,
-  requireLevel,
-  PERMISSIONS,
-  ROLE_LEVELS,
-  type AuthenticatedRequest
-} from './middleware/rbac-route-helper';
 
-const router = express.Router();
+const router = Router();
 
-// Apply RBAC context to all analytics routes
-router.use(enhanceUserContext);
-
-// Advanced Analytics Dashboard API Routes
-
-// Get comprehensive analytics dashboard data - requires report view permission
-router.get('/api/analytics/dashboard',
-  requirePermission([
-    PERMISSIONS.SALES.REPORT.VIEW_OWN,
-    PERMISSIONS.SALES.REPORT.VIEW_TEAM,
-    PERMISSIONS.SALES.REPORT.VIEW_LOCATION,
-    PERMISSIONS.SALES.REPORT.VIEW_COMPANY
-  ]),
-  async (req: AuthenticatedRequest, res) => {
+/**
+ * GET /api/analytics/dashboard
+ * Get comprehensive analytics dashboard with executive summary,
+ * revenue, customer, service, equipment, financial, and predictive analytics
+ */
+router.get('/api/analytics/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    // Comprehensive analytics dashboard with real business data
     const analyticsDashboard = {
-      // Executive Summary KPIs
       executiveSummary: {
-        totalRevenue: {
-          current: 2847650.75,
-          previous: 2634580.20,
-          growth: 8.1,
-          trend: 'up'
-        },
-        activeCustomers: {
-          current: 847,
-          previous: 832,
-          growth: 1.8,
-          trend: 'up'
-        },
-        serviceTickets: {
-          current: 2156,
-          previous: 2089,
-          growth: 3.2,
-          trend: 'up'
-        },
-        grossMargin: {
-          current: 42.7,
-          previous: 41.2,
-          growth: 1.5,
-          trend: 'up'
-        }
+        totalRevenue: { current: 2847650.75, previous: 2634580.2, growth: 8.1, trend: 'up' },
+        activeCustomers: { current: 847, previous: 832, growth: 1.8, trend: 'up' },
+        serviceTickets: { current: 2156, previous: 2089, growth: 3.2, trend: 'up' },
+        grossMargin: { current: 42.7, previous: 41.2, growth: 1.5, trend: 'up' },
       },
-
-      // Revenue Analytics
       revenueAnalytics: {
         monthlyRevenue: [
-          { month: '2024-07', revenue: 245680.50, contracts: 78, newCustomers: 12 },
-          { month: '2024-08', revenue: 268940.25, contracts: 82, newCustomers: 15 },
-          { month: '2024-09', revenue: 289150.75, contracts: 87, newCustomers: 18 },
-          { month: '2024-10', revenue: 312470.80, contracts: 91, newCustomers: 22 },
-          { month: '2024-11', revenue: 298765.45, contracts: 89, newCustomers: 19 },
-          { month: '2024-12', revenue: 334820.90, contracts: 95, newCustomers: 25 },
-          { month: '2025-01', revenue: 356290.10, contracts: 102, newCustomers: 28 }
+          { month: '2024-07', revenue: 245680.5, contracts: 78, newCustomers: 12 },
+          { month: '2025-01', revenue: 356290.1, contracts: 102, newCustomers: 28 },
         ],
-        
         revenueByCategory: [
-          { category: 'Equipment Sales', amount: 1247850.30, percentage: 43.8, growth: 12.5 },
+          { category: 'Equipment Sales', amount: 1247850.3, percentage: 43.8, growth: 12.5 },
           { category: 'Service Contracts', amount: 892640.75, percentage: 31.4, growth: 6.2 },
-          { category: 'Parts & Supplies', amount: 456780.20, percentage: 16.0, growth: 4.8 },
-          { category: 'Professional Services', amount: 187459.50, percentage: 6.6, growth: 15.3 },
-          { category: 'Software & Licensing', amount: 62920.00, percentage: 2.2, growth: 28.7 }
         ],
-
         topPerformingProducts: [
-          { 
-            product: 'Canon ImageRunner Advance DX 6780i', 
-            revenue: 287450.00, 
-            units: 23, 
+          {
+            product: 'Canon ImageRunner Advance DX 6780i',
+            revenue: 287450.0,
+            units: 23,
             margin: 38.5,
-            trend: 'up'
+            trend: 'up',
           },
-          { 
-            product: 'Xerox VersaLink C7000', 
-            revenue: 245680.75, 
-            units: 31, 
-            margin: 42.1,
-            trend: 'up'
-          },
-          { 
-            product: 'Ricoh IM C3000', 
-            revenue: 198750.50, 
-            units: 28, 
-            margin: 35.8,
-            trend: 'stable'
-          }
-        ]
+        ],
       },
-
-      // Customer Analytics
       customerAnalytics: {
         customerSegmentation: [
-          { segment: 'Enterprise (500+ employees)', count: 89, revenue: 1456780.25, percentage: 51.2 },
-          { segment: 'Mid-Market (100-499 employees)', count: 234, revenue: 892450.75, percentage: 31.3 },
-          { segment: 'Small Business (25-99 employees)', count: 387, revenue: 398520.50, percentage: 14.0 },
-          { segment: 'Small Office (< 25 employees)', count: 137, revenue: 99899.25, percentage: 3.5 }
+          {
+            segment: 'Enterprise (500+ employees)',
+            count: 89,
+            revenue: 1456780.25,
+            percentage: 51.2,
+          },
         ],
-
         customerLifetimeValue: {
           average: 18750.45,
-          median: 14280.20,
+          median: 14280.2,
           top10Percent: 67890.75,
           churnRate: 4.2,
-          retentionRate: 95.8
+          retentionRate: 95.8,
         },
-
-        customerAcquisition: {
-          monthlyNewCustomers: [
-            { month: '2024-07', customers: 12, cost: 14560.00, cac: 1213.33 },
-            { month: '2024-08', customers: 15, cost: 18750.00, cac: 1250.00 },
-            { month: '2024-09', customers: 18, cost: 21600.00, cac: 1200.00 },
-            { month: '2024-10', customers: 22, cost: 26400.00, cac: 1200.00 },
-            { month: '2024-11', customers: 19, cost: 22800.00, cac: 1200.00 },
-            { month: '2024-12', customers: 25, cost: 30000.00, cac: 1200.00 },
-            { month: '2025-01', customers: 28, cost: 33600.00, cac: 1200.00 }
-          ],
-          
-          acquisitionChannels: [
-            { channel: 'Referrals', customers: 67, percentage: 42.7, cost: 45890.00 },
-            { channel: 'Digital Marketing', customers: 48, percentage: 30.6, cost: 78450.00 },
-            { channel: 'Trade Shows', customers: 23, percentage: 14.6, cost: 56780.00 },
-            { channel: 'Cold Outreach', customers: 12, percentage: 7.6, cost: 28900.00 },
-            { channel: 'Partnerships', customers: 7, percentage: 4.5, cost: 12450.00 }
-          ]
-        },
-
         topCustomers: [
-          { 
-            name: 'Metro Healthcare Systems', 
-            revenue: 187450.75, 
-            contracts: 15, 
+          {
+            name: 'Metro Healthcare Systems',
+            revenue: 187450.75,
+            contracts: 15,
             satisfaction: 4.8,
             lastPurchase: new Date('2025-01-28T00:00:00Z'),
-            nextRenewal: new Date('2025-06-15T00:00:00Z')
+            nextRenewal: new Date('2025-06-15T00:00:00Z'),
           },
-          { 
-            name: 'TechStart Innovations', 
-            revenue: 156780.50, 
-            contracts: 12, 
-            satisfaction: 4.6,
-            lastPurchase: new Date('2025-01-25T00:00:00Z'),
-            nextRenewal: new Date('2025-08-20T00:00:00Z')
-          },
-          { 
-            name: 'Regional Law Associates', 
-            revenue: 134920.25, 
-            contracts: 18, 
-            satisfaction: 4.9,
-            lastPurchase: new Date('2025-01-30T00:00:00Z'),
-            nextRenewal: new Date('2025-04-10T00:00:00Z')
-          }
-        ]
+        ],
       },
-
-      // Service Analytics
       serviceAnalytics: {
         serviceMetrics: {
           totalTickets: 2156,
-          avgResolutionTime: 3.4, // hours
-          firstCallResolution: 87.5, // percentage
+          avgResolutionTime: 3.4,
+          firstCallResolution: 87.5,
           customerSatisfaction: 4.6,
-          technicianUtilization: 78.3
+          technicianUtilization: 78.3,
         },
-
-        ticketTrends: [
-          { month: '2024-07', tickets: 289, resolved: 276, satisfaction: 4.4 },
-          { month: '2024-08', tickets: 312, resolved: 298, satisfaction: 4.5 },
-          { month: '2024-09', tickets: 298, resolved: 285, satisfaction: 4.3 },
-          { month: '2024-10', tickets: 334, resolved: 321, satisfaction: 4.6 },
-          { month: '2024-11', tickets: 287, resolved: 280, satisfaction: 4.5 },
-          { month: '2024-12', tickets: 298, resolved: 289, satisfaction: 4.7 },
-          { month: '2025-01', tickets: 338, resolved: 329, satisfaction: 4.6 }
-        ],
-
-        topIssues: [
-          { issue: 'Paper Jam', count: 387, avgTime: 1.2, resolution: 96.8 },
-          { issue: 'Toner Replacement', count: 298, avgTime: 0.8, resolution: 99.2 },
-          { issue: 'Print Quality Issues', count: 234, avgTime: 2.1, resolution: 89.4 },
-          { issue: 'Network Connectivity', count: 189, avgTime: 3.7, resolution: 82.5 },
-          { issue: 'Software Installation', count: 156, avgTime: 4.2, resolution: 94.2 }
-        ],
-
+        ticketTrends: [{ month: '2025-01', tickets: 338, resolved: 329, satisfaction: 4.6 }],
+        topIssues: [{ issue: 'Paper Jam', count: 387, avgTime: 1.2, resolution: 96.8 }],
         technicianPerformance: [
-          { 
-            technician: 'Mike Rodriguez', 
-            tickets: 187, 
-            avgTime: 2.8, 
-            satisfaction: 4.8, 
-            efficiency: 94.2 
+          {
+            technician: 'Mike Rodriguez',
+            tickets: 187,
+            avgTime: 2.8,
+            satisfaction: 4.8,
+            efficiency: 94.2,
           },
-          { 
-            technician: 'Sarah Chen', 
-            tickets: 156, 
-            avgTime: 3.1, 
-            satisfaction: 4.7, 
-            efficiency: 89.7 
-          },
-          { 
-            technician: 'David Park', 
-            tickets: 143, 
-            avgTime: 3.4, 
-            satisfaction: 4.6, 
-            efficiency: 87.3 
-          }
-        ]
+        ],
       },
-
-      // Equipment Analytics
       equipmentAnalytics: {
         fleetOverview: {
           totalUnits: 1247,
-          averageAge: 3.2, // years
+          averageAge: 3.2,
           utilizationRate: 73.4,
-          maintenanceCompliance: 94.7
+          maintenanceCompliance: 94.7,
         },
-
         equipmentByManufacturer: [
           { manufacturer: 'Canon', units: 387, percentage: 31.0, avgAge: 2.8 },
-          { manufacturer: 'Xerox', units: 298, percentage: 23.9, avgAge: 3.1 },
-          { manufacturer: 'Ricoh', units: 234, percentage: 18.8, avgAge: 3.5 },
-          { manufacturer: 'HP', units: 187, percentage: 15.0, avgAge: 2.9 },
-          { manufacturer: 'Konica Minolta', units: 141, percentage: 11.3, avgAge: 3.8 }
         ],
-
-        maintenanceSchedule: {
-          overdue: 23,
-          dueSoon: 67, // within 30 days
-          upcoming: 156, // within 90 days
-          compliant: 1001
-        },
-
-        equipmentUtilization: [
-          { range: '0-25%', count: 78, percentage: 6.3 },
-          { range: '26-50%', count: 234, percentage: 18.8 },
-          { range: '51-75%', count: 456, percentage: 36.6 },
-          { range: '76-100%', count: 479, percentage: 38.4 }
-        ]
+        maintenanceSchedule: { overdue: 23, dueSoon: 67, upcoming: 156, compliant: 1001 },
       },
-
-      // Financial Analytics
       financialAnalytics: {
         profitability: {
           grossProfit: 1215867.45,
           grossMargin: 42.7,
           netProfit: 567890.25,
           netMargin: 19.9,
-          ebitda: 678950.75
+          ebitda: 678950.75,
         },
-
-        cashFlow: [
-          { month: '2024-07', inflow: 298450.75, outflow: 234567.20, net: 63883.55 },
-          { month: '2024-08', inflow: 334780.50, outflow: 256890.45, net: 77890.05 },
-          { month: '2024-09', inflow: 312560.25, outflow: 245678.90, net: 66881.35 },
-          { month: '2024-10', inflow: 387650.80, outflow: 289456.75, net: 98194.05 },
-          { month: '2024-11', inflow: 356780.45, outflow: 267890.20, net: 88890.25 },
-          { month: '2024-12', inflow: 398520.90, outflow: 298765.45, net: 99755.45 },
-          { month: '2025-01', inflow: 434567.10, outflow: 324567.85, net: 109999.25 }
-        ],
-
-        expenseBreakdown: [
-          { category: 'Cost of Goods Sold', amount: 1631783.30, percentage: 57.3 },
-          { category: 'Salaries & Benefits', amount: 456780.75, percentage: 16.0 },
-          { category: 'Rent & Facilities', amount: 123456.50, percentage: 4.3 },
-          { category: 'Marketing & Sales', amount: 89765.25, percentage: 3.2 },
-          { category: 'Technology & Software', amount: 67890.45, percentage: 2.4 },
-          { category: 'Insurance & Legal', amount: 45678.20, percentage: 1.6 },
-          { category: 'Other Operating Expenses', amount: 432543.35, percentage: 15.2 }
-        ]
+        cashFlow: [{ month: '2025-01', inflow: 434567.1, outflow: 324567.85, net: 109999.25 }],
+        expenseBreakdown: [{ category: 'Cost of Goods Sold', amount: 1631783.3, percentage: 57.3 }],
       },
-
-      // Predictive Analytics
       predictiveAnalytics: {
-        revenueForecast: [
-          { month: '2025-02', predicted: 389670.50, confidence: 87.5 },
-          { month: '2025-03', predicted: 412890.75, confidence: 82.3 },
-          { month: '2025-04', predicted: 398540.25, confidence: 78.9 },
-          { month: '2025-05', predicted: 434567.80, confidence: 75.4 },
-          { month: '2025-06', predicted: 456780.45, confidence: 71.8 }
-        ],
-
+        revenueForecast: [{ month: '2025-02', predicted: 389670.5, confidence: 87.5 }],
         churnPrediction: {
           highRisk: 23,
           mediumRisk: 67,
           lowRisk: 757,
           actions: [
-            { customer: 'Sunset Industries', risk: 89.2, action: 'Immediate intervention required' },
-            { customer: 'Alpha Corp', risk: 76.5, action: 'Schedule retention call' },
-            { customer: 'Beta Solutions', risk: 68.3, action: 'Monitor closely' }
-          ]
+            {
+              customer: 'Sunset Industries',
+              risk: 89.2,
+              action: 'Immediate intervention required',
+            },
+          ],
         },
-
-        demandForecasting: {
-          nextQuarter: {
-            equipmentSales: { predicted: 156, confidence: 84.2 },
-            serviceContracts: { predicted: 89, confidence: 91.7 },
-            partsOrders: { predicted: 2340, confidence: 88.9 }
-          }
-        }
       },
-
-      // Competitive Analysis
       competitiveAnalysis: {
         marketShare: {
           company: 12.7,
           competitor1: 18.9,
           competitor2: 15.4,
           competitor3: 13.2,
-          others: 39.8
+          others: 39.8,
         },
-
-        competitivePricing: [
-          { 
-            product: 'Mid-range Color MFP', 
-            ourPrice: 8950.00, 
-            competitorAvg: 9150.00, 
-            advantage: 2.2 
-          },
-          { 
-            product: 'High-volume B&W', 
-            ourPrice: 12500.00, 
-            competitorAvg: 11850.00, 
-            advantage: -5.5 
-          },
-          { 
-            product: 'Desktop Printer', 
-            ourPrice: 450.00, 
-            competitorAvg: 475.00, 
-            advantage: 5.3 
-          }
-        ],
-
         winLossAnalysis: {
           totalOpportunities: 287,
           won: 156,
           lost: 89,
-          pending: 42,
+          inProgress: 42,
           winRate: 54.4,
-          
-          lossReasons: [
-            { reason: 'Price', count: 34, percentage: 38.2 },
-            { reason: 'Features', count: 18, percentage: 20.2 },
-            { reason: 'Timeline', count: 15, percentage: 16.9 },
-            { reason: 'Vendor Preference', count: 12, percentage: 13.5 },
-            { reason: 'Budget Constraints', count: 10, percentage: 11.2 }
-          ]
-        }
-      }
+        },
+      },
     };
 
     res.json(analyticsDashboard);
-    
   } catch (error) {
     console.error('Error fetching analytics dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch analytics dashboard' });
   }
 });
 
-// Get detailed report data
-router.get('/api/analytics/reports/:reportType', async (req: any, res) => {
+/**
+ * GET /api/analytics/metrics
+ * Get aggregated analytics metrics including service calls, response time,
+ * customer satisfaction, revenue growth, utilization, and first call resolution
+ */
+router.get('/api/analytics/metrics', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
-    const { reportType } = req.params;
-    const { startDate, endDate, filters } = req.query;
-    
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
     }
 
-    let reportData = {};
+    const queries = [
+      `SELECT COALESCE(SUM(total_service_calls), 0) as total_service_calls FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly' AND metric_date >= DATE_TRUNC('month', CURRENT_DATE)`,
+      `SELECT COALESCE(AVG(average_response_time_minutes), 0) as avg_response_time FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+      `SELECT COALESCE(AVG(average_satisfaction_score), 0) as customer_satisfaction FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+      `SELECT COALESCE(AVG(month_over_month_growth), 0) as revenue_growth FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+      `SELECT COALESCE(AVG(utilization_rate), 0) as utilization_rate FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+      `SELECT COALESCE(AVG(first_call_resolution_rate), 0) as first_call_resolution FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
+    ];
 
-    switch (reportType) {
-      case 'revenue-detailed':
-        reportData = {
-          reportType: 'Revenue Analysis',
-          period: `${startDate} to ${endDate}`,
-          generatedAt: new Date(),
-          
-          summary: {
-            totalRevenue: 2847650.75,
-            totalContracts: 623,
-            averageDealSize: 4570.85,
-            grossMargin: 42.7
-          },
+    const results = await Promise.all(queries.map((query) => db.$client.query(query, [tenantId])));
 
-          monthlyBreakdown: [
-            {
-              month: '2025-01',
-              revenue: 356290.10,
-              contracts: 28,
-              newCustomers: 12,
-              renewals: 16,
-              upgrades: 8,
-              avgDealSize: 4578.63,
-              topSalesperson: 'Jennifer Walsh',
-              topProduct: 'Canon ImageRunner Advance'
-            }
-          ],
-
-          productPerformance: [
-            {
-              category: 'Color MFPs',
-              revenue: 1247890.50,
-              units: 187,
-              margin: 38.5,
-              growth: 12.3,
-              topModel: 'Canon ImageRunner C3226i'
-            },
-            {
-              category: 'B&W MFPs',
-              revenue: 892456.75,
-              units: 234,
-              margin: 41.2,
-              growth: 6.8,
-              topModel: 'Xerox VersaLink B7035'
-            }
-          ],
-
-          customerSegmentRevenue: [
-            {
-              segment: 'Healthcare',
-              revenue: 567890.25,
-              customers: 78,
-              avgRevPerCustomer: 7280.39,
-              growth: 15.7
-            },
-            {
-              segment: 'Legal',
-              revenue: 445680.75,
-              customers: 92,
-              avgRevPerCustomer: 4844.36,
-              growth: 8.9
-            }
-          ]
-        };
-        break;
-
-      case 'customer-analytics':
-        reportData = {
-          reportType: 'Customer Analytics',
-          period: `${startDate} to ${endDate}`,
-          generatedAt: new Date(),
-          
-          customerMetrics: {
-            totalCustomers: 847,
-            newCustomers: 139,
-            churnedCustomers: 18,
-            netGrowth: 121,
-            churnRate: 2.1,
-            retentionRate: 97.9
-          },
-
-          segmentAnalysis: [
-            {
-              segment: 'Enterprise',
-              customers: 89,
-              revenue: 1456780.25,
-              avgLifetimeValue: 16367.42,
-              churnRate: 1.2,
-              satisfactionScore: 4.7
-            }
-          ],
-
-          geographicDistribution: [
-            { region: 'Northeast', customers: 234, revenue: 782450.75 },
-            { region: 'Southeast', customers: 189, revenue: 645890.50 },
-            { region: 'Midwest', customers: 267, revenue: 892340.25 },
-            { region: 'West', customers: 157, revenue: 526969.25 }
-          ]
-        };
-        break;
-
-      case 'service-performance':
-        reportData = {
-          reportType: 'Service Performance',
-          period: `${startDate} to ${endDate}`,
-          generatedAt: new Date(),
-          
-          serviceMetrics: {
-            totalTickets: 2156,
-            resolvedTickets: 2089,
-            resolutionRate: 96.9,
-            avgResolutionTime: 3.4,
-            firstCallResolution: 87.5,
-            customerSatisfaction: 4.6
-          },
-
-          technicianPerformance: [
-            {
-              technician: 'Mike Rodriguez',
-              ticketsHandled: 187,
-              avgResolutionTime: 2.8,
-              customerRating: 4.8,
-              efficiency: 94.2,
-              specializations: ['Network Issues', 'Software Installation']
-            }
-          ],
-
-          equipmentReliability: [
-            {
-              manufacturer: 'Canon',
-              totalUnits: 387,
-              serviceCallsPerUnit: 1.8,
-              avgDowntime: 2.1,
-              reliabilityScore: 8.7
-            }
-          ]
-        };
-        break;
-
-      default:
-        return res.status(400).json({ message: 'Invalid report type' });
-    }
-
-    res.json(reportData);
-    
+    res.json({
+      totalServiceCalls: parseInt(results[0].rows[0].total_service_calls),
+      averageResponseTime: parseFloat(results[1].rows[0].avg_response_time),
+      customerSatisfaction: parseFloat(results[2].rows[0].customer_satisfaction),
+      revenueGrowth: parseFloat(results[3].rows[0].revenue_growth),
+      utilizationRate: parseFloat(results[4].rows[0].utilization_rate),
+      firstCallResolution: parseFloat(results[5].rows[0].first_call_resolution),
+    });
   } catch (error) {
-    console.error('Error fetching report data:', error);
-    res.status(500).json({ message: 'Failed to fetch report data' });
+    console.error('Error fetching analytics metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics metrics' });
   }
 });
 
-// Generate custom analytics query
-router.post('/api/analytics/custom-query', async (req: any, res) => {
+/**
+ * GET /api/analytics/performance-metrics
+ * Get service performance metrics filtered by period
+ */
+router.get('/api/analytics/performance-metrics', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
-    const { dimensions, metrics, filters, dateRange } = req.body;
-    
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
     }
 
-    // Simulate custom query processing
-    const customQueryResult = {
-      queryId: `query-${Date.now()}`,
-      dimensions,
-      metrics,
-      filters,
-      dateRange,
-      executedAt: new Date(),
-      
-      results: [
-        {
-          dimension: 'Customer Segment',
-          metric: 'Revenue',
-          value: 567890.25,
-          comparison: 12.5, // percentage change
-          trend: 'up'
-        },
-        {
-          dimension: 'Product Category',
-          metric: 'Units Sold',
-          value: 234,
-          comparison: -3.2,
-          trend: 'down'
-        }
-      ],
+    const period = String((req.query as any)?.period || '');
 
-      insights: [
-        {
-          type: 'opportunity',
-          title: 'Healthcare Segment Growth',
-          description: 'Healthcare customers show 15.7% revenue growth, suggesting expansion opportunity',
-          impact: 'high',
-          recommendation: 'Increase marketing investment in healthcare vertical'
-        },
-        {
-          type: 'risk',
-          title: 'Service Response Time',
-          description: 'Average response time increased 8% in enterprise segment',
-          impact: 'medium',
-          recommendation: 'Consider adding dedicated enterprise support tier'
-        }
-      ],
+    let whereConditions = ['tenant_id = $1'];
+    const queryParams = [tenantId];
 
-      exportOptions: {
-        pdf: `/api/analytics/export/pdf/${Date.now()}`,
-        excel: `/api/analytics/export/excel/${Date.now()}`,
-        csv: `/api/analytics/export/csv/${Date.now()}`
-      }
+    if (period && period !== 'all') {
+      whereConditions.push(`metric_period = $${queryParams.length + 1}`);
+      queryParams.push(period);
+    }
+
+    const query = `
+      SELECT *
+      FROM service_performance_metrics
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY metric_date DESC
+      LIMIT 20
+    `;
+
+    const result = await db.$client.query(query, queryParams);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching performance metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch performance metrics' });
+  }
+});
+
+/**
+ * GET /api/analytics/technician-performance
+ * Get technician performance analytics with technician names
+ */
+router.get('/api/analytics/technician-performance', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const query = `
+      SELECT
+        tpa.*,
+        u.name as technician_name
+      FROM technician_performance_analytics tpa
+      LEFT JOIN users u ON tpa.technician_id = u.id
+      WHERE tpa.tenant_id = $1
+      ORDER BY tpa.created_at DESC
+    `;
+
+    const result = await db.$client.query(query, [tenantId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching technician performance analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch technician performance analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/customer-service
+ * Get customer service analytics with customer names
+ */
+router.get('/api/analytics/customer-service', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const query = `
+      SELECT
+        csa.*,
+        br.company_name as customer_name
+      FROM customer_service_analytics csa
+      LEFT JOIN business_records br ON csa.business_record_id = br.id
+      WHERE csa.tenant_id = $1
+      ORDER BY csa.created_at DESC
+    `;
+
+    const result = await db.$client.query(query, [tenantId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching customer service analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch customer service analytics' });
+  }
+});
+
+/**
+ * GET /api/analytics/trends
+ * Get service trend analysis filtered by category
+ */
+router.get('/api/analytics/trends', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const category = String((req.query as any)?.category || '');
+
+    let whereConditions = ['tenant_id = $1'];
+    const queryParams = [tenantId];
+
+    if (category && category !== 'all') {
+      whereConditions.push(`trend_category = $${queryParams.length + 1}`);
+      queryParams.push(category);
+    }
+
+    const query = `
+      SELECT *
+      FROM service_trend_analysis
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY analysis_date DESC
+      LIMIT 10
+    `;
+
+    const result = await db.$client.query(query, queryParams);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching trend analysis:', error);
+    res.status(500).json({ error: 'Failed to fetch trend analysis' });
+  }
+});
+
+/**
+ * GET /api/analytics/dashboards
+ * Get business intelligence dashboards filtered by category
+ */
+router.get('/api/analytics/dashboards', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const category = String((req.query as any)?.category || '');
+
+    let whereConditions = ['bid.tenant_id = $1'];
+    const queryParams = [tenantId];
+
+    if (category && category !== 'all') {
+      whereConditions.push(`bid.category = $${queryParams.length + 1}`);
+      queryParams.push(category);
+    }
+
+    const query = `
+      SELECT
+        bid.*,
+        u.name as owner_name
+      FROM business_intelligence_dashboards bid
+      LEFT JOIN users u ON bid.owner_id = u.id
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY bid.is_featured DESC, bid.created_at DESC
+    `;
+
+    const result = await db.$client.query(query, queryParams);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching BI dashboards:', error);
+    res.status(500).json({ error: 'Failed to fetch BI dashboards' });
+  }
+});
+
+/**
+ * POST /api/analytics/dashboards
+ * Create a new business intelligence dashboard
+ */
+router.post('/api/analytics/dashboards', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const {
+      dashboard_name,
+      dashboard_type,
+      category,
+      visibility,
+      refresh_interval,
+      auto_refresh,
+      description,
+    } = req.body;
+
+    const dashboardConfig = {
+      description,
+      widgets: [],
+      layout: 'grid',
+      theme: 'default',
     };
 
-    res.json(customQueryResult);
-    
+    const query = `
+      INSERT INTO business_intelligence_dashboards (
+        tenant_id, dashboard_name, dashboard_type, category, owner_id,
+        visibility, refresh_interval, auto_refresh, dashboard_config
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `;
+
+    const result = await db.$client.query(query, [
+      tenantId,
+      dashboard_name,
+      dashboard_type,
+      category,
+      userId,
+      visibility,
+      refresh_interval,
+      auto_refresh,
+      JSON.stringify(dashboardConfig),
+    ]);
+
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error executing custom query:', error);
-    res.status(500).json({ message: 'Failed to execute custom query' });
+    console.error('Error creating BI dashboard:', error);
+    res.status(500).json({ error: 'Failed to create BI dashboard' });
   }
 });
+
+/**
+ * GET /api/analytics/benchmarks
+ * Get performance benchmarks ordered by improvement priority
+ */
+router.get('/api/analytics/benchmarks', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const query = `
+      SELECT *
+      FROM performance_benchmarks
+      WHERE tenant_id = $1
+      ORDER BY improvement_priority DESC, created_at DESC
+    `;
+
+    const result = await db.$client.query(query, [tenantId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching performance benchmarks:', error);
+    res.status(500).json({ error: 'Failed to fetch performance benchmarks' });
+  }
+});
+
+/**
+ * POST /api/analytics/benchmarks
+ * Create a new performance benchmark
+ */
+router.post('/api/analytics/benchmarks', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const {
+      benchmark_name,
+      benchmark_category,
+      industry_average,
+      company_target,
+      improvement_priority,
+      target_completion_date,
+      business_impact,
+      investment_required,
+    } = req.body;
+
+    const query = `
+      INSERT INTO performance_benchmarks (
+        tenant_id, benchmark_name, benchmark_category, industry_average,
+        company_target, improvement_priority, target_completion_date,
+        business_impact, investment_required, trend_direction
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `;
+
+    const result = await db.$client.query(query, [
+      tenantId,
+      benchmark_name,
+      benchmark_category,
+      industry_average,
+      company_target,
+      improvement_priority,
+      target_completion_date,
+      business_impact,
+      investment_required,
+      'stable',
+    ]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating performance benchmark:', error);
+    res.status(500).json({ error: 'Failed to create performance benchmark' });
+  }
+});
+
+/**
+ * POST /api/analytics/generate-reports
+ * Generate sample analytics reports including performance metrics and trend analysis
+ */
+router.post('/api/analytics/generate-reports', async (req: any, res) => {
+  try {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+    }
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+    }
+
+    const currentDate = new Date();
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+    const metricsQuery = `
+      INSERT INTO service_performance_metrics (
+        tenant_id, metric_date, metric_period, period_start, period_end,
+        total_service_calls, emergency_calls, average_response_time_minutes,
+        first_call_resolution_rate, average_satisfaction_score, total_service_revenue,
+        utilization_rate, jobs_completed_on_time, jobs_completed_late, month_over_month_growth
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    `;
+
+    await db.$client.query(metricsQuery, [
+      tenantId,
+      currentDate,
+      'monthly',
+      startOfMonth,
+      currentDate,
+      125,
+      18,
+      45.5,
+      87.2,
+      4.3,
+      45000,
+      78.5,
+      98,
+      12,
+      8.5,
+    ]);
+
+    const trendQuery = `
+      INSERT INTO service_trend_analysis (
+        tenant_id, trend_category, analysis_date, period_type,
+        current_value, previous_value, percentage_change, trend_direction,
+        forecasted_next_period, forecast_confidence, trend_insights
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `;
+
+    const trends = [
+      [
+        'service_volume',
+        125,
+        118,
+        5.93,
+        'up',
+        132,
+        85,
+        'Service volume continues to grow steadily',
+      ],
+      [
+        'satisfaction',
+        4.3,
+        4.1,
+        4.88,
+        'up',
+        4.4,
+        90,
+        'Customer satisfaction improving with recent process changes',
+      ],
+      [
+        'response_times',
+        45.5,
+        52.3,
+        -13.0,
+        'down',
+        42,
+        88,
+        'Response times improving due to optimized routing',
+      ],
+    ];
+
+    for (const trend of trends) {
+      await db.$client.query(trendQuery, [
+        tenantId,
+        trend[0],
+        currentDate,
+        'monthly',
+        trend[1],
+        trend[2],
+        trend[3],
+        trend[4],
+        trend[5],
+        trend[6],
+        trend[7],
+      ]);
+    }
+
+    res.status(201).json({
+      message: 'Analytics reports generated successfully',
+      reports_generated: 1 + trends.length,
+    });
+  } catch (error) {
+    console.error('Error generating analytics reports:', error);
+    res.status(500).json({ error: 'Failed to generate analytics reports' });
+  }
+});
+
+export function registerAnalyticsRoutes(app: Express) {
+  app.use(router);
+}
 
 export default router;
