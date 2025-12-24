@@ -4,18 +4,18 @@
  * Consolidates functionality from my-tasks.tsx
  */
 
-import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -23,17 +23,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import {
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  CheckCheck,
-  Filter,
-} from "lucide-react";
-import { formatDistanceToNow, isPast, isToday, format } from "date-fns";
+} from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { CheckCircle2, AlertCircle, Clock, CheckCheck, Filter, Plus } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { formatDistanceToNow, isPast, isToday, format } from 'date-fns';
 
 interface Task {
   id: string;
@@ -53,39 +48,33 @@ interface MyTasksViewProps {
 }
 
 export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps) {
-  const [statusFilter, setStatusFilter] = useState<string>("active");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Complete task mutation
   const completeTaskMutation = useMutation({
     mutationFn: async (taskId: string) =>
-      apiRequest(`/api/tasks/${taskId}`, "PATCH", { status: "completed" }),
+      apiRequest(`/api/tasks/${taskId}`, 'PATCH', { status: 'completed' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Success", description: "Task completed successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({ title: 'Success', description: 'Task completed successfully' });
     },
   });
 
   const isOverdue = (task: Task) => {
-    return (
-      task.dueDate &&
-      isPast(new Date(task.dueDate)) &&
-      task.status !== "completed"
-    );
+    return task.dueDate && isPast(new Date(task.dueDate)) && task.status !== 'completed';
   };
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
     const statusMatch =
-      statusFilter === "all" ||
-      (statusFilter === "active" &&
-        !["completed", "cancelled"].includes(task.status)) ||
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && !['completed', 'cancelled'].includes(task.status)) ||
       task.status === statusFilter;
 
-    const priorityMatch =
-      priorityFilter === "all" || task.priority === priorityFilter;
+    const priorityMatch = priorityFilter === 'all' || task.priority === priorityFilter;
 
     return statusMatch && priorityMatch;
   });
@@ -93,41 +82,36 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
   // Categorize tasks
   const overdueTasks = filteredTasks.filter(isOverdue);
   const todayTasks = filteredTasks.filter(
-    (task) =>
-      task.dueDate &&
-      isToday(new Date(task.dueDate)) &&
-      task.status !== "completed"
+    (task) => task.dueDate && isToday(new Date(task.dueDate)) && task.status !== 'completed',
   );
   const upcomingTasks = filteredTasks.filter(
     (task) =>
       task.dueDate &&
       !isPast(new Date(task.dueDate)) &&
       !isToday(new Date(task.dueDate)) &&
-      task.status !== "completed"
+      task.status !== 'completed',
   );
-  const completedTasks = filteredTasks.filter(
-    (task) => task.status === "completed"
-  );
+  const completedTasks = filteredTasks.filter((task) => task.status === 'completed');
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      low: "bg-gray-500",
-      medium: "bg-blue-500",
-      high: "bg-orange-500",
-      urgent: "bg-red-500",
+      low: 'bg-gray-500',
+      medium: 'bg-blue-500',
+      high: 'bg-orange-500',
+      urgent: 'bg-red-500',
     };
-    return colors[priority] || "bg-gray-500";
+    return colors[priority] || 'bg-gray-500';
   };
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      todo: "bg-gray-100 text-gray-800",
-      in_progress: "bg-blue-100 text-blue-800",
-      review: "bg-yellow-100 text-yellow-800",
-      completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800",
+      todo: 'bg-gray-100 text-gray-800',
+      in_progress: 'bg-blue-100 text-blue-800',
+      review: 'bg-yellow-100 text-yellow-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -140,9 +124,7 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
             <AlertCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">
-              {overdueTasks.length}
-            </div>
+            <div className="text-2xl font-bold text-red-500">{overdueTasks.length}</div>
           </CardContent>
         </Card>
 
@@ -152,9 +134,7 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
             <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-500">
-              {todayTasks.length}
-            </div>
+            <div className="text-2xl font-bold text-orange-500">{todayTasks.length}</div>
           </CardContent>
         </Card>
 
@@ -164,9 +144,7 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
             <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-500">
-              {upcomingTasks.length}
-            </div>
+            <div className="text-2xl font-bold text-blue-500">{upcomingTasks.length}</div>
           </CardContent>
         </Card>
 
@@ -176,9 +154,7 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
             <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-500">
-              {completedTasks.length}
-            </div>
+            <div className="text-2xl font-bold text-green-500">{completedTasks.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -225,14 +201,43 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Loading tasks...
-            </div>
+            <div className="text-center py-8 text-muted-foreground">Loading tasks...</div>
           ) : filteredTasks.length === 0 ? (
-            <div className="text-center py-8">
-              <CheckCheck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No tasks found</p>
-            </div>
+            <EmptyState
+              icon={CheckCheck}
+              title={
+                statusFilter !== 'all' || priorityFilter !== 'all'
+                  ? 'No matching tasks'
+                  : "You're all caught up!"
+              }
+              description={
+                statusFilter !== 'all' || priorityFilter !== 'all'
+                  ? 'Try adjusting your filters to see more tasks'
+                  : 'Create a new task to get started with your work'
+              }
+              type={statusFilter !== 'all' || priorityFilter !== 'all' ? 'filter' : 'default'}
+              action={
+                statusFilter !== 'all' || priorityFilter !== 'all'
+                  ? {
+                      label: 'Clear Filters',
+                      onClick: () => {
+                        setStatusFilter('all');
+                        setPriorityFilter('all');
+                      },
+                      variant: 'outline',
+                    }
+                  : undefined
+              }
+              suggestions={
+                statusFilter === 'all' && priorityFilter === 'all'
+                  ? [
+                      "Click 'New Task' to create your first task",
+                      'Tasks help you track work and meet deadlines',
+                      'Assign priorities to focus on what matters most',
+                    ]
+                  : undefined
+              }
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -247,16 +252,11 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
                 </TableHeader>
                 <TableBody>
                   {filteredTasks.map((task) => (
-                    <TableRow
-                      key={task.id}
-                      className={isOverdue(task) ? "bg-red-50" : ""}
-                    >
+                    <TableRow key={task.id} className={isOverdue(task) ? 'bg-red-50' : ''}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{task.title}</div>
-                          {isOverdue(task) && (
-                            <AlertCircle className="w-4 h-4 text-red-500" />
-                          )}
+                          {isOverdue(task) && <AlertCircle className="w-4 h-4 text-red-500" />}
                         </div>
                         {task.description && (
                           <div className="text-sm text-muted-foreground line-clamp-1">
@@ -265,27 +265,18 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge className={getPriorityColor(task.priority)}>
-                          {task.priority}
-                        </Badge>
+                        <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={getStatusColor(task.status)}
-                        >
-                          {task.status.replace("_", " ")}
+                        <Badge variant="outline" className={getStatusColor(task.status)}>
+                          {task.status.replace('_', ' ')}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         {task.dueDate ? (
                           <div>
-                            <div
-                              className={
-                                isOverdue(task) ? "text-red-500 font-medium" : ""
-                              }
-                            >
-                              {format(new Date(task.dueDate), "MMM d, yyyy")}
+                            <div className={isOverdue(task) ? 'text-red-500 font-medium' : ''}>
+                              {format(new Date(task.dueDate), 'MMM d, yyyy')}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {formatDistanceToNow(new Date(task.dueDate), {
@@ -294,13 +285,11 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
                             </div>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">
-                            No due date
-                          </span>
+                          <span className="text-muted-foreground">No due date</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {task.status !== "completed" && (
+                        {task.status !== 'completed' && (
                           <Button
                             size="sm"
                             onClick={() => completeTaskMutation.mutate(task.id)}
