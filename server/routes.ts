@@ -103,6 +103,7 @@ import equipmentDisposalRoutes from './routes-equipment-disposal';
 import breachDetectionRoutes from './routes-breach-detection';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerBusinessRecordRoutes } from './routes-business-records';
+import { registerCustomerRoutes } from './routes-customers';
 import { registerCsvImportRoutes } from './routes-csv-import';
 import { registerCustomReportsRoutes } from './routes-custom-reports';
 import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
@@ -4745,32 +4746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  app.post('/api/customers', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const validatedData = insertCustomerSchema.parse({
-        ...req.body,
-        tenantId: tenantId,
-        createdBy: req.user.id,
-        recordType: 'customer', // Ensure it's created as a customer, not a lead
-        // Convert string fields to appropriate types
-        probability: req.body.probability ? parseFloat(req.body.probability) : null,
-        estimatedDealValue: req.body.estimatedDealValue
-          ? parseFloat(req.body.estimatedDealValue)
-          : null,
-      });
-
-      const customer = await storage.createCustomer(validatedData);
-      res.status(201).json(customer);
-    } catch (error) {
-      console.error('Error creating customer:', error);
-      res.status(500).json({ message: 'Failed to create customer' });
-    }
-  });
+  // NOTE: POST /api/customers route moved to routes-customers.ts
 
   // Leads API routes (unified with business records)
   app.get('/api/leads', async (req: any, res) => {
@@ -15407,6 +15383,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       res.status(500).json({ message: 'Failed to fetch activities' });
     }
   });
+  registerCustomerRoutes(app);
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
   registerDealDeskRoutes(app);
